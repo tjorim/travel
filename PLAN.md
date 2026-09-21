@@ -51,6 +51,8 @@ deliberately selected data.
 
 ## Next
 
+- [ ] Add individual Travel tracker accounts with PKCE, a dedicated API audience,
+      and an owner-only subject boundary. ([apps#216](https://github.com/tjorim/apps/issues/216))
 - [ ] Add mobile moment capture with explicit, privacy-first location controls.
       ([#23](https://github.com/tjorim/travel/issues/23))
 - [ ] Integrate the native Travel session gate into the central infrastructure

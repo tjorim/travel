@@ -8,6 +8,8 @@ h1 { max-width: 10ch; margin: 0; font-size: clamp(2.8rem, 12vw, 5.8rem); line-he
 .notice, .card { border: 1px solid #cbd7ce; border-radius: 18px; background: #fffdf8; box-shadow: 0 12px 35px #19342d12; }
 .notice { display: grid; gap: 4px; margin: 34px 0 18px; padding: 16px; color: #456158; font-size: .93rem; }
 .notice strong { color: #19342d; }
+.notice button { width: fit-content; margin-top: 8px; padding: 9px 13px; border: 0; border-radius: 8px; background: #0f493b; color: #fffdf8; font: inherit; font-weight: 700; cursor: pointer; }
+.notice .secondary { border: 1px solid #87a096; background: transparent; color: #0f493b; }
 .card { padding: 24px; }
 .card h2 { margin-top: 0; }
 .card p { margin-bottom: 0; color: #4d665e; line-height: 1.6; }

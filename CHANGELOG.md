@@ -14,6 +14,10 @@ All notable changes to the travel hub are documented here.
 - Installable React tracker shell under `/tracker/`, with isolated client-side
   refresh routing, accessible mobile navigation, empty account boundary, and a
   minimal app-shell cache. ([#21](https://github.com/tjorim/travel/issues/21))
+- Authorization-code sign-in with S256 PKCE for the tracker, keeping access
+  tokens in the browser session only and sending them solely to the tracker
+  API. The account identity stays out of published-trip responses.
+  ([apps#216](https://github.com/tjorim/apps/issues/216))
 
 - Native server-side login and logout flow for shared and per-trip private
   routes, with short-lived signed secure sessions, Argon2id secret handling,
