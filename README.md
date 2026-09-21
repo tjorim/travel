@@ -25,7 +25,10 @@ Generate the password hash on the VPS with `caddy hash-password --algorithm argo
 - `dist/index.html` — travel-hub overview
 - `dist/private/` — shared passport, insurance and emergency-document area (Caddy-protected)
 - `dist/private/documents/` — document files committed to this private Git repository
+- `dist/assets/travel/flight-map.js` — reusable, data-driven international flight map
+- `dist/assets/travel/document-list.js` — reusable private document list with in-app preview
 - `dist/exampleland-2054/index.html` — Taiwan public overview
-- `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, map and bookings
+- `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, maps and bookings
+- `dist/exampleland-2054/private/flight-route.json` — Taiwan flight-map data
 - `Caddyfile.example` — static VPS serving with a protected private section
 The page has no build step or package dependencies. One travel photograph is loaded from an external URL; all other visuals are embedded directly in the HTML.
