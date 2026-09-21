@@ -25,15 +25,13 @@ deliberately selected data.
       protected. ([#5](https://github.com/tjorim/travel/issues/5))
 - [x] Defined the per-trip public/private JSON contract and updated Taiwan to
       render from it. ([#6](https://github.com/tjorim/travel/issues/6))
-- [x] Added the Taiwan-specific protected document library and manifest
-      convention, with in-app preview metadata. ([#1](https://github.com/tjorim/travel/issues/1))
+- [x] Added a reusable, data-driven trip page contract: summary, route stages,
+      moments, stays and booking status. ([#2](https://github.com/tjorim/travel/issues/2))
 
 ## Now
 
 ## Next
 
-- [ ] Add a reusable, data-driven trip page contract: summary, route stages,
-      moments, stays and booking status. ([#2](https://github.com/tjorim/travel/issues/2))
 - [ ] Build the public chronological trip-timeline view.
       ([#7](https://github.com/tjorim/travel/issues/7))
 - [ ] Add a public route/places map driven only by public trip data.
