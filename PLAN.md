@@ -1,8 +1,8 @@
 # Travel plan
 
-This is the working order for the Git-backed travel hub. It is intentionally a
-small static-site plan: commits change the site and the VPS deploys those
-commits. There is no separate publishing service or application database.
+This is the working order for the Git-backed travel hub. The static archive
+remains Git-backed, while the tracker PWA and API are deployed through the
+central VPS infrastructure.
 
 The `Now`, `Next` and `Later` sections mirror the open GitHub issues in their
 working order. When an issue is closed, move it to `Recently completed` and
@@ -32,6 +32,13 @@ deliberately selected data.
       routing, mobile navigation, authenticated-app boundary, and app-shell
       offline cache while preserving the archive. ([#21](https://github.com/tjorim/travel/issues/21))
 
+- [x] Added individual Travel tracker accounts with PKCE, a dedicated API
+      audience, and an owner-only subject boundary.
+      ([apps#216](https://github.com/tjorim/apps/issues/216))
+
+- [x] Integrated the native Travel session gate into the central infrastructure
+      deployment. ([apps#214](https://github.com/tjorim/apps/issues/214))
+
 - [x] Added a native server-side login and logout flow for shared and per-trip
       private routes, with signed secure sessions and Argon2id verification.
       ([#11](https://github.com/tjorim/travel/issues/11))
@@ -51,12 +58,8 @@ deliberately selected data.
 
 ## Next
 
-- [ ] Add individual Travel tracker accounts with PKCE, a dedicated API audience,
-      and an owner-only subject boundary. ([apps#216](https://github.com/tjorim/apps/issues/216))
 - [ ] Add mobile moment capture with explicit, privacy-first location controls.
       ([#23](https://github.com/tjorim/travel/issues/23))
-- [ ] Integrate the native Travel session gate into the central infrastructure
-      deployment. ([apps#214](https://github.com/tjorim/apps/issues/214))
 
 - [ ] Establish the Git/LFS media layout, captions, alt text and safe public
       derivatives. ([#9](https://github.com/tjorim/travel/issues/9))
