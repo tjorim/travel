@@ -1,6 +1,6 @@
 # Exampleland 2054 · Reisplan
 
-Static travel hub. Exampleland 2054 is its first trip at `/exampleland-2054/`, with a detailed itinerary at `/exampleland-2054/private/`. Future trips can follow the same `dist/<trip-slug>/` layout.
+Static travel hub. Exampleland 2054 is its first trip at `/exampleland-2054/`, with a detailed itinerary at `/exampleland-2054/private/`. Shared documents and emergency details live at `/private/`. Future trips can follow the same `dist/<trip-slug>/` layout.
 
 ## Run locally
 
@@ -23,6 +23,8 @@ Generate the password hash on the VPS with `caddy hash-password --algorithm argo
 ## Structure
 
 - `dist/index.html` — travel-hub overview
+- `dist/private/` — shared passport, insurance and emergency-document area (Caddy-protected)
+- `dist/private/documents/` — document files committed to this private Git repository
 - `dist/exampleland-2054/index.html` — Taiwan public overview
 - `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, map and bookings
 - `Caddyfile.example` — static VPS serving with a protected private section
