@@ -1,0 +1,4 @@
+# Deployment-managed Travel authentication secrets. Keep the real password
+# hash and session signing key on the server, never in Git.
+travel-auth.env
+Caddyfile

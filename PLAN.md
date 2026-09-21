@@ -20,6 +20,10 @@ deliberately selected data.
 
 ## Recently completed
 
+- [x] Added a native server-side login and logout flow for shared and per-trip
+      private routes, with signed secure sessions and Argon2id verification.
+      ([#11](https://github.com/tjorim/travel/issues/11))
+
 - [x] Added an accessible public route/places map driven solely by selected
       public trip data. ([#8](https://github.com/tjorim/travel/issues/8))
 
@@ -35,7 +39,23 @@ deliberately selected data.
 
 ## Now
 
+- [ ] Define the privacy-first lightweight Travel tracker MVP, including its
+      public/private data boundary and relationship to the current archive.
+      ([#20](https://github.com/tjorim/travel/issues/20))
+
 ## Next
+
+- [ ] Create a React PWA tracker shell alongside the static Travel archive.
+      ([#21](https://github.com/tjorim/travel/issues/21),
+      [apps#215](https://github.com/tjorim/apps/issues/215))
+- [ ] Build the FastAPI tracker API and core trip/moment model.
+      ([#22](https://github.com/tjorim/travel/issues/22),
+      [apps#215](https://github.com/tjorim/apps/issues/215),
+      [apps#216](https://github.com/tjorim/apps/issues/216))
+- [ ] Add mobile moment capture with explicit, privacy-first location controls.
+      ([#23](https://github.com/tjorim/travel/issues/23))
+- [ ] Integrate the native Travel session gate into the central infrastructure
+      deployment. ([apps#214](https://github.com/tjorim/apps/issues/214))
 
 - [ ] Establish the Git/LFS media layout, captions, alt text and safe public
       derivatives. ([#9](https://github.com/tjorim/travel/issues/9))

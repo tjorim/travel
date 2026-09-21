@@ -19,9 +19,44 @@ Then open `http://localhost:8080`.
 
 ## VPS deployment
 
-Copy the contents of `dist/` to a directory owned by the web server, such as `/srv/travel`. Use `Caddyfile.example` as the starting point for a site block. It protects `/private/` and every `/<trip>/private/` route with Caddy's built-in HTTP Basic Authentication; the static public page needs no application server or database.
+The native session-gate work is active WIP. It provides a small Go service for
+the shared-password login flow on `/private/` and every `/<trip>/private/`
+route; Caddy asks it before serving a protected file, while `/login` and
+`/logout` are served by the same service. There is no database, Keycloak
+dependency, or browser-side password material.
 
-Generate the password hash on the VPS with `caddy hash-password --algorithm argon2id --plaintext 'choose-a-password'`, put that hash in the real Caddyfile, and keep the real file out of Git.
+The standalone Compose configuration is available for local development and
+design verification. Production must instead be wired through the central
+`apps` infrastructure in [apps#214](https://github.com/tjorim/apps/issues/214)
+before this replaces its current Caddy Basic Auth policy.
+
+For standalone use, copy `Caddyfile.example` to an ignored `Caddyfile`, set its
+domain, and create an ignored `travel-auth.env` next to `compose.yaml`:
+
+```dotenv
+TRAVEL_AUTH_PASSWORD_HASH='$argon2id$v=19$m=65536,t=3,p=2$...'
+TRAVEL_AUTH_SESSION_KEY='a-base64url-encoded-random-key-at-least-32-bytes'
+TRAVEL_AUTH_SESSION_TTL=8h
+TRAVEL_AUTH_COOKIE_SECURE=true
+```
+
+Generate the Argon2id PHC hash and a 32-byte signing key on the deployment
+host without committing either value. Restrict the secret file (`chmod 600
+travel-auth.env`). Start the standalone WIP stack with `docker compose up -d
+--build`; only Caddy publishes ports.
+
+The service verifies the existing central-infrastructure
+`TRAVEL_PRIVATE_PASSWORD_HASH` variable too, so the production integration can
+reuse the current Argon2id password hash instead of creating a second one.
+
+### Verification once deployed
+
+1. Public routes remain accessible.
+2. A signed-out protected route redirects to `/login` and safely returns after
+   a successful login.
+3. The `travel_session` cookie is `HttpOnly`, `Secure`, `SameSite=Lax`, and
+   short-lived; tampered or expired sessions are rejected.
+4. Logout expires the cookie and private routes redirect to login again.
 
 ## Structure
 
@@ -42,7 +77,9 @@ Generate the password hash on the VPS with `caddy hash-password --algorithm argo
 - `dist/exampleland-2054/private/trip.json` — protected Taiwan operational summary and booking status
 - `dist/exampleland-2054/private/flight-route.json` — Taiwan flight-map data
 - `dist/example-trip/` — a deliberately small, data-driven reference trip
-- `Caddyfile.example` — static VPS serving with a protected private section
+- `auth/` — prepared server-side Argon2id login/session-gate component
+- `compose.yaml` — standalone WIP Caddy and internal auth-service setup
+- `Caddyfile.example` — Caddy static serving and protected-route auth check
 The page has no build step or package dependencies. One travel photograph is loaded from an external URL; all other visuals are embedded directly in the HTML.
 
 ## Per-trip data contract
@@ -56,7 +93,7 @@ dist/<trip-slug>/
 ├── index.html                  public page
 ├── public/
 │   └── trip.json               selected trip story
-└── private/                    Caddy-protected route
+└── private/                    session-protected route
     ├── index.html              operational page
     ├── trip.json               operational summary and booking status
     ├── flight-route.json       protected route/map data, when needed

@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Native server-side login and logout flow for shared and per-trip private
+  routes, with short-lived signed secure sessions, Argon2id secret handling,
+  Caddy forward-auth configuration, and deployment verification guidance.
+  Production rollout remains tracked in
+  [apps#214](https://github.com/tjorim/apps/issues/214).
+  ([#11](https://github.com/tjorim/travel/issues/11))
 - Trip-specific private document-library route and `manifest.json` convention
   for Exampleland 2054.
 - Per-trip `public/trip.json` and protected `private/trip.json` contract,

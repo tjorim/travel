@@ -1,17 +1,19 @@
-# Copy this block into the relevant Caddyfile on the VPS, then replace the
-# domain, site directory, user name and password hash.
+# Copy this block to Caddyfile on the VPS and replace the domain. The
+# deployment-managed password hash and session key live only in travel-auth.env.
 
 travel.example.com {
-  root * /srv/travel
-  encode zstd gzip
+	root * /srv/travel
+	encode zstd gzip
 
-  # Generate the hash on the VPS; never commit the resulting real Caddyfile:
-  # caddy hash-password --algorithm argon2id --plaintext 'choose-a-password'
-  # Protect shared documents as well as documents associated with one trip.
-  @private path /private /private/* /*/private /*/private/*
-  basic_auth @private argon2id "Travel plans" {
-    jorim REPLACE_WITH_A_CADDY_PASSWORD_HASH
-  }
+	# The auth service owns /login and /logout. Protect shared documents and
+	# any trip-private route before Caddy serves its static file.
+	@auth-pages path /login /logout
+	reverse_proxy @auth-pages travel-auth:8080
 
-  file_server
+	@private path /private /private/* /*/private /*/private/*
+	forward_auth @private travel-auth:8080 {
+		uri /verify
+	}
+
+	file_server
 }
