@@ -6,10 +6,17 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Trip-specific private document-library route and `manifest.json` convention
+  for Exampleland 2054.
 - Per-trip `public/trip.json` and protected `private/trip.json` contract,
   documented in the repository and implemented for Exampleland 2054.
 - Reusable trip-story and private trip-header components that load data from
   their corresponding static content files. ([#6](https://github.com/tjorim/travel/issues/6))
+
+### Changed
+
+- Document listings now display the document's trip association alongside its
+  type, validity date and description.
 
 ## 2026-09-21
 

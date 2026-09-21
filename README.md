@@ -34,6 +34,7 @@ Generate the password hash on the VPS with `caddy hash-password --algorithm argo
 - `dist/exampleland-2054/index.html` — Taiwan public overview
 - `dist/exampleland-2054/public/trip.json` — deliberately selected public Taiwan story data
 - `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, maps and bookings
+- `dist/exampleland-2054/private/documents/` — Taiwan-specific protected document files and manifest
 - `dist/exampleland-2054/private/trip.json` — protected Taiwan operational summary and booking status
 - `dist/exampleland-2054/private/flight-route.json` — Taiwan flight-map data
 - `Caddyfile.example` — static VPS serving with a protected private section
