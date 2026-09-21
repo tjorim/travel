@@ -14,6 +14,10 @@ python3 -m http.server 8080 --directory dist
 
 Then open `http://localhost:8080`.
 
+## Deployment
+
+Pushing to `main` deploys the contents of `dist/` to GitHub Pages.
+
 ## Structure
 
 - `dist/index.html` — complete site: HTML, CSS, JavaScript, interactive map and itinerary
