@@ -48,6 +48,9 @@ travel-auth.env`). Start the standalone WIP stack with `docker compose up -d
 The service verifies the existing central-infrastructure
 `TRAVEL_PRIVATE_PASSWORD_HASH` variable too, so the production integration can
 reuse the current Argon2id password hash instead of creating a second one.
+For central production, `TRAVEL_AUTH_SESSION_KEY_FILE` points at the mounted
+Docker secret; the signing key is therefore not placed in Caddy's or the
+sidecar's environment.
 
 ### Verification once deployed
 
@@ -81,6 +84,31 @@ reuse the current Argon2id password hash instead of creating a second one.
 - `compose.yaml` — standalone WIP Caddy and internal auth-service setup
 - `Caddyfile.example` — Caddy static serving and protected-route auth check
 The page has no build step or package dependencies. One travel photograph is loaded from an external URL; all other visuals are embedded directly in the HTML.
+
+## Tracker API
+
+`api/` is the separate FastAPI backend for the privacy-first tracker. It keeps
+the static archive and its private documents untouched. The API stores only
+owner-scoped trip data, broad place labels, route stages, selected moments and
+optional HTTPS photo references; it does not upload media or record GPS data.
+
+For local development, install the locked dependencies and run the tests:
+
+```bash
+cd api
+uv sync --all-groups
+uv run pytest
+```
+
+The production service requires `TRAVEL_DATABASE_URL` and a Keycloak/OIDC
+validator configuration (`TRAVEL_OIDC_ISSUER_URL`, `TRAVEL_OIDC_JWKS_URL`, and
+`TRAVEL_OIDC_AUDIENCE`). Until the identity infrastructure in apps#216 is
+ready, local tests override the authenticated subject; production CRUD fails
+closed when token validation is not configured. A development subject header is
+accepted only when both `TRAVEL_ENVIRONMENT=development` and
+`TRAVEL_ALLOW_DEVELOPMENT_SUBJECT_HEADER=true` are set. Apply schema changes with
+`uv run alembic upgrade head`. Central deployment, PostgreSQL credentials,
+backup coverage, and Caddy routing remain tracked in apps#215.
 
 ## Per-trip data contract
 

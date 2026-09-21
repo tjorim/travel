@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -99,7 +100,11 @@ func main() {
 	}
 	cfg, err := loadConfig()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "travel-auth configuration is invalid")
+		fmt.Fprintf(os.Stderr, "travel-auth configuration is invalid: %v\n", err)
+		os.Exit(1)
+	}
+	if err := dropPrivileges(); err != nil {
+		fmt.Fprintln(os.Stderr, "travel-auth could not drop privileges")
 		os.Exit(1)
 	}
 	application := &app{config: cfg, limiter: limiter{failures: make(map[string][]time.Time)}, now: time.Now}
@@ -117,8 +122,25 @@ func main() {
 	}
 }
 
+func dropPrivileges() error {
+	if os.Geteuid() != 0 {
+		return nil
+	}
+	const distrolessNonRootID = 65532
+	if err := syscall.Setgroups(nil); err != nil {
+		return err
+	}
+	if err := syscall.Setgid(distrolessNonRootID); err != nil {
+		return err
+	}
+	return syscall.Setuid(distrolessNonRootID)
+}
+
 func loadConfig() (config, error) {
-	encodedKey := os.Getenv("TRAVEL_AUTH_SESSION_KEY")
+	encodedKey, err := sessionKey()
+	if err != nil {
+		return config{}, err
+	}
 	key, err := base64.RawURLEncoding.DecodeString(encodedKey)
 	if err != nil || len(key) < 32 {
 		return config{}, errors.New("invalid session key")
@@ -145,6 +167,25 @@ func loadConfig() (config, error) {
 		}
 	}
 	return config{passwordHash: []byte(hash), sessionKey: key, sessionTTL: ttl, cookieSecure: secure}, nil
+}
+
+// sessionKey reads the deployment key directly when explicitly supplied for
+// local development, or from the Docker-secret file in production. Keeping
+// the latter out of the environment prevents it from being exposed through
+// container inspection or process-environment diagnostics.
+func sessionKey() (string, error) {
+	if encoded := os.Getenv("TRAVEL_AUTH_SESSION_KEY"); encoded != "" {
+		return encoded, nil
+	}
+	path := os.Getenv("TRAVEL_AUTH_SESSION_KEY_FILE")
+	if path == "" {
+		return "", errors.New("missing session key")
+	}
+	encoded, err := os.ReadFile(path)
+	if err != nil {
+		return "", errors.New("unreadable session key")
+	}
+	return strings.TrimSpace(string(encoded)), nil
 }
 
 func (a *app) routes() http.Handler {
@@ -279,21 +320,30 @@ func parsePasswordHash(encodedHash []byte) (passwordHash, error) {
 	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism); err != nil || memory < 8*uint32(parallelism) || memory > 1_048_576 || iterations > 10 || parallelism == 0 || parallelism > 16 {
 		return passwordHash{}, errors.New("invalid password hash parameters")
 	}
-	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
-	if err != nil {
-		salt, err = base64.StdEncoding.DecodeString(parts[4])
-	}
+	salt, err := decodePasswordHashBase64(parts[4])
 	if err != nil || len(salt) < 16 {
 		return passwordHash{}, errors.New("invalid password hash salt")
 	}
-	expected, err := base64.RawStdEncoding.DecodeString(parts[5])
-	if err != nil {
-		expected, err = base64.StdEncoding.DecodeString(parts[5])
-	}
+	expected, err := decodePasswordHashBase64(parts[5])
 	if err != nil || len(expected) < 16 {
 		return passwordHash{}, errors.New("invalid password hash value")
 	}
 	return passwordHash{memory: memory, iterations: iterations, parallelism: parallelism, salt: salt, expected: expected}, nil
+}
+
+func decodePasswordHashBase64(value string) ([]byte, error) {
+	for _, encoding := range []*base64.Encoding{
+		base64.RawStdEncoding,
+		base64.StdEncoding,
+		base64.RawURLEncoding,
+		base64.URLEncoding,
+	} {
+		decoded, err := encoding.DecodeString(value)
+		if err == nil {
+			return decoded, nil
+		}
+	}
+	return nil, errors.New("invalid base64 password hash value")
 }
 
 func safeLocalPath(raw string) string {

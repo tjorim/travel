@@ -2,8 +2,9 @@
 
 ## Project Structure & Module Organization
 
-This is a static, Git-backed travel hub; there is no application backend or
-build step. `dist/` is the deployable site root.
+This is a Git-backed travel hub with a static archive and a small tracker API.
+`dist/` remains the deployable archive root; `api/` is the FastAPI tracker
+service and its Alembic migrations.
 
 - `dist/index.html` is the public travel-hub landing page.
 - `dist/<trip-slug>/` contains a trip's public page; Taiwan lives in
@@ -12,12 +13,14 @@ build step. `dist/` is the deployable site root.
 - `dist/<trip-slug>/private/` holds protected itinerary and booking details.
 - `dist/assets/travel/` contains reusable browser components such as
   `flight-map.js` and `document-list.js`.
+- `api/app/` contains the tracker API; `api/alembic/` contains its migrations.
+- `tracker/` is the React PWA shell, served only below `/tracker/`.
 - `PLAN.md` is the ordered backlog; `CHANGELOG.md` records completed changes.
 
 ## Build, Test, and Development Commands
 
-There are no package dependencies, bundlers, or automated tests. Serve the
-site root locally with:
+The static archive has no package dependencies or build step. Serve it locally
+with:
 
 ```bash
 python3 -m http.server 8080 --directory dist
@@ -35,6 +38,22 @@ git diff --check
 
 Validate `Caddyfile.example` with a Caddy container when its routing changes.
 
+For tracker API work, use the locked Python environment:
+
+```bash
+cd api
+uv run pytest
+uv run ruff check .
+```
+
+For tracker PWA work, use the repository's Vite+ Node version:
+
+```bash
+cd tracker
+vp env exec --node 24.14.0 pnpm install --frozen-lockfile
+vp env exec --node 24.14.0 pnpm build
+```
+
 ## Coding Style & Naming Conventions
 
 Use semantic HTML, modern browser JavaScript, and CSS custom properties. Keep
@@ -47,6 +66,11 @@ and data files with lowercase kebab case, for example
 Never place operational data on public routes. Keep documents in their private
 directory with a matching `manifest.json`; do not commit passwords, PINs,
 recovery codes, or payment-card details.
+
+Tracker endpoints must enforce ownership from the authenticated subject and
+must not expose it through published-trip responses. Do not add GPS capture,
+precise addresses, media uploads, or automatic archive migration without an
+explicit product/privacy decision.
 
 ## Commit & Pull Request Guidelines
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -97,18 +98,38 @@ func TestLogoutExpiresTheCookie(t *testing.T) {
 	}
 }
 
-func TestVerifyPasswordWithGeneratedNonProductionFixture(t *testing.T) {
+func TestVerifyPasswordWithGeneratedNonProductionFixtures(t *testing.T) {
 	password := "test-only-password"
 	salt := []byte("sixteen-byte-salt")
 	expected := argon2.IDKey([]byte(password), salt, 1, 8*1024, 1, 32)
-	encoded := fmt.Sprintf("$argon2id$v=19$m=8192,t=1,p=1$%s$%s",
-		base64.RawStdEncoding.EncodeToString(salt),
-		base64.RawStdEncoding.EncodeToString(expected),
-	)
-	if !verifyPassword(password, []byte(encoded)) {
-		t.Fatal("correct password was rejected")
+	for name, encoding := range map[string]*base64.Encoding{
+		"standard": base64.RawStdEncoding,
+		"url-safe": base64.RawURLEncoding,
+	} {
+		t.Run(name, func(t *testing.T) {
+			encoded := fmt.Sprintf("$argon2id$v=19$m=8192,t=1,p=1$%s$%s",
+				encoding.EncodeToString(salt),
+				encoding.EncodeToString(expected),
+			)
+			if !verifyPassword(password, []byte(encoded)) {
+				t.Fatal("correct password was rejected")
+			}
+			if verifyPassword("not-the-password", []byte(encoded)) {
+				t.Fatal("incorrect password was accepted")
+			}
+		})
 	}
-	if verifyPassword("not-the-password", []byte(encoded)) {
-		t.Fatal("incorrect password was accepted")
+}
+
+func TestSessionKeyReadsDockerSecretFile(t *testing.T) {
+	keyFile := t.TempDir() + "/session-key"
+	if err := os.WriteFile(keyFile, []byte("secret-key\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TRAVEL_AUTH_SESSION_KEY", "")
+	t.Setenv("TRAVEL_AUTH_SESSION_KEY_FILE", keyFile)
+	key, err := sessionKey()
+	if err != nil || key != "secret-key" {
+		t.Fatalf("sessionKey() = %q, %v", key, err)
 	}
 }

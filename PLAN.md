@@ -20,6 +20,18 @@ deliberately selected data.
 
 ## Recently completed
 
+- [x] Defined the privacy-first tracker MVP: one owner, private-by-default
+      trips, explicit publication, broad place labels only, and no automatic
+      archive migration. ([#20](https://github.com/tjorim/travel/issues/20))
+
+- [x] Added the FastAPI tracker API with authenticated owner CRUD, deliberately
+      published read-only trips, Alembic migration, and a local test contract.
+      ([#22](https://github.com/tjorim/travel/issues/22))
+
+- [x] Added the installable React PWA shell under `/tracker/`, with client-side
+      routing, mobile navigation, authenticated-app boundary, and app-shell
+      offline cache while preserving the archive. ([#21](https://github.com/tjorim/travel/issues/21))
+
 - [x] Added a native server-side login and logout flow for shared and per-trip
       private routes, with signed secure sessions and Argon2id verification.
       ([#11](https://github.com/tjorim/travel/issues/11))
@@ -37,21 +49,8 @@ deliberately selected data.
 - [x] Built Taiwan's public chronological trip timeline with stable moment
       URLs and a public-data-only renderer. ([#7](https://github.com/tjorim/travel/issues/7))
 
-## Now
-
-- [ ] Define the privacy-first lightweight Travel tracker MVP, including its
-      public/private data boundary and relationship to the current archive.
-      ([#20](https://github.com/tjorim/travel/issues/20))
-
 ## Next
 
-- [ ] Create a React PWA tracker shell alongside the static Travel archive.
-      ([#21](https://github.com/tjorim/travel/issues/21),
-      [apps#215](https://github.com/tjorim/apps/issues/215))
-- [ ] Build the FastAPI tracker API and core trip/moment model.
-      ([#22](https://github.com/tjorim/travel/issues/22),
-      [apps#215](https://github.com/tjorim/apps/issues/215),
-      [apps#216](https://github.com/tjorim/apps/issues/216))
 - [ ] Add mobile moment capture with explicit, privacy-first location controls.
       ([#23](https://github.com/tjorim/travel/issues/23))
 - [ ] Integrate the native Travel session gate into the central infrastructure

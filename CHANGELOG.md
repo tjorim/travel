@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Privacy-first tracker MVP decision and FastAPI core for owner-scoped trips,
+  route stages, moments, broad places, explicit publication, a read-only public
+  endpoint, Alembic migration, and API tests. It has no media storage or GPS
+  collection. ([#20](https://github.com/tjorim/travel/issues/20),
+  [#22](https://github.com/tjorim/travel/issues/22))
+- Installable React tracker shell under `/tracker/`, with isolated client-side
+  refresh routing, accessible mobile navigation, empty account boundary, and a
+  minimal app-shell cache. ([#21](https://github.com/tjorim/travel/issues/21))
+
 - Native server-side login and logout flow for shared and per-trip private
   routes, with short-lived signed secure sessions, Argon2id secret handling,
   Caddy forward-auth configuration, and deployment verification guidance.
