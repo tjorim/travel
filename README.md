@@ -29,6 +29,7 @@ Generate the password hash on the VPS with `caddy hash-password --algorithm argo
 - `dist/private/` — shared passport, insurance and emergency-document area (Caddy-protected)
 - `dist/private/documents/` — document files committed to this private Git repository
 - `dist/assets/travel/flight-map.js` — reusable, data-driven international flight map
+- `dist/assets/travel/public-route-map.js` — reusable public route and places map
 - `dist/assets/travel/document-list.js` — reusable private document list with in-app preview
 - `dist/assets/travel/trip-summary.js` — reusable public story and private trip-header components
 - `dist/assets/travel/trip-moments.js` — reusable public chronological story component
@@ -80,6 +81,24 @@ For a long-form public story, add a `moments` object to the same
 short `story`, optional `place`, and optional public `photos` (`src`, `alt`,
 and `caption`). Render it with `travel-moment-timeline`; its item IDs become
 shareable fragment URLs such as `/exampleland-2054/timeline/#alishan-ochtend`.
+
+To add the optional public map, put a `routeMap` object in that same public
+file and render it with `travel-public-route-map`. Its `mode` is deliberately
+one of `full`, `city`, or `none`; a missing map is treated as `none`. Only add
+places intentionally suitable for public display. In `city` mode, use a city
+or region centre rather than a hotel, venue, trailhead, airport or current
+position. The component always renders its ordered legs as visible text as
+well as the static SVG map.
+
+```html
+<travel-public-route-map src="/my-trip/public/trip.json"></travel-public-route-map>
+<script type="module" src="/assets/travel/public-route-map.js"></script>
+```
+
+`routeMap` contains public `stages`, selected `places` (`id`, `label`, broad
+`coordinates`, and optional `stage`) and ordered `legs`. Never include booking
+references, transport numbers, exact accommodation, unapproved stops, or
+near-real-time location data.
 
 For a new trip, create both JSON files first, then point the public
 `travel-trip-story` and private `travel-trip-header` elements at their own

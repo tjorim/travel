@@ -17,6 +17,9 @@ All notable changes to the travel hub are documented here.
 - Public, mobile-first Taiwan travel timeline with stable per-moment fragment
   URLs, rendered solely from the deliberately selected `public/trip.json`
   content. ([#7](https://github.com/tjorim/travel/issues/7))
+- Public route/places map with full, city-level and no-map modes, public-data
+  safety guidance, route stages and a visible textual route equivalent.
+  ([#8](https://github.com/tjorim/travel/issues/8))
 
 ### Changed
 

@@ -20,6 +20,9 @@ deliberately selected data.
 
 ## Recently completed
 
+- [x] Added an accessible public route/places map driven solely by selected
+      public trip data. ([#8](https://github.com/tjorim/travel/issues/8))
+
 - [x] Deployed and smoke-tested `travel.tjor.im` on the VPS: `/` is public,
       while `/private/` and every `/<trip>/private/` route are password
       protected. ([#5](https://github.com/tjorim/travel/issues/5))
@@ -34,8 +37,6 @@ deliberately selected data.
 
 ## Next
 
-- [ ] Add a public route/places map driven only by public trip data.
-      ([#8](https://github.com/tjorim/travel/issues/8))
 - [ ] Establish the Git/LFS media layout, captions, alt text and safe public
       derivatives. ([#9](https://github.com/tjorim/travel/issues/9))
 - [ ] Add the public-data safety check before a deployment.
