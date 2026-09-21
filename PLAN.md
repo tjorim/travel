@@ -14,11 +14,14 @@ references, exact accommodation, emergency contacts and near-real-time plans.
 Do not make a file public merely because it is not secret; public trip data is
 deliberately selected data.
 
+## Recently completed
+
+- [x] Deployed and smoke-tested `travel.tjor.im` on the VPS: `/` is public,
+      while `/private/` and every `/<trip>/private/` route are password
+      protected. ([#5](https://github.com/tjorim/travel/issues/5))
+
 ## Now
 
-- [ ] Deploy and smoke-test `travel.tjor.im` on the VPS. Verify that `/` is
-      public and `/private/` plus every `/<trip>/private/` route is password
-      protected. ([#5](https://github.com/tjorim/travel/issues/5))
 - [ ] Define the per-trip `public` and `private` data files and update the
       first Taiwan content to use them. ([#6](https://github.com/tjorim/travel/issues/6))
 - [ ] Add the first real private documents and their `manifest.json` entries;

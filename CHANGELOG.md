@@ -18,6 +18,8 @@ All notable changes to the travel hub are documented here.
 - Renamed the repository and apps submodule from `exampleland-2054` to `travel`.
 - Expanded Caddy protection from only trip-private pages to both `/private/`
   and every `/<trip>/private/` route.
+- Deployed `travel.tjor.im`; its public route is live and private routes are
+  protected by the VPS-managed credential.
 
 ## 2026-09-21
 
