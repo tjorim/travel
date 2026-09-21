@@ -23,11 +23,11 @@ deliberately selected data.
 - [x] Deployed and smoke-tested `travel.tjor.im` on the VPS: `/` is public,
       while `/private/` and every `/<trip>/private/` route are password
       protected. ([#5](https://github.com/tjorim/travel/issues/5))
+- [x] Defined the per-trip public/private JSON contract and updated Taiwan to
+      render from it. ([#6](https://github.com/tjorim/travel/issues/6))
 
 ## Now
 
-- [ ] Define the per-trip `public` and `private` data files and update the
-      first Taiwan content to use them. ([#6](https://github.com/tjorim/travel/issues/6))
 - [ ] Add the first real private documents and their `manifest.json` entries;
       test in-app preview and download on phone and desktop.
       ([#1](https://github.com/tjorim/travel/issues/1))
