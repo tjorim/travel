@@ -2,6 +2,9 @@
 
 Static travel hub. Exampleland 2054 is its first trip at `/exampleland-2054/`, with a detailed itinerary at `/exampleland-2054/private/`. Shared documents and emergency details live at `/private/`. Future trips can follow the same `dist/<trip-slug>/` layout.
 
+- [PLAN.md](PLAN.md) — ordered work and TODOs
+- [CHANGELOG.md](CHANGELOG.md) — implemented changes
+
 ## Run locally
 
 Serve the `dist` directory with any static web server.
