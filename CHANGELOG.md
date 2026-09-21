@@ -12,6 +12,8 @@ All notable changes to the travel hub are documented here.
   documented in the repository and implemented for Exampleland 2054.
 - Reusable trip-story and private trip-header components that load data from
   their corresponding static content files. ([#6](https://github.com/tjorim/travel/issues/6))
+- Versioned public and private trip-data schemas, reusable card/timeline/
+  booking renderers, and a small data-driven reference trip. ([#2](https://github.com/tjorim/travel/issues/2))
 
 ### Changed
 

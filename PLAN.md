@@ -25,12 +25,10 @@ deliberately selected data.
       protected. ([#5](https://github.com/tjorim/travel/issues/5))
 - [x] Defined the per-trip public/private JSON contract and updated Taiwan to
       render from it. ([#6](https://github.com/tjorim/travel/issues/6))
+- [x] Added the Taiwan-specific protected document library and manifest
+      convention, with in-app preview metadata. ([#1](https://github.com/tjorim/travel/issues/1))
 
 ## Now
-
-- [ ] Add the first real private documents and their `manifest.json` entries;
-      test in-app preview and download on phone and desktop.
-      ([#1](https://github.com/tjorim/travel/issues/1))
 
 ## Next
 
