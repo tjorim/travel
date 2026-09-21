@@ -4,6 +4,10 @@ This is the working order for the Git-backed travel hub. It is intentionally a
 small static-site plan: commits change the site and the VPS deploys those
 commits. There is no separate publishing service or application database.
 
+The `Now`, `Next` and `Later` sections mirror the open GitHub issues in their
+working order. When an issue is closed, move it to `Recently completed` and
+record the delivered change in `CHANGELOG.md`.
+
 ## Data boundary
 
 Public routes contain the story of a trip: intentionally selected photos,

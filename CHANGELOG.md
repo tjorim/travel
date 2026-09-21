@@ -4,8 +4,14 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+No unreleased changes.
+
+## 2026-09-21
+
 ### Added
 
+- Static Exampleland 2054 public overview and protected detailed itinerary.
+- Travel-hub landing page structured for future trips.
 - Shared protected `/private/` area for general travel documents and emergency
   information.
 - Git-backed document manifest and in-app native document preview component.
@@ -20,10 +26,4 @@ All notable changes to the travel hub are documented here.
   and every `/<trip>/private/` route.
 - Deployed `travel.tjor.im`; its public route is live and private routes are
   protected by the VPS-managed credential.
-
-## 2026-09-21
-
-### Added
-
-- Static Exampleland 2054 public overview and protected detailed itinerary.
-- Travel-hub landing page structured for future trips.
+  ([#5](https://github.com/tjorim/travel/issues/5))
