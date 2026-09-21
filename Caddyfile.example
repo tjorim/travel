@@ -1,0 +1,16 @@
+# Copy this block into the relevant Caddyfile on the VPS, then replace the
+# domain, site directory, user name and password hash.
+
+taiwan.example.com {
+  root * /srv/exampleland-2054
+  encode zstd gzip
+
+  # Generate the hash on the VPS; never commit the resulting real Caddyfile:
+  # caddy hash-password --algorithm argon2id --plaintext 'choose-a-password'
+  @private path /private /private/*
+  basic_auth @private argon2id "Exampleland 2054" {
+    jorim REPLACE_WITH_A_CADDY_PASSWORD_HASH
+  }
+
+  file_server
+}
