@@ -1,6 +1,6 @@
 # Exampleland 2054 · Reisplan
 
-Static travel planner for the Taiwan trip in November and December 2026. It has a shareable overview at `/` and a detailed itinerary at `/private/`.
+Static travel hub. Exampleland 2054 is its first trip at `/exampleland-2054/`, with a detailed itinerary at `/exampleland-2054/private/`. Future trips can follow the same `dist/<trip-slug>/` layout.
 
 ## Run locally
 
@@ -22,7 +22,8 @@ Generate the password hash on the VPS with `caddy hash-password --algorithm argo
 
 ## Structure
 
-- `dist/index.html` — public overview
-- `dist/private/index.html` — detailed itinerary, map and bookings
+- `dist/index.html` — travel-hub overview
+- `dist/exampleland-2054/index.html` — Taiwan public overview
+- `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, map and bookings
 - `Caddyfile.example` — static VPS serving with a protected private section
 The page has no build step or package dependencies. One travel photograph is loaded from an external URL; all other visuals are embedded directly in the HTML.
