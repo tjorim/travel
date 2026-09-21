@@ -7,7 +7,7 @@ travel.example.com {
 
   # Generate the hash on the VPS; never commit the resulting real Caddyfile:
   # caddy hash-password --algorithm argon2id --plaintext 'choose-a-password'
-  @private path /exampleland-2054/private /exampleland-2054/private/*
+  @private path /*/private /*/private/*
   basic_auth @private argon2id "Travel plans" {
     jorim REPLACE_WITH_A_CADDY_PASSWORD_HASH
   }
