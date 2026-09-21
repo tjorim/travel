@@ -31,6 +31,7 @@ Generate the password hash on the VPS with `caddy hash-password --algorithm argo
 - `dist/assets/travel/flight-map.js` — reusable, data-driven international flight map
 - `dist/assets/travel/document-list.js` — reusable private document list with in-app preview
 - `dist/assets/travel/trip-summary.js` — reusable public story and private trip-header components
+- `dist/assets/travel/trip-moments.js` — reusable public chronological story component
 - `dist/assets/travel/trip-renderers.js` — reusable trip-card, public timeline and private booking-status elements
 - `dist/assets/travel/schemas/` — versioned JSON Schemas for public and private itinerary data
 - `dist/exampleland-2054/index.html` — Taiwan public overview
@@ -73,6 +74,12 @@ booking status, and itinerary details. Related private content belongs beside
 it in separately named files when a reusable component needs a focused schema,
 such as `flight-route.json` or a document `manifest.json`. Do not duplicate a
 private value into public JSON merely to simplify a public page.
+
+For a long-form public story, add a `moments` object to the same
+`public/trip.json`. Each item has a stable `id`, a broad public `date`, `title`,
+short `story`, optional `place`, and optional public `photos` (`src`, `alt`,
+and `caption`). Render it with `travel-moment-timeline`; its item IDs become
+shareable fragment URLs such as `/exampleland-2054/timeline/#alishan-ochtend`.
 
 For a new trip, create both JSON files first, then point the public
 `travel-trip-story` and private `travel-trip-header` elements at their own

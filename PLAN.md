@@ -27,13 +27,13 @@ deliberately selected data.
       render from it. ([#6](https://github.com/tjorim/travel/issues/6))
 - [x] Added a reusable, data-driven trip page contract: summary, route stages,
       moments, stays and booking status. ([#2](https://github.com/tjorim/travel/issues/2))
+- [x] Built Taiwan's public chronological trip timeline with stable moment
+      URLs and a public-data-only renderer. ([#7](https://github.com/tjorim/travel/issues/7))
 
 ## Now
 
 ## Next
 
-- [ ] Build the public chronological trip-timeline view.
-      ([#7](https://github.com/tjorim/travel/issues/7))
 - [ ] Add a public route/places map driven only by public trip data.
       ([#8](https://github.com/tjorim/travel/issues/8))
 - [ ] Establish the Git/LFS media layout, captions, alt text and safe public
