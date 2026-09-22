@@ -138,6 +138,15 @@ class Place(Base):
     per-column kind split."""
 
     __tablename__ = "places"
+    __table_args__ = (
+        CheckConstraint(
+            "(osm_element_type IS NULL) = (osm_element_id IS NULL)", name="ck_places_osm_reference_pair"
+        ),
+        CheckConstraint(
+            "osm_element_type IS NULL OR osm_element_type IN ('node', 'way', 'relation')",
+            name="ck_places_osm_element_type",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -156,6 +165,11 @@ class Place(Base):
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Exact-only fields.
+    # An OSM element is durable as the (type, id) pair.  In particular,
+    # Nominatim's result-local ``place_id`` is intentionally not stored.
+    osm_element_type: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    osm_element_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     address_line1: Mapped[str | None] = mapped_column(String(160), nullable=True)
     address_line2: Mapped[str | None] = mapped_column(String(160), nullable=True)
     locality: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -202,6 +216,9 @@ class Trip(Base):
 
     route_stages: Mapped[list["RouteStage"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="RouteStage.position"
+    )
+    places: Mapped[list["Place"]] = relationship(
+        foreign_keys="Place.trip_id", cascade="all, delete-orphan", order_by="Place.created_at"
     )
     moments: Mapped[list["Moment"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="Moment.occurred_at"

@@ -50,6 +50,7 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 def trip_query():
     return select(Trip).options(
         selectinload(Trip.route_stages).selectinload(RouteStage.place),
+        selectinload(Trip.places),
         selectinload(Trip.moments).selectinload(Moment.place),
         selectinload(Trip.moment_excerpts).selectinload(MomentExcerpt.broad_place),
         selectinload(Trip.stays).selectinload(Stay.place),

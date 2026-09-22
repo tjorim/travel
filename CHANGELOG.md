@@ -6,6 +6,17 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Configurable, attributed owner-only OSM place search with a bounded
+  in-memory confidential-query cache, durable OSM element type/ID references,
+  and owner-selected display snapshots for exact places. Explicit reverse
+  geocoding returns only a selectable candidate and never auto-creates a
+  place, allowing a later owner-confirmed EXIF suggestion flow. Google Maps links are
+  generated after owner or public/unlisted scope resolution: exact targets
+  need an explicit `exact_place` navigation capability, while broad selected
+  places only produce city-level destinations. Public and unlisted projections
+  expose neither OSM references, coordinates, viewports, display snapshots nor
+  direct Google URLs. ([#39](https://github.com/tjorim/travel/issues/39))
+
 - Replaced the legacy public/unlisted route-stage and moment ID lists with
   the versioned `travel/share-scope@1` item allowlist. Public and unlisted
   projections now support explicitly selected route stages, broad places,

@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,7 @@ from ..models import (
     SurfaceState,
     Trip,
 )
+from ..navigation import scoped_navigation_url
 from ..projection import ScopeError, render_projection, validate_scope
 from ..schemas import (
     AuditEventResponse,
@@ -353,6 +355,18 @@ def get_public_trip(slug: str, session: SessionDep, response: Response) -> dict:
     return render_projection(trip, surface.scope, "travel/public-trip@1")
 
 
+@delivery_router.get("/public/trips/{slug}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
+def get_public_navigation(slug: str, local_id: str, session: SessionDep) -> RedirectResponse:
+    surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
+    if surface is None or surface.state != SurfaceState.PUBLISHED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+    trip = session.scalar(trip_query().where(Trip.id == surface.trip_id))
+    target = scoped_navigation_url(trip, surface.scope, local_id) if trip is not None else None
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found")
+    return RedirectResponse(target[0], status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
+
+
 @delivery_router.get("/shared/{token}", response_model=ProjectionDocument)
 def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict:
     # Headers are also attached to each HTTPException below: FastAPI's error
@@ -384,3 +398,29 @@ def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
     return render_projection(trip, link.scope, "travel/unlisted-trip@1")
+
+
+@delivery_router.get("/shared/{token}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
+def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> RedirectResponse:
+    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS)
+    link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
+    if link is None or link.state != LinkState.ACTIVE:
+        raise not_found
+    if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
+        link.state = LinkState.EXPIRED
+        record_audit_event(
+            session,
+            trip_id=link.trip_id,
+            actor_subject=SYSTEM_ACTOR,
+            kind=AuditEventKind.SHARE_LINK_EXPIRE,
+            target_type=AuditTargetType.SHARE_LINK,
+            target_id=link.id,
+            details={},
+        )
+        session.commit()
+        raise not_found
+    trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
+    target = scoped_navigation_url(trip, link.scope, local_id) if trip is not None else None
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS)
+    return RedirectResponse(target[0], status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)

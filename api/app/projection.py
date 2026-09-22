@@ -17,11 +17,18 @@ class ScopeError(ValueError):
 # These are schema fields, not ORM attributes. Keeping the list here beside
 # the renderer makes an unknown field fail closed on every scope write.
 ALLOWED_FIELDS = {
-    "route_stage": {"position", "label", "place"},
-    "broad_place": {"label", "country_code", "region", "latitude", "longitude"},
+    # ``navigation`` only grants a server endpoint the ability to construct a
+    # city-level Google Maps target. It never serializes a provider id, point,
+    # or external URL into a projection.
+    "route_stage": {"position", "label", "place", "navigation"},
+    "broad_place": {"label", "country_code", "region", "latitude", "longitude", "navigation"},
     "broad_route": {"label", "geometry", "date_precision"},
-    "moment_excerpt": {"title", "body", "date_precision", "place"},
-    "broad_stay_card": {"title", "date_precision", "place"},
+    "moment_excerpt": {"title", "body", "date_precision", "place", "navigation"},
+    "broad_stay_card": {"title", "date_precision", "place", "navigation"},
+    # The sole shareable representation of an exact place is this opaque
+    # capability marker. Its OSM ref, address, coordinates, viewport and
+    # display snapshot remain absent from the projection.
+    "exact_place": {"navigation"},
     "media_derivative": {"image", "caption", "alt_text"},
     "document_derivative": {"title", "file"},
 }
@@ -56,6 +63,7 @@ def _resources(trip: Trip) -> dict[str, dict[str, Any]]:
         broad_places[card.place.id] = card.place
     return {
         "route_stage": {item.id: item for item in trip.route_stages},
+        "exact_place": {item.id: item for item in trip.places if item.kind.value == "exact"},
         "broad_place": broad_places,
         "broad_route": {item.id: item for item in trip.broad_routes},
         "moment_excerpt": {item.id: item for item in trip.moment_excerpts},
@@ -111,8 +119,10 @@ def _render_item(kind: str, item: Any, fields: list[str], local_id: str) -> dict
         # phase. This projection-local reference discloses no object key,
         # original asset, or canonical derivative id.
         values = {"image": {"id": local_id}}
-    else:  # document_derivative
+    elif kind == "document_derivative":
         values = {"title": item.document_asset.title, "file": {"id": local_id}}
+    else:  # exact_place; navigation is represented in a separate collection.
+        values = {}
     return {"id": local_id, **_selected(values, fields)}
 
 
@@ -125,6 +135,7 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "title": trip.title if scope.get("trip", {}).get("title", True) else None,
         "summary": trip.summary if scope.get("trip", {}).get("summary", True) else None,
         "route_stages": [], "places": [], "moments": [], "stays": [], "media": [], "documents": [], "route": [],
+        "navigation": [],
     }
     destinations = {
         "route_stage": "route_stages", "broad_place": "places", "moment_excerpt": "moments", "broad_stay_card": "stays",
@@ -135,6 +146,10 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         item = resources[kind][scope_item["id"]]
         local_id = f"{kind}-{index + 1}"
         rendered = _render_item(kind, item, scope_item.get("fields", []), local_id)
+        if "navigation" in scope_item.get("fields", []):
+            projection["navigation"].append({"id": local_id})
+        if kind == "exact_place":
+            continue
         if kind == "route_stage":
             rendered["_sort_position"] = item.position
         projection[destinations[kind]].append(rendered)

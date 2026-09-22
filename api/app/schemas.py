@@ -30,6 +30,11 @@ class ExactPlaceInput(BaseModel):
     """An owner-only exact place: address parts, coordinates, viewport and
     navigation/provider IDs. Never appears in a public/unlisted response."""
 
+    osm_element_type: Literal["node", "way", "relation"] | None = None
+    osm_element_id: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[0-9]+$")
+    # A snapshot selected by the owner, not a live provider lookup.  It keeps
+    # a saved place recognizable if provider labels later change.
+    display_name: str | None = Field(default=None, max_length=500)
     address_line1: str | None = Field(default=None, max_length=160)
     address_line2: str | None = Field(default=None, max_length=160)
     locality: str | None = Field(default=None, max_length=120)
@@ -46,11 +51,60 @@ class ExactPlaceInput(BaseModel):
     navigation_provider_place_id: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("osm_element_id")
+    @classmethod
+    def require_osm_id_type_pair(cls, value: str | None, info):
+        osm_type = info.data.get("osm_element_type")
+        if (value is None) != (osm_type is None):
+            raise ValueError("osm_element_type and osm_element_id must be supplied together")
+        return value
+
 
 class ExactPlaceResponse(ExactPlaceInput):
     id: str
     kind: Literal[PlaceKind.EXACT] = PlaceKind.EXACT
     model_config = ConfigDict(from_attributes=True)
+
+
+class PlaceSearchRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=200)
+
+
+class PlaceReverseGeocodeRequest(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
+class PlaceSearchResult(BaseModel):
+    osm_element_type: Literal["node", "way", "relation"]
+    osm_element_id: str
+    display_name: str
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    address_line1: str | None = None
+    address_line2: str | None = None
+    locality: str | None = None
+    admin_area: str | None = None
+    postal_code: str | None = None
+    country_code: str | None = COUNTRY_CODE_FIELD
+    viewport_north: float | None = Field(default=None, ge=-90, le=90)
+    viewport_south: float | None = Field(default=None, ge=-90, le=90)
+    viewport_east: float | None = Field(default=None, ge=-180, le=180)
+    viewport_west: float | None = Field(default=None, ge=-180, le=180)
+
+
+class PlaceSearchResponse(BaseModel):
+    provider: str
+    attribution: str
+    attribution_url: str
+    results: list[PlaceSearchResult]
+
+
+class NavigationResponse(BaseModel):
+    """Only returned to the owner. Shared navigation redirects directly."""
+
+    url: str
+    exact: bool
 
 
 class BroadPlaceInput(BaseModel):
@@ -309,6 +363,7 @@ class PublicTripResponse(BaseModel):
 
 
 class ShareScopeKind(StrEnum):
+    EXACT_PLACE = "exact_place"
     ROUTE_STAGE = "route_stage"
     BROAD_PLACE = "broad_place"
     BROAD_ROUTE = "broad_route"
@@ -362,6 +417,7 @@ class ProjectionDocument(BaseModel):
     media: list[dict]
     documents: list[dict]
     route: list[dict]
+    navigation: list[dict]
 
 
 class PublicProjectionStatusResponse(BaseModel):

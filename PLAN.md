@@ -103,7 +103,7 @@ v2 after the app behavior is complete and verified.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
       narrow owner-authenticated MCP management tools against the app service
       layer.
-- [ ] [#39](https://github.com/tjorim/travel/issues/39) Add privacy-aware OSM
+- [x] [#39](https://github.com/tjorim/travel/issues/39) Add privacy-aware OSM
       place search and Google Maps navigation.
 
 ### v2 — VPS cutover, Git-content retirement and live trip delivery
@@ -181,6 +181,17 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Added configurable, attributed, owner-only OSM place search with a
+      bounded in-memory confidential-query cache; exact places now retain the
+      durable OSM element type/ID pair and an owner-selected display snapshot,
+      never Nominatim's transient `place_id`. Explicit owner-only reverse
+      geocoding returns the same selectable result without creating a place,
+      so the later EXIF suggestion flow uses this path. Google Maps destinations are
+      generated only after owner or public/unlisted scope resolution. Exact
+      destinations require an explicit `exact_place` navigation capability;
+      other selected navigation markers resolve only to city-level targets.
+      ([#39](https://github.com/tjorim/travel/issues/39))
 
 - [x] Added private `travel/recorded-track@1` records and separately authored
       `travel/broad-route@1` records to the tracker API. A finished GPX or

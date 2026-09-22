@@ -1,0 +1,89 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..auth import current_subject
+from ..database import get_session
+from ..models import Place, PlaceKind
+from ..navigation import exact_navigation_url
+from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
+from ..schemas import (
+    ExactPlaceInput,
+    ExactPlaceResponse,
+    NavigationResponse,
+    PlaceReverseGeocodeRequest,
+    PlaceSearchRequest,
+    PlaceSearchResponse,
+)
+from .trips import exact_place_from_input, owned_trip
+
+router = APIRouter(prefix="/trips/{trip_id}/places", tags=["places"])
+
+SessionDep = Annotated[Session, Depends(get_session)]
+SubjectDep = Annotated[str, Depends(current_subject)]
+SearchServiceDep = Annotated[CachedPlaceSearchService, Depends(get_place_search_service)]
+
+
+@router.post("/search", response_model=PlaceSearchResponse)
+def search_places(
+    trip_id: str, payload: PlaceSearchRequest, session: SessionDep, subject: SubjectDep, service: SearchServiceDep
+) -> PlaceSearchResponse:
+    # Resolve ownership before the remote call. A rejected caller must never
+    # turn this endpoint into an arbitrary-query proxy.
+    owned_trip(session, trip_id, subject)
+    try:
+        return service.search(payload.query)
+    except PlaceSearchError as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+
+
+@router.post("/reverse", response_model=PlaceSearchResponse)
+def reverse_geocode_place(
+    trip_id: str, payload: PlaceReverseGeocodeRequest, session: SessionDep, subject: SubjectDep, service: SearchServiceDep
+) -> PlaceSearchResponse:
+    # The caller explicitly requests this lookup.  It only returns a candidate;
+    # it never turns EXIF/device coordinates into a canonical place by itself.
+    owned_trip(session, trip_id, subject)
+    try:
+        return service.reverse(payload.latitude, payload.longitude)
+    except PlaceSearchError as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+
+
+@router.get("", response_model=list[ExactPlaceResponse])
+def list_exact_places(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[Place]:
+    trip = owned_trip(session, trip_id, subject)
+    return list(
+        session.scalars(
+            select(Place).where(Place.trip_id == trip.id, Place.kind == PlaceKind.EXACT).order_by(Place.created_at)
+        )
+    )
+
+
+@router.post("", response_model=ExactPlaceResponse, status_code=status.HTTP_201_CREATED)
+def save_exact_place(trip_id: str, payload: ExactPlaceInput, session: SessionDep, subject: SubjectDep) -> Place:
+    trip = owned_trip(session, trip_id, subject)
+    place = exact_place_from_input(session, trip.id, payload)
+    session.commit()
+    return place
+
+
+def owned_exact_place(session: Session, trip_id: str, subject: str, place_id: str) -> Place:
+    owned_trip(session, trip_id, subject)
+    place = session.scalar(
+        select(Place).where(Place.id == place_id, Place.trip_id == trip_id, Place.kind == PlaceKind.EXACT)
+    )
+    if place is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exact place not found")
+    return place
+
+
+@router.get("/{place_id}/navigation", response_model=NavigationResponse)
+def owner_navigation(place_id: str, trip_id: str, session: SessionDep, subject: SubjectDep) -> NavigationResponse:
+    place = owned_exact_place(session, trip_id, subject, place_id)
+    url = exact_navigation_url(place)
+    if url is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Exact place has no navigation target")
+    return NavigationResponse(url=url, exact=True)

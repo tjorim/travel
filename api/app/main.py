@@ -5,6 +5,7 @@ from .database import SessionLocal
 from .routers.documents import router as documents_router
 from .routers.media import provider_tokens_router
 from .routers.media import router as media_router
+from .routers.places import router as places_router
 from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
 from .routers.stays import router as stays_router
@@ -25,6 +26,7 @@ app.include_router(stays_router, prefix="/api/v1")
 app.include_router(tracks_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(media_router, prefix="/api/v1")
+app.include_router(places_router, prefix="/api/v1")
 app.include_router(provider_tokens_router, prefix="/api/v1")
 
 

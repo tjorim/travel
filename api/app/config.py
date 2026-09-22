@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     google_photos_picker_api_base: str = "https://photospicker.googleapis.com/v1"
     gopro_cloud_api_base: str = "https://api.gopro.com/cloud/v1"
 
+    # Place search is owner-only.  The provider is deliberately named rather
+    # than hard-coded so a self-hosted or contracted provider can replace
+    # Nominatim without changing the HTTP contract.
+    osm_place_search_provider: str = "nominatim"
+    osm_place_search_api_base: str = "https://nominatim.openstreetmap.org"
+    osm_place_search_user_agent: str = "Travel/0.1 (private place search)"
+    osm_place_search_timeout_seconds: float = 5.0
+    osm_place_search_cache_ttl_seconds: int = 300
+    osm_place_search_cache_max_entries: int = 100
+
     model_config = SettingsConfigDict(env_prefix="TRAVEL_", case_sensitive=False)
 
 

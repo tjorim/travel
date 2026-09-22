@@ -16,6 +16,10 @@ validated OpenID Connect `sub` matches the trip owner:
 | `PATCH`, `DELETE` | `/trips/{trip_id}/route-stages/{stage_id}` | Edit or remove a route stage. |
 | `POST` | `/trips/{trip_id}/moments` | Add a chronological moment. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/moments/{moment_id}` | Edit or remove a moment. |
+| `POST` | `/trips/{trip_id}/places/search` | Owner-only OSM search; returns attribution and a selected-result snapshot. |
+| `POST` | `/trips/{trip_id}/places/reverse` | Owner-only, explicit coordinate-to-place suggestion; never writes a place. |
+| `GET`, `POST` | `/trips/{trip_id}/places` | List or save owner-only exact places. |
+| `GET` | `/trips/{trip_id}/places/{place_id}/navigation` | Generate an owner-authorized exact Google Maps destination. |
 | `GET` | `/published/trips/{public_id}` | Legacy: read an intentionally published unlisted/public trip. |
 | `PUT` | `/trips/{trip_id}/public-projection` | Replace the trip's public scope; live immediately if already published. |
 | `POST` | `/trips/{trip_id}/public-projection/preview` | Render the current scope for owner review (`no-store`), no gate. |
@@ -30,6 +34,8 @@ validated OpenID Connect `sub` matches the trip owner:
 | `POST` | `/trips/{trip_id}/share-links/{link_id}/rotate` | Revoke the current token and issue a fresh one for the same scope. |
 | `GET` | `/public/trips/{slug}` | Anonymous: read the trip's current public scope, rendered live. |
 | `GET` | `/shared/{token}` | Anonymous: exchange a valid, unexpired, non-revoked capability for its current scope, rendered live. |
+| `GET` | `/public/trips/{slug}/navigation/{local_id}` | Redirect a selected public projection navigation marker to Google Maps. |
+| `GET` | `/shared/{token}/navigation/{local_id}` | Redirect a selected unlisted projection navigation marker to Google Maps. |
 | `POST` | `/trips/{trip_id}/media/uploads` | Direct device upload (multipart); the durable fallback path, always available. |
 | `GET` | `/trips/{trip_id}/media` | List the trip's owner-only media assets. |
 | `GET`, `DELETE` | `/trips/{trip_id}/media/{media_id}` | Read or soft-delete a media asset. |
@@ -76,6 +82,39 @@ delivery always re-checks live link state, and the response headers
 `Referrer-Policy: no-referrer`) apply identically to a valid, expired,
 revoked, or unknown token so a probe cannot be distinguished by caching or
 indexing behavior.
+
+### Private place search and navigation
+
+`POST /trips/{trip_id}/places/search` and the explicit coordinate-to-place
+`POST /trips/{trip_id}/places/reverse` are owner-only and default to the
+Nominatim OpenStreetMap search backend. Each returns a selectable result with
+OpenStreetMap
+attribution, a durable OSM `(element type, element ID)` reference, and the
+owner-selected display snapshot; Nominatim's result-local `place_id` is never
+stored as an application identifier. Saving the selected result creates an
+owner-only exact place, including its address, coordinates and viewport. A
+reverse lookup is only a suggestion: it does not create or attach a place. It
+is intended for an owner-confirmed media-EXIF suggestion flow (#52), never for
+automatic capture or canonical writes.
+
+Search text can itself be sensitive. The service sends it only to the
+configured provider over HTTPS; it does not log it and keeps results only in a
+bounded in-process TTL cache. It intentionally has no database-backed cache,
+so restarting the app drops cached confidential queries. The provider registry
+is replaceable through `TRAVEL_OSM_PLACE_SEARCH_PROVIDER`; deployments that
+need a self-hosted or contracted provider register its factory without changing
+the API response contract. Configure a provider-specific user agent and abide
+by that provider's acceptable-use and retention terms.
+
+An owner can receive an exact Google Maps destination from the owner route.
+Public and unlisted projections instead contain only opaque, projection-local
+`navigation` markers. A broad-place marker redirects to a textual city-level
+target. An exact-place marker exists only when a scope item explicitly grants
+`{"kind":"exact_place", "id":"…", "fields":["navigation"]}`; its
+OSM ID, address, coordinates, viewport, display snapshot and Google URL never
+appear in the projection. The server resolves that marker and emits the Google
+redirect only after checking the public surface or unlisted capability. A
+missing, revoked, expired or out-of-scope marker is `404`.
 
 ### Media ingestion
 
@@ -185,6 +224,9 @@ does not control.
 | `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` | Refuses a direct upload or a single imported item larger than this (default 200 MiB). |
 | `TRAVEL_GOPRO_CLOUD_ENABLED` | Enables the GoPro Cloud import adapter once beta API access is granted; `false` by default, and the product is fully usable without it. |
 | `TRAVEL_GOOGLE_PHOTOS_PICKER_API_BASE`, `TRAVEL_GOPRO_CLOUD_API_BASE` | Provider API base URLs; overridable for testing against a sandbox. |
+| `TRAVEL_OSM_PLACE_SEARCH_PROVIDER` | Registered owner-only place-search provider; defaults to `nominatim`. |
+| `TRAVEL_OSM_PLACE_SEARCH_API_BASE`, `TRAVEL_OSM_PLACE_SEARCH_USER_AGENT` | Nominatim-compatible provider URL and required identifying user agent. |
+| `TRAVEL_OSM_PLACE_SEARCH_TIMEOUT_SECONDS`, `TRAVEL_OSM_PLACE_SEARCH_CACHE_TTL_SECONDS`, `TRAVEL_OSM_PLACE_SEARCH_CACHE_MAX_ENTRIES` | Provider timeout and bounded in-memory confidential-query cache controls. |
 
 Use a development subject header only with both
 `TRAVEL_ENVIRONMENT=development` and
