@@ -127,7 +127,7 @@ def test_raw_tracks_are_unreachable_to_other_owners_and_all_public_surfaces(tmp_
 
     owner = client_for("owner-1", tmp_path)
     assert owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection", json={"route_stage_ids": [], "moment_ids": []}
+        f"/api/v1/trips/{trip['id']}/public-projection", json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}
     ).status_code == 200
     published = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
     assert published.status_code == 200, published.text

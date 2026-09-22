@@ -182,12 +182,12 @@ def test_a_broad_stay_card_cannot_expose_its_trip_stay_data_through_a_projection
     assert "stay_id" not in card
     assert card["place"]["kind"] == "broad"
 
-    # Card selection is deliberately out of scope for this delivery phase.
-    # The existing projection renderer cannot derive any stay data, so a
-    # published response remains free of all exact-place and booking values.
+    # Only the selected safe card field enters the projection. The renderer
+    # cannot derive any stay data, so exact-place and booking values remain
+    # absent even when the card itself is shared.
     scoped = owner.put(
         f"/api/v1/trips/{trip['id']}/public-projection",
-        json={"route_stage_ids": [], "moment_ids": []},
+        json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": [{"kind": "broad_stay_card", "id": card["id"], "fields": ["title"]}]},
     )
     assert scoped.status_code == 200, scoped.text
     published = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
@@ -196,5 +196,6 @@ def test_a_broad_stay_card_cannot_expose_its_trip_stay_data_through_a_projection
     delivered = TestClient(app).get(f"/api/v1/public/trips/{published.json()['slug']}")
     assert delivered.status_code == 200, delivered.text
     encoded_delivery = delivered.text
+    assert delivered.json()["stays"] == [{"id": "broad_stay_card-1", "title": card["title"]}]
     for private_value in ("Private Hotel Taipei", "1 Xinyi Road", "BOOKING-SECRET-123", "host@example.test", "2054-04-01"):
         assert private_value not in encoded_delivery

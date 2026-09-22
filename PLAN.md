@@ -88,7 +88,7 @@ v2 after the app behavior is complete and verified.
         stays and broad stay cards to Travel.
   - [x] [#59](https://github.com/tjorim/travel/issues/59) Add owner-managed
         documents to Travel.
-  - [ ] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
+  - [x] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
         share scopes to cover every resource type.
   - [ ] [#61](https://github.com/tjorim/travel/issues/61) Build tracker PWA
         UI for trip content management.

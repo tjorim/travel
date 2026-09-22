@@ -9,6 +9,8 @@ from ..auth import current_subject
 from ..database import get_session
 from ..models import (
     BroadStayCard,
+    DocumentDerivative,
+    MediaDerivative,
     Moment,
     MomentExcerpt,
     Place,
@@ -49,9 +51,12 @@ def trip_query():
     return select(Trip).options(
         selectinload(Trip.route_stages).selectinload(RouteStage.place),
         selectinload(Trip.moments).selectinload(Moment.place),
-        selectinload(Trip.moment_excerpts),
+        selectinload(Trip.moment_excerpts).selectinload(MomentExcerpt.broad_place),
         selectinload(Trip.stays).selectinload(Stay.place),
         selectinload(Trip.broad_stay_cards).selectinload(BroadStayCard.place),
+        selectinload(Trip.broad_routes),
+        selectinload(Trip.media_derivatives).selectinload(MediaDerivative.media_asset),
+        selectinload(Trip.document_derivatives).selectinload(DocumentDerivative.document_asset),
     )
 
 

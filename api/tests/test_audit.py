@@ -77,7 +77,7 @@ def test_share_link_lifecycle_transitions_are_each_audited() -> None:
 
     created = owner.post(
         f"/api/v1/trips/{trip['id']}/share-links",
-        json={"label": "Family", "scope": {"route_stage_ids": [], "moment_ids": []}},
+        json={"label": "Family", "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}},
     )
     link_id = created.json()["id"]
     activated = owner.post(
@@ -118,7 +118,7 @@ def test_a_naturally_expiring_share_link_is_audited_as_a_system_action() -> None
     trip = create_trip(owner)
     created = owner.post(
         f"/api/v1/trips/{trip['id']}/share-links",
-        json={"label": "Family", "scope": {"route_stage_ids": [], "moment_ids": []}},
+        json={"label": "Family", "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}},
     )
     link_id = created.json()["id"]
     activated = owner.post(

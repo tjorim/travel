@@ -6,6 +6,17 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Replaced the legacy public/unlisted route-stage and moment ID lists with
+  the versioned `travel/share-scope@1` item allowlist. Public and unlisted
+  projections now support explicitly selected route stages, broad places,
+  broad routes, moment excerpts, broad stay cards, approved media derivatives
+  and approved document derivatives, exposing only fields requested by the
+  scope. Projection IDs are local to the response; originals, exact places,
+  stays, raw tracks and unapproved/deleted derivatives remain unavailable.
+  The accompanying data migration assumes no persisted production scopes and
+  safely drops legacy moment selections, which cannot be represented by the
+  share-safe moment-excerpt resource. ([#60](https://github.com/tjorim/travel/issues/60))
+
 - Owner-managed `travel/document@1` originals and separately supplied
   `travel/document-derivative@1` redacted copies in the tracker API, with an
   Alembic migration and owner-only upload/list/delete/delivery endpoints.

@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
@@ -307,6 +308,35 @@ class PublicTripResponse(BaseModel):
     moments: list[PublicMomentResponse]
 
 
+class ShareScopeKind(StrEnum):
+    ROUTE_STAGE = "route_stage"
+    BROAD_PLACE = "broad_place"
+    BROAD_ROUTE = "broad_route"
+    MOMENT_EXCERPT = "moment_excerpt"
+    BROAD_STAY_CARD = "broad_stay_card"
+    MEDIA_DERIVATIVE = "media_derivative"
+    DOCUMENT_DERIVATIVE = "document_derivative"
+
+
+class ShareScopeTripInput(BaseModel):
+    """The small, explicit trip-level portion of a shared view."""
+
+    title: bool = True
+    summary: bool = True
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ShareScopeItemInput(BaseModel):
+    """One explicitly selected share-safe resource and its output fields."""
+
+    kind: ShareScopeKind
+    id: str = Field(min_length=1, max_length=32)
+    fields: list[str] = Field(default_factory=list, max_length=20)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ShareScopeInput(BaseModel):
     """The explicit, owner-selected content of a public or unlisted view.
 
@@ -314,40 +344,24 @@ class ShareScopeInput(BaseModel):
     merely hidden by a client.
     """
 
-    include_title: bool = True
-    include_summary: bool = True
-    route_stage_ids: list[str] = Field(default_factory=list, max_length=200)
-    moment_ids: list[str] = Field(default_factory=list, max_length=200)
+    schema_version: Literal["travel/share-scope@1"] = "travel/share-scope@1"
+    trip: ShareScopeTripInput = Field(default_factory=ShareScopeTripInput)
+    items: list[ShareScopeItemInput] = Field(default_factory=list, max_length=200)
 
-
-class ProjectionPlace(BaseModel):
-    label: str
-    country_code: str | None
-    region: str | None
-
-
-class ProjectionRouteStage(BaseModel):
-    id: str
-    position: int
-    label: str | None
-    place: ProjectionPlace
-
-
-class ProjectionMoment(BaseModel):
-    id: str
-    occurred_at: datetime
-    title: str
-    story: str
-    photo_urls: list[str]
-    place: ProjectionPlace | None
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProjectionDocument(BaseModel):
     schema_version: str
     title: str | None
     summary: str | None
-    route_stages: list[ProjectionRouteStage]
-    moments: list[ProjectionMoment]
+    route_stages: list[dict]
+    places: list[dict]
+    moments: list[dict]
+    stays: list[dict]
+    media: list[dict]
+    documents: list[dict]
+    route: list[dict]
 
 
 class PublicProjectionStatusResponse(BaseModel):

@@ -221,6 +221,12 @@ class Trip(Base):
     broad_routes: Mapped[list["BroadRoute"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="BroadRoute.created_at"
     )
+    media_derivatives: Mapped[list["MediaDerivative"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
+    )
+    document_derivatives: Mapped[list["DocumentDerivative"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="DocumentDerivative.created_at"
+    )
 
 
 class RouteStage(Base):
@@ -588,6 +594,7 @@ class MediaDerivative(Base):
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    trip: Mapped[Trip] = relationship(back_populates="media_derivatives")
     media_asset: Mapped[MediaAsset] = relationship(back_populates="derivatives")
     object: Mapped[StoredObject] = relationship(foreign_keys=[object_id])
 
@@ -645,6 +652,7 @@ class DocumentDerivative(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    trip: Mapped[Trip] = relationship(back_populates="document_derivatives")
     document_asset: Mapped[DocumentAsset] = relationship(back_populates="derivatives")
     object: Mapped[StoredObject] = relationship(foreign_keys=[object_id])
     redaction_manifest_object: Mapped[StoredObject] = relationship(foreign_keys=[redaction_manifest_object_id])
