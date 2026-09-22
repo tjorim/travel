@@ -17,6 +17,7 @@ from .models import (
     PublicationState,
     StayStatus,
     SurfaceState,
+    TrackKind,
     Visibility,
 )
 
@@ -217,6 +218,56 @@ class BroadStayCardResponse(BaseModel):
     title: str
     date_precision: DatePrecision
     place: BroadPlaceResponse
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GeoJsonLineString(BaseModel):
+    """A reviewed GeoJSON line, entered by the owner rather than computed
+    from a raw recording. Coordinates are longitude, latitude pairs."""
+
+    type: Literal["LineString"] = "LineString"
+    coordinates: list[tuple[float, float]] = Field(min_length=2, max_length=10_000)
+
+    @field_validator("coordinates")
+    @classmethod
+    def valid_coordinates(cls, values: list[tuple[float, float]]) -> list[tuple[float, float]]:
+        for longitude, latitude in values:
+            if not -180 <= longitude <= 180 or not -90 <= latitude <= 90:
+                raise ValueError("Route coordinates must be valid longitude, latitude pairs")
+        return values
+
+
+class BroadRouteCreate(BaseModel):
+    label: str = Field(min_length=1, max_length=160)
+    geometry: GeoJsonLineString
+    date_precision: DatePrecision
+
+
+class BroadRouteUpdate(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=160)
+    geometry: GeoJsonLineString | None = None
+    date_precision: DatePrecision | None = None
+
+
+class BroadRouteResponse(BaseModel):
+    id: str
+    label: str
+    geometry: GeoJsonLineString
+    date_precision: DatePrecision
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RecordedTrackResponse(BaseModel):
+    """Owner-only metadata and an authenticated route to raw track bytes."""
+
+    id: str
+    source_object_id: str
+    started_at: datetime
+    ended_at: datetime
+    kind: TrackKind
+    byte_size: int
+    content_type: str
+    source_file_url: str
     model_config = ConfigDict(from_attributes=True)
 
 

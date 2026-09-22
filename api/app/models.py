@@ -95,6 +95,11 @@ class StayStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class TrackKind(StrEnum):
+    GPX = "gpx"
+    POINT_ARRAY = "point_array"
+
+
 class AuditEventKind(StrEnum):
     PUBLIC_PROJECTION_PUBLISH = "public_projection.publish"
     PUBLIC_PROJECTION_UNPUBLISH = "public_projection.unpublish"
@@ -202,6 +207,12 @@ class Trip(Base):
     )
     broad_stay_cards: Mapped[list["BroadStayCard"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="BroadStayCard.created_at"
+    )
+    recorded_tracks: Mapped[list["RecordedTrack"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="RecordedTrack.started_at"
+    )
+    broad_routes: Mapped[list["BroadRoute"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="BroadRoute.created_at"
     )
 
 
@@ -316,6 +327,53 @@ class BroadStayCard(Base):
 
     trip: Mapped[Trip] = relationship(back_populates="broad_stay_cards")
     place: Mapped[Place] = relationship(foreign_keys=[broad_place_id])
+
+
+class RecordedTrack(Base):
+    """A finished, owner-uploaded raw GPS recording.
+
+    The track's source object contains the precise points, timestamps and
+    optional speed/elevation values. It is intentionally unrelated to a
+    :class:`BroadRoute`: a shareable route is an independent, owner-authored
+    resource and is never generated from these raw bytes at read time.
+    """
+
+    __tablename__ = "recorded_tracks"
+    __table_args__ = (CheckConstraint("ended_at > started_at", name="ck_track_end_after_start"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    kind: Mapped[TrackKind] = mapped_column(_enum_column(TrackKind, "travel_track_kind"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    trip: Mapped[Trip] = relationship(back_populates="recorded_tracks")
+    source_object: Mapped["StoredObject"] = relationship(foreign_keys=[source_object_id])
+
+
+class BroadRoute(Base):
+    """An owner-reviewed generalized geometry safe for a later projection.
+
+    It deliberately has no raw-track foreign key. That makes the review and
+    generalization step explicit, and removes any path for public rendering
+    to infer a line from precise recording data.
+    """
+
+    __tablename__ = "broad_routes"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(160), nullable=False)
+    geometry: Mapped[dict] = mapped_column(JSON, nullable=False)
+    date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="broad_routes")
 
 
 class PublicSurface(Base):

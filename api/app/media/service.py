@@ -180,6 +180,24 @@ def _store_bytes(session: Session, storage: ObjectStorage, *, trip_id: str, data
     return obj
 
 
+def store_uploaded_object(
+    session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes, content_type: str
+) -> StoredObject:
+    """Store one bounded owner-uploaded object through the shared durable
+    copy-and-verify path.
+
+    This is intentionally not media-specific: finished track uploads use the
+    same trip-local checksum, opaque key, storage read-back verification and
+    ``StoredObject`` inventory as media. Callers attach their own canonical
+    resource only after this function returns an available object.
+    """
+    if not data:
+        raise MediaImportError("File must not be empty")
+    if len(data) > settings.media_max_upload_bytes:
+        raise MediaImportError("File exceeds the maximum upload size")
+    return _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=content_type)
+
+
 def _existing_media_asset_for_object(session: Session, trip_id: str, stored_object_id: str) -> MediaAsset | None:
     return session.scalar(
         select(MediaAsset).where(MediaAsset.trip_id == trip_id, MediaAsset.original_object_id == stored_object_id)
@@ -201,11 +219,9 @@ def direct_upload(
     Returns `(asset, created)`; `created` is `False` when identical bytes
     were already imported for this trip (retry-safe, no duplicate record).
     """
-    if len(data) > settings.media_max_upload_bytes:
-        raise MediaImportError("File exceeds the maximum upload size")
     media_kind = _media_kind_for(content_type)
 
-    stored = _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=content_type)
+    stored = store_uploaded_object(session, storage, trip_id=trip_id, data=data, content_type=content_type)
     existing_asset = _existing_media_asset_for_object(session, trip_id, stored.id)
     if existing_asset is not None:
         session.commit()
