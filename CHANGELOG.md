@@ -12,8 +12,9 @@ All notable changes to the travel hub are documented here.
   approval and deletion. Removing a derivative also immediately withdraws it
   from every live public or unlisted scope. The moment editor continues to
   keep attached media and EXIF suggestions owner-only and explicit. Settings
-  now exposes non-secret provider connection status as the landing point for
-  the OAuth work in #55; no token is returned to the browser. ([#98](https://github.com/tjorim/travel/issues/98))
+  now exposes non-secret provider connection status plus the temporary manual
+  connect/revoke controls as the landing point for the OAuth work in #55; no
+  token is returned to the browser. ([#98](https://github.com/tjorim/travel/issues/98))
 
 - Owner-facing tracker controls for the public projection and named unlisted
   links. Each surface has a field-level `travel/share-scope@1` editor and

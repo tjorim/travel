@@ -301,6 +301,8 @@ def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path)
         {"provider": "gopro_cloud", "connected": False},
     ]
     assert "never-return-this" not in statuses.text
+    assert owner.delete("/api/v1/provider-tokens/google_photos_picker").status_code == 204
+    assert owner.get("/api/v1/provider-tokens").json()[0] == {"provider": "google_photos_picker", "connected": False}
 
 
 # --- Google Photos Picker import: only explicitly selected items ------------------
