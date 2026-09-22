@@ -86,8 +86,6 @@ v2 after the app behavior is complete and verified.
         places into exact and broad models.
   - [x] [#57](https://github.com/tjorim/travel/issues/57) Add owner-managed
         stays and broad stay cards to Travel.
-  - [ ] [#58](https://github.com/tjorim/travel/issues/58) Add recorded
-        tracks and broad routes to Travel.
   - [ ] [#59](https://github.com/tjorim/travel/issues/59) Add owner-managed
         documents to Travel.
   - [ ] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
@@ -176,6 +174,17 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Added private `travel/recorded-track@1` records and separately authored
+      `travel/broad-route@1` records to the tracker API. A finished GPX or
+      point-array track is uploaded in one bounded owner action with required
+      start/end times, then copied through the checksum-verified
+      `StoredObject` pipeline; no partial, streaming, or live-tracking route
+      exists. Its raw points and timestamps remain owner-only. A broad route
+      instead stores the owner's reviewed GeoJSON line and date precision,
+      with no raw-track link or request-time derivation path. Owner-only and
+      public-surface regression tests enforce both boundaries. Third of #38's
+      seven delivery phases. ([#58](https://github.com/tjorim/travel/issues/58))
 
 - [x] Added owner-managed `travel/stay@1` records and separately authored
       `travel/broad-stay-card@1` records to the tracker API. Stays retain an

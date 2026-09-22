@@ -6,6 +6,18 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-only `travel/recorded-track@1` and separately authored
+  `travel/broad-route@1` resources in the tracker API, with an Alembic
+  migration and owner endpoints. A complete GPX or JSON point-array upload
+  requires bounded start/end times and is copied through the existing
+  checksum-verified `StoredObject` pipeline; there are no partial, streaming
+  or live-tracking endpoints. Raw track points and timestamps are retrievable
+  only by the owner, never through public or unlisted delivery. A broad route
+  stores an owner-reviewed GeoJSON line and date precision independently of a
+  raw track, so shareable geometry is never derived at request time. Tests
+  cover ownership, bounded uploads, and public-surface non-disclosure. Third
+  of #38's seven delivery phases. ([#58](https://github.com/tjorim/travel/issues/58))
+
 - Owner-managed `travel/stay@1` and separately authored
   `travel/broad-stay-card@1` resources in the tracker API, with an Alembic
   migration and owner CRUD endpoints. A stay retains its exact place, exact
