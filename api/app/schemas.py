@@ -9,6 +9,7 @@ from .models import (
     DatePrecision,
     DerivativePurpose,
     DerivativeReviewState,
+    DocumentKind,
     ImportProvider,
     ImportSessionState,
     LinkState,
@@ -452,6 +453,33 @@ class MediaDerivativeResponse(BaseModel):
 class MediaDerivativeCreate(BaseModel):
     purpose: DerivativePurpose = DerivativePurpose.SHARE
     max_dimension: int = Field(default=1600, ge=64, le=4000)
+
+
+# --- Owner-managed documents --------------------------------------------------------
+
+
+class DocumentAssetResponse(BaseModel):
+    id: str
+    document_kind: DocumentKind
+    title: str
+    byte_size: int
+    content_type: str
+    original_filename: str | None
+    created_at: datetime
+    deleted_at: datetime | None
+    file_url: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentDerivativeResponse(BaseModel):
+    id: str
+    document_asset_id: str
+    review_state: DerivativeReviewState
+    byte_size: int
+    content_type: str
+    created_at: datetime
+    file_url: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ImportSessionResponse(BaseModel):

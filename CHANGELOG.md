@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-managed `travel/document@1` originals and separately supplied
+  `travel/document-derivative@1` redacted copies in the tracker API, with an
+  Alembic migration and owner-only upload/list/delete/delivery endpoints.
+  Every original, redacted copy and JSON redaction manifest is copied through
+  the checksum-verified `StoredObject` pipeline. A derivative cannot reuse an
+  original's bytes, begins in `pending` review, and requires explicit owner
+  approval before a future share scope may use it; no public or unlisted
+  document-delivery route exists in this phase. ([#59](https://github.com/tjorim/travel/issues/59))
+
 - Owner-only `travel/recorded-track@1` and separately authored
   `travel/broad-route@1` resources in the tracker API, with an Alembic
   migration and owner endpoints. A complete GPX or JSON point-array upload

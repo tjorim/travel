@@ -86,7 +86,7 @@ v2 after the app behavior is complete and verified.
         places into exact and broad models.
   - [x] [#57](https://github.com/tjorim/travel/issues/57) Add owner-managed
         stays and broad stay cards to Travel.
-  - [ ] [#59](https://github.com/tjorim/travel/issues/59) Add owner-managed
+  - [x] [#59](https://github.com/tjorim/travel/issues/59) Add owner-managed
         documents to Travel.
   - [ ] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
         share scopes to cover every resource type.

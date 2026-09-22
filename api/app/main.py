@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, status
 from sqlalchemy import text
 
 from .database import SessionLocal
+from .routers.documents import router as documents_router
 from .routers.media import provider_tokens_router
 from .routers.media import router as media_router
 from .routers.publication import delivery_router as publication_delivery_router
@@ -22,6 +23,7 @@ app.include_router(publication_router, prefix="/api/v1")
 app.include_router(publication_delivery_router, prefix="/api/v1")
 app.include_router(stays_router, prefix="/api/v1")
 app.include_router(tracks_router, prefix="/api/v1")
+app.include_router(documents_router, prefix="/api/v1")
 app.include_router(media_router, prefix="/api/v1")
 app.include_router(provider_tokens_router, prefix="/api/v1")
 
