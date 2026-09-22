@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0008_owner_managed_documents"
-down_revision = "0007_recorded_tracks_and_broad_routes"
+down_revision = "0007_recorded_tracks_routes"
 branch_labels = None
 depends_on = None
 

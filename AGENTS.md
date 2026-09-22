@@ -28,11 +28,12 @@ python3 -m http.server 8080 --directory dist
 
 Open `http://localhost:8080`. Private routes are only password-protected by
 Caddy in deployment, so local serving intentionally does not test auth. Before
-committing JavaScript or JSON changes, run:
+committing static archive changes, run the checks against every tracked file
+they cover:
 
 ```bash
-node --check dist/assets/travel/flight-map.js
-jq empty dist/exampleland-2054/private/flight-route.json
+git ls-files -z -- 'dist/assets/travel/*.js' | xargs -0 -r -n 1 node --check
+git ls-files -z -- 'dist/*.json' 'dist/**/*.json' | xargs -0 -r -n 1 jq empty
 git diff --check
 ```
 
@@ -42,17 +43,35 @@ For tracker API work, use the locked Python environment:
 
 ```bash
 cd api
+uv sync --all-groups --frozen
 uv run pytest
 uv run ruff check .
+# Run migration checks against a local PostgreSQL database.
+TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
+  uv run alembic upgrade head
+TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
+  uv run alembic downgrade base
 ```
 
-For tracker PWA work, use the repository's Vite+ Node version:
+For the Go authentication service, run:
+
+```bash
+cd auth
+go vet ./...
+go build ./...
+go test ./...
+```
+
+For tracker PWA work, use the repository's pinned Node version:
 
 ```bash
 cd tracker
-vp env exec --node 24.14.0 pnpm install --frozen-lockfile
-vp env exec --node 24.14.0 pnpm build
+vp env exec --node "$(cat .node-version)" pnpm install --frozen-lockfile
+vp env exec --node "$(cat .node-version)" pnpm build
 ```
+
+GitHub Actions runs each affected component's checks on pull requests and all
+of them on every push to `main`.
 
 ## Coding Style & Naming Conventions
 

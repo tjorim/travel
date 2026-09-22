@@ -10,7 +10,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0007_recorded_tracks_and_broad_routes"
+revision = "0007_recorded_tracks_routes"
 down_revision = "0006_stays_and_broad_stay_cards"
 branch_labels = None
 depends_on = None

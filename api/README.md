@@ -191,12 +191,18 @@ Use a development subject header only with both
 `TRAVEL_ALLOW_DEVELOPMENT_SUBJECT_HEADER=true`; it is rejected in production.
 
 ```bash
-uv sync --all-groups
-uv run pytest
+uv sync --all-groups --frozen
 uv run ruff check .
-uv run alembic upgrade head
+uv run pytest
+# Requires a PostgreSQL database, as the CI migration check does.
+TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
+  uv run alembic upgrade head
+TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
+  uv run alembic downgrade base
 ```
 
+GitHub Actions runs these API checks, including the upgrade/downgrade cycle
+against PostgreSQL, on changes to `api/` and on every push to `main`.
 The initial migration can be reversed with `uv run alembic downgrade base`.
 The central deployment in apps#215 must take a database backup before running
 the first production upgrade. Its rollback is: stop `travel-api`, restore the

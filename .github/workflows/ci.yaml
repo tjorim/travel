@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    name: Detect changed components
+    runs-on: ubuntu-24.04
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      auth: ${{ steps.filter.outputs.auth }}
+      tracker: ${{ steps.filter.outputs.tracker }}
+      archive: ${{ steps.filter.outputs.archive }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - '.github/workflows/ci.yaml'
+            auth:
+              - 'auth/**'
+              - '.github/workflows/ci.yaml'
+            tracker:
+              - 'tracker/**'
+              - '.github/workflows/ci.yaml'
+            archive:
+              - 'dist/**'
+              - '.github/workflows/ci.yaml'
+
+  api:
+    name: API
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: api
+    env:
+      TRAVEL_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/travel
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: travel
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d travel"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: uv sync --all-groups --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Test
+        run: uv run pytest
+      - name: Verify migrations against PostgreSQL
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+
+  auth:
+    name: Auth
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.auth == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: auth
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.0'
+      - name: Vet
+        run: go vet ./...
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test ./...
+
+  tracker:
+    name: Tracker
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.tracker == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: tracker
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.28.2'
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: tracker/.node-version
+          cache: pnpm
+          cache-dependency-path: tracker/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+
+  static-archive:
+    name: Static archive
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.archive == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: tracker/.node-version
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(git ls-files -z -- 'dist/assets/travel/*.js')
+      - name: Validate JSON
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            jq empty "$file"
+          done < <(git ls-files -z -- 'dist/*.json' 'dist/**/*.json')
+      - name: Check whitespace
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
