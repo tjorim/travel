@@ -6,6 +6,31 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Durable, owner-only media ingestion for the tracker API: direct device
+  upload as the always-available fallback, a Google Photos Picker session
+  flow that imports only items the owner explicitly selected in Google's own
+  UI, and a GoPro Cloud adapter behind the same provider interface, gated
+  off by default until beta API access is granted so the product remains
+  fully usable without it. Every imported or uploaded file is copied into
+  Travel-controlled object storage and checksum-verified before it becomes a
+  canonical `MediaAsset`; storage and import provenance both dedup per trip
+  (`sha256`, and `provider`+`provider_item_id`), so retrying an interrupted
+  import reattempts only the items that failed and never creates a duplicate
+  record. Provider access tokens live only in a process-local secret store,
+  never in the database or an API response. Originals and their raw
+  EXIF/XMP/IPTC stay owner-only and are never modified on ingest; a
+  best-effort read of each photo's capture time, camera and GPS is kept
+  alongside the untouched original (`MediaAsset.captured_at` and
+  `raw_metadata.exif`) so the owner can pre-fill a moment's date or place
+  without re-parsing the file, preferring the file's own EXIF
+  `DateTimeOriginal` over a provider's capture-time metadata when both exist.
+  A stripped, resized derivative is generated only on explicit owner request
+  and starts `pending` owner review, which is the gate a future share scope
+  must satisfy before it can ever be projected publicly. Deletion is a soft
+  delete honoring the 30-day recoverable-deletion policy, with a dedup-safe
+  purge helper for objects nothing else references.
+  ([#43](https://github.com/tjorim/travel/issues/43))
+
 - Scoped, revocable public and unlisted publication links for the tracker
   API. Owners select an explicit scope (route stages, moments, optional
   title/summary) for the public follower view or a named unlisted link; both

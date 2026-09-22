@@ -30,6 +30,16 @@ validated OpenID Connect `sub` matches the trip owner:
 | `POST` | `/trips/{trip_id}/share-links/{link_id}/rotate` | Revoke the current token and issue a fresh one for the same scope. |
 | `GET` | `/public/trips/{slug}` | Anonymous: read the trip's current public scope, rendered live. |
 | `GET` | `/shared/{token}` | Anonymous: exchange a valid, unexpired, non-revoked capability for its current scope, rendered live. |
+| `POST` | `/trips/{trip_id}/media/uploads` | Direct device upload (multipart); the durable fallback path, always available. |
+| `GET` | `/trips/{trip_id}/media` | List the trip's owner-only media assets. |
+| `GET`, `DELETE` | `/trips/{trip_id}/media/{media_id}` | Read or soft-delete a media asset. |
+| `GET` | `/trips/{trip_id}/media/{media_id}/original` | Owner-only, `no-store` original file delivery. |
+| `POST`, `GET` | `/trips/{trip_id}/media/{media_id}/derivatives` | Generate or list stripped/resized derivatives for share/static-export/owner-preview. |
+| `POST` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/approve` | Owner review sign-off; only an approved derivative may ever be referenced by a share scope. |
+| `GET` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/file` | Owner-only, `no-store` derivative file delivery. |
+| `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions` | Start a Google Photos Picker or GoPro Cloud selection session. |
+| `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
+| `PUT`, `DELETE` | `/provider-tokens/{provider}` | Connect or revoke the owner's Google Photos/GoPro Cloud access token (write-only; never read back). |
 
 `GET /api/health` checks database connectivity. FastAPI publishes the full
 OpenAPI description at `/openapi.json` and interactive development docs at
@@ -67,6 +77,101 @@ delivery always re-checks live link state, and the response headers
 revoked, or unknown token so a probe cannot be distinguished by caching or
 indexing behavior.
 
+### Media ingestion
+
+Every imported or uploaded file goes through the same copy-verify-record
+pipeline (`app/media/service.py`) regardless of source: bytes are hashed,
+written to Travel-controlled object storage (`app/storage.py`; a local
+filesystem adapter in dev/test, the backed-up VPS media volume in
+production), and re-read to verify the checksum before a `MediaAsset` row
+ever references them. A provider URL or a device's local file handle is
+never the servable reference — `file_url` in every response is always an
+owner-authenticated delivery route.
+
+- **Direct device upload** (`POST .../media/uploads`) is the durable
+  fallback: it needs neither Google nor GoPro and copies the uploaded bytes
+  straight into storage.
+- **Google Photos Picker import** starts a session
+  (`POST .../media/imports/google_photos_picker/sessions`) that returns a
+  `picker_uri` for the owner to open and select items in Google's own UI,
+  then `.../sessions/{id}/complete` copies only what was selected. It
+  requires a connected token (`PUT /provider-tokens/google_photos_picker`);
+  the raw token is held only in the in-process secret store
+  (`app/secrets.py`, a placeholder for a real secret manager) and is never
+  written to the database or returned by any endpoint.
+- **GoPro Cloud import** uses the identical session/complete flow behind
+  `TRAVEL_GOPRO_CLOUD_ENABLED`; while beta access is unavailable (the
+  default), starting a session returns `409` and the rest of the product —
+  direct upload included — stays fully functional.
+
+Completing an import session is safe to call more than once: each selected
+item gets its own `ImportRecord` keyed on
+`(trip_id, provider, provider_item_id)`, so a retry after a partial failure
+only reattempts the items that failed and never creates a duplicate
+`MediaAsset` for one that already succeeded. Uploading or importing
+identical bytes a second time for the same trip is likewise a no-op:
+`StoredObject` dedups on `(trip_id, sha256)`. An `ImportSession`'s
+`expires_at` (set from the provider's own session response) is enforced on
+`complete`, not just displayed: a session completed after that instant is
+transitioned to `expired` and rejected with `409`, the same way an expired
+share link is rejected in `/shared/{token}`.
+
+Originals and their raw EXIF/XMP/IPTC are owner-only, and are never modified
+on ingest: the stored original keeps every embedded tag byte-for-byte. At
+the same time, `direct_upload`/`complete_import_session` best-effort-parse
+each photo's EXIF (`app/media/service.py:extract_exif_metadata`) and keep
+both: `MediaAsset.captured_at` and a small convenience subset in
+`raw_metadata.exif` (camera make/model, decimal-degree GPS) so the owner API
+response can pre-fill a moment's date or suggest a place without any client
+needing to parse the file itself — a provider's own capture-time metadata
+(e.g. Google's `createTime`) is used only as a fallback when a photo has no
+usable EXIF `DateTimeOriginal`. This is a read, never a strip: nothing here
+touches the file, and the extracted fields only ever appear on owner-only
+routes.
+
+A `MediaDerivative` is generated only on explicit owner request
+(`POST .../media/{media_id}/derivatives`) — never automatically on
+import/upload — by re-encoding the image with Pillow: reopening and saving
+without passing an `exif=`/`icc_profile=` argument is what strips metadata,
+since Pillow never carries it over implicitly. This is the one copy that
+actually loses EXIF, because it's the one a public/unlisted viewer could
+reach. A fresh derivative starts `review_state=pending`; only an owner
+`.../approve` moves it to `approved`, which is the state a future
+share-scope item must reference (`#38`) before it can ever be projected to
+a public or unlisted audience.
+
+Deleting a media asset (`DELETE .../media/{media_id}`) is a soft delete: it
+disappears from owner queries immediately, matching the 30-day recoverable-
+deletion policy. `app/media/service.py:purge_deleted_media` hard-deletes
+media past that window and reclaims any of their stored objects nothing
+else still references (dedup-safe); wiring it to a scheduled job is v2
+infrastructure work, not part of this application-only issue.
+
+### Connecting the Google Photos Picker provider
+
+There is no owner-facing OAuth consent screen yet — that's tracker UI work
+(`#38`), tracked separately in `#55` for the connect/refresh flow itself.
+Until then, connecting the provider is a manual, one-time-per-token setup:
+
+1. In a Google Cloud project, enable the **Google Photos Picker API** and
+   configure an OAuth 2.0 client (see
+   [Get started with the Picker API](https://developers.google.com/photos/picker/guides/get-started-picker)).
+2. Obtain an OAuth 2.0 access token authorized for the
+   `https://www.googleapis.com/auth/photospicker.mediaitems.readonly` scope
+   — for local development, [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
+   works against a project's own client credentials.
+3. `PUT /api/v1/provider-tokens/google_photos_picker` with
+   `{"access_token": "..."}`.
+
+A plain Google OAuth access token is short-lived (about an hour) and the
+in-process secret store (`app/secrets.py`) does not hold or use a refresh
+token, so a session started after the token expires fails with `409` and
+the owner has to repeat step 3 with a fresh token. GoPro Cloud import needs
+the same per-provider `PUT` once GoPro's beta API access and
+`TRAVEL_GOPRO_CLOUD_ENABLED` are both available — see GoPro's own beta
+developer documentation for how that token is issued, which this project
+does not control.
+
 ## Configuration and local checks
 
 | Variable | Purpose |
@@ -76,6 +181,10 @@ indexing behavior.
 | `TRAVEL_OIDC_JWKS_URL` | Required JWKS endpoint for production bearer-token validation. |
 | `TRAVEL_OIDC_AUDIENCE` | Expected API audience; defaults to `travel-api`. |
 | `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. Required in production; the code default is development-only. |
+| `TRAVEL_MEDIA_STORAGE_ROOT` | Filesystem root for the local object-storage adapter; production points this at the backed-up VPS media volume, never Git. |
+| `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` | Refuses a direct upload or a single imported item larger than this (default 200 MiB). |
+| `TRAVEL_GOPRO_CLOUD_ENABLED` | Enables the GoPro Cloud import adapter once beta API access is granted; `false` by default, and the product is fully usable without it. |
+| `TRAVEL_GOOGLE_PHOTOS_PICKER_API_BASE`, `TRAVEL_GOPRO_CLOUD_API_BASE` | Provider API base URLs; overridable for testing against a sandbox. |
 
 Use a development subject header only with both
 `TRAVEL_ENVIRONMENT=development` and

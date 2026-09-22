@@ -2,7 +2,17 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
-from .models import LinkState, PublicationState, SurfaceState, Visibility
+from .models import (
+    DerivativePurpose,
+    DerivativeReviewState,
+    ImportProvider,
+    ImportSessionState,
+    LinkState,
+    MediaKind,
+    PublicationState,
+    SurfaceState,
+    Visibility,
+)
 
 
 class PlaceInput(BaseModel):
@@ -185,3 +195,77 @@ class ShareLinkResponse(BaseModel):
 
 class ShareLinkActivateResponse(ShareLinkResponse):
     token: str
+
+
+# --- Media ingestion -----------------------------------------------------------------
+#
+# Every route here is owner-only, so surfacing a parsed EXIF convenience
+# subset (capture time, camera, GPS) is fine — the owner is the one audience
+# permitted to see it. What never appears, even here, is a bucket, object
+# key, provider URL, or the raw EXIF/XMP/IPTC blob itself; `file_url` is
+# always an audience-checked delivery route, never a direct storage
+# reference. A public/unlisted response is a completely separate schema
+# (the future share-scope projection) that never reuses this one.
+
+
+class MediaGpsCoordinates(BaseModel):
+    latitude: float
+    longitude: float
+
+
+class MediaAssetResponse(BaseModel):
+    id: str
+    media_kind: MediaKind
+    byte_size: int
+    content_type: str
+    captured_at: datetime | None
+    created_at: datetime
+    deleted_at: datetime | None
+    original_filename: str | None
+    camera_make: str | None = None
+    camera_model: str | None = None
+    gps: MediaGpsCoordinates | None = None
+    file_url: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MediaDerivativeResponse(BaseModel):
+    id: str
+    media_asset_id: str
+    purpose: DerivativePurpose
+    review_state: DerivativeReviewState
+    metadata_stripped_at: datetime | None
+    width: int | None
+    height: int | None
+    created_at: datetime
+    file_url: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MediaDerivativeCreate(BaseModel):
+    purpose: DerivativePurpose = DerivativePurpose.SHARE
+    max_dimension: int = Field(default=1600, ge=64, le=4000)
+
+
+class ImportSessionResponse(BaseModel):
+    id: str
+    provider: ImportProvider
+    state: ImportSessionState
+    picker_uri: str | None = None
+    expires_at: datetime | None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ImportFailureItem(BaseModel):
+    provider_item_id: str
+    failure_code: str
+
+
+class ImportSessionCompleteResponse(BaseModel):
+    ready: bool
+    imported: list[MediaAssetResponse]
+    failed: list[ImportFailureItem]
+
+
+class ProviderTokenSet(BaseModel):
+    access_token: str = Field(min_length=1, max_length=4096)

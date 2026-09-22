@@ -36,6 +36,47 @@ class LinkState(StrEnum):
     EXPIRED = "expired"
 
 
+class ObjectState(StrEnum):
+    STAGED = "staged"
+    AVAILABLE = "available"
+    QUARANTINED = "quarantined"
+    PURGE_PENDING = "purge_pending"
+
+
+class MediaKind(StrEnum):
+    PHOTO = "photo"
+    VIDEO = "video"
+
+
+class ImportProvider(StrEnum):
+    DIRECT_DEVICE = "direct_device"
+    GOOGLE_PHOTOS_PICKER = "google_photos_picker"
+    GOPRO_CLOUD = "gopro_cloud"
+
+
+class ImportSessionState(StrEnum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    EXPIRED = "expired"
+
+
+class ImportState(StrEnum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class DerivativePurpose(StrEnum):
+    OWNER_PREVIEW = "owner_preview"
+    SHARE = "share"
+    STATIC_EXPORT = "static_export"
+
+
+class DerivativeReviewState(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+
+
 def _enum_column(enum_cls: type[StrEnum], name: str):
     return Enum(enum_cls, name=name, values_callable=lambda enum: [member.value for member in enum])
 
@@ -161,3 +202,142 @@ class ShareLink(Base):
     )
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class StoredObject(Base):
+    """Object-storage inventory for one trip-owned file.
+
+    A row moves `staged` -> `available` only after its checksum is verified
+    against the just-written bytes; only an `available` object may back a
+    `MediaAsset` or `MediaDerivative`. Two uploads of identical bytes for the
+    same trip reuse one row (`uq_stored_object_trip_sha256`): deduplication
+    never crosses trips/owners.
+    """
+
+    __tablename__ = "stored_objects"
+    __table_args__ = (UniqueConstraint("trip_id", "sha256", name="uq_stored_object_trip_sha256"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    bucket: Mapped[str] = mapped_column(String(64), nullable=False, default="media")
+    object_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    state: Mapped[ObjectState] = mapped_column(
+        _enum_column(ObjectState, "travel_object_state"), default=ObjectState.STAGED
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ImportSession(Base):
+    """A Google Photos Picker / GoPro Cloud selection session for one owner.
+
+    `provider_session_id` and any provider handle needed to poll selection
+    status are owner-only provenance; they are never serialized to a client
+    beyond the id needed to call `complete` again. A session starts `pending`
+    and becomes `completed` once the owner's selection has been imported (an
+    import may be completed more than once, safely, by retrying)."""
+
+    __tablename__ = "import_sessions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider: Mapped[ImportProvider] = mapped_column(_enum_column(ImportProvider, "travel_import_provider"))
+    provider_session_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    state: Mapped[ImportSessionState] = mapped_column(
+        _enum_column(ImportSessionState, "travel_import_session_state"), default=ImportSessionState.PENDING
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ImportRecord(Base):
+    """Provenance for one imported media item.
+
+    Uniqueness on `(trip_id, provider, provider_item_id)` makes completing an
+    import session idempotent: retrying it after a partial failure only
+    (re)fetches items that do not already have a `completed` row. A provider
+    access token is never stored here; it lives only in the secret store
+    (`app.secrets`) for the lifetime the owner allows."""
+
+    __tablename__ = "import_records"
+    __table_args__ = (
+        UniqueConstraint("trip_id", "provider", "provider_item_id", name="uq_import_record_provider_item"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider: Mapped[ImportProvider] = mapped_column(_enum_column(ImportProvider, "travel_import_provider"))
+    provider_item_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    state: Mapped[ImportState] = mapped_column(
+        _enum_column(ImportState, "travel_import_state"), default=ImportState.PENDING
+    )
+    media_asset_id: Mapped[str | None] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="SET NULL", use_alter=True, name="fk_import_records_media_asset_id"),
+        nullable=True,
+    )
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class MediaAsset(Base):
+    """One imported/uploaded original. Raw EXIF/XMP/IPTC and camera data in
+    `raw_metadata` are owner-only and never leave an owner-audience response;
+    `original_object_id` always points to a copy in Travel-controlled object
+    storage, never a provider URL."""
+
+    __tablename__ = "media_assets"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    original_object_id: Mapped[str] = mapped_column(
+        ForeignKey("stored_objects.id"), unique=True, nullable=False
+    )
+    media_kind: Mapped[MediaKind] = mapped_column(_enum_column(MediaKind, "travel_media_kind"))
+    captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    import_id: Mapped[str | None] = mapped_column(ForeignKey("import_records.id"), nullable=True)
+    raw_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    original_object: Mapped[StoredObject] = relationship(foreign_keys=[original_object_id])
+    derivatives: Mapped[list["MediaDerivative"]] = relationship(
+        back_populates="media_asset", cascade="all, delete-orphan"
+    )
+
+
+class MediaDerivative(Base):
+    """A stripped, resized copy of one `MediaAsset`, generated only when the
+    owner selects that media for `share`/`static_export` publication (or, for
+    `owner_preview`, for an in-app thumbnail). `metadata_stripped_at` records
+    when stripping ran; `review_state` gates whether a `share`/`static_export`
+    purpose may ever be referenced by a `scope_json` item — a derivative is
+    usable for sharing only once the owner has explicitly reviewed it."""
+
+    __tablename__ = "media_derivatives"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    media_asset_id: Mapped[str] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
+    purpose: Mapped[DerivativePurpose] = mapped_column(_enum_column(DerivativePurpose, "travel_derivative_purpose"))
+    metadata_stripped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_state: Mapped[DerivativeReviewState] = mapped_column(
+        _enum_column(DerivativeReviewState, "travel_derivative_review_state"), default=DerivativeReviewState.PENDING
+    )
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    media_asset: Mapped[MediaAsset] = relationship(back_populates="derivatives")
+    object: Mapped[StoredObject] = relationship(foreign_keys=[object_id])

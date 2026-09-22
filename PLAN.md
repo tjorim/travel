@@ -80,7 +80,7 @@ v2 after the app behavior is complete and verified.
       audit trail for publication and share-link lifecycle events, per #36/#37.
 - [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
       with a shared MapLibre renderer, reconciled with #36's privacy contract.
-- [ ] [#43](https://github.com/tjorim/travel/issues/43) Add durable owner-only
+- [x] [#43](https://github.com/tjorim/travel/issues/43) Add durable owner-only
       direct, Google Photos and optional GoPro media ingestion.
 - [ ] [#38](https://github.com/tjorim/travel/issues/38) Evolve the tracker
       API and PWA into the private Travel content app.
@@ -164,6 +164,25 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Added a durable, owner-only media ingestion pipeline: direct device
+      upload (the always-available fallback), a Google Photos Picker session
+      flow that imports only explicitly selected items, and a GoPro Cloud
+      adapter behind a provider interface, gated off until beta access is
+      granted so the product stays fully usable without it. Every imported or
+      uploaded file is copied into Travel-controlled object storage,
+      checksum-verified, and deduplicated per trip; a provider URL or token is
+      never the servable reference or stored in the database. Interrupted
+      provider imports retry idempotently per item with no duplicate records;
+      originals and raw EXIF/XMP/IPTC stay owner-only and untouched on
+      ingest, with a best-effort capture time/camera/GPS read kept alongside
+      them to pre-fill a moment's date or place for the owner, and a
+      stripped, resized share derivative is generated only on explicit owner
+      request and gated on owner review before it may ever be referenced by
+      a share scope. Deletion is a soft delete with a dedup-safe purge
+      helper for the recoverable-deletion window. Tests use provider fakes
+      throughout; no
+      test makes a real network call. ([#43](https://github.com/tjorim/travel/issues/43))
 
 - [x] Implemented scoped, revocable public and unlisted publication links for
       the tracker API's trips and moments: an explicit, owner-selected scope
