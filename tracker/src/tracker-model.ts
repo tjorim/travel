@@ -1,0 +1,211 @@
+import type { TrackerSession } from "./auth";
+
+export type Place = {
+  id: string;
+  display_name: string | null;
+  osm_element_type: "node" | "way" | "relation" | null;
+  osm_element_id: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  locality: string | null;
+  admin_area: string | null;
+  postal_code: string | null;
+  country_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  viewport_north: number | null;
+  viewport_south: number | null;
+  viewport_east: number | null;
+  viewport_west: number | null;
+  navigation_provider: string | null;
+  navigation_provider_place_id: string | null;
+  notes: string | null;
+};
+
+export type ExactPlaceInput = Partial<Omit<Place, "id">>;
+export type PlaceSearchResult = ExactPlaceInput;
+
+export type MediaAsset = {
+  id: string;
+  media_kind: "photo" | "video";
+  captured_at: string | null;
+  original_filename: string | null;
+  gps: { latitude: number; longitude: number } | null;
+};
+
+export type PlaceSearchResponse = {
+  attribution: string;
+  attribution_url: string;
+  results: PlaceSearchResult[];
+};
+
+export type Moment = {
+  id: string;
+  occurred_at: string;
+  title: string;
+  story: string;
+  place: Place | null;
+  media_asset_ids: string[];
+};
+
+export type BroadPlace = {
+  id: string;
+  label: string;
+  country_code: string | null;
+  region: string | null;
+};
+
+export type RouteStage = {
+  id: string;
+  position: number;
+  label: string | null;
+  place: BroadPlace;
+};
+
+export type RecordedTrack = {
+  id: string;
+  started_at: string;
+  ended_at: string;
+  kind: "gpx" | "point_array";
+  byte_size: number;
+  content_type: string;
+  source_file_url: string;
+};
+
+export type BroadRoute = {
+  id: string;
+  label: string;
+  geometry: { type: "LineString"; coordinates: [number, number][] };
+  date_precision: "day" | "month" | "year";
+};
+
+export type MomentExcerpt = {
+  id: string;
+  source_moment_id: string | null;
+  broad_place_id: string | null;
+  date_precision: "day" | "month" | "year";
+  title: string;
+  body: string;
+};
+
+export type Trip = {
+  id: string;
+  title: string;
+  summary: string | null;
+  visibility: "private" | "unlisted" | "public";
+  publication_state: "draft" | "published";
+  route_stages: RouteStage[];
+  moments: Moment[];
+  moment_excerpts: MomentExcerpt[];
+};
+
+export type MomentDraft = {
+  tripId: string;
+  momentId: string | null;
+  occurredAt: string;
+  title: string;
+  story: string;
+  place: ExactPlaceInput | null;
+  mediaAssetIds: string[];
+};
+
+export type Stay = {
+  id: string;
+  arrives_at: string;
+  departs_at: string;
+  status: "planned" | "booked" | "confirmed" | "cancelled";
+  property_name: string;
+  booking_reference: string | null;
+  contact_details: string | null;
+  notes: string | null;
+  place: Place;
+};
+
+export type BroadStayCard = {
+  id: string;
+  title: string;
+  date_precision: "day" | "month" | "year";
+  place: BroadPlace;
+};
+
+export type DocumentAsset = {
+  id: string;
+  document_kind: "booking" | "itinerary" | "receipt" | "other";
+  title: string;
+  byte_size: number;
+  content_type: string;
+  original_filename: string | null;
+  created_at: string;
+  file_url: string;
+};
+
+export type DocumentDerivative = {
+  id: string;
+  document_asset_id: string;
+  review_state: "pending" | "approved";
+  byte_size: number;
+  content_type: string;
+  created_at: string;
+  file_url: string;
+};
+
+const draftKey = "travel-tracker-moment-draft-v1";
+
+export function localDateTime(value = new Date()): string {
+  const offset = value.getTimezoneOffset() * 60_000;
+  return new Date(value.getTime() - offset).toISOString().slice(0, 16);
+}
+
+export function emptyDraft(tripId = ""): MomentDraft {
+  return { tripId, momentId: null, occurredAt: localDateTime(), title: "", story: "", place: null, mediaAssetIds: [] };
+}
+
+export function readDraft(): MomentDraft | null {
+  try {
+    const value = localStorage.getItem(draftKey);
+    if (!value) return null;
+    const draft = JSON.parse(value) as Partial<MomentDraft>;
+    if (typeof draft.tripId !== "string" || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof draft.story !== "string") return null;
+    return { ...emptyDraft(draft.tripId), ...draft, momentId: typeof draft.momentId === "string" ? draft.momentId : null };
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft(): void {
+  localStorage.removeItem(draftKey);
+}
+
+export function saveDraft(draft: MomentDraft): void {
+  localStorage.setItem(draftKey, JSON.stringify(draft));
+}
+
+export function publicationDescription(trip: Trip): string {
+  if (trip.publication_state !== "published" || trip.visibility === "private") return "Privé concept — dit moment is nergens publiek zichtbaar.";
+  return trip.visibility === "public" ? "Publieke reis — dit moment wordt na opslaan publiek zichtbaar." : "Verborgen link — dit moment wordt na opslaan via de reislink zichtbaar.";
+}
+
+export function apiHeaders(session: TrackerSession): HeadersInit {
+  return { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" };
+}
+
+export async function apiError(response: Response, fallback: string): Promise<never> {
+  const body = await response.json().catch(() => null) as { detail?: string } | null;
+  throw new Error(body?.detail || fallback);
+}
+
+export function bytesLabel(bytes: number): string {
+  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} kB`;
+}
+
+export async function openProtectedFile(session: TrackerSession, fileUrl: string, fallback: string): Promise<void> {
+  const response = await fetch(fileUrl, { headers: { Authorization: `Bearer ${session.accessToken}` } });
+  if (!response.ok) return apiError(response, fallback);
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const preview = window.open(objectUrl, "_blank", "noopener");
+  if (!preview) {
+    URL.revokeObjectURL(objectUrl);
+    throw new Error("Je browser blokkeerde het openen van het private bestand.");
+  }
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+}

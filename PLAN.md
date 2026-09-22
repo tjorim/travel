@@ -89,7 +89,7 @@ v2 after the app behavior is complete and verified.
         documents to Travel.
   - [x] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
         share scopes to cover every resource type.
-  - [ ] [#61](https://github.com/tjorim/travel/issues/61) Build tracker PWA
+  - [x] [#61](https://github.com/tjorim/travel/issues/61) Build tracker PWA
         UI for trip content management, split into focused delivery issues:
     - [x] [#96](https://github.com/tjorim/travel/issues/96) Build tracker PWA
           UI for trips, moments, excerpts and places.
@@ -205,6 +205,18 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Completed the tracker PWA content-management phase: owners can now
+      manage trips, canonical moments and separately authored excerpts; select
+      exact and broad places; manage exact stays and broad stay cards; upload,
+      review and remove private documents and redacted derivatives; arrange
+      broad route stages; upload finished GPX/point-array tracks; and author
+      broad routes. The client uses the existing PKCE session, keeps exact
+      data and files behind owner-only endpoints, and provides no continuous
+      location-capture control. ([#61](https://github.com/tjorim/travel/issues/61),
+      [#94](https://github.com/tjorim/travel/issues/94),
+      [#95](https://github.com/tjorim/travel/issues/95),
+      [#96](https://github.com/tjorim/travel/issues/96))
 
 - [x] Added configurable, attributed, owner-only OSM place search with a
       bounded in-memory confidential-query cache; exact places now retain the
