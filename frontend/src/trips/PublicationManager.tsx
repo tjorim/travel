@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth-context";
+import { RenderedPreview } from "./RenderedPreview";
+import type { Projection } from "../ProjectionView";
 import {
   apiError, apiHeaders, type BroadPlace, type BroadRoute, type BroadStayCard, type DocumentAsset,
   type DocumentDerivative, type MediaAsset, type MediaDerivative, type ProjectionDocument,
@@ -50,7 +52,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const [linkScope, setLinkScope] = useState<ShareScope>(emptyScope());
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [message, setMessage] = useState("Laad je publicaties…");
-  const [preview, setPreview] = useState<{ name: string; document: ProjectionDocument } | null>(null);
+  const [preview, setPreview] = useState<{ name: string; audience: "public" | "share"; linkId?: string; document: Projection } | null>(null);
   const [revealedToken, setRevealedToken] = useState<{ label: string; token: string } | null>(null);
   const [expiresInDays, setExpiresInDays] = useState(30);
   const [reason, setReason] = useState("");
@@ -141,7 +143,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     await savePublicScope();
     if (!session) return;
     const document = await responseJson<ProjectionDocument>(await fetch(`${endpoint(trip.id)}/public-projection/preview`, { method: "POST", headers: apiHeaders(session) }), "De publieke preview kon niet worden geladen.");
-    setPreview({ name: "Publieke preview", document });
+    setPreview({ name: "Publieke preview", audience: "public", document: document as Projection });
   }
 
   async function togglePublic() {
@@ -157,13 +159,14 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     const existing = selectedLink;
     const saved = await responseJson<ShareLink>(await fetch(existing ? `${endpoint(trip.id)}/share-links/${existing.id}` : `${endpoint(trip.id)}/share-links`, { method: existing ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(existing ? { label: linkLabel.trim(), scope: linkScope } : { label: linkLabel.trim(), scope: linkScope }) }), "De deellink kon niet worden opgeslagen.");
     await loadLinks(); selectLink(saved); setMessage(existing ? "Deellink en scope opgeslagen." : "Concept-deellink gemaakt. Activeer hem om een eenmalige link te ontvangen.");
+    return saved;
   }
 
   async function previewLink() {
-    await saveLink();
-    if (!session || !editingLinkId) return;
-    const document = await responseJson<ProjectionDocument>(await fetch(`${endpoint(trip.id)}/share-links/${editingLinkId}/preview`, { method: "POST", headers: apiHeaders(session) }), "De linkpreview kon niet worden geladen.");
-    setPreview({ name: "Preview van verborgen link", document });
+    const saved = selectedLink && (selectedLink.state === "revoked" || selectedLink.state === "expired") ? selectedLink : await saveLink();
+    if (!session || !saved) return;
+    const document = await responseJson<ProjectionDocument>(await fetch(`${endpoint(trip.id)}/share-links/${saved.id}/preview`, { method: "POST", headers: apiHeaders(session) }), "De linkpreview kon niet worden geladen.");
+    setPreview({ name: `Preview van ${saved.label}`, audience: "share", linkId: saved.id, document: document as Projection });
   }
 
   async function activateLink(action: "activate" | "rotate") {
@@ -184,8 +187,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     setMessage("Capability gekopieerd. Hij wordt niet opnieuw opgevraagd of opgeslagen door deze app.");
   }
 
-  function ScopeEditor({ scope, setScope, name }: { scope: ShareScope; setScope: (scope: ShareScope) => void; name: string }) {
-    return <fieldset className="scope-editor"><legend>{name}</legend><p>Kies per onderdeel expliciet welke velden de server mag leveren. Alles wat hier niet staat, blijft buiten de response.</p>
+  function ScopeEditor({ scope, setScope, name, disabled = false }: { scope: ShareScope; setScope: (scope: ShareScope) => void; name: string; disabled?: boolean }) {
+    return <fieldset className="scope-editor" disabled={disabled}><legend>{name}</legend><p>Kies per onderdeel expliciet welke velden de server mag leveren. Alles wat hier niet staat, blijft buiten de response.</p>
       <div className="scope-trip-fields"><label className="scope-choice"><input type="checkbox" checked={scope.trip.title} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, title: event.target.checked } })} />Reistitel</label><label className="scope-choice"><input type="checkbox" checked={scope.trip.summary} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, summary: event.target.checked } })} />Samenvatting</label></div>
       <div className="scope-items">{catalog.map((item) => {
         const selected = scope.items.find((value) => value.kind === item.kind && value.id === item.id);
@@ -200,15 +203,15 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     <p className="help" role="status">{message}</p>
     {revealedToken && <section className="token-reveal" aria-live="assertive"><strong>Bewaar deze capability nu</strong><p>Deze token wordt niet opnieuw opgehaald of bewaard. Wie hem heeft, kan de actieve verborgen link openen.</p><code>{revealedToken.token}</code><button type="button" onClick={() => void copyToken().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Kopiëren lukte niet."))}>Kopieer capability</button><button className="secondary compact" type="button" onClick={() => setRevealedToken(null)}>Ik heb hem bewaard</button></section>}
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Publieke pagina</h3><p>{publicStatus?.surface_state === "published" ? "Deze scope is publiek bereikbaar." : "Nog niet publiek bereikbaar."}</p></div></div>
-      <ScopeEditor name="Publieke scope" scope={publicScope} setScope={setPublicScope} />
+      <ScopeEditor name="Publieke scope" scope={publicScope} setScope={(scope) => { setPublicScope(scope); setPreview(null); }} />
       <div className="button-row"><button type="button" onClick={() => void savePublicScope().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Opslaan lukte niet."))}>Publieke scope opslaan</button><button className="secondary" type="button" onClick={() => void previewPublic().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Preview lukte niet."))}>Preview</button><button className={publicStatus?.surface_state === "published" ? "danger" : ""} type="button" onClick={() => void togglePublic().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Status wijzigen lukte niet."))}>{publicStatus?.surface_state === "published" ? "Publicatie intrekken" : "Publiceren"}</button></div>
     </div>
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Verborgen deellinks</h3><p>Elke link heeft een eigen live scope en kan later worden ingetrokken of geroteerd.</p></div><button className="secondary compact" type="button" onClick={() => { setEditingLinkId(null); setLinkLabel(""); setLinkScope(emptyScope()); setPreview(null); }}>Nieuwe link</button></div>
       {links.length > 0 && <div className="link-list">{links.map((link) => <button type="button" className={`link-row ${link.id === editingLinkId ? "selected" : ""}`} key={link.id} onClick={() => selectLink(link)}><strong>{link.label}</strong><span>{link.state} · verloopt {dateLabel(link.expires_at)}</span></button>)}</div>}
-      {(editingLinkId !== null || links.length === 0) && <div className="link-editor"><label>Naam van de link<input required maxLength={120} value={linkLabel} onChange={(event) => setLinkLabel(event.target.value)} placeholder="Bijvoorbeeld: familie" /></label><ScopeEditor name="Scope voor verborgen link" scope={linkScope} setScope={setLinkScope} /><div className="button-row"><button type="button" disabled={!linkLabel.trim()} onClick={() => void saveLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Opslaan lukte niet."))}>{selectedLink ? "Link opslaan" : "Conceptlink maken"}</button>{selectedLink && <button className="secondary" type="button" onClick={() => void previewLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Preview lukte niet."))}>Preview</button>}</div>
+      {(editingLinkId !== null || links.length === 0) && <div className="link-editor"><label>Naam van de link<input required maxLength={120} disabled={selectedLink?.state === "revoked" || selectedLink?.state === "expired"} value={linkLabel} onChange={(event) => { setLinkLabel(event.target.value); setPreview(null); }} placeholder="Bijvoorbeeld: familie" /></label><ScopeEditor name="Scope voor verborgen link" scope={linkScope} setScope={(scope) => { setLinkScope(scope); setPreview(null); }} disabled={selectedLink?.state === "revoked" || selectedLink?.state === "expired"} /><div className="button-row"><button type="button" disabled={!linkLabel.trim() || selectedLink?.state === "revoked" || selectedLink?.state === "expired"} onClick={() => void saveLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Opslaan lukte niet."))}>{selectedLink ? "Link opslaan" : "Conceptlink maken"}</button><button className="secondary" type="button" disabled={!linkLabel.trim()} onClick={() => void previewLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Preview lukte niet."))}>Preview</button></div>
         {selectedLink && <div className="lifecycle"><div className="field-row"><label>Geldig gedurende (dagen)<input type="number" min="1" max="90" value={expiresInDays} onChange={(event) => setExpiresInDays(Number(event.target.value))} /></label><label>Reden <span className="optional">(optioneel)</span><input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label></div><div className="button-row">{selectedLink.state === "draft" && <button type="button" onClick={() => void activateLink("activate").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Activeren lukte niet."))}>Activeren en capability tonen</button>}{selectedLink.state === "active" && <><button className="danger" type="button" onClick={() => void revokeLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Intrekken lukte niet."))}>Link intrekken</button><button type="button" onClick={() => void activateLink("rotate").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Roteren lukte niet."))}>Roteren en nieuwe capability tonen</button></>}</div></div>}
       </div>}
     </div>
-    {preview && <section className="projection-preview" aria-live="polite"><h3>{preview.name}</h3><p>{projectionSummary(preview.document)}</p><details><summary>Geleverde projection inspecteren</summary><pre>{JSON.stringify(preview.document, null, 2)}</pre></details></section>}
+    {preview && session && <section className="projection-preview" aria-live="polite"><h3>{preview.name}</h3><p>{preview.audience === "public" ? "Doelgroep: iedereen" : "Doelgroep: alleen wie de actieve verborgen link heeft"} · {preview.audience === "public" ? publicStatus?.surface_state === "published" ? "nu gepubliceerd" : "concept of ingetrokken" : links.find((link) => link.id === preview.linkId)?.state ?? "concept"}</p><p>{projectionSummary(preview.document)}</p><p className="help">Alleen geselecteerde velden verschijnen hieronder. Privégegevens, boekingen en andere niet-geselecteerde velden blijven verborgen. Deze preview publiceert niets en maakt geen toegangscode aan.</p><RenderedPreview projection={preview.document} audience={preview.audience} tripId={trip.id} linkId={preview.linkId} session={session} /><details><summary>Geleverde velden inspecteren</summary><pre>{JSON.stringify(preview.document, null, 2)}</pre></details></section>}
   </section>;
 }

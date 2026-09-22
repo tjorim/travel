@@ -17,6 +17,11 @@ export type Projection = {
 };
 
 export type Audience = "public" | "share";
+export type PreviewResources = {
+  images: Record<string, string>;
+  openFile: (id: string) => void;
+  openNavigation: (id: string) => void;
+};
 
 const collections = ["route_stages", "places", "moments", "stays", "media", "documents", "route", "navigation"] as const;
 const navigableCollections = ["route_stages", "places", "moments", "stays"] as const;
@@ -94,15 +99,15 @@ function ResourceSection({ title, items, render }: { title: string; items: Proje
   return <section className="card visitor-section" aria-label={title}><h2>{title}</h2><ul className="visitor-items">{items.map((item) => <li key={item.id}>{render(item)}</li>)}</ul></section>;
 }
 
-function Gallery({ items, fileUrl, title = "Galerij" }: { items: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string; title?: string }) {
+function Gallery({ items, fileUrl, title = "Galerij" }: { items: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string | null; title?: string }) {
   if (!items.length) return null;
   return <section className="visitor-gallery" aria-label={title}><h3>{title}</h3><ul>{items.map((item) => <li key={item.id}><figure>
-    {hasFileMarker(item, "image") && <img src={fileUrl(item)} alt={text(item, "alt_text") ?? "Gedeelde afbeelding"} width={positiveSize(item, "width")} height={positiveSize(item, "height")} style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }} loading="lazy" decoding="async" referrerPolicy="no-referrer" />}
+    {hasFileMarker(item, "image") && (fileUrl(item) ? <img src={fileUrl(item)!} alt={text(item, "alt_text") ?? "Gedeelde afbeelding"} width={positiveSize(item, "width")} height={positiveSize(item, "height")} style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }} loading="lazy" decoding="async" referrerPolicy="no-referrer" /> : <p role="status">Afbeelding laden of niet beschikbaar.</p>)}
     {text(item, "caption") && <figcaption>{text(item, "caption")}</figcaption>}
   </figure></li>)}</ul></section>;
 }
 
-function Story({ moments, media, fileUrl, navigationLink }: { moments: ProjectionItem[]; media: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string; navigationLink: (item: ProjectionItem) => ReactNode }) {
+function Story({ moments, media, fileUrl, navigationLink }: { moments: ProjectionItem[]; media: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string | null; navigationLink: (item: ProjectionItem) => ReactNode }) {
   if (!moments.length) return null;
   return <section className="card visitor-section visitor-story" aria-label="Reisverhaal"><h2>Reisverhaal</h2>
     <nav aria-label="Momenten in dit verhaal"><ol>{moments.map((item) => <li key={item.id}><a href={`#moment-${item.id}`}>{text(item, "title") ?? storyDate(item) ?? "Moment"}</a></li>)}</ol></nav>
@@ -114,22 +119,26 @@ function Story({ moments, media, fileUrl, navigationLink }: { moments: Projectio
   </section>;
 }
 
-export function ProjectionView({ projection, audience, identifier }: { projection: Projection; audience: Audience; identifier: string }) {
+export function ProjectionView({ projection, audience, identifier, previewResources }: { projection: Projection; audience: Audience; identifier: string; previewResources?: PreviewResources }) {
   useEffect(() => {
+    if (previewResources) return;
     const fragment = window.location.hash.slice(1);
     if (!projection.moments.some((item) => fragment === `moment-${item.id}`)) return;
     const target = document.getElementById(fragment);
     target?.scrollIntoView?.();
     target?.focus({ preventScroll: true });
-  }, [projection]);
+  }, [projection, previewResources]);
   const navigation = new Set(projection.navigation.map((item) => item.id));
   const displayed = new Set(navigableCollections.flatMap((key) => projection[key].map((item) => item.id)));
   const navigationLink = (item: ProjectionItem) => {
     if (!navigation.has(item.id)) return null;
+    if (previewResources) return <button className="visitor-resource-action" type="button" onClick={() => previewResources.openNavigation(item.id)}>Routebeschrijving</button>;
     const base = audience === "public" ? "/api/public/trips" : "/api/shared";
     return <a href={`${base}/${encodeURIComponent(identifier)}/navigation/${encodeURIComponent(item.id)}`} referrerPolicy="no-referrer" rel="noreferrer">Routebeschrijving</a>;
   };
-  const fileUrl = (item: ProjectionItem) => `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}/files/${encodeURIComponent(item.id)}`;
+  const fileUrl = (item: ProjectionItem) => previewResources
+    ? previewResources.images[item.id] ?? null
+    : `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}/files/${encodeURIComponent(item.id)}`;
   const momentIds = new Set(projection.moments.map((item) => item.id));
   const looseMedia = projection.media.filter((item) => typeof item.moment !== "string" || !momentIds.has(item.moment));
   const empty = collections.every((key) => projection[key].length === 0);
@@ -144,7 +153,7 @@ export function ProjectionView({ projection, audience, identifier }: { projectio
     <ResourceSection title="Verblijven" items={projection.stays} render={(item) => <article><h3>{text(item, "title") ?? "Verblijf"}</h3>{precision(item) && <p>{precision(item)}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
     <ResourceSection title="Routes" items={projection.route} render={(item) => <article><h3>{text(item, "label") ?? "Route"}</h3>{precision(item) && <p>{precision(item)}</p>}{Object.hasOwn(item, "geometry") && <RouteLine geometry={item.geometry} />}</article>} />
     {looseMedia.length > 0 && <section className="card visitor-section"><h2>Galerij</h2><Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" /></section>}
-    <ResourceSection title="Documenten" items={projection.documents} render={(item) => <article><h3>{text(item, "title") ?? "Gedeeld document"}</h3>{hasFileMarker(item, "file") && <a href={fileUrl(item)} referrerPolicy="no-referrer" rel="noreferrer">Document openen</a>}</article>} />
+    <ResourceSection title="Documenten" items={projection.documents} render={(item) => <article><h3>{text(item, "title") ?? "Gedeeld document"}</h3>{hasFileMarker(item, "file") && (previewResources ? <button className="visitor-resource-action" type="button" onClick={() => previewResources.openFile(item.id)}>Document downloaden</button> : <a href={fileUrl(item) ?? undefined} referrerPolicy="no-referrer" rel="noreferrer">Document openen</a>)}</article>} />
     {projection.navigation.some((item) => !displayed.has(item.id)) && <ResourceSection title="Navigatie" items={projection.navigation.filter((item) => !displayed.has(item.id))} render={(item) => <article><h3>Bestemming</h3>{navigationLink(item)}</article>} />}
   </div>;
 }

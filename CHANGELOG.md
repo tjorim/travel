@@ -29,6 +29,10 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added an owner-only rendered preview for public and named-link publication
+  scopes using the visitor components, with scoped preview files and navigation
+  before activation and after withdrawal. ([#126](https://github.com/tjorim/travel/issues/126))
+
 - Added live chronological visitor stories with stable moment links, authored
   dates at the selected precision, broad places, and responsive galleries of
   explicitly shared media derivatives. Owner controls now edit captions, alt

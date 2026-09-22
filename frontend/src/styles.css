@@ -113,6 +113,10 @@ textarea { min-height: 136px; resize: vertical; }
 .projection-preview h3 { margin: 0; }
 .projection-preview p { margin: 0; }
 .projection-preview pre { max-height: 320px; overflow: auto; padding: 12px; border-radius: 9px; background: #19342d; color: #eef5ef; font-size: .78rem; }
+.rendered-preview { padding: 20px; border: 1px solid #cbd7ce; border-radius: 15px; background: #f5f0e8; }
+.visitor-preview-header h2 { margin: 0; font-size: clamp(2rem, 7vw, 3.5rem); line-height: 1; letter-spacing: -.055em; }
+.rendered-preview .visitor-content { margin-top: 20px; }
+.visitor-resource-action { margin-top: 10px; padding: 0; background: transparent; color: #0f493b; text-decoration: underline; text-underline-offset: 3px; }
 .visitor-content { display: grid; gap: 18px; margin-top: 30px; }
 .visitor-section h2 { margin-bottom: 18px; }
 .visitor-items { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }

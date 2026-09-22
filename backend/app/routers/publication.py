@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -103,6 +103,22 @@ def preview_public_projection(trip_id: str, session: SessionDep, subject: Subjec
     surface = _get_or_create_surface(session, trip_id)
     response.headers["Cache-Control"] = "no-store"
     return render_projection(trip, surface.scope, "travel/public-trip@1")
+
+
+@router.get("/public-projection/preview/files/{local_id}")
+def preview_public_file(
+    trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> StreamingResponse:
+    trip = owned_trip(session, trip_id, subject)
+    surface = session.get(PublicSurface, trip_id)
+    return _file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS)
+
+
+@router.get("/public-projection/preview/navigation/{local_id}")
+def preview_public_navigation(trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep) -> dict:
+    trip = owned_trip(session, trip_id, subject)
+    surface = session.get(PublicSurface, trip_id)
+    return _preview_navigation(trip, surface.scope if surface else {}, local_id)
 
 
 @router.post("/public-projection/publish", response_model=PublicProjectionStatusResponse)
@@ -247,6 +263,29 @@ def preview_share_link(
     link = owned_link(session, trip_id, subject, link_id)
     response.headers["Cache-Control"] = "no-store"
     return render_projection(trip, link.scope, "travel/unlisted-trip@1")
+
+
+@router.get("/share-links/{link_id}/preview/files/{local_id}")
+def preview_share_file(
+    trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> StreamingResponse:
+    trip = owned_trip(session, trip_id, subject)
+    link = owned_link(session, trip_id, subject, link_id)
+    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS)
+
+
+@router.get("/share-links/{link_id}/preview/navigation/{local_id}")
+def preview_share_navigation(trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep) -> dict:
+    trip = owned_trip(session, trip_id, subject)
+    link = owned_link(session, trip_id, subject, link_id)
+    return _preview_navigation(trip, link.scope, local_id)
+
+
+def _preview_navigation(trip: Trip, scope: dict, local_id: str) -> JSONResponse:
+    target = scoped_navigation_url(trip, scope, local_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS)
+    return JSONResponse({"url": target[0]}, headers=UNLISTED_HEADERS)
 
 
 def _activate_link(link: ShareLink, expires_in_days: int) -> str:

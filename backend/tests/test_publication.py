@@ -108,6 +108,8 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     assert preview.headers["cache-control"] == "no-store"
     assert [m["title"] for m in preview.json()["moments"]] == [shown["title"]]
     assert preview.json()["summary"] is None
+    assert client_for("other-owner").post(f"/api/trips/{trip['id']}/public-projection/preview").status_code == 404
+    owner = client_for("owner-1")
 
     published = owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     assert published.status_code == 200
@@ -119,6 +121,7 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     document = anonymous.get(f"/api/public/trips/{slug}")
     assert document.status_code == 200
     assert document.headers["cache-control"] == "no-store"
+    assert document.json() == preview.json()
     titles = [m["title"] for m in document.json()["moments"]]
     assert titles == [shown["title"]]
     assert hidden["title"] not in titles
@@ -367,6 +370,13 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
         item("document_derivative", selected_document["id"], "title", "file"),
     )
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    preview_file_base = f"/api/trips/{trip['id']}/public-projection/preview/files"
+    assert owner.post(f"/api/trips/{trip['id']}/public-projection/preview").status_code == 200
+    assert owner.get(f"{preview_file_base}/document_derivative-6").content == b"safe"
+    assert owner.get(f"{preview_file_base}/media_derivative-5").status_code == 200
+    assert owner.get(f"{preview_file_base}/document_derivative-7").status_code == 404
+    assert client_for("other-owner").get(f"{preview_file_base}/document_derivative-6").status_code == 404
+    owner = client_for("owner-1")
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
     projection = TestClient(app).get(f"/api/public/trips/{slug}").json()
 
@@ -401,6 +411,8 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
     link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}).json()
     shared = activate(owner, trip["id"], link["id"])
     shared_url = f"/api/shared/{shared['token']}/files/document_derivative-6"
+    share_preview_file = f"/api/trips/{trip['id']}/share-links/{link['id']}/preview/files/document_derivative-6"
+    assert owner.get(share_preview_file).content == b"safe"
     assert visitor.get(shared_url).content == b"safe"
     assert visitor.get(shared_url).headers["cache-control"] == "no-store, private"
 
@@ -410,9 +422,12 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=without_files).status_code == 200
     assert visitor.get(media_url).status_code == 404
     assert visitor.get(document_url).status_code == 404
+    assert owner.get(f"{preview_file_base}/document_derivative-6").status_code == 404
     assert owner.patch(f"/api/trips/{trip['id']}/share-links/{link['id']}", json={"scope": without_files}).status_code == 200
     assert visitor.get(shared_url).status_code == 404
+    assert owner.get(share_preview_file).status_code == 404
     assert owner.post(f"/api/trips/{trip['id']}/share-links/{link['id']}/revoke").status_code == 200
+    assert owner.get(share_preview_file).status_code == 404
     assert visitor.get(shared_url).status_code == 404
 
 
@@ -653,6 +668,7 @@ def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
         f"/api/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}
     ).json()
     token = activate(owner, trip["id"], link["id"])["token"]
+    link_preview = owner.post(f"/api/trips/{trip['id']}/share-links/{link['id']}/preview")
 
     anonymous = TestClient(app)
     for path, version in (
@@ -666,6 +682,31 @@ def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
         assert [moment["title"] for moment in document["moments"]] == ["Visible excerpt"]
         assert not {"owner_subject", "scope", "token", "link_id", "trip_id"} & document.keys()
         assert response.headers["cache-control"].startswith("no-store")
+        if version == "travel/unlisted-trip@1":
+            assert document == link_preview.json()
 
+    public_preview = owner.post(f"/api/trips/{trip['id']}/public-projection/preview").json()
     assert owner.post(f"/api/trips/{trip['id']}/public-projection/unpublish").status_code == 200
     assert anonymous.get(f"/api/public/trips/{slug}").status_code == 404
+    assert owner.post(f"/api/trips/{trip['id']}/public-projection/preview").json() == public_preview
+
+
+def test_preview_navigation_is_owner_authenticated_and_scope_checked_after_withdrawal() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    stage = add_route_stage(owner, trip["id"], 1, "Taipei", "Taipei")
+    selected = scope(item("route_stage", stage["id"], "label", "navigation"))
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    public_path = f"/api/trips/{trip['id']}/public-projection/preview/navigation/route_stage-1"
+    assert owner.get(public_path).json()["url"].startswith("https://www.google.com/maps/dir/?")
+    assert owner.get(public_path.replace("route_stage-1", "route_stage-2")).status_code == 404
+    assert client_for("other-owner").get(public_path).status_code == 404
+    owner = client_for("owner-1")
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": selected}).json()
+    link_path = f"/api/trips/{trip['id']}/share-links/{link['id']}/preview/navigation/route_stage-1"
+    token = activate(owner, trip["id"], link["id"])["token"]
+    assert owner.post(f"/api/trips/{trip['id']}/share-links/{link['id']}/revoke").status_code == 200
+    assert TestClient(app).get(f"/api/shared/{token}").status_code == 404
+    assert owner.get(link_path).status_code == 200
+    assert owner.get(link_path.replace("route_stage-1", "route_stage-2")).status_code == 404
+    assert owner.patch(f"/api/trips/{trip['id']}/share-links/{link['id']}", json={"scope": scope()}).status_code == 409

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { isProjection, ProjectionView, type Projection } from "./ProjectionView";
 import { VisitorRoutes } from "./visitor-routes";
+import { RenderedPreview } from "./trips/RenderedPreview";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -126,4 +127,38 @@ it("keeps story-only, image-only, and empty projections readable", () => {
   data.media = [];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   expect(screen.getByRole("status").textContent).toContain("Nog geen gedeelde inhoud");
+});
+
+it("uses the visitor story renderer for an owner preview and requests only owner scoped resources", async () => {
+  const data = projection("travel/unlisted-trip@1");
+  data.moments = [{ id: "moment_excerpt-1", title: "Shared story", body: "Visitor text", private_body: "Owner secret" }];
+  data.documents = [{ id: "document_derivative-2", title: "Shared document", file: { id: "document_derivative-2" } }];
+  data.navigation = [{ id: "moment_excerpt-1" }];
+  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" })));
+  vi.stubGlobal("fetch", fetcher);
+  vi.spyOn(window, "open").mockImplementation(() => null);
+  const session = { accessToken: "owner-token", expiresAt: Date.now() + 60_000 };
+  const preview = render(<RenderedPreview projection={data} audience="share" tripId="trip" linkId="draft-link" session={session} />);
+  const visitor = render(<ProjectionView projection={data} audience="share" identifier="live-token" />);
+  for (const value of ["Shared story", "Visitor text", "Shared document", "Reisverhaal", "Routebeschrijving"]) {
+    expect(preview.container.textContent).toContain(value);
+    expect(visitor.container.textContent).toContain(value);
+  }
+  expect(preview.container.textContent).not.toContain("Owner secret");
+  fireEvent.click(preview.container.querySelector(".visitor-resource-action")!);
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/trips/trip/share-links/draft-link/preview/navigation/moment_excerpt-1");
+  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ credentials: "omit", cache: "no-store", headers: { Authorization: "Bearer owner-token" } });
+});
+
+it("renders the same scoped gallery in preview without requesting a visitor file URL", () => {
+  const data = projection();
+  data.moments = [{ id: "moment-1", title: "Arrival" }];
+  data.media = [{ id: "photo-1", image: { id: "photo-1" }, moment: "moment-1", caption: "Station", alt_text: "Platform", focal_x: 20, focal_y: 70 }];
+  const visitor = render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  const preview = render(<ProjectionView projection={data} audience="public" identifier="" previewResources={{ images: { "photo-1": "blob:owner-preview" }, openFile: vi.fn(), openNavigation: vi.fn() }} />);
+  expect(visitor.container.querySelector(".visitor-timeline .visitor-gallery")?.textContent).toContain("Station");
+  expect(preview.container.querySelector(".visitor-timeline .visitor-gallery")?.textContent).toContain("Station");
+  expect(preview.container.querySelector("img")?.getAttribute("src")).toBe("blob:owner-preview");
+  expect(preview.container.innerHTML).not.toContain("/api/public/trips/");
 });

@@ -82,7 +82,7 @@ archive-content import in #40.
       interactive maps in the React owner and visitor views.
 - [x] [#120](https://github.com/tjorim/travel/issues/120) Build chronological
       trip stories and responsive galleries in live visitor views.
-- [ ] [#126](https://github.com/tjorim/travel/issues/126) Show the rendered
+- [x] [#126](https://github.com/tjorim/travel/issues/126) Show the rendered
       visitor preview in owner publication controls.
 - [ ] [#125](https://github.com/tjorim/travel/issues/125) Add published-trip
       discovery to the new Travel landing page.

@@ -313,6 +313,7 @@ export type ProjectionDocument = {
   media: Record<string, unknown>[];
   documents: Record<string, unknown>[];
   route: Record<string, unknown>[];
+  navigation: Record<string, unknown>[];
 };
 
 const draftKey = "travel-tracker-moment-draft-v1";
