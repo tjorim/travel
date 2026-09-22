@@ -9,7 +9,8 @@ records to migrate or preserve. The live browser routes are defined in
 
 | Path | Owner at launch |
 |---|---|
-| `/` | Data-free public landing page with an entry to the owner app; it does not serve an archive trip or list unpublished trips. |
+| `/` | Data-free public landing shell with published application trip discovery and an entry to the owner app. It requests the live public listing; it does not serve archive trips or disclose unpublished trips. |
+| `/trips/` | The same public trip index, with links to current published application trips. |
 | `/admin/*` | Owner application shell and owner session. |
 | `/api/*` | Travel API, including scoped public and unlisted projections. |
 | `/trips/{slug}` | Public visitor shell; requests only the current public projection. |
@@ -35,7 +36,8 @@ unlisted app routes.
 
 ## Launch verification and ownership
 
-`/trips/*` and `/share/*` load data-free visitor shells. Every trip request
+`/`, `/trips/*` and `/share/*` load data-free visitor shells. The root and
+`/trips/` index request the server-filtered public listing on each load. Every trip request
 reaches its scoped API endpoint, where publication or capability state and scope
 are checked at request time. The launch route check covers published,
 unpublished, missing, revoked and expired states, direct reloads, API errors,

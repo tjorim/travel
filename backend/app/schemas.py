@@ -563,6 +563,12 @@ class ProjectionDocument(BaseModel):
     navigation: list[dict]
 
 
+class PublicTripCard(BaseModel):
+    slug: str
+    title: str | None
+    summary: str | None
+
+
 class PublicProjectionStatusResponse(BaseModel):
     trip_id: str
     scope: dict

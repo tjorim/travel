@@ -84,8 +84,6 @@ archive-content import in #40.
       trip stories and responsive galleries in live visitor views.
 - [x] [#126](https://github.com/tjorim/travel/issues/126) Show the rendered
       visitor preview in owner publication controls.
-- [ ] [#125](https://github.com/tjorim/travel/issues/125) Add published-trip
-      discovery to the new Travel landing page.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
       complete owner-authenticated MCP workflows for every #38 resource and
       #73 owner-side publication/preview operation, using typed tools against
@@ -162,6 +160,11 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#125](https://github.com/tjorim/travel/issues/125) Added live published-trip
+      discovery at `/` and `/trips/`, with scope-filtered public cards, stable
+      slugs, and accessible loading, error and empty states. Production route
+      coordination remains with [apps#219](https://github.com/tjorim/apps/issues/219).
 
 - [x] [#124](https://github.com/tjorim/travel/issues/124) Added owner-selected
       offline private copies to the React PWA: explicit per-item pin, inspect,

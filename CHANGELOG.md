@@ -29,6 +29,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added live public trip discovery on the Travel landing page and `/trips/`:
+  only currently published, scope-approved titles and summaries appear, with
+  no-store responses and visitor loading, error and empty states.
+  ([#125](https://github.com/tjorim/travel/issues/125))
+
 - Added an owner-only rendered preview for public and named-link publication
   scopes using the visitor components, with scoped preview files and navigation
   before activation and after withdrawal. ([#126](https://github.com/tjorim/travel/issues/126))

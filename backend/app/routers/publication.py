@@ -27,6 +27,7 @@ from ..schemas import (
     AuditReasonInput,
     ProjectionDocument,
     PublicProjectionStatusResponse,
+    PublicTripCard,
     ShareLinkActivateRequest,
     ShareLinkActivateResponse,
     ShareLinkCreate,
@@ -382,6 +383,27 @@ def rotate_share_link(
 
 
 # --- Anonymous delivery -------------------------------------------------------------
+
+
+@delivery_router.get("/public/trips", response_model=list[PublicTripCard])
+def list_public_trips(session: SessionDep, response: Response) -> list[PublicTripCard]:
+    # Select only published surfaces. Card text is separately gated by the
+    # current scope, just as it is on the individual visitor page.
+    rows = session.execute(
+        select(PublicSurface, Trip)
+        .join(Trip, Trip.id == PublicSurface.trip_id)
+        .where(PublicSurface.state == SurfaceState.PUBLISHED)
+        .order_by(PublicSurface.created_at.desc(), PublicSurface.slug)
+    ).all()
+    response.headers["Cache-Control"] = "no-store"
+    return [
+        PublicTripCard(
+            slug=surface.slug,
+            title=trip.title if surface.scope.get("trip", {}).get("title", True) else None,
+            summary=trip.summary if surface.scope.get("trip", {}).get("summary", True) else None,
+        )
+        for surface, trip in rows
+    ]
 
 
 @delivery_router.get("/public/trips/{slug}", response_model=ProjectionDocument)

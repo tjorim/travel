@@ -92,6 +92,39 @@ def item(kind: str, resource_id: str, *fields: str) -> dict:
 # --- Public follower view -----------------------------------------------------------
 
 
+def test_public_listing_tracks_live_scope_and_publication_without_owner_data() -> None:
+    owner = client_for("owner-1")
+    draft = create_trip(owner, "Private draft")
+    unlisted = create_trip(owner, "Unlisted only")
+    published = create_trip(owner, "Public trip")
+    visitor = TestClient(app)
+    listing = visitor.get("/api/public/trips")
+    assert listing.status_code == 200
+    assert listing.json() == []
+    assert listing.headers["cache-control"] == "no-store"
+    assert visitor.get("/exampleland-2054/").status_code == 404
+    assert visitor.get("/api/public/trips/exampleland-2054").status_code == 404
+
+    assert owner.post(f"/api/trips/{unlisted['id']}/share-links", json={"label": "Secret"}).status_code == 201
+    assert owner.put(
+        f"/api/trips/{published['id']}/public-projection", json=scope(title=True, summary=False)
+    ).status_code == 200
+    slug = owner.post(f"/api/trips/{published['id']}/public-projection/publish").json()["slug"]
+    assert visitor.get("/api/public/trips").json() == [
+        {"slug": slug, "title": "Public trip", "summary": None}
+    ]
+
+    owner.put(f"/api/trips/{published['id']}/public-projection", json=scope(title=False, summary=True))
+    cards = visitor.get("/api/public/trips").json()
+    assert cards == [{"slug": slug, "title": None, "summary": "A private trip."}]
+    assert not {"id", "trip_id", "owner_subject", "scope", "token", "publication_state"} & cards[0].keys()
+    assert draft["id"] not in str(cards) and unlisted["id"] not in str(cards)
+
+    owner.post(f"/api/trips/{published['id']}/public-projection/unpublish")
+    assert visitor.get("/api/public/trips").json() == []
+    assert visitor.get(f"/api/public/trips/{slug}").status_code == 404
+
+
 def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_to_them() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)

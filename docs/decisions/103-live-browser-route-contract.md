@@ -11,10 +11,13 @@ routes. The fresh-launch route boundary is specified by
 | Audience | Browser route | Request sequence |
 |---|---|---|
 | Owner | `/admin/trips` (within the `/admin/` PWA) | Sign in through the existing owner flow, request `GET /api/trips`, then request owner-authenticated `/api/trips/{trip_id}/*` resources for the selected trip. Owner publication controls may request `GET /api/trips/{trip_id}/public-projection`, `GET /api/trips/{trip_id}/share-links`, and owner-only preview POSTs. |
+| Public index | `/` or `/trips/` | Load a data-free landing shell, then request `GET /api/public/trips`. Only currently published surfaces appear; each card carries its stable public slug and scope-approved title and summary. |
 | Public visitor | `/trips/{slug}` | Load the anonymous page shell, then request only `GET /api/public/trips/{slug}` for trip content. Render the returned `travel/public-trip@1` document. |
 | Unlisted visitor | `/share/{token}` | Load the anonymous page shell, then request only `GET /api/shared/{token}` for trip content. Render the returned `travel/unlisted-trip@1` document. |
 
-The public slug comes from the published public surface. The unlisted token is
+The listing uses `Cache-Control: no-store` and excludes draft, private and
+unlisted surfaces. An empty response shows an empty state; a failed request
+shows an error and retry. The public slug comes from the published public surface. The unlisted token is
 the one-time value returned to the owner on link activation or rotation. Both
 visitor pages use the same projection renderer, with no authenticated owner
 session requirement. They never request `/api/trips/{trip_id}` or owner
@@ -74,9 +77,9 @@ archive migration or URL aliases are defined by #101. Any later work on old
 
 ## Visitor shell build handoff
 
-The frontend build emits data-free `public.html` and `share.html` beside the
-owner `index.html`. The VPS route owner in tjorim/apps#219 serves `public.html`
-for `/trips/{slug}` and `share.html` for `/share/{token}`, with a direct reload
+The frontend build emits data-free `landing.html`, `public.html` and `share.html` beside the
+owner `index.html`. The VPS route owner in tjorim/apps#219 serves `landing.html`
+for `/`, `public.html` for `/trips/` and `/trips/{slug}`, and `share.html` for `/share/{token}`, with a direct reload
 returning the same shell. The built assets are under `/admin/assets/`; the
 visitor entry point neither registers the owner service worker nor reads its
 session. The unlisted shell must receive the protective response headers above

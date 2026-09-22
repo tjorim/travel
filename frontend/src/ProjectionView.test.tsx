@@ -15,6 +15,41 @@ function projection(schema_version = "travel/public-trip@1"): Projection {
   };
 }
 
+it("lists only server supplied public cards and opens their stable slugs", async () => {
+  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify([
+    { slug: "safe-slug", title: "Visible journey", summary: null },
+    { slug: "hidden-title", title: null, summary: "Approved summary" },
+  ])));
+  vi.stubGlobal("fetch", fetcher);
+  render(<MemoryRouter initialEntries={["/"]}><VisitorRoutes /></MemoryRouter>);
+  expect(screen.getByRole("status").textContent).toContain("Reizen laden");
+  const first = await screen.findByRole("link", { name: /Visible journey/ });
+  expect(first.getAttribute("href")).toBe("/trips/safe-slug");
+  expect(screen.getByRole("link", { name: /Gepubliceerde reis/ }).getAttribute("href")).toBe("/trips/hidden-title");
+  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips");
+  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit" });
+});
+
+it("shows an empty index and retries a failed listing without using archive routes", async () => {
+  let failed = true;
+  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => failed ? new Response(null, { status: 503 }) : new Response("[]"));
+  vi.stubGlobal("fetch", fetcher);
+  render(<MemoryRouter initialEntries={["/trips/"]}><VisitorRoutes /></MemoryRouter>);
+  await screen.findByRole("alert");
+  failed = false;
+  screen.getByRole("button", { name: "Opnieuw proberen" }).click();
+  await screen.findByRole("heading", { name: "Nog geen publieke reizen" });
+  expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/public/trips", "/api/public/trips"]);
+});
+
+it("does not treat former archive paths as visitor trips", () => {
+  const fetcher = vi.fn();
+  vi.stubGlobal("fetch", fetcher);
+  render(<MemoryRouter initialEntries={["/exampleland-2054/"]}><VisitorRoutes /></MemoryRouter>);
+  expect(screen.getByRole("heading", { name: "Pagina niet beschikbaar" })).toBeTruthy();
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
 it("renders every resource kind using only supplied fields", () => {
   const data = projection();
   data.route_stages = [{ id: "stage", label: "First stage", place: { label: "Broad city" }, private_address: "Hidden street" }];
