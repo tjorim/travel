@@ -93,7 +93,7 @@ v2 after the app behavior is complete and verified.
         UI for trip content management, split into focused delivery issues:
     - [x] [#96](https://github.com/tjorim/travel/issues/96) Build tracker PWA
           UI for trips, moments, excerpts and places.
-    - [ ] [#95](https://github.com/tjorim/travel/issues/95) Build tracker PWA
+    - [x] [#95](https://github.com/tjorim/travel/issues/95) Build tracker PWA
           UI for stays and documents.
     - [ ] [#94](https://github.com/tjorim/travel/issues/94) Build tracker PWA
           UI for route stages, finished tracks and broad routes.

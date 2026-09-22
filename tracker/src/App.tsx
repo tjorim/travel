@@ -108,6 +108,46 @@ type MomentDraft = {
   mediaAssetIds: string[];
 };
 
+type Stay = {
+  id: string;
+  arrives_at: string;
+  departs_at: string;
+  status: "planned" | "booked" | "confirmed" | "cancelled";
+  property_name: string;
+  booking_reference: string | null;
+  contact_details: string | null;
+  notes: string | null;
+  place: Place;
+};
+
+type BroadStayCard = {
+  id: string;
+  title: string;
+  date_precision: "day" | "month" | "year";
+  place: BroadPlace;
+};
+
+type DocumentAsset = {
+  id: string;
+  document_kind: "booking" | "itinerary" | "receipt" | "other";
+  title: string;
+  byte_size: number;
+  content_type: string;
+  original_filename: string | null;
+  created_at: string;
+  file_url: string;
+};
+
+type DocumentDerivative = {
+  id: string;
+  document_asset_id: string;
+  review_state: "pending" | "approved";
+  byte_size: number;
+  content_type: string;
+  created_at: string;
+  file_url: string;
+};
+
 const draftKey = "travel-tracker-moment-draft-v1";
 
 function localDateTime(value = new Date()): string {
@@ -143,6 +183,22 @@ function apiHeaders(session: TrackerSession): HeadersInit {
 async function apiError(response: Response, fallback: string): Promise<never> {
   const body = await response.json().catch(() => null) as { detail?: string } | null;
   throw new Error(body?.detail || fallback);
+}
+
+function bytesLabel(bytes: number): string {
+  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} kB`;
+}
+
+async function openProtectedFile(session: TrackerSession, fileUrl: string, fallback: string): Promise<void> {
+  const response = await fetch(fileUrl, { headers: { Authorization: `Bearer ${session.accessToken}` } });
+  if (!response.ok) return apiError(response, fallback);
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const preview = window.open(objectUrl, "_blank", "noopener");
+  if (!preview) {
+    URL.revokeObjectURL(objectUrl);
+    throw new Error("Je browser blokkeerde het openen van het private bestand.");
+  }
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -367,6 +423,7 @@ function Trips() {
         <section className="card"><h3>Brede plaatsen</h3>{broadPlaces.length ? <div className="saved-moments">{broadPlaces.map((place) => <div className="moment-summary" key={place.id}><strong>{place.label}</strong><span>{[place.region, place.country_code].filter(Boolean).join(" · ") || "Alleen voor deze reis"}</span></div>)}</div> : <p>Voeg hieronder een bewust algemene plaats toe om die eventueel aan een uittreksel te koppelen.</p>}</section>
       </div>
       <section className="card"><h3>Brede plaats toevoegen</h3><p>Gebruik alleen een bewust algemene aanduiding, zoals een stad of regio. Er zijn geen exacte coördinaten in dit formulier.</p><form className="stack-form" onSubmit={(event) => void saveBroadPlace(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede plaats kon niet worden opgeslagen."))}><div className="field-row"><label>Naam<input required maxLength={120} value={broadPlaceDraft.label} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, label: event.target.value }))} placeholder="Bijvoorbeeld: Taipei" /></label><label>Landcode <span className="optional">(optioneel)</span><input maxLength={2} value={broadPlaceDraft.countryCode} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, countryCode: event.target.value }))} placeholder="TW" /></label></div><label>Regio <span className="optional">(optioneel)</span><input maxLength={120} value={broadPlaceDraft.region} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder="Taipei City" /></label><button type="submit">Brede plaats opslaan</button></form></section>
+      <StayManager trip={selectedTrip} broadPlaces={broadPlaces} />
       <section className="card excerpt-editor"><div className="capture-heading"><div><h3>Moment-uittreksels</h3><p>Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.</p></div>{excerptDraft.id && <button className="secondary compact" type="button" onClick={newExcerpt}>Nieuw uittreksel</button>}</div>
         <form className="stack-form" onSubmit={(event) => void saveExcerpt(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden opgeslagen."))}>
           <div className="field-row"><label>Bronmoment <span className="optional">(optioneel)</span><select value={excerptDraft.sourceMomentId} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, sourceMomentId: event.target.value }))}><option value="">Geen bronmoment</option>{selectedTrip.moments.map((moment) => <option key={moment.id} value={moment.id}>{moment.title}</option>)}</select></label><label>Datumprecisie<select value={excerptDraft.datePrecision} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, datePrecision: event.target.value as MomentExcerpt["date_precision"] }))}><option value="day">Dag</option><option value="month">Maand</option><option value="year">Jaar</option></select></label></div>
@@ -376,7 +433,175 @@ function Trips() {
         </form>
         {selectedTrip.moment_excerpts.length > 0 && <div className="saved-moments">{selectedTrip.moment_excerpts.map((excerpt) => <article className="excerpt-row" key={excerpt.id}><div><strong>{excerpt.title}</strong><span>{excerpt.date_precision} · {excerpt.broad_place_id ? broadPlaces.find((place) => place.id === excerpt.broad_place_id)?.label ?? "brede plaats" : "geen plaats"}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editExcerpt(excerpt)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteExcerpt(excerpt).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
       </section>
+      <DocumentManager trip={selectedTrip} />
     </section>}
+  </section>;
+}
+
+function StayManager({ trip, broadPlaces }: { trip: Trip; broadPlaces: BroadPlace[] }) {
+  const { session } = useAuth();
+  const [stays, setStays] = useState<Stay[]>([]);
+  const [cards, setCards] = useState<BroadStayCard[]>([]);
+  const [message, setMessage] = useState("Laad je private verblijven…");
+  const [stayDraft, setStayDraft] = useState({ id: null as string | null, propertyName: "", arrivesAt: localDateTime(), departsAt: localDateTime(new Date(Date.now() + 86_400_000)), status: "planned" as Stay["status"], address: "", locality: "", countryCode: "", placeChanged: false, bookingReference: "", contactDetails: "", notes: "" });
+  const [cardDraft, setCardDraft] = useState({ id: null as string | null, broadPlaceId: "", title: "", datePrecision: "month" as BroadStayCard["date_precision"] });
+
+  async function load() {
+    if (!session) return;
+    const [staysResponse, cardsResponse] = await Promise.all([
+      fetch(`/api/v1/trips/${trip.id}/stays`, { headers: apiHeaders(session) }),
+      fetch(`/api/v1/trips/${trip.id}/broad-stay-cards`, { headers: apiHeaders(session) }),
+    ]);
+    if (!staysResponse.ok) return apiError(staysResponse, "Je verblijven konden niet worden geladen.");
+    if (!cardsResponse.ok) return apiError(cardsResponse, "Je brede verblijfskaarten konden niet worden geladen.");
+    setStays(await staysResponse.json() as Stay[]);
+    setCards(await cardsResponse.json() as BroadStayCard[]);
+    setMessage("Verblijven blijven private details. Brede kaarten worden altijd afzonderlijk geschreven.");
+  }
+
+  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je verblijven konden niet worden geladen.")); }, [session, trip.id]);
+
+  function newStay() {
+    setStayDraft({ id: null, propertyName: "", arrivesAt: localDateTime(), departsAt: localDateTime(new Date(Date.now() + 86_400_000)), status: "planned", address: "", locality: "", countryCode: "", placeChanged: false, bookingReference: "", contactDetails: "", notes: "" });
+  }
+
+  function editStay(stay: Stay) {
+    setStayDraft({ id: stay.id, propertyName: stay.property_name, arrivesAt: localDateTime(new Date(stay.arrives_at)), departsAt: localDateTime(new Date(stay.departs_at)), status: stay.status, address: stay.place.address_line1 ?? "", locality: stay.place.locality ?? "", countryCode: stay.place.country_code ?? "", placeChanged: false, bookingReference: stay.booking_reference ?? "", contactDetails: stay.contact_details ?? "", notes: stay.notes ?? "" });
+  }
+
+  async function saveStay(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+    const payload = {
+      property_name: stayDraft.propertyName.trim(),
+      arrives_at: new Date(stayDraft.arrivesAt).toISOString(),
+      departs_at: new Date(stayDraft.departsAt).toISOString(),
+      status: stayDraft.status,
+      booking_reference: stayDraft.bookingReference.trim() || null,
+      contact_details: stayDraft.contactDetails.trim() || null,
+      notes: stayDraft.notes.trim() || null,
+      ...(!stayDraft.id || stayDraft.placeChanged ? { place: { display_name: stayDraft.propertyName.trim(), address_line1: stayDraft.address.trim() || null, locality: stayDraft.locality.trim() || null, country_code: stayDraft.countryCode.trim().toUpperCase() || null } } : {}),
+    };
+    const response = await fetch(stayDraft.id ? `/api/v1/trips/${trip.id}/stays/${stayDraft.id}` : `/api/v1/trips/${trip.id}/stays`, { method: stayDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload) });
+    if (!response.ok) return apiError(response, "Het verblijf kon niet worden opgeslagen.");
+    await load();
+    newStay();
+    setMessage("Privéverblijf opgeslagen.");
+  }
+
+  async function deleteStay(stay: Stay) {
+    if (!session || !window.confirm(`Verwijder verblijf “${stay.property_name}”?`)) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/stays/${stay.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "Het verblijf kon niet worden verwijderd.");
+    await load(); newStay(); setMessage("Privéverblijf verwijderd.");
+  }
+
+  function newCard() { setCardDraft({ id: null, broadPlaceId: "", title: "", datePrecision: "month" }); }
+  function editCard(card: BroadStayCard) { setCardDraft({ id: card.id, broadPlaceId: card.place.id, title: card.title, datePrecision: card.date_precision }); }
+
+  async function saveCard(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+    const response = await fetch(cardDraft.id ? `/api/v1/trips/${trip.id}/broad-stay-cards/${cardDraft.id}` : `/api/v1/trips/${trip.id}/broad-stay-cards`, { method: cardDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify({ broad_place_id: cardDraft.broadPlaceId, title: cardDraft.title.trim(), date_precision: cardDraft.datePrecision }) });
+    if (!response.ok) return apiError(response, "De brede verblijfskaart kon niet worden opgeslagen.");
+    await load(); newCard(); setMessage("Brede verblijfskaart opgeslagen. Hij is nog niet gedeeld.");
+  }
+
+  async function deleteCard(card: BroadStayCard) {
+    if (!session || !window.confirm(`Verwijder brede kaart “${card.title}”?`)) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/broad-stay-cards/${card.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "De brede verblijfskaart kon niet worden verwijderd.");
+    await load(); newCard(); setMessage("Brede verblijfskaart verwijderd.");
+  }
+
+  return <section className="card manager" aria-labelledby="stays-title">
+    <div className="capture-heading"><div><h3 id="stays-title">Verblijven</h3><p>Adressen, boekingen en contactgegevens zijn uitsluitend privé.</p></div>{stayDraft.id && <button className="secondary compact" type="button" onClick={newStay}>Nieuw verblijf</button>}</div>
+    <p className="help" role="status">{message}</p>
+    <form className="stack-form" onSubmit={(event) => void saveStay(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het verblijf kon niet worden opgeslagen."))}>
+      <div className="field-row"><label>Accommodatie<input required maxLength={160} value={stayDraft.propertyName} onChange={(event) => setStayDraft((draft) => ({ ...draft, propertyName: event.target.value }))} /></label><label>Status<select value={stayDraft.status} onChange={(event) => setStayDraft((draft) => ({ ...draft, status: event.target.value as Stay["status"] }))}><option value="planned">Gepland</option><option value="booked">Geboekt</option><option value="confirmed">Bevestigd</option><option value="cancelled">Geannuleerd</option></select></label></div>
+      <div className="field-row"><label>Aankomst<input required type="datetime-local" value={stayDraft.arrivesAt} onChange={(event) => setStayDraft((draft) => ({ ...draft, arrivesAt: event.target.value }))} /></label><label>Vertrek<input required type="datetime-local" value={stayDraft.departsAt} onChange={(event) => setStayDraft((draft) => ({ ...draft, departsAt: event.target.value }))} /></label></div>
+      <div className="field-row"><label>Adres <span className="optional">(optioneel)</span><input maxLength={160} value={stayDraft.address} onChange={(event) => setStayDraft((draft) => ({ ...draft, address: event.target.value, placeChanged: true }))} /></label><label>Plaats <span className="optional">(optioneel)</span><input maxLength={120} value={stayDraft.locality} onChange={(event) => setStayDraft((draft) => ({ ...draft, locality: event.target.value, placeChanged: true }))} /></label></div>
+      <label>Landcode <span className="optional">(optioneel)</span><input maxLength={2} value={stayDraft.countryCode} onChange={(event) => setStayDraft((draft) => ({ ...draft, countryCode: event.target.value, placeChanged: true }))} placeholder="TW" /></label>
+      <label>Boekingsreferentie <span className="optional">(optioneel)</span><input maxLength={255} value={stayDraft.bookingReference} onChange={(event) => setStayDraft((draft) => ({ ...draft, bookingReference: event.target.value }))} /></label><label>Contactgegevens <span className="optional">(optioneel)</span><textarea maxLength={2000} rows={3} value={stayDraft.contactDetails} onChange={(event) => setStayDraft((draft) => ({ ...draft, contactDetails: event.target.value }))} /></label><label>Notities <span className="optional">(optioneel)</span><textarea maxLength={4000} rows={3} value={stayDraft.notes} onChange={(event) => setStayDraft((draft) => ({ ...draft, notes: event.target.value }))} /></label>
+      <button type="submit">{stayDraft.id ? "Verblijf opslaan" : "Verblijf toevoegen"}</button>
+    </form>
+    {stays.length > 0 && <div className="saved-moments manager-list">{stays.map((stay) => <article className="excerpt-row" key={stay.id}><div><strong>{stay.property_name}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium" }).format(new Date(stay.arrives_at))} – {new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium" }).format(new Date(stay.departs_at))} · {stay.status}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editStay(stay)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteStay(stay).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het verblijf kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+    <div className="manager-subsection"><div className="capture-heading"><div><h3>Brede verblijfskaart</h3><p>Een aparte, veilige samenvatting — zonder een koppeling met het exacte verblijf.</p></div>{cardDraft.id && <button className="secondary compact" type="button" onClick={newCard}>Nieuwe kaart</button>}</div>
+      {broadPlaces.length === 0 ? <p className="help">Maak eerst hierboven een brede plaats, zoals een stad of regio.</p> : <form className="stack-form" onSubmit={(event) => void saveCard(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede verblijfskaart kon niet worden opgeslagen."))}><div className="field-row"><label>Brede plaats<select required value={cardDraft.broadPlaceId} onChange={(event) => setCardDraft((draft) => ({ ...draft, broadPlaceId: event.target.value }))}><option value="">Kies een brede plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}</option>)}</select></label><label>Datumprecisie<select value={cardDraft.datePrecision} onChange={(event) => setCardDraft((draft) => ({ ...draft, datePrecision: event.target.value as BroadStayCard["date_precision"] }))}><option value="day">Dag</option><option value="month">Maand</option><option value="year">Jaar</option></select></label></div><label>Titel<input required maxLength={160} value={cardDraft.title} onChange={(event) => setCardDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder="Bijvoorbeeld: Een paar nachten in Taipei" /></label><button type="submit">{cardDraft.id ? "Kaart opslaan" : "Kaart toevoegen"}</button></form>}
+      {cards.length > 0 && <div className="saved-moments manager-list">{cards.map((card) => <article className="excerpt-row" key={card.id}><div><strong>{card.title}</strong><span>{card.place.label} · {card.date_precision}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editCard(card)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteCard(card).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede verblijfskaart kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+    </div>
+  </section>;
+}
+
+function DocumentManager({ trip }: { trip: Trip }) {
+  const { session } = useAuth();
+  const [documents, setDocuments] = useState<DocumentAsset[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [derivatives, setDerivatives] = useState<DocumentDerivative[]>([]);
+  const [message, setMessage] = useState("Laad je private documenten…");
+  const [upload, setUpload] = useState({ title: "", kind: "booking" as DocumentAsset["document_kind"], file: null as File | null });
+  const [redaction, setRedaction] = useState({ file: null as File | null, manifest: null as File | null });
+
+  async function load(selectId?: string | null) {
+    if (!session) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/documents`, { headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "Je documenten konden niet worden geladen.");
+    const loaded = await response.json() as DocumentAsset[];
+    setDocuments(loaded);
+    setSelectedId((current) => selectId === null ? null : loaded.some((document) => document.id === (selectId ?? current)) ? (selectId ?? current) : loaded[0]?.id ?? null);
+    setMessage(loaded.length ? "Documenten en originelen blijven uitsluitend in je private tracker." : "Upload een privédocument wanneer je het wilt bewaren.");
+  }
+
+  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je documenten konden niet worden geladen.")); }, [session, trip.id]);
+  useEffect(() => {
+    if (!session || !selectedId) { setDerivatives([]); return; }
+    void fetch(`/api/v1/trips/${trip.id}/documents/${selectedId}/derivatives`, { headers: apiHeaders(session) })
+      .then((response) => response.ok ? response.json() as Promise<DocumentDerivative[]> : apiError(response, "De afgeleide documenten konden niet worden geladen."))
+      .then(setDerivatives)
+      .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide documenten konden niet worden geladen."));
+  }, [selectedId, session, trip.id]);
+
+  const selected = documents.find((document) => document.id === selectedId) ?? null;
+
+  async function uploadDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session || !upload.file) { setMessage("Kies een bestand om te uploaden."); return; }
+    const data = new FormData(); data.set("title", upload.title.trim()); data.set("document_kind", upload.kind); data.set("file", upload.file);
+    const response = await fetch(`/api/v1/trips/${trip.id}/documents/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
+    if (!response.ok) return apiError(response, "Het document kon niet worden geüpload.");
+    const saved = await response.json() as DocumentAsset;
+    setUpload({ title: "", kind: "booking", file: null }); await load(saved.id); setMessage("Privédocument geüpload.");
+  }
+
+  async function deleteDocument(document: DocumentAsset) {
+    if (!session || !window.confirm(`Verwijder document “${document.title}”?`)) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/documents/${document.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "Het document kon niet worden verwijderd.");
+    await load(null); setMessage("Privédocument verwijderd.");
+  }
+
+  async function addDerivative(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session || !selected || !redaction.file || !redaction.manifest) { setMessage("Kies een geredigeerd bestand én een redactie-manifest."); return; }
+    const data = new FormData(); data.set("file", redaction.file); data.set("redaction_manifest", redaction.manifest);
+    const response = await fetch(`/api/v1/trips/${trip.id}/documents/${selected.id}/derivatives`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
+    if (!response.ok) return apiError(response, "De geredigeerde afgeleide kon niet worden opgeslagen.");
+    const saved = await response.json() as DocumentDerivative;
+    setRedaction({ file: null, manifest: null }); setDerivatives((current) => [saved, ...current]); setMessage("Geredigeerde afgeleide opgeslagen en wacht op jouw expliciete goedkeuring.");
+  }
+
+  async function approveDerivative(derivative: DocumentDerivative) {
+    if (!session || !selected) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/documents/${selected.id}/derivatives/${derivative.id}/approve`, { method: "POST", headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "De afgeleide kon niet worden goedgekeurd.");
+    const saved = await response.json() as DocumentDerivative;
+    setDerivatives((current) => current.map((item) => item.id === saved.id ? saved : item)); setMessage("Afgeleide expliciet goedgekeurd. Delen gebeurt nog steeds alleen via een aparte scope.");
+  }
+
+  return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Originelen staan alleen in je private tracker. Een mogelijke gedeelde kopie moet eerst geredigeerd én goedgekeurd zijn.</p></div></div><p className="help" role="status">{message}</p>
+    <form className="stack-form" onSubmit={(event) => void uploadDocument(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden geüpload."))}><div className="field-row"><label>Titel<input required maxLength={160} value={upload.title} onChange={(event) => setUpload((draft) => ({ ...draft, title: event.target.value }))} /></label><label>Soort<select value={upload.kind} onChange={(event) => setUpload((draft) => ({ ...draft, kind: event.target.value as DocumentAsset["document_kind"] }))}><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></select></label></div><label>Privébestand<input required type="file" onChange={(event) => setUpload((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><button type="submit">Document uploaden</button></form>
+    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className={`excerpt-row ${document.id === selectedId ? "selected-item" : ""}`} key={document.id}><button className="document-select" type="button" onClick={() => setSelectedId(document.id)}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, document.file_url, "Het private origineel kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het private origineel kon niet worden geopend."))}>Origineel bekijken</button><button className="danger compact" type="button" onClick={() => void deleteDocument(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+    {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {selected.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={(event) => void addDerivative(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden opgeslagen."))}><label>Geredigeerd bestand<input required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit">Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, derivative.file_url, "De geredigeerde kopie kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De geredigeerde kopie kon niet worden geopend."))}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => void approveDerivative(derivative).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>}
   </section>;
 }
 

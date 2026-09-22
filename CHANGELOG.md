@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Private tracker PWA workflows for creating, editing and deleting exact
+  stays and separately authored broad-stay cards, plus uploading, viewing and
+  deleting owner-only document originals. A redacted document copy must be
+  uploaded with its redaction manifest, starts pending, and receives a clear
+  explicit-approval action before it can be selected for a later share scope.
+  File previews are fetched with the owner's authorization into a temporary
+  browser object URL; the PWA does not put either originals or exact-stay data
+  on a public or unlisted route. ([#95](https://github.com/tjorim/travel/issues/95))
+
 - Private tracker PWA workflows for listing, creating, editing and deleting
   trips; capturing, editing and deleting canonical moments; and authoring,
   editing and deleting separately written moment excerpts. Exact places are
