@@ -74,7 +74,7 @@ archive migration or URL aliases are defined by #101. Any later work on old
 
 ## Visitor shell build handoff
 
-The tracker build emits data-free `public.html` and `share.html` beside the
+The frontend build emits data-free `public.html` and `share.html` beside the
 owner `index.html`. The VPS route owner in tjorim/apps#219 serves `public.html`
 for `/trips/{slug}` and `share.html` for `/share/{token}`, with a direct reload
 returning the same shell. The built assets are under `/admin/assets/`; the

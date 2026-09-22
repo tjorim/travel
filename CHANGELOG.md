@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Renamed the React source directory from `tracker/` to `frontend/` now that
+  it serves owner, public and unlisted views; updated build automation and
+  repository references.
+- Renamed `api/` to `backend/` to house the shared application service as
+  HTTP and owner MCP interfaces evolve; updated build paths and documentation.
 - Revised the launch contract: create app content fresh, take the static
   `dist/` trip offline, and provide no archive import or old URL alias.
   Defined direct live route ownership and launch verification.
@@ -172,7 +177,7 @@ All notable changes to the travel hub are documented here.
   `system` actor rather than the anonymous token holder. A new owner-only
   `GET /trips/{trip_id}/audit-events` endpoint reads a trip's history; a
   non-owner gets the same 404 as any other trip they don't own.
-  `purge_expired_audit_events` (`api/app/audit.py`) hard-deletes events past
+  `purge_expired_audit_events` (`backend/app/audit.py`) hard-deletes events past
   the sharing policy's 24-month retention window as pure application code,
   run manually for v1; recurring VPS scheduling is tracked separately.
   ([#48](https://github.com/tjorim/travel/issues/48))

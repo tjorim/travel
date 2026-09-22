@@ -3,7 +3,7 @@
 This is the working order for Travel. It is evolving from a Git-backed archive
 with a small tracker into a private, privacy-gradient travel journal: a custom
 Polarsteps-style application for active trips and deliberately published live
-trip views. The tracker PWA and API are deployed through the central VPS
+trip views. The React frontend and API are deployed through the central VPS
 infrastructure.
 
 The `Now`, `Next` and `Later` sections mirror the open GitHub issues in their

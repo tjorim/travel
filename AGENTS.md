@@ -2,8 +2,8 @@
 
 ## Project Structure & Module Organization
 
-This is a Git-backed travel hub with a static archive and a small tracker API.
-`dist/` remains the deployable archive root; `api/` is the FastAPI tracker
+This is a Git-backed travel hub with a static archive and an application backend.
+`dist/` remains the deployable archive root; `backend/` contains the FastAPI
 service and its Alembic migrations.
 
 - `dist/index.html` is the public travel-hub landing page.
@@ -13,8 +13,10 @@ service and its Alembic migrations.
 - `dist/<trip-slug>/private/` holds protected itinerary and booking details.
 - `dist/assets/travel/` contains reusable browser components such as
   `flight-map.js` and `document-list.js`.
-- `api/app/` contains the tracker API; `api/alembic/` contains its migrations.
-- `tracker/` is the React PWA source, served only below `/admin/`.
+- `backend/app/` contains the application service and API; `backend/alembic/`
+  contains its migrations.
+- `frontend/` is the React source for the owner PWA below `/admin/` and the
+  public `/trips/` and unlisted `/share/` visitor views.
 - `PLAN.md` is the ordered backlog; `CHANGELOG.md` records completed changes.
 
 ## Build, Test, and Development Commands
@@ -42,7 +44,7 @@ Validate `Caddyfile.example` with a Caddy container when its routing changes.
 For tracker API work, use the locked Python environment:
 
 ```bash
-cd api
+cd backend
 uv sync --all-groups --frozen
 uv run pytest
 uv run ruff check .
@@ -62,10 +64,10 @@ go build ./...
 go test ./...
 ```
 
-For tracker PWA work, use the repository's pinned Node version:
+For frontend work, use the repository's pinned Node version:
 
 ```bash
-cd tracker
+cd frontend
 vp env exec --node "$(cat .node-version)" pnpm install --frozen-lockfile
 vp env exec --node "$(cat .node-version)" pnpm build
 ```

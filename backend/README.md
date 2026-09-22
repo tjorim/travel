@@ -1,7 +1,8 @@
-# Travel tracker API
+# Travel application backend
 
-The tracker API is a separate FastAPI application; it does not replace the
-static archive or read its JSON, documents, or protected files.
+The backend currently exposes the Travel application through FastAPI. The
+owner MCP interface in #41 will use the same application service layer. This
+backend does not read the static archive's JSON, documents, or protected files.
 
 ## API contract
 
@@ -267,7 +268,7 @@ TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel
 ```
 
 GitHub Actions runs these API checks, including the upgrade/downgrade cycle
-against PostgreSQL, on changes to `api/` and on every push to `main`.
+against PostgreSQL, on changes to `backend/` and on every push to `main`.
 The initial migration can be reversed with `uv run alembic downgrade base`.
 The central deployment in apps#215 must take a database backup before running
 the first production upgrade. Its rollback is: stop `travel-api`, restore the

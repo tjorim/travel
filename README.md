@@ -79,6 +79,8 @@ cache/indexing response needed if a page was accidentally exposed.
 
 ## Structure
 
+- `frontend/` — React source for the owner `/admin/` PWA and live public and unlisted trip views
+- `backend/` — application service, FastAPI routes and future owner MCP workflows
 - `dist/index.html` — travel-hub overview
 - `dist/private/` — shared passport, insurance and emergency-document area (Caddy-protected)
 - `dist/private/documents/` — document files committed to this private Git repository
@@ -107,9 +109,9 @@ cache/indexing response needed if a page was accidentally exposed.
 The page has no build step or package dependencies. Public photos use committed,
 responsive derivatives rather than external image URLs.
 
-## Tracker API
+## Application backend
 
-`api/` is the separate FastAPI backend for the privacy-first tracker. It keeps
+`backend/` contains the FastAPI service for the Travel application. It keeps
 the static archive and its private documents untouched. The API stores only
 owner-scoped trip data: exact and broad places, route stages, moments and
 moment excerpts, and owner-authorized media uploads/imports copied into
@@ -119,7 +121,7 @@ present). It does not perform continuous or automatic location tracking.
 For local development, install the locked dependencies and run the tests:
 
 ```bash
-cd api
+cd backend
 uv sync --all-groups
 uv run pytest
 ```

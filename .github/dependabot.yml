@@ -1,8 +1,8 @@
 version: 2
 updates:
-  # Monitor uv-managed API dependencies.
+  # Monitor uv-managed backend dependencies.
   - package-ecosystem: "uv"
-    directory: "/api"
+    directory: "/backend"
     schedule:
       interval: "weekly"
       day: "friday"
@@ -12,7 +12,7 @@ updates:
     assignees:
       - "tjorim"
     commit-message:
-      prefix: "deps(api)"
+      prefix: "deps(backend)"
       include: "scope"
     labels:
       - "dependencies"
@@ -47,7 +47,7 @@ updates:
 
   # pnpm projects use Dependabot's npm ecosystem support.
   - package-ecosystem: "npm"
-    directory: "/tracker"
+    directory: "/frontend"
     schedule:
       interval: "weekly"
       day: "friday"

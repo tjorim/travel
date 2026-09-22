@@ -3,13 +3,13 @@
 travel-auth.env
 Caddyfile
 
-# Python tracker API local environments and test artifacts.
-api/.venv/
-api/.pytest_cache/
-api/travel-api.db
-api/media-storage/
-api/**/__pycache__/
-api/**/*.pyc
-tracker/dist/
-tracker/node_modules/
-tracker/*.tsbuildinfo
+# Python backend local environments and test artifacts.
+backend/.venv/
+backend/.pytest_cache/
+backend/travel-api.db
+backend/media-storage/
+backend/**/__pycache__/
+backend/**/*.pyc
+frontend/dist/
+frontend/node_modules/
+frontend/*.tsbuildinfo
