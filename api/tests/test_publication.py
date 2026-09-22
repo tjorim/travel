@@ -1,4 +1,5 @@
 import io
+import json
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -133,6 +134,34 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     owner.patch(f"/api/v1/trips/{trip['id']}/moment-excerpts/{shown['id']}", json={"title": "Hotel check-in (updated)"})
     refreshed = anonymous.get(f"/api/v1/public/trips/{slug}")
     assert refreshed.json()["moments"][0]["title"] == "Hotel check-in (updated)"
+
+
+def test_private_moment_media_attachments_never_reach_a_shared_excerpt(tmp_path: Path) -> None:
+    """EXIF suggestions feed only the owner edit route, never a projection."""
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    uploaded = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", b"not-a-real-jpeg", "image/jpeg")}
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    asset_id = uploaded.json()["id"]
+    moment = owner.post(
+        f"/api/v1/trips/{trip['id']}/moments",
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z", "title": "Private arrival", "story": "Not for sharing.",
+            "media_asset_ids": [asset_id],
+        },
+    )
+    assert moment.status_code == 201, moment.text
+    excerpt = add_excerpt(owner, trip["id"], "Safe arrival")
+    owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=scope(item("moment_excerpt", excerpt["id"], "title")))
+    slug = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish").json()["slug"]
+
+    body = TestClient(app).get(f"/api/v1/public/trips/{slug}").json()
+    serialized = json.dumps(body)
+    assert asset_id not in serialized
+    assert "media_asset_ids" not in serialized
 
 
 def test_public_projection_scope_changes_after_publish_are_live() -> None:

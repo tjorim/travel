@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.auth import current_subject
 from app.database import Base, get_session
 from app.main import app
+from app.models import MediaAsset, MediaKind, ObjectState, StoredObject
 
 engine = create_engine(
     "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
@@ -72,6 +73,47 @@ def test_owner_can_create_edit_and_delete_a_moment() -> None:
 
     deleted = client.delete(f"/api/v1/trips/{trip['id']}/moments/{moment_id}")
     assert deleted.status_code == 204
+
+
+def test_moment_media_attachments_are_explicit_owner_only_references() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    with TestingSessionLocal() as session:
+        stored = StoredObject(
+            trip_id=trip["id"], object_key="owner-only/sunrise.jpg", sha256="a" * 64,
+            byte_size=1, content_type="image/jpeg", state=ObjectState.AVAILABLE,
+        )
+        session.add(stored)
+        session.flush()
+        asset = MediaAsset(
+            trip_id=trip["id"], original_object_id=stored.id, media_kind=MediaKind.PHOTO, raw_metadata={},
+        )
+        session.add(asset)
+        session.commit()
+        asset_id = asset.id
+
+    created = owner.post(
+        f"/api/v1/trips/{trip['id']}/moments",
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z", "title": "Arrival", "story": "A private note.",
+            "media_asset_ids": [asset_id],
+        },
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["media_asset_ids"] == [asset_id]
+
+    cleared = owner.patch(f"/api/v1/trips/{trip['id']}/moments/{created.json()['id']}", json={"media_asset_ids": []})
+    assert cleared.status_code == 200
+    assert cleared.json()["media_asset_ids"] == []
+
+    rejected = owner.post(
+        f"/api/v1/trips/{trip['id']}/moments",
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z", "title": "Nope", "story": "A private note.",
+            "media_asset_ids": [asset_id, "missing-asset"],
+        },
+    )
+    assert rejected.status_code == 422
 
 
 def test_other_subject_cannot_read_or_change_a_trip() -> None:

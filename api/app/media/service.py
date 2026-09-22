@@ -469,6 +469,10 @@ def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
     """Soft-delete: gone from owner queries immediately. Physical bytes are
     purged later by `purge_deleted_media`, after the recoverable-deletion
     window, never synchronously here."""
+    # A removed original is no longer an attachment. Keep no hidden link on a
+    # moment that might later be mistaken for a publishable reference.
+    for link in list(media_asset.moment_links):
+        session.delete(link)
     media_asset.deleted_at = datetime.now(UTC)
     session.commit()
 

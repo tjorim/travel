@@ -90,19 +90,43 @@ v2 after the app behavior is complete and verified.
   - [x] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
         share scopes to cover every resource type.
   - [ ] [#61](https://github.com/tjorim/travel/issues/61) Build tracker PWA
-        UI for trip content management.
+        UI for trip content management, split into focused delivery issues:
+    - [ ] [#96](https://github.com/tjorim/travel/issues/96) Build tracker PWA
+          UI for trips, moments, excerpts and places.
+    - [ ] [#95](https://github.com/tjorim/travel/issues/95) Build tracker PWA
+          UI for stays and documents.
+    - [ ] [#94](https://github.com/tjorim/travel/issues/94) Build tracker PWA
+          UI for route stages, finished tracks and broad routes.
   - [ ] [#62](https://github.com/tjorim/travel/issues/62) Build tracker PWA
-        UI for publication and media management.
+        UI for publication and media management, split into focused delivery
+        issues:
+    - [ ] [#99](https://github.com/tjorim/travel/issues/99) Build tracker PWA
+          UI for publication scopes and share-link lifecycle.
+    - [ ] [#98](https://github.com/tjorim/travel/issues/98) Build tracker PWA
+          media library, upload and derivative review.
+  - [ ] [#97](https://github.com/tjorim/travel/issues/97) Suggest candidate
+        visits from private media metadata after the media-library workflow is
+        available.
 - [ ] [#73](https://github.com/tjorim/travel/issues/73) Serve public and
       unlisted trips live from the Travel app. This cross-release tracking
       issue follows #38's phased model:
   - [ ] [#89](https://github.com/tjorim/travel/issues/89) Define the live
-        Travel web-route and projection contract.
+        Travel web-route and projection contract, split into focused delivery
+        issues:
+    - [ ] [#103](https://github.com/tjorim/travel/issues/103) Define the live
+          browser route and scoped-projection contract.
+    - [ ] [#101](https://github.com/tjorim/travel/issues/101) Define
+          legacy-route coexistence and the stable live Travel URL transition.
   - [ ] [#90](https://github.com/tjorim/travel/issues/90) Build live public
-        and unlisted Travel trip views.
+        and unlisted Travel trip views, split into focused delivery issues:
+    - [ ] [#102](https://github.com/tjorim/travel/issues/102) Build the safe
+          public/unlisted visitor route shell and projection loader.
+    - [ ] [#100](https://github.com/tjorim/travel/issues/100) Build the
+          accessible scoped-projection renderer for live Travel views.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
-      narrow owner-authenticated MCP management tools against the app service
-      layer.
+      complete owner-authenticated MCP workflows for every #38 resource and
+      #73 owner-side publication/preview operation, using typed tools against
+      the app service layer.
 - [x] [#39](https://github.com/tjorim/travel/issues/39) Add privacy-aware OSM
       place search and Google Maps navigation.
 

@@ -97,6 +97,14 @@ reverse lookup is only a suggestion: it does not create or attach a place. It
 is intended for an owner-confirmed media-EXIF suggestion flow (#52), never for
 automatic capture or canonical writes.
 
+A moment can explicitly reference up to twelve owner-only `media_asset_ids`.
+These attachments are private editing context, distinct from `photo_urls` and
+share derivatives: they cannot be put in a public or unlisted scope. An owner
+may use an attached photo's capture time as a date suggestion or send its GPS
+to the explicit reverse endpoint, then choose a returned place before saving
+the moment. Neither action creates or changes a moment or exact place on its
+own.
+
 Search text can itself be sensitive. The service sends it only to the
 configured provider over HTTPS; it does not log it and keeps results only in a
 bounded in-process TTL cache. It intentionally has no database-backed cache,

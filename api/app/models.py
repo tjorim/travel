@@ -278,6 +278,31 @@ class Moment(Base):
 
     trip: Mapped[Trip] = relationship(back_populates="moments")
     place: Mapped[Place | None] = relationship(foreign_keys=[exact_place_id])
+    media_links: Mapped[list["MomentMediaAsset"]] = relationship(
+        back_populates="moment", cascade="all, delete-orphan", order_by="MomentMediaAsset.created_at"
+    )
+
+    @property
+    def media_asset_ids(self) -> list[str]:
+        return [link.media_asset_id for link in self.media_links]
+
+
+class MomentMediaAsset(Base):
+    """An owner-only, explicit attachment of an ingested asset to a moment.
+
+    This is deliberately separate from a share derivative and from
+    ``photo_urls``. Attaching an original gives the owner a private editing
+    affordance; it never makes the asset or its EXIF eligible for projection.
+    """
+
+    __tablename__ = "moment_media_assets"
+
+    moment_id: Mapped[str] = mapped_column(ForeignKey("moments.id", ondelete="CASCADE"), primary_key=True)
+    media_asset_id: Mapped[str] = mapped_column(ForeignKey("media_assets.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    moment: Mapped[Moment] = relationship(back_populates="media_links")
+    media_asset: Mapped["MediaAsset"] = relationship(back_populates="moment_links")
 
 
 class MomentExcerpt(Base):
@@ -584,6 +609,7 @@ class MediaAsset(Base):
     derivatives: Mapped[list["MediaDerivative"]] = relationship(
         back_populates="media_asset", cascade="all, delete-orphan"
     )
+    moment_links: Mapped[list[MomentMediaAsset]] = relationship(back_populates="media_asset")
 
 
 class MediaDerivative(Base):

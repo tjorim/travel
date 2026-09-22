@@ -162,12 +162,20 @@ class MomentCreate(BaseModel):
     story: str = Field(min_length=1, max_length=10000)
     place: ExactPlaceInput | None = None
     photo_urls: list[HttpUrl] = Field(default_factory=list, max_length=12)
+    media_asset_ids: list[str] = Field(default_factory=list, max_length=12)
 
     @field_validator("photo_urls")
     @classmethod
     def require_https(cls, values: list[HttpUrl]) -> list[HttpUrl]:
         if any(value.scheme != "https" for value in values):
             raise ValueError("Photo references must use HTTPS")
+        return values
+
+    @field_validator("media_asset_ids")
+    @classmethod
+    def require_unique_media_assets(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("A media asset can only be attached once")
         return values
 
 
@@ -177,12 +185,20 @@ class MomentUpdate(BaseModel):
     story: str | None = Field(default=None, min_length=1, max_length=10000)
     place: ExactPlaceInput | None = None
     photo_urls: list[HttpUrl] | None = Field(default=None, max_length=12)
+    media_asset_ids: list[str] | None = Field(default=None, max_length=12)
 
     @field_validator("photo_urls")
     @classmethod
     def require_https(cls, values: list[HttpUrl] | None) -> list[HttpUrl] | None:
         if values is not None and any(value.scheme != "https" for value in values):
             raise ValueError("Photo references must use HTTPS")
+        return values
+
+    @field_validator("media_asset_ids")
+    @classmethod
+    def require_unique_media_assets(cls, values: list[str] | None) -> list[str] | None:
+        if values is not None and len(values) != len(set(values)):
+            raise ValueError("A media asset can only be attached once")
         return values
 
 
@@ -192,6 +208,7 @@ class MomentResponse(BaseModel):
     title: str
     story: str
     photo_urls: list[str]
+    media_asset_ids: list[str]
     place: ExactPlaceResponse | None
     model_config = ConfigDict(from_attributes=True)
 

@@ -10,9 +10,11 @@ from ..database import get_session
 from ..models import (
     BroadStayCard,
     DocumentDerivative,
+    MediaAsset,
     MediaDerivative,
     Moment,
     MomentExcerpt,
+    MomentMediaAsset,
     Place,
     PlaceKind,
     PublicationState,
@@ -52,6 +54,7 @@ def trip_query():
         selectinload(Trip.route_stages).selectinload(RouteStage.place),
         selectinload(Trip.places),
         selectinload(Trip.moments).selectinload(Moment.place),
+        selectinload(Trip.moments).selectinload(Moment.media_links),
         selectinload(Trip.moment_excerpts).selectinload(MomentExcerpt.broad_place),
         selectinload(Trip.stays).selectinload(Stay.place),
         selectinload(Trip.broad_stay_cards).selectinload(BroadStayCard.place),
@@ -73,6 +76,32 @@ def exact_place_from_input(session: Session, trip_id: str, payload: ExactPlaceIn
     session.add(place)
     session.flush()
     return place
+
+
+def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[str]) -> list[MomentMediaAsset]:
+    """Resolve attachments inside the already-authorized trip boundary.
+
+    The association intentionally stores no EXIF, file URL or share state.
+    A client can only attach non-deleted assets owned by this trip.
+    """
+    if not media_asset_ids:
+        return []
+    assets = list(
+        session.scalars(
+            select(MediaAsset).where(
+                MediaAsset.trip_id == trip_id,
+                MediaAsset.id.in_(media_asset_ids),
+                MediaAsset.deleted_at.is_(None),
+            )
+        )
+    )
+    if len(assets) != len(media_asset_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="One or more media assets are unavailable for this trip",
+        )
+    by_id = {asset.id: asset for asset in assets}
+    return [MomentMediaAsset(media_asset=by_id[asset_id]) for asset_id in media_asset_ids]
 
 
 def owned_trip(session: Session, trip_id: str, subject: str) -> Trip:
@@ -173,17 +202,20 @@ def delete_route_stage(trip_id: str, stage_id: str, session: SessionDep, subject
 @router.post("/{trip_id}/moments", response_model=MomentResponse, status_code=status.HTTP_201_CREATED)
 def create_moment(trip_id: str, payload: MomentCreate, session: SessionDep, subject: SubjectDep) -> Moment:
     trip = owned_trip(session, trip_id, subject)
-    values = payload.model_dump(exclude={"place", "photo_urls"})
+    values = payload.model_dump(exclude={"place", "photo_urls", "media_asset_ids"})
     moment = Moment(
         trip=trip,
         author_subject=subject,
         place=exact_place_from_input(session, trip.id, payload.place) if payload.place else None,
         photo_urls=[str(url) for url in payload.photo_urls],
+        media_links=media_links_from_ids(session, trip.id, payload.media_asset_ids),
         **values,
     )
     session.add(moment)
     session.commit()
-    return session.scalar(select(Moment).options(selectinload(Moment.place)).where(Moment.id == moment.id))  # type: ignore[return-value]
+    return session.scalar(
+        select(Moment).options(selectinload(Moment.place), selectinload(Moment.media_links)).where(Moment.id == moment.id)
+    )  # type: ignore[return-value]
 
 
 def owned_moment(trip: Trip, moment_id: str) -> Moment:
@@ -204,13 +236,17 @@ def update_moment(
     # omitted field and null as None.
     if "place" in payload.model_fields_set:
         moment.place = exact_place_from_input(session, trip.id, payload.place) if payload.place else None
-    values = payload.model_dump(exclude_unset=True, exclude={"place", "photo_urls"})
+    values = payload.model_dump(exclude_unset=True, exclude={"place", "photo_urls", "media_asset_ids"})
     for field, value in values.items():
         setattr(moment, field, value)
     if payload.photo_urls is not None:
         moment.photo_urls = [str(url) for url in payload.photo_urls]
+    if "media_asset_ids" in payload.model_fields_set:
+        moment.media_links = media_links_from_ids(session, trip.id, payload.media_asset_ids or [])
     session.commit()
-    return session.scalar(select(Moment).options(selectinload(Moment.place)).where(Moment.id == moment.id))  # type: ignore[return-value]
+    return session.scalar(
+        select(Moment).options(selectinload(Moment.place), selectinload(Moment.media_links)).where(Moment.id == moment.id)
+    )  # type: ignore[return-value]
 
 
 @router.delete("/{trip_id}/moments/{moment_id}", status_code=status.HTTP_204_NO_CONTENT)

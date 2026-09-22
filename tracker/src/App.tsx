@@ -17,8 +17,42 @@ type AuthContextValue = {
 
 type Place = {
   id: string;
-  display_name: string;
+  display_name: string | null;
+  osm_element_type: "node" | "way" | "relation" | null;
+  osm_element_id: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  locality: string | null;
+  admin_area: string | null;
+  postal_code: string | null;
   country_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  viewport_north: number | null;
+  viewport_south: number | null;
+  viewport_east: number | null;
+  viewport_west: number | null;
+  navigation_provider: string | null;
+  navigation_provider_place_id: string | null;
+  notes: string | null;
+};
+
+type ExactPlaceInput = Partial<Omit<Place, "id">>;
+
+type PlaceSearchResult = ExactPlaceInput;
+
+type MediaAsset = {
+  id: string;
+  media_kind: "photo" | "video";
+  captured_at: string | null;
+  original_filename: string | null;
+  gps: { latitude: number; longitude: number } | null;
+};
+
+type PlaceSearchResponse = {
+  attribution: string;
+  attribution_url: string;
+  results: PlaceSearchResult[];
 };
 
 type Moment = {
@@ -27,6 +61,7 @@ type Moment = {
   title: string;
   story: string;
   place: Place | null;
+  media_asset_ids: string[];
 };
 
 type Trip = {
@@ -37,17 +72,14 @@ type Trip = {
   moments: Moment[];
 };
 
-type LocationPrecision = "none" | "country" | "region" | "city";
-
 type MomentDraft = {
   tripId: string;
   momentId: string | null;
   occurredAt: string;
   title: string;
   story: string;
-  precision: LocationPrecision;
-  placeName: string;
-  countryCode: string;
+  place: ExactPlaceInput | null;
+  mediaAssetIds: string[];
 };
 
 const draftKey = "travel-tracker-moment-draft-v1";
@@ -58,7 +90,7 @@ function localDateTime(value = new Date()): string {
 }
 
 function emptyDraft(tripId = ""): MomentDraft {
-  return { tripId, momentId: null, occurredAt: localDateTime(), title: "", story: "", precision: "none", placeName: "", countryCode: "" };
+  return { tripId, momentId: null, occurredAt: localDateTime(), title: "", story: "", place: null, mediaAssetIds: [] };
 }
 
 function readDraft(): MomentDraft | null {
@@ -159,7 +191,12 @@ function Capture() {
   const [draft, setDraft] = useState<MomentDraft>(() => readDraft() ?? emptyDraft());
   const [draftState, setDraftState] = useState(readDraft() ? "Lokaal concept hersteld." : "Nieuw concept.");
   const [saveState, setSaveState] = useState("");
-  const [geoState, setGeoState] = useState("");
+  const [media, setMedia] = useState<MediaAsset[]>([]);
+  const [mediaState, setMediaState] = useState("");
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState<PlaceSearchResponse | null>(null);
+  const [placeState, setPlaceState] = useState("");
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     const updateConnection = () => setConnection(navigator.onLine);
@@ -197,6 +234,25 @@ function Capture() {
   }, [draft]);
 
   const selectedTrip = useMemo(() => trips.find((trip) => trip.id === draft.tripId) ?? null, [draft.tripId, trips]);
+  const attachedMedia = useMemo(
+    () => draft.mediaAssetIds.map((id) => media.find((asset) => asset.id === id)).filter((asset): asset is MediaAsset => Boolean(asset)),
+    [draft.mediaAssetIds, media],
+  );
+
+  useEffect(() => {
+    if (!session || !selectedTrip) {
+      setMedia([]);
+      return;
+    }
+    setMediaState("Media laden…");
+    void fetch(`/api/v1/trips/${selectedTrip.id}/media`, { headers: { Authorization: `Bearer ${session.accessToken}` } })
+      .then((response) => response.ok ? response.json() as Promise<MediaAsset[]> : Promise.reject(new Error("Je media konden niet worden geladen.")))
+      .then((assets) => {
+        setMedia(assets.filter((asset) => asset.media_kind === "photo"));
+        setMediaState(assets.length ? "Kies privéfoto’s om aan dit moment te koppelen." : "Nog geen foto’s in deze reis.");
+      })
+      .catch((error: unknown) => setMediaState(error instanceof Error ? error.message : "Je media konden niet worden geladen."));
+  }, [selectedTrip, session]);
 
   function updateDraft(values: Partial<MomentDraft>) {
     setDraft((current) => ({ ...current, ...values }));
@@ -206,7 +262,10 @@ function Capture() {
   function startNew() {
     const next = emptyDraft(selectedTrip?.id ?? trips[0]?.id ?? "");
     setDraft(next);
-    setGeoState("");
+    setPlaceQuery("");
+    setPlaceResults(null);
+    setPlaceState("");
+    setDismissedSuggestions([]);
     setSaveState("");
   }
 
@@ -218,25 +277,60 @@ function Capture() {
       occurredAt: localDateTime(occurred),
       title: moment.title,
       story: moment.story,
-      precision: moment.place ? "city" : "none",
-      placeName: moment.place?.display_name ?? "",
-      countryCode: moment.place?.country_code ?? "",
+      place: moment.place,
+      mediaAssetIds: moment.media_asset_ids,
     });
-    setGeoState("");
+    setPlaceQuery("");
+    setPlaceResults(null);
+    setPlaceState("");
+    setDismissedSuggestions([]);
     setSaveState("Je bewerkt een opgeslagen moment.");
   }
 
-  function useCurrentLocation() {
-    if (!navigator.geolocation) {
-      setGeoState("Deze browser ondersteunt geen eenmalige locatietoegang.");
+  function toggleMedia(assetId: string) {
+    updateDraft({ mediaAssetIds: draft.mediaAssetIds.includes(assetId) ? draft.mediaAssetIds.filter((id) => id !== assetId) : [...draft.mediaAssetIds, assetId] });
+    setDismissedSuggestions((current) => current.filter((id) => id !== assetId));
+  }
+
+  function selectPlace(result: PlaceSearchResult) {
+    updateDraft({ place: result });
+    setPlaceState("Plaats geselecteerd. Hij wordt pas gemaakt wanneer je het moment opslaat.");
+    setPlaceResults(null);
+  }
+
+  async function searchPlace() {
+    if (!session || !selectedTrip || placeQuery.trim().length < 2) {
+      setPlaceState("Vul minstens twee tekens in om een plaats te zoeken.");
       return;
     }
-    setGeoState("Je browser vraagt nu eenmalig om je locatie…");
-    navigator.geolocation.getCurrentPosition(
-      () => setGeoState("Locatie eenmalig ontvangen en direct verworpen. Kies hieronder zelf een brede plaatsnaam; er worden geen coördinaten opgeslagen of verstuurd."),
-      (error) => setGeoState(error.code === error.PERMISSION_DENIED ? "Locatietoegang is niet toegestaan. Je kunt een plaatsnaam zelf invullen of weglaten." : "Je locatie kon niet worden bepaald. Je kunt een plaatsnaam zelf invullen of weglaten."),
-      { enableHighAccuracy: false, maximumAge: 0, timeout: 10_000 },
-    );
+    setPlaceState("Plaatsen zoeken…");
+    try {
+      const response = await fetch(`/api/v1/trips/${selectedTrip.id}/places/search`, {
+        method: "POST", headers: { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ query: placeQuery.trim() }),
+      });
+      if (!response.ok) throw new Error("Plaatsen zoeken is nu niet beschikbaar.");
+      const result = await response.json() as PlaceSearchResponse;
+      setPlaceResults(result);
+      setPlaceState(result.results.length ? "Kies een resultaat. Er wordt nog niets opgeslagen." : "Geen plaatsen gevonden.");
+    } catch (error) {
+      setPlaceState(error instanceof Error ? error.message : "Plaatsen zoeken is mislukt.");
+    }
+  }
+
+  async function reverseGeocode(asset: MediaAsset) {
+    if (!session || !selectedTrip || !asset.gps) return;
+    setPlaceState("De fotolocatie wordt alleen voor jou opgezocht…");
+    try {
+      const response = await fetch(`/api/v1/trips/${selectedTrip.id}/places/reverse`, {
+        method: "POST", headers: { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(asset.gps),
+      });
+      if (!response.ok) throw new Error("Deze fotolocatie kon niet worden opgezocht.");
+      const result = await response.json() as PlaceSearchResponse;
+      setPlaceResults(result);
+      setPlaceState(result.results.length ? "Kies de voorgestelde plaats. Er wordt nog niets opgeslagen." : "Voor deze fotolocatie is geen plaats gevonden.");
+    } catch (error) {
+      setPlaceState(error instanceof Error ? error.message : "Deze fotolocatie kon niet worden opgezocht.");
+    }
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -249,21 +343,12 @@ function Capture() {
       setSaveState("Je bent offline. Dit concept blijft alleen lokaal bewaard en wordt niet automatisch verstuurd.");
       return;
     }
-    const name = draft.placeName.trim();
-    const country = draft.countryCode.trim().toUpperCase();
-    if (draft.precision !== "none" && !name) {
-      setSaveState("Vul een brede plaatsnaam in of kies ‘geen locatie’.");
-      return;
-    }
-    if (country && !/^[A-Z]{2}$/.test(country)) {
-      setSaveState("Gebruik voor land optioneel een ISO-code van twee hoofdletters, bijvoorbeeld TW.");
-      return;
-    }
     const payload = {
       occurred_at: new Date(draft.occurredAt).toISOString(),
       title: draft.title.trim(),
       story: draft.story.trim(),
-      place: draft.precision === "none" ? null : { display_name: name, ...(country ? { country_code: country } : {}) },
+      place: draft.place,
+      media_asset_ids: draft.mediaAssetIds,
     };
     setSaveState("Opslaan…");
     try {
@@ -283,7 +368,10 @@ function Capture() {
       setDraftState("Opgeslagen in je private reis.");
       setSaveState("Moment opgeslagen.");
       setDraft(emptyDraft(selectedTrip.id));
-      setGeoState("");
+      setPlaceQuery("");
+      setPlaceResults(null);
+      setPlaceState("");
+      setDismissedSuggestions([]);
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : "Het moment kon niet worden opgeslagen. Je lokale concept blijft bewaard.");
     }
@@ -301,13 +389,24 @@ function Capture() {
       </div>
       <p className={`connection ${connection ? "online" : "offline"}`} role="status">{connection ? "Verbonden — je kiest zelf wanneer je opslaat." : "Offline — concepten blijven lokaal; er is geen automatische synchronisatie."}</p>
       <form className="capture-form" onSubmit={save}>
-        <label>Reis<select value={draft.tripId} onChange={(event) => updateDraft({ tripId: event.target.value, momentId: null })}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
+        <label>Reis<select value={draft.tripId} onChange={(event) => updateDraft({ tripId: event.target.value, momentId: null, place: null, mediaAssetIds: [] })}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
         {selectedTrip && <aside className="publication" aria-label="Zichtbaarheid van dit moment"><strong>Voor je opslaat</strong><span>{publicationDescription(selectedTrip)}</span></aside>}
         <div className="field-row"><label>Datum en tijd<input required type="datetime-local" value={draft.occurredAt} onChange={(event) => updateDraft({ occurredAt: event.target.value })} /></label><label>Titel<input required maxLength={160} value={draft.title} onChange={(event) => updateDraft({ title: event.target.value })} placeholder="Bijvoorbeeld: eerste avond" /></label></div>
         <label>Je moment<textarea required maxLength={10000} rows={6} value={draft.story} onChange={(event) => updateDraft({ story: event.target.value })} placeholder="Wat wil je onthouden?" /></label>
-        <fieldset className="location"><legend>Locatie — volledig optioneel</legend><p>Travel bewaart alleen de tekst die je hieronder kiest, nooit gps-coördinaten of locatiegeschiedenis.</p><button className="secondary" type="button" onClick={useCurrentLocation}>Gebruik mijn locatie, één keer</button>{geoState && <p className="help" role="status">{geoState}</p>}
-          <label>Hoe precies wil je dit bewaren?<select value={draft.precision} onChange={(event) => { const precision = event.target.value as LocationPrecision; updateDraft({ precision, ...(precision === "none" ? { placeName: "", countryCode: "" } : {}) }); }}><option value="none">Geen locatie</option><option value="country">Alleen land</option><option value="region">Regio of eiland</option><option value="city">Stad of brede plaats</option></select></label>
-          {draft.precision !== "none" && <div className="field-row"><label>Brede plaatsnaam<input required maxLength={120} value={draft.placeName} onChange={(event) => updateDraft({ placeName: event.target.value })} placeholder={draft.precision === "country" ? "Bijvoorbeeld: Taiwan" : draft.precision === "region" ? "Bijvoorbeeld: Noord-Taiwan" : "Bijvoorbeeld: Taipei"} /></label><label>Landcode <span className="optional">optioneel</span><input maxLength={2} value={draft.countryCode} onChange={(event) => updateDraft({ countryCode: event.target.value.toUpperCase() })} placeholder="TW" /></label></div>}
+        <fieldset className="location"><legend>Privéfoto’s koppelen</legend><p>Een koppeling is privé. EXIF wordt alleen hieronder als voorstel gebruikt; geen datum of plaats verandert zonder jouw keuze.</p>
+          <p className="help" role="status">{mediaState}</p>
+          {media.map((asset) => <label className="media-choice" key={asset.id}><input type="checkbox" checked={draft.mediaAssetIds.includes(asset.id)} onChange={() => toggleMedia(asset.id)} />{asset.original_filename ?? "Naamloze foto"}{asset.captured_at ? ` · ${new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(asset.captured_at))}` : ""}</label>)}
+          {attachedMedia.map((asset) => !dismissedSuggestions.includes(asset.id) && (asset.captured_at || asset.gps) && <aside className="exif-suggestion" key={`suggestion-${asset.id}`}><strong>Voorstel uit {asset.original_filename ?? "deze foto"}</strong>
+            {asset.captured_at && <span>Opname: {new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(asset.captured_at))}.</span>}
+            <div className="button-row">{asset.captured_at && <button className="secondary compact" type="button" onClick={() => { updateDraft({ occurredAt: localDateTime(new Date(asset.captured_at!)) }); setSaveState("Opnamedatum als voorstel overgenomen — pas hem gerust aan."); }}>Gebruik opnamedatum</button>}{asset.gps && <button className="secondary compact" type="button" onClick={() => void reverseGeocode(asset)}>Zoek plaats bij foto</button>}<button className="secondary compact" type="button" onClick={() => setDismissedSuggestions((current) => [...current, asset.id])}>Voorstel negeren</button></div>
+          </aside>)}
+          {attachedMedia.filter((asset) => asset.captured_at || asset.gps).length > 1 && <p className="help">Foto’s kunnen verschillen. Elk voorstel blijft afzonderlijk zichtbaar; jij kiest er hoogstens één en kunt die altijd weer aanpassen.</p>}
+        </fieldset>
+        <fieldset className="location"><legend>Exacte plaats — volledig optioneel</legend><p>Zoek en kies een plaats. Deze wordt pas samen met jouw opgeslagen moment als private plaats gemaakt.</p>
+          <div className="field-row"><label>Zoek plaats<input value={placeQuery} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="Bijvoorbeeld: Taipei Main Station" /></label><div className="button-field"><button className="secondary" type="button" onClick={() => void searchPlace()}>Zoeken</button></div></div>
+          {draft.place && <p className="selected-place"><strong>Gekozen plaats:</strong> {draft.place.display_name ?? draft.place.locality ?? "Naamloze plaats"} <button className="secondary compact" type="button" onClick={() => updateDraft({ place: null })}>Verwijderen</button></p>}
+          {placeState && <p className="help" role="status">{placeState}</p>}
+          {placeResults && <div className="place-results">{placeResults.results.map((result) => <button className="place-result" type="button" key={`${result.osm_element_type}-${result.osm_element_id}`} onClick={() => selectPlace(result)}>{result.display_name}</button>)}<p className="help">Zoekresultaten: <a href={placeResults.attribution_url} target="_blank" rel="noreferrer">{placeResults.attribution}</a></p></div>}
         </fieldset>
         <div className="save-row"><button type="submit">{draft.momentId ? "Wijzigingen opslaan" : "Moment opslaan"}</button><span aria-live="polite">{saveState || draftState}</span></div>
       </form>
