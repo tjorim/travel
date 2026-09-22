@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Private tracker PWA media management: direct photo/video upload, private
+  original inspection and deletion, Google Photos/GoPro selection-session
+  entry points, and metadata-free photo derivative generation, review,
+  approval and deletion. Removing a derivative also immediately withdraws it
+  from every live public or unlisted scope. The moment editor continues to
+  keep attached media and EXIF suggestions owner-only and explicit. Settings
+  now exposes non-secret provider connection status as the landing point for
+  the OAuth work in #55; no token is returned to the browser. ([#98](https://github.com/tjorim/travel/issues/98))
+
 - Owner-facing tracker controls for the public projection and named unlisted
   links. Each surface has a field-level `travel/share-scope@1` editor and
   server-rendered preview so an owner can inspect the exact delivered

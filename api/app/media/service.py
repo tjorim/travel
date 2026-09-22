@@ -477,6 +477,24 @@ def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
     session.commit()
 
 
+def delete_media_derivative(session: Session, storage: ObjectStorage, *, derivative: MediaDerivative) -> None:
+    """Remove a disposable derivative and its now-unreferenced stored copy.
+
+    Original media gets a recoverable-deletion period. Generated derivatives
+    do not: once the owner deletes one it must disappear immediately.
+    """
+    stored = derivative.object
+    session.delete(derivative)
+    session.flush()
+    still_referenced = session.scalar(
+        select(MediaAsset.id).where(MediaAsset.original_object_id == stored.id)
+    ) or session.scalar(select(MediaDerivative.id).where(MediaDerivative.object_id == stored.id))
+    if not still_referenced:
+        storage.delete(stored.object_key)
+        session.delete(stored)
+    session.commit()
+
+
 def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than: timedelta) -> int:
     """Hard-delete soft-deleted media past the recoverable-deletion window
     and reclaim any of their stored objects no other asset/derivative still

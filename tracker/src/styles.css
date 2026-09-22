@@ -91,6 +91,11 @@ textarea { min-height: 136px; resize: vertical; }
 .token-reveal p { margin: 0; color: #59460e; }
 .token-reveal code { display: block; overflow-wrap: anywhere; padding: 10px; border-radius: 8px; background: #fffdf8; color: #19342d; font-size: .82rem; }
 .token-reveal button { width: fit-content; }
+.import-session { display: grid; gap: 9px; padding: 14px; border: 1px solid #d1b971; border-radius: 10px; background: #fff6d9; color: #65551d; font-size: .9rem; line-height: 1.45; }
+.import-session .action-link, .import-session button { width: fit-content; }
+.provider-status { padding: 5px 8px; border-radius: 999px; font-size: .78rem; font-weight: 800; }
+.provider-status.connected { background: #e2f1e8; color: #20583f; }
+.provider-status.disconnected { background: #eef1ee; color: #50645b; }
 .link-row { display: grid; gap: 3px; width: 100%; border: 1px solid #cbd7ce; background: #fffdf8; color: #19342d; text-align: left; }
 .link-row span { color: #4d665e; font-size: .84rem; font-weight: 500; }
 .link-row.selected { border-color: #0f493b; box-shadow: 0 0 0 2px #0f493b22; }

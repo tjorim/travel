@@ -97,12 +97,12 @@ v2 after the app behavior is complete and verified.
           UI for stays and documents.
     - [x] [#94](https://github.com/tjorim/travel/issues/94) Build tracker PWA
           UI for route stages, finished tracks and broad routes.
-  - [ ] [#62](https://github.com/tjorim/travel/issues/62) Build tracker PWA
+  - [x] [#62](https://github.com/tjorim/travel/issues/62) Build tracker PWA
         UI for publication and media management, split into focused delivery
         issues:
     - [x] [#99](https://github.com/tjorim/travel/issues/99) Build tracker PWA
           UI for publication scopes and share-link lifecycle.
-    - [ ] [#98](https://github.com/tjorim/travel/issues/98) Build tracker PWA
+    - [x] [#98](https://github.com/tjorim/travel/issues/98) Build tracker PWA
           media library, upload and derivative review.
   - [ ] [#97](https://github.com/tjorim/travel/issues/97) Suggest candidate
         visits from private media metadata after the media-library workflow is

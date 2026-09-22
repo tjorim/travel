@@ -41,10 +41,12 @@ validated OpenID Connect `sub` matches the trip owner:
 | `GET`, `DELETE` | `/trips/{trip_id}/media/{media_id}` | Read or soft-delete a media asset. |
 | `GET` | `/trips/{trip_id}/media/{media_id}/original` | Owner-only, `no-store` original file delivery. |
 | `POST`, `GET` | `/trips/{trip_id}/media/{media_id}/derivatives` | Generate or list stripped/resized derivatives for share/static-export/owner-preview. |
+| `DELETE` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}` | Permanently remove a generated derivative and withdraw it from every live share scope. |
 | `POST` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/approve` | Owner review sign-off; only an approved derivative may ever be referenced by a share scope. |
 | `GET` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/file` | Owner-only, `no-store` derivative file delivery. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions` | Start a Google Photos Picker or GoPro Cloud selection session. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
+| `GET` | `/provider-tokens` | Owner-only non-secret connection status for each import provider. |
 | `PUT`, `DELETE` | `/provider-tokens/{provider}` | Connect or revoke the owner's Google Photos/GoPro Cloud access token (write-only; never read back). |
 
 `GET /api/health` checks database connectivity. FastAPI publishes the full

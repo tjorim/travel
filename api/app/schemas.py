@@ -607,3 +607,10 @@ class ImportSessionCompleteResponse(BaseModel):
 
 class ProviderTokenSet(BaseModel):
     access_token: str = Field(min_length=1, max_length=4096)
+
+
+class ProviderConnectionStatus(BaseModel):
+    """A deliberately non-secret view of an owner's provider connection."""
+
+    provider: ImportProvider
+    connected: bool

@@ -4,10 +4,11 @@ import { AuthProvider } from "./auth-context";
 import { Capture } from "./pages/Capture";
 import { Callback } from "./pages/Callback";
 import { Trips } from "./pages/Trips";
+import { Settings } from "./pages/Settings";
 import { TrackerRoutes } from "./tracker-routes";
 
 function Tracker() {
-  return <TrackerRoutes Trips={Trips} Capture={Capture} />;
+  return <TrackerRoutes Trips={Trips} Capture={Capture} Settings={Settings} />;
 }
 
 export function App() {

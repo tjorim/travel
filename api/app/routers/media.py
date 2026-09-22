@@ -18,9 +18,18 @@ from ..media.service import (
     create_derivative,
     create_import_session,
     delete_media_asset,
+    delete_media_derivative,
     direct_upload,
 )
-from ..models import DerivativeReviewState, ImportProvider, ImportSession, MediaAsset, MediaDerivative
+from ..models import (
+    DerivativeReviewState,
+    ImportProvider,
+    ImportSession,
+    MediaAsset,
+    MediaDerivative,
+    PublicSurface,
+    ShareLink,
+)
 from ..schemas import (
     ImportSessionCompleteResponse,
     ImportSessionResponse,
@@ -28,6 +37,7 @@ from ..schemas import (
     MediaDerivativeCreate,
     MediaDerivativeResponse,
     MediaGpsCoordinates,
+    ProviderConnectionStatus,
     ProviderTokenSet,
 )
 from ..secrets import SecretStore, get_secret_store
@@ -200,6 +210,29 @@ def approve_derivative(
     return _derivative_response(derivative, trip_id)
 
 
+def _remove_from_live_scopes(session: Session, *, trip_id: str, derivative_id: str) -> None:
+    """Withdraw a deleted derivative from public and unlisted live scopes."""
+    holders = [session.get(PublicSurface, trip_id), *session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id))]
+    for holder in holders:
+        if holder is None:
+            continue
+        scope = dict(holder.scope)
+        items = scope.get("items", [])
+        filtered = [item for item in items if not (item.get("kind") == "media_derivative" and item.get("id") == derivative_id)]
+        if len(filtered) != len(items):
+            holder.scope = {**scope, "items": filtered}
+
+
+@router.delete("/{media_id}/derivatives/{derivative_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_derivative(
+    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> Response:
+    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
+    _remove_from_live_scopes(session, trip_id=trip_id, derivative_id=derivative.id)
+    delete_media_derivative(session, storage, derivative=derivative)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/{media_id}/derivatives/{derivative_id}/file")
 def get_derivative_file(
     trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
@@ -271,6 +304,15 @@ def complete_import(
 
 
 # --- Owner provider-token management: never stored in the database ----------------
+
+
+@provider_tokens_router.get("", response_model=list[ProviderConnectionStatus])
+def list_provider_connection_status(subject: SubjectDep, secret_store: SecretStoreDep) -> list[ProviderConnectionStatus]:
+    """Expose connection state without ever returning an access token."""
+    return [
+        ProviderConnectionStatus(provider=provider, connected=secret_store.get_token(subject=subject, provider=provider.value) is not None)
+        for provider in IMPORT_PROVIDERS
+    ]
 
 
 @provider_tokens_router.put("/{provider}", status_code=status.HTTP_204_NO_CONTENT)

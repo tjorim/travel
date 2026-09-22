@@ -28,9 +28,15 @@ export type PlaceSearchResult = ExactPlaceInput;
 export type MediaAsset = {
   id: string;
   media_kind: "photo" | "video";
+  byte_size: number;
+  content_type: string;
   captured_at: string | null;
+  created_at: string;
   original_filename: string | null;
+  camera_make: string | null;
+  camera_model: string | null;
   gps: { latitude: number; longitude: number } | null;
+  file_url: string;
 };
 
 export type PlaceSearchResponse = {
@@ -152,9 +158,32 @@ export type DocumentDerivative = {
 export type MediaDerivative = {
   id: string;
   media_asset_id: string;
+  purpose: "owner_preview" | "share" | "static_export";
   review_state: "pending" | "approved";
+  metadata_stripped_at: string | null;
   width: number | null;
   height: number | null;
+  created_at: string;
+  file_url: string;
+};
+
+export type ProviderConnectionStatus = {
+  provider: "google_photos_picker" | "gopro_cloud";
+  connected: boolean;
+};
+
+export type ImportSession = {
+  id: string;
+  provider: ProviderConnectionStatus["provider"];
+  state: "pending" | "completed" | "expired";
+  picker_uri: string | null;
+  expires_at: string | null;
+};
+
+export type ImportCompleteResult = {
+  ready: boolean;
+  imported: MediaAsset[];
+  failed: { provider_item_id: string; failure_code: string }[];
 };
 
 export type ShareScopeKind = "exact_place" | "route_stage" | "broad_place" | "broad_route" | "moment_excerpt" | "broad_stay_card" | "media_derivative" | "document_derivative";

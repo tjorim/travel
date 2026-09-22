@@ -259,6 +259,50 @@ def test_share_derivative_strips_exif_and_starts_pending_owner_review(tmp_path: 
     assert approved.json()["review_state"] == "approved"
 
 
+def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    media = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
+    ).json()
+    derivative = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives", json={"purpose": "share"}
+    ).json()
+    assert owner.post(
+        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
+    ).status_code == 200
+
+    scope = {
+        "schema_version": "travel/share-scope@1",
+        "trip": {"title": True, "summary": True},
+        "items": [{"kind": "media_derivative", "id": derivative["id"], "fields": ["image"]}],
+    }
+    assert owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=scope).status_code == 200
+    link = owner.post(f"/api/v1/trips/{trip['id']}/share-links", json={"label": "Gallery", "scope": scope})
+    assert link.status_code == 201, link.text
+
+    deleted = owner.delete(f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}")
+    assert deleted.status_code == 204
+    assert owner.get(f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives").json() == []
+    assert owner.get(derivative["file_url"]).status_code == 404
+    assert owner.get(f"/api/v1/trips/{trip['id']}/public-projection").json()["scope"]["items"] == []
+    assert owner.get(f"/api/v1/trips/{trip['id']}/share-links/{link.json()['id']}").json()["scope"]["items"] == []
+
+
+def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path) -> None:
+    secret_store = InMemorySecretStore()
+    owner = client_for("owner-1", tmp_path, secret_store=secret_store)
+    assert owner.put("/api/v1/provider-tokens/google_photos_picker", json={"access_token": "never-return-this"}).status_code == 204
+
+    statuses = owner.get("/api/v1/provider-tokens")
+    assert statuses.status_code == 200
+    assert statuses.json() == [
+        {"provider": "google_photos_picker", "connected": True},
+        {"provider": "gopro_cloud", "connected": False},
+    ]
+    assert "never-return-this" not in statuses.text
+
+
 # --- Google Photos Picker import: only explicitly selected items ------------------
 
 
