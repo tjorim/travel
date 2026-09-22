@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from .models import (
     AuditEventKind,
@@ -137,15 +137,31 @@ class TripUpdate(BaseModel):
 
 
 class RouteStageCreate(BaseModel):
-    place: BroadPlaceInput
+    # A caller can deliberately author a new broad place with the stage, or
+    # select a previously authored one. Exact places are never accepted here.
+    place: BroadPlaceInput | None = None
+    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
     position: int = Field(ge=0)
     label: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="after")
+    def require_one_broad_place(self):
+        if (self.place is None) == (self.broad_place_id is None):
+            raise ValueError("Supply exactly one of place or broad_place_id")
+        return self
 
 
 class RouteStageUpdate(BaseModel):
     place: BroadPlaceInput | None = None
+    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
     position: int | None = Field(default=None, ge=0)
     label: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="after")
+    def do_not_mix_broad_place_inputs(self):
+        if self.place is not None and self.broad_place_id is not None:
+            raise ValueError("Supply place or broad_place_id, not both")
+        return self
 
 
 class RouteStageResponse(BaseModel):

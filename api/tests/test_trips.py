@@ -149,6 +149,44 @@ def test_owner_can_manage_broad_route_stages() -> None:
     }
 
 
+def test_owner_can_select_reorder_and_remove_broad_route_stages() -> None:
+    client = client_for("owner-1")
+    trip = create_trip(client)
+    broad_places = [
+        client.post(
+            f"/api/v1/trips/{trip['id']}/places/broad",
+            json={"label": label, "country_code": "TW"},
+        ).json()
+        for label in ("Taipei", "Tainan", "Kaohsiung")
+    ]
+    stages = [
+        client.post(
+            f"/api/v1/trips/{trip['id']}/route-stages",
+            json={"position": index, "broad_place_id": place["id"]},
+        ).json()
+        for index, place in enumerate(broad_places)
+    ]
+
+    moved = client.patch(
+        f"/api/v1/trips/{trip['id']}/route-stages/{stages[2]['id']}", json={"position": 0}
+    )
+    assert moved.status_code == 200, moved.text
+    ordered = client.get(f"/api/v1/trips/{trip['id']}").json()["route_stages"]
+    assert [(item["position"], item["place"]["label"]) for item in ordered] == [
+        (0, "Kaohsiung"), (1, "Taipei"), (2, "Tainan")
+    ]
+
+    assert client.delete(f"/api/v1/trips/{trip['id']}/route-stages/{stages[0]['id']}").status_code == 204
+    after_remove = client.get(f"/api/v1/trips/{trip['id']}").json()["route_stages"]
+    assert [item["position"] for item in after_remove] == [0, 1]
+    added = client.post(
+        f"/api/v1/trips/{trip['id']}/route-stages",
+        json={"position": 2, "broad_place_id": broad_places[0]["id"], "label": "Finale"},
+    )
+    assert added.status_code == 201, added.text
+    assert added.json()["place"]["id"] == broad_places[0]["id"]
+
+
 def test_owner_can_manage_a_moment_excerpt_independent_of_its_source_moment() -> None:
     client = client_for("owner-1")
     trip = create_trip(client)

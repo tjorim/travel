@@ -89,6 +89,23 @@ type RouteStage = {
   place: BroadPlace;
 };
 
+type RecordedTrack = {
+  id: string;
+  started_at: string;
+  ended_at: string;
+  kind: "gpx" | "point_array";
+  byte_size: number;
+  content_type: string;
+  source_file_url: string;
+};
+
+type BroadRoute = {
+  id: string;
+  label: string;
+  geometry: { type: "LineString"; coordinates: [number, number][] };
+  date_precision: "day" | "month" | "year";
+};
+
 type MomentExcerpt = {
   id: string;
   source_moment_id: string | null;
@@ -423,6 +440,8 @@ function Trips() {
         <section className="card"><h3>Brede plaatsen</h3>{broadPlaces.length ? <div className="saved-moments">{broadPlaces.map((place) => <div className="moment-summary" key={place.id}><strong>{place.label}</strong><span>{[place.region, place.country_code].filter(Boolean).join(" · ") || "Alleen voor deze reis"}</span></div>)}</div> : <p>Voeg hieronder een bewust algemene plaats toe om die eventueel aan een uittreksel te koppelen.</p>}</section>
       </div>
       <section className="card"><h3>Brede plaats toevoegen</h3><p>Gebruik alleen een bewust algemene aanduiding, zoals een stad of regio. Er zijn geen exacte coördinaten in dit formulier.</p><form className="stack-form" onSubmit={(event) => void saveBroadPlace(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede plaats kon niet worden opgeslagen."))}><div className="field-row"><label>Naam<input required maxLength={120} value={broadPlaceDraft.label} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, label: event.target.value }))} placeholder="Bijvoorbeeld: Taipei" /></label><label>Landcode <span className="optional">(optioneel)</span><input maxLength={2} value={broadPlaceDraft.countryCode} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, countryCode: event.target.value }))} placeholder="TW" /></label></div><label>Regio <span className="optional">(optioneel)</span><input maxLength={120} value={broadPlaceDraft.region} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder="Taipei City" /></label><button type="submit">Brede plaats opslaan</button></form></section>
+      <RouteManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={() => loadTrips(selectedTrip.id)} />
+      <TrackManager trip={selectedTrip} />
       <StayManager trip={selectedTrip} broadPlaces={broadPlaces} />
       <section className="card excerpt-editor"><div className="capture-heading"><div><h3>Moment-uittreksels</h3><p>Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.</p></div>{excerptDraft.id && <button className="secondary compact" type="button" onClick={newExcerpt}>Nieuw uittreksel</button>}</div>
         <form className="stack-form" onSubmit={(event) => void saveExcerpt(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden opgeslagen."))}>
@@ -435,6 +454,149 @@ function Trips() {
       </section>
       <DocumentManager trip={selectedTrip} />
     </section>}
+  </section>;
+}
+
+function RouteManager({ trip, broadPlaces, onChange }: { trip: Trip; broadPlaces: BroadPlace[]; onChange: () => Promise<void> }) {
+  const { session } = useAuth();
+  const [draft, setDraft] = useState({ id: null as string | null, broadPlaceId: "", label: "" });
+  const [message, setMessage] = useState("Route-etappes zijn bewust algemeen; exacte plaatsen kunnen hier niet gekozen worden.");
+  const stages = trip.route_stages.slice().sort((left, right) => left.position - right.position);
+
+  function newStage() { setDraft({ id: null, broadPlaceId: "", label: "" }); }
+
+  function editStage(stage: RouteStage) {
+    setDraft({ id: stage.id, broadPlaceId: stage.place.id, label: stage.label ?? "" });
+  }
+
+  async function saveStage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+    if (!draft.broadPlaceId) throw new Error("Kies eerst een brede plaats.");
+    const endpoint = draft.id ? `/api/v1/trips/${trip.id}/route-stages/${draft.id}` : `/api/v1/trips/${trip.id}/route-stages`;
+    const response = await fetch(endpoint, {
+      method: draft.id ? "PATCH" : "POST",
+      headers: apiHeaders(session),
+      body: JSON.stringify(draft.id
+        ? { broad_place_id: draft.broadPlaceId, label: draft.label.trim() || null }
+        : { broad_place_id: draft.broadPlaceId, position: stages.length, label: draft.label.trim() || null }),
+    });
+    if (!response.ok) return apiError(response, "De route-etappe kon niet worden opgeslagen.");
+    await onChange();
+    newStage();
+    setMessage("Route-etappe opgeslagen. Hij blijft privé totdat je hem expliciet deelt.");
+  }
+
+  async function moveStage(stage: RouteStage, direction: -1 | 1) {
+    if (!session) return;
+    const nextPosition = stage.position + direction;
+    if (nextPosition < 0 || nextPosition >= stages.length) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/route-stages/${stage.id}`, {
+      method: "PATCH", headers: apiHeaders(session), body: JSON.stringify({ position: nextPosition }),
+    });
+    if (!response.ok) return apiError(response, "De route-etappe kon niet worden verplaatst.");
+    await onChange();
+    setMessage("Volgorde van de route-etappes opgeslagen.");
+  }
+
+  async function deleteStage(stage: RouteStage) {
+    if (!session || !window.confirm(`Verwijder route-etappe “${stage.label ?? stage.place.label}”?`)) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/route-stages/${stage.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "De route-etappe kon niet worden verwijderd.");
+    await onChange();
+    newStage();
+    setMessage("Route-etappe verwijderd.");
+  }
+
+  return <section className="card manager" aria-labelledby="route-stages-title">
+    <div className="capture-heading"><div><h3 id="route-stages-title">Route-etappes</h3><p>Elke etappe verwijst naar een bewust brede plaats. Je kiest zelf later of je die deelt.</p></div>{draft.id && <button className="secondary compact" type="button" onClick={newStage}>Nieuwe etappe</button>}</div>
+    <p className="help" role="status">{message}</p>
+    <form className="stack-form" onSubmit={(event) => void saveStage(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden opgeslagen."))}>
+      <label>Brede plaats<select required value={draft.broadPlaceId} onChange={(event) => setDraft((current) => ({ ...current, broadPlaceId: event.target.value }))}><option value="">Kies een brede plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}{place.region ? ` · ${place.region}` : ""}</option>)}</select></label>
+      {!broadPlaces.length && <p className="help">Voeg hierboven eerst een brede plaats toe; exacte plaatsen zijn hier bewust niet beschikbaar.</p>}
+      <label>Etappelabel <span className="optional">(optioneel)</span><input maxLength={120} value={draft.label} onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))} placeholder="Bijvoorbeeld: noordkust" /></label>
+      <button type="submit">{draft.id ? "Etappe opslaan" : "Etappe toevoegen"}</button>
+    </form>
+    {stages.length > 0 && <div className="saved-moments manager-list">{stages.map((stage, index) => <article className="excerpt-row" key={stage.id}><div><strong>{stage.label ?? stage.place.label}</strong><span>{stage.place.label} · etappe {index + 1}</span></div><div className="button-row"><button className="secondary compact" type="button" disabled={index === 0} onClick={() => void moveStage(stage, -1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verplaatst."))}>Omhoog</button><button className="secondary compact" type="button" disabled={index === stages.length - 1} onClick={() => void moveStage(stage, 1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verplaatst."))}>Omlaag</button><button className="secondary compact" type="button" onClick={() => editStage(stage)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteStage(stage).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+  </section>;
+}
+
+function TrackManager({ trip }: { trip: Trip }) {
+  const { session } = useAuth();
+  const [tracks, setTracks] = useState<RecordedTrack[]>([]);
+  const [routes, setRoutes] = useState<BroadRoute[]>([]);
+  const [message, setMessage] = useState("Een afgewerkte track blijft uitsluitend van jou. Brede routes schrijf je afzonderlijk.");
+  const [upload, setUpload] = useState({ file: null as File | null, kind: "gpx" as RecordedTrack["kind"], startedAt: localDateTime(new Date(Date.now() - 3_600_000)), endedAt: localDateTime() });
+  const [routeDraft, setRouteDraft] = useState({ id: null as string | null, label: "", datePrecision: "day" as BroadRoute["date_precision"], coordinates: "" });
+
+  async function load() {
+    if (!session) return;
+    const [tracksResponse, routesResponse] = await Promise.all([
+      fetch(`/api/v1/trips/${trip.id}/recorded-tracks`, { headers: apiHeaders(session) }),
+      fetch(`/api/v1/trips/${trip.id}/broad-routes`, { headers: apiHeaders(session) }),
+    ]);
+    if (!tracksResponse.ok) return apiError(tracksResponse, "Je afgewerkte tracks konden niet worden geladen.");
+    if (!routesResponse.ok) return apiError(routesResponse, "Je brede routes konden niet worden geladen.");
+    setTracks(await tracksResponse.json() as RecordedTrack[]);
+    setRoutes(await routesResponse.json() as BroadRoute[]);
+  }
+
+  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je tracks konden niet worden geladen.")); }, [session, trip.id]);
+
+  async function uploadTrack(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session || !upload.file) throw new Error("Kies een afgewerkt GPX- of JSON-bestand.");
+    const contentType = upload.kind === "gpx" ? "application/gpx+xml" : "application/json";
+    const file = new File([upload.file], upload.file.name, { type: contentType });
+    const body = new FormData();
+    body.set("file", file);
+    body.set("kind", upload.kind);
+    body.set("started_at", new Date(upload.startedAt).toISOString());
+    body.set("ended_at", new Date(upload.endedAt).toISOString());
+    setMessage("Afgewerkte track uploaden…");
+    const response = await fetch(`/api/v1/trips/${trip.id}/recorded-tracks/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body });
+    if (!response.ok) return apiError(response, "De afgewerkte track kon niet worden geüpload.");
+    await load();
+    setUpload({ file: null, kind: "gpx", startedAt: localDateTime(new Date(Date.now() - 3_600_000)), endedAt: localDateTime() });
+    setMessage("Afgewerkte track opgeslagen. Er is geen opname- of achtergrondlocatiefunctie.");
+  }
+
+  function newRoute() { setRouteDraft({ id: null, label: "", datePrecision: "day", coordinates: "" }); }
+  function editRoute(route: BroadRoute) { setRouteDraft({ id: route.id, label: route.label, datePrecision: route.date_precision, coordinates: JSON.stringify(route.geometry.coordinates) }); }
+
+  async function saveRoute(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+    let coordinates: [number, number][];
+    try { coordinates = JSON.parse(routeDraft.coordinates) as [number, number][]; } catch { throw new Error("Gebruik geldige JSON met minstens twee [lengtegraad, breedtegraad]-paren."); }
+    if (!Array.isArray(coordinates) || coordinates.length < 2 || coordinates.some((point) => !Array.isArray(point) || point.length !== 2 || point.some((value) => typeof value !== "number"))) throw new Error("Een brede route heeft minstens twee [lengtegraad, breedtegraad]-paren nodig.");
+    const response = await fetch(routeDraft.id ? `/api/v1/trips/${trip.id}/broad-routes/${routeDraft.id}` : `/api/v1/trips/${trip.id}/broad-routes`, {
+      method: routeDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify({ label: routeDraft.label.trim(), date_precision: routeDraft.datePrecision, geometry: { type: "LineString", coordinates } }),
+    });
+    if (!response.ok) return apiError(response, "De brede route kon niet worden opgeslagen.");
+    await load(); newRoute(); setMessage("Brede route opgeslagen als een afzonderlijk, bewust geschreven lijn.");
+  }
+
+  async function deleteRoute(route: BroadRoute) {
+    if (!session || !window.confirm(`Verwijder brede route “${route.label}”?`)) return;
+    const response = await fetch(`/api/v1/trips/${trip.id}/broad-routes/${route.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "De brede route kon niet worden verwijderd.");
+    await load(); newRoute(); setMessage("Brede route verwijderd.");
+  }
+
+  return <section className="card manager" aria-labelledby="tracks-title">
+    <div className="capture-heading"><div><h3 id="tracks-title">Tracks en brede routes</h3><p>Upload alleen een volledig afgewerkt bestand. Deze tracker start nooit een opname en verzamelt geen achtergrondlocatie.</p></div></div>
+    <p className="help" role="status">{message}</p>
+    <form className="stack-form" onSubmit={(event) => void uploadTrack(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgewerkte track kon niet worden geüpload."))}>
+      <div className="field-row"><label>Afgewerkt bestand<input required type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,.json,application/json,application/geo+json" onChange={(event) => setUpload((current) => ({ ...current, file: event.target.files?.[0] ?? null }))} /></label><label>Bestandstype<select value={upload.kind} onChange={(event) => setUpload((current) => ({ ...current, kind: event.target.value as RecordedTrack["kind"] }))}><option value="gpx">GPX</option><option value="point_array">JSON-puntenlijst</option></select></label></div>
+      <div className="field-row"><label>Begintijd<input required type="datetime-local" value={upload.startedAt} onChange={(event) => setUpload((current) => ({ ...current, startedAt: event.target.value }))} /></label><label>Eindtijd<input required type="datetime-local" value={upload.endedAt} onChange={(event) => setUpload((current) => ({ ...current, endedAt: event.target.value }))} /></label></div>
+      <button type="submit">Afgewerkte track uploaden</button>
+    </form>
+    {tracks.length > 0 && <div className="saved-moments manager-list">{tracks.map((track) => <article className="excerpt-row" key={track.id}><div><strong>{track.kind === "gpx" ? "GPX-track" : "JSON-puntenlijst"}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(track.started_at))} · {bytesLabel(track.byte_size)}</span></div><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, track.source_file_url, "De private track kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De private track kon niet worden geopend."))}>Privébestand bekijken</button></article>)}</div>}
+    <div className="manager-subsection"><div className="capture-heading"><div><h3>Brede route schrijven</h3><p>Dit is een eigen, gecontroleerde lijn. De app leidt hem nooit af uit je ruwe track.</p></div>{routeDraft.id && <button className="secondary compact" type="button" onClick={newRoute}>Nieuwe brede route</button>}</div>
+      <form className="stack-form" onSubmit={(event) => void saveRoute(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede route kon niet worden opgeslagen."))}><div className="field-row"><label>Label<input required maxLength={160} value={routeDraft.label} onChange={(event) => setRouteDraft((current) => ({ ...current, label: event.target.value }))} placeholder="Bijvoorbeeld: oostkust" /></label><label>Datumprecisie<select value={routeDraft.datePrecision} onChange={(event) => setRouteDraft((current) => ({ ...current, datePrecision: event.target.value as BroadRoute["date_precision"] }))}><option value="day">Dag</option><option value="month">Maand</option><option value="year">Jaar</option></select></label></div><label>Lijncoördinaten (JSON)<textarea required value={routeDraft.coordinates} onChange={(event) => setRouteDraft((current) => ({ ...current, coordinates: event.target.value }))} placeholder="[[121.5,25.0],[121.6,25.1]]" /></label><p className="help">Gebruik algemene [lengtegraad, breedtegraad]-punten, van minstens twee punten. Geen track wordt hiervoor uitgelezen.</p><button type="submit">{routeDraft.id ? "Brede route opslaan" : "Brede route maken"}</button></form>
+      {routes.length > 0 && <div className="saved-moments manager-list">{routes.map((route) => <article className="excerpt-row" key={route.id}><div><strong>{route.label}</strong><span>{route.date_precision} · {route.geometry.coordinates.length} algemene punten</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editRoute(route)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteRoute(route).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede route kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+    </div>
   </section>;
 }
 

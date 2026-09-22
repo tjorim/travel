@@ -71,6 +71,23 @@ def broad_place_from_input(session: Session, trip_id: str, payload: BroadPlaceIn
     return place
 
 
+def selected_broad_place(session: Session, trip_id: str, place_id: str) -> Place:
+    place = session.scalar(
+        select(Place).where(Place.id == place_id, Place.trip_id == trip_id, Place.kind == PlaceKind.BROAD)
+    )
+    if place is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Broad place is unavailable for this trip")
+    return place
+
+
+def broad_place_for_stage(session: Session, trip_id: str, payload: RouteStageCreate | RouteStageUpdate) -> Place:
+    if payload.broad_place_id is not None:
+        return selected_broad_place(session, trip_id, payload.broad_place_id)
+    if payload.place is not None:
+        return broad_place_from_input(session, trip_id, payload.place)
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A broad place is required")
+
+
 def exact_place_from_input(session: Session, trip_id: str, payload: ExactPlaceInput) -> Place:
     place = Place(trip_id=trip_id, kind=PlaceKind.EXACT, **payload.model_dump())
     session.add(place)
@@ -162,7 +179,7 @@ def create_route_stage(trip_id: str, payload: RouteStageCreate, session: Session
     trip = owned_trip(session, trip_id, subject)
     stage = RouteStage(
         trip=trip,
-        place=broad_place_from_input(session, trip.id, payload.place),
+        place=broad_place_for_stage(session, trip.id, payload),
         position=payload.position,
         label=payload.label,
     )
@@ -184,9 +201,21 @@ def update_route_stage(
 ) -> RouteStage:
     trip = owned_trip(session, trip_id, subject)
     stage = owned_stage(trip, stage_id)
-    if payload.place is not None:
-        stage.place = broad_place_from_input(session, trip.id, payload.place)
-    for field, value in payload.model_dump(exclude_unset=True, exclude={"place"}).items():
+    if payload.place is not None or payload.broad_place_id is not None:
+        stage.place = broad_place_for_stage(session, trip.id, payload)
+    if payload.position is not None and payload.position != stage.position:
+        ordered = sorted(trip.route_stages, key=lambda item: item.position)
+        ordered.remove(stage)
+        ordered.insert(min(payload.position, len(ordered)), stage)
+        # The unique trip/position constraint makes an ordinary swap fail.
+        # Move every row out of its current range before compacting it again.
+        offset = max((item.position for item in trip.route_stages), default=0) + len(ordered) + 1
+        for item in trip.route_stages:
+            item.position += offset
+        session.flush()
+        for position, item in enumerate(ordered):
+            item.position = position
+    for field, value in payload.model_dump(exclude_unset=True, exclude={"place", "broad_place_id", "position"}).items():
         setattr(stage, field, value)
     commit_or_conflict(session)
     return session.scalar(select(RouteStage).options(selectinload(RouteStage.place)).where(RouteStage.id == stage.id))  # type: ignore[return-value]
@@ -194,7 +223,20 @@ def update_route_stage(
 
 @router.delete("/{trip_id}/route-stages/{stage_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_route_stage(trip_id: str, stage_id: str, session: SessionDep, subject: SubjectDep) -> Response:
-    session.delete(owned_stage(owned_trip(session, trip_id, subject), stage_id))
+    trip = owned_trip(session, trip_id, subject)
+    session.delete(owned_stage(trip, stage_id))
+    session.flush()
+    remaining = list(
+        session.scalars(select(RouteStage).where(RouteStage.trip_id == trip.id).order_by(RouteStage.position))
+    )
+    # Compact positions after a removal so the next add can use the end of
+    # the visible ordered list without colliding with a stale gap.
+    offset = max((item.position for item in remaining), default=0) + len(remaining) + 1
+    for item in remaining:
+        item.position += offset
+    session.flush()
+    for position, item in enumerate(remaining):
+        item.position = position
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

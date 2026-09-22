@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Private tracker PWA management for ordered route stages, completed-track
+  uploads and independently authored broad routes. Route stages select an
+  existing broad place and can be reordered or removed without position
+  conflicts. Track input is deliberately a finished GPX or JSON point-array
+  file with bounded start/end times; the PWA contains no recording or
+  background-location control. Raw files remain behind the authenticated
+  owner endpoint, while broad-route lines are entered and saved separately
+  from any raw track. ([#94](https://github.com/tjorim/travel/issues/94))
+
 - Private tracker PWA workflows for creating, editing and deleting exact
   stays and separately authored broad-stay cards, plus uploading, viewing and
   deleting owner-only document originals. A redacted document copy must be
