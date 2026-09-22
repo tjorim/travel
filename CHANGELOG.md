@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Explicit, per-document offline saving for private documents. The root-scoped
+  service worker is network-first and serves only manually saved local copies
+  offline; the document list includes saved status, removal, and clear-all
+  controls with an on-device storage warning. ([#4](https://github.com/tjorim/travel/issues/4))
+
 - Git-native public photo workflow: Git LFS camera-original layout, a strict
   public media manifest with alt text, captions and focal points, responsive
   gallery/timeline-media components, and metadata-free WebP preparation.

@@ -71,8 +71,8 @@ deliberately selected data.
 
 - [ ] Generalize the Taiwan-only local SVG route map into a reusable component.
       ([#3](https://github.com/tjorim/travel/issues/3))
-- [ ] Add opt-in offline copies for selected private documents; never cache all
-      private files automatically. ([#4](https://github.com/tjorim/travel/issues/4))
+- [x] Added opt-in offline copies for selected private documents, with
+      per-document removal and a clear-all local-copy action. ([#4](https://github.com/tjorim/travel/issues/4))
 - [ ] Add the next trip by creating `dist/<trip-slug>/` with its own public and
       private data rather than copying Taiwan-specific markup.
 

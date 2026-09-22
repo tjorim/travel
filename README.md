@@ -76,6 +76,7 @@ cache/indexing response needed if a page was accidentally exposed.
 - `dist/assets/travel/flight-map.js` — reusable, data-driven international flight map
 - `dist/assets/travel/public-route-map.js` — reusable public route and places map
 - `dist/assets/travel/document-list.js` — reusable private document list with in-app preview
+- `dist/travel-offline-service-worker.js` — network-first worker that serves only explicitly saved private document copies while offline
 - `dist/assets/travel/trip-summary.js` — reusable public story and private trip-header components
 - `dist/assets/travel/trip-moments.js` — reusable public chronological story component
 - `dist/assets/travel/trip-media.js` — reusable responsive public gallery and timeline-media component
