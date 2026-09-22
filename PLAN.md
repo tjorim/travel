@@ -76,10 +76,10 @@ v2 after the app behavior is complete and verified.
 
 ### v1 — Private travel journal application
 
+- [ ] [#48](https://github.com/tjorim/travel/issues/48) Add an owner-only
+      audit trail for publication and share-link lifecycle events, per #36/#37.
 - [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
       with a shared MapLibre renderer, reconciled with #36's privacy contract.
-- [ ] [#42](https://github.com/tjorim/travel/issues/42) Implement scoped,
-      revocable public and unlisted publication links.
 - [ ] [#43](https://github.com/tjorim/travel/issues/43) Add durable owner-only
       direct, Google Photos and optional GoPro media ingestion.
 - [ ] [#38](https://github.com/tjorim/travel/issues/38) Evolve the tracker
@@ -164,6 +164,19 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Implemented scoped, revocable public and unlisted publication links for
+      the tracker API's trips and moments: an explicit, owner-selected scope
+      (never a full-trip serialization) that renders live from current trip
+      data, so adding, removing or editing a shared item reaches visitors
+      immediately with no republish step; only whether a page is served at
+      all is gated (publish/unpublish; activate/revoke/rotate for a named
+      unlisted link); named unlisted share links with 256-bit capability
+      tokens (only a keyed verifier is stored) and 1-90 day (default 30)
+      expiry; `no-store`, `noindex` and `no-referrer` delivery headers; and
+      tests covering public, valid-link, revoked-link, rotated-link,
+      expired-link and out-of-scope-resource responses.
+      ([#42](https://github.com/tjorim/travel/issues/42))
 
 - [x] Defined the versioned canonical Travel content model: owner-scoped
       resources and object storage, separately authored broad/derived share

@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, status
 from sqlalchemy import text
 
 from .database import SessionLocal
+from .routers.publication import delivery_router as publication_delivery_router
+from .routers.publication import router as publication_router
 from .routers.trips import public_router
 from .routers.trips import router as trips_router
 
@@ -12,6 +14,8 @@ app = FastAPI(
 )
 app.include_router(trips_router, prefix="/api/v1")
 app.include_router(public_router, prefix="/api/v1")
+app.include_router(publication_router, prefix="/api/v1")
+app.include_router(publication_delivery_router, prefix="/api/v1")
 
 
 @app.get("/api/health", tags=["health"])

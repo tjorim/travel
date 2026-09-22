@@ -79,26 +79,23 @@ an asynchronous, audited purge after the database transaction.
 | `document_asset` (`travel/document@1`) | `id`, `trip_id`, `original_object_id`, `document_kind`, `title` | Original filename, extracted text, OCR, booking data and metadata remain owner-only. |
 | `document_derivative` (`travel/document-derivative@1`) | `id`, `trip_id`, `document_asset_id`, `object_id`, `redaction_manifest_object_id`, `review_state` | A possible shared file is a new, reviewed redacted derivative. No original object can be projected. |
 | `import_record` (`travel/import@1`) | `id`, `trip_id`, `provider` (`direct_device`, `google_photos_picker`, `gopro_cloud`), `state`, `requested_at`, `completed_at`, `failure_code` | Owner authorization/consent time, provider item reference and transfer checksum are owner-only. Provider access tokens are held in a secret store, never in this table or a browser response. An import completes only once copied and verified in `stored_object`; provider URLs are not retained as file delivery URLs. |
-| `publication_draft` (`travel/publication-draft@1`) | `id`, `trip_id`, `audience` (`public` or `unlisted`), `state`, `scope_json`, `created_from_revision_id` nullable | Mutable owner workspace. `scope_json` is validated as `travel/share-scope@1`; it may reference only approved derived/broad resources. |
-| `projection_revision` (`travel/projection@1`) | `id`, `trip_id`, `audience`, `version`, `state`, `scope_snapshot`, `representation`, `content_hash`, `reviewed_at`, `activated_at`, `withdrawn_at` | An immutable, validated snapshot made from a draft. `version` is unique per logical projection family. `representation` validates as either `travel/public-trip@1` or `travel/unlisted-trip@1`. |
-| `public_surface` (`travel/public-surface@1`) | `trip_id` unique, `slug` unique, `active_projection_revision_id` nullable, `state` | The stable public URL reservation and its currently active revision. It has no capability and is deployable only while `state=published`. |
-| `share_link` (`travel/share-link@1`) | `id`, `trip_id`, `label`, `token_verifier`, `projection_revision_id`, `expires_at`, `state`, `activated_at`, `revoked_at` | Owner-only `label`; verifier is a keyed one-way digest of a 256-bit capability. State is `draft`, `active`, `revoked`, or `expired`. An active link references one immutable unlisted revision and can never be broadened in place. |
-| `static_export` (`travel/static-export@1`) | `id`, `public_surface_id`, `projection_revision_id`, `state`, `manifest_object_id`, `content_hash`, `generated_at`, `deployed_at`, `invalidated_at` | Tracks the generated public-only artifact; see the export contract below. |
-| `audit_event` (`travel/audit-event@1`) | `id`, `trip_id`, `actor_subject`, `kind`, `target_type`, `target_id`, `occurred_at`, `details` | Owner-only audit without raw capability, recipient identity, or recipient IP. Projection/link activity follows the 24-month policy retention. |
+| `public_surface` (`travel/public-surface@1`) | `trip_id` unique, `slug` unique, `scope_json`, `state` | The stable public URL reservation and its live, owner-selected scope. It has no capability; it is servable only while `state=published`. `scope_json` is validated as `travel/share-scope@1` and is a live field, editable whether or not the surface is currently published — every request renders it against current canonical data, so there is no separate frozen `publication_draft`/`projection_revision` pair to promote. |
+| `share_link` (`travel/share-link@1`) | `id`, `trip_id`, `label`, `token_verifier`, `scope_json`, `expires_at`, `state`, `activated_at`, `revoked_at` | Owner-only `label`; verifier is a keyed one-way digest of a 256-bit capability. State is `draft`, `active`, `revoked`, or `expired`. `scope_json` is likewise live: while `draft` or `active`, the owner can widen or narrow it at any time, and an `active` link reflects the change immediately for its existing token. Only `state` — minting, revoking, or rotating the token — is gated. |
+| `static_export` (`travel/static-export@1`, not yet implemented) | `id`, `public_surface_id`, `state`, `manifest_object_id`, `content_hash`, `generated_at`, `deployed_at`, `invalidated_at` | A future (v2) point-in-time snapshot of `public_surface`'s live output for CDN/static-origin delivery; see the export note below. Because content and scope are both live, an export has no single revision to reference and must be explicitly regenerated when either changes. |
+| `audit_event` (`travel/audit-event@1`, not yet implemented — [#48](https://github.com/tjorim/travel/issues/48)) | `id`, `trip_id`, `actor_subject`, `kind`, `target_type`, `target_id`, `occurred_at`, `details` | Owner-only audit without raw capability, recipient identity, or recipient IP. Publication/link activity follows the 24-month policy retention. |
 
-Database constraints enforce that every referenced resource belongs to the same
-trip as the referencing row, a projection revision has one audience, an active
-public surface references an active public revision, and an active link
-references an active unlisted revision. The service also validates the scope;
-foreign keys alone cannot make a nested projection safe.
+Database constraints enforce that every resource id referenced by a
+`scope_json` belongs to the same trip as the referencing `public_surface` or
+`share_link` row. The service validates the scope on every write, not only at
+activation; foreign keys alone cannot make a nested projection safe.
 
 ## Versioned representation contracts
 
 These are the complete field sets permitted to leave the owner boundary. They
-are schemas, not examples: any key not listed is rejected when a projection is
-frozen. All strings are plain text after server-side sanitization; all URLs are
-audience-specific delivery URLs or public export-relative URLs, never object
-keys or provider URLs.
+are schemas, not examples: any key not listed is rejected by the renderer on
+every request. All strings are plain text after server-side sanitization; all
+URLs are audience-specific delivery URLs or public export-relative URLs, never
+object keys or provider URLs.
 
 ### `travel/share-scope@1`
 
@@ -128,8 +125,8 @@ never occur in this schema.
 
 ### `travel/public-trip@1` and `travel/unlisted-trip@1`
 
-Both are complete, standalone display documents produced when a projection is
-frozen. They contain `schema_version`, `title`, optional `summary`, approved
+Both are complete, standalone display documents rendered live on every
+request. They contain `schema_version`, `title`, optional `summary`, approved
 date string(s), an ordered `route_stages` array, optional broad `places` and
 `route`, `moments`, `stays`, `media`, and `documents`. Every display item has a
 projection-local `id`, not a canonical ID. `media.image` and `documents.file`
@@ -138,67 +135,76 @@ unlisted form may contain a different set of approved items, but has the same
 prohibited-field rules as public. It additionally carries no link label, raw
 token, expiry, or internal link ID.
 
-The server serializes these contracts from the frozen `representation` column
-or export manifest; it does not serialize joins to canonical records. This
-keeps later private edits from changing a published story and prevents a newly
-added field from leaking through an ORM response.
+The server renders these contracts live from canonical records on every
+request, filtered strictly to the resource ids and fields named in
+`scope_json`; it never serializes a full trip and then redacts it. The
+allowlisted schema — not a frozen content snapshot — is what keeps a newly
+added canonical field from leaking through an ORM response: the renderer only
+ever emits fields the schema names. An out-of-scope resource can accordingly
+never appear even after being added to the trip later, while content for an
+already-approved item (a wording fix, an updated label) is visible on the very
+next request, with no republish step.
 
 ## Publication and sharing state machines
 
 | Record | States and allowed direction |
 |---|---|
-| `publication_draft` | `draft` -> `preview_ready` -> frozen as a revision; a change returns it to `draft`. A draft may be discarded. |
-| Public `projection_revision` | `active` -> `superseded` or `withdrawn`; frozen revisions never return to a mutable state. |
-| Unlisted `projection_revision` | `active` -> `withdrawn`; replacement creates another revision. |
-| `public_surface` | `unpublished` -> `publishing` -> `published` -> `unpublishing` -> `unpublished`; a failed publish returns to its prior stable state. |
-| `share_link` | `draft` -> `active` -> `revoked` or `expired`; `revoked` and `expired` are terminal. |
-| `static_export` | `queued` -> `generated` -> `deployed` -> `invalidating` -> `invalidated`; `queued` or `generated` may instead become `failed`. |
+| `public_surface.scope_json` / `share_link.scope_json` | Live at any time (link: while `draft` or `active`); there is no draft/preview_ready/frozen state for scope itself. |
+| `public_surface.state` | `unpublished` -> `published` -> `unpublished`. v1 has no separate `publishing`/`unpublishing` transient state, because there is no generation step to wait on; a future static-export deploy step (v2) may reintroduce one for that step specifically. |
+| `share_link.state` | `draft` -> `active` -> `revoked` or `expired`; `revoked` and `expired` are terminal. |
+| `static_export` (v2, not yet implemented) | `queued` -> `generated` -> `deployed` -> `invalidating` -> `invalidated`; `queued` or `generated` may instead become `failed`. Because content and scope are both live upstream, an export is a point-in-time snapshot the deploy step must explicitly regenerate on change, not a cache of one immutable revision. |
 
 ### Public projection and static archive
 
-1. An owner creates a `publication_draft` in `draft` and selects safe,
-   separately authored resources and fields. Canonical edits do not update it.
-2. The owner asks for `preview`. The service validates the share scope, renders
-   the dedicated public contract, and marks the draft `preview_ready`; this is
-   owner-authenticated and `no-store`.
-3. On publish, the service freezes an immutable `projection_revision` as
-   `active`, updates `public_surface.active_projection_revision_id`, and queues
-   an export. A previous active revision becomes `superseded` after its export
-   replacement is ready.
-4. The exporter writes an immutable artifact set and manifest to VPS object
-   storage, then deploys only that verified set to the static public origin.
-   Its `static_export` moves `queued` -> `generated` -> `deployed`. The stable
-   URL remains `/<slug>/`; assets use content-hashed paths.
-5. Unpublish clears the active public revision, marks the surface
-   `unpublished`, moves the current export to `invalidating`, removes/purges
-   the origin paths and CDN cache, and records completion as `invalidated`.
-   It does not change canonical data or named share links.
+1. The owner selects safe, separately authored resources and fields into
+   `public_surface.scope_json`. This is a live field: it can be edited at any
+   time, published or not, and a canonical edit to an already-selected item
+   (a wording fix, a new photo) is reflected the next time the page renders —
+   there is no separate draft/frozen-revision step to carry it forward.
+2. The owner may `preview` at any time as a non-gating, owner-authenticated,
+   `no-store` render check. It does not change any state.
+3. `publish` sets `public_surface.state = published`. From that point, every
+   request to the public delivery endpoint renders `scope_json` against
+   current canonical data directly.
+4. `unpublish` sets `public_surface.state = unpublished`. The stable URL
+   immediately returns 404. It does not change canonical data or named share
+   links.
 
-Only the latest successfully deployed `active` revision is served. A failed
-generation/deployment is `failed` and leaves the previously active public
-surface intact; an owner can retry or explicitly unpublish. Purging includes
-the HTML, manifest, derivative copies, search records and all known
-application-controlled cache keys. Public responses use the versioned asset
-manifest and normal public cache invalidation; unpublished paths return 404.
+v1 serves the public view as a live API response (delivered for
+trips/route-stages/moments in
+[#42](https://github.com/tjorim/travel/issues/42)); it does not yet generate
+or deploy a static export. When the static-export/CDN deploy step is built
+(v2), it becomes a point-in-time snapshot of the same live output —
+`queued` -> `generated` -> `deployed` -> `invalidating` -> `invalidated` as
+before — and must be explicitly regenerated whenever the live scope or
+content changes, since nothing upstream of it is immutable anymore. That
+regeneration trigger is unresolved and left to the v2 work, not this
+document.
 
 ### Unlisted capability
 
-1. The owner prepares and previews an `unlisted` draft exactly as above.
-2. Activation freezes an unlisted revision, creates a high-entropy capability,
-   stores only its verifier, and creates an `active` `share_link` with an
-   expiry no later than 90 days (30 days by default).
-3. A capability exchange verifies state and expiry before loading the frozen
-   unlisted representation or issuing short-lived derivative access. It uses
+1. The owner prepares a `share_link` in `draft` with a scope, and may preview
+   it at any time as a non-gating, owner-authenticated check.
+2. `activate` is the one deliberate, one-time action that mints the
+   high-entropy capability, stores only its verifier, and moves the link to
+   `active` with an expiry no later than 90 days (30 days by default).
+3. A capability exchange verifies state and expiry, then renders the unlisted
+   contract live against current canonical data filtered to the link's
+   current `scope_json` — there is no frozen representation to load. It uses
    `Cache-Control: no-store, private`, `X-Robots-Tag: noindex, noarchive`, and
    `Referrer-Policy: no-referrer`.
-4. Revocation, expiry, or rotation rejects exchanges immediately, invalidates
-   server sessions, signed URLs, derivatives and application caches, and moves
-   the link to `revoked` or `expired`. Replacing a scope creates a new revision
-   and link; it revokes the old capability before activating the replacement.
+4. While `active`, the owner can edit `scope_json` directly, widening or
+   narrowing it; the change is visible to the existing token on its very next
+   exchange, with no separate reactivation step. `revoke` or expiry reject
+   exchanges immediately and invalidate any application-controlled caches for
+   that link (delivery is `no-store` in the first place, so there is little
+   to purge). `rotate` revokes the old capability and mints a fresh one for
+   the same current scope — for replacing a suspected-leaked token, not for
+   changing scope, which does not require rotating.
 
-An unlisted revision is never exported as a static origin path. This is the
-material distinction from public publication, not merely an instruction to
-hide a static URL.
+An unlisted view is never exported as a static origin path; it is served only
+through the capability-checked live delivery endpoint, so revocation remains
+effective.
 
 ## Storage, transfer, and deletion boundary
 
@@ -216,10 +222,13 @@ and then creates a `media_asset`. A provider token, item identifier or remote
 URL is provenance only and may not be a canonical file URL, projection field,
 or fallback for failed storage. Failed/quarantined transfers cannot be shared.
 
-Deleting a canonical resource removes it immediately from owner queries and
-withdraws any active projection/export/link that references it. The purge job
-then removes derivative objects, static paths, signed-url grants and caches.
-The policy's 30-day sealed recovery and 90-day backup limits still apply. A
+Deleting a canonical resource removes it immediately from owner queries. A
+public surface or share link whose scope referenced it simply omits that item
+on its next render rather than being withdrawn, since scope is a live filter
+over current data, not a frozen reference — the surface or link itself stays
+active for its remaining items. The purge job removes the deleted resource's
+own derivative objects, static paths, signed-url grants and caches. The
+policy's 30-day sealed recovery and 90-day backup limits still apply. A
 restore replays current deletion, publication, and revocation state before
 serving restored data.
 
@@ -247,10 +256,18 @@ and explicit projection publication.
 
 ## Implementation gates
 
-Before this design becomes tables or endpoints, the implementation must add
-Alembic migrations, owner/public/unlisted response models, scope validation,
-object-store integration, capability delivery, export/purge workers, and tests
-for each state transition. Tests must prove that canonical fields and IDs do
-not appear in projections, revision immutability survives later owner edits,
-unpublish/revocation invalidate the right delivery paths, imports are copied to
-VPS storage, and the legacy importer does not establish ongoing replication.
+Publication/share-link delivery for trips, route stages, and moments was
+implemented in [#42](https://github.com/tjorim/travel/issues/42): Alembic
+migrations, owner/public/unlisted response models, scope validation, and
+capability delivery, with tests for each state transition. Because v1 renders
+scope and content live rather than freezing a revision, its tests instead
+prove that an out-of-scope resource never appears even after being added to
+the trip later, that a scope or content edit to an already-shared item is
+reflected on the very next request, and that unpublish, revocation, expiry,
+and rotation each invalidate the right delivery path immediately. Stays,
+media, documents, and tracks — and their object-store integration and
+export/purge workers — remain to be modeled and wired into the same
+`scope_json` mechanism by the issues that introduce them (`#43`, `#38`,
+`#34`). An owner-only audit trail
+([#48](https://github.com/tjorim/travel/issues/48)) and the legacy importer
+(`#40`) are likewise open follow-up work, not yet implemented.

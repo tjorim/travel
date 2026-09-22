@@ -6,6 +6,23 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Scoped, revocable public and unlisted publication links for the tracker
+  API. Owners select an explicit scope (route stages, moments, optional
+  title/summary) for the public follower view or a named unlisted link; both
+  the scope and the content it selects are live, so adding, removing, or
+  editing an item reaches visitors on their next request with no republish
+  step, while an item outside the scope still never appears. What requires a
+  deliberate owner action is only whether a page is served at all:
+  publish/unpublish for the public view, activate/revoke/rotate for a named
+  link. Named unlisted links use 256-bit
+  capability tokens with a keyed, one-way verifier (the raw token is
+  returned once and never stored) and a 1-90 day (default 30) expiry;
+  revoking or rotating a link invalidates its token immediately. Unlisted
+  delivery responses carry
+  `Cache-Control: no-store, private`, `X-Robots-Tag: noindex, noarchive` and
+  `Referrer-Policy: no-referrer`, including on a not-found/expired/revoked
+  response. ([#42](https://github.com/tjorim/travel/issues/42))
+
 - Versioned canonical-model and archive-publication design for the Travel
   application. It specifies owner-scoped content, files in backed-up VPS object
   storage, separate broad/derived share records, immutable public and unlisted

@@ -156,16 +156,20 @@ approved representation rather than a rounded canonical coordinate.
 
 ## Public and custom-link publication
 
-Creating or changing a public projection or named share link is a deliberate
-owner action:
+Turning a public page or named link on is a deliberate owner action; editing
+what it shows, once on, is not:
 
-1. The owner selects only the allowed projection items and fields, then reviews
-   the rendered audience view.
-2. The service validates the scope against this policy, creates an immutable
-   projection version, and records the publication/link audit event.
-3. The owner activates the version. Updating canonical data never silently
-   updates a public or unlisted view; the owner reviews and publishes a new
-   projection version.
+1. The owner selects allowed items and fields into the trip's public scope or
+   a named link's scope, and may preview the rendered audience view at any
+   time as a non-gating, owner-authenticated check.
+2. The service validates every scope change against this policy before
+   accepting it and records the relevant audit event.
+3. `publish` (public) or `activate` (a named link) is the one deliberate
+   action that turns access on. From then on, editing scope or canonical
+   content takes effect immediately for anyone with access — there is no
+   separate frozen projection version to review and re-publish. `unpublish`,
+   `revoke`, and `rotate` are the actions that turn access off or replace a
+   token.
 
 A public projection is the trip's default follower view: it has no access
 credential and is intentionally discoverable unless its delivery settings say
@@ -176,14 +180,18 @@ noarchive` plus `Referrer-Policy: no-referrer`. These headers reduce accidental
 disclosure but do not make a capability secret once a recipient has received
 it.
 
-Each named share link has an owner-only label, one explicit projection version,
-an allowlisted field-level scope, an expiry, and a lifecycle state (`draft`,
-`active`, `revoked`, or `expired`). Its scope is immutable once active: changing
-the resources, details or precision creates a replacement projection and link,
-then revokes the prior link. The v1 default lifetime is 30 days; the owner must
-set an expiry no later than 90 days after activation. It cannot be reactivated
-after expiry or revocation. A link must never be a generic "everything in this
-trip" switch.
+Each named share link has an owner-only label, a live allowlisted field-level
+scope, an expiry, and a lifecycle state (`draft`, `active`, `revoked`, or
+`expired`). While a link is `draft` or `active`, its scope is a live field:
+the owner can widen or narrow the selected resources, fields or precision at
+any time, and an already-`active` link reflects the change immediately for
+anyone holding its token — there is no separate replacement link needed just
+to change what it shows. What requires a deliberate owner action is only
+whether the link is currently usable at all: `activate` mints its capability,
+and `revoke` or expiry ends it. The v1 default lifetime is 30 days; the owner
+must set an expiry no later than 90 days after activation. It cannot be
+reactivated after expiry or revocation. A link must never be a generic
+"everything in this trip" switch.
 
 The service generates at least 256 bits of entropy with a cryptographically
 secure random generator and encodes the capability in a URL-safe form. It
@@ -197,14 +205,16 @@ load third-party content that could receive a referring URL.
 Revoking a link immediately rejects new capability exchanges, invalidates the
 link's server sessions and signed-file URLs, and purges all application-
 controlled responses and derivatives for that link. Rotation revokes the old
-capability before activating its replacement; it does not expand or preserve
-the old scope. Revocation cannot withdraw a file, screenshot, screen
+capability and activates a replacement with the same current scope and a
+fresh token; it exists for replacing a suspected-leaked token, not for
+changing scope, which the owner can already edit live on an active link
+without rotating. Revocation cannot withdraw a file, screenshot, screen
 recording, copied text, or browser cache already possessed by a recipient.
 The UI must say this plainly before activation and revocation.
 
-The audit log records link/projection IDs (not raw tokens), scope version,
-owner action, creation/activation/revocation/rotation/expiry timestamps, and
-an optional owner-entered reason. The owner-only link label is available in the
+The audit log records link/projection IDs (not raw tokens), the scope in
+effect at the time of the action, owner action, creation/activation/revocation/
+rotation/expiry timestamps, and an optional owner-entered reason. The owner-only link label is available in the
 link-management view but is not copied into recipient-facing responses or
 access logs. The service deliberately does not create recipient profiles or
 retain recipient IP addresses as a sharing feature. Audit events are owner-only
