@@ -76,12 +76,8 @@ v2 after the app behavior is complete and verified.
 
 ### v1 — Private travel journal application
 
-- [ ] [#48](https://github.com/tjorim/travel/issues/48) Add an owner-only
-      audit trail for publication and share-link lifecycle events, per #36/#37.
 - [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
       with a shared MapLibre renderer, reconciled with #36's privacy contract.
-- [x] [#43](https://github.com/tjorim/travel/issues/43) Add durable owner-only
-      direct, Google Photos and optional GoPro media ingestion.
 - [ ] [#38](https://github.com/tjorim/travel/issues/38) Evolve the tracker
       API and PWA into the private Travel content app.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
@@ -164,6 +160,18 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Added an owner-only audit trail for the tracker API's publication and
+      share-link lifecycle: an `audit_events` table records every
+      public-projection publish/unpublish and every share-link
+      create/activate/revoke/rotate, plus a link's natural expiry, with the
+      link/projection id, owner action, a scope fingerprint, and an optional
+      owner-entered reason, never a raw capability token, recipient
+      identity, or recipient IP. A new owner-only
+      `GET /trips/{trip_id}/audit-events` endpoint reads a trip's history.
+      `purge_expired_audit_events` hard-deletes events past the sharing
+      policy's 24-month retention window as pure application code, run
+      manually for v1. ([#48](https://github.com/tjorim/travel/issues/48))
 
 - [x] Added a durable, owner-only media ingestion pipeline: direct device
       upload (the always-available fallback), a Google Photos Picker session

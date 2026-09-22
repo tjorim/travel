@@ -5,12 +5,24 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..audit import SYSTEM_ACTOR, record_audit_event, scope_fingerprint
 from ..auth import current_subject
 from ..capability import generate_token, verifier_for
 from ..database import get_session
-from ..models import LinkState, PublicSurface, ShareLink, SurfaceState, Trip
+from ..models import (
+    AuditEvent,
+    AuditEventKind,
+    AuditTargetType,
+    LinkState,
+    PublicSurface,
+    ShareLink,
+    SurfaceState,
+    Trip,
+)
 from ..projection import ScopeError, render_projection, validate_scope
 from ..schemas import (
+    AuditEventResponse,
+    AuditReasonInput,
     ProjectionDocument,
     PublicProjectionStatusResponse,
     ShareLinkActivateRequest,
@@ -94,19 +106,40 @@ def publish_public_projection(trip_id: str, session: SessionDep, subject: Subjec
     owned_trip(session, trip_id, subject)
     surface = _get_or_create_surface(session, trip_id)
     surface.state = SurfaceState.PUBLISHED
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind.PUBLIC_PROJECTION_PUBLISH,
+        target_type=AuditTargetType.PUBLIC_SURFACE,
+        target_id=surface.trip_id,
+        details={"scope_version": scope_fingerprint(surface.scope)},
+    )
     session.commit()
     return _public_status(surface)
 
 
 @router.post("/public-projection/unpublish", response_model=PublicProjectionStatusResponse)
 def unpublish_public_projection(
-    trip_id: str, session: SessionDep, subject: SubjectDep
+    trip_id: str, session: SessionDep, subject: SubjectDep, payload: AuditReasonInput = AuditReasonInput()
 ) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
     if surface is None or surface.state != SurfaceState.PUBLISHED:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This trip is not published")
     surface.state = SurfaceState.UNPUBLISHED
+    details: dict = {"scope_version": scope_fingerprint(surface.scope)}
+    if payload.reason:
+        details["reason"] = payload.reason
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind.PUBLIC_PROJECTION_UNPUBLISH,
+        target_type=AuditTargetType.PUBLIC_SURFACE,
+        target_id=surface.trip_id,
+        details=details,
+    )
     session.commit()
     return _public_status(surface)
 
@@ -148,8 +181,28 @@ def create_share_link(trip_id: str, payload: ShareLinkCreate, session: SessionDe
     scope = _apply_scope(session, trip_id, subject, payload.scope)
     link = ShareLink(trip_id=trip_id, label=payload.label, scope=scope, state=LinkState.DRAFT)
     session.add(link)
+    session.flush()
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind.SHARE_LINK_CREATE,
+        target_type=AuditTargetType.SHARE_LINK,
+        target_id=link.id,
+        details={"label": link.label, "scope_version": scope_fingerprint(scope)},
+    )
     session.commit()
     return link
+
+
+@router.get("/audit-events", response_model=list[AuditEventResponse])
+def list_audit_events(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[AuditEvent]:
+    owned_trip(session, trip_id, subject)
+    return list(
+        session.scalars(
+            select(AuditEvent).where(AuditEvent.trip_id == trip_id).order_by(AuditEvent.occurred_at.desc())
+        )
+    )
 
 
 @router.get("/share-links", response_model=list[ShareLinkResponse])
@@ -210,17 +263,43 @@ def activate_share_link(
     if link.state != LinkState.DRAFT:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only a draft link can be activated")
     token = _activate_link(link, payload.expires_in_days)
+    details: dict = {"scope_version": scope_fingerprint(link.scope), "expires_at": link.expires_at.isoformat()}
+    if payload.reason:
+        details["reason"] = payload.reason
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind.SHARE_LINK_ACTIVATE,
+        target_type=AuditTargetType.SHARE_LINK,
+        target_id=link.id,
+        details=details,
+    )
     session.commit()
     return ShareLinkActivateResponse(**ShareLinkResponse.model_validate(link).model_dump(), token=token)
 
 
 @router.post("/share-links/{link_id}/revoke", response_model=ShareLinkResponse)
-def revoke_share_link(trip_id: str, link_id: str, session: SessionDep, subject: SubjectDep) -> ShareLink:
+def revoke_share_link(
+    trip_id: str, link_id: str, session: SessionDep, subject: SubjectDep, payload: AuditReasonInput = AuditReasonInput()
+) -> ShareLink:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state != LinkState.ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only an active link can be revoked")
     link.state = LinkState.REVOKED
     link.revoked_at = datetime.now(UTC)
+    details: dict = {}
+    if payload.reason:
+        details["reason"] = payload.reason
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind.SHARE_LINK_REVOKE,
+        target_type=AuditTargetType.SHARE_LINK,
+        target_id=link.id,
+        details=details,
+    )
     session.commit()
     return link
 
@@ -239,6 +318,22 @@ def rotate_share_link(
     session.add(new_link)
     session.flush()
     token = _activate_link(new_link, payload.expires_in_days)
+    details: dict = {
+        "predecessor_id": old_link.id,
+        "scope_version": scope_fingerprint(new_link.scope),
+        "expires_at": new_link.expires_at.isoformat(),
+    }
+    if payload.reason:
+        details["reason"] = payload.reason
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind.SHARE_LINK_ROTATE,
+        target_type=AuditTargetType.SHARE_LINK,
+        target_id=new_link.id,
+        details=details,
+    )
     session.commit()
     return ShareLinkActivateResponse(**ShareLinkResponse.model_validate(new_link).model_dump(), token=token)
 
@@ -272,6 +367,15 @@ def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict
         raise not_found
     if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
         link.state = LinkState.EXPIRED
+        record_audit_event(
+            session,
+            trip_id=link.trip_id,
+            actor_subject=SYSTEM_ACTOR,
+            kind=AuditEventKind.SHARE_LINK_EXPIRE,
+            target_type=AuditTargetType.SHARE_LINK,
+            target_id=link.id,
+            details={},
+        )
         session.commit()
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))

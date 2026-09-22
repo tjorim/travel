@@ -77,6 +77,21 @@ class DerivativeReviewState(StrEnum):
     APPROVED = "approved"
 
 
+class AuditEventKind(StrEnum):
+    PUBLIC_PROJECTION_PUBLISH = "public_projection.publish"
+    PUBLIC_PROJECTION_UNPUBLISH = "public_projection.unpublish"
+    SHARE_LINK_CREATE = "share_link.create"
+    SHARE_LINK_ACTIVATE = "share_link.activate"
+    SHARE_LINK_REVOKE = "share_link.revoke"
+    SHARE_LINK_ROTATE = "share_link.rotate"
+    SHARE_LINK_EXPIRE = "share_link.expire"
+
+
+class AuditTargetType(StrEnum):
+    PUBLIC_SURFACE = "public_surface"
+    SHARE_LINK = "share_link"
+
+
 def _enum_column(enum_cls: type[StrEnum], name: str):
     return Enum(enum_cls, name=name, values_callable=lambda enum: [member.value for member in enum])
 
@@ -202,6 +217,28 @@ class ShareLink(Base):
     )
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AuditEvent(Base):
+    """Owner-only audit trail for publication/share-link lifecycle
+    transitions (`travel/audit-event@1`). `details` records only
+    link/projection ids, a scope fingerprint and owner-facing metadata --
+    never a raw capability token, recipient identity or recipient IP, since
+    an unlisted link is a forwardable capability and recording who redeemed
+    it would defeat that model. Retained per the sharing policy's 24-month
+    window; `purge_expired_audit_events` (`app.audit`) hard-deletes rows past
+    it."""
+
+    __tablename__ = "audit_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    actor_subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    kind: Mapped[AuditEventKind] = mapped_column(_enum_column(AuditEventKind, "travel_audit_event_kind"))
+    target_type: Mapped[AuditTargetType] = mapped_column(_enum_column(AuditTargetType, "travel_audit_target_type"))
+    target_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
 
 class StoredObject(Base):

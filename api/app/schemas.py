@@ -3,6 +3,8 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from .models import (
+    AuditEventKind,
+    AuditTargetType,
     DerivativePurpose,
     DerivativeReviewState,
     ImportProvider,
@@ -179,6 +181,7 @@ class ShareLinkUpdate(BaseModel):
 
 class ShareLinkActivateRequest(BaseModel):
     expires_in_days: int = Field(default=30, ge=1, le=90)
+    reason: str | None = Field(default=None, max_length=500)
 
 
 class ShareLinkResponse(BaseModel):
@@ -195,6 +198,23 @@ class ShareLinkResponse(BaseModel):
 
 class ShareLinkActivateResponse(ShareLinkResponse):
     token: str
+
+
+class AuditReasonInput(BaseModel):
+    """An optional owner-entered reason attached to a lifecycle-transition
+    audit event; never required, since most transitions are self-explanatory."""
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class AuditEventResponse(BaseModel):
+    id: str
+    kind: AuditEventKind
+    target_type: AuditTargetType
+    target_id: str
+    occurred_at: datetime
+    details: dict
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Media ingestion -----------------------------------------------------------------

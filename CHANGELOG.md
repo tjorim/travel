@@ -6,6 +6,21 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-only audit trail for the tracker API's publication and share-link
+  lifecycle: an `audit_events` table records every public-projection
+  publish/unpublish and every share-link create/activate/revoke/rotate, plus
+  a link's natural expiry, with the link/projection id, owner action, a
+  scope fingerprint, and an optional owner-entered reason. An event never
+  stores a raw capability token, recipient identity, or recipient IP — a
+  natural expiry (discovered on an anonymous request) is attributed to a
+  `system` actor rather than the anonymous token holder. A new owner-only
+  `GET /trips/{trip_id}/audit-events` endpoint reads a trip's history; a
+  non-owner gets the same 404 as any other trip they don't own.
+  `purge_expired_audit_events` (`api/app/audit.py`) hard-deletes events past
+  the sharing policy's 24-month retention window as pure application code,
+  run manually for v1; recurring VPS scheduling is tracked separately.
+  ([#48](https://github.com/tjorim/travel/issues/48))
+
 - Durable, owner-only media ingestion for the tracker API: direct device
   upload as the always-available fallback, a Google Photos Picker session
   flow that imports only items the owner explicitly selected in Google's own
