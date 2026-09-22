@@ -6,6 +6,16 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-managed `travel/stay@1` and separately authored
+  `travel/broad-stay-card@1` resources in the tracker API, with an Alembic
+  migration and owner CRUD endpoints. A stay retains its exact place, exact
+  arrival/departure times, property, booking/contact details and notes behind
+  the owner boundary. A broad stay card instead contains only an explicit
+  broad place, title and date precision; it has no stay link, so it cannot
+  disclose exact-place, date or booking data through a later projection.
+  Authorization and no-leak regression tests cover both resource types.
+  Second of #38's seven delivery phases. ([#57](https://github.com/tjorim/travel/issues/57))
+
 - Split the tracker API's flat MVP `Place` into the canonical
   `travel/place@1` model: an `exact` place (address parts, coordinates,
   viewport, navigation/provider IDs, owner-only notes) or a `broad` place

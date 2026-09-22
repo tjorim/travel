@@ -84,7 +84,7 @@ v2 after the app behavior is complete and verified.
       #37's "Implementation gates" section:
   - [x] [#56](https://github.com/tjorim/travel/issues/56) Split Travel
         places into exact and broad models.
-  - [ ] [#57](https://github.com/tjorim/travel/issues/57) Add owner-managed
+  - [x] [#57](https://github.com/tjorim/travel/issues/57) Add owner-managed
         stays and broad stay cards to Travel.
   - [ ] [#58](https://github.com/tjorim/travel/issues/58) Add recorded
         tracks and broad routes to Travel.
@@ -176,6 +176,15 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Added owner-managed `travel/stay@1` records and separately authored
+      `travel/broad-stay-card@1` records to the tracker API. Stays retain an
+      exact place, exact arrival/departure times, property, booking/contact
+      details and notes behind the owner boundary; a broad stay card has only
+      an owner-selected broad place, title and date precision, with no link
+      back to a stay. Owner CRUD, cross-owner 404s, and projection no-leak
+      tests enforce that a card cannot disclose stay data. Second of #38's
+      seven delivery phases. ([#57](https://github.com/tjorim/travel/issues/57))
 
 - [x] Split the tracker API's flat MVP `Place` into the canonical
       `travel/place@1` `exact`/`broad` model and added the standalone
