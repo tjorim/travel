@@ -77,36 +77,6 @@ v2 after the app behavior is complete and verified.
 
 - [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
       with a shared MapLibre renderer, reconciled with #36's privacy contract.
-- [ ] [#38](https://github.com/tjorim/travel/issues/38) Evolve the tracker
-      API and PWA into the private Travel content app. Too large for one PR;
-      delivered as seven ordered phases, each its own issue/PR, per
-      #37's "Implementation gates" section:
-  - [x] [#56](https://github.com/tjorim/travel/issues/56) Split Travel
-        places into exact and broad models.
-  - [x] [#57](https://github.com/tjorim/travel/issues/57) Add owner-managed
-        stays and broad stay cards to Travel.
-  - [x] [#59](https://github.com/tjorim/travel/issues/59) Add owner-managed
-        documents to Travel.
-  - [x] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
-        share scopes to cover every resource type.
-  - [x] [#61](https://github.com/tjorim/travel/issues/61) Build tracker PWA
-        UI for trip content management, split into focused delivery issues:
-    - [x] [#96](https://github.com/tjorim/travel/issues/96) Build tracker PWA
-          UI for trips, moments, excerpts and places.
-    - [x] [#95](https://github.com/tjorim/travel/issues/95) Build tracker PWA
-          UI for stays and documents.
-    - [x] [#94](https://github.com/tjorim/travel/issues/94) Build tracker PWA
-          UI for route stages, finished tracks and broad routes.
-  - [x] [#62](https://github.com/tjorim/travel/issues/62) Build tracker PWA
-        UI for publication and media management, split into focused delivery
-        issues:
-    - [x] [#99](https://github.com/tjorim/travel/issues/99) Build tracker PWA
-          UI for publication scopes and share-link lifecycle.
-    - [x] [#98](https://github.com/tjorim/travel/issues/98) Build tracker PWA
-          media library, upload and derivative review.
-  - [x] [#97](https://github.com/tjorim/travel/issues/97) Suggest candidate
-        visits from private media metadata after the media-library workflow is
-        available.
 - [ ] [#73](https://github.com/tjorim/travel/issues/73) Serve public and
       unlisted trips live from the Travel app. This cross-release tracking
       issue follows #38's phased model:
@@ -205,6 +175,15 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#38](https://github.com/tjorim/travel/issues/38) Evolved the tracker
+      API and PWA into the private Travel content app through its seven
+      ordered phases: canonical places and excerpts, stays and broad stay
+      cards, recorded tracks and broad routes, documents, generic share
+      scopes, content-management UI, and publication/media-management UI.
+      Owner-only mutation, redacted public and unlisted responses, explicit
+      location capture, privacy-safe sharing derivatives, media imports and
+      selected offline copies are covered by regression tests.
 
 - [x] Completed the tracker PWA content-management phase: owners can now
       manage trips, canonical moments and separately authored excerpts; select
