@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- A reusable, data-driven local-route map component for private itineraries.
+  It supports airport, stay and ground-route stops; road, rail, flight and
+  mountain route styles; keyboard-selectable stops; and a textual route
+  equivalent. Taiwan now supplies its local map through this component. ([#3](https://github.com/tjorim/travel/issues/3))
+
 - Explicit, per-document offline saving for private documents. The root-scoped
   service worker is network-first and serves only manually saved local copies
   offline; the document list includes saved status, removal, and clear-all
