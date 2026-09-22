@@ -72,34 +72,32 @@ v1 is application-only work. It uses local/test storage and test deployments
 as needed, but does not change shared VPS routing, production media storage,
 or backup automation. Those operational changes begin only in v2 after the
 app behavior is complete and verified.
+The app also needs the archive's useful trip workflows and presentation before
+the v2 cutover. These are application features, independent of the optional
+archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
-      with a shared MapLibre renderer, reconciled with #36's privacy contract.
-- [ ] [#73](https://github.com/tjorim/travel/issues/73) Serve public and
-      unlisted trips live from the Travel app. This cross-release tracking
-      issue follows #38's phased model:
-  - [x] [#89](https://github.com/tjorim/travel/issues/89) Define the live
-        Travel web-route and projection contract, split into focused delivery
-        issues:
-    - [x] [#103](https://github.com/tjorim/travel/issues/103) Define the live
-          browser route and scoped-projection contract.
-    - [x] [#101](https://github.com/tjorim/travel/issues/101) Define
-          fresh-launch route ownership without archive import or URL aliases.
-  - [x] [#90](https://github.com/tjorim/travel/issues/90) Build live public
-        and unlisted Travel trip views, split into focused delivery issues:
-    - [ ] [#102](https://github.com/tjorim/travel/issues/102) Build the safe
-          public/unlisted visitor route shell and projection loader.
-    - [x] [#100](https://github.com/tjorim/travel/issues/100) Build the
-          accessible scoped-projection renderer for live Travel views.
+- [ ] [#121](https://github.com/tjorim/travel/issues/121) Add owner-managed
+      flight and transport itinerary records.
+- [ ] [#122](https://github.com/tjorim/travel/issues/122) Build an owner day
+      plan and booking task list for each trip.
+- [ ] [#123](https://github.com/tjorim/travel/issues/123) Add an owner-wide
+      document library and emergency information.
+- [ ] [#124](https://github.com/tjorim/travel/issues/124) Implement
+      owner-selected offline private copies in the React PWA.
+- [ ] [#119](https://github.com/tjorim/travel/issues/119) Render scoped
+      interactive maps in the React owner and visitor views.
+- [ ] [#120](https://github.com/tjorim/travel/issues/120) Build chronological
+      trip stories and responsive galleries in live visitor views.
+- [ ] [#126](https://github.com/tjorim/travel/issues/126) Show the rendered
+      visitor preview in owner publication controls.
+- [ ] [#125](https://github.com/tjorim/travel/issues/125) Add published-trip
+      discovery to the new Travel landing page.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
       complete owner-authenticated MCP workflows for every #38 resource and
       #73 owner-side publication/preview operation, using typed tools against
       the app service layer.
-- [x] [#39](https://github.com/tjorim/travel/issues/39) Add privacy-aware OSM
-      place search and Google Maps navigation.
-
 ### v2 — Fresh VPS launch and live trip delivery
 
 - [ ] [apps#219](https://github.com/tjorim/apps/issues/219) Add Travel
@@ -132,13 +130,12 @@ It uses test content only; production content begins with the fresh launch.
   until the v2 cutover.
 - The owner can select private OSM places and launch authorized Google Maps
   navigation; other viewers receive only their intended broad representation.
-- Public and private maps consume distinct, audience-appropriate data. The
-  MapLibre work in [#34](https://github.com/tjorim/travel/issues/34) must be
-  reconciled with the privacy contract in [#36](https://github.com/tjorim/travel/issues/36).
 
-v1 exit condition: the owner can manage a test trip entirely in the app and
-public/unlisted test visitors can see only deliberately shared content, proven
-by authorization, redaction and integration tests.
+v1 exit condition: the owner can manage a test trip entirely in the app,
+including itinerary, shared essentials, offline selections and rendered
+publication previews. Public/unlisted test visitors can discover published
+trips and see only deliberately shared stories, galleries and maps, proven by
+authorization, redaction and integration tests.
 
 ### v2 — Fresh VPS launch and live trip delivery
 
@@ -173,6 +170,20 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#73](https://github.com/tjorim/travel/issues/73) Built the Travel
+      application delivery contract and live, server-filtered public/unlisted
+      visitor views through #89 and #90. Owner publication and link actions
+      update database access state; trip content is fetched at request time
+      without generated pages. Production routing and storage remain in
+      [apps#219](https://github.com/tjorim/apps/issues/219); richer app
+      presentation and workflows remain in #119–#126.
+
+- [x] [#34](https://github.com/tjorim/travel/issues/34) Replaced the three
+      static archive SVG route maps with one MapLibre renderer and separate
+      public/private GeoJSON files. The maps use geographic basemaps, visible
+      provider attribution, keyboard-operable stops and textual fallbacks;
+      public route data remains broad under #36's privacy contract.
 
 - [x] [#38](https://github.com/tjorim/travel/issues/38) Evolved the tracker
       API and PWA into the private Travel content app through its seven

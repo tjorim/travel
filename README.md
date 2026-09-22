@@ -84,8 +84,8 @@ cache/indexing response needed if a page was accidentally exposed.
 - `dist/index.html` — travel-hub overview
 - `dist/private/` — shared passport, insurance and emergency-document area (Caddy-protected)
 - `dist/private/documents/` — document files committed to this private Git repository
-- `dist/assets/travel/flight-map.js` — reusable, data-driven international flight map
-- `dist/assets/travel/public-route-map.js` — reusable public route and places map
+- `dist/assets/travel/travel-map.js` — shared MapLibre renderer for public and private GeoJSON routes
+- `dist/assets/travel/MAP-PROVIDER.md` — map provider, attribution, privacy and failure policy
 - `dist/assets/travel/document-list.js` — reusable private document list with in-app preview
 - `dist/travel-offline-service-worker.js` — network-first worker that serves only explicitly saved private document copies while offline
 - `dist/assets/travel/trip-summary.js` — reusable public story and private trip-header components
@@ -101,7 +101,8 @@ cache/indexing response needed if a page was accidentally exposed.
 - `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, maps and bookings
 - `dist/exampleland-2054/private/documents/` — Taiwan-specific protected document files and manifest
 - `dist/exampleland-2054/private/trip.json` — protected Taiwan operational summary and booking status
-- `dist/exampleland-2054/private/flight-route.json` — Taiwan flight-map data
+- `dist/exampleland-2054/public/route-map.geojson` — broad Taiwan public route
+- `dist/exampleland-2054/private/flight-map.geojson` and `local-route.geojson` — protected flight and local routes
 - `dist/example-trip/` — a deliberately small, data-driven reference trip
 - `auth/` — prepared server-side Argon2id login/session-gate component
 - `compose.yaml` — standalone WIP Caddy and internal auth-service setup
@@ -146,11 +147,13 @@ runtime data service.
 dist/<trip-slug>/
 ├── index.html                  public page
 ├── public/
-│   └── trip.json               selected trip story
+│   ├── trip.json               selected trip story
+│   └── route-map.geojson       selected broad route, when needed
 └── private/                    session-protected route
     ├── index.html              operational page
     ├── trip.json               operational summary and booking status
-    ├── flight-route.json       protected route/map data, when needed
+    ├── flight-map.geojson      protected flight route, when needed
+    ├── local-route.geojson     protected local route, when needed
     └── documents/              protected files and manifest, when needed
 ```
 
@@ -164,7 +167,7 @@ contacts.
 `private/trip.json` holds protected operational context such as exact dates,
 booking status, and itinerary details. Related private content belongs beside
 it in separately named files when a reusable component needs a focused schema,
-such as `flight-route.json` or a document `manifest.json`. Do not duplicate a
+such as `flight-map.geojson` or a document `manifest.json`. Do not duplicate a
 private value into public JSON merely to simplify a public page.
 
 For a long-form public story, add a `moments` object to the same
@@ -175,33 +178,42 @@ short `story`, and optional public `place`. Render it with
 IDs from the separate media manifest, so image metadata stays consistent in
 the gallery and timeline.
 
-## Public photo assets
+## Static archive photo assets
+
+This section describes the retained `dist/` archive for later migration under
+#40. New Travel app photos and derivatives are managed in the owner PWA and API;
+no new media is prepared into Git.
 
 Keep camera originals in `media/<trip-slug>/original/`, which is covered by
 Git LFS and never deployed. Public, metadata-free derivatives and their
 descriptive manifest live in `dist/<trip-slug>/public/media/`. The manifest
 is the single source for public filenames, responsive widths, alt text,
 captions, focal point, and optional timeline-moment association. See
-[docs/media-assets.md](docs/media-assets.md) for the folder contract, the
-EXIF-stripping preparation command, and gallery/timeline usage.
+[docs/media-assets.md](docs/media-assets.md) for the retained folder contract
+and gallery/timeline usage.
 
-To add the optional public map, put a `routeMap` object in that same public
-file and render it with `travel-public-route-map`. Its `mode` is deliberately
-one of `full`, `city`, or `none`; a missing map is treated as `none`. Only add
-places intentionally suitable for public display. In `city` mode, use a city
-or region centre rather than a hotel, venue, trailhead, airport or current
-position. The component always renders its ordered legs as visible text as
-well as the static SVG map.
+To add an optional public map, create a separate versioned GeoJSON file under
+the trip's public directory using
+`dist/assets/travel/schemas/map-data.schema.json`. Set `audience` to `public`
+and use only deliberately selected city or region coordinates. Never include
+an exact stay, venue, trailhead or current position. The shared component
+renders an interactive geographic map, keyboard-operable stops and a route in
+words. Include fallback text for browsers without JavaScript or WebGL.
 
 ```html
-<travel-public-route-map src="/my-trip/public/trip.json"></travel-public-route-map>
-<script type="module" src="/assets/travel/public-route-map.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.10.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/assets/travel/travel-map.css">
+<travel-map src="/my-trip/public/route-map.geojson">
+  <p class="travel-map-fallback">Follow the selected route in words here.</p>
+</travel-map>
+<script type="module" src="/assets/travel/travel-map.js"></script>
 ```
 
-`routeMap` contains public `stages`, selected `places` (`id`, `label`, broad
-`coordinates`, and optional `stage`) and ordered `legs`. Never include booking
-references, transport numbers, exact accommodation, unapproved stops, or
-near-real-time location data.
+The GeoJSON contains longitude/latitude points and deliberately authored route
+lines. Keep public and private files separate. Never include booking references,
+transport numbers, exact accommodation, unapproved stops or near-real-time
+location data in the public file. See `dist/assets/travel/MAP-PROVIDER.md` before
+selecting or changing the map style or tile provider.
 
 For a new trip, create both JSON files first, then point the public
 `travel-trip-story` and private `travel-trip-header` elements at their own

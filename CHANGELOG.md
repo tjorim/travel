@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Retired the archive-only photo preparation helper and GeoJSON contract test
+  as new trip content and media move to the application workflow.
+- Replaced the static archive's three SVG route maps with a shared MapLibre
+  renderer and separate public/private GeoJSON files, with provider attribution
+  and accessible text fallbacks. ([#34](https://github.com/tjorim/travel/issues/34))
 - Renamed the React source directory from `tracker/` to `frontend/` now that
   it serves owner, public and unlisted views; updated build automation and
   repository references.
@@ -23,6 +28,10 @@ All notable changes to the travel hub are documented here.
   serves no versioned URL alias.
 
 ### Added
+
+- Completed the application side of live public and unlisted trip delivery:
+  server-filtered projections, visitor routes and publication lifecycle.
+  Production cutover remains in tjorim/apps#219. ([#73](https://github.com/tjorim/travel/issues/73))
 
 - Rendered all scoped trip resource types in the live public and unlisted React
   views, including generalized route sketches, navigation markers, and

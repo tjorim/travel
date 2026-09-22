@@ -1,5 +1,11 @@
 # Trip photo and media assets
 
+This document describes the retained Git-backed `dist/` archive for later
+migration under #40. Do not add new trip photos or derivatives to Git. The React
+owner app requests metadata-stripped derivatives through the Travel API, which
+stores them in application-controlled storage and requires owner review before
+sharing. The archive goes offline at the v2 cutover.
+
 Public images are selected editorial assets, not a camera-roll mirror. Keep
 originals out of `dist/`; only deliberately prepared web derivatives may be
 served from the public route.
@@ -56,25 +62,11 @@ cropping (`x: 0` is left, `y: 0` is top). Do not add precise addresses, live
 locations, travel-party details, booking information, or identifying
 information that was not approved for the public story.
 
-## Prepare and publish an image
+## Archive rendering
 
-Track a camera original once with `git lfs track "media/<trip-slug>/original/*"`
-(the repository rule already covers it), add the original, then create public
-derivatives from the repository root:
-
-```bash
-scripts/prepare-public-photo.sh media/exampleland-2054/original/alishan-sunrise-001.jpg dist/exampleland-2054/public/media/alishan-sunrise-001
-```
-
-The script auto-orients, strips all EXIF/XMP/IPTC metadata (including GPS),
-and creates 480, 960 and 1600px WebP files. Add every derivative to the
-manifest before committing; the components deliberately render only sources
-listed there. Review the image and its crop before committing; inspect every
-derivative with
-`exiftool -G1 -a -s dist/<trip-slug>/public/media/<photo-id>-*.webp` and
-confirm there are no GPS, location, camera-owner, or serial-number fields.
-
-Render a gallery with:
+The former photo preparation helper has been retired. The archive components
+render only the derivative sources already listed in their manifests. A gallery
+uses:
 
 ```html
 <link rel="stylesheet" href="/assets/travel/trip-media.css">

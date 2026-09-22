@@ -12,7 +12,7 @@ service and its Alembic migrations.
 - `dist/private/` holds shared protected documents and emergency information.
 - `dist/<trip-slug>/private/` holds protected itinerary and booking details.
 - `dist/assets/travel/` contains reusable browser components such as
-  `flight-map.js` and `document-list.js`.
+  `travel-map.js` and `document-list.js`.
 - `backend/app/` contains the application service and API; `backend/alembic/`
   contains its migrations.
 - `frontend/` is the React source for the owner PWA below `/admin/` and the
