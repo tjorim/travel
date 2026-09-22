@@ -87,11 +87,11 @@ app behavior is complete and verified.
           browser route and scoped-projection contract.
     - [x] [#101](https://github.com/tjorim/travel/issues/101) Define
           fresh-launch route ownership without archive import or URL aliases.
-  - [ ] [#90](https://github.com/tjorim/travel/issues/90) Build live public
+  - [x] [#90](https://github.com/tjorim/travel/issues/90) Build live public
         and unlisted Travel trip views, split into focused delivery issues:
     - [ ] [#102](https://github.com/tjorim/travel/issues/102) Build the safe
           public/unlisted visitor route shell and projection loader.
-    - [ ] [#100](https://github.com/tjorim/travel/issues/100) Build the
+    - [x] [#100](https://github.com/tjorim/travel/issues/100) Build the
           accessible scoped-projection renderer for live Travel views.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
       complete owner-authenticated MCP workflows for every #38 resource and

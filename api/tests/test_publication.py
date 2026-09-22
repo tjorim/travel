@@ -330,6 +330,38 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
     assert "media_asset_id" not in str(projection)
     assert "document_asset_id" not in str(projection)
 
+    media_url = f"/api/public/trips/{slug}/files/media_derivative-5"
+    document_url = f"/api/public/trips/{slug}/files/document_derivative-6"
+    visitor = TestClient(app)
+    media_file = visitor.get(media_url)
+    assert media_file.status_code == 200
+    assert media_file.content == owner.get(selected_media["file_url"]).content
+    assert media_file.headers["content-disposition"] == "inline"
+    assert media_file.headers["cache-control"] == "no-store"
+    document_file = visitor.get(document_url)
+    assert document_file.status_code == 200
+    assert document_file.content == b"safe"
+    assert document_file.headers["content-disposition"] == "attachment"
+    assert visitor.get(f"/api/public/trips/{slug}/files/media_derivative-4").status_code == 404
+    assert visitor.get(f"/api/public/trips/{slug}/files/document_derivative-7").status_code == 404
+
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}).json()
+    shared = activate(owner, trip["id"], link["id"])
+    shared_url = f"/api/shared/{shared['token']}/files/document_derivative-6"
+    assert visitor.get(shared_url).content == b"safe"
+    assert visitor.get(shared_url).headers["cache-control"] == "no-store, private"
+
+    without_files = json.loads(json.dumps(selected))
+    without_files["items"][4]["fields"] = []
+    without_files["items"][5]["fields"] = ["title"]
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=without_files).status_code == 200
+    assert visitor.get(media_url).status_code == 404
+    assert visitor.get(document_url).status_code == 404
+    assert owner.patch(f"/api/trips/{trip['id']}/share-links/{link['id']}", json={"scope": without_files}).status_code == 200
+    assert visitor.get(shared_url).status_code == 404
+    assert owner.post(f"/api/trips/{trip['id']}/share-links/{link['id']}/revoke").status_code == 200
+    assert visitor.get(shared_url).status_code == 404
+
 
 # --- Named unlisted share links ------------------------------------------------------
 

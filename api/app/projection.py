@@ -155,3 +155,14 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         projection[destinations[kind]].append(rendered)
     projection["route_stages"].sort(key=lambda item: item.pop("_sort_position"))
     return projection
+
+
+def scoped_file(trip: Trip, scope: dict, local_id: str) -> tuple[str, Any] | None:
+    """Resolve a projection-local file marker only while its field remains shared."""
+    validate_scope(trip, scope)
+    for index, selection in enumerate(scope.get("items", [])):
+        kind = selection["kind"]
+        field = {"media_derivative": "image", "document_derivative": "file"}.get(kind)
+        if field in selection.get("fields", []) and local_id == f"{kind}-{index + 1}":
+            return kind, _resources(trip)[kind][selection["id"]].object
+    return None

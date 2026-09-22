@@ -111,6 +111,20 @@ textarea { min-height: 136px; resize: vertical; }
 .projection-preview h3 { margin: 0; }
 .projection-preview p { margin: 0; }
 .projection-preview pre { max-height: 320px; overflow: auto; padding: 12px; border-radius: 9px; background: #19342d; color: #eef5ef; font-size: .78rem; }
+.visitor-content { display: grid; gap: 18px; margin-top: 30px; }
+.visitor-section h2 { margin-bottom: 18px; }
+.visitor-items { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.visitor-items li { padding: 16px 0; border-top: 1px solid #d6e0d9; }
+.visitor-items li:first-child { padding-top: 0; border: 0; }
+.visitor-items li:last-child { padding-bottom: 0; }
+.visitor-items h3 { margin: 0 0 7px; font-size: 1.1rem; }
+.visitor-items p { margin: 5px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.visitor-items a { display: inline-block; margin-top: 10px; color: #0f493b; font-weight: 700; text-underline-offset: 3px; }
+.visitor-items a:focus-visible { outline: 3px solid #e3a91c; outline-offset: 3px; }
+.visitor-route-line { display: block; width: min(100%, 320px); height: 160px; margin-top: 10px; border: 1px solid #d6e0d9; border-radius: 10px; background: #eef5ef; }
+.visitor-media { margin: 10px 0 0; }
+.visitor-media img { display: block; max-width: 100%; height: auto; border-radius: 10px; }
+.visitor-media figcaption { margin-top: 7px; color: #4d665e; line-height: 1.5; }
 @media (min-width: 560px) { .field-row { grid-template-columns: 1fr 1fr; } }
 @media (min-width: 680px) { .trip-layout { grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr); } .detail-grid { grid-template-columns: 1fr 1fr; } }
 nav { position: fixed; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; gap: min(6vw, 40px); padding: 16px; border-top: 1px solid #cbd7ce; background: #fffdf8ee; backdrop-filter: blur(12px); }

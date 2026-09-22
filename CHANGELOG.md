@@ -19,6 +19,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Rendered all scoped trip resource types in the live public and unlisted React
+  views, including generalized route sketches, navigation markers, and
+  approved media and document files delivered through scope-checked API routes.
+  Added visitor component and API tests for sparse fields, fresh loads, scope
+  changes and link revocation. ([#100](https://github.com/tjorim/travel/issues/100))
+
 - Added data-free React visitor shells for `/trips/{slug}` and `/share/{token}`.
   Both fetch only their current scoped projection, show loading, empty,
   unavailable and retry states, and keep capability data out of browser storage.

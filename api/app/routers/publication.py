@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,7 @@ from ..models import (
     Trip,
 )
 from ..navigation import scoped_navigation_url
-from ..projection import ScopeError, render_projection, validate_scope
+from ..projection import ScopeError, render_projection, scoped_file, validate_scope
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
@@ -34,6 +34,7 @@ from ..schemas import (
     ShareLinkUpdate,
     ShareScopeInput,
 )
+from ..storage import ObjectStorage, get_storage
 from .trips import owned_trip, trip_query
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
@@ -41,6 +42,7 @@ delivery_router = APIRouter(tags=["sharing-delivery"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
+StorageDep = Annotated[ObjectStorage, Depends(get_storage)]
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -374,6 +376,31 @@ def get_public_navigation(slug: str, local_id: str, session: SessionDep) -> Redi
     return RedirectResponse(target[0], status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
 
 
+def _file_response(trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict) -> StreamingResponse:
+    resolved = scoped_file(trip, scope, local_id)
+    if resolved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
+    kind, object_row = resolved
+    media_type = object_row.content_type
+    disposition = "inline" if kind == "media_derivative" and media_type in {"image/jpeg", "image/png", "image/webp"} else "attachment"
+    return StreamingResponse(
+        iter([storage.get(object_row.object_key)]), media_type=media_type,
+        headers={**headers, "Content-Disposition": disposition, "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@delivery_router.get("/public/trips/{slug}/files/{local_id}")
+def get_public_file(slug: str, local_id: str, session: SessionDep, storage: StorageDep) -> StreamingResponse:
+    headers = {"Cache-Control": "no-store"}
+    surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
+    if surface is None or surface.state != SurfaceState.PUBLISHED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
+    trip = session.scalar(trip_query().where(Trip.id == surface.trip_id))
+    if trip is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
+    return _file_response(trip, surface.scope, local_id, storage, headers)
+
+
 @delivery_router.get("/shared/{token}", response_model=ProjectionDocument)
 def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict:
     # Headers are also attached to each HTTPException below: FastAPI's error
@@ -431,3 +458,17 @@ def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> Red
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS)
     return RedirectResponse(target[0], status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)
+
+
+@delivery_router.get("/shared/{token}/files/{local_id}")
+def get_shared_file(token: str, local_id: str, session: SessionDep, storage: StorageDep) -> StreamingResponse:
+    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS)
+    link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
+    if link is None or link.state != LinkState.ACTIVE:
+        raise not_found
+    if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
+        raise not_found
+    trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
+    if trip is None:
+        raise not_found
+    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS)

@@ -24,8 +24,11 @@ Projection-local IDs are display and navigation references, not permission to
 fetch canonical records. A selected
 navigation marker may use the corresponding scoped `/api/public/trips/{slug}/navigation/{local_id}`
 or `/api/shared/{token}/navigation/{local_id}` endpoint; the API checks its
-scope again before redirecting. Derivative delivery requires its own scoped
-API route before the browser may display derivative bytes.
+scope again before redirecting. Selected `image` and `file` markers may use
+`/api/public/trips/{slug}/files/{local_id}` or
+`/api/shared/{token}/files/{local_id}`. These routes recheck the live scope,
+approval and publication or capability state before delivering derivative
+bytes; originals and redaction manifests have no visitor route.
 
 The shell shows a loading state until the projection request completes. A
 successful response is rendered as received; the browser does not request a

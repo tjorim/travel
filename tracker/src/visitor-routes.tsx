@@ -1,38 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Route, Routes, useParams } from "react-router-dom";
-
-type Audience = "public" | "share";
-
-type Projection = {
-  schema_version: string;
-  title: string | null;
-  summary: string | null;
-  route_stages: unknown[];
-  places: unknown[];
-  moments: unknown[];
-  stays: unknown[];
-  media: unknown[];
-  documents: unknown[];
-  route: unknown[];
-  navigation: unknown[];
-};
+import { isProjection, ProjectionView, type Audience, type Projection } from "./ProjectionView";
 
 type LoadState =
   | { kind: "loading" }
   | { kind: "ready"; projection: Projection }
   | { kind: "unavailable" }
   | { kind: "error" };
-
-const contentKeys = ["route_stages", "places", "moments", "stays", "media", "documents", "route"] as const;
-
-function isProjection(value: unknown, audience: Audience): value is Projection {
-  if (!value || typeof value !== "object") return false;
-  const document = value as Record<string, unknown>;
-  return document.schema_version === (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1")
-    && (document.title === null || typeof document.title === "string")
-    && (document.summary === null || typeof document.summary === "string")
-    && [...contentKeys, "navigation"].every((key) => Array.isArray(document[key]));
-}
 
 function VisitorPage({ audience, identifier }: { audience: Audience; identifier: string }) {
   const [attempt, setAttempt] = useState(0);
@@ -72,9 +46,6 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   }, [audience, identifier, attempt]);
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
-  const itemCount = state.kind === "ready" ? contentKeys.reduce((count, key) => count + state.projection[key].length, 0) : 0;
-  const isEmpty = state.kind === "ready" && !state.projection.title && !state.projection.summary && itemCount === 0;
-
   return (
     <main className="shell visitor-shell">
       <header>
@@ -84,9 +55,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
       {state.kind === "loading" && <section className="card" role="status" aria-live="polite"><h2>Reis laden</h2><p>Een ogenblik geduld.</p></section>}
       {state.kind === "unavailable" && <section className="card" role="status"><h2>Reis niet beschikbaar</h2><p>Deze reis is niet beschikbaar.</p></section>}
       {state.kind === "error" && <section className="card" role="alert"><h2>Reis kan niet worden geladen</h2><p>Probeer het opnieuw wanneer de verbinding werkt.</p><button type="button" onClick={retry}>Opnieuw proberen</button></section>}
-      {state.kind === "ready" && (isEmpty
-        ? <section className="card" role="status"><h2>Nog geen gedeelde inhoud</h2><p>Voor deze reis is nog geen inhoud geselecteerd.</p></section>
-        : <section className="card"><h2>Reisoverzicht</h2>{state.projection.summary && <p>{state.projection.summary}</p>}{itemCount > 0 && <p>{itemCount} gedeelde onderdelen.</p>}</section>)}
+      {state.kind === "ready" && <ProjectionView projection={state.projection} audience={audience} identifier={identifier} />}
     </main>
   );
 }
