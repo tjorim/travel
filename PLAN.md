@@ -275,5 +275,9 @@ Polarsteps-like features require a fresh product and privacy decision.
 - Complete `docs/public-route-safety-check.md` before deploying a public-route
   change.
 - Prefer small reusable browser components in `dist/assets/travel/`.
-- Add a concrete GitHub issue when a new substantial improvement is found;
-  update this plan when its relative order changes.
+- Add a concrete GitHub issue when a new substantial improvement is found,
+  including a gap deliberately left out of scope with only a documented
+  reason — the reason is not itself tracking; open the issue in whichever of
+  `tjorim/travel` (application) or `tjorim/apps` (shared VPS infrastructure)
+  actually owns doing the work, per `AGENTS.md`. Update this plan when an
+  issue's relative order changes.

@@ -79,3 +79,32 @@ Follow the existing short, imperative, Title Case commit style, for example
 Reference a relevant GitHub issue for substantive work and update `PLAN.md`
 when its order changes. Pull requests should state the affected public/private
 routes, include screenshots for visual changes, and note the manual checks run.
+
+## Deferred work and repo scope
+
+If a gap fits inside the change already in progress — same repository,
+fixable now, nothing else it depends on is missing — fix it there directly
+instead of deferring it. Opening an issue for something you could just do
+is its own way of leaving it undone. Open an issue only for what genuinely
+doesn't fit: it belongs in a different repository, it depends on work that
+doesn't exist yet, or a product/privacy decision deliberately put it out of
+scope.
+
+When a change surfaces work that is legitimately out of scope — even when
+the reason is a deliberate boundary already documented elsewhere, like
+`PLAN.md`'s v1 "application-only" vs v2 "VPS cutover" split — open a
+concrete GitHub issue for it before considering the change done. A sentence
+in a README, docstring, or commit message explaining why something was left
+out is not the same as something that will actually happen; it must also be
+tracked. Check first whether an existing issue already covers it (for
+example, PLAN.md's "Coordination" notes and each issue's "Dependencies"
+section usually point to the right one) before opening a duplicate.
+
+Route each issue to the repository that owns the work, not reflexively to
+this one: `tjorim/travel` owns the application — its API, PWA, and static
+archive. `tjorim/apps` owns shared VPS infrastructure — deployment,
+container/service wiring, cron/systemd scheduling, and backup/restore. Work
+that only runs on the VPS (a scheduled job, storage provisioning, Caddy or
+Keycloak wiring) belongs in `tjorim/apps` even when the function or code it
+invokes lives here; link back to the originating `tjorim/travel` issue or PR
+for context instead of duplicating that context into the new issue.
