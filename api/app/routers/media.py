@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
+from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_visit_candidates
 from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver
 from ..media.service import (
     CreatedImportSession,
@@ -37,6 +38,11 @@ from ..schemas import (
     MediaDerivativeCreate,
     MediaDerivativeResponse,
     MediaGpsCoordinates,
+    MediaVisitCandidateResponse,
+    MediaVisitCandidatesRequest,
+    MediaVisitCandidatesResponse,
+    MediaVisitLocationOption,
+    MediaVisitTimeOption,
     ProviderConnectionStatus,
     ProviderTokenSet,
 )
@@ -153,6 +159,48 @@ def list_media(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[M
         .order_by(MediaAsset.created_at.desc())
     )
     return [_asset_response(asset, trip_id) for asset in assets]
+
+
+@router.post("/visit-candidates", response_model=MediaVisitCandidatesResponse)
+def suggest_visit_candidates(
+    trip_id: str, payload: MediaVisitCandidatesRequest, session: SessionDep, subject: SubjectDep
+) -> MediaVisitCandidatesResponse:
+    """Calculate owner-requested review groups; no candidate is persisted."""
+    owned_trip(session, trip_id, subject)
+    assets = list(
+        session.scalars(
+            select(MediaAsset).where(
+                MediaAsset.trip_id == trip_id,
+                MediaAsset.id.in_(payload.media_asset_ids),
+                MediaAsset.deleted_at.is_(None),
+            )
+        )
+    )
+    found_ids = {asset.id for asset in assets}
+    if found_ids != set(payload.media_asset_ids):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Selected media must belong to this trip")
+    candidates, unavailable = build_visit_candidates(assets)
+    return MediaVisitCandidatesResponse(
+        grouping_window_minutes=int(GROUPING_WINDOW.total_seconds() // 60),
+        gps_agreement_metres=GPS_AGREEMENT_METRES,
+        candidates=[
+            MediaVisitCandidateResponse(
+                id=candidate.id,
+                media_asset_ids=candidate.media_asset_ids,
+                starts_at=candidate.starts_at,
+                ends_at=candidate.ends_at,
+                time_options=[MediaVisitTimeOption(media_asset_id=asset_id, captured_at=captured_at) for asset_id, captured_at in candidate.time_options],
+                location_options=[
+                    MediaVisitLocationOption(
+                        latitude=location.latitude, longitude=location.longitude, media_asset_ids=location.media_asset_ids
+                    )
+                    for location in candidate.location_options
+                ],
+            )
+            for candidate in candidates
+        ],
+        unavailable_media_asset_ids=unavailable,
+    )
 
 
 @router.get("/{media_id}", response_model=MediaAssetResponse)

@@ -167,6 +167,29 @@ export type MediaDerivative = {
   file_url: string;
 };
 
+export type VisitCandidate = {
+  id: string;
+  media_asset_ids: string[];
+  starts_at: string | null;
+  ends_at: string | null;
+  time_options: { media_asset_id: string; captured_at: string }[];
+  location_options: { latitude: number; longitude: number; media_asset_ids: string[] }[];
+};
+
+export type VisitCandidatesResponse = {
+  grouping_window_minutes: number;
+  gps_agreement_metres: number;
+  candidates: VisitCandidate[];
+  unavailable_media_asset_ids: string[];
+};
+
+export type VisitCandidateIntent = {
+  tripId: string;
+  mediaAssetIds: string[];
+  occurredAt?: string;
+  gps?: { latitude: number; longitude: number };
+};
+
 export type ProviderConnectionStatus = {
   provider: "google_photos_picker" | "gopro_cloud";
   connected: boolean;

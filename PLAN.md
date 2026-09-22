@@ -104,7 +104,7 @@ v2 after the app behavior is complete and verified.
           UI for publication scopes and share-link lifecycle.
     - [x] [#98](https://github.com/tjorim/travel/issues/98) Build tracker PWA
           media library, upload and derivative review.
-  - [ ] [#97](https://github.com/tjorim/travel/issues/97) Suggest candidate
+  - [x] [#97](https://github.com/tjorim/travel/issues/97) Suggest candidate
         visits from private media metadata after the media-library workflow is
         available.
 - [ ] [#73](https://github.com/tjorim/travel/issues/73) Serve public and

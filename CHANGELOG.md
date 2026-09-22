@@ -6,6 +6,14 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-selected private-media visit review. The tracker groups a selected
+  set into transient two-hour candidates, keeps GPS readings more than 500 m
+  apart as visible owner choices, and leaves missing metadata out rather than
+  guessing. A candidate can open a local, prefilled moment draft or attach
+  its private media to an existing moment; reverse geocoding remains a
+  separate explicit owner action, and no candidate, moment, place or share
+  resource is created automatically. ([#97](https://github.com/tjorim/travel/issues/97))
+
 - Private tracker PWA media management: direct photo/video upload, private
   original inspection and deletion, Google Photos/GoPro selection-session
   entry points, and metadata-free photo derivative generation, review,

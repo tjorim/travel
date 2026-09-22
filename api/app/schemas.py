@@ -558,6 +558,46 @@ class MediaDerivativeCreate(BaseModel):
     max_dimension: int = Field(default=1600, ge=64, le=4000)
 
 
+class MediaVisitCandidatesRequest(BaseModel):
+    """Only assets the owner explicitly selected are eligible for review."""
+
+    media_asset_ids: list[str] = Field(min_length=1, max_length=100)
+
+    @field_validator("media_asset_ids")
+    @classmethod
+    def require_unique_assets(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("A media asset can only be selected once")
+        return values
+
+
+class MediaVisitTimeOption(BaseModel):
+    media_asset_id: str
+    captured_at: datetime
+
+
+class MediaVisitLocationOption(MediaGpsCoordinates):
+    media_asset_ids: list[str]
+
+
+class MediaVisitCandidateResponse(BaseModel):
+    id: str
+    media_asset_ids: list[str]
+    starts_at: datetime | None
+    ends_at: datetime | None
+    time_options: list[MediaVisitTimeOption]
+    location_options: list[MediaVisitLocationOption]
+
+
+class MediaVisitCandidatesResponse(BaseModel):
+    """Ephemeral owner-only review data; it is never a published resource."""
+
+    grouping_window_minutes: int
+    gps_agreement_metres: int
+    candidates: list[MediaVisitCandidateResponse]
+    unavailable_media_asset_ids: list[str]
+
+
 # --- Owner-managed documents --------------------------------------------------------
 
 

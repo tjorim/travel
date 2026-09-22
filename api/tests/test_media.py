@@ -223,6 +223,67 @@ def test_deleting_media_removes_it_from_owner_queries_immediately(tmp_path: Path
     assert owner.get(f"/api/v1/trips/{trip['id']}/media").json() == []
 
 
+# --- Visit candidates: transient owner review, never canonical data --------------
+
+
+def test_owner_can_review_selected_media_as_visits_without_creating_moments_or_places(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+
+    first = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/uploads",
+        files={"file": ("first.jpg", jpeg_bytes((1, 2, 3), with_gps=True, captured_at="2054:04:01 08:00:00"), "image/jpeg")},
+    ).json()
+    second = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/uploads",
+        files={"file": ("second.jpg", jpeg_bytes((4, 5, 6), with_gps=True, captured_at="2054:04:01 09:00:00"), "image/jpeg")},
+    ).json()
+    later = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/uploads",
+        files={"file": ("later.jpg", jpeg_bytes((7, 8, 9), with_gps=True, captured_at="2054:04:01 10:01:00"), "image/jpeg")},
+    ).json()
+    unavailable = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/uploads",
+        files={"file": ("no-metadata.jpg", jpeg_bytes((10, 11, 12), with_exif=False), "image/jpeg")},
+    ).json()
+
+    # Keep a materially different GPS reading separate instead of silently
+    # averaging it into the first photo's position.
+    with TestingSessionLocal() as session:
+        asset = session.get(MediaAsset, second["id"])
+        assert asset is not None
+        asset.raw_metadata = {"exif": {"gps": {"latitude": 26.0, "longitude": 121.5}}}
+        session.commit()
+
+    reviewed = owner.post(
+        f"/api/v1/trips/{trip['id']}/media/visit-candidates",
+        json={"media_asset_ids": [first["id"], second["id"], later["id"], unavailable["id"]]},
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    body = reviewed.json()
+    assert body["grouping_window_minutes"] == 120
+    assert body["gps_agreement_metres"] == 500
+    assert body["unavailable_media_asset_ids"] == [unavailable["id"]]
+    assert len(body["candidates"]) == 2  # 10:01 is outside the 08:00-10:00 window.
+    first_candidate = body["candidates"][0]
+    assert first_candidate["media_asset_ids"] == [first["id"], second["id"]]
+    assert [option["media_asset_id"] for option in first_candidate["time_options"]] == [first["id"], second["id"]]
+    assert len(first_candidate["location_options"]) == 2
+    assert first_candidate["location_options"][0]["latitude"] == pytest.approx(25.053472)
+    assert first_candidate["location_options"][1]["latitude"] == 26.0
+
+    # Candidate generation is a read-only review operation: it cannot create
+    # a moment, place, shareable item, or persistent candidate row.
+    trip_after_review = owner.get(f"/api/v1/trips/{trip['id']}").json()
+    assert trip_after_review["moments"] == []
+    assert owner.get(f"/api/v1/trips/{trip['id']}/places").json() == []
+
+    other = client_for("owner-2", tmp_path)
+    assert other.post(
+        f"/api/v1/trips/{trip['id']}/media/visit-candidates", json={"media_asset_ids": [first["id"]]}
+    ).status_code == 404
+
+
 # --- Share derivatives: stripped and resized, gated on owner review ---------------
 
 
