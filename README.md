@@ -6,6 +6,7 @@ Static travel hub. Exampleland 2054 is its first trip at `/exampleland-2054/`, w
 - [CHANGELOG.md](CHANGELOG.md) — implemented changes
 - [Privacy, sharing and offline policy](docs/decisions/36-privacy-sharing-offline-policy.md) — v1 access, named-share-link, and redaction contract
 - [Canonical content and publication model](docs/decisions/37-canonical-content-and-publication-model.md) — v1 application data, storage, projection, and archive-export contract
+- [Live browser route and projection contract](docs/decisions/103-live-browser-route-contract.md) — owner, public, and unlisted browser routes and delivery safeguards
 
 ## Run locally
 

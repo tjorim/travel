@@ -20,7 +20,7 @@ validated OpenID Connect `sub` matches the trip owner:
 | `POST` | `/trips/{trip_id}/places/reverse` | Owner-only, explicit coordinate-to-place suggestion; never writes a place. |
 | `GET`, `POST` | `/trips/{trip_id}/places` | List or save owner-only exact places. |
 | `GET` | `/trips/{trip_id}/places/{place_id}/navigation` | Generate an owner-authorized exact Google Maps destination. |
-| `GET` | `/published/trips/{public_id}` | Legacy: read an intentionally published unlisted/public trip. |
+| `GET` | `/published/trips/{public_id}` | Deprecated for browser delivery: legacy published trip response. |
 | `PUT` | `/trips/{trip_id}/public-projection` | Replace the trip's public scope; live immediately if already published. |
 | `POST` | `/trips/{trip_id}/public-projection/preview` | Render the current scope for owner review (`no-store`), no gate. |
 | `POST` | `/trips/{trip_id}/public-projection/publish` | Start serving the trip publicly at its current scope. |
@@ -60,6 +60,8 @@ subject and only resolves trips whose visibility is `unlisted` or `public` and
 whose publication state is `published`; new work should use the scoped
 public/unlisted projection routes above instead, per
 [#42](https://github.com/tjorim/travel/issues/42).
+The live browser route and request sequence are defined in
+[the browser contract](../docs/decisions/103-live-browser-route-contract.md).
 
 ### Scoped public and unlisted publication links
 
@@ -85,6 +87,8 @@ delivery always re-checks live link state, and the response headers
 `Referrer-Policy: no-referrer`) apply identically to a valid, expired,
 revoked, or unknown token so a probe cannot be distinguished by caching or
 indexing behavior.
+Public projection responses also use `Cache-Control: no-store` so the next
+browser load checks the current publication state and scope.
 
 ### Private place search and navigation
 

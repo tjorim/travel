@@ -118,7 +118,7 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     anonymous = TestClient(app)
     document = anonymous.get(f"/api/v1/public/trips/{slug}")
     assert document.status_code == 200
-    assert document.headers["cache-control"] == "public, max-age=60"
+    assert document.headers["cache-control"] == "no-store"
     titles = [m["title"] for m in document.json()["moments"]]
     assert titles == [shown["title"]]
     assert hidden["title"] not in titles
@@ -212,7 +212,9 @@ def test_public_projection_unpublish_removes_the_page() -> None:
     assert anonymous.get(f"/api/v1/public/trips/{slug}").status_code == 200
 
     assert owner.post(f"/api/v1/trips/{trip['id']}/public-projection/unpublish").status_code == 200
-    assert anonymous.get(f"/api/v1/public/trips/{slug}").status_code == 404
+    withdrawn = anonymous.get(f"/api/v1/public/trips/{slug}")
+    assert withdrawn.status_code == 404
+    assert withdrawn.headers["cache-control"] == "no-store"
 
 
 def test_scope_rejects_a_resource_from_another_trip() -> None:
@@ -522,3 +524,63 @@ def test_expired_share_link_token_is_rejected() -> None:
 
     response = TestClient(app).get(f"/api/v1/shared/{token}")
     assert response.status_code == 404
+
+
+def test_unavailable_capabilities_have_one_visitor_response_contract() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    tokens = []
+    for label in ("Revoked", "Expired"):
+        created = owner.post(
+            f"/api/v1/trips/{trip['id']}/share-links",
+            json={"label": label, "scope": scope()},
+        )
+        link_id = created.json()["id"]
+        token = activate(owner, trip["id"], link_id)["token"]
+        tokens.append(token)
+        if label == "Revoked":
+            assert owner.post(f"/api/v1/trips/{trip['id']}/share-links/{link_id}/revoke").status_code == 200
+        else:
+            with TestingSessionLocal() as session:
+                row = session.scalar(select(ShareLink).where(ShareLink.id == link_id))
+                row.expires_at = datetime.now(UTC) - timedelta(days=1)
+                session.commit()
+
+    anonymous = TestClient(app)
+    headers = ("cache-control", "x-robots-tag", "referrer-policy")
+    responses = [anonymous.get(f"/api/v1/shared/{token}") for token in ("unknown-token", *tokens)]
+    assert all(response.status_code == 404 for response in responses)
+    assert len({response.text for response in responses}) == 1
+    assert len({tuple(response.headers[name] for name in headers) for response in responses}) == 1
+    assert tuple(responses[0].headers[name] for name in headers) == (
+        "no-store, private", "noindex, noarchive", "no-referrer"
+    )
+
+
+def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    excerpt = add_excerpt(owner, trip["id"], "Visible excerpt")
+    selected = scope(item("moment_excerpt", excerpt["id"], "title"))
+    assert owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    slug = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    link = owner.post(
+        f"/api/v1/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}
+    ).json()
+    token = activate(owner, trip["id"], link["id"])["token"]
+
+    anonymous = TestClient(app)
+    for path, version in (
+        (f"/api/v1/public/trips/{slug}", "travel/public-trip@1"),
+        (f"/api/v1/shared/{token}", "travel/unlisted-trip@1"),
+    ):
+        response = anonymous.get(path)
+        assert response.status_code == 200
+        document = response.json()
+        assert document["schema_version"] == version
+        assert [moment["title"] for moment in document["moments"]] == ["Visible excerpt"]
+        assert not {"owner_subject", "scope", "token", "link_id", "trip_id"} & document.keys()
+        assert response.headers["cache-control"].startswith("no-store")
+
+    assert owner.post(f"/api/v1/trips/{trip['id']}/public-projection/unpublish").status_code == 200
+    assert anonymous.get(f"/api/v1/public/trips/{slug}").status_code == 404

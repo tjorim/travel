@@ -347,11 +347,18 @@ def rotate_share_link(
 def get_public_trip(slug: str, session: SessionDep, response: Response) -> dict:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found", headers={"Cache-Control": "no-store"}
+        )
     trip = session.scalar(trip_query().where(Trip.id == surface.trip_id))
     if trip is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-    response.headers["Cache-Control"] = "public, max-age=60"
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found", headers={"Cache-Control": "no-store"}
+        )
+    # Scope edits and unpublishing must be visible on the next browser load.
+    # A public intermediary cache would otherwise keep serving a withdrawn
+    # projection without asking the API again.
+    response.headers["Cache-Control"] = "no-store"
     return render_projection(trip, surface.scope, "travel/public-trip@1")
 
 

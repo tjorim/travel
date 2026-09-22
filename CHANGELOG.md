@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Defined the live owner, public and unlisted browser route contract, including
+  scoped projection loading and uniform unavailable-link behavior. Public API
+  projections now use `no-store` so the next load rechecks publication and
+  scope; API tests cover anonymous projection delivery and unavailable
+  capabilities. ([#103](https://github.com/tjorim/travel/issues/103))
+
 - Owner-selected private-media visit review. The tracker groups a selected
   set into transient two-hour candidates, keeps GPS readings more than 500 m
   apart as visible owner choices, and leaves missing metadata out rather than
