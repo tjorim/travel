@@ -6,6 +6,10 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Defined the legacy archive URL inventory, live/legacy route ownership,
+  preserved public aliases and staged verification handoff for content
+  migration and VPS routing. ([#101](https://github.com/tjorim/travel/issues/101))
+
 - Defined the live owner, public and unlisted browser route contract, including
   scoped projection loading and uniform unavailable-link behavior. Public API
   projections now use `no-store` so the next load rechecks publication and

@@ -3,7 +3,8 @@
 This is the browser contract for the live Travel views in #73. The API is the
 only authorization and redaction boundary. The visitor shell and renderer in
 #102 and #100 implement this contract; this decision does not deploy those
-routes. Existing Git-backed URLs and their cutover are specified by #101.
+routes. Existing Git-backed URLs and their cutover are specified by
+[the #101 transition decision](101-legacy-route-transition.md).
 
 ## Routes and request sequence
 

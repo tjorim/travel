@@ -22,9 +22,9 @@ instruction to replace the tracker MVP tables in place.
 - Owner, public, and unlisted APIs serialize three separately versioned
   contracts. A public or unlisted handler starts at an active projection and
   never loads a full owner payload to redact it.
-- Static files are only generated for the public audience. Unlisted pages and
-  their files stay behind a capability-checking application delivery layer, so
-  revocation remains effective.
+- Public and unlisted views are delivered from live scoped projections. Unlisted
+  pages and their files stay behind a capability-checking application delivery
+  layer, so revocation remains effective.
 
 `v1` means the first application-backed model. Existing `api/app/models.py`
 and `dist/` files are a limited legacy/MVP implementation, not this model's
@@ -75,13 +75,12 @@ an asynchronous, audited purge after the database transaction.
 | `moment_excerpt` (`travel/moment-excerpt@1`) | `id`, `trip_id`, `source_moment_id` nullable, `broad_place_id` nullable, `date_precision`, `title`, `body` | A standalone approved excerpt. `source_moment_id` is owner-only provenance and optional so an excerpt can outlive a deleted journal item; it is absent from share output. |
 | `stored_object` (`travel/stored-object@1`) | `id`, `trip_id`, `bucket`, `object_key`, `sha256`, `byte_size`, `content_type`, `encryption_key_ref`, `state` | Object storage inventory. Keys are application-only; `state` is `staged`, `available`, `quarantined`, or `purge_pending`. Deduplication never crosses owners. |
 | `media_asset` (`travel/media@1`) | `id`, `trip_id`, `original_object_id`, `captured_at`, `exact_place_id` nullable, `media_kind`, `import_id` | Raw EXIF/XMP/IPTC, camera data, people/face tags, captions and provenance are owner-only. `original_object_id` always points to a VPS copy. |
-| `media_derivative` (`travel/media-derivative@1`) | `id`, `trip_id`, `media_asset_id`, `object_id`, `purpose`, `metadata_stripped_at`, `review_state` | `purpose` is `owner_preview`, `share`, or `static_export`. A share/static derivative is usable only after metadata stripping and owner review; it has approved caption and alt text stored in its projection item, not raw metadata. |
+| `media_derivative` (`travel/media-derivative@1`) | `id`, `trip_id`, `media_asset_id`, `object_id`, `purpose`, `metadata_stripped_at`, `review_state` | `purpose` is `owner_preview` or `share`. A shared derivative is usable only after metadata stripping and owner review; it has approved caption and alt text stored in its projection item, not raw metadata. |
 | `document_asset` (`travel/document@1`) | `id`, `trip_id`, `original_object_id`, `document_kind`, `title` | Original filename, extracted text, OCR, booking data and metadata remain owner-only. |
 | `document_derivative` (`travel/document-derivative@1`) | `id`, `trip_id`, `document_asset_id`, `object_id`, `redaction_manifest_object_id`, `review_state` | A possible shared file is a new, reviewed redacted derivative. No original object can be projected. |
 | `import_record` (`travel/import@1`) | `id`, `trip_id`, `provider` (`direct_device`, `google_photos_picker`, `gopro_cloud`), `state`, `requested_at`, `completed_at`, `failure_code` | Owner authorization/consent time, provider item reference and transfer checksum are owner-only. Provider access tokens are held in a secret store, never in this table or a browser response. An import completes only once copied and verified in `stored_object`; provider URLs are not retained as file delivery URLs. |
 | `public_surface` (`travel/public-surface@1`) | `trip_id` unique, `slug` unique, `scope_json`, `state` | The stable public URL reservation and its live, owner-selected scope. It has no capability; it is servable only while `state=published`. `scope_json` is validated as `travel/share-scope@1` and is a live field, editable whether or not the surface is currently published — every request renders it against current canonical data, so there is no separate frozen `publication_draft`/`projection_revision` pair to promote. |
 | `share_link` (`travel/share-link@1`) | `id`, `trip_id`, `label`, `token_verifier`, `scope_json`, `expires_at`, `state`, `activated_at`, `revoked_at` | Owner-only `label`; verifier is a keyed one-way digest of a 256-bit capability. State is `draft`, `active`, `revoked`, or `expired`. `scope_json` is likewise live: while `draft` or `active`, the owner can widen or narrow it at any time, and an `active` link reflects the change immediately for its existing token. Only `state` — minting, revoking, or rotating the token — is gated. |
-| `static_export` (`travel/static-export@1`, not yet implemented) | `id`, `public_surface_id`, `state`, `manifest_object_id`, `content_hash`, `generated_at`, `deployed_at`, `invalidated_at` | A future (v2) point-in-time snapshot of `public_surface`'s live output for CDN/static-origin delivery; see the export note below. Because content and scope are both live, an export has no single revision to reference and must be explicitly regenerated when either changes. |
 | `audit_event` (`travel/audit-event@1`, not yet implemented — [#48](https://github.com/tjorim/travel/issues/48)) | `id`, `trip_id`, `actor_subject`, `kind`, `target_type`, `target_id`, `occurred_at`, `details` | Owner-only audit without raw capability, recipient identity, or recipient IP. Publication/link activity follows the 24-month policy retention. |
 
 Database constraints enforce that every resource id referenced by a
@@ -150,11 +149,10 @@ next request, with no republish step.
 | Record | States and allowed direction |
 |---|---|
 | `public_surface.scope_json` / `share_link.scope_json` | Live at any time (link: while `draft` or `active`); there is no draft/preview_ready/frozen state for scope itself. |
-| `public_surface.state` | `unpublished` -> `published` -> `unpublished`. v1 has no separate `publishing`/`unpublishing` transient state, because there is no generation step to wait on; a future static-export deploy step (v2) may reintroduce one for that step specifically. |
+| `public_surface.state` | `unpublished` -> `published` -> `unpublished`. There is no generation step or separate `publishing`/`unpublishing` transient state. |
 | `share_link.state` | `draft` -> `active` -> `revoked` or `expired`; `revoked` and `expired` are terminal. |
-| `static_export` (v2, not yet implemented) | `queued` -> `generated` -> `deployed` -> `invalidating` -> `invalidated`; `queued` or `generated` may instead become `failed`. Because content and scope are both live upstream, an export is a point-in-time snapshot the deploy step must explicitly regenerate on change, not a cache of one immutable revision. |
 
-### Public projection and static archive
+### Public projection and legacy archive
 
 1. The owner selects safe, separately authored resources and fields into
    `public_surface.scope_json`. This is a live field: it can be edited at any
@@ -170,16 +168,10 @@ next request, with no republish step.
    immediately returns 404. It does not change canonical data or named share
    links.
 
-v1 serves the public view as a live API response (delivered for
-trips/route-stages/moments in
-[#42](https://github.com/tjorim/travel/issues/42)); it does not yet generate
-or deploy a static export. When the static-export/CDN deploy step is built
-(v2), it becomes a point-in-time snapshot of the same live output —
-`queued` -> `generated` -> `deployed` -> `invalidating` -> `invalidated` as
-before — and must be explicitly regenerated whenever the live scope or
-content changes, since nothing upstream of it is immutable anymore. That
-regeneration trigger is unresolved and left to the v2 work, not this
-document.
+The public view is a live API response (delivered for trips/route stages/moments
+in [#42](https://github.com/tjorim/travel/issues/42)). The legacy static
+archive remains available only during the reviewed transition in
+[the legacy-route decision](101-legacy-route-transition.md).
 
 ### Unlisted capability
 
@@ -243,9 +235,12 @@ one-time import source, not a mirror. An owner-approved migration job must:
    the appropriate canonical records. Import private content as owner-only.
 3. Create new draft projections from only manually reviewed public-safe
    material; never infer a scope from the old route or directory name.
-4. Preview and explicitly publish a public projection before generating a new
-   static export at the preserved `/<trip-slug>/` URL where that slug is safe
-   and available. Record redirects when preservation is not possible.
+4. Preview and explicitly publish a public projection before switching the
+   preserved `/<trip-slug>/` URL to the live public browser shell where that
+   slug is safe and available. Record explicit redirects when preservation is
+   not possible, following
+   [the legacy-route transition](101-legacy-route-transition.md). Never
+   generate a new static trip export for live delivery.
 5. Retire the Git-backed deployed copy only after an audit confirms the new
    representation, assets, redirects and purge plan. Git history remains code
    history; it does not receive future edits or files from the application.
