@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
-import { beginSignIn, beginSignOut } from "./auth";
+import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
 import { useAuth } from "./auth-context";
+import { wipeOfflineData } from "./offline/offline-store";
 
 const navigation = [
   ["/", "Overzicht"],
@@ -19,6 +20,13 @@ export function Boundary({ children }: { children: ReactNode }) {
     void beginSignIn(window.location.pathname.replace(/^\/admin(?=\/|$)/, "") || "/");
   }
 
+  async function signOut() {
+    if (!session) return;
+    const subject = decodeSubject(session.accessToken);
+    if (subject) await wipeOfflineData(subject).catch(() => undefined);
+    beginSignOut(session);
+  }
+
   return (
     <main className="shell">
       <header>
@@ -29,7 +37,7 @@ export function Boundary({ children }: { children: ReactNode }) {
       <section className="notice" aria-label="Aanmeldstatus">
         <strong>{session ? "Aangemeld" : "Nog niet aangemeld"}</strong>
         <span>{session ? "Je toegangstoken blijft alleen voor deze browsersessie bewaard." : "Meld aan om je private reizen te zien of te wijzigen."}</span>
-        {session ? <button className="secondary" type="button" onClick={() => beginSignOut(session)}>Afmelden</button> : <button type="button" onClick={signIn}>Aanmelden</button>}
+        {session ? <button className="secondary" type="button" onClick={() => void signOut()}>Afmelden</button> : <button type="button" onClick={signIn}>Aanmelden</button>}
       </section>
       {children}
       <nav aria-label="App navigatie">

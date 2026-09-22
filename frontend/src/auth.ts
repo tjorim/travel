@@ -122,6 +122,24 @@ export function clearSession(): void {
   sessionStorage.removeItem(storageKey);
 }
 
+/**
+ * Decodes the access token's `sub` claim client-side, without verifying the
+ * signature, purely to key local per-owner storage. The server independently
+ * verifies and derives `sub` on every request; this is not a trust boundary.
+ */
+export function decodeSubject(accessToken: string): string | null {
+  const segment = accessToken.split(".")[1];
+  if (!segment) return null;
+  try {
+    const base64 = segment.replaceAll("-", "+").replaceAll("_", "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded)) as { sub?: unknown };
+    return typeof payload.sub === "string" && payload.sub ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export function beginSignOut(session: TrackerSession): void {
   clearSession();
   const parameters = new URLSearchParams({

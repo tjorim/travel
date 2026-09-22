@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
-import { apiError, apiHeaders, bytesLabel, openProtectedFile, type DocumentAsset, type DocumentDerivative, type Trip } from "../tracker-model";
+import { apiError, apiHeaders, bytesLabel, fetchProtectedFile, openProtectedFile, type DocumentAsset, type DocumentDerivative, type Trip } from "../tracker-model";
+import { useOfflineCopies } from "../offline/useOfflineCopies";
 
 export function DocumentManager({ trip }: { trip: Trip }) {
   const { session } = useAuth();
+  const offline = useOfflineCopies();
   const [documents, setDocuments] = useState<DocumentAsset[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [derivatives, setDerivatives] = useState<DocumentDerivative[]>([]);
@@ -47,7 +49,27 @@ export function DocumentManager({ trip }: { trip: Trip }) {
     if (!session || !window.confirm(`Verwijder document “${document.title}”?`)) return;
     const response = await fetch(`/api/trips/${trip.id}/documents/${document.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Het document kon niet worden verwijderd.");
+    await offline.removeByResource("trip_document", document.id);
     await load(null); setMessage("Privédocument verwijderd.");
+  }
+
+  async function togglePin(document: DocumentAsset) {
+    if (!session) return;
+    if (offline.isPinned("trip_document", document.id)) {
+      await offline.removeByResource("trip_document", document.id);
+      setMessage(`“${document.title}” is niet langer offline beschikbaar.`);
+      return;
+    }
+    const blob = await fetchProtectedFile(session, document.file_url, "Het document kon niet worden opgehaald voor offline gebruik.");
+    await offline.pin({
+      resourceKind: "trip_document",
+      resourceId: document.id,
+      metadataUrl: `/api/trips/${trip.id}/documents/${document.id}`,
+      title: document.title,
+      contentType: blob.type || document.content_type,
+      bytes: await blob.arrayBuffer(),
+    });
+    setMessage(`“${document.title}” is offline bewaard op dit toestel.`);
   }
 
   async function addDerivative(event: FormEvent<HTMLFormElement>) {
@@ -70,7 +92,7 @@ export function DocumentManager({ trip }: { trip: Trip }) {
 
   return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Originelen staan alleen in je private tracker. Een mogelijke gedeelde kopie moet eerst geredigeerd én goedgekeurd zijn.</p></div></div><p className="help" role="status">{message}</p>
     <form className="stack-form" onSubmit={(event) => void uploadDocument(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden geüpload."))}><div className="field-row"><label>Titel<input required maxLength={160} value={upload.title} onChange={(event) => setUpload((draft) => ({ ...draft, title: event.target.value }))} /></label><label>Soort<select value={upload.kind} onChange={(event) => setUpload((draft) => ({ ...draft, kind: event.target.value as DocumentAsset["document_kind"] }))}><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></select></label></div><label>Privébestand<input required type="file" onChange={(event) => setUpload((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><button type="submit">Document uploaden</button></form>
-    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className={`excerpt-row ${document.id === selectedId ? "selected-item" : ""}`} key={document.id}><button className="document-select" type="button" onClick={() => setSelectedId(document.id)}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, document.file_url, "Het private origineel kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het private origineel kon niet worden geopend."))}>Origineel bekijken</button><button className="danger compact" type="button" onClick={() => void deleteDocument(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className={`excerpt-row ${document.id === selectedId ? "selected-item" : ""}`} key={document.id}><button className="document-select" type="button" onClick={() => setSelectedId(document.id)}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, document.file_url, "Het private origineel kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het private origineel kon niet worden geopend."))}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button><button className="danger compact" type="button" onClick={() => void deleteDocument(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
     {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {selected.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={(event) => void addDerivative(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden opgeslagen."))}><label>Geredigeerd bestand<input required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit">Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, derivative.file_url, "De geredigeerde kopie kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De geredigeerde kopie kon niet worden geopend."))}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => void approveDerivative(derivative).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>}
   </section>;
 }

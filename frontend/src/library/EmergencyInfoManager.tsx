@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
 import { apiError, apiHeaders, type EmergencyInfoEntry, type EmergencyInfoKind } from "../tracker-model";
+import { useOfflineCopies } from "../offline/useOfflineCopies";
 
 const KIND_LABELS: Record<EmergencyInfoKind, string> = {
   contact: "Contactpersoon",
@@ -15,6 +16,7 @@ function emptyDraft() {
 
 export function EmergencyInfoManager() {
   const { session } = useAuth();
+  const offline = useOfflineCopies();
   const [entries, setEntries] = useState<EmergencyInfoEntry[]>([]);
   const [message, setMessage] = useState("Laad je noodinformatie…");
   const [draft, setDraft] = useState(emptyDraft());
@@ -50,9 +52,29 @@ export function EmergencyInfoManager() {
     if (!session || !window.confirm(`Verwijder “${entry.label}”?`)) return;
     const response = await fetch(`/api/library/emergency-info/${entry.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De noodinformatie kon niet worden verwijderd.");
+    await offline.removeByResource("emergency_info", entry.id);
     await load();
     newEntry();
     setMessage("Noodinformatie verwijderd.");
+  }
+
+  async function togglePin(entry: EmergencyInfoEntry) {
+    if (offline.isPinned("emergency_info", entry.id)) {
+      await offline.removeByResource("emergency_info", entry.id);
+      setMessage(`“${entry.label}” is niet langer offline beschikbaar.`);
+      return;
+    }
+    const snapshot = { kind: KIND_LABELS[entry.kind], label: entry.label, value: entry.value, notes: entry.notes };
+    const bytes = new TextEncoder().encode(JSON.stringify(snapshot, null, 2)).buffer as ArrayBuffer;
+    await offline.pin({
+      resourceKind: "emergency_info",
+      resourceId: entry.id,
+      metadataUrl: `/api/library/emergency-info/${entry.id}`,
+      title: entry.label,
+      contentType: "application/json",
+      bytes,
+    });
+    setMessage(`“${entry.label}” is offline bewaard op dit toestel.`);
   }
 
   return <section className="card manager" aria-labelledby="emergency-info-title">
@@ -71,6 +93,7 @@ export function EmergencyInfoManager() {
       <div><strong>{entry.label}</strong><span>{KIND_LABELS[entry.kind]} · {entry.value}{entry.notes ? ` · ${entry.notes}` : ""}</span></div>
       <div className="button-row">
         <button className="secondary compact" type="button" onClick={() => editEntry(entry)}>Bewerken</button>
+        <button className="secondary compact" type="button" onClick={() => void togglePin(entry).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Offline bewaren is mislukt."))}>{offline.isPinned("emergency_info", entry.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
         <button className="danger compact" type="button" onClick={() => void deleteEntry(entry).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De noodinformatie kon niet worden verwijderd."))}>Verwijderen</button>
       </div>
     </article>)}</div>}

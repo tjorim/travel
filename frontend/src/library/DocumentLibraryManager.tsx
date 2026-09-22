@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
-import { apiError, apiHeaders, bytesLabel, openProtectedFile, type OwnerDocument, type Trip } from "../tracker-model";
+import { apiError, apiHeaders, bytesLabel, fetchProtectedFile, openProtectedFile, type OwnerDocument, type Trip } from "../tracker-model";
+import { useOfflineCopies } from "../offline/useOfflineCopies";
 
 export function DocumentLibraryManager() {
   const { session } = useAuth();
+  const offline = useOfflineCopies();
   const [documents, setDocuments] = useState<OwnerDocument[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [message, setMessage] = useState("Laad je bibliotheek…");
@@ -51,8 +53,28 @@ export function DocumentLibraryManager() {
     if (!session || !window.confirm(`Verwijder document “${document.title}”?`)) return;
     const response = await fetch(`/api/library/documents/${document.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Het document kon niet worden verwijderd.");
+    await offline.removeByResource("library_document", document.id);
     await load();
     setMessage("Document verwijderd.");
+  }
+
+  async function togglePin(document: OwnerDocument) {
+    if (!session) return;
+    if (offline.isPinned("library_document", document.id)) {
+      await offline.removeByResource("library_document", document.id);
+      setMessage(`“${document.title}” is niet langer offline beschikbaar.`);
+      return;
+    }
+    const blob = await fetchProtectedFile(session, document.file_url, "Het document kon niet worden opgehaald voor offline gebruik.");
+    await offline.pin({
+      resourceKind: "library_document",
+      resourceId: document.id,
+      metadataUrl: `/api/library/documents/${document.id}`,
+      title: document.title,
+      contentType: blob.type || document.content_type,
+      bytes: await blob.arrayBuffer(),
+    });
+    setMessage(`“${document.title}” is offline bewaard op dit toestel.`);
   }
 
   return <section className="card manager" aria-labelledby="library-documents-title">
@@ -71,6 +93,7 @@ export function DocumentLibraryManager() {
       <div><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}{document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}</span></div>
       <div className="button-row">
         <button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, document.file_url, "Het private origineel kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het private origineel kon niet worden geopend."))}>Bekijken</button>
+        <button className="secondary compact" type="button" onClick={() => void togglePin(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Offline bewaren is mislukt."))}>{offline.isPinned("library_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
         <button className="danger compact" type="button" onClick={() => void deleteDocument(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden verwijderd."))}>Verwijderen</button>
       </div>
     </article>)}</div>}

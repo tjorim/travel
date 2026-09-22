@@ -29,6 +29,23 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added owner-selected offline private copies to the React PWA: an explicit
+  "Offline bewaren" toggle on library documents, trip documents and
+  emergency-info entries pins a copy on the current device, encrypted with a
+  per-owner AES-GCM key that is generated non-extractable and stored via
+  IndexedDB where the browser supports it (with a clear in-app disclosure
+  when it must fall back to an extractable key). Pinned copies carry a
+  7-day access lease that is revalidated against the existing owner-only
+  endpoints on every reconnect and purged if the source was deleted,
+  unshared or no longer owned; no durable access token is stored with a
+  copy. Pinning also requests persistent storage from the browser (with an
+  in-app disclosure if it's declined) so pinned copies are less likely to be
+  silently evicted under storage pressure. A new "Offline" section lets the
+  owner inspect, remove or clear all pinned copies on the device, and
+  signing out wipes the device key and every pinned copy. Frontend-only; no
+  shared service-worker cache is used.
+  ([#124](https://github.com/tjorim/travel/issues/124))
+
 - Added an owner-wide document library and emergency-information page: an
   owner can upload, preview, download and delete reusable documents (a
   policy, an identity copy, other travel essentials) and manage emergency

@@ -1,19 +1,33 @@
 // @vitest-environment jsdom
+import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
+import { __resetOfflineStoreForTests } from "../offline/offline-store";
 import type { EmergencyInfoEntry } from "../tracker-model";
 import { EmergencyInfoManager } from "./EmergencyInfoManager";
 
-afterEach(() => {
+function fakeAccessToken(subject: string): string {
+  const payload = btoa(JSON.stringify({ sub: subject })).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+  return `header.${payload}.signature`;
+}
+
+afterEach(async () => {
   cleanup();
   vi.unstubAllGlobals();
   sessionStorage.clear();
+  await __resetOfflineStoreForTests();
+  await new Promise<void>((resolve) => {
+    const request = indexedDB.deleteDatabase("travel-offline-v1");
+    request.onsuccess = () => resolve();
+    request.onerror = () => resolve();
+    request.onblocked = () => resolve();
+  });
 });
 
 function withSession(): void {
-  sessionStorage.setItem("travel-tracker-session", JSON.stringify({ accessToken: "test-token", expiresAt: Date.now() + 60_000 }));
+  sessionStorage.setItem("travel-tracker-session", JSON.stringify({ accessToken: fakeAccessToken("owner-1"), expiresAt: Date.now() + 60_000 }));
 }
 
 function stubFetch(entries: EmergencyInfoEntry[]): { calls: { url: string; method: string }[] } {
@@ -70,4 +84,19 @@ it("deletes an entry after explicit confirmation", async () => {
 
   await screen.findByText("Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.");
   expect(state.calls.some((call) => call.method === "DELETE" && call.url === "/api/library/emergency-info/entry-1")).toBe(true);
+});
+
+it("lets the owner pin an emergency-info entry for offline access and unpin it again", async () => {
+  withSession();
+  stubFetch([entry()]);
+  render(<AuthProvider><EmergencyInfoManager /></AuthProvider>);
+  await screen.findByText("Mom");
+
+  screen.getByRole("button", { name: "Offline bewaren" }).click();
+  await screen.findByText("“Mom” is offline bewaard op dit toestel.");
+  await screen.findByRole("button", { name: "Offline verwijderen" });
+
+  screen.getByRole("button", { name: "Offline verwijderen" }).click();
+  await screen.findByText("“Mom” is niet langer offline beschikbaar.");
+  await screen.findByRole("button", { name: "Offline bewaren" });
 });

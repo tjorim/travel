@@ -78,8 +78,6 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#124](https://github.com/tjorim/travel/issues/124) Implement
-      owner-selected offline private copies in the React PWA.
 - [ ] [#119](https://github.com/tjorim/travel/issues/119) Render scoped
       interactive maps in the React owner and visitor views.
 - [ ] [#120](https://github.com/tjorim/travel/issues/120) Build chronological
@@ -164,6 +162,15 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#124](https://github.com/tjorim/travel/issues/124) Added owner-selected
+      offline private copies to the React PWA: explicit per-item pin, inspect,
+      remove and clear-all controls for library documents, trip documents and
+      emergency-info entries, encrypted on-device under #36's device-scoped
+      offline policy with a short revalidated lease, no durable access token,
+      and full wipe on sign-out. Extending pinning to media, maps and
+      itinerary resources is tracked separately in
+      [#131](https://github.com/tjorim/travel/issues/131), pending #119/#120.
 
 - [x] [#123](https://github.com/tjorim/travel/issues/123) Added an owner-wide
       document library and emergency-information page: reusable documents and
@@ -363,6 +370,9 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Later
 
+- [ ] [#131](https://github.com/tjorim/travel/issues/131) Extend owner
+      offline pinning to media, maps and itinerary resources. Blocked on
+      #119 and #120, which do not exist yet.
 - [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
       whether and how to move old `dist/` content out of Git. It is not a
       dependency of the fresh application launch or a source of URL aliases.

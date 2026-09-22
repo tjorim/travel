@@ -358,14 +358,22 @@ export function bytesLabel(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} kB`;
 }
 
-export async function openProtectedFile(session: TrackerSession, fileUrl: string, fallback: string): Promise<void> {
+export async function fetchProtectedFile(session: TrackerSession, fileUrl: string, fallback: string): Promise<Blob> {
   const response = await fetch(fileUrl, { headers: { Authorization: `Bearer ${session.accessToken}` } });
   if (!response.ok) return apiError(response, fallback);
-  const objectUrl = URL.createObjectURL(await response.blob());
+  return response.blob();
+}
+
+export function openBlobInNewTab(blob: Blob): void {
+  const objectUrl = URL.createObjectURL(blob);
   const preview = window.open(objectUrl, "_blank", "noopener");
   if (!preview) {
     URL.revokeObjectURL(objectUrl);
-    throw new Error("Je browser blokkeerde het openen van het private bestand.");
+    throw new Error("Je browser blokkeerde het openen van het bestand.");
   }
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+}
+
+export async function openProtectedFile(session: TrackerSession, fileUrl: string, fallback: string): Promise<void> {
+  openBlobInNewTab(await fetchProtectedFile(session, fileUrl, fallback));
 }
