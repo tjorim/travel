@@ -1,0 +1,87 @@
+version: 2
+updates:
+  # Monitor uv-managed API dependencies.
+  - package-ecosystem: "uv"
+    directory: "/api"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "18:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "tjorim"
+    commit-message:
+      prefix: "deps(api)"
+      include: "scope"
+    labels:
+      - "dependencies"
+    versioning-strategy: "increase"
+    groups:
+      python-quality:
+        patterns:
+          - "pytest"
+          - "ruff"
+
+  # Monitor Go module dependencies for the authentication service.
+  - package-ecosystem: "gomod"
+    directory: "/auth"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "18:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "tjorim"
+    commit-message:
+      prefix: "deps(auth)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "go"
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+
+  # pnpm projects use Dependabot's npm ecosystem support.
+  - package-ecosystem: "npm"
+    directory: "/tracker"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "18:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "tjorim"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+    versioning-strategy: "increase"
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/plugin-react"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "18:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "tjorim"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
