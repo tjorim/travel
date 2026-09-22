@@ -7,7 +7,19 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Moment, MomentExcerpt, Place, PlaceKind, PublicationState, RouteStage, Trip, Visibility, opaque_id
+from ..models import (
+    BroadStayCard,
+    Moment,
+    MomentExcerpt,
+    Place,
+    PlaceKind,
+    PublicationState,
+    RouteStage,
+    Stay,
+    Trip,
+    Visibility,
+    opaque_id,
+)
 from ..schemas import (
     BroadPlaceInput,
     ExactPlaceInput,
@@ -38,6 +50,8 @@ def trip_query():
         selectinload(Trip.route_stages).selectinload(RouteStage.place),
         selectinload(Trip.moments).selectinload(Moment.place),
         selectinload(Trip.moment_excerpts),
+        selectinload(Trip.stays).selectinload(Stay.place),
+        selectinload(Trip.broad_stay_cards).selectinload(BroadStayCard.place),
     )
 
 

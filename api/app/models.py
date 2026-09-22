@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -86,6 +86,13 @@ class DatePrecision(StrEnum):
     DAY = "day"
     MONTH = "month"
     YEAR = "year"
+
+
+class StayStatus(StrEnum):
+    PLANNED = "planned"
+    BOOKED = "booked"
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
 
 
 class AuditEventKind(StrEnum):
@@ -190,6 +197,12 @@ class Trip(Base):
     moment_excerpts: Mapped[list["MomentExcerpt"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MomentExcerpt.created_at"
     )
+    stays: Mapped[list["Stay"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="Stay.arrives_at"
+    )
+    broad_stay_cards: Mapped[list["BroadStayCard"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="BroadStayCard.created_at"
+    )
 
 
 class RouteStage(Base):
@@ -250,6 +263,59 @@ class MomentExcerpt(Base):
 
     trip: Mapped[Trip] = relationship(back_populates="moment_excerpts")
     broad_place: Mapped[Place | None] = relationship(foreign_keys=[broad_place_id])
+
+
+class Stay(Base):
+    """An owner-only accommodation record. Its exact place, dates and
+    booking/contact details are intentionally not shareable; a traveller who
+    wants to share a stay authors a separate :class:`BroadStayCard` instead."""
+
+    __tablename__ = "stays"
+    __table_args__ = (CheckConstraint("departs_at > arrives_at", name="ck_stay_departure_after_arrival"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    exact_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
+    arrives_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    departs_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[StayStatus] = mapped_column(
+        _enum_column(StayStatus, "travel_stay_status"), default=StayStatus.PLANNED
+    )
+    property_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    booking_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contact_details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="stays")
+    place: Mapped[Place] = relationship(foreign_keys=[exact_place_id])
+
+
+class BroadStayCard(Base):
+    """A deliberately authored, share-safe stay summary.
+
+    The card has no stay foreign key: selecting one for a future projection
+    can never follow an implicit path to a stay's exact place, dates or
+    booking data.
+    """
+
+    __tablename__ = "broad_stay_cards"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    broad_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="broad_stay_cards")
+    place: Mapped[Place] = relationship(foreign_keys=[broad_place_id])
 
 
 class PublicSurface(Base):

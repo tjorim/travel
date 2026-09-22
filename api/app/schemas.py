@@ -15,6 +15,7 @@ from .models import (
     MediaKind,
     PlaceKind,
     PublicationState,
+    StayStatus,
     SurfaceState,
     Visibility,
 )
@@ -161,6 +162,61 @@ class MomentExcerptResponse(BaseModel):
     date_precision: DatePrecision
     title: str
     body: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StayCreate(BaseModel):
+    place: ExactPlaceInput
+    arrives_at: datetime
+    departs_at: datetime
+    status: StayStatus = StayStatus.PLANNED
+    property_name: str = Field(min_length=1, max_length=160)
+    booking_reference: str | None = Field(default=None, max_length=255)
+    contact_details: str | None = Field(default=None, max_length=2000)
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class StayUpdate(BaseModel):
+    place: ExactPlaceInput | None = None
+    arrives_at: datetime | None = None
+    departs_at: datetime | None = None
+    status: StayStatus | None = None
+    property_name: str | None = Field(default=None, min_length=1, max_length=160)
+    booking_reference: str | None = Field(default=None, max_length=255)
+    contact_details: str | None = Field(default=None, max_length=2000)
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class StayResponse(BaseModel):
+    id: str
+    arrives_at: datetime
+    departs_at: datetime
+    status: StayStatus
+    property_name: str
+    booking_reference: str | None
+    contact_details: str | None
+    notes: str | None
+    place: ExactPlaceResponse
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BroadStayCardCreate(BaseModel):
+    broad_place_id: str
+    title: str = Field(min_length=1, max_length=160)
+    date_precision: DatePrecision
+
+
+class BroadStayCardUpdate(BaseModel):
+    broad_place_id: str | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    date_precision: DatePrecision | None = None
+
+
+class BroadStayCardResponse(BaseModel):
+    id: str
+    title: str
+    date_precision: DatePrecision
+    place: BroadPlaceResponse
     model_config = ConfigDict(from_attributes=True)
 
 
