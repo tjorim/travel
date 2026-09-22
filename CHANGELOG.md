@@ -19,6 +19,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added data-free React visitor shells for `/trips/{slug}` and `/share/{token}`.
+  Both fetch only their current scoped projection, show loading, empty,
+  unavailable and retry states, and keep capability data out of browser storage.
+  ([#102](https://github.com/tjorim/travel/issues/102))
+
 - Defined the live owner, public and unlisted browser route contract, including
   scoped projection loading and uniform unavailable-link behavior. Public API
   projections now use `no-store` so the next load rechecks publication and

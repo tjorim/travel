@@ -68,3 +68,14 @@ the VPS routing work in tjorim/apps#219. This repository's API tests cover
 the delivery behavior available now. The fresh-launch boundary and absence of
 archive migration or URL aliases are defined by #101. Any later work on old
 `dist/` content is tracked separately in #40.
+
+## Visitor shell build handoff
+
+The tracker build emits data-free `public.html` and `share.html` beside the
+owner `index.html`. The VPS route owner in tjorim/apps#219 serves `public.html`
+for `/trips/{slug}` and `share.html` for `/share/{token}`, with a direct reload
+returning the same shell. The built assets are under `/admin/assets/`; the
+visitor entry point neither registers the owner service worker nor reads its
+session. The unlisted shell must receive the protective response headers above
+even for an unknown token. The public shell starts with `noindex` because it
+contains no server-rendered publication state or trip content.
