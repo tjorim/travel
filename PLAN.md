@@ -1,22 +1,168 @@
 # Travel plan
 
-This is the working order for the Git-backed travel hub. The static archive
-remains Git-backed, while the tracker PWA and API are deployed through the
-central VPS infrastructure.
+This is the working order for Travel. It is evolving from a Git-backed archive
+with a small tracker into a private, privacy-gradient travel journal: a custom
+Polarsteps-style app for active trips, with a deliberately published static
+archive. The tracker PWA and API are deployed through the central VPS
+infrastructure.
 
 The `Now`, `Next` and `Later` sections mirror the open GitHub issues in their
 working order. When an issue is closed, move it to `Recently completed` and
 record the delivered change in `CHANGELOG.md`.
 
-## Data boundary
+## Product direction
+
+The Travel app will become the source of truth for active trip data, archive
+content, private assets and sharing rules. Git is for application code, tests,
+schemas, migrations, documentation and infrastructure only; it is not file
+storage for user content, media, documents or published archive output.
+
+The static archive remains a useful, dependency-light read-only destination;
+it is generated from deliberately published app data and deployed from
+application-controlled VPS storage, not committed as trip content. It is a
+public or unlisted trip page,
+not a backup and not an automatic record of every private item. Publication
+from the app must be an explicit action. The existing Git-backed archive is
+legacy content to move in an explicit, audited migration, not through ongoing
+automatic replication.
+
+## Data and access boundary
 
 Public routes contain the story of a trip: intentionally selected photos,
 moments, broad route stages, cities and places.
 
-Private routes contain operational information: documents, ticket/booking
-references, exact accommodation, emergency contacts and near-real-time plans.
-Do not make a file public merely because it is not secret; public trip data is
-deliberately selected data.
+The app is private by default. The account owner is the only person who can
+sign in, create or edit data. There are no viewer accounts or sharing groups.
+The owner can publish a public page or create a revocable, high-entropy
+unlisted link with a deliberately selected scope. An unlisted link is a
+forwardable capability rather than proof of a recipients identity. The backend
+produces the matching redacted response and must not send data to a client
+merely to hide it in the UI.
+
+Exact coordinates, addresses, booking references, documents, unredacted media
+metadata, precise schedules and private journal entries are sensitive by
+default. A shared city, broad route or selected place must be a separate,
+redacted representation rather than a client-side mask of an exact record.
+
+Exact location capture, stays, media uploads and device-scoped offline copies
+are in scope. They remain owner-only until shared deliberately. The product
+does not include continuous or live GPS tracking: location capture is a
+deliberate user action, and no exact or near-real-time location is published
+automatically.
+
+All canonical files live on the backed-up VPS in application-controlled object
+storage; the database holds their metadata and access policy. Media may enter
+through direct device upload, an owner-authorized Google Photos Picker import,
+or a GoPro Cloud import if its beta API access is available. Imported media is
+copied to VPS storage; third-party URLs are never the canonical file or a
+viewer-facing privacy boundary.
+
+External map or navigation links are also sensitive: only an authorized viewer
+may receive an exact OSM reference, Google Maps destination or precise map
+viewport. A Google Maps navigation link is generated on demand after access
+control, while less-authorized viewers receive at most a city-level link.
+
+## Delivery backlog
+
+Each open delivery issue has one checkbox. Tick it only when its GitHub issue
+is closed, then move its delivered result to `Recently completed`.
+
+v1 is application-only work. It uses local/test storage and test deployments
+as needed, but does not change shared VPS routing, production media storage,
+backup automation or legacy content. Those operational changes begin only in
+v2 after the app behavior is complete and verified.
+
+### v1 — Private travel journal application
+
+- [ ] [#36](https://github.com/tjorim/travel/issues/36) Define the owner,
+      public and unlisted-link privacy, sharing and offline policy.
+- [ ] [#37](https://github.com/tjorim/travel/issues/37) Define the canonical
+      content model and explicit public/unlisted publication flow.
+- [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
+      with a shared MapLibre renderer, reconciled with #36's privacy contract.
+- [ ] [#42](https://github.com/tjorim/travel/issues/42) Implement scoped,
+      revocable public and unlisted publication links.
+- [ ] [#43](https://github.com/tjorim/travel/issues/43) Add durable owner-only
+      direct, Google Photos and optional GoPro media ingestion.
+- [ ] [#38](https://github.com/tjorim/travel/issues/38) Evolve the tracker
+      API and PWA into the private Travel content app.
+- [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
+      narrow owner-authenticated MCP management tools against the app service
+      layer.
+- [ ] [#39](https://github.com/tjorim/travel/issues/39) Add privacy-aware OSM
+      place search and Google Maps navigation.
+
+### v2 — VPS cutover, Git-content retirement and archive publishing
+
+- [ ] [apps#219](https://github.com/tjorim/apps/issues/219) Add Travel
+      application publication and private-media storage to the shared VPS.
+- [ ] [#40](https://github.com/tjorim/travel/issues/40) Migrate user content
+      and deployable archive assets out of Git.
+- [ ] [apps#220](https://github.com/tjorim/apps/issues/220) Extend backup and
+      restore verification to Travel media storage.
+
+## Confirmed release targets
+
+### v1 — Private travel journal application
+
+v1 delivers a feature-complete private Travel app in local/test environments.
+It deliberately does not migrate or serve production user content yet.
+
+- One account owner creates and edits all data. There are no viewer accounts or
+  sharing groups; pages are owner-only, public, or shared through revocable
+  high-entropy unlisted links.
+- "Private" means access-controlled service data, protected in transit and at
+  rest. End-to-end encryption is not a v1 requirement.
+- Link scopes and server-enforced redaction protect items and sensitive fields;
+  a client never receives hidden locations, links, files or metadata.
+- Exact locations, deliberately recorded private tracks, exact stays,
+  automatic owner-only media uploads and selected offline copies are included.
+  Continuous/live GPS tracking is excluded.
+- Google Photos Picker import is included; GoPro Cloud import is included when
+  beta access is granted, with direct device upload as the enduring fallback.
+- MCP management tools are implemented and verified locally against the same
+  application service layer; they are not exposed through the production VPS
+  until the v2 cutover.
+- The owner can select private OSM places and launch authorized Google Maps
+  navigation; other viewers receive only their intended broad representation.
+- Public and private maps consume distinct, audience-appropriate data. The
+  MapLibre work in [#34](https://github.com/tjorim/travel/issues/34) must be
+  reconciled with the privacy contract in [#36](https://github.com/tjorim/travel/issues/36).
+
+v1 exit condition: the owner can manage a test trip entirely in the app and
+public/unlisted test visitors can see only deliberately shared content, proven
+by authorization, redaction and integration tests.
+
+### v2 — VPS cutover, Git-content retirement and published archive
+
+v2 enables the completed app on the shared VPS and makes it the only home for
+Travel content, including legacy content.
+
+- Migrate structured trip/archive content to the database and all documents,
+  media, derivatives and generated archive files to backed-up VPS object
+  storage.
+- Generate and deploy the static archive only from explicitly published app
+  data; keep the archive static and dependency-light for its readers.
+- Wire the already-tested MCP service through the production Caddy and Keycloak
+  boundary with the same owner authorization and audit rules.
+- Audit Git and Git LFS history handling, validate the migration and retire the
+  legacy Git-backed deploy paths.
+
+v2 exit condition: Git holds only software and operational configuration; no
+user content or deployable archive asset is added or served from it, and the
+owner can use the already-tested MCP service through its production boundary.
+
+### v3 — No committed delivery scope
+
+v3 is deliberately unplanned. MCP application tools are part of v1, and their
+production connection is part of v2. New v3 work requires a fresh product
+decision rather than inventing a release to hold it.
+
+## Confirmed out of scope through v3
+
+Collaborative editing, end-to-end encryption, continuous/live GPS tracking,
+public default sharing, generic external automation, and further social
+Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
@@ -78,8 +224,12 @@ deliberately selected data.
 
 ## Conventions
 
-- Git is the source of truth for content and documents.
-- Keep the public site static and dependency-light.
+- The app is the source of truth for trip/archive data, private assets and
+  sharing policy. Git contains only code, tests, schemas, migrations,
+  documentation and infrastructure; never user content or deployable assets.
+- Keep the published archive static and dependency-light. Purposeful app
+  dependencies are allowed behind its authenticated product boundary.
+- Do not use Git history as a document vault for sensitive documents.
 - Complete `docs/public-route-safety-check.md` before deploying a public-route
   change.
 - Prefer small reusable browser components in `dist/assets/travel/`.
