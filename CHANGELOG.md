@@ -18,6 +18,12 @@ All notable changes to the travel hub are documented here.
   tokens in the browser session only and sending them solely to the tracker
   API. The account identity stays out of published-trip responses.
   ([apps#216](https://github.com/tjorim/apps/issues/216))
+- Mobile moment capture in the tracker, with date/time and text editing,
+  trip-level sharing visibility, locally queued drafts, honest offline status,
+  and a deliberate broad-place choice. The optional browser location action is
+  one-shot and immediately discards coordinates; it never sends or stores GPS
+  data, and drafts are not automatically synchronized. Moments can also have a
+  saved place removed while editing. ([#23](https://github.com/tjorim/travel/issues/23))
 
 - Native server-side login and logout flow for shared and per-trip private
   routes, with short-lived signed secure sessions, Argon2id secret handling,

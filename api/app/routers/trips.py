@@ -164,8 +164,11 @@ def update_moment(
     trip_id: str, moment_id: str, payload: MomentUpdate, session: SessionDep, subject: SubjectDep
 ) -> Moment:
     moment = owned_moment(owned_trip(session, trip_id, subject), moment_id)
-    if payload.place is not None:
-        moment.place = place_from_input(session, payload.place)
+    # A present null is intentional: the traveller may remove an attached
+    # place while editing a moment.  Pydantic otherwise represents both an
+    # omitted field and null as None.
+    if "place" in payload.model_fields_set:
+        moment.place = place_from_input(session, payload.place) if payload.place else None
     values = payload.model_dump(exclude_unset=True, exclude={"place", "photo_urls"})
     for field, value in values.items():
         setattr(moment, field, value)

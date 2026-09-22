@@ -66,6 +66,10 @@ def test_owner_can_create_edit_and_delete_a_moment() -> None:
     assert changed.status_code == 200
     assert changed.json()["title"] == "Arrival in Taipei"
 
+    without_place = client.patch(f"/api/v1/trips/{trip['id']}/moments/{moment_id}", json={"place": None})
+    assert without_place.status_code == 200
+    assert without_place.json()["place"] is None
+
     deleted = client.delete(f"/api/v1/trips/{trip['id']}/moments/{moment_id}")
     assert deleted.status_code == 204
 

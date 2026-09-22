@@ -36,6 +36,10 @@ deliberately selected data.
       audience, and an owner-only subject boundary.
       ([apps#216](https://github.com/tjorim/apps/issues/216))
 
+- [x] Added mobile moment capture with local drafts, deliberate broad-place
+      controls, an explicit one-shot location action, and clear sharing state.
+      ([#23](https://github.com/tjorim/travel/issues/23))
+
 - [x] Integrated the native Travel session gate into the central infrastructure
       deployment. ([apps#214](https://github.com/tjorim/apps/issues/214))
 
@@ -57,9 +61,6 @@ deliberately selected data.
       URLs and a public-data-only renderer. ([#7](https://github.com/tjorim/travel/issues/7))
 
 ## Next
-
-- [ ] Add mobile moment capture with explicit, privacy-first location controls.
-      ([#23](https://github.com/tjorim/travel/issues/23))
 
 - [ ] Establish the Git/LFS media layout, captions, alt text and safe public
       derivatives. ([#9](https://github.com/tjorim/travel/issues/9))
