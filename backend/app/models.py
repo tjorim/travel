@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
 from sqlalchemy import (
@@ -368,10 +368,12 @@ class MomentExcerpt(Base):
     __tablename__ = "moment_excerpts"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    share_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     source_moment_id: Mapped[str | None] = mapped_column(ForeignKey("moments.id", ondelete="SET NULL"), nullable=True)
     broad_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
     date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
+    story_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -810,6 +812,11 @@ class MediaDerivative(Base):
     )
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    moment_excerpt_id: Mapped[str | None] = mapped_column(ForeignKey("moment_excerpts.id", ondelete="SET NULL"), nullable=True)
+    caption: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    alt_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    focal_x: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    focal_y: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     trip: Mapped[Trip] = relationship(back_populates="media_derivatives")

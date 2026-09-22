@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 export type ProjectionItem = { id: string; [field: string]: unknown };
 
@@ -47,6 +47,28 @@ function precision(item: ProjectionItem): string | null {
   return value === "day" ? "Dagprecisie" : value === "month" ? "Maandprecisie" : value === "year" ? "Jaarprecisie" : null;
 }
 
+function storyDate(item: ProjectionItem): string | null {
+  const value = text(item, "story_date");
+  const precisionValue = text(item, "date_precision") ?? ({ 4: "year", 7: "month", 10: "day" } as Record<number, string>)[value?.length ?? 0];
+  if (!value || !/^(\d{4}|\d{4}-\d{2}|\d{4}-\d{2}-\d{2})$/.test(value)) return null;
+  if ((precisionValue === "day" && value.length !== 10) || (precisionValue === "month" && value.length !== 7) || (precisionValue === "year" && value.length !== 4)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (month && (month < 1 || month > 12)) return null;
+  if (day && (day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate())) return null;
+  const date = new Date(Date.UTC(year, (month ?? 1) - 1, day ?? 1));
+  return new Intl.DateTimeFormat("nl-BE", { timeZone: "UTC", year: "numeric", ...(precisionValue !== "year" ? { month: "long" as const } : {}), ...(precisionValue === "day" ? { day: "numeric" as const } : {}) }).format(date);
+}
+
+function positiveSize(item: ProjectionItem, field: "width" | "height"): number | undefined {
+  const value = item[field];
+  return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 4000 ? value : undefined;
+}
+
+function focus(item: ProjectionItem, field: "focal_x" | "focal_y"): number {
+  const value = item[field];
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : 50;
+}
+
 function hasFileMarker(item: ProjectionItem, field: "image" | "file"): boolean {
   const marker = item[field];
   return !!marker && typeof marker === "object" && !Array.isArray(marker) && (marker as { id?: unknown }).id === item.id;
@@ -72,7 +94,34 @@ function ResourceSection({ title, items, render }: { title: string; items: Proje
   return <section className="card visitor-section" aria-label={title}><h2>{title}</h2><ul className="visitor-items">{items.map((item) => <li key={item.id}>{render(item)}</li>)}</ul></section>;
 }
 
+function Gallery({ items, fileUrl, title = "Galerij" }: { items: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string; title?: string }) {
+  if (!items.length) return null;
+  return <section className="visitor-gallery" aria-label={title}><h3>{title}</h3><ul>{items.map((item) => <li key={item.id}><figure>
+    {hasFileMarker(item, "image") && <img src={fileUrl(item)} alt={text(item, "alt_text") ?? "Gedeelde afbeelding"} width={positiveSize(item, "width")} height={positiveSize(item, "height")} style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }} loading="lazy" decoding="async" referrerPolicy="no-referrer" />}
+    {text(item, "caption") && <figcaption>{text(item, "caption")}</figcaption>}
+  </figure></li>)}</ul></section>;
+}
+
+function Story({ moments, media, fileUrl, navigationLink }: { moments: ProjectionItem[]; media: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string; navigationLink: (item: ProjectionItem) => ReactNode }) {
+  if (!moments.length) return null;
+  return <section className="card visitor-section visitor-story" aria-label="Reisverhaal"><h2>Reisverhaal</h2>
+    <nav aria-label="Momenten in dit verhaal"><ol>{moments.map((item) => <li key={item.id}><a href={`#moment-${item.id}`}>{text(item, "title") ?? storyDate(item) ?? "Moment"}</a></li>)}</ol></nav>
+    <ol className="visitor-timeline">{moments.map((item) => <li key={item.id} id={`moment-${item.id}`} tabIndex={-1}><article>
+      <div className="visitor-moment-meta">{storyDate(item) ? <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time> : precision(item) ? <span>{precision(item)}</span> : null}{place(item.place) && <span>{place(item.place)}</span>}</div>
+      <h3>{text(item, "title") ?? "Moment"}</h3>{text(item, "body") && <p>{text(item, "body")}</p>}{navigationLink(item)}
+      <Gallery items={media.filter((image) => image.moment === item.id)} fileUrl={fileUrl} title="Foto’s bij dit moment" />
+    </article></li>)}</ol>
+  </section>;
+}
+
 export function ProjectionView({ projection, audience, identifier }: { projection: Projection; audience: Audience; identifier: string }) {
+  useEffect(() => {
+    const fragment = window.location.hash.slice(1);
+    if (!projection.moments.some((item) => fragment === `moment-${item.id}`)) return;
+    const target = document.getElementById(fragment);
+    target?.scrollIntoView?.();
+    target?.focus({ preventScroll: true });
+  }, [projection]);
   const navigation = new Set(projection.navigation.map((item) => item.id));
   const displayed = new Set(navigableCollections.flatMap((key) => projection[key].map((item) => item.id)));
   const navigationLink = (item: ProjectionItem) => {
@@ -81,17 +130,20 @@ export function ProjectionView({ projection, audience, identifier }: { projectio
     return <a href={`${base}/${encodeURIComponent(identifier)}/navigation/${encodeURIComponent(item.id)}`} referrerPolicy="no-referrer" rel="noreferrer">Routebeschrijving</a>;
   };
   const fileUrl = (item: ProjectionItem) => `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}/files/${encodeURIComponent(item.id)}`;
-  const empty = !projection.title && !projection.summary && collections.every((key) => projection[key].length === 0);
-  if (empty) return <section className="card" role="status"><h2>Nog geen gedeelde inhoud</h2><p>Voor deze reis is nog geen inhoud geselecteerd.</p></section>;
+  const momentIds = new Set(projection.moments.map((item) => item.id));
+  const looseMedia = projection.media.filter((item) => typeof item.moment !== "string" || !momentIds.has(item.moment));
+  const empty = collections.every((key) => projection[key].length === 0);
+  if (empty && !projection.summary) return <section className="card" role="status"><h2>Nog geen gedeelde inhoud</h2><p>Voor deze reis is nog geen inhoud geselecteerd.</p></section>;
 
   return <div className="visitor-content">
     {projection.summary && <section className="card"><h2>Reisoverzicht</h2><p>{projection.summary}</p></section>}
+    {empty && <section className="card" role="status"><h2>Nog geen gedeeld verhaal of foto’s</h2><p>Er zijn nog geen momenten of foto’s geselecteerd.</p></section>}
     <ResourceSection title="Etappes" items={projection.route_stages} render={(item) => <article><h3>{text(item, "label") ?? "Etappe"}</h3>{typeof item.position === "number" && Number.isFinite(item.position) && <p>Etappe {item.position}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
     <ResourceSection title="Plaatsen" items={projection.places} render={(item) => <article><h3>{text(item, "label") ?? "Plaats"}</h3>{[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>}{navigationLink(item)}</article>} />
-    <ResourceSection title="Momenten" items={projection.moments} render={(item) => <article><h3>{text(item, "title") ?? "Moment"}</h3>{precision(item) && <p>{precision(item)}</p>}{text(item, "body") && <p>{text(item, "body")}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
+    <Story moments={projection.moments} media={projection.media} fileUrl={fileUrl} navigationLink={navigationLink} />
     <ResourceSection title="Verblijven" items={projection.stays} render={(item) => <article><h3>{text(item, "title") ?? "Verblijf"}</h3>{precision(item) && <p>{precision(item)}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
     <ResourceSection title="Routes" items={projection.route} render={(item) => <article><h3>{text(item, "label") ?? "Route"}</h3>{precision(item) && <p>{precision(item)}</p>}{Object.hasOwn(item, "geometry") && <RouteLine geometry={item.geometry} />}</article>} />
-    <ResourceSection title="Media" items={projection.media} render={(item) => <article><h3>Gedeeld medium</h3>{hasFileMarker(item, "image") && <figure className="visitor-media"><img src={fileUrl(item)} alt={text(item, "alt_text") ?? "Gedeelde afbeelding"} loading="lazy" referrerPolicy="no-referrer" />{text(item, "caption") && <figcaption>{text(item, "caption")}</figcaption>}</figure>}{!hasFileMarker(item, "image") && text(item, "caption") && <p>{text(item, "caption")}</p>}</article>} />
+    {looseMedia.length > 0 && <section className="card visitor-section"><h2>Galerij</h2><Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" /></section>}
     <ResourceSection title="Documenten" items={projection.documents} render={(item) => <article><h3>{text(item, "title") ?? "Gedeeld document"}</h3>{hasFileMarker(item, "file") && <a href={fileUrl(item)} referrerPolicy="no-referrer" rel="noreferrer">Document openen</a>}</article>} />
     {projection.navigation.some((item) => !displayed.has(item.id)) && <ResourceSection title="Navigatie" items={projection.navigation.filter((item) => !displayed.has(item.id))} render={(item) => <article><h3>Bestemming</h3>{navigationLink(item)}</article>} />}
   </div>;

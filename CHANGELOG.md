@@ -29,6 +29,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added live chronological visitor stories with stable moment links, authored
+  dates at the selected precision, broad places, and responsive galleries of
+  explicitly shared media derivatives. Owner controls now edit captions, alt
+  text, focal position, and moment association; public and unlisted projections
+  expose only selected presentation fields. ([#120](https://github.com/tjorim/travel/issues/120))
 - Added owner-selected offline private copies to the React PWA: an explicit
   "Offline bewaren" toggle on library documents, trip documents and
   emergency-info entries pins a copy on the current device, encrypted with a

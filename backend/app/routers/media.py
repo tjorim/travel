@@ -36,6 +36,7 @@ from ..schemas import (
     ImportSessionResponse,
     MediaAssetResponse,
     MediaDerivativeCreate,
+    MediaDerivativePresentationUpdate,
     MediaDerivativeResponse,
     MediaGpsCoordinates,
     MediaVisitCandidateResponse,
@@ -91,6 +92,11 @@ def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeri
         metadata_stripped_at=derivative.metadata_stripped_at,
         width=derivative.width,
         height=derivative.height,
+        moment_excerpt_id=derivative.moment_excerpt_id,
+        caption=derivative.caption,
+        alt_text=derivative.alt_text,
+        focal_x=derivative.focal_x,
+        focal_y=derivative.focal_y,
         created_at=derivative.created_at,
         file_url=f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/file",
     )
@@ -254,6 +260,25 @@ def approve_derivative(
 ) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     derivative.review_state = DerivativeReviewState.APPROVED
+    session.commit()
+    return _derivative_response(derivative, trip_id)
+
+
+@router.patch("/{media_id}/derivatives/{derivative_id}/presentation", response_model=MediaDerivativeResponse)
+def update_derivative_presentation(
+    trip_id: str, media_id: str, derivative_id: str, payload: MediaDerivativePresentationUpdate,
+    session: SessionDep, subject: SubjectDep,
+) -> MediaDerivativeResponse:
+    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
+    values = payload.model_dump(exclude_unset=True)
+    if values.get("moment_excerpt_id") is not None:
+        from ..models import MomentExcerpt
+
+        excerpt = session.get(MomentExcerpt, values["moment_excerpt_id"])
+        if excerpt is None or excerpt.trip_id != trip_id:
+            raise HTTPException(status_code=422, detail="Moment excerpt is unavailable for this trip")
+    for field, value in values.items():
+        setattr(derivative, field, value)
     session.commit()
     return _derivative_response(derivative, trip_id)
 

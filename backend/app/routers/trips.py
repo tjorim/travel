@@ -335,6 +335,7 @@ def create_moment_excerpt(
         source_moment_id=resolve_source_moment_id(trip, payload.source_moment_id),
         broad_place_id=resolve_broad_place_id(session, trip, payload.broad_place_id),
         date_precision=payload.date_precision,
+        story_date=payload.story_date,
         title=payload.title,
         body=payload.body,
     )

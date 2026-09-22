@@ -40,9 +40,10 @@ def scoped_navigation_url(trip: Trip, scope: dict, local_id: str) -> tuple[str, 
     resources = _resources(trip)
     for index, scope_item in enumerate(scope.get("items", []), start=1):
         kind = scope_item.get("kind")
-        if local_id != f"{kind}-{index}" or "navigation" not in scope_item.get("fields", []):
-            continue
         item = resources.get(kind, {}).get(scope_item.get("id"))
+        expected_id = f"moment-{item.share_id}" if kind == "moment_excerpt" and item is not None else f"{kind}-{index}"
+        if local_id != expected_id or "navigation" not in scope_item.get("fields", []):
+            continue
         if item is None:
             return None
         if kind == "exact_place":

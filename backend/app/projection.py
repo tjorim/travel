@@ -7,7 +7,7 @@ make it past these explicit renderers by accident.
 
 from typing import Any
 
-from .models import DerivativeReviewState, Place, Trip
+from .models import DerivativePurpose, DerivativeReviewState, Place, Trip
 
 
 class ScopeError(ValueError):
@@ -23,13 +23,13 @@ ALLOWED_FIELDS = {
     "route_stage": {"position", "label", "place", "navigation"},
     "broad_place": {"label", "country_code", "region", "latitude", "longitude", "navigation"},
     "broad_route": {"label", "geometry", "date_precision"},
-    "moment_excerpt": {"title", "body", "date_precision", "place", "navigation"},
+    "moment_excerpt": {"title", "body", "date_precision", "story_date", "place", "navigation"},
     "broad_stay_card": {"title", "date_precision", "place", "navigation"},
     # The sole shareable representation of an exact place is this opaque
     # capability marker. Its OSM ref, address, coordinates, viewport and
     # display snapshot remain absent from the projection.
     "exact_place": {"navigation"},
-    "media_derivative": {"image", "caption", "alt_text"},
+    "media_derivative": {"image", "caption", "alt_text", "width", "height", "focal_x", "focal_y", "moment"},
     "document_derivative": {"title", "file"},
 }
 
@@ -84,6 +84,8 @@ def _validate_item(kind: str, item_id: str, fields: list[str], resources: dict[s
         raise ScopeError(f"{kind.replace('_', ' ').capitalize()} {item_id} has not been approved")
     if kind == "media_derivative" and item.media_asset.deleted_at is not None:
         raise ScopeError(f"Media derivative {item_id} belongs to a deleted media asset")
+    if kind == "media_derivative" and item.purpose != DerivativePurpose.SHARE:
+        raise ScopeError(f"Media derivative {item_id} is not a share derivative")
     if kind == "document_derivative" and item.document_asset.deleted_at is not None:
         raise ScopeError(f"Document derivative {item_id} belongs to a deleted document")
     return item
@@ -92,12 +94,17 @@ def _validate_item(kind: str, item_id: str, fields: list[str], resources: dict[s
 def validate_scope(trip: Trip, scope: dict) -> None:
     """Ensure every scope item belongs to this trip and is share-safe."""
     resources = _resources(trip)
+    seen: set[tuple[str, str]] = set()
     for item in scope.get("items", []):
         kind = item.get("kind")
         if kind not in ALLOWED_FIELDS:
             # Pydantic rejects this on API writes; retain the guard for old or
             # manually persisted JSON so delivery fails closed too.
             raise ScopeError(f"Resource kind {kind} is not allowed in a share scope")
+        identity = (kind, item.get("id", ""))
+        if identity in seen:
+            raise ScopeError(f"{kind.replace('_', ' ').capitalize()} {identity[1]} is selected more than once")
+        seen.add(identity)
         _validate_item(kind, item.get("id", ""), item.get("fields", []), resources)
 
 
@@ -111,14 +118,18 @@ def _render_item(kind: str, item: Any, fields: list[str], local_id: str) -> dict
     elif kind == "broad_route":
         values = {"label": item.label, "geometry": item.geometry, "date_precision": item.date_precision.value}
     elif kind == "moment_excerpt":
-        values = {"title": item.title, "body": item.body, "date_precision": item.date_precision.value, "place": _share_place(item.broad_place)}
+        date_value = item.story_date
+        safe_date = (date_value.isoformat()[:{"day": 10, "month": 7, "year": 4}[item.date_precision.value]]
+                     if date_value else None)
+        values = {"title": item.title, "body": item.body, "date_precision": item.date_precision.value,
+                  "story_date": safe_date, "place": _share_place(item.broad_place)}
     elif kind == "broad_stay_card":
         values = {"title": item.title, "date_precision": item.date_precision.value, "place": _share_place(item.place)}
     elif kind == "media_derivative":
-        # Delivery endpoints are deliberately introduced with the static/CDN
-        # phase. This projection-local reference discloses no object key,
-        # original asset, or canonical derivative id.
-        values = {"image": {"id": local_id}}
+        # The projection-local file marker discloses no object key, original
+        # asset, or canonical derivative id.
+        values = {"image": {"id": local_id}, "caption": item.caption, "alt_text": item.alt_text,
+                  "width": item.width, "height": item.height, "focal_x": item.focal_x, "focal_y": item.focal_y}
     elif kind == "document_derivative":
         values = {"title": item.document_asset.title, "file": {"id": local_id}}
     else:  # exact_place; navigation is represented in a separate collection.
@@ -141,11 +152,17 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "route_stage": "route_stages", "broad_place": "places", "moment_excerpt": "moments", "broad_stay_card": "stays",
         "media_derivative": "media", "document_derivative": "documents", "broad_route": "route",
     }
+    selected_moments = {
+        selection["id"]: f"moment-{resources['moment_excerpt'][selection['id']].share_id}"
+        for selection in scope.get("items", []) if selection["kind"] == "moment_excerpt"
+    }
     for index, scope_item in enumerate(scope.get("items", [])):
         kind = scope_item["kind"]
         item = resources[kind][scope_item["id"]]
-        local_id = f"{kind}-{index + 1}"
+        local_id = selected_moments[scope_item["id"]] if kind == "moment_excerpt" else f"{kind}-{index + 1}"
         rendered = _render_item(kind, item, scope_item.get("fields", []), local_id)
+        if kind == "media_derivative" and "moment" in scope_item.get("fields", []) and item.moment_excerpt_id in selected_moments:
+            rendered["moment"] = selected_moments[item.moment_excerpt_id]
         if "navigation" in scope_item.get("fields", []):
             projection["navigation"].append({"id": local_id})
         if kind == "exact_place":
@@ -154,6 +171,7 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
             rendered["_sort_position"] = item.position
         projection[destinations[kind]].append(rendered)
     projection["route_stages"].sort(key=lambda item: item.pop("_sort_position"))
+    projection["moments"].sort(key=lambda item: (item.get("story_date") is None, item.get("story_date") or ""))
     return projection
 
 

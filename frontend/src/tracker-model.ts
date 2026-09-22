@@ -90,6 +90,7 @@ export type MomentExcerpt = {
   source_moment_id: string | null;
   broad_place_id: string | null;
   date_precision: "day" | "month" | "year";
+  story_date: string | null;
   title: string;
   body: string;
 };
@@ -222,6 +223,11 @@ export type MediaDerivative = {
   metadata_stripped_at: string | null;
   width: number | null;
   height: number | null;
+  moment_excerpt_id: string | null;
+  caption: string | null;
+  alt_text: string | null;
+  focal_x: number | null;
+  focal_y: number | null;
   created_at: string;
   file_url: string;
 };

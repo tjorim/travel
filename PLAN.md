@@ -80,7 +80,7 @@ archive-content import in #40.
 
 - [ ] [#119](https://github.com/tjorim/travel/issues/119) Render scoped
       interactive maps in the React owner and visitor views.
-- [ ] [#120](https://github.com/tjorim/travel/issues/120) Build chronological
+- [x] [#120](https://github.com/tjorim/travel/issues/120) Build chronological
       trip stories and responsive galleries in live visitor views.
 - [ ] [#126](https://github.com/tjorim/travel/issues/126) Show the rendered
       visitor preview in owner publication controls.

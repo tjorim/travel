@@ -15,9 +15,9 @@ const fieldsFor: Record<ShareScopeKind, string[]> = {
   route_stage: ["position", "label", "place", "navigation"],
   broad_place: ["label", "country_code", "region", "latitude", "longitude", "navigation"],
   broad_route: ["label", "geometry", "date_precision"],
-  moment_excerpt: ["title", "body", "date_precision", "place", "navigation"],
+  moment_excerpt: ["title", "body", "date_precision", "story_date", "place", "navigation"],
   broad_stay_card: ["title", "date_precision", "place", "navigation"],
-  media_derivative: ["image", "caption", "alt_text"],
+  media_derivative: ["image", "caption", "alt_text", "width", "height", "focal_x", "focal_y", "moment"],
   document_derivative: ["title", "file"],
 };
 

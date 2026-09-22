@@ -11,6 +11,7 @@ import {
   type ImportSession,
   type MediaAsset,
   type MediaDerivative,
+  type MomentExcerpt,
   type Trip,
   type VisitCandidate,
   type VisitCandidatesResponse,
@@ -25,6 +26,27 @@ const providerLabel = {
   google_photos_picker: "Google Photos",
   gopro_cloud: "GoPro Cloud",
 } as const;
+
+function PresentationForm({ derivative, excerpts, save }: { derivative: MediaDerivative; excerpts: MomentExcerpt[]; save: (values: Record<string, unknown>) => Promise<void> }) {
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const number = (field: string) => data.get(field) ? Number(data.get(field)) : null;
+    void save({
+      moment_excerpt_id: data.get("moment_excerpt_id") || null,
+      caption: data.get("caption") || null,
+      alt_text: data.get("alt_text") || null,
+      focal_x: number("focal_x"), focal_y: number("focal_y"),
+    });
+  }
+  return <form className="stack-form derivative-presentation" onSubmit={submit} key={derivative.id}>
+    <label>Gedeeld moment<select name="moment_excerpt_id" defaultValue={derivative.moment_excerpt_id ?? ""}><option value="">Losse galerijfoto</option>{excerpts.map((excerpt) => <option key={excerpt.id} value={excerpt.id}>{excerpt.title}</option>)}</select></label>
+    <label>Bijschrift<input name="caption" maxLength={500} defaultValue={derivative.caption ?? ""} /></label>
+    <label>Alternatieve tekst<input name="alt_text" maxLength={300} defaultValue={derivative.alt_text ?? ""} /></label>
+    <div className="field-row"><label>Focus horizontaal (%)<input name="focal_x" type="number" min="0" max="100" defaultValue={derivative.focal_x ?? ""} /></label><label>Focus verticaal (%)<input name="focal_y" type="number" min="0" max="100" defaultValue={derivative.focal_y ?? ""} /></label></div>
+    <button className="secondary compact" type="submit">Presentatie opslaan</button>
+  </form>;
+}
 
 export function MediaManager({ trip }: { trip: Trip }) {
   const { session } = useAuth();
@@ -108,6 +130,17 @@ export function MediaManager({ trip }: { trip: Trip }) {
     const saved = await response.json() as MediaDerivative;
     setDerivatives((current) => current.map((item) => item.id === saved.id ? saved : item));
     setMessage("Afgeleide expliciet goedgekeurd. Delen vraagt nog altijd een aparte scope.");
+  }
+
+  async function savePresentation(derivative: MediaDerivative, values: Record<string, unknown>) {
+    if (!session || !selected) return;
+    const response = await fetch(`/api/trips/${trip.id}/media/${selected.id}/derivatives/${derivative.id}/presentation`, {
+      method: "PATCH", headers: apiHeaders(session), body: JSON.stringify(values),
+    });
+    if (!response.ok) return apiError(response, "De presentatie kon niet worden opgeslagen.");
+    const saved = await response.json() as MediaDerivative;
+    setDerivatives((current) => current.map((item) => item.id === saved.id ? saved : item));
+    setMessage("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
   }
 
   async function deleteDerivative(derivative: MediaDerivative) {
@@ -201,7 +234,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
     {assets.length > 0 && <div className="manager-subsection"><div className="capture-heading"><div><h3>Mogelijke bezoeken beoordelen</h3><p>Kies hierboven private media. Kandidaten gebruiken een venster van twee uur en houden GPS-punten die meer dan {candidateReview?.gps_agreement_metres ?? 500} meter verschillen als afzonderlijke keuzes. Ze worden nooit automatisch opgeslagen.</p></div></div><button type="button" onClick={() => void reviewVisits().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De mogelijke bezoeken konden niet worden berekend."))}>Geselecteerde media beoordelen</button>{candidateReview?.unavailable_media_asset_ids.length ? <p className="help">{candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of GPS-metadata en is niet gegokt in een kandidaat.</p> : null}{candidateReview?.candidates.map((candidate) => <article className="scope-item" key={candidate.id}><strong>{candidateAssetNames(candidate)}</strong><span>{candidate.starts_at ? `${new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(candidate.starts_at))}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${new Intl.DateTimeFormat("nl-BE", { timeStyle: "short" }).format(new Date(candidate.ends_at))}` : ""}` : "Geen opnametijd beschikbaar"}</span>{candidate.time_options.length > 1 && <label>Gebruik opnametijd<select value={candidateTimes[candidate.id] ?? ""} onChange={(event) => setCandidateTimes((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies zelf een tijd</option>{candidate.time_options.map((option) => <option key={option.media_asset_id} value={option.captured_at}>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(option.captured_at))}</option>)}</select></label>}{candidate.location_options.length > 1 && <label>GPS-keuze<select value={candidateLocations[candidate.id] ?? ""} onChange={(event) => setCandidateLocations((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Locatie negeren</option>{candidate.location_options.map((option, index) => <option key={option.media_asset_ids.join("-")} value={index}>Locatie uit {option.media_asset_ids.length} medium/media</option>)}</select></label>}{candidate.location_options.length === 0 && <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>}{candidate.location_options.length > 1 && <p className="help">De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.</p>}<div className="button-row"><button type="button" onClick={() => startCandidateMoment(candidate)}>Als nieuw moment openen</button>{trip.moments.length > 0 && <><label className="scope-choice">Koppel aan<select value={candidateAttachments[candidate.id] ?? ""} onChange={(event) => setCandidateAttachments((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies bestaand moment</option>{trip.moments.map((moment) => <option value={moment.id} key={moment.id}>{moment.title}</option>)}</select></label><button className="secondary" type="button" onClick={() => void attachCandidate(candidate).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De private media konden niet worden gekoppeld."))}>Aan moment koppelen</button></>}</div></article>)}</div>}
     {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Afgeleiden</h3><p>Voor {selected.original_filename ?? "dit medium"}. {selected.media_kind === "video" ? "Video-afgeleiden zijn nog niet beschikbaar." : "Een nieuwe kopie start altijd als ‘wacht op goedkeuring’."}</p></div></div>
       {selected.media_kind === "photo" && <form className="stack-form" onSubmit={(event) => void requestDerivative(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden gemaakt."))}><div className="field-row"><label>Doel<select value={derivativeDraft.purpose} onChange={(event) => setDerivativeDraft((draft) => ({ ...draft, purpose: event.target.value as MediaDerivative["purpose"] }))}><option value="share">Delen</option><option value="static_export">Statisch archief</option><option value="owner_preview">Private voorvertoning</option></select></label><label>Maximale zijde (px)<input required min={64} max={4000} type="number" value={derivativeDraft.maxDimension} onChange={(event) => setDerivativeDraft((draft) => ({ ...draft, maxDimension: Number(event.target.value) }))} /></label></div><button type="submit">Metadata-vrije afgeleide maken</button></form>}
-      {derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.purpose.replace("_", " ")} · {derivative.width && derivative.height ? `${derivative.width} × ${derivative.height}` : "afmetingen onbekend"}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, derivative.file_url, "De private afgeleide kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De private afgeleide kon niet worden geopend."))}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => void approveDerivative(derivative).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}<button className="danger compact" type="button" onClick={() => void deleteDerivative(derivative).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+      {derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="scope-item" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.purpose.replace("_", " ")} · {derivative.width && derivative.height ? `${derivative.width} × ${derivative.height}` : "afmetingen onbekend"}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, derivative.file_url, "De private afgeleide kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De private afgeleide kon niet worden geopend."))}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => void approveDerivative(derivative).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}<button className="danger compact" type="button" onClick={() => void deleteDerivative(derivative).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden verwijderd."))}>Verwijderen</button></div>{derivative.purpose === "share" && <PresentationForm derivative={derivative} excerpts={trip.moment_excerpts} save={(values) => savePresentation(derivative, values).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De presentatie kon niet worden opgeslagen."))} />}</article>)}</div>}
     </div>}
   </section>;
 }

@@ -128,13 +128,66 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     unchanged = anonymous.get(f"/api/public/trips/{slug}")
     assert [m["title"] for m in unchanged.json()["moments"]] == [shown["title"]]
 
-    # An edit to an *already-shared* item's content is not gated: a last-
-    # minute wording fix reaches the public page immediately, with no
-    # re-publish required, because only the scope (which items) is frozen.
+    # A wording fix to a shared item reaches the public page immediately.
     owner.patch(f"/api/trips/{trip['id']}/moment-excerpts/{shown['id']}", json={"title": "Hotel check-in (updated)"})
     refreshed = anonymous.get(f"/api/public/trips/{slug}")
     assert refreshed.json()["moments"][0]["title"] == "Hotel check-in (updated)"
 
+
+def test_live_story_order_stable_fragments_and_scoped_media_association(tmp_path: Path) -> None:
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    late = add_excerpt(owner, trip["id"], "Late")
+    early = add_excerpt(owner, trip["id"], "Early")
+    hidden = add_excerpt(owner, trip["id"], "Private")
+    for excerpt, date in ((late, "2054-05-20"), (early, "2054-04-02"), (hidden, "2054-03-01")):
+        assert owner.patch(f"/api/trips/{trip['id']}/moment-excerpts/{excerpt['id']}", json={"story_date": date}).status_code == 200
+    image_data = io.BytesIO()
+    Image.new("RGB", (40, 30), (20, 30, 40)).save(image_data, format="JPEG")
+    asset = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}).json()
+    derivative = owner.post(f"/api/trips/{trip['id']}/media/{asset['id']}/derivatives", json={"purpose": "share"}).json()
+    owner.post(f"/api/trips/{trip['id']}/media/{asset['id']}/derivatives/{derivative['id']}/approve")
+    presentation_url = f"/api/trips/{trip['id']}/media/{asset['id']}/derivatives/{derivative['id']}/presentation"
+    assert owner.patch(presentation_url, json={"moment_excerpt_id": early["id"], "caption": "Shared caption", "alt_text": "Train", "focal_x": 25, "focal_y": 60}).status_code == 200
+    selected = scope(
+        item("moment_excerpt", late["id"], "title", "story_date", "date_precision"),
+        item("media_derivative", derivative["id"], "image", "caption", "alt_text", "width", "height", "focal_x", "focal_y", "moment"),
+        item("moment_excerpt", early["id"], "title", "story_date", "date_precision"),
+    )
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    visitor = TestClient(app)
+    document = visitor.get(f"/api/public/trips/{slug}").json()
+    assert [moment["title"] for moment in document["moments"]] == ["Early", "Late"]
+    assert [moment["story_date"] for moment in document["moments"]] == ["2054-04-02", "2054-05-20"]
+    assert document["media"][0]["moment"] == document["moments"][0]["id"]
+    assert document["media"][0]["caption"] == "Shared caption"
+    assert document["media"][0]["focal_x"] == 25
+    assert asset["id"] not in str(document) and hidden["title"] not in str(document)
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": selected}).json()
+    token = activate(owner, trip["id"], link["id"])["token"]
+    unlisted = visitor.get(f"/api/shared/{token}").json()
+    assert unlisted["moments"] == document["moments"]
+    assert unlisted["media"] == document["media"]
+    stable_id = document["moments"][0]["id"]
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope(item("moment_excerpt", early["id"], "title", "story_date"), item("media_derivative", derivative["id"], "image", "moment"))).status_code == 200
+    narrowed = visitor.get(f"/api/public/trips/{slug}").json()
+    assert narrowed["moments"][0]["id"] == stable_id
+    assert narrowed["media"][0]["moment"] == stable_id
+    assert "caption" not in narrowed["media"][0] and "focal_x" not in narrowed["media"][0]
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope(item("media_derivative", derivative["id"], "image", "moment"))).status_code == 200
+    assert "moment" not in visitor.get(f"/api/public/trips/{slug}").json()["media"][0]
+    assert visitor.get(f"/api/shared/{token}").json()["media"][0]["moment"] == stable_id
+
+    assert owner.patch(f"/api/trips/{trip['id']}/moment-excerpts/{early['id']}", json={"date_precision": "month"}).status_code == 200
+    reduced = visitor.get(f"/api/shared/{token}").json()
+    assert reduced["moments"][0]["story_date"] == "2054-04"
+    assert "2054-04-02" not in str(reduced)
+
+    other = create_trip(owner, "Other")
+    foreign = add_excerpt(owner, other["id"], "Foreign")
+    assert owner.patch(presentation_url, json={"moment_excerpt_id": foreign["id"]}).status_code == 422
 
 def test_private_moment_media_attachments_never_reach_a_shared_excerpt(tmp_path: Path) -> None:
     """EXIF suggestions feed only the owner edit route, never a projection."""

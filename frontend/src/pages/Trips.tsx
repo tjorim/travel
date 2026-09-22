@@ -20,7 +20,7 @@ export function Trips() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tripDraft, setTripDraft] = useState({ title: "", summary: "", visibility: "private" as Trip["visibility"], publicationState: "draft" as Trip["publication_state"] });
-  const [excerptDraft, setExcerptDraft] = useState({ id: null as string | null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day" as MomentExcerpt["date_precision"], title: "", body: "" });
+  const [excerptDraft, setExcerptDraft] = useState({ id: null as string | null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day" as MomentExcerpt["date_precision"], storyDate: "", title: "", body: "" });
   const [broadPlaceDraft, setBroadPlaceDraft] = useState({ label: "", countryCode: "", region: "" });
   const [broadPlaces, setBroadPlaces] = useState<BroadPlace[]>([]);
   const [message, setMessage] = useState("Meld aan om je private reizen te laden.");
@@ -57,14 +57,14 @@ export function Trips() {
   function newTrip() {
     setSelectedId(null);
     setTripDraft({ title: "", summary: "", visibility: "private", publicationState: "draft" });
-    setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", title: "", body: "" });
+    setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", storyDate: "", title: "", body: "" });
     setBroadPlaceDraft({ label: "", countryCode: "", region: "" });
   }
 
   function selectTrip(trip: Trip) {
     setSelectedId(trip.id);
     setTripDraft({ title: trip.title, summary: trip.summary ?? "", visibility: trip.visibility, publicationState: trip.publication_state });
-    setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", title: "", body: "" });
+    setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", storyDate: "", title: "", body: "" });
     setBroadPlaceDraft({ label: "", countryCode: "", region: "" });
   }
 
@@ -96,11 +96,11 @@ export function Trips() {
   }
 
   function editExcerpt(excerpt: MomentExcerpt) {
-    setExcerptDraft({ id: excerpt.id, sourceMomentId: excerpt.source_moment_id ?? "", broadPlaceId: excerpt.broad_place_id ?? "", datePrecision: excerpt.date_precision, title: excerpt.title, body: excerpt.body });
+    setExcerptDraft({ id: excerpt.id, sourceMomentId: excerpt.source_moment_id ?? "", broadPlaceId: excerpt.broad_place_id ?? "", datePrecision: excerpt.date_precision, storyDate: excerpt.story_date ?? "", title: excerpt.title, body: excerpt.body });
   }
 
   function newExcerpt() {
-    setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", title: "", body: "" });
+    setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", storyDate: "", title: "", body: "" });
   }
 
   async function saveExcerpt(event: FormEvent<HTMLFormElement>) {
@@ -110,6 +110,7 @@ export function Trips() {
       source_moment_id: excerptDraft.sourceMomentId || null,
       broad_place_id: excerptDraft.broadPlaceId || null,
       date_precision: excerptDraft.datePrecision,
+      story_date: excerptDraft.storyDate || null,
       title: excerptDraft.title.trim(),
       body: excerptDraft.body.trim(),
     };
@@ -188,7 +189,7 @@ export function Trips() {
       <section className="card excerpt-editor"><div className="capture-heading"><div><h3>Moment-uittreksels</h3><p>Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.</p></div>{excerptDraft.id && <button className="secondary compact" type="button" onClick={newExcerpt}>Nieuw uittreksel</button>}</div>
         <form className="stack-form" onSubmit={(event) => void saveExcerpt(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden opgeslagen."))}>
           <div className="field-row"><label>Bronmoment <span className="optional">(optioneel)</span><select value={excerptDraft.sourceMomentId} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, sourceMomentId: event.target.value }))}><option value="">Geen bronmoment</option>{selectedTrip.moments.map((moment) => <option key={moment.id} value={moment.id}>{moment.title}</option>)}</select></label><label>Datumprecisie<select value={excerptDraft.datePrecision} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, datePrecision: event.target.value as MomentExcerpt["date_precision"] }))}><option value="day">Dag</option><option value="month">Maand</option><option value="year">Jaar</option></select></label></div>
-          <label>Brede plaats <span className="optional">(optioneel)</span><select value={excerptDraft.broadPlaceId} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, broadPlaceId: event.target.value }))}><option value="">Geen plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}</option>)}</select></label>
+          <div className="field-row"><label>Verhaalsdatum <span className="optional">(optioneel)</span><input type="date" value={excerptDraft.storyDate} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, storyDate: event.target.value }))} /></label><label>Brede plaats <span className="optional">(optioneel)</span><select value={excerptDraft.broadPlaceId} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, broadPlaceId: event.target.value }))}><option value="">Geen plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}</option>)}</select></label></div>
           <label>Titel<input required maxLength={160} value={excerptDraft.title} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, title: event.target.value }))} /></label><label>Uittreksel<textarea required maxLength={10000} rows={5} value={excerptDraft.body} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, body: event.target.value }))} /></label>
           <button type="submit">{excerptDraft.id ? "Uittreksel opslaan" : "Uittreksel maken"}</button>
         </form>

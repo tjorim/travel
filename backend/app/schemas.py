@@ -237,6 +237,7 @@ class MomentExcerptCreate(BaseModel):
     source_moment_id: str | None = None
     broad_place_id: str | None = None
     date_precision: DatePrecision
+    story_date: date | None = None
     title: str = Field(min_length=1, max_length=160)
     body: str = Field(min_length=1, max_length=10000)
 
@@ -245,6 +246,7 @@ class MomentExcerptUpdate(BaseModel):
     source_moment_id: str | None = None
     broad_place_id: str | None = None
     date_precision: DatePrecision | None = None
+    story_date: date | None = None
     title: str | None = Field(default=None, min_length=1, max_length=160)
     body: str | None = Field(default=None, min_length=1, max_length=10000)
 
@@ -254,6 +256,7 @@ class MomentExcerptResponse(BaseModel):
     source_moment_id: str | None
     broad_place_id: str | None
     date_precision: DatePrecision
+    story_date: date | None
     title: str
     body: str
     model_config = ConfigDict(from_attributes=True)
@@ -655,6 +658,11 @@ class MediaDerivativeResponse(BaseModel):
     metadata_stripped_at: datetime | None
     width: int | None
     height: int | None
+    moment_excerpt_id: str | None
+    caption: str | None
+    alt_text: str | None
+    focal_x: int | None
+    focal_y: int | None
     created_at: datetime
     file_url: str
     model_config = ConfigDict(from_attributes=True)
@@ -663,6 +671,16 @@ class MediaDerivativeResponse(BaseModel):
 class MediaDerivativeCreate(BaseModel):
     purpose: DerivativePurpose = DerivativePurpose.SHARE
     max_dimension: int = Field(default=1600, ge=64, le=4000)
+
+
+class MediaDerivativePresentationUpdate(BaseModel):
+    moment_excerpt_id: str | None = None
+    caption: str | None = Field(default=None, max_length=500)
+    alt_text: str | None = Field(default=None, max_length=300)
+    focal_x: int | None = Field(default=None, ge=0, le=100)
+    focal_y: int | None = Field(default=None, ge=0, le=100)
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class MediaVisitCandidatesRequest(BaseModel):

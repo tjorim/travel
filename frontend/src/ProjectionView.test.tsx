@@ -25,7 +25,7 @@ it("renders every resource kind using only supplied fields", () => {
   data.documents = [{ id: "document", title: "Shared document", file: { id: "document" }, original_filename: "Secret PDF" }];
   data.navigation = [{ id: "place" }];
   const { container } = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
-  for (const value of ["Shared summary", "First stage", "Broad city", "Shared place", "Region", "Shared moment", "Shared story", "Maandprecisie", "Shared stay", "Broad stay place", "Shared route", "Gedeeld medium", "Shared document"]) {
+  for (const value of ["Shared summary", "First stage", "Broad city", "Shared place", "Region", "Shared moment", "Shared story", "Maandprecisie", "Shared stay", "Broad stay place", "Shared route", "Gedeelde foto’s", "Shared document"]) {
     expect(container.textContent).toContain(value);
   }
   for (const value of ["Hidden street", "Secret place note", "Secret story", "Secret booking", "Secret track", "Secret photo", "Secret PDF", "5"]) {
@@ -88,4 +88,42 @@ it("renders a successful unlisted response without requesting public or owner da
   render(<MemoryRouter initialEntries={["/share/token"]}><VisitorRoutes /></MemoryRouter>);
   await screen.findByText("Shared excerpt");
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/shared/token"]);
+});
+
+it("renders dated moments in projection order with direct links and scoped photo galleries", () => {
+  const data = projection("travel/unlisted-trip@1");
+  data.moments = [
+    { id: "moment-later", title: "Later", story_date: "2054-05", date_precision: "month", place: { label: "Broad coast" } },
+    { id: "moment-first", title: "First", story_date: "2054-04-02", date_precision: "day", body: "Shared text" },
+  ];
+  data.media = [
+    { id: "media-1", image: { id: "media-1" }, moment: "moment-first", caption: "At the station", alt_text: "Train platform", width: 900, height: 600, focal_x: 25, focal_y: 60 },
+    { id: "media-2", image: { id: "media-2" }, caption: "Elsewhere", alt_text: "Trees" },
+  ];
+  const { container } = render(<ProjectionView projection={data} audience="share" identifier="token" />);
+  expect(screen.getByRole("navigation", { name: "Momenten in dit verhaal" }).querySelectorAll("a")[1]?.getAttribute("href")).toBe("#moment-moment-first");
+  expect(container.querySelectorAll(".visitor-timeline > li")[1]?.id).toBe("moment-moment-first");
+  expect(screen.getByText("Broad coast")).toBeTruthy();
+  expect(screen.getByText("2 april 2054")).toBeTruthy();
+  expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("src")).toBe("/api/shared/token/files/media-1");
+  expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("style")).toContain("25% 60%");
+  expect(screen.getByText("At the station").closest(".visitor-timeline")).toBeTruthy();
+  expect(screen.getByText("Elsewhere").closest(".visitor-timeline")).toBeNull();
+});
+
+it("keeps story-only, image-only, and empty projections readable", () => {
+  const data = projection();
+  data.title = null; data.summary = null;
+  data.moments = [{ id: "moment-safe", body: "Story only" }];
+  const first = render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  expect(screen.getByText("Story only")).toBeTruthy();
+  expect(screen.queryByRole("img")).toBeNull();
+  first.unmount();
+  data.moments = []; data.media = [{ id: "photo", image: { id: "photo" }, alt_text: "Image only" }];
+  const second = render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  expect(screen.getByRole("img", { name: "Image only" })).toBeTruthy();
+  second.unmount();
+  data.media = [];
+  render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  expect(screen.getByRole("status").textContent).toContain("Nog geen gedeelde inhoud");
 });
