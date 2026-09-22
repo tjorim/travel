@@ -38,7 +38,11 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
                 "id": stage.id,
                 "position": stage.position,
                 "label": stage.label,
-                "place": {"display_name": stage.place.display_name, "country_code": stage.place.country_code},
+                "place": {
+                    "label": stage.place.label,
+                    "country_code": stage.place.country_code,
+                    "region": stage.place.region,
+                },
             }
             for stage in trip.route_stages
             if stage.id in stage_ids
@@ -50,11 +54,12 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
                 "title": moment.title,
                 "story": moment.story,
                 "photo_urls": list(moment.photo_urls),
-                "place": (
-                    {"display_name": moment.place.display_name, "country_code": moment.place.country_code}
-                    if moment.place
-                    else None
-                ),
+                # A moment's place is always `exact` (address, coordinates,
+                # notes) per the canonical model, so it can never be
+                # projected here; a shared place instead comes from a
+                # separately authored `moment_excerpt.broad_place_id`
+                # (still owner-only scope wiring, not yet in this contract).
+                "place": None,
             }
             for moment in trip.moments
             if moment.id in moment_ids

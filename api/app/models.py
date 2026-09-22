@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -77,6 +77,17 @@ class DerivativeReviewState(StrEnum):
     APPROVED = "approved"
 
 
+class PlaceKind(StrEnum):
+    EXACT = "exact"
+    BROAD = "broad"
+
+
+class DatePrecision(StrEnum):
+    DAY = "day"
+    MONTH = "month"
+    YEAR = "year"
+
+
 class AuditEventKind(StrEnum):
     PUBLIC_PROJECTION_PUBLISH = "public_projection.publish"
     PUBLIC_PROJECTION_UNPUBLISH = "public_projection.unpublish"
@@ -97,11 +108,52 @@ def _enum_column(enum_cls: type[StrEnum], name: str):
 
 
 class Place(Base):
+    """The canonical `travel/place@1` split: an `exact` row (address parts,
+    coordinates, viewport, navigation/provider IDs, notes) or a `broad` row
+    (label, country/region, optional approved generalized point). A broad
+    row may set `parent_exact_place_id` for owner traceability to its exact
+    source; that reference is owner-only and never appears in a shared
+    response. `RouteStage` and `MomentExcerpt` only ever reference a `broad`
+    row; `Moment` only ever references an `exact` row -- enforced by the
+    router, since a single FK-target table can't itself express the
+    per-column kind split."""
+
     __tablename__ = "places"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind: Mapped[PlaceKind] = mapped_column(_enum_column(PlaceKind, "travel_place_kind"))
+    parent_exact_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+
+    # Broad-only fields.
+    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    # Exact address country, or broad country -- shared by both kinds.
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+
+    # Exact coordinates, or broad's optional approved generalized point.
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Exact-only fields.
+    address_line1: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    address_line2: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    locality: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    admin_area: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    viewport_north: Mapped[float | None] = mapped_column(Float, nullable=True)
+    viewport_south: Mapped[float | None] = mapped_column(Float, nullable=True)
+    viewport_east: Mapped[float | None] = mapped_column(Float, nullable=True)
+    viewport_west: Mapped[float | None] = mapped_column(Float, nullable=True)
+    navigation_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    navigation_provider_place_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Trip(Base):
@@ -135,6 +187,9 @@ class Trip(Base):
     moments: Mapped[list["Moment"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="Moment.occurred_at"
     )
+    moment_excerpts: Mapped[list["MomentExcerpt"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="MomentExcerpt.created_at"
+    )
 
 
 class RouteStage(Base):
@@ -143,12 +198,12 @@ class RouteStage(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
+    broad_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     label: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     trip: Mapped[Trip] = relationship(back_populates="route_stages")
-    place: Mapped[Place] = relationship()
+    place: Mapped[Place] = relationship(foreign_keys=[broad_place_id])
 
 
 class Moment(Base):
@@ -156,7 +211,7 @@ class Moment(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+    exact_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
     author_subject: Mapped[str] = mapped_column(String(255), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
@@ -168,7 +223,33 @@ class Moment(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="moments")
-    place: Mapped[Place | None] = relationship()
+    place: Mapped[Place | None] = relationship(foreign_keys=[exact_place_id])
+
+
+class MomentExcerpt(Base):
+    """A standalone approved excerpt (`travel/moment-excerpt@1`), independent
+    of its optional source moment's lifecycle. `source_moment_id` is
+    owner-only provenance: it is optional so the excerpt can outlive a
+    deleted journal item, and it is set null (never cascaded) when that
+    moment is deleted. `broad_place_id` always references a `broad` place,
+    never an `exact` one."""
+
+    __tablename__ = "moment_excerpts"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_moment_id: Mapped[str | None] = mapped_column(ForeignKey("moments.id", ondelete="SET NULL"), nullable=True)
+    broad_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+    date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="moment_excerpts")
+    broad_place: Mapped[Place | None] = relationship(foreign_keys=[broad_place_id])
 
 
 class PublicSurface(Base):

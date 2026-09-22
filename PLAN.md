@@ -82,7 +82,7 @@ v2 after the app behavior is complete and verified.
       API and PWA into the private Travel content app. Too large for one PR;
       delivered as seven ordered phases, each its own issue/PR, per
       #37's "Implementation gates" section:
-  - [ ] [#56](https://github.com/tjorim/travel/issues/56) Split Travel
+  - [x] [#56](https://github.com/tjorim/travel/issues/56) Split Travel
         places into exact and broad models.
   - [ ] [#57](https://github.com/tjorim/travel/issues/57) Add owner-managed
         stays and broad stay cards to Travel.
@@ -176,6 +176,14 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Split the tracker API's flat MVP `Place` into the canonical
+      `travel/place@1` `exact`/`broad` model and added the standalone
+      `moment_excerpt` resource: a route stage always references a `broad`
+      place, a moment always references an `exact` place, and an owner can
+      create, edit and delete a moment excerpt independent of its source
+      moment's lifecycle. First of #38's seven delivery phases.
+      ([#56](https://github.com/tjorim/travel/issues/56))
 
 - [x] Added an owner-only audit trail for the tracker API's publication and
       share-link lifecycle: an `audit_events` table records every

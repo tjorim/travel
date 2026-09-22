@@ -6,6 +6,24 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Split the tracker API's flat MVP `Place` into the canonical
+  `travel/place@1` model: an `exact` place (address parts, coordinates,
+  viewport, navigation/provider IDs, owner-only notes) or a `broad` place
+  (label, country/region, optional approved generalized point), with an
+  optional `parent_exact_place_id` for owner traceability that never appears
+  in a shared response. A route stage now always references a `broad`
+  place; a moment always references an `exact` place. Added the standalone
+  `moment_excerpt` resource (`travel/moment-excerpt@1`) with owner
+  create/edit/delete endpoints: `source_moment_id` is optional owner-only
+  provenance, so an excerpt outlives a deleted journal item, and
+  `broad_place_id` must reference a `broad` place on the same trip. Since a
+  moment's place is now always `exact`, the public/unlisted projection no
+  longer surfaces any place for a shared moment rather than leaking address
+  or coordinate data. No production data exists yet, so the accompanying
+  migration is a clean recreate of `places`, `route_stages` and `moments`
+  rather than a data-preserving one. First of #38's seven delivery phases,
+  per #37's canonical content model. ([#56](https://github.com/tjorim/travel/issues/56))
+
 - Owner-only audit trail for the tracker API's publication and share-link
   lifecycle: an `audit_events` table records every public-projection
   publish/unpublish and every share-link create/activate/revoke/rotate, plus

@@ -47,7 +47,7 @@ def create_trip(client: TestClient, title: str = "Exampleland 2054") -> dict:
 def add_route_stage(client: TestClient, trip_id: str, position: int, label: str, city: str) -> dict:
     response = client.post(
         f"/api/v1/trips/{trip_id}/route-stages",
-        json={"position": position, "label": label, "place": {"display_name": city, "country_code": "TW"}},
+        json={"position": position, "label": label, "place": {"label": city, "country_code": "TW"}},
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -60,7 +60,7 @@ def add_moment(client: TestClient, trip_id: str, title: str, city: str) -> dict:
             "occurred_at": "2054-04-04T10:00:00Z",
             "title": title,
             "story": f"A note about {title}.",
-            "place": {"display_name": city, "country_code": "TW"},
+            "place": {"locality": city, "country_code": "TW"},
         },
     )
     assert response.status_code == 201, response.text

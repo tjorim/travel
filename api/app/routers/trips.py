@@ -7,12 +7,16 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Moment, Place, PublicationState, RouteStage, Trip, Visibility, opaque_id
+from ..models import Moment, MomentExcerpt, Place, PlaceKind, PublicationState, RouteStage, Trip, Visibility, opaque_id
 from ..schemas import (
+    BroadPlaceInput,
+    ExactPlaceInput,
     MomentCreate,
+    MomentExcerptCreate,
+    MomentExcerptResponse,
+    MomentExcerptUpdate,
     MomentResponse,
     MomentUpdate,
-    PlaceInput,
     PublicTripResponse,
     RouteStageCreate,
     RouteStageResponse,
@@ -33,17 +37,21 @@ def trip_query():
     return select(Trip).options(
         selectinload(Trip.route_stages).selectinload(RouteStage.place),
         selectinload(Trip.moments).selectinload(Moment.place),
+        selectinload(Trip.moment_excerpts),
     )
 
 
-def place_from_input(session: Session, payload: PlaceInput) -> Place:
-    place = session.scalar(
-        select(Place).where(Place.display_name == payload.display_name, Place.country_code == payload.country_code)
-    )
-    if place is None:
-        place = Place(display_name=payload.display_name, country_code=payload.country_code)
-        session.add(place)
-        session.flush()
+def broad_place_from_input(session: Session, trip_id: str, payload: BroadPlaceInput) -> Place:
+    place = Place(trip_id=trip_id, kind=PlaceKind.BROAD, **payload.model_dump())
+    session.add(place)
+    session.flush()
+    return place
+
+
+def exact_place_from_input(session: Session, trip_id: str, payload: ExactPlaceInput) -> Place:
+    place = Place(trip_id=trip_id, kind=PlaceKind.EXACT, **payload.model_dump())
+    session.add(place)
+    session.flush()
     return place
 
 
@@ -103,7 +111,12 @@ def delete_trip(trip_id: str, session: SessionDep, subject: SubjectDep) -> Respo
 @router.post("/{trip_id}/route-stages", response_model=RouteStageResponse, status_code=status.HTTP_201_CREATED)
 def create_route_stage(trip_id: str, payload: RouteStageCreate, session: SessionDep, subject: SubjectDep) -> RouteStage:
     trip = owned_trip(session, trip_id, subject)
-    stage = RouteStage(trip=trip, place=place_from_input(session, payload.place), position=payload.position, label=payload.label)
+    stage = RouteStage(
+        trip=trip,
+        place=broad_place_from_input(session, trip.id, payload.place),
+        position=payload.position,
+        label=payload.label,
+    )
     session.add(stage)
     commit_or_conflict(session)
     return session.scalar(select(RouteStage).options(selectinload(RouteStage.place)).where(RouteStage.id == stage.id))  # type: ignore[return-value]
@@ -120,9 +133,10 @@ def owned_stage(trip: Trip, stage_id: str) -> RouteStage:
 def update_route_stage(
     trip_id: str, stage_id: str, payload: RouteStageUpdate, session: SessionDep, subject: SubjectDep
 ) -> RouteStage:
-    stage = owned_stage(owned_trip(session, trip_id, subject), stage_id)
+    trip = owned_trip(session, trip_id, subject)
+    stage = owned_stage(trip, stage_id)
     if payload.place is not None:
-        stage.place = place_from_input(session, payload.place)
+        stage.place = broad_place_from_input(session, trip.id, payload.place)
     for field, value in payload.model_dump(exclude_unset=True, exclude={"place"}).items():
         setattr(stage, field, value)
     commit_or_conflict(session)
@@ -143,7 +157,7 @@ def create_moment(trip_id: str, payload: MomentCreate, session: SessionDep, subj
     moment = Moment(
         trip=trip,
         author_subject=subject,
-        place=place_from_input(session, payload.place) if payload.place else None,
+        place=exact_place_from_input(session, trip.id, payload.place) if payload.place else None,
         photo_urls=[str(url) for url in payload.photo_urls],
         **values,
     )
@@ -163,12 +177,13 @@ def owned_moment(trip: Trip, moment_id: str) -> Moment:
 def update_moment(
     trip_id: str, moment_id: str, payload: MomentUpdate, session: SessionDep, subject: SubjectDep
 ) -> Moment:
-    moment = owned_moment(owned_trip(session, trip_id, subject), moment_id)
+    trip = owned_trip(session, trip_id, subject)
+    moment = owned_moment(trip, moment_id)
     # A present null is intentional: the traveller may remove an attached
     # place while editing a moment.  Pydantic otherwise represents both an
     # omitted field and null as None.
     if "place" in payload.model_fields_set:
-        moment.place = place_from_input(session, payload.place) if payload.place else None
+        moment.place = exact_place_from_input(session, trip.id, payload.place) if payload.place else None
     values = payload.model_dump(exclude_unset=True, exclude={"place", "photo_urls"})
     for field, value in values.items():
         setattr(moment, field, value)
@@ -181,6 +196,79 @@ def update_moment(
 @router.delete("/{trip_id}/moments/{moment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_moment(trip_id: str, moment_id: str, session: SessionDep, subject: SubjectDep) -> Response:
     session.delete(owned_moment(owned_trip(session, trip_id, subject), moment_id))
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def resolve_broad_place_id(session: Session, trip: Trip, broad_place_id: str | None) -> str | None:
+    if broad_place_id is None:
+        return None
+    place = session.scalar(
+        select(Place).where(Place.id == broad_place_id, Place.trip_id == trip.id, Place.kind == PlaceKind.BROAD)
+    )
+    if place is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Broad place not found on this trip")
+    return place.id
+
+
+def resolve_source_moment_id(trip: Trip, source_moment_id: str | None) -> str | None:
+    if source_moment_id is None:
+        return None
+    if not any(moment.id == source_moment_id for moment in trip.moments):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Source moment not found on this trip"
+        )
+    return source_moment_id
+
+
+@router.post(
+    "/{trip_id}/moment-excerpts", response_model=MomentExcerptResponse, status_code=status.HTTP_201_CREATED
+)
+def create_moment_excerpt(
+    trip_id: str, payload: MomentExcerptCreate, session: SessionDep, subject: SubjectDep
+) -> MomentExcerpt:
+    trip = owned_trip(session, trip_id, subject)
+    excerpt = MomentExcerpt(
+        trip=trip,
+        source_moment_id=resolve_source_moment_id(trip, payload.source_moment_id),
+        broad_place_id=resolve_broad_place_id(session, trip, payload.broad_place_id),
+        date_precision=payload.date_precision,
+        title=payload.title,
+        body=payload.body,
+    )
+    session.add(excerpt)
+    session.commit()
+    return excerpt
+
+
+def owned_excerpt(trip: Trip, excerpt_id: str) -> MomentExcerpt:
+    excerpt = next((item for item in trip.moment_excerpts if item.id == excerpt_id), None)
+    if excerpt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Moment excerpt not found")
+    return excerpt
+
+
+@router.patch("/{trip_id}/moment-excerpts/{excerpt_id}", response_model=MomentExcerptResponse)
+def update_moment_excerpt(
+    trip_id: str, excerpt_id: str, payload: MomentExcerptUpdate, session: SessionDep, subject: SubjectDep
+) -> MomentExcerpt:
+    trip = owned_trip(session, trip_id, subject)
+    excerpt = owned_excerpt(trip, excerpt_id)
+    if "source_moment_id" in payload.model_fields_set:
+        excerpt.source_moment_id = resolve_source_moment_id(trip, payload.source_moment_id)
+    if "broad_place_id" in payload.model_fields_set:
+        excerpt.broad_place_id = resolve_broad_place_id(session, trip, payload.broad_place_id)
+    values = payload.model_dump(exclude_unset=True, exclude={"source_moment_id", "broad_place_id"})
+    for field, value in values.items():
+        setattr(excerpt, field, value)
+    session.commit()
+    return excerpt
+
+
+@router.delete("/{trip_id}/moment-excerpts/{excerpt_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_moment_excerpt(trip_id: str, excerpt_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+    trip = owned_trip(session, trip_id, subject)
+    session.delete(owned_excerpt(trip, excerpt_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

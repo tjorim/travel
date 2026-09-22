@@ -53,7 +53,7 @@ def test_owner_can_create_edit_and_delete_a_moment() -> None:
             "occurred_at": "2054-04-04T10:00:00Z",
             "title": "Arrival",
             "story": "The first selected note.",
-            "place": {"display_name": "Taipei", "country_code": "TW"},
+            "place": {"locality": "Taipei", "country_code": "TW"},
             "photo_urls": ["https://images.example.test/arrival.jpg"],
         },
     )
@@ -93,10 +93,108 @@ def test_owner_can_manage_broad_route_stages() -> None:
     trip = create_trip(client)
     stage = client.post(
         f"/api/v1/trips/{trip['id']}/route-stages",
-        json={"position": 0, "label": "First stop", "place": {"display_name": "Taipei", "country_code": "TW"}},
+        json={"position": 0, "label": "First stop", "place": {"label": "Taipei", "country_code": "TW"}},
     )
     assert stage.status_code == 201, stage.text
-    assert stage.json()["place"] == {"id": stage.json()["place"]["id"], "display_name": "Taipei", "country_code": "TW"}
+    assert stage.json()["place"] == {
+        "id": stage.json()["place"]["id"],
+        "kind": "broad",
+        "label": "Taipei",
+        "country_code": "TW",
+        "region": None,
+        "latitude": None,
+        "longitude": None,
+    }
+
+
+def test_owner_can_manage_a_moment_excerpt_independent_of_its_source_moment() -> None:
+    client = client_for("owner-1")
+    trip = create_trip(client)
+    stage = client.post(
+        f"/api/v1/trips/{trip['id']}/route-stages",
+        json={"position": 0, "label": "First stop", "place": {"label": "Taipei", "country_code": "TW"}},
+    )
+    broad_place_id = stage.json()["place"]["id"]
+    moment = client.post(
+        f"/api/v1/trips/{trip['id']}/moments",
+        json={"occurred_at": "2054-04-04T10:00:00Z", "title": "Arrival", "story": "The first selected note."},
+    )
+    moment_id = moment.json()["id"]
+
+    excerpt = client.post(
+        f"/api/v1/trips/{trip['id']}/moment-excerpts",
+        json={
+            "source_moment_id": moment_id,
+            "broad_place_id": broad_place_id,
+            "date_precision": "day",
+            "title": "Arrival in Taipei",
+            "body": "A public-safe retelling.",
+        },
+    )
+    assert excerpt.status_code == 201, excerpt.text
+    excerpt_id = excerpt.json()["id"]
+
+    assert client.delete(f"/api/v1/trips/{trip['id']}/moments/{moment_id}").status_code == 204
+
+    changed = client.patch(
+        f"/api/v1/trips/{trip['id']}/moment-excerpts/{excerpt_id}", json={"title": "Arrival, revised"}
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["title"] == "Arrival, revised"
+
+    deleted = client.delete(f"/api/v1/trips/{trip['id']}/moment-excerpts/{excerpt_id}")
+    assert deleted.status_code == 204
+
+
+def test_other_subject_cannot_read_or_change_a_moment_excerpt() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    excerpt = owner.post(
+        f"/api/v1/trips/{trip['id']}/moment-excerpts",
+        json={"date_precision": "month", "title": "A trip highlight", "body": "Text."},
+    )
+    assert excerpt.status_code == 201, excerpt.text
+    excerpt_id = excerpt.json()["id"]
+
+    other = client_for("owner-2")
+    assert other.patch(
+        f"/api/v1/trips/{trip['id']}/moment-excerpts/{excerpt_id}", json={"title": "Nope"}
+    ).status_code == 404
+    assert other.delete(f"/api/v1/trips/{trip['id']}/moment-excerpts/{excerpt_id}").status_code == 404
+
+
+def test_moment_excerpt_rejects_an_exact_place_or_a_broad_place_from_another_trip() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    moment = owner.post(
+        f"/api/v1/trips/{trip['id']}/moments",
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z",
+            "title": "Arrival",
+            "story": "Note.",
+            "place": {"locality": "Taipei", "country_code": "TW"},
+        },
+    )
+    exact_place_id = moment.json()["place"]["id"]
+
+    rejected_kind = owner.post(
+        f"/api/v1/trips/{trip['id']}/moment-excerpts",
+        json={"broad_place_id": exact_place_id, "date_precision": "day", "title": "T", "body": "B"},
+    )
+    assert rejected_kind.status_code == 422
+
+    other_trip = create_trip(owner)
+    other_stage = owner.post(
+        f"/api/v1/trips/{other_trip['id']}/route-stages",
+        json={"position": 0, "label": "Elsewhere", "place": {"label": "Osaka", "country_code": "JP"}},
+    )
+    foreign_broad_place_id = other_stage.json()["place"]["id"]
+
+    rejected_trip = owner.post(
+        f"/api/v1/trips/{trip['id']}/moment-excerpts",
+        json={"broad_place_id": foreign_broad_place_id, "date_precision": "day", "title": "T", "body": "B"},
+    )
+    assert rejected_trip.status_code == 422
 
 
 def test_only_deliberately_published_trips_are_public_and_do_not_leak_owner() -> None:
@@ -109,6 +207,24 @@ def test_only_deliberately_published_trips_are_public_and_do_not_leak_owner() ->
     )
     assert private_publish.status_code == 422
 
+    moment = owner.post(
+        f"/api/v1/trips/{trip['id']}/moments",
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z",
+            "title": "Arrival",
+            "story": "The first selected note.",
+            "place": {
+                "address_line1": "1 Xinyi Road",
+                "locality": "Taipei",
+                "country_code": "TW",
+                "latitude": 25.03,
+                "longitude": 121.56,
+                "notes": "Owner-only reminder.",
+            },
+        },
+    )
+    assert moment.status_code == 201, moment.text
+
     published = owner.patch(
         f"/api/v1/trips/{trip['id']}",
         json={"visibility": "unlisted", "publication_state": "published"},
@@ -119,5 +235,12 @@ def test_only_deliberately_published_trips_are_public_and_do_not_leak_owner() ->
     anonymous = TestClient(app)
     response = anonymous.get(f"/api/v1/published/trips/{public_id}")
     assert response.status_code == 200
-    assert response.json()["title"] == "Exampleland 2054"
-    assert "owner_subject" not in response.json()
+    body = response.json()
+    assert body["title"] == "Exampleland 2054"
+    assert "owner_subject" not in body
+
+    # A moment's place is always `exact` (address, coordinates, owner
+    # notes); the public endpoint must never leak it, unlike the owner-only
+    # `MomentResponse` shape returned by the trip CRUD endpoints.
+    assert len(body["moments"]) == 1
+    assert "place" not in body["moments"][0]

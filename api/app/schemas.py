@@ -1,29 +1,68 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from .models import (
     AuditEventKind,
     AuditTargetType,
+    DatePrecision,
     DerivativePurpose,
     DerivativeReviewState,
     ImportProvider,
     ImportSessionState,
     LinkState,
     MediaKind,
+    PlaceKind,
     PublicationState,
     SurfaceState,
     Visibility,
 )
 
-
-class PlaceInput(BaseModel):
-    display_name: str = Field(min_length=1, max_length=120)
-    country_code: str | None = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")
+COUNTRY_CODE_FIELD = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")
 
 
-class PlaceResponse(PlaceInput):
+class ExactPlaceInput(BaseModel):
+    """An owner-only exact place: address parts, coordinates, viewport and
+    navigation/provider IDs. Never appears in a public/unlisted response."""
+
+    address_line1: str | None = Field(default=None, max_length=160)
+    address_line2: str | None = Field(default=None, max_length=160)
+    locality: str | None = Field(default=None, max_length=120)
+    admin_area: str | None = Field(default=None, max_length=120)
+    postal_code: str | None = Field(default=None, max_length=20)
+    country_code: str | None = COUNTRY_CODE_FIELD
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    viewport_north: float | None = Field(default=None, ge=-90, le=90)
+    viewport_south: float | None = Field(default=None, ge=-90, le=90)
+    viewport_east: float | None = Field(default=None, ge=-180, le=180)
+    viewport_west: float | None = Field(default=None, ge=-180, le=180)
+    navigation_provider: str | None = Field(default=None, max_length=40)
+    navigation_provider_place_id: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class ExactPlaceResponse(ExactPlaceInput):
     id: str
+    kind: Literal[PlaceKind.EXACT] = PlaceKind.EXACT
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BroadPlaceInput(BaseModel):
+    """A deliberately authored broad place: label, country/region and an
+    optional approved generalized point. Shareable, unlike an exact place."""
+
+    label: str = Field(min_length=1, max_length=120)
+    country_code: str | None = COUNTRY_CODE_FIELD
+    region: str | None = Field(default=None, max_length=120)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+
+class BroadPlaceResponse(BroadPlaceInput):
+    id: str
+    kind: Literal[PlaceKind.BROAD] = PlaceKind.BROAD
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -40,13 +79,13 @@ class TripUpdate(BaseModel):
 
 
 class RouteStageCreate(BaseModel):
-    place: PlaceInput
+    place: BroadPlaceInput
     position: int = Field(ge=0)
     label: str | None = Field(default=None, max_length=120)
 
 
 class RouteStageUpdate(BaseModel):
-    place: PlaceInput | None = None
+    place: BroadPlaceInput | None = None
     position: int | None = Field(default=None, ge=0)
     label: str | None = Field(default=None, max_length=120)
 
@@ -55,7 +94,7 @@ class RouteStageResponse(BaseModel):
     id: str
     position: int
     label: str | None
-    place: PlaceResponse
+    place: BroadPlaceResponse
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -63,7 +102,7 @@ class MomentCreate(BaseModel):
     occurred_at: datetime
     title: str = Field(min_length=1, max_length=160)
     story: str = Field(min_length=1, max_length=10000)
-    place: PlaceInput | None = None
+    place: ExactPlaceInput | None = None
     photo_urls: list[HttpUrl] = Field(default_factory=list, max_length=12)
 
     @field_validator("photo_urls")
@@ -78,7 +117,7 @@ class MomentUpdate(BaseModel):
     occurred_at: datetime | None = None
     title: str | None = Field(default=None, min_length=1, max_length=160)
     story: str | None = Field(default=None, min_length=1, max_length=10000)
-    place: PlaceInput | None = None
+    place: ExactPlaceInput | None = None
     photo_urls: list[HttpUrl] | None = Field(default=None, max_length=12)
 
     @field_validator("photo_urls")
@@ -95,7 +134,33 @@ class MomentResponse(BaseModel):
     title: str
     story: str
     photo_urls: list[str]
-    place: PlaceResponse | None
+    place: ExactPlaceResponse | None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MomentExcerptCreate(BaseModel):
+    source_moment_id: str | None = None
+    broad_place_id: str | None = None
+    date_precision: DatePrecision
+    title: str = Field(min_length=1, max_length=160)
+    body: str = Field(min_length=1, max_length=10000)
+
+
+class MomentExcerptUpdate(BaseModel):
+    source_moment_id: str | None = None
+    broad_place_id: str | None = None
+    date_precision: DatePrecision | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    body: str | None = Field(default=None, min_length=1, max_length=10000)
+
+
+class MomentExcerptResponse(BaseModel):
+    id: str
+    source_moment_id: str | None
+    broad_place_id: str | None
+    date_precision: DatePrecision
+    title: str
+    body: str
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -109,6 +174,20 @@ class TripResponse(BaseModel):
     public_id: str | None
     route_stages: list[RouteStageResponse]
     moments: list[MomentResponse]
+    moment_excerpts: list[MomentExcerptResponse]
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PublicMomentResponse(BaseModel):
+    """A moment as seen through the legacy public-trip endpoint. A moment's
+    place is always `exact` (address, coordinates, notes), so it is never
+    included here -- unlike `MomentResponse`, the owner-only shape."""
+
+    id: str
+    occurred_at: datetime
+    title: str
+    story: str
+    photo_urls: list[str]
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -117,7 +196,7 @@ class PublicTripResponse(BaseModel):
     title: str
     summary: str | None
     route_stages: list[RouteStageResponse]
-    moments: list[MomentResponse]
+    moments: list[PublicMomentResponse]
 
 
 class ShareScopeInput(BaseModel):
@@ -134,8 +213,9 @@ class ShareScopeInput(BaseModel):
 
 
 class ProjectionPlace(BaseModel):
-    display_name: str
+    label: str
     country_code: str | None
+    region: str | None
 
 
 class ProjectionRouteStage(BaseModel):

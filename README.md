@@ -104,8 +104,10 @@ responsive derivatives rather than external image URLs.
 
 `api/` is the separate FastAPI backend for the privacy-first tracker. It keeps
 the static archive and its private documents untouched. The API stores only
-owner-scoped trip data, broad place labels, route stages, selected moments and
-optional HTTPS photo references; it does not upload media or record GPS data.
+owner-scoped trip data: exact and broad places, route stages, moments and
+moment excerpts, and owner-authorized media uploads/imports copied into
+application-controlled object storage (with owner-only EXIF GPS surfaced when
+present). It does not perform continuous or automatic location tracking.
 
 For local development, install the locked dependencies and run the tests:
 
