@@ -86,6 +86,30 @@ def test_owner_searches_and_saves_a_durable_osm_reference_without_persisting_que
     assert navigation.json() == {"url": "https://www.google.com/maps/dir/?api=1&destination=25.0330000%2C121.5650000", "exact": True}
 
 
+def test_owner_can_select_a_broad_place_without_receiving_exact_places() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    exact = owner.post(
+        f"/api/v1/trips/{trip['id']}/places",
+        json={"locality": "Private Taipei address", "country_code": "TW"},
+    ).json()
+
+    saved = owner.post(
+        f"/api/v1/trips/{trip['id']}/places/broad",
+        json={"label": "Taipei", "country_code": "TW", "region": "Taipei City"},
+    )
+    assert saved.status_code == 201, saved.text
+    assert saved.json()["kind"] == "broad"
+
+    listed = owner.get(f"/api/v1/trips/{trip['id']}/places/broad")
+    assert listed.status_code == 200
+    assert listed.json() == [saved.json()]
+    assert exact["id"] not in str(listed.json())
+
+    other = client_for("owner-2")
+    assert other.get(f"/api/v1/trips/{trip['id']}/places/broad").status_code == 404
+
+
 def test_scoped_navigation_redacts_exact_place_and_falls_back_to_city_target() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)

@@ -10,6 +10,8 @@ from ..models import Place, PlaceKind
 from ..navigation import exact_navigation_url
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
 from ..schemas import (
+    BroadPlaceInput,
+    BroadPlaceResponse,
     ExactPlaceInput,
     ExactPlaceResponse,
     NavigationResponse,
@@ -66,6 +68,31 @@ def list_exact_places(trip_id: str, session: SessionDep, subject: SubjectDep) ->
 def save_exact_place(trip_id: str, payload: ExactPlaceInput, session: SessionDep, subject: SubjectDep) -> Place:
     trip = owned_trip(session, trip_id, subject)
     place = exact_place_from_input(session, trip.id, payload)
+    session.commit()
+    return place
+
+
+@router.get("/broad", response_model=list[BroadPlaceResponse])
+def list_broad_places(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[Place]:
+    """List only deliberately authored broad places for the owner.
+
+    Exact places deliberately stay on the separate owner-only endpoint, so a
+    caller choosing an excerpt location cannot accidentally receive one.
+    """
+    trip = owned_trip(session, trip_id, subject)
+    return list(
+        session.scalars(
+            select(Place).where(Place.trip_id == trip.id, Place.kind == PlaceKind.BROAD).order_by(Place.created_at)
+        )
+    )
+
+
+@router.post("/broad", response_model=BroadPlaceResponse, status_code=status.HTTP_201_CREATED)
+def save_broad_place(trip_id: str, payload: BroadPlaceInput, session: SessionDep, subject: SubjectDep) -> Place:
+    """Create an owner-selected broad place without treating it as a route stage."""
+    trip = owned_trip(session, trip_id, subject)
+    place = Place(trip_id=trip.id, kind=PlaceKind.BROAD, **payload.model_dump())
+    session.add(place)
     session.commit()
     return place
 

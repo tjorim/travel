@@ -6,6 +6,16 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Private tracker PWA workflows for listing, creating, editing and deleting
+  trips; capturing, editing and deleting canonical moments; and authoring,
+  editing and deleting separately written moment excerpts. Exact places are
+  searched or reverse-geocoded only through the owner-only OSM endpoints and
+  are saved only after the owner selects and saves a moment; photo EXIF date
+  and place suggestions remain separate, explicit actions. Broad places are
+  authored without raw-coordinate entry and selected deliberately for an
+  excerpt. Private media attachments, canonical moments, exact places and
+  EXIF suggestions remain within authenticated tracker responses. ([#96](https://github.com/tjorim/travel/issues/96))
+
 - Configurable, attributed owner-only OSM place search with a bounded
   in-memory confidential-query cache, durable OSM element type/ID references,
   and owner-selected display snapshots for exact places. Explicit reverse

@@ -91,7 +91,7 @@ v2 after the app behavior is complete and verified.
         share scopes to cover every resource type.
   - [ ] [#61](https://github.com/tjorim/travel/issues/61) Build tracker PWA
         UI for trip content management, split into focused delivery issues:
-    - [ ] [#96](https://github.com/tjorim/travel/issues/96) Build tracker PWA
+    - [x] [#96](https://github.com/tjorim/travel/issues/96) Build tracker PWA
           UI for trips, moments, excerpts and places.
     - [ ] [#95](https://github.com/tjorim/travel/issues/95) Build tracker PWA
           UI for stays and documents.
