@@ -78,7 +78,7 @@ def _asset_response(asset: MediaAsset, trip_id: str) -> MediaAssetResponse:
         camera_make=exif.get("camera_make"),
         camera_model=exif.get("camera_model"),
         gps=MediaGpsCoordinates(**gps) if gps else None,
-        file_url=f"/api/v1/trips/{trip_id}/media/{asset.id}/original",
+        file_url=f"/api/trips/{trip_id}/media/{asset.id}/original",
     )
 
 
@@ -92,7 +92,7 @@ def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeri
         width=derivative.width,
         height=derivative.height,
         created_at=derivative.created_at,
-        file_url=f"/api/v1/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/file",
+        file_url=f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/file",
     )
 
 

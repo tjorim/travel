@@ -1,10 +1,10 @@
 {
-  "name": "Travel tracker",
+  "name": "Travel",
   "short_name": "Travel",
-  "start_url": "/tracker/",
-  "scope": "/tracker/",
+  "start_url": "/admin/",
+  "scope": "/admin/",
   "display": "standalone",
   "background_color": "#f5f0e8",
   "theme_color": "#12342c",
-  "icons": [{ "src": "/tracker/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [{ "src": "/admin/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
 }

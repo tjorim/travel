@@ -16,7 +16,7 @@ export function Settings() {
 
   async function loadProviders() {
     if (!session) return;
-    const response = await fetch("/api/v1/provider-tokens", { headers: apiHeaders(session) });
+    const response = await fetch("/api/provider-tokens", { headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De providerstatus kon niet worden geladen.");
     const loaded = await response.json() as ProviderConnectionStatus[];
     setProviders(loaded);
@@ -35,7 +35,7 @@ export function Settings() {
     const form = new FormData(event.currentTarget);
     const accessToken = String(form.get("access-token") ?? "").trim();
     if (!accessToken) { setMessage("Vul een toegangstoken in om deze tijdelijke koppeling te bewaren."); return; }
-    const response = await fetch(`/api/v1/provider-tokens/${provider}`, {
+    const response = await fetch(`/api/provider-tokens/${provider}`, {
       method: "PUT", headers: apiHeaders(session), body: JSON.stringify({ access_token: accessToken }),
     });
     if (!response.ok) return apiError(response, "De provider kon niet worden verbonden.");
@@ -46,7 +46,7 @@ export function Settings() {
 
   async function revoke(provider: ProviderConnectionStatus["provider"]) {
     if (!session || !window.confirm(`${labels[provider]} loskoppelen? Bestaande geïmporteerde media blijven privé beschikbaar.`)) return;
-    const response = await fetch(`/api/v1/provider-tokens/${provider}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/provider-tokens/${provider}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De provider kon niet worden losgekoppeld.");
     await loadProviders();
     setMessage(`${labels[provider]} is losgekoppeld.`);

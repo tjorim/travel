@@ -40,13 +40,13 @@ def teardown_function() -> None:
 
 
 def create_trip(client: TestClient, title: str = "Exampleland 2054") -> dict:
-    response = client.post("/api/v1/trips", json={"title": title, "summary": "A private trip."})
+    response = client.post("/api/trips", json={"title": title, "summary": "A private trip."})
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def audit_events(client: TestClient, trip_id: str) -> list[dict]:
-    response = client.get(f"/api/v1/trips/{trip_id}/audit-events")
+    response = client.get(f"/api/trips/{trip_id}/audit-events")
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -54,10 +54,10 @@ def audit_events(client: TestClient, trip_id: str) -> list[dict]:
 def test_public_projection_publish_and_unpublish_are_audited_with_an_owner_reason() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json={"route_stage_ids": [], "moment_ids": []})
-    owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
+    owner.put(f"/api/trips/{trip['id']}/public-projection", json={"route_stage_ids": [], "moment_ids": []})
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     owner.post(
-        f"/api/v1/trips/{trip['id']}/public-projection/unpublish", json={"reason": "Trip is over"}
+        f"/api/trips/{trip['id']}/public-projection/unpublish", json={"reason": "Trip is over"}
     )
 
     events = audit_events(owner, trip["id"])
@@ -76,19 +76,19 @@ def test_share_link_lifecycle_transitions_are_each_audited() -> None:
     trip = create_trip(owner)
 
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}},
     )
     link_id = created.json()["id"]
     activated = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 30}
+        f"/api/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 30}
     )
     token = activated.json()["token"]
 
-    rotated = owner.post(f"/api/v1/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": 30})
+    rotated = owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": 30})
     new_link_id = rotated.json()["id"]
 
-    revoked = owner.post(f"/api/v1/trips/{trip['id']}/share-links/{new_link_id}/revoke", json={"reason": "Leaked"})
+    revoked = owner.post(f"/api/trips/{trip['id']}/share-links/{new_link_id}/revoke", json={"reason": "Leaked"})
     assert revoked.status_code == 200
 
     events = audit_events(owner, trip["id"])
@@ -117,12 +117,12 @@ def test_a_naturally_expiring_share_link_is_audited_as_a_system_action() -> None
     owner = client_for("owner-1")
     trip = create_trip(owner)
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}},
     )
     link_id = created.json()["id"]
     activated = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 1}
+        f"/api/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 1}
     )
     token = activated.json()["token"]
 
@@ -132,7 +132,7 @@ def test_a_naturally_expiring_share_link_is_audited_as_a_system_action() -> None
         session.commit()
 
     anonymous = TestClient(app)
-    assert anonymous.get(f"/api/v1/shared/{token}").status_code == 404
+    assert anonymous.get(f"/api/shared/{token}").status_code == 404
 
     events = audit_events(owner, trip["id"])
     expire_events = [event for event in events if event["kind"] == "share_link.expire"]
@@ -147,17 +147,17 @@ def test_a_naturally_expiring_share_link_is_audited_as_a_system_action() -> None
 def test_a_non_owner_cannot_read_another_owners_audit_history() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
 
     stranger = client_for("owner-2")
-    response = stranger.get(f"/api/v1/trips/{trip['id']}/audit-events")
+    response = stranger.get(f"/api/trips/{trip['id']}/audit-events")
     assert response.status_code == 404
 
 
 def test_purge_expired_audit_events_keeps_recent_and_removes_events_past_the_window() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
 
     with TestingSessionLocal() as session:
         recent_kept = purge_expired_audit_events(session, older_than=timedelta(days=730))

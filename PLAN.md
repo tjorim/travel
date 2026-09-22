@@ -12,18 +12,18 @@ record the delivered change in `CHANGELOG.md`.
 
 ## Product direction
 
-The Travel app will become the source of truth for active trip data, archive
-content, private assets and sharing rules. Git is for application code, tests,
-schemas, migrations, documentation and infrastructure only; it is not file
-storage for user content, media, documents or published archive output.
+The Travel app will become the source of truth for its trips, private assets
+and sharing rules. No new app content belongs in Git. The existing `dist/`
+archive remains in the repository, offline after launch, until #40 handles it.
 
 The Travel application is the live, server-filtered destination for deliberately
 published public and unlisted trip views. Its frontend code is deployed from
 the application, but no generated trip-page artifact or user trip content is
 published from Git. A live trip view is not a backup and not an automatic record
 of every private item. Publication from the app must be an explicit action.
-The existing Git-backed archive is legacy content to move in an explicit,
-audited migration, not through ongoing automatic replication.
+The app launches with new application data. Existing Git-backed archive
+content is not imported, published or kept as a URL compatibility layer. The
+old static trip is unavailable at launch.
 
 ## Data and access boundary
 
@@ -70,8 +70,8 @@ take effect when that change is merged.
 
 v1 is application-only work. It uses local/test storage and test deployments
 as needed, but does not change shared VPS routing, production media storage,
-backup automation or legacy content. Those operational changes begin only in
-v2 after the app behavior is complete and verified.
+or backup automation. Those operational changes begin only in v2 after the
+app behavior is complete and verified.
 
 ### v1 — Private travel journal application
 
@@ -80,13 +80,13 @@ v2 after the app behavior is complete and verified.
 - [ ] [#73](https://github.com/tjorim/travel/issues/73) Serve public and
       unlisted trips live from the Travel app. This cross-release tracking
       issue follows #38's phased model:
-  - [ ] [#89](https://github.com/tjorim/travel/issues/89) Define the live
+  - [x] [#89](https://github.com/tjorim/travel/issues/89) Define the live
         Travel web-route and projection contract, split into focused delivery
         issues:
-    - [ ] [#103](https://github.com/tjorim/travel/issues/103) Define the live
+    - [x] [#103](https://github.com/tjorim/travel/issues/103) Define the live
           browser route and scoped-projection contract.
-    - [ ] [#101](https://github.com/tjorim/travel/issues/101) Define
-          legacy-route coexistence and the stable live Travel URL transition.
+    - [x] [#101](https://github.com/tjorim/travel/issues/101) Define
+          fresh-launch route ownership without archive import or URL aliases.
   - [ ] [#90](https://github.com/tjorim/travel/issues/90) Build live public
         and unlisted Travel trip views, split into focused delivery issues:
     - [ ] [#102](https://github.com/tjorim/travel/issues/102) Build the safe
@@ -100,12 +100,10 @@ v2 after the app behavior is complete and verified.
 - [x] [#39](https://github.com/tjorim/travel/issues/39) Add privacy-aware OSM
       place search and Google Maps navigation.
 
-### v2 — VPS cutover, Git-content retirement and live trip delivery
+### v2 — Fresh VPS launch and live trip delivery
 
 - [ ] [apps#219](https://github.com/tjorim/apps/issues/219) Add Travel
       private-media storage and live application routing to the shared VPS.
-- [ ] [#40](https://github.com/tjorim/travel/issues/40) Migrate user content
-      out of Git, prove live-view parity, and retire legacy static trip routes.
 - [ ] [apps#220](https://github.com/tjorim/apps/issues/220) Extend backup and
       restore verification to Travel media storage.
 
@@ -114,7 +112,7 @@ v2 after the app behavior is complete and verified.
 ### v1 — Private travel journal application
 
 v1 delivers a feature-complete private Travel app in local/test environments.
-It deliberately does not migrate or serve production user content yet.
+It uses test content only; production content begins with the fresh launch.
 
 - One account owner creates and edits all data. Trips are owner-only by
   default; each can have an optional, owner-selected public follower view and
@@ -142,25 +140,25 @@ v1 exit condition: the owner can manage a test trip entirely in the app and
 public/unlisted test visitors can see only deliberately shared content, proven
 by authorization, redaction and integration tests.
 
-### v2 — VPS cutover, Git-content retirement and live trip delivery
+### v2 — Fresh VPS launch and live trip delivery
 
-v2 enables the completed app on the shared VPS and makes it the only home for
-Travel content, including legacy content.
+v2 launches the completed app on the shared VPS with new application content.
+There is no archive import or old URL preservation requirement.
 
-- Migrate structured trip content to the database and all documents, media and
-  derivatives to backed-up VPS object storage.
+- Store new structured trip content in the database and new documents, media
+  and derivatives in backed-up VPS object storage.
 - Serve public and unlisted trip views live from explicitly published,
   server-filtered app data. Deploy frontend application code only, never a
   generated trip page or user content from Git.
 - Wire the already-tested MCP service through the production Caddy and Keycloak
   boundary with the same owner authorization and audit rules.
-- Audit Git and Git LFS history handling, validate the migration and retire the
-  legacy Git-backed deploy paths.
+- Stop serving all `dist/` trip and private archive URLs at launch. Verify
+  the old root-scoped service worker cannot answer old or new routes.
 
-v2 exit condition: Git holds only software and operational configuration; no
-user content or deployable trip-content asset is added or served from it,
-public/unlisted routes are live and server-filtered, and the owner can use the
-already-tested MCP service through its production boundary.
+v2 exit condition: no new app user content is added to Git and no `dist/`
+trip content is served; public/unlisted routes are live and server-filtered,
+and the owner can use the already-tested MCP service through its production
+boundary. Old archive files remain in the repository for separate #40 work.
 
 ### v3 — No committed delivery scope
 
@@ -283,8 +281,8 @@ Polarsteps-like features require a fresh product and privacy decision.
 - [x] Defined the versioned canonical Travel content model: owner-scoped
       resources and object storage, separately authored broad/derived share
       representations, immutable public and unlisted projections, capability
-      lifecycle, import records, and an explicit one-time legacy migration
-      design. ([#37](https://github.com/tjorim/travel/issues/37))
+      lifecycle and import records. The later fresh-launch decision removes
+      the legacy migration design. ([#37](https://github.com/tjorim/travel/issues/37))
 - [x] Defined the Travel application privacy contract: owner-only canonical
       data, private-by-default public follower views and fine-grained
       custom-link projections, server-side redaction, capability lifecycle,
@@ -303,7 +301,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       published read-only trips, Alembic migration, and a local test contract.
       ([#22](https://github.com/tjorim/travel/issues/22))
 
-- [x] Added the installable React PWA shell under `/tracker/`, with client-side
+- [x] Added the installable React PWA shell under `/admin/`, with client-side
       routing, mobile navigation, authenticated-app boundary, and app-shell
       offline cache while preserving the archive. ([#21](https://github.com/tjorim/travel/issues/21))
 
@@ -340,6 +338,9 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Later
 
+- [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
+      whether and how to move old `dist/` content out of Git. It is not a
+      dependency of the fresh application launch or a source of URL aliases.
 - [x] Generalized the Taiwan-only local SVG route map into a reusable,
       data-driven component with selectable route stops. ([#3](https://github.com/tjorim/travel/issues/3))
 - [x] Added opt-in offline copies for selected private documents, with
@@ -347,9 +348,9 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Conventions
 
-- The app is the source of truth for trip/archive data, private assets and
-  sharing policy. Git contains only code, tests, schemas, migrations,
-  documentation and infrastructure; never user content or deployable assets.
+- The app is the source of truth for its trip data, private assets and
+  sharing policy. Add no new user content or deployable trip assets to Git;
+  the existing offline `dist/` archive is separately tracked in #40.
 - Serve published trips live through the application boundary. Public and
   unlisted requests always receive only their server-filtered projection.
 - Do not use Git history as a document vault for sensitive documents.

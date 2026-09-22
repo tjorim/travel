@@ -7,11 +7,11 @@ defines the data model that implements it; it must not weaken this policy.
 
 ## Status and terms
 
-This policy applies to new Travel application data. The current Git-backed
-archive is legacy content and must continue to pass the
-[public-route safety check](../public-route-safety-check.md) until its explicit,
-audited migration. Its current protected static routes are not an implementation
-of unlisted sharing.
+This policy applies to new Travel application data. Git-backed archive content
+is outside the fresh-launch application: it is not imported or used to infer
+publication. Any archive routes that remain deployed must continue to pass the
+[public-route safety check](../public-route-safety-check.md) until withdrawn.
+Their protected static routes are not an implementation of unlisted sharing.
 
 There is one account owner. The authenticated OpenID Connect `sub` is the only
 identity authorized to read or change canonical data. There are no viewer
@@ -82,9 +82,8 @@ explicit revoke-all action. Changing visibility or links never changes canonical
 content or silently selects new shared items.
 
 The canonical model records the private/public baseline, an optional public
-projection, and independent named-link records. The existing MVP `visibility`
-value may be retained only as a migration concern; later work must represent the
-link layer separately from the public baseline.
+projection, and independent named-link records. The existing MVP `visibility` value is not a launch compatibility contract;
+the link layer is separate from the public baseline.
 
 ## Default resource policy
 
@@ -253,9 +252,9 @@ browser downloads or caches already held outside the app's control.
 Owner-only API responses use `Cache-Control: no-store` unless they are being
 handled by the explicit encrypted offline-copy flow. Capability exchanges,
 unlisted responses and signed-file responses use `Cache-Control: no-store,
-private` and must be purged/rejected on revocation. Public static exports use
-versioned cache invalidation and are never used to serve content that requires
-unlisted-link revocation.
+private` and must be purged/rejected on revocation. The live public projection uses `Cache-Control: no-store` so changes to
+publication or scope are checked on the next request. No static trip export is
+used for public or unlisted browser delivery.
 
 ## Retention, deletion, and service security
 
@@ -297,7 +296,6 @@ Issues implementing this policy must test at least these boundaries:
 - Offline copies are opt-in, device/account scoped, encrypted where supported,
   lease-checked and removed after current-access validation fails.
 
-The existing MVP `published` endpoint predates this policy. It may remain for
-legacy tests, but it is not a compliant basis for new resources or sharing
-features: subsequent work must replace its full-trip public serialization with
-the audience projection and link model above.
+The pre-launch MVP `published` endpoint has been removed. Its full-trip
+serialization does not meet this policy; browser delivery uses only the
+audience projection and link model above.

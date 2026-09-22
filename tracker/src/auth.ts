@@ -33,7 +33,7 @@ async function challengeFor(verifier: string): Promise<string> {
 }
 
 function callbackUrl(): string {
-  return `${window.location.origin}/tracker/auth/callback`;
+  return `${window.location.origin}/admin/auth/callback`;
 }
 
 function trackerPath(path: string): string {
@@ -126,7 +126,7 @@ export function beginSignOut(session: TrackerSession): void {
   clearSession();
   const parameters = new URLSearchParams({
     client_id: clientId,
-    post_logout_redirect_uri: `${window.location.origin}/tracker/`,
+    post_logout_redirect_uri: `${window.location.origin}/admin/`,
   });
   if (session.idToken) parameters.set("id_token_hint", session.idToken);
   window.location.assign(`${issuer}/protocol/openid-connect/logout?${parameters}`);

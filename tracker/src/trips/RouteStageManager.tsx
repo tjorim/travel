@@ -19,7 +19,7 @@ export function RouteStageManager({ trip, broadPlaces, onChange }: { trip: Trip;
     event.preventDefault();
     if (!session) return;
     if (!draft.broadPlaceId) throw new Error("Kies eerst een brede plaats.");
-    const endpoint = draft.id ? `/api/v1/trips/${trip.id}/route-stages/${draft.id}` : `/api/v1/trips/${trip.id}/route-stages`;
+    const endpoint = draft.id ? `/api/trips/${trip.id}/route-stages/${draft.id}` : `/api/trips/${trip.id}/route-stages`;
     const response = await fetch(endpoint, {
       method: draft.id ? "PATCH" : "POST",
       headers: apiHeaders(session),
@@ -37,7 +37,7 @@ export function RouteStageManager({ trip, broadPlaces, onChange }: { trip: Trip;
     if (!session) return;
     const nextPosition = stage.position + direction;
     if (nextPosition < 0 || nextPosition >= stages.length) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/route-stages/${stage.id}`, {
+    const response = await fetch(`/api/trips/${trip.id}/route-stages/${stage.id}`, {
       method: "PATCH", headers: apiHeaders(session), body: JSON.stringify({ position: nextPosition }),
     });
     if (!response.ok) return apiError(response, "De route-etappe kon niet worden verplaatst.");
@@ -47,7 +47,7 @@ export function RouteStageManager({ trip, broadPlaces, onChange }: { trip: Trip;
 
   async function deleteStage(stage: RouteStage) {
     if (!session || !window.confirm(`Verwijder route-etappe “${stage.label ?? stage.place.label}”?`)) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/route-stages/${stage.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/route-stages/${stage.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De route-etappe kon niet worden verwijderd.");
     await onChange();
     newStage();

@@ -33,7 +33,7 @@ def _asset_response(asset: DocumentAsset, trip_id: str) -> DocumentAssetResponse
         original_filename=asset.owner_metadata.get("original_filename"),
         created_at=asset.created_at,
         deleted_at=asset.deleted_at,
-        file_url=f"/api/v1/trips/{trip_id}/documents/{asset.id}/original",
+        file_url=f"/api/trips/{trip_id}/documents/{asset.id}/original",
     )
 
 
@@ -47,7 +47,7 @@ def _derivative_response(derivative: DocumentDerivative, trip_id: str) -> Docume
         content_type=redacted.content_type,
         created_at=derivative.created_at,
         file_url=(
-            f"/api/v1/trips/{trip_id}/documents/{derivative.document_asset_id}/derivatives/{derivative.id}/file"
+            f"/api/trips/{trip_id}/documents/{derivative.document_asset_id}/derivatives/{derivative.id}/file"
         ),
     )
 

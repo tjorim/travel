@@ -1,13 +1,18 @@
 # Travel
 
-Static travel hub. Exampleland 2054 is its first trip at `/exampleland-2054/`, with a detailed itinerary at `/exampleland-2054/private/`. Shared documents and emergency details live at `/private/`. Future trips can follow the same `dist/<trip-slug>/` layout.
+The repository contains a Git-backed static archive and a new Travel
+application. Exampleland 2054 remains in the archive under `dist/`. The application
+launches with its own data and live routes; it does not import archive content
+or preserve archive URLs. The old static trip goes offline at launch while its
+files remain in the repository for separate #40 work. Future trips are created
+in the application.
 
 - [PLAN.md](PLAN.md) — ordered work and TODOs
 - [CHANGELOG.md](CHANGELOG.md) — implemented changes
 - [Privacy, sharing and offline policy](docs/decisions/36-privacy-sharing-offline-policy.md) — v1 access, named-share-link, and redaction contract
-- [Canonical content and publication model](docs/decisions/37-canonical-content-and-publication-model.md) — v1 application data, storage, projection, and archive migration contract
+- [Canonical content and publication model](docs/decisions/37-canonical-content-and-publication-model.md) — application data, storage, and projection contract
 - [Live browser route and projection contract](docs/decisions/103-live-browser-route-contract.md) — owner, public, and unlisted browser routes and delivery safeguards
-- [Legacy route coexistence and live URL transition](docs/decisions/101-legacy-route-transition.md) — archive URL inventory, route ownership, and staged cutover gates
+- [Fresh launch route boundary](docs/decisions/101-legacy-route-transition.md) — route ownership without archive import or URL aliases
 
 ## Run locally
 

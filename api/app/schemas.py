@@ -374,27 +374,6 @@ class TripResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PublicMomentResponse(BaseModel):
-    """A moment as seen through the legacy public-trip endpoint. A moment's
-    place is always `exact` (address, coordinates, notes), so it is never
-    included here -- unlike `MomentResponse`, the owner-only shape."""
-
-    id: str
-    occurred_at: datetime
-    title: str
-    story: str
-    photo_urls: list[str]
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PublicTripResponse(BaseModel):
-    public_id: str
-    title: str
-    summary: str | None
-    route_stages: list[RouteStageResponse]
-    moments: list[PublicMomentResponse]
-
-
 class ShareScopeKind(StrEnum):
     EXACT_PLACE = "exact_place"
     ROUTE_STAGE = "route_stage"

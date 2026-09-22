@@ -29,7 +29,7 @@ function cloneScope(scope: Partial<ShareScope> | null | undefined): ShareScope {
     items: Array.isArray(scope?.items) ? scope.items.map((item) => ({ ...item, fields: [...item.fields] })) : [],
   };
 }
-const endpoint = (tripId: string) => `/api/v1/trips/${tripId}`;
+const endpoint = (tripId: string) => `/api/trips/${tripId}`;
 
 function dateLabel(value: string | null): string {
   return value ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium" }).format(new Date(value)) : "—";

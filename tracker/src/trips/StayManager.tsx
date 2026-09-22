@@ -14,8 +14,8 @@ export function StayManager({ trip, broadPlaces }: { trip: Trip; broadPlaces: Br
   async function load() {
     if (!session) return;
     const [staysResponse, cardsResponse] = await Promise.all([
-      fetch(`/api/v1/trips/${trip.id}/stays`, { headers: apiHeaders(session) }),
-      fetch(`/api/v1/trips/${trip.id}/broad-stay-cards`, { headers: apiHeaders(session) }),
+      fetch(`/api/trips/${trip.id}/stays`, { headers: apiHeaders(session) }),
+      fetch(`/api/trips/${trip.id}/broad-stay-cards`, { headers: apiHeaders(session) }),
     ]);
     if (!staysResponse.ok) return apiError(staysResponse, "Je verblijven konden niet worden geladen.");
     if (!cardsResponse.ok) return apiError(cardsResponse, "Je brede verblijfskaarten konden niet worden geladen.");
@@ -47,7 +47,7 @@ export function StayManager({ trip, broadPlaces }: { trip: Trip; broadPlaces: Br
       notes: stayDraft.notes.trim() || null,
       ...(!stayDraft.id || stayDraft.placeChanged ? { place: { display_name: stayDraft.propertyName.trim(), address_line1: stayDraft.address.trim() || null, locality: stayDraft.locality.trim() || null, country_code: stayDraft.countryCode.trim().toUpperCase() || null } } : {}),
     };
-    const response = await fetch(stayDraft.id ? `/api/v1/trips/${trip.id}/stays/${stayDraft.id}` : `/api/v1/trips/${trip.id}/stays`, { method: stayDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload) });
+    const response = await fetch(stayDraft.id ? `/api/trips/${trip.id}/stays/${stayDraft.id}` : `/api/trips/${trip.id}/stays`, { method: stayDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload) });
     if (!response.ok) return apiError(response, "Het verblijf kon niet worden opgeslagen.");
     await load();
     newStay();
@@ -56,7 +56,7 @@ export function StayManager({ trip, broadPlaces }: { trip: Trip; broadPlaces: Br
 
   async function deleteStay(stay: Stay) {
     if (!session || !window.confirm(`Verwijder verblijf “${stay.property_name}”?`)) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/stays/${stay.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/stays/${stay.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Het verblijf kon niet worden verwijderd.");
     await load(); newStay(); setMessage("Privéverblijf verwijderd.");
   }
@@ -67,14 +67,14 @@ export function StayManager({ trip, broadPlaces }: { trip: Trip; broadPlaces: Br
   async function saveCard(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
-    const response = await fetch(cardDraft.id ? `/api/v1/trips/${trip.id}/broad-stay-cards/${cardDraft.id}` : `/api/v1/trips/${trip.id}/broad-stay-cards`, { method: cardDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify({ broad_place_id: cardDraft.broadPlaceId, title: cardDraft.title.trim(), date_precision: cardDraft.datePrecision }) });
+    const response = await fetch(cardDraft.id ? `/api/trips/${trip.id}/broad-stay-cards/${cardDraft.id}` : `/api/trips/${trip.id}/broad-stay-cards`, { method: cardDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify({ broad_place_id: cardDraft.broadPlaceId, title: cardDraft.title.trim(), date_precision: cardDraft.datePrecision }) });
     if (!response.ok) return apiError(response, "De brede verblijfskaart kon niet worden opgeslagen.");
     await load(); newCard(); setMessage("Brede verblijfskaart opgeslagen. Hij is nog niet gedeeld.");
   }
 
   async function deleteCard(card: BroadStayCard) {
     if (!session || !window.confirm(`Verwijder brede kaart “${card.title}”?`)) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/broad-stay-cards/${card.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/broad-stay-cards/${card.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De brede verblijfskaart kon niet worden verwijderd.");
     await load(); newCard(); setMessage("Brede verblijfskaart verwijderd.");
   }

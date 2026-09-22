@@ -14,8 +14,8 @@ export function TrackManager({ trip }: { trip: Trip }) {
   async function load() {
     if (!session) return;
     const [tracksResponse, routesResponse] = await Promise.all([
-      fetch(`/api/v1/trips/${trip.id}/recorded-tracks`, { headers: apiHeaders(session) }),
-      fetch(`/api/v1/trips/${trip.id}/broad-routes`, { headers: apiHeaders(session) }),
+      fetch(`/api/trips/${trip.id}/recorded-tracks`, { headers: apiHeaders(session) }),
+      fetch(`/api/trips/${trip.id}/broad-routes`, { headers: apiHeaders(session) }),
     ]);
     if (!tracksResponse.ok) return apiError(tracksResponse, "Je afgewerkte tracks konden niet worden geladen.");
     if (!routesResponse.ok) return apiError(routesResponse, "Je brede routes konden niet worden geladen.");
@@ -33,7 +33,7 @@ export function TrackManager({ trip }: { trip: Trip }) {
     const body = new FormData();
     body.set("file", file); body.set("kind", upload.kind); body.set("started_at", new Date(upload.startedAt).toISOString()); body.set("ended_at", new Date(upload.endedAt).toISOString());
     setMessage("Afgewerkte track uploaden…");
-    const response = await fetch(`/api/v1/trips/${trip.id}/recorded-tracks/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body });
+    const response = await fetch(`/api/trips/${trip.id}/recorded-tracks/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body });
     if (!response.ok) return apiError(response, "De afgewerkte track kon niet worden geüpload.");
     await load();
     setUpload({ file: null, kind: "gpx", startedAt: localDateTime(new Date(Date.now() - 3_600_000)), endedAt: localDateTime() });
@@ -49,7 +49,7 @@ export function TrackManager({ trip }: { trip: Trip }) {
     let coordinates: [number, number][];
     try { coordinates = JSON.parse(routeDraft.coordinates) as [number, number][]; } catch { throw new Error("Gebruik geldige JSON met minstens twee [lengtegraad, breedtegraad]-paren."); }
     if (!Array.isArray(coordinates) || coordinates.length < 2 || coordinates.some((point) => !Array.isArray(point) || point.length !== 2 || point.some((value) => typeof value !== "number"))) throw new Error("Een brede route heeft minstens twee [lengtegraad, breedtegraad]-paren nodig.");
-    const response = await fetch(routeDraft.id ? `/api/v1/trips/${trip.id}/broad-routes/${routeDraft.id}` : `/api/v1/trips/${trip.id}/broad-routes`, {
+    const response = await fetch(routeDraft.id ? `/api/trips/${trip.id}/broad-routes/${routeDraft.id}` : `/api/trips/${trip.id}/broad-routes`, {
       method: routeDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify({ label: routeDraft.label.trim(), date_precision: routeDraft.datePrecision, geometry: { type: "LineString", coordinates } }),
     });
     if (!response.ok) return apiError(response, "De brede route kon niet worden opgeslagen.");
@@ -58,7 +58,7 @@ export function TrackManager({ trip }: { trip: Trip }) {
 
   async function deleteRoute(route: BroadRoute) {
     if (!session || !window.confirm(`Verwijder brede route “${route.label}”?`)) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/broad-routes/${route.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/broad-routes/${route.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De brede route kon niet worden verwijderd.");
     await load(); newRoute(); setMessage("Brede route verwijderd.");
   }

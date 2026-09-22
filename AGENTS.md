@@ -14,7 +14,7 @@ service and its Alembic migrations.
 - `dist/assets/travel/` contains reusable browser components such as
   `flight-map.js` and `document-list.js`.
 - `api/app/` contains the tracker API; `api/alembic/` contains its migrations.
-- `tracker/` is the React PWA shell, served only below `/tracker/`.
+- `tracker/` is the React PWA source, served only below `/admin/`.
 - `PLAN.md` is the ordered backlog; `CHANGELOG.md` records completed changes.
 
 ## Build, Test, and Development Commands

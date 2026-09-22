@@ -23,7 +23,7 @@ export function Trips() {
 
   async function loadTrips(selectId?: string | null) {
     if (!session) return;
-    const response = await fetch("/api/v1/trips", { headers: apiHeaders(session) });
+    const response = await fetch("/api/trips", { headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Je reizen konden niet worden geladen.");
     const loaded = await response.json() as Trip[];
     setTrips(loaded);
@@ -44,7 +44,7 @@ export function Trips() {
       setBroadPlaces([]);
       return;
     }
-    void fetch(`/api/v1/trips/${selectedId}/places/broad`, { headers: apiHeaders(session) })
+    void fetch(`/api/trips/${selectedId}/places/broad`, { headers: apiHeaders(session) })
       .then((response) => response.ok ? response.json() as Promise<BroadPlace[]> : apiError(response, "De brede plaatsen konden niet worden geladen."))
       .then(setBroadPlaces)
       .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede plaatsen konden niet worden geladen."));
@@ -72,7 +72,7 @@ export function Trips() {
       ? { title: tripDraft.title.trim(), summary: tripDraft.summary.trim() || null }
       : { title: tripDraft.title.trim(), summary: tripDraft.summary.trim() || null, visibility: tripDraft.visibility, publication_state: tripDraft.publicationState };
     setMessage(isNew ? "Reis maken…" : "Reis opslaan…");
-    const response = await fetch(isNew ? "/api/v1/trips" : `/api/v1/trips/${selectedTrip.id}`, {
+    const response = await fetch(isNew ? "/api/trips" : `/api/trips/${selectedTrip.id}`, {
       method: isNew ? "POST" : "PATCH", headers: apiHeaders(session), body: JSON.stringify(payload),
     });
     if (!response.ok) return apiError(response, "De reis kon niet worden opgeslagen.");
@@ -84,7 +84,7 @@ export function Trips() {
 
   async function deleteTrip() {
     if (!session || !selectedTrip || !window.confirm(`Verwijder ${selectedTrip.title} met alle private inhoud?`)) return;
-    const response = await fetch(`/api/v1/trips/${selectedTrip.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${selectedTrip.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De reis kon niet worden verwijderd.");
     await loadTrips(null);
     newTrip();
@@ -110,7 +110,7 @@ export function Trips() {
       body: excerptDraft.body.trim(),
     };
     setMessage(excerptDraft.id ? "Uittreksel opslaan…" : "Uittreksel maken…");
-    const response = await fetch(excerptDraft.id ? `/api/v1/trips/${selectedTrip.id}/moment-excerpts/${excerptDraft.id}` : `/api/v1/trips/${selectedTrip.id}/moment-excerpts`, {
+    const response = await fetch(excerptDraft.id ? `/api/trips/${selectedTrip.id}/moment-excerpts/${excerptDraft.id}` : `/api/trips/${selectedTrip.id}/moment-excerpts`, {
       method: excerptDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload),
     });
     if (!response.ok) return apiError(response, "Het uittreksel kon niet worden opgeslagen.");
@@ -121,7 +121,7 @@ export function Trips() {
 
   async function deleteExcerpt(excerpt: MomentExcerpt) {
     if (!session || !selectedTrip || !window.confirm(`Verwijder uittreksel “${excerpt.title}”?`)) return;
-    const response = await fetch(`/api/v1/trips/${selectedTrip.id}/moment-excerpts/${excerpt.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${selectedTrip.id}/moment-excerpts/${excerpt.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Het uittreksel kon niet worden verwijderd.");
     await loadTrips(selectedTrip.id);
     newExcerpt();
@@ -132,7 +132,7 @@ export function Trips() {
     event.preventDefault();
     if (!session || !selectedTrip) return;
     const countryCode = broadPlaceDraft.countryCode.trim().toUpperCase();
-    const response = await fetch(`/api/v1/trips/${selectedTrip.id}/places/broad`, {
+    const response = await fetch(`/api/trips/${selectedTrip.id}/places/broad`, {
       method: "POST",
       headers: apiHeaders(session),
       body: JSON.stringify({

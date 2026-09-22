@@ -14,7 +14,7 @@ export function DocumentManager({ trip }: { trip: Trip }) {
 
   async function load(selectId?: string | null) {
     if (!session) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/documents`, { headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/documents`, { headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Je documenten konden niet worden geladen.");
     const loaded = await response.json() as DocumentAsset[];
     setDocuments(loaded);
@@ -25,7 +25,7 @@ export function DocumentManager({ trip }: { trip: Trip }) {
   useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je documenten konden niet worden geladen.")); }, [session, trip.id]);
   useEffect(() => {
     if (!session || !selectedId) { setDerivatives([]); return; }
-    void fetch(`/api/v1/trips/${trip.id}/documents/${selectedId}/derivatives`, { headers: apiHeaders(session) })
+    void fetch(`/api/trips/${trip.id}/documents/${selectedId}/derivatives`, { headers: apiHeaders(session) })
       .then((response) => response.ok ? response.json() as Promise<DocumentDerivative[]> : apiError(response, "De afgeleide documenten konden niet worden geladen."))
       .then(setDerivatives)
       .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide documenten konden niet worden geladen."));
@@ -37,7 +37,7 @@ export function DocumentManager({ trip }: { trip: Trip }) {
     event.preventDefault();
     if (!session || !upload.file) { setMessage("Kies een bestand om te uploaden."); return; }
     const data = new FormData(); data.set("title", upload.title.trim()); data.set("document_kind", upload.kind); data.set("file", upload.file);
-    const response = await fetch(`/api/v1/trips/${trip.id}/documents/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
+    const response = await fetch(`/api/trips/${trip.id}/documents/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
     if (!response.ok) return apiError(response, "Het document kon niet worden geüpload.");
     const saved = await response.json() as DocumentAsset;
     setUpload({ title: "", kind: "booking", file: null }); await load(saved.id); setMessage("Privédocument geüpload.");
@@ -45,7 +45,7 @@ export function DocumentManager({ trip }: { trip: Trip }) {
 
   async function deleteDocument(document: DocumentAsset) {
     if (!session || !window.confirm(`Verwijder document “${document.title}”?`)) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/documents/${document.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/documents/${document.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Het document kon niet worden verwijderd.");
     await load(null); setMessage("Privédocument verwijderd.");
   }
@@ -54,7 +54,7 @@ export function DocumentManager({ trip }: { trip: Trip }) {
     event.preventDefault();
     if (!session || !selected || !redaction.file || !redaction.manifest) { setMessage("Kies een geredigeerd bestand én een redactie-manifest."); return; }
     const data = new FormData(); data.set("file", redaction.file); data.set("redaction_manifest", redaction.manifest);
-    const response = await fetch(`/api/v1/trips/${trip.id}/documents/${selected.id}/derivatives`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
+    const response = await fetch(`/api/trips/${trip.id}/documents/${selected.id}/derivatives`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
     if (!response.ok) return apiError(response, "De geredigeerde afgeleide kon niet worden opgeslagen.");
     const saved = await response.json() as DocumentDerivative;
     setRedaction({ file: null, manifest: null }); setDerivatives((current) => [saved, ...current]); setMessage("Geredigeerde afgeleide opgeslagen en wacht op jouw expliciete goedkeuring.");
@@ -62,7 +62,7 @@ export function DocumentManager({ trip }: { trip: Trip }) {
 
   async function approveDerivative(derivative: DocumentDerivative) {
     if (!session || !selected) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/documents/${selected.id}/derivatives/${derivative.id}/approve`, { method: "POST", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/documents/${selected.id}/derivatives/${derivative.id}/approve`, { method: "POST", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De afgeleide kon niet worden goedgekeurd.");
     const saved = await response.json() as DocumentDerivative;
     setDerivatives((current) => current.map((item) => item.id === saved.id ? saved : item)); setMessage("Afgeleide expliciet goedgekeurd. Delen gebeurt nog steeds alleen via een aparte scope.");

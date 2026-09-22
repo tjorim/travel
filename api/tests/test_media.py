@@ -55,7 +55,7 @@ def teardown_function() -> None:
 
 
 def create_trip(client: TestClient, title: str = "Exampleland 2054") -> dict:
-    response = client.post("/api/v1/trips", json={"title": title, "summary": "A private trip."})
+    response = client.post("/api/trips", json={"title": title, "summary": "A private trip."})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -137,14 +137,14 @@ def test_direct_upload_creates_a_media_asset_served_from_storage_not_a_temp_url(
     data = jpeg_bytes()
 
     response = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("holiday.jpg", data, "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("holiday.jpg", data, "image/jpeg")}
     )
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["content_type"] == "image/jpeg"
     assert body["byte_size"] == len(data)
     assert body["original_filename"] == "holiday.jpg"
-    assert body["file_url"] == f"/api/v1/trips/{trip['id']}/media/{body['id']}/original"
+    assert body["file_url"] == f"/api/trips/{trip['id']}/media/{body['id']}/original"
     assert "object_key" not in body
     assert "bucket" not in body
 
@@ -154,7 +154,7 @@ def test_direct_upload_creates_a_media_asset_served_from_storage_not_a_temp_url(
     assert original.headers["cache-control"] == "no-store"
 
     other = client_for("owner-2", tmp_path)
-    assert other.get(f"/api/v1/trips/{trip['id']}/media").status_code == 404
+    assert other.get(f"/api/trips/{trip['id']}/media").status_code == 404
     assert other.get(body["file_url"]).status_code == 404
 
 
@@ -164,7 +164,7 @@ def test_direct_upload_extracts_exif_for_the_owner_while_the_original_keeps_it_e
     data = jpeg_bytes(with_gps=True, captured_at="2054:04:01 08:30:00")
 
     response = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("sunrise.jpg", data, "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("sunrise.jpg", data, "image/jpeg")}
     )
     assert response.status_code == 201, response.text
     body = response.json()
@@ -188,13 +188,13 @@ def test_direct_upload_is_idempotent_and_never_duplicates_a_media_record(tmp_pat
     trip = create_trip(owner)
     data = jpeg_bytes()
 
-    first = owner.post(f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", data, "image/jpeg")})
+    first = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", data, "image/jpeg")})
     assert first.status_code == 201
-    second = owner.post(f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("b.jpg", data, "image/jpeg")})
+    second = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("b.jpg", data, "image/jpeg")})
     assert second.status_code == 200
     assert second.json()["id"] == first.json()["id"]
 
-    listed = owner.get(f"/api/v1/trips/{trip['id']}/media")
+    listed = owner.get(f"/api/trips/{trip['id']}/media")
     assert len(listed.json()) == 1
 
 
@@ -206,7 +206,7 @@ def test_upload_over_the_configured_size_limit_is_rejected(tmp_path: Path, monke
     trip = create_trip(owner)
 
     response = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("big.jpg", jpeg_bytes(), "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("big.jpg", jpeg_bytes(), "image/jpeg")}
     )
     assert response.status_code == 422
 
@@ -215,12 +215,12 @@ def test_deleting_media_removes_it_from_owner_queries_immediately(tmp_path: Path
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
     uploaded = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
     ).json()
 
-    assert owner.delete(f"/api/v1/trips/{trip['id']}/media/{uploaded['id']}").status_code == 204
-    assert owner.get(f"/api/v1/trips/{trip['id']}/media/{uploaded['id']}").status_code == 404
-    assert owner.get(f"/api/v1/trips/{trip['id']}/media").json() == []
+    assert owner.delete(f"/api/trips/{trip['id']}/media/{uploaded['id']}").status_code == 204
+    assert owner.get(f"/api/trips/{trip['id']}/media/{uploaded['id']}").status_code == 404
+    assert owner.get(f"/api/trips/{trip['id']}/media").json() == []
 
 
 # --- Visit candidates: transient owner review, never canonical data --------------
@@ -231,19 +231,19 @@ def test_owner_can_review_selected_media_as_visits_without_creating_moments_or_p
     trip = create_trip(owner)
 
     first = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads",
+        f"/api/trips/{trip['id']}/media/uploads",
         files={"file": ("first.jpg", jpeg_bytes((1, 2, 3), with_gps=True, captured_at="2054:04:01 08:00:00"), "image/jpeg")},
     ).json()
     second = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads",
+        f"/api/trips/{trip['id']}/media/uploads",
         files={"file": ("second.jpg", jpeg_bytes((4, 5, 6), with_gps=True, captured_at="2054:04:01 09:00:00"), "image/jpeg")},
     ).json()
     later = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads",
+        f"/api/trips/{trip['id']}/media/uploads",
         files={"file": ("later.jpg", jpeg_bytes((7, 8, 9), with_gps=True, captured_at="2054:04:01 10:01:00"), "image/jpeg")},
     ).json()
     unavailable = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads",
+        f"/api/trips/{trip['id']}/media/uploads",
         files={"file": ("no-metadata.jpg", jpeg_bytes((10, 11, 12), with_exif=False), "image/jpeg")},
     ).json()
 
@@ -256,7 +256,7 @@ def test_owner_can_review_selected_media_as_visits_without_creating_moments_or_p
         session.commit()
 
     reviewed = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/visit-candidates",
+        f"/api/trips/{trip['id']}/media/visit-candidates",
         json={"media_asset_ids": [first["id"], second["id"], later["id"], unavailable["id"]]},
     )
     assert reviewed.status_code == 200, reviewed.text
@@ -274,13 +274,13 @@ def test_owner_can_review_selected_media_as_visits_without_creating_moments_or_p
 
     # Candidate generation is a read-only review operation: it cannot create
     # a moment, place, shareable item, or persistent candidate row.
-    trip_after_review = owner.get(f"/api/v1/trips/{trip['id']}").json()
+    trip_after_review = owner.get(f"/api/trips/{trip['id']}").json()
     assert trip_after_review["moments"] == []
-    assert owner.get(f"/api/v1/trips/{trip['id']}/places").json() == []
+    assert owner.get(f"/api/trips/{trip['id']}/places").json() == []
 
     other = client_for("owner-2", tmp_path)
     assert other.post(
-        f"/api/v1/trips/{trip['id']}/media/visit-candidates", json={"media_asset_ids": [first["id"]]}
+        f"/api/trips/{trip['id']}/media/visit-candidates", json={"media_asset_ids": [first["id"]]}
     ).status_code == 404
 
 
@@ -294,11 +294,11 @@ def test_share_derivative_strips_exif_and_starts_pending_owner_review(tmp_path: 
     assert Image.open(io.BytesIO(original_bytes)).getexif().get(271) == "ExampleCam"
 
     media = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", original_bytes, "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", original_bytes, "image/jpeg")}
     ).json()
 
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives",
+        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives",
         json={"purpose": "share", "max_dimension": 800},
     )
     assert created.status_code == 201, created.text
@@ -314,7 +314,7 @@ def test_share_derivative_strips_exif_and_starts_pending_owner_review(tmp_path: 
     assert not stripped_image.getexif()  # no Make/Model/GPS tag survives
 
     approved = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
+        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
     )
     assert approved.status_code == 200
     assert approved.json()["review_state"] == "approved"
@@ -324,13 +324,13 @@ def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
     media = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
     ).json()
     derivative = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives", json={"purpose": "share"}
+        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives", json={"purpose": "share"}
     ).json()
     assert owner.post(
-        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
+        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
     ).status_code == 200
 
     scope = {
@@ -338,32 +338,32 @@ def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path
         "trip": {"title": True, "summary": True},
         "items": [{"kind": "media_derivative", "id": derivative["id"], "fields": ["image"]}],
     }
-    assert owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=scope).status_code == 200
-    link = owner.post(f"/api/v1/trips/{trip['id']}/share-links", json={"label": "Gallery", "scope": scope})
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope).status_code == 200
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Gallery", "scope": scope})
     assert link.status_code == 201, link.text
 
-    deleted = owner.delete(f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}")
+    deleted = owner.delete(f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}")
     assert deleted.status_code == 204
-    assert owner.get(f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives").json() == []
+    assert owner.get(f"/api/trips/{trip['id']}/media/{media['id']}/derivatives").json() == []
     assert owner.get(derivative["file_url"]).status_code == 404
-    assert owner.get(f"/api/v1/trips/{trip['id']}/public-projection").json()["scope"]["items"] == []
-    assert owner.get(f"/api/v1/trips/{trip['id']}/share-links/{link.json()['id']}").json()["scope"]["items"] == []
+    assert owner.get(f"/api/trips/{trip['id']}/public-projection").json()["scope"]["items"] == []
+    assert owner.get(f"/api/trips/{trip['id']}/share-links/{link.json()['id']}").json()["scope"]["items"] == []
 
 
 def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path) -> None:
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
-    assert owner.put("/api/v1/provider-tokens/google_photos_picker", json={"access_token": "never-return-this"}).status_code == 204
+    assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "never-return-this"}).status_code == 204
 
-    statuses = owner.get("/api/v1/provider-tokens")
+    statuses = owner.get("/api/provider-tokens")
     assert statuses.status_code == 200
     assert statuses.json() == [
         {"provider": "google_photos_picker", "connected": True},
         {"provider": "gopro_cloud", "connected": False},
     ]
     assert "never-return-this" not in statuses.text
-    assert owner.delete("/api/v1/provider-tokens/google_photos_picker").status_code == 204
-    assert owner.get("/api/v1/provider-tokens").json()[0] == {"provider": "google_photos_picker", "connected": False}
+    assert owner.delete("/api/provider-tokens/google_photos_picker").status_code == 204
+    assert owner.get("/api/provider-tokens").json()[0] == {"provider": "google_photos_picker", "connected": False}
 
 
 # --- Google Photos Picker import: only explicitly selected items ------------------
@@ -387,19 +387,19 @@ def test_google_photos_picker_import_copies_selected_items_into_travel_storage(t
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
 
-    assert owner.put("/api/v1/provider-tokens/google_photos_picker", json={"access_token": "owner-google-token"}).status_code == 204
+    assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "owner-google-token"}).status_code == 204
 
     items, contents = google_items()
     fake = FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents)
     use_fake_provider(fake)
 
-    started = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
+    started = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
     assert started.status_code == 200, started.text
     session_body = started.json()
     assert session_body["picker_uri"] == fake.picker_uri
 
     completed = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
+        f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
     )
     assert completed.status_code == 200, completed.text
     outcome = completed.json()
@@ -412,7 +412,7 @@ def test_google_photos_picker_import_copies_selected_items_into_travel_storage(t
     assert fake.picker_uri not in body_text
     assert "owner-google-token" not in body_text
 
-    listed = owner.get(f"/api/v1/trips/{trip['id']}/media").json()
+    listed = owner.get(f"/api/trips/{trip['id']}/media").json()
     assert len(listed) == 2
     for asset in listed:
         stored = owner.get(asset["file_url"])
@@ -424,7 +424,7 @@ def test_imported_exif_capture_time_takes_precedence_over_the_providers_own_meta
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/v1/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
 
     # The provider (e.g. Google's createTime) says 2054-04-02, but the
     # camera's own EXIF DateTimeOriginal says 2054-04-01: the actual capture
@@ -435,9 +435,9 @@ def test_imported_exif_capture_time_takes_precedence_over_the_providers_own_meta
     contents = {"g-item-1": jpeg_bytes(captured_at="2054:04:01 08:30:00")}
     use_fake_provider(FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, [item], contents))
 
-    session_body = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
+    session_body = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
     completed = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
+        f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
     ).json()
 
     assert completed["imported"][0]["captured_at"].startswith("2054-04-01T08:30:00")
@@ -447,11 +447,11 @@ def test_completing_an_expired_import_session_is_rejected_and_marks_it_expired(t
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/v1/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
 
     items, contents = google_items()
     use_fake_provider(FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents))
-    session_body = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
+    session_body = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
 
     with TestingSessionLocal() as db:
         row = db.scalar(select(ImportSession).where(ImportSession.id == session_body["id"]))
@@ -459,7 +459,7 @@ def test_completing_an_expired_import_session_is_rejected_and_marks_it_expired(t
         db.commit()
 
     response = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
+        f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
     )
     assert response.status_code == 409
 
@@ -470,10 +470,10 @@ def test_completing_an_expired_import_session_is_rejected_and_marks_it_expired(t
     # A second attempt against the now-expired session is rejected the same
     # way, without needing to re-check `expires_at`.
     again = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
+        f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
     )
     assert again.status_code == 409
-    assert len(owner.get(f"/api/v1/trips/{trip['id']}/media").json()) == 0
+    assert len(owner.get(f"/api/trips/{trip['id']}/media").json()) == 0
 
 
 def test_import_is_rejected_without_a_connected_provider_token(tmp_path: Path) -> None:
@@ -482,7 +482,7 @@ def test_import_is_rejected_without_a_connected_provider_token(tmp_path: Path) -
     items, contents = google_items()
     use_fake_provider(FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents))
 
-    response = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
+    response = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
     assert response.status_code == 409
 
 
@@ -490,33 +490,33 @@ def test_revoking_a_provider_token_blocks_new_imports_but_keeps_already_imported
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/v1/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
 
     items, contents = google_items()
     use_fake_provider(FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents))
-    session_body = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
-    owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete")
-    assert len(owner.get(f"/api/v1/trips/{trip['id']}/media").json()) == 2
+    session_body = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
+    owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete")
+    assert len(owner.get(f"/api/trips/{trip['id']}/media").json()) == 2
 
-    assert owner.delete("/api/v1/provider-tokens/google_photos_picker").status_code == 204
+    assert owner.delete("/api/provider-tokens/google_photos_picker").status_code == 204
 
-    blocked = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
+    blocked = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
     assert blocked.status_code == 409
-    assert len(owner.get(f"/api/v1/trips/{trip['id']}/media").json()) == 2
+    assert len(owner.get(f"/api/trips/{trip['id']}/media").json()) == 2
 
 
 def test_an_interrupted_import_retry_only_reattempts_the_failed_item_and_never_duplicates(tmp_path: Path) -> None:
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/v1/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
 
     items, contents = google_items()
     fake = FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents, fail_once={"g-item-2"})
     use_fake_provider(fake)
 
-    session_body = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
-    complete_url = f"/api/v1/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
+    session_body = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions").json()
+    complete_url = f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{session_body['id']}/complete"
 
     first = owner.post(complete_url).json()
     assert len(first["imported"]) == 1
@@ -526,7 +526,7 @@ def test_an_interrupted_import_retry_only_reattempts_the_failed_item_and_never_d
     assert retry["failed"] == []
     assert {asset["id"] for asset in retry["imported"]} | {a["id"] for a in first["imported"]}
 
-    listed = owner.get(f"/api/v1/trips/{trip['id']}/media").json()
+    listed = owner.get(f"/api/trips/{trip['id']}/media").json()
     assert len(listed) == 2  # never duplicated the item that succeeded on the first pass
     assert fake.fetch_calls["g-item-1"] == 1
     assert fake.fetch_calls["g-item-2"] == 2
@@ -539,16 +539,16 @@ def test_gopro_cloud_import_is_unavailable_without_beta_access_while_direct_uplo
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/v1/provider-tokens/gopro_cloud", json={"access_token": "gopro-token"})
+    owner.put("/api/provider-tokens/gopro_cloud", json={"access_token": "gopro-token"})
 
     from app.config import settings
 
     assert settings.gopro_cloud_enabled is False
-    response = owner.post(f"/api/v1/trips/{trip['id']}/media/imports/gopro_cloud/sessions")
+    response = owner.post(f"/api/trips/{trip['id']}/media/imports/gopro_cloud/sessions")
     assert response.status_code == 409
 
     upload = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
     )
     assert upload.status_code == 201
 

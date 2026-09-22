@@ -147,7 +147,7 @@ def _track_response(track: RecordedTrack, trip_id: str) -> RecordedTrackResponse
         kind=track.kind,
         byte_size=source.byte_size,
         content_type=source.content_type,
-        source_file_url=f"/api/v1/trips/{trip_id}/recorded-tracks/{track.id}/source",
+        source_file_url=f"/api/trips/{trip_id}/recorded-tracks/{track.id}/source",
     )
 
 

@@ -26,9 +26,8 @@ instruction to replace the tracker MVP tables in place.
   pages and their files stay behind a capability-checking application delivery
   layer, so revocation remains effective.
 
-`v1` means the first application-backed model. Existing `api/app/models.py`
-and `dist/` files are a limited legacy/MVP implementation, not this model's
-schema authority.
+`v1` means the first application-backed model. Existing `dist/` files are
+archive material, not an import source or schema authority for the fresh launch.
 
 ## Versioning and common conventions
 
@@ -152,7 +151,7 @@ next request, with no republish step.
 | `public_surface.state` | `unpublished` -> `published` -> `unpublished`. There is no generation step or separate `publishing`/`unpublishing` transient state. |
 | `share_link.state` | `draft` -> `active` -> `revoked` or `expired`; `revoked` and `expired` are terminal. |
 
-### Public projection and legacy archive
+### Public projection
 
 1. The owner selects safe, separately authored resources and fields into
    `public_surface.scope_json`. This is a live field: it can be edited at any
@@ -169,9 +168,8 @@ next request, with no republish step.
    links.
 
 The public view is a live API response (delivered for trips/route stages/moments
-in [#42](https://github.com/tjorim/travel/issues/42)). The legacy static
-archive remains available only during the reviewed transition in
-[the legacy-route decision](101-legacy-route-transition.md).
+in [#42](https://github.com/tjorim/travel/issues/42)). The fresh-launch
+route boundary is defined by [#101](101-legacy-route-transition.md).
 
 ### Unlisted capability
 
@@ -224,30 +222,17 @@ policy's 30-day sealed recovery and 90-day backup limits still apply. A
 restore replays current deletion, publication, and revocation state before
 serving restored data.
 
-## Legacy archive migration
+## Fresh launch data
 
-The existing `dist/<trip-slug>/public/` and protected `private/` content is a
-one-time import source, not a mirror. An owner-approved migration job must:
-
-1. Inventory each legacy trip, JSON file, document and media asset; classify it
-   as canonical private content, proposed broad/public content, or excluded.
-2. Copy each retained file into VPS object storage, verify its hash and create
-   the appropriate canonical records. Import private content as owner-only.
-3. Create new draft projections from only manually reviewed public-safe
-   material; never infer a scope from the old route or directory name.
-4. Preview and explicitly publish a public projection before switching the
-   preserved `/<trip-slug>/` URL to the live public browser shell where that
-   slug is safe and available. Record explicit redirects when preservation is
-   not possible, following
-   [the legacy-route transition](101-legacy-route-transition.md). Never
-   generate a new static trip export for live delivery.
-5. Retire the Git-backed deployed copy only after an audit confirms the new
-   representation, assets, redirects and purge plan. Git history remains code
-   history; it does not receive future edits or files from the application.
-
-There is no scheduled import/export replication between the application and
-Git. After a trip migrates, edits occur only through canonical application data
-and explicit projection publication.
+The owner creates or enters application trip content directly. No `dist/`
+JSON, documents, media, manifests or URL slugs are imported, mapped or
+published automatically. The application starts with its own canonical records,
+private files and explicitly chosen share scopes. Git-backed archive content
+is withdrawn from serving at launch while its files remain in the repository;
+it is not a source for live views or a compatibility route. See
+[#101](101-legacy-route-transition.md).
+Any later work on old `dist/` content belongs to
+[#40](https://github.com/tjorim/travel/issues/40) and does not gate launch.
 
 ## Implementation gates
 
@@ -264,5 +249,5 @@ media, documents, and tracks — and their object-store integration and
 export/purge workers — remain to be modeled and wired into the same
 `scope_json` mechanism by the issues that introduce them (`#43`, `#38`,
 `#34`). An owner-only audit trail
-([#48](https://github.com/tjorim/travel/issues/48)) and the legacy importer
-(`#40`) are likewise open follow-up work, not yet implemented.
+([#48](https://github.com/tjorim/travel/issues/48)) remains a separate concern.
+There is no legacy importer in the launch plan; #40 is separate follow-up work.

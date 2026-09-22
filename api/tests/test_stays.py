@@ -37,14 +37,14 @@ def teardown_function() -> None:
 
 
 def create_trip(client: TestClient, title: str = "Exampleland 2054") -> dict:
-    response = client.post("/api/v1/trips", json={"title": title, "summary": "A private trip."})
+    response = client.post("/api/trips", json={"title": title, "summary": "A private trip."})
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def create_stay(client: TestClient, trip_id: str) -> dict:
     response = client.post(
-        f"/api/v1/trips/{trip_id}/stays",
+        f"/api/trips/{trip_id}/stays",
         json={
             "place": {
                 "address_line1": "1 Xinyi Road",
@@ -68,7 +68,7 @@ def create_stay(client: TestClient, trip_id: str) -> dict:
 
 def create_broad_place(client: TestClient, trip_id: str, label: str = "Taipei") -> dict:
     response = client.post(
-        f"/api/v1/trips/{trip_id}/route-stages",
+        f"/api/trips/{trip_id}/route-stages",
         json={"position": 0, "label": "Arrival", "place": {"label": label, "country_code": "TW"}},
     )
     assert response.status_code == 201, response.text
@@ -77,7 +77,7 @@ def create_broad_place(client: TestClient, trip_id: str, label: str = "Taipei") 
 
 def create_broad_stay_card(client: TestClient, trip_id: str, broad_place_id: str) -> dict:
     response = client.post(
-        f"/api/v1/trips/{trip_id}/broad-stay-cards",
+        f"/api/trips/{trip_id}/broad-stay-cards",
         json={"broad_place_id": broad_place_id, "title": "A few nights in Taipei", "date_precision": "month"},
     )
     assert response.status_code == 201, response.text
@@ -92,10 +92,10 @@ def test_owner_can_create_edit_list_and_delete_stays_and_broad_stay_cards() -> N
     assert stay["status"] == "confirmed"
     assert stay["place"]["kind"] == "exact"
     assert stay["place"]["address_line1"] == "1 Xinyi Road"
-    assert owner.get(f"/api/v1/trips/{trip['id']}/stays").json() == [stay]
+    assert owner.get(f"/api/trips/{trip['id']}/stays").json() == [stay]
 
     changed_stay = owner.patch(
-        f"/api/v1/trips/{trip['id']}/stays/{stay['id']}",
+        f"/api/trips/{trip['id']}/stays/{stay['id']}",
         json={
             "property_name": "Private Hotel, revised",
             "status": "cancelled",
@@ -118,18 +118,18 @@ def test_owner_can_create_edit_list_and_delete_stays_and_broad_stay_cards() -> N
         "latitude": None,
         "longitude": None,
     }
-    assert owner.get(f"/api/v1/trips/{trip['id']}/broad-stay-cards").json() == [card]
+    assert owner.get(f"/api/trips/{trip['id']}/broad-stay-cards").json() == [card]
 
     changed_card = owner.patch(
-        f"/api/v1/trips/{trip['id']}/broad-stay-cards/{card['id']}",
+        f"/api/trips/{trip['id']}/broad-stay-cards/{card['id']}",
         json={"title": "Taipei base", "date_precision": "day"},
     )
     assert changed_card.status_code == 200, changed_card.text
     assert changed_card.json()["title"] == "Taipei base"
     assert changed_card.json()["date_precision"] == "day"
 
-    assert owner.delete(f"/api/v1/trips/{trip['id']}/stays/{stay['id']}").status_code == 204
-    assert owner.delete(f"/api/v1/trips/{trip['id']}/broad-stay-cards/{card['id']}").status_code == 204
+    assert owner.delete(f"/api/trips/{trip['id']}/stays/{stay['id']}").status_code == 204
+    assert owner.delete(f"/api/trips/{trip['id']}/broad-stay-cards/{card['id']}").status_code == 204
 
 
 def test_other_subject_cannot_read_or_change_a_stay_or_broad_stay_card() -> None:
@@ -141,7 +141,7 @@ def test_other_subject_cannot_read_or_change_a_stay_or_broad_stay_card() -> None
     other = client_for("owner-2")
 
     assert other.post(
-        f"/api/v1/trips/{trip['id']}/stays",
+        f"/api/trips/{trip['id']}/stays",
         json={
             "place": {"locality": "Taipei", "country_code": "TW"},
             "arrives_at": "2054-04-01T15:00:00Z",
@@ -149,21 +149,21 @@ def test_other_subject_cannot_read_or_change_a_stay_or_broad_stay_card() -> None
             "property_name": "No access",
         },
     ).status_code == 404
-    assert other.get(f"/api/v1/trips/{trip['id']}/stays").status_code == 404
-    assert other.get(f"/api/v1/trips/{trip['id']}/stays/{stay['id']}").status_code == 404
-    assert other.patch(f"/api/v1/trips/{trip['id']}/stays/{stay['id']}", json={"status": "cancelled"}).status_code == 404
-    assert other.delete(f"/api/v1/trips/{trip['id']}/stays/{stay['id']}").status_code == 404
+    assert other.get(f"/api/trips/{trip['id']}/stays").status_code == 404
+    assert other.get(f"/api/trips/{trip['id']}/stays/{stay['id']}").status_code == 404
+    assert other.patch(f"/api/trips/{trip['id']}/stays/{stay['id']}", json={"status": "cancelled"}).status_code == 404
+    assert other.delete(f"/api/trips/{trip['id']}/stays/{stay['id']}").status_code == 404
 
     assert other.post(
-        f"/api/v1/trips/{trip['id']}/broad-stay-cards",
+        f"/api/trips/{trip['id']}/broad-stay-cards",
         json={"broad_place_id": broad_place["id"], "title": "No access", "date_precision": "month"},
     ).status_code == 404
-    assert other.get(f"/api/v1/trips/{trip['id']}/broad-stay-cards").status_code == 404
-    assert other.get(f"/api/v1/trips/{trip['id']}/broad-stay-cards/{card['id']}").status_code == 404
+    assert other.get(f"/api/trips/{trip['id']}/broad-stay-cards").status_code == 404
+    assert other.get(f"/api/trips/{trip['id']}/broad-stay-cards/{card['id']}").status_code == 404
     assert other.patch(
-        f"/api/v1/trips/{trip['id']}/broad-stay-cards/{card['id']}", json={"title": "Nope"}
+        f"/api/trips/{trip['id']}/broad-stay-cards/{card['id']}", json={"title": "Nope"}
     ).status_code == 404
-    assert other.delete(f"/api/v1/trips/{trip['id']}/broad-stay-cards/{card['id']}").status_code == 404
+    assert other.delete(f"/api/trips/{trip['id']}/broad-stay-cards/{card['id']}").status_code == 404
 
 
 def test_a_broad_stay_card_cannot_expose_its_trip_stay_data_through_a_projection() -> None:
@@ -186,14 +186,14 @@ def test_a_broad_stay_card_cannot_expose_its_trip_stay_data_through_a_projection
     # cannot derive any stay data, so exact-place and booking values remain
     # absent even when the card itself is shared.
     scoped = owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection",
+        f"/api/trips/{trip['id']}/public-projection",
         json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": [{"kind": "broad_stay_card", "id": card["id"], "fields": ["title"]}]},
     )
     assert scoped.status_code == 200, scoped.text
-    published = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
+    published = owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     assert published.status_code == 200, published.text
 
-    delivered = TestClient(app).get(f"/api/v1/public/trips/{published.json()['slug']}")
+    delivered = TestClient(app).get(f"/api/public/trips/{published.json()['slug']}")
     assert delivered.status_code == 200, delivered.text
     encoded_delivery = delivered.text
     assert delivered.json()["stays"] == [{"id": "broad_stay_card-1", "title": card["title"]}]

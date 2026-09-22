@@ -44,7 +44,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
 
   async function load(selectId?: string | null) {
     if (!session) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/media`, { headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/media`, { headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Je media konden niet worden geladen.");
     const loaded = await response.json() as MediaAsset[];
     setAssets(loaded);
@@ -57,7 +57,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
 
   useEffect(() => {
     if (!session || !selectedId) { setDerivatives([]); return; }
-    void fetch(`/api/v1/trips/${trip.id}/media/${selectedId}/derivatives`, { headers: apiHeaders(session) })
+    void fetch(`/api/trips/${trip.id}/media/${selectedId}/derivatives`, { headers: apiHeaders(session) })
       .then((response) => response.ok ? response.json() as Promise<MediaDerivative[]> : apiError(response, "De afgeleiden konden niet worden geladen."))
       .then(setDerivatives)
       .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleiden konden niet worden geladen."));
@@ -71,7 +71,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
     const data = new FormData();
     data.set("file", uploadFile);
     setMessage("Privémedia uploaden…");
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/uploads`, {
+    const response = await fetch(`/api/trips/${trip.id}/media/uploads`, {
       method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data,
     });
     if (!response.ok) return apiError(response, "De media konden niet worden geüpload.");
@@ -83,7 +83,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
 
   async function deleteAsset(asset: MediaAsset) {
     if (!session || !window.confirm(`Verwijder “${asset.original_filename ?? "dit medium"}” uit deze reis?`)) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/${asset.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/media/${asset.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De media konden niet worden verwijderd.");
     await load(null);
     setMessage("Privémedia verwijderd. Eventuele momentkoppelingen zijn ook weggehaald.");
@@ -92,7 +92,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
   async function requestDerivative(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session || !selected) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/${selected.id}/derivatives`, {
+    const response = await fetch(`/api/trips/${trip.id}/media/${selected.id}/derivatives`, {
       method: "POST", headers: apiHeaders(session), body: JSON.stringify({ purpose: derivativeDraft.purpose, max_dimension: derivativeDraft.maxDimension }),
     });
     if (!response.ok) return apiError(response, "De afgeleide kon niet worden gemaakt.");
@@ -103,7 +103,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
 
   async function approveDerivative(derivative: MediaDerivative) {
     if (!session || !selected) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/${selected.id}/derivatives/${derivative.id}/approve`, { method: "POST", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/media/${selected.id}/derivatives/${derivative.id}/approve`, { method: "POST", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De afgeleide kon niet worden goedgekeurd.");
     const saved = await response.json() as MediaDerivative;
     setDerivatives((current) => current.map((item) => item.id === saved.id ? saved : item));
@@ -112,7 +112,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
 
   async function deleteDerivative(derivative: MediaDerivative) {
     if (!session || !selected || !window.confirm("Verwijder deze afgeleide? Hij wordt direct uit eventuele deelscopes gehaald.")) return;
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/${selected.id}/derivatives/${derivative.id}`, { method: "DELETE", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/media/${selected.id}/derivatives/${derivative.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De afgeleide kon niet worden verwijderd.");
     setDerivatives((current) => current.filter((item) => item.id !== derivative.id));
     setMessage("Afgeleide verwijderd en uit eventuele deelscopes gehaald.");
@@ -121,7 +121,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
   async function startImport(provider: ImportSession["provider"]) {
     if (!session) return;
     setMessage(`${providerLabel[provider]}-selectie starten…`);
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/imports/${provider}/sessions`, { method: "POST", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/media/imports/${provider}/sessions`, { method: "POST", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De importsessie kon niet worden gestart.");
     const created = await response.json() as ImportSession;
     setImportSession(created);
@@ -131,7 +131,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
   async function completeImport() {
     if (!session || !importSession) return;
     setMessage("Geselecteerde media veilig kopiëren naar je private reis…");
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/imports/${importSession.provider}/sessions/${importSession.id}/complete`, { method: "POST", headers: apiHeaders(session) });
+    const response = await fetch(`/api/trips/${trip.id}/media/imports/${importSession.provider}/sessions/${importSession.id}/complete`, { method: "POST", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De importsessie kon niet worden voltooid.");
     const outcome = await response.json() as ImportCompleteResult;
     if (!outcome.ready) { setMessage("Je selectie is nog niet klaar bij de provider. Probeer opnieuw wanneer je klaar bent."); return; }
@@ -145,7 +145,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
 
   async function reviewVisits() {
     if (!session || reviewSelection.length === 0) { setMessage("Kies eerst private media om als mogelijke bezoeken te bekijken."); return; }
-    const response = await fetch(`/api/v1/trips/${trip.id}/media/visit-candidates`, {
+    const response = await fetch(`/api/trips/${trip.id}/media/visit-candidates`, {
       method: "POST", headers: apiHeaders(session), body: JSON.stringify({ media_asset_ids: reviewSelection }),
     });
     if (!response.ok) return apiError(response, "De mogelijke bezoeken konden niet worden berekend.");
@@ -177,7 +177,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
     const momentId = candidateAttachments[candidate.id];
     const moment = trip.moments.find((item) => item.id === momentId);
     if (!moment) { setMessage("Kies eerst een bestaand moment om de private media aan te koppelen."); return; }
-    const response = await fetch(`/api/v1/trips/${trip.id}/moments/${moment.id}`, {
+    const response = await fetch(`/api/trips/${trip.id}/moments/${moment.id}`, {
       method: "PATCH",
       headers: apiHeaders(session),
       body: JSON.stringify({ media_asset_ids: [...new Set([...moment.media_asset_ids, ...candidate.media_asset_ids])] }),

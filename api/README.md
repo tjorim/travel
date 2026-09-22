@@ -5,8 +5,8 @@ static archive or read its JSON, documents, or protected files.
 
 ## API contract
 
-All routes use the `/api/v1` prefix. Owner routes require a bearer token whose
-validated OpenID Connect `sub` matches the trip owner:
+Application routes use the unversioned `/api` prefix. Owner routes require a
+bearer token whose validated OpenID Connect `sub` matches the trip owner:
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -20,7 +20,6 @@ validated OpenID Connect `sub` matches the trip owner:
 | `POST` | `/trips/{trip_id}/places/reverse` | Owner-only, explicit coordinate-to-place suggestion; never writes a place. |
 | `GET`, `POST` | `/trips/{trip_id}/places` | List or save owner-only exact places. |
 | `GET` | `/trips/{trip_id}/places/{place_id}/navigation` | Generate an owner-authorized exact Google Maps destination. |
-| `GET` | `/published/trips/{public_id}` | Deprecated for browser delivery: legacy published trip response. |
 | `PUT` | `/trips/{trip_id}/public-projection` | Replace the trip's public scope; live immediately if already published. |
 | `POST` | `/trips/{trip_id}/public-projection/preview` | Render the current scope for owner review (`no-store`), no gate. |
 | `POST` | `/trips/{trip_id}/public-projection/publish` | Start serving the trip publicly at its current scope. |
@@ -55,10 +54,8 @@ OpenAPI description at `/openapi.json` and interactive development docs at
 `/docs`; production routing may choose not to expose the latter.
 
 Ownership is an API boundary, not a client convention: a non-owner receives
-`404` for an owned resource. The legacy published response excludes the owner
-subject and only resolves trips whose visibility is `unlisted` or `public` and
-whose publication state is `published`; new work should use the scoped
-public/unlisted projection routes above instead, per
+`404` for an owned resource. Browser delivery uses only the scoped
+public/unlisted projection routes above, per
 [#42](https://github.com/tjorim/travel/issues/42).
 The live browser route and request sequence are defined in
 [the browser contract](../docs/decisions/103-live-browser-route-contract.md).
@@ -225,7 +222,7 @@ Until then, connecting the provider is a manual, one-time-per-token setup:
    `https://www.googleapis.com/auth/photospicker.mediaitems.readonly` scope
    — for local development, [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
    works against a project's own client credentials.
-3. `PUT /api/v1/provider-tokens/google_photos_picker` with
+3. `PUT /api/provider-tokens/google_photos_picker` with
    `{"access_token": "..."}`.
 
 A plain Google OAuth access token is short-lived (about an hour) and the

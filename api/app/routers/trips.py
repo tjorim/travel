@@ -33,7 +33,6 @@ from ..schemas import (
     MomentExcerptUpdate,
     MomentResponse,
     MomentUpdate,
-    PublicTripResponse,
     RouteStageCreate,
     RouteStageResponse,
     RouteStageUpdate,
@@ -43,7 +42,6 @@ from ..schemas import (
 )
 
 router = APIRouter(prefix="/trips", tags=["trips"])
-public_router = APIRouter(prefix="/published", tags=["published"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
@@ -369,17 +367,3 @@ def delete_moment_excerpt(trip_id: str, excerpt_id: str, session: SessionDep, su
     session.delete(owned_excerpt(trip, excerpt_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@public_router.get("/trips/{public_id}", response_model=PublicTripResponse)
-def get_published_trip(public_id: str, session: SessionDep) -> Trip:
-    trip = session.scalar(
-        trip_query().where(
-            Trip.public_id == public_id,
-            Trip.publication_state == PublicationState.PUBLISHED,
-            Trip.visibility.in_([Visibility.UNLISTED, Visibility.PUBLIC]),
-        )
-    )
-    if trip is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Published trip not found")
-    return trip

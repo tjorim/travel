@@ -44,14 +44,14 @@ def teardown_function() -> None:
 
 
 def create_trip(client: TestClient, title: str = "Exampleland 2054") -> dict:
-    response = client.post("/api/v1/trips", json={"title": title, "summary": "A private trip."})
+    response = client.post("/api/trips", json={"title": title, "summary": "A private trip."})
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def add_route_stage(client: TestClient, trip_id: str, position: int, label: str, city: str) -> dict:
     response = client.post(
-        f"/api/v1/trips/{trip_id}/route-stages",
+        f"/api/trips/{trip_id}/route-stages",
         json={"position": position, "label": label, "place": {"label": city, "country_code": "TW"}},
     )
     assert response.status_code == 201, response.text
@@ -60,7 +60,7 @@ def add_route_stage(client: TestClient, trip_id: str, position: int, label: str,
 
 def add_moment(client: TestClient, trip_id: str, title: str, city: str) -> dict:
     response = client.post(
-        f"/api/v1/trips/{trip_id}/moments",
+        f"/api/trips/{trip_id}/moments",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
             "title": title,
@@ -74,7 +74,7 @@ def add_moment(client: TestClient, trip_id: str, title: str, city: str) -> dict:
 
 def add_excerpt(client: TestClient, trip_id: str, title: str) -> dict:
     response = client.post(
-        f"/api/v1/trips/{trip_id}/moment-excerpts",
+        f"/api/trips/{trip_id}/moment-excerpts",
         json={"date_precision": "day", "title": title, "body": f"A safe note about {title}."},
     )
     assert response.status_code == 201, response.text
@@ -99,24 +99,24 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     hidden = add_excerpt(owner, trip["id"], "Factory visit")
 
     assert owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection",
+        f"/api/trips/{trip['id']}/public-projection",
         json=scope(item("moment_excerpt", shown["id"], "title", "body"), summary=False),
     ).status_code == 200
 
-    preview = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/preview")
+    preview = owner.post(f"/api/trips/{trip['id']}/public-projection/preview")
     assert preview.status_code == 200
     assert preview.headers["cache-control"] == "no-store"
     assert [m["title"] for m in preview.json()["moments"]] == [shown["title"]]
     assert preview.json()["summary"] is None
 
-    published = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
+    published = owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     assert published.status_code == 200
     slug = published.json()["slug"]
 
     # A later edit to the (still owner-only) hidden moment must never appear:
     # the *scope* is frozen, so an out-of-scope item can never surface.
     anonymous = TestClient(app)
-    document = anonymous.get(f"/api/v1/public/trips/{slug}")
+    document = anonymous.get(f"/api/public/trips/{slug}")
     assert document.status_code == 200
     assert document.headers["cache-control"] == "no-store"
     titles = [m["title"] for m in document.json()["moments"]]
@@ -124,15 +124,15 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     assert hidden["title"] not in titles
     assert "owner_subject" not in document.json()
 
-    owner.patch(f"/api/v1/trips/{trip['id']}/moment-excerpts/{hidden['id']}", json={"title": "Still hidden"})
-    unchanged = anonymous.get(f"/api/v1/public/trips/{slug}")
+    owner.patch(f"/api/trips/{trip['id']}/moment-excerpts/{hidden['id']}", json={"title": "Still hidden"})
+    unchanged = anonymous.get(f"/api/public/trips/{slug}")
     assert [m["title"] for m in unchanged.json()["moments"]] == [shown["title"]]
 
     # An edit to an *already-shared* item's content is not gated: a last-
     # minute wording fix reaches the public page immediately, with no
     # re-publish required, because only the scope (which items) is frozen.
-    owner.patch(f"/api/v1/trips/{trip['id']}/moment-excerpts/{shown['id']}", json={"title": "Hotel check-in (updated)"})
-    refreshed = anonymous.get(f"/api/v1/public/trips/{slug}")
+    owner.patch(f"/api/trips/{trip['id']}/moment-excerpts/{shown['id']}", json={"title": "Hotel check-in (updated)"})
+    refreshed = anonymous.get(f"/api/public/trips/{slug}")
     assert refreshed.json()["moments"][0]["title"] == "Hotel check-in (updated)"
 
 
@@ -142,12 +142,12 @@ def test_private_moment_media_attachments_never_reach_a_shared_excerpt(tmp_path:
     app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
     trip = create_trip(owner)
     uploaded = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", b"not-a-real-jpeg", "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", b"not-a-real-jpeg", "image/jpeg")}
     )
     assert uploaded.status_code == 201, uploaded.text
     asset_id = uploaded.json()["id"]
     moment = owner.post(
-        f"/api/v1/trips/{trip['id']}/moments",
+        f"/api/trips/{trip['id']}/moments",
         json={
             "occurred_at": "2054-04-04T10:00:00Z", "title": "Private arrival", "story": "Not for sharing.",
             "media_asset_ids": [asset_id],
@@ -155,10 +155,10 @@ def test_private_moment_media_attachments_never_reach_a_shared_excerpt(tmp_path:
     )
     assert moment.status_code == 201, moment.text
     excerpt = add_excerpt(owner, trip["id"], "Safe arrival")
-    owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=scope(item("moment_excerpt", excerpt["id"], "title")))
-    slug = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope(item("moment_excerpt", excerpt["id"], "title")))
+    slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
 
-    body = TestClient(app).get(f"/api/v1/public/trips/{slug}").json()
+    body = TestClient(app).get(f"/api/public/trips/{slug}").json()
     serialized = json.dumps(body)
     assert asset_id not in serialized
     assert "media_asset_ids" not in serialized
@@ -171,48 +171,48 @@ def test_public_projection_scope_changes_after_publish_are_live() -> None:
     factory = add_excerpt(owner, trip["id"], "Factory visit")
 
     owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection",
+        f"/api/trips/{trip['id']}/public-projection",
         json=scope(item("moment_excerpt", hotel["id"], "title")),
     )
-    published = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
+    published = owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     slug = published.json()["slug"]
 
     anonymous = TestClient(app)
-    before = anonymous.get(f"/api/v1/public/trips/{slug}").json()
+    before = anonymous.get(f"/api/public/trips/{slug}").json()
     assert [m["title"] for m in before["moments"]] == [hotel["title"]]
 
     # Widening the scope (adding an item) takes effect immediately: no
     # separate re-publish step is required once the trip is already public.
     widened = owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection",
+        f"/api/trips/{trip['id']}/public-projection",
         json=scope(item("moment_excerpt", hotel["id"], "title"), item("moment_excerpt", factory["id"], "title")),
     )
     assert widened.status_code == 200
-    after_widen = anonymous.get(f"/api/v1/public/trips/{slug}").json()
+    after_widen = anonymous.get(f"/api/public/trips/{slug}").json()
     assert {m["title"] for m in after_widen["moments"]} == {hotel["title"], factory["title"]}
 
     # Narrowing it back removes an item just as immediately.
     owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection",
+        f"/api/trips/{trip['id']}/public-projection",
         json=scope(item("moment_excerpt", hotel["id"], "title")),
     )
-    after_narrow = anonymous.get(f"/api/v1/public/trips/{slug}").json()
+    after_narrow = anonymous.get(f"/api/public/trips/{slug}").json()
     assert [m["title"] for m in after_narrow["moments"]] == [hotel["title"]]
 
 
 def test_public_projection_unpublish_removes_the_page() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=scope())
-    owner.post(f"/api/v1/trips/{trip['id']}/public-projection/preview")
-    published = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish")
+    owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope())
+    owner.post(f"/api/trips/{trip['id']}/public-projection/preview")
+    published = owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     slug = published.json()["slug"]
 
     anonymous = TestClient(app)
-    assert anonymous.get(f"/api/v1/public/trips/{slug}").status_code == 200
+    assert anonymous.get(f"/api/public/trips/{slug}").status_code == 200
 
-    assert owner.post(f"/api/v1/trips/{trip['id']}/public-projection/unpublish").status_code == 200
-    withdrawn = anonymous.get(f"/api/v1/public/trips/{slug}")
+    assert owner.post(f"/api/trips/{trip['id']}/public-projection/unpublish").status_code == 200
+    withdrawn = anonymous.get(f"/api/public/trips/{slug}")
     assert withdrawn.status_code == 404
     assert withdrawn.headers["cache-control"] == "no-store"
 
@@ -224,7 +224,7 @@ def test_scope_rejects_a_resource_from_another_trip() -> None:
     foreign_moment = add_excerpt(owner, trip_b["id"], "Not yours")
 
     response = owner.put(
-        f"/api/v1/trips/{trip_a['id']}/public-projection",
+        f"/api/trips/{trip_a['id']}/public-projection",
         json=scope(item("moment_excerpt", foreign_moment["id"], "title")),
     )
     assert response.status_code == 422
@@ -236,13 +236,13 @@ def test_scope_rejects_disallowed_kinds_and_unknown_fields() -> None:
     stage = add_route_stage(owner, trip["id"], 0, "Taipei", "Taipei")
 
     disallowed = owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection",
+        f"/api/trips/{trip['id']}/public-projection",
         json=scope(item("stay", "not-shareable", "title")),
     )
     assert disallowed.status_code == 422
 
     unknown_field = owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection",
+        f"/api/trips/{trip['id']}/public-projection",
         json=scope(item("route_stage", stage["id"], "place", "owner_notes")),
     )
     assert unknown_field.status_code == 422
@@ -257,19 +257,19 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
     place_id = stage["place"]["id"]
 
     selected_card = owner.post(
-        f"/api/v1/trips/{trip['id']}/broad-stay-cards",
+        f"/api/trips/{trip['id']}/broad-stay-cards",
         json={"broad_place_id": place_id, "title": "Taipei base", "date_precision": "month"},
     ).json()
     hidden_card = owner.post(
-        f"/api/v1/trips/{trip['id']}/broad-stay-cards",
+        f"/api/trips/{trip['id']}/broad-stay-cards",
         json={"broad_place_id": place_id, "title": "Hidden stay", "date_precision": "day"},
     ).json()
     selected_route = owner.post(
-        f"/api/v1/trips/{trip['id']}/broad-routes",
+        f"/api/trips/{trip['id']}/broad-routes",
         json={"label": "North coast", "date_precision": "day", "geometry": {"type": "LineString", "coordinates": [[121, 25], [121.1, 25.1]]}},
     ).json()
     hidden_route = owner.post(
-        f"/api/v1/trips/{trip['id']}/broad-routes",
+        f"/api/trips/{trip['id']}/broad-routes",
         json={"label": "Private raw route", "date_precision": "day", "geometry": {"type": "LineString", "coordinates": [[120, 24], [120.1, 24.1]]}},
     ).json()
 
@@ -277,32 +277,32 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
     image_data = io.BytesIO()
     image.save(image_data, format="JPEG")
     media = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}
     ).json()
     pending_media = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives", json={"purpose": "share"}
+        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives", json={"purpose": "share"}
     ).json()
     assert owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection", json=scope(item("media_derivative", pending_media["id"], "image"))
+        f"/api/trips/{trip['id']}/public-projection", json=scope(item("media_derivative", pending_media["id"], "image"))
     ).status_code == 422
     selected_media = owner.post(
-        f"/api/v1/trips/{trip['id']}/media/{media['id']}/derivatives/{pending_media['id']}/approve"
+        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{pending_media['id']}/approve"
     ).json()
 
     document = owner.post(
-        f"/api/v1/trips/{trip['id']}/documents/uploads",
+        f"/api/trips/{trip['id']}/documents/uploads",
         data={"title": "Safe itinerary", "document_kind": "itinerary"},
         files={"file": ("private.txt", b"private", "text/plain")},
     ).json()
     pending_document = owner.post(
-        f"/api/v1/trips/{trip['id']}/documents/{document['id']}/derivatives",
+        f"/api/trips/{trip['id']}/documents/{document['id']}/derivatives",
         files={"file": ("safe.txt", b"safe", "text/plain"), "redaction_manifest": ("redactions.json", b"{}", "application/json")},
     ).json()
     assert owner.put(
-        f"/api/v1/trips/{trip['id']}/public-projection", json=scope(item("document_derivative", pending_document["id"], "file"))
+        f"/api/trips/{trip['id']}/public-projection", json=scope(item("document_derivative", pending_document["id"], "file"))
     ).status_code == 422
     selected_document = owner.post(
-        f"/api/v1/trips/{trip['id']}/documents/{document['id']}/derivatives/{pending_document['id']}/approve"
+        f"/api/trips/{trip['id']}/documents/{document['id']}/derivatives/{pending_document['id']}/approve"
     ).json()
 
     selected = scope(
@@ -313,9 +313,9 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
         item("media_derivative", selected_media["id"], "image"),
         item("document_derivative", selected_document["id"], "title", "file"),
     )
-    assert owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=selected).status_code == 200
-    slug = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish").json()["slug"]
-    projection = TestClient(app).get(f"/api/v1/public/trips/{slug}").json()
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    projection = TestClient(app).get(f"/api/public/trips/{slug}").json()
 
     assert projection["stays"] == [{"id": "broad_stay_card-1", "title": "Taipei base"}]
     assert projection["route_stages"] == [{"id": "route_stage-2", "label": "Taipei"}]
@@ -335,9 +335,9 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
 
 
 def activate(owner: TestClient, trip_id: str, link_id: str, expires_in_days: int = 30) -> dict:
-    owner.post(f"/api/v1/trips/{trip_id}/share-links/{link_id}/preview")
+    owner.post(f"/api/trips/{trip_id}/share-links/{link_id}/preview")
     response = owner.post(
-        f"/api/v1/trips/{trip_id}/share-links/{link_id}/activate", json={"expires_in_days": expires_in_days}
+        f"/api/trips/{trip_id}/share-links/{link_id}/activate", json={"expires_in_days": expires_in_days}
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -350,7 +350,7 @@ def test_share_link_lifecycle_issues_a_token_once_and_serves_only_its_scope() ->
     add_excerpt(owner, trip["id"], "Factory tour")
 
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": scope(item("moment_excerpt", hotel["id"], "title"))},
     )
     assert created.status_code == 201, created.text
@@ -363,7 +363,7 @@ def test_share_link_lifecycle_issues_a_token_once_and_serves_only_its_scope() ->
     assert len(token) >= 32
 
     anonymous = TestClient(app)
-    delivered = anonymous.get(f"/api/v1/shared/{token}")
+    delivered = anonymous.get(f"/api/shared/{token}")
     assert delivered.status_code == 200
     assert [m["title"] for m in delivered.json()["moments"]] == [hotel["title"]]
     assert delivered.headers["cache-control"] == "no-store, private"
@@ -372,8 +372,8 @@ def test_share_link_lifecycle_issues_a_token_once_and_serves_only_its_scope() ->
 
     # Only the scope (which moments) is frozen at activation; a wording fix
     # to an already-in-scope moment reaches the link immediately.
-    owner.patch(f"/api/v1/trips/{trip['id']}/moment-excerpts/{hotel['id']}", json={"title": "Hotel (updated)"})
-    refreshed = anonymous.get(f"/api/v1/shared/{token}")
+    owner.patch(f"/api/trips/{trip['id']}/moment-excerpts/{hotel['id']}", json={"title": "Hotel (updated)"})
+    refreshed = anonymous.get(f"/api/shared/{token}")
     assert refreshed.json()["moments"][0]["title"] == "Hotel (updated)"
 
 
@@ -384,32 +384,32 @@ def test_share_link_scope_changes_while_active_are_live() -> None:
     factory = add_excerpt(owner, trip["id"], "Factory visit")
 
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": scope(item("moment_excerpt", hotel["id"], "title"))},
     )
     link_id = created.json()["id"]
     token = activate(owner, trip["id"], link_id)["token"]
 
     anonymous = TestClient(app)
-    before = anonymous.get(f"/api/v1/shared/{token}").json()
+    before = anonymous.get(f"/api/shared/{token}").json()
     assert [m["title"] for m in before["moments"]] == [hotel["title"]]
 
     # An already-active link's scope is not immutable: the owner can widen or
     # narrow it directly, and the same still-valid token reflects it live.
     widened = owner.patch(
-        f"/api/v1/trips/{trip['id']}/share-links/{link_id}",
+        f"/api/trips/{trip['id']}/share-links/{link_id}",
         json={"scope": scope(item("moment_excerpt", hotel["id"], "title"), item("moment_excerpt", factory["id"], "title"))},
     )
     assert widened.status_code == 200
     assert widened.json()["state"] == "active"
-    after_widen = anonymous.get(f"/api/v1/shared/{token}").json()
+    after_widen = anonymous.get(f"/api/shared/{token}").json()
     assert {m["title"] for m in after_widen["moments"]} == {hotel["title"], factory["title"]}
 
     owner.patch(
-        f"/api/v1/trips/{trip['id']}/share-links/{link_id}",
+        f"/api/trips/{trip['id']}/share-links/{link_id}",
         json={"scope": scope(item("moment_excerpt", hotel["id"], "title"))},
     )
-    after_narrow = anonymous.get(f"/api/v1/shared/{token}").json()
+    after_narrow = anonymous.get(f"/api/shared/{token}").json()
     assert [m["title"] for m in after_narrow["moments"]] == [hotel["title"]]
 
 
@@ -420,14 +420,14 @@ def test_a_hotel_scoped_link_cannot_reveal_the_owner_only_factory_location() -> 
     factory = add_excerpt(owner, trip["id"], "Factory visit")
 
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Hotel only", "scope": scope(item("moment_excerpt", hotel["id"], "title"))},
     )
     link_id = created.json()["id"]
     token = activate(owner, trip["id"], link_id)["token"]
 
     anonymous = TestClient(app)
-    delivered = anonymous.get(f"/api/v1/shared/{token}").json()
+    delivered = anonymous.get(f"/api/shared/{token}").json()
     assert factory["title"] not in [m["title"] for m in delivered["moments"]]
     assert "Factory" not in str(delivered)
 
@@ -436,14 +436,14 @@ def test_share_link_responses_never_include_the_raw_token_or_its_verifier() -> N
     owner = client_for("owner-1")
     trip = create_trip(owner)
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": scope()},
     )
     link_id = created.json()["id"]
     activated = activate(owner, trip["id"], link_id)
     token = activated["token"]
 
-    listed = owner.get(f"/api/v1/trips/{trip['id']}/share-links")
+    listed = owner.get(f"/api/trips/{trip['id']}/share-links")
     assert listed.status_code == 200
     body = listed.json()
     assert token not in str(body)
@@ -460,20 +460,20 @@ def test_revoking_a_share_link_immediately_invalidates_its_token() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": scope()},
     )
     link_id = created.json()["id"]
     token = activate(owner, trip["id"], link_id)["token"]
 
     anonymous = TestClient(app)
-    assert anonymous.get(f"/api/v1/shared/{token}").status_code == 200
+    assert anonymous.get(f"/api/shared/{token}").status_code == 200
 
-    revoked = owner.post(f"/api/v1/trips/{trip['id']}/share-links/{link_id}/revoke")
+    revoked = owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/revoke")
     assert revoked.status_code == 200
     assert revoked.json()["state"] == "revoked"
 
-    assert anonymous.get(f"/api/v1/shared/{token}").status_code == 404
+    assert anonymous.get(f"/api/shared/{token}").status_code == 404
 
 
 def test_rotating_a_share_link_invalidates_the_old_token_and_issues_a_working_new_one() -> None:
@@ -481,27 +481,27 @@ def test_rotating_a_share_link_invalidates_the_old_token_and_issues_a_working_ne
     trip = create_trip(owner)
     hotel = add_excerpt(owner, trip["id"], "Hotel")
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": scope(item("moment_excerpt", hotel["id"], "title"))},
     )
     link_id = created.json()["id"]
     old_token = activate(owner, trip["id"], link_id)["token"]
 
-    rotated = owner.post(f"/api/v1/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": 30})
+    rotated = owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": 30})
     assert rotated.status_code == 200
     new_token = rotated.json()["token"]
     assert new_token != old_token
 
     anonymous = TestClient(app)
-    assert anonymous.get(f"/api/v1/shared/{old_token}").status_code == 404
-    fresh = anonymous.get(f"/api/v1/shared/{new_token}")
+    assert anonymous.get(f"/api/shared/{old_token}").status_code == 404
+    fresh = anonymous.get(f"/api/shared/{new_token}")
     assert fresh.status_code == 200
     assert [m["title"] for m in fresh.json()["moments"]] == [hotel["title"]]
 
 
 def test_shared_delivery_rejects_an_unknown_token_without_leaking_a_reason() -> None:
     app.dependency_overrides[get_session] = override_session
-    response = TestClient(app).get("/api/v1/shared/not-a-real-token")
+    response = TestClient(app).get("/api/shared/not-a-real-token")
     assert response.status_code == 404
     assert response.headers["cache-control"] == "no-store, private"
     assert response.headers["x-robots-tag"] == "noindex, noarchive"
@@ -511,7 +511,7 @@ def test_expired_share_link_token_is_rejected() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     created = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links",
+        f"/api/trips/{trip['id']}/share-links",
         json={"label": "Family", "scope": scope()},
     )
     link_id = created.json()["id"]
@@ -522,7 +522,7 @@ def test_expired_share_link_token_is_rejected() -> None:
         row.expires_at = datetime.now(UTC) - timedelta(days=1)
         session.commit()
 
-    response = TestClient(app).get(f"/api/v1/shared/{token}")
+    response = TestClient(app).get(f"/api/shared/{token}")
     assert response.status_code == 404
 
 
@@ -532,14 +532,14 @@ def test_unavailable_capabilities_have_one_visitor_response_contract() -> None:
     tokens = []
     for label in ("Revoked", "Expired"):
         created = owner.post(
-            f"/api/v1/trips/{trip['id']}/share-links",
+            f"/api/trips/{trip['id']}/share-links",
             json={"label": label, "scope": scope()},
         )
         link_id = created.json()["id"]
         token = activate(owner, trip["id"], link_id)["token"]
         tokens.append(token)
         if label == "Revoked":
-            assert owner.post(f"/api/v1/trips/{trip['id']}/share-links/{link_id}/revoke").status_code == 200
+            assert owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/revoke").status_code == 200
         else:
             with TestingSessionLocal() as session:
                 row = session.scalar(select(ShareLink).where(ShareLink.id == link_id))
@@ -548,7 +548,7 @@ def test_unavailable_capabilities_have_one_visitor_response_contract() -> None:
 
     anonymous = TestClient(app)
     headers = ("cache-control", "x-robots-tag", "referrer-policy")
-    responses = [anonymous.get(f"/api/v1/shared/{token}") for token in ("unknown-token", *tokens)]
+    responses = [anonymous.get(f"/api/shared/{token}") for token in ("unknown-token", *tokens)]
     assert all(response.status_code == 404 for response in responses)
     assert len({response.text for response in responses}) == 1
     assert len({tuple(response.headers[name] for name in headers) for response in responses}) == 1
@@ -562,17 +562,17 @@ def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
     trip = create_trip(owner)
     excerpt = add_excerpt(owner, trip["id"], "Visible excerpt")
     selected = scope(item("moment_excerpt", excerpt["id"], "title"))
-    assert owner.put(f"/api/v1/trips/{trip['id']}/public-projection", json=selected).status_code == 200
-    slug = owner.post(f"/api/v1/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
     link = owner.post(
-        f"/api/v1/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}
+        f"/api/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}
     ).json()
     token = activate(owner, trip["id"], link["id"])["token"]
 
     anonymous = TestClient(app)
     for path, version in (
-        (f"/api/v1/public/trips/{slug}", "travel/public-trip@1"),
-        (f"/api/v1/shared/{token}", "travel/unlisted-trip@1"),
+        (f"/api/public/trips/{slug}", "travel/public-trip@1"),
+        (f"/api/shared/{token}", "travel/unlisted-trip@1"),
     ):
         response = anonymous.get(path)
         assert response.status_code == 200
@@ -582,5 +582,5 @@ def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
         assert not {"owner_subject", "scope", "token", "link_id", "trip_id"} & document.keys()
         assert response.headers["cache-control"].startswith("no-store")
 
-    assert owner.post(f"/api/v1/trips/{trip['id']}/public-projection/unpublish").status_code == 200
-    assert anonymous.get(f"/api/v1/public/trips/{slug}").status_code == 404
+    assert owner.post(f"/api/trips/{trip['id']}/public-projection/unpublish").status_code == 200
+    assert anonymous.get(f"/api/public/trips/{slug}").status_code == 404

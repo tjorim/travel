@@ -6,12 +6,12 @@ import { App } from "./App";
 import "./styles.css";
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("/tracker/service-worker.js"));
+  window.addEventListener("load", () => navigator.serviceWorker.register("/admin/service-worker.js"));
 }
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter basename="/tracker">
+    <BrowserRouter basename="/admin">
       <App />
     </BrowserRouter>
   </StrictMode>,

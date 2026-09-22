@@ -4,11 +4,20 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
-### Added
+### Changed
 
-- Defined the legacy archive URL inventory, live/legacy route ownership,
-  preserved public aliases and staged verification handoff for content
-  migration and VPS routing. ([#101](https://github.com/tjorim/travel/issues/101))
+- Revised the launch contract: create app content fresh, take the static
+  `dist/` trip offline, and provide no archive import or old URL alias.
+  Defined direct live route ownership and launch verification.
+  ([#101](https://github.com/tjorim/travel/issues/101), [#89](https://github.com/tjorim/travel/issues/89))
+- Removed the pre-launch `/api/published/trips/{public_id}` endpoint so
+  browser delivery has only the scoped public and unlisted projection APIs.
+- Renamed the owner PWA route from `/tracker/` to `/admin/`, including its build
+  base, sign-in callback, manifest and service-worker scope.
+- Moved application API routes from `/api/v1/*` to `/api/*`; the fresh launch
+  serves no versioned URL alias.
+
+### Added
 
 - Defined the live owner, public and unlisted browser route contract, including
   scoped projection loading and uniform unavailable-link behavior. Public API
@@ -203,8 +212,8 @@ All notable changes to the travel hub are documented here.
   application. It specifies owner-scoped content, files in backed-up VPS object
   storage, separate broad/derived share records, immutable public and unlisted
   projections, capability and static-export states, media-import records, and
-  a one-time legacy static-archive migration path.
-  ([#37](https://github.com/tjorim/travel/issues/37))
+  an earlier legacy archive migration proposal, since superseded by the
+  fresh-launch decision. ([#37](https://github.com/tjorim/travel/issues/37))
 
 - Versioned the Travel privacy, sharing and offline policy. It defines
   private-by-default public follower views and fine-grained named-share-link
@@ -236,7 +245,7 @@ All notable changes to the travel hub are documented here.
   endpoint, Alembic migration, and API tests. It has no media storage or GPS
   collection. ([#20](https://github.com/tjorim/travel/issues/20),
   [#22](https://github.com/tjorim/travel/issues/22))
-- Installable React tracker shell under `/tracker/`, with isolated client-side
+- Installable React owner shell under `/admin/`, with isolated client-side
   refresh routing, accessible mobile navigation, empty account boundary, and a
   minimal app-shell cache. ([#21](https://github.com/tjorim/travel/issues/21))
 - Authorization-code sign-in with S256 PKCE for the tracker, keeping access

@@ -55,7 +55,7 @@ export function Capture() {
       return;
     }
     setLoading(true);
-    void fetch("/api/v1/trips", { headers: { Authorization: `Bearer ${session.accessToken}` } })
+    void fetch("/api/trips", { headers: { Authorization: `Bearer ${session.accessToken}` } })
       .then((response) => response.ok ? response.json() as Promise<Trip[]> : Promise.reject(new Error("Je sessie is niet meer geldig.")))
       .then((loadedTrips) => {
         setTrips(loadedTrips);
@@ -86,7 +86,7 @@ export function Capture() {
       return;
     }
     setMediaState("Media laden…");
-    void fetch(`/api/v1/trips/${selectedTrip.id}/media`, { headers: { Authorization: `Bearer ${session.accessToken}` } })
+    void fetch(`/api/trips/${selectedTrip.id}/media`, { headers: { Authorization: `Bearer ${session.accessToken}` } })
       .then((response) => response.ok ? response.json() as Promise<MediaAsset[]> : Promise.reject(new Error("Je media konden niet worden geladen.")))
       .then((assets) => {
         setMedia(assets.filter((asset) => asset.media_kind === "photo"));
@@ -160,7 +160,7 @@ export function Capture() {
     }
     setPlaceState("Plaatsen zoeken…");
     try {
-      const response = await fetch(`/api/v1/trips/${selectedTrip.id}/places/search`, {
+      const response = await fetch(`/api/trips/${selectedTrip.id}/places/search`, {
         method: "POST", headers: { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ query: placeQuery.trim() }),
       });
       if (!response.ok) throw new Error("Plaatsen zoeken is nu niet beschikbaar.");
@@ -176,7 +176,7 @@ export function Capture() {
     if (!session || !selectedTrip) return;
     setPlaceState("De fotolocatie wordt alleen voor jou opgezocht…");
     try {
-      const response = await fetch(`/api/v1/trips/${selectedTrip.id}/places/reverse`, {
+      const response = await fetch(`/api/trips/${selectedTrip.id}/places/reverse`, {
         method: "POST", headers: { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(gps),
       });
       if (!response.ok) throw new Error("Deze fotolocatie kon niet worden opgezocht.");
@@ -207,7 +207,7 @@ export function Capture() {
     };
     setSaveState("Opslaan…");
     try {
-      const endpoint = draft.momentId ? `/api/v1/trips/${selectedTrip.id}/moments/${draft.momentId}` : `/api/v1/trips/${selectedTrip.id}/moments`;
+      const endpoint = draft.momentId ? `/api/trips/${selectedTrip.id}/moments/${draft.momentId}` : `/api/trips/${selectedTrip.id}/moments`;
       const response = await fetch(endpoint, {
         method: draft.momentId ? "PATCH" : "POST",
         headers: { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" },
@@ -237,7 +237,7 @@ export function Capture() {
     if (!session || !selectedTrip || !draft.momentId || !window.confirm(`Verwijder moment “${draft.title}”?`)) return;
     setSaveState("Moment verwijderen…");
     try {
-      const response = await fetch(`/api/v1/trips/${selectedTrip.id}/moments/${draft.momentId}`, {
+      const response = await fetch(`/api/trips/${selectedTrip.id}/moments/${draft.momentId}`, {
         method: "DELETE", headers: { Authorization: `Bearer ${session.accessToken}` },
       });
       if (!response.ok) await apiError(response, "Het moment kon niet worden verwijderd.");

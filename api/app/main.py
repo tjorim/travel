@@ -10,7 +10,6 @@ from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
 from .routers.stays import router as stays_router
 from .routers.tracks import router as tracks_router
-from .routers.trips import public_router
 from .routers.trips import router as trips_router
 
 app = FastAPI(
@@ -18,16 +17,15 @@ app = FastAPI(
     description="Private-by-default trip and moment tracking API.",
     version="0.1.0",
 )
-app.include_router(trips_router, prefix="/api/v1")
-app.include_router(public_router, prefix="/api/v1")
-app.include_router(publication_router, prefix="/api/v1")
-app.include_router(publication_delivery_router, prefix="/api/v1")
-app.include_router(stays_router, prefix="/api/v1")
-app.include_router(tracks_router, prefix="/api/v1")
-app.include_router(documents_router, prefix="/api/v1")
-app.include_router(media_router, prefix="/api/v1")
-app.include_router(places_router, prefix="/api/v1")
-app.include_router(provider_tokens_router, prefix="/api/v1")
+app.include_router(trips_router, prefix="/api")
+app.include_router(publication_router, prefix="/api")
+app.include_router(publication_delivery_router, prefix="/api")
+app.include_router(stays_router, prefix="/api")
+app.include_router(tracks_router, prefix="/api")
+app.include_router(documents_router, prefix="/api")
+app.include_router(media_router, prefix="/api")
+app.include_router(places_router, prefix="/api")
+app.include_router(provider_tokens_router, prefix="/api")
 
 
 @app.get("/api/health", tags=["health"])
