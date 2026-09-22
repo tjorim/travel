@@ -2,7 +2,19 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -121,6 +133,15 @@ class TransportLegStatus(StrEnum):
     BOOKED = "booked"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
+
+
+class ItineraryLinkKind(StrEnum):
+    STAY = "stay"
+    TRANSPORT_LEG = "transport_leg"
+    ROUTE_STAGE = "route_stage"
+    PLACE = "place"
+    DOCUMENT = "document"
+    MOMENT = "moment"
 
 
 class AuditEventKind(StrEnum):
@@ -253,6 +274,12 @@ class Trip(Base):
     )
     transport_legs: Mapped[list["TransportLeg"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="TransportLeg.departs_at"
+    )
+    itinerary_entries: Mapped[list["ItineraryEntry"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="ItineraryEntry.position"
+    )
+    trip_tasks: Mapped[list["TripTask"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="TripTask.created_at"
     )
     broad_routes: Mapped[list["BroadRoute"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="BroadRoute.created_at"
@@ -467,6 +494,63 @@ class TransportLegDocumentAsset(Base):
 
     transport_leg: Mapped[TransportLeg] = relationship(back_populates="document_links")
     document_asset: Mapped["DocumentAsset"] = relationship()
+
+
+class ItineraryEntry(Base):
+    """An owner-only, manually ordered day-plan entry.
+
+    ``linked_kind``/``linked_id`` is a soft reference resolved by the router
+    against the trip's own resources -- never a database foreign key, since
+    the target table varies by kind. This mirrors how a share-scope item
+    already references a resource by kind and id. An entry never copies a
+    linked resource's fields; it only points at one, so the underlying
+    stay/leg/etc. remains the single source of truth.
+    """
+
+    __tablename__ = "itinerary_entries"
+    __table_args__ = (UniqueConstraint("trip_id", "position", name="uq_itinerary_entry_position"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    day_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    linked_kind: Mapped[ItineraryLinkKind | None] = mapped_column(
+        _enum_column(ItineraryLinkKind, "travel_itinerary_link_kind"), nullable=True
+    )
+    linked_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="itinerary_entries")
+
+
+class TripTask(Base):
+    """An owner-only lightweight booking/preparation task.
+
+    Deliberately has no ordering or linked-resource fields -- it's a
+    checklist, not the day plan. ``completed_at`` is set by the router, never
+    accepted directly from a client payload, so an owner can't backdate a
+    completion.
+    """
+
+    __tablename__ = "trip_tasks"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="trip_tasks")
 
 
 class RecordedTrack(Base):

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -13,6 +13,7 @@ from .models import (
     DocumentKind,
     ImportProvider,
     ImportSessionState,
+    ItineraryLinkKind,
     LinkState,
     MediaKind,
     PlaceKind,
@@ -367,6 +368,72 @@ class TransportLegResponse(BaseModel):
     booking_reference: str | None
     notes: str | None
     document_asset_ids: list[str]
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ItineraryEntryCreate(BaseModel):
+    day_date: date | None = None
+    position: int = Field(ge=0)
+    title: str = Field(min_length=1, max_length=160)
+    notes: str | None = Field(default=None, max_length=4000)
+    linked_kind: ItineraryLinkKind | None = None
+    linked_id: str | None = Field(default=None, min_length=1, max_length=32)
+
+    @model_validator(mode="after")
+    def link_kind_and_id_are_paired(self):
+        if (self.linked_kind is None) != (self.linked_id is None):
+            raise ValueError("Supply both linked_kind and linked_id, or neither")
+        return self
+
+
+class ItineraryEntryUpdate(BaseModel):
+    day_date: date | None = None
+    position: int | None = Field(default=None, ge=0)
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    notes: str | None = Field(default=None, max_length=4000)
+    linked_kind: ItineraryLinkKind | None = None
+    linked_id: str | None = Field(default=None, min_length=1, max_length=32)
+
+    @model_validator(mode="after")
+    def link_kind_and_id_are_paired(self):
+        if ("linked_kind" in self.model_fields_set or "linked_id" in self.model_fields_set) and (
+            self.linked_kind is None
+        ) != (self.linked_id is None):
+            raise ValueError("Supply both linked_kind and linked_id, or neither")
+        return self
+
+
+class ItineraryEntryResponse(BaseModel):
+    id: str
+    day_date: date | None
+    position: int
+    title: str
+    notes: str | None
+    linked_kind: ItineraryLinkKind | None
+    linked_id: str | None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TripTaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    notes: str | None = Field(default=None, max_length=4000)
+    due_date: date | None = None
+
+
+class TripTaskUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    notes: str | None = Field(default=None, max_length=4000)
+    due_date: date | None = None
+    completed: bool | None = None
+
+
+class TripTaskResponse(BaseModel):
+    id: str
+    title: str
+    notes: str | None
+    due_date: date | None
+    completed_at: datetime | None
+    created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 

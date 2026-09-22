@@ -149,6 +149,27 @@ export type TransportLeg = {
   document_asset_ids: string[];
 };
 
+export type ItineraryLinkKind = "stay" | "transport_leg" | "route_stage" | "place" | "document" | "moment";
+
+export type ItineraryEntry = {
+  id: string;
+  day_date: string | null;
+  position: number;
+  title: string;
+  notes: string | null;
+  linked_kind: ItineraryLinkKind | null;
+  linked_id: string | null;
+};
+
+export type TripTask = {
+  id: string;
+  title: string;
+  notes: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
 export type DocumentAsset = {
   id: string;
   document_kind: "booking" | "itinerary" | "receipt" | "other";

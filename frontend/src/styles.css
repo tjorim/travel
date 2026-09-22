@@ -66,6 +66,8 @@ textarea { min-height: 136px; resize: vertical; }
 .excerpt-editor > .capture-heading h3 { margin: 0; }
 .excerpt-editor > .capture-heading p { max-width: 460px; margin: 6px 0 0; color: #4d665e; line-height: 1.5; }
 .excerpt-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.excerpt-row.completed { opacity: .6; }
+.excerpt-row.completed strong { text-decoration: line-through; }
 .manager { display: grid; gap: 18px; }
 .manager > .capture-heading { margin-bottom: -4px; }
 .manager > .capture-heading h3, .manager-subsection h3 { margin: 0; }

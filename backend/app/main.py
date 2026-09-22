@@ -3,12 +3,14 @@ from sqlalchemy import text
 
 from .database import SessionLocal
 from .routers.documents import router as documents_router
+from .routers.itinerary import router as itinerary_router
 from .routers.media import provider_tokens_router
 from .routers.media import router as media_router
 from .routers.places import router as places_router
 from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
 from .routers.stays import router as stays_router
+from .routers.tasks import router as tasks_router
 from .routers.tracks import router as tracks_router
 from .routers.transport import router as transport_router
 from .routers.trips import router as trips_router
@@ -24,6 +26,8 @@ app.include_router(publication_delivery_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
 app.include_router(tracks_router, prefix="/api")
 app.include_router(transport_router, prefix="/api")
+app.include_router(itinerary_router, prefix="/api")
+app.include_router(tasks_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
 app.include_router(places_router, prefix="/api")

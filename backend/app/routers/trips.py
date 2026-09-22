@@ -61,6 +61,8 @@ def trip_query():
         selectinload(Trip.transport_legs).selectinload(TransportLeg.departure_place),
         selectinload(Trip.transport_legs).selectinload(TransportLeg.arrival_place),
         selectinload(Trip.transport_legs).selectinload(TransportLeg.document_links),
+        selectinload(Trip.itinerary_entries),
+        selectinload(Trip.trip_tasks),
         selectinload(Trip.media_derivatives).selectinload(MediaDerivative.media_asset),
         selectinload(Trip.document_derivatives).selectinload(DocumentDerivative.document_asset),
     )

@@ -78,8 +78,6 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#122](https://github.com/tjorim/travel/issues/122) Build an owner day
-      plan and booking task list for each trip.
 - [ ] [#123](https://github.com/tjorim/travel/issues/123) Add an owner-wide
       document library and emergency information.
 - [ ] [#124](https://github.com/tjorim/travel/issues/124) Implement
@@ -168,6 +166,13 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#122](https://github.com/tjorim/travel/issues/122) Built an owner day
+      plan and booking task list for each trip: manually ordered itinerary
+      entries that can link to an existing stay, transport leg, route stage,
+      exact place, document or moment, plus a lightweight task list with due
+      dates and a complete/incomplete state. Both are owner-only, with no
+      share-scope kind of their own.
 
 - [x] [#121](https://github.com/tjorim/travel/issues/121) Added owner-managed
       flight and transport itinerary records: departure/arrival exact places,

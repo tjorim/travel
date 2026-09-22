@@ -29,6 +29,14 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added an owner day plan and booking task list for each trip: manually
+  ordered itinerary entries that can optionally link to an existing stay,
+  transport leg, route stage, exact place, document or moment (without
+  copying any of that resource's fields), plus a lightweight trip task list
+  with a due date and complete/incomplete state. Both are strictly owner-only
+  and have no share-scope kind of their own.
+  ([#122](https://github.com/tjorim/travel/issues/122))
+
 - Added owner-managed flight and transport itinerary records: an owner can
   create, edit, order and delete outbound, return and connecting legs with
   departure/arrival exact places, times, carrier/service reference, booking
