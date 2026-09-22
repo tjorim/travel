@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Versioned the Travel privacy, sharing and offline policy. It defines
+  private-by-default public follower views and fine-grained named-share-link
+  projections for every v1 resource, response redaction, capability lifecycle
+  and revocation, device-scoped offline-copy behavior, and retention/encryption
+  expectations.
+  ([#36](https://github.com/tjorim/travel/issues/36))
+
 - A reusable, data-driven local-route map component for private itineraries.
   It supports airport, stay and ground-route stops; road, rail, flight and
   mountain route styles; keyboard-selectable stops; and a textual route

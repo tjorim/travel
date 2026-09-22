@@ -33,11 +33,12 @@ moments, broad route stages, cities and places.
 
 The app is private by default. The account owner is the only person who can
 sign in, create or edit data. There are no viewer accounts or sharing groups.
-The owner can publish a public page or create a revocable, high-entropy
-unlisted link with a deliberately selected scope. An unlisted link is a
-forwardable capability rather than proof of a recipients identity. The backend
-produces the matching redacted response and must not send data to a client
-merely to hide it in the UI.
+For each private-by-default trip, the owner can select its broad public follower
+view and/or create custom revocable high-entropy unlisted links with deliberately
+selected scopes. A custom link can show more or different detail than the
+public view. An unlisted link is a forwardable capability rather than proof of
+a recipient's identity. The backend produces the matching redacted response and
+must not send data to a client merely to hide it in the UI.
 
 Exact coordinates, addresses, booking references, documents, unredacted media
 metadata, precise schedules and private journal entries are sensitive by
@@ -64,8 +65,9 @@ control, while less-authorized viewers receive at most a city-level link.
 
 ## Delivery backlog
 
-Each open delivery issue has one checkbox. Tick it only when its GitHub issue
-is closed, then move its delivered result to `Recently completed`.
+Each open delivery issue has one checkbox. The change that closes an issue must
+tick its checkbox and move its delivered result to `Recently completed`; both
+take effect when that change is merged.
 
 v1 is application-only work. It uses local/test storage and test deployments
 as needed, but does not change shared VPS routing, production media storage,
@@ -74,8 +76,6 @@ v2 after the app behavior is complete and verified.
 
 ### v1 — Private travel journal application
 
-- [ ] [#36](https://github.com/tjorim/travel/issues/36) Define the owner,
-      public and unlisted-link privacy, sharing and offline policy.
 - [ ] [#37](https://github.com/tjorim/travel/issues/37) Define the canonical
       content model and explicit public/unlisted publication flow.
 - [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
@@ -108,9 +108,10 @@ v2 after the app behavior is complete and verified.
 v1 delivers a feature-complete private Travel app in local/test environments.
 It deliberately does not migrate or serve production user content yet.
 
-- One account owner creates and edits all data. There are no viewer accounts or
-  sharing groups; pages are owner-only, public, or shared through revocable
-  high-entropy unlisted links.
+- One account owner creates and edits all data. Trips are owner-only by
+  default; each can have an optional, owner-selected public follower view and
+  named revocable high-entropy custom links with separately selected detail.
+  There are no viewer accounts or sharing groups.
 - "Private" means access-controlled service data, protected in transit and at
   rest. End-to-end encryption is not a v1 requirement.
 - Link scopes and server-enforced redaction protect items and sensitive fields;
@@ -165,6 +166,12 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] Defined the Travel application privacy contract: owner-only canonical
+      data, private-by-default public follower views and fine-grained
+      custom-link projections, server-side redaction, capability lifecycle,
+      device-scoped offline copies, and VPS retention/security expectations.
+      ([#36](https://github.com/tjorim/travel/issues/36))
 
 - [x] Added a repeatable public-route safety review covering operational data,
       media GPS metadata, file-layout separation, and cache/indexing recovery.

@@ -4,6 +4,7 @@ Static travel hub. Exampleland 2054 is its first trip at `/exampleland-2054/`, w
 
 - [PLAN.md](PLAN.md) — ordered work and TODOs
 - [CHANGELOG.md](CHANGELOG.md) — implemented changes
+- [Privacy, sharing and offline policy](docs/decisions/36-privacy-sharing-offline-policy.md) — v1 access, named-share-link, and redaction contract
 
 ## Run locally
 
