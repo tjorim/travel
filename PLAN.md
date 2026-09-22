@@ -76,8 +76,6 @@ v2 after the app behavior is complete and verified.
 
 ### v1 — Private travel journal application
 
-- [ ] [#37](https://github.com/tjorim/travel/issues/37) Define the canonical
-      content model and explicit public/unlisted publication flow.
 - [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
       with a shared MapLibre renderer, reconciled with #36's privacy contract.
 - [ ] [#42](https://github.com/tjorim/travel/issues/42) Implement scoped,
@@ -167,6 +165,11 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] Defined the versioned canonical Travel content model: owner-scoped
+      resources and object storage, separately authored broad/derived share
+      representations, immutable public and unlisted projections, capability
+      lifecycle, public static-export invalidation, import records, and an
+      explicit one-time legacy migration design. ([#37](https://github.com/tjorim/travel/issues/37))
 - [x] Defined the Travel application privacy contract: owner-only canonical
       data, private-by-default public follower views and fine-grained
       custom-link projections, server-side redaction, capability lifecycle,

@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Versioned canonical-model and archive-publication design for the Travel
+  application. It specifies owner-scoped content, files in backed-up VPS object
+  storage, separate broad/derived share records, immutable public and unlisted
+  projections, capability and static-export states, media-import records, and
+  a one-time legacy static-archive migration path.
+  ([#37](https://github.com/tjorim/travel/issues/37))
+
 - Versioned the Travel privacy, sharing and offline policy. It defines
   private-by-default public follower views and fine-grained named-share-link
   projections for every v1 resource, response redaction, capability lifecycle
