@@ -6,6 +6,10 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Git-native public photo workflow: Git LFS camera-original layout, a strict
+  public media manifest with alt text, captions and focal points, responsive
+  gallery/timeline-media components, and metadata-free WebP preparation.
+  ([#9](https://github.com/tjorim/travel/issues/9))
 - A repeatable public-route safety check for pre-deployment review of
   operational data, media GPS metadata, public/private file boundaries, and
   cache/indexing recovery after an accidental exposure.

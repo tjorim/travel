@@ -23,10 +23,10 @@ on `private/` routes.
       reveal an operational detail.
 - [ ] Keep public and private content separate on disk: public pages may load
       only deliberately selected files under their public route or shared
-      browser assets. Put operational JSON, documents, original media, and
-      focused itinerary data under `dist/private/` or
-      `dist/<trip-slug>/private/`; never link, copy, or fetch them from a
-      public page.
+      browser assets. Put operational JSON, documents, and focused itinerary
+      data under `dist/private/` or `dist/<trip-slug>/private/`; keep camera
+      originals outside `dist/` in `media/<trip-slug>/original/`. Never link,
+      copy, or fetch any of these from a public page.
 - [ ] Review the deployed page anonymously (signed out, in a private browser
       window) and confirm that its public URLs neither expose nor link to a
       protected file.

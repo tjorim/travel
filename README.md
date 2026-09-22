@@ -78,10 +78,14 @@ cache/indexing response needed if a page was accidentally exposed.
 - `dist/assets/travel/document-list.js` — reusable private document list with in-app preview
 - `dist/assets/travel/trip-summary.js` — reusable public story and private trip-header components
 - `dist/assets/travel/trip-moments.js` — reusable public chronological story component
+- `dist/assets/travel/trip-media.js` — reusable responsive public gallery and timeline-media component
+- `media/<trip-slug>/original/` — Git LFS camera originals, deliberately kept outside the deployable archive
+- `dist/<trip-slug>/public/media/` — selected metadata-free public derivatives and their manifest
 - `dist/assets/travel/trip-renderers.js` — reusable trip-card, public timeline and private booking-status elements
 - `dist/assets/travel/schemas/` — versioned JSON Schemas for public and private itinerary data
 - `dist/exampleland-2054/index.html` — Taiwan public overview
 - `dist/exampleland-2054/public/trip.json` — deliberately selected public Taiwan story data
+- `dist/exampleland-2054/public/media/manifest.json` — selected public Taiwan photo metadata
 - `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, maps and bookings
 - `dist/exampleland-2054/private/documents/` — Taiwan-specific protected document files and manifest
 - `dist/exampleland-2054/private/trip.json` — protected Taiwan operational summary and booking status
@@ -90,7 +94,8 @@ cache/indexing response needed if a page was accidentally exposed.
 - `auth/` — prepared server-side Argon2id login/session-gate component
 - `compose.yaml` — standalone WIP Caddy and internal auth-service setup
 - `Caddyfile.example` — Caddy static serving and protected-route auth check
-The page has no build step or package dependencies. One travel photograph is loaded from an external URL; all other visuals are embedded directly in the HTML.
+The page has no build step or package dependencies. Public photos use committed,
+responsive derivatives rather than external image URLs.
 
 ## Tracker API
 
@@ -150,9 +155,21 @@ private value into public JSON merely to simplify a public page.
 
 For a long-form public story, add a `moments` object to the same
 `public/trip.json`. Each item has a stable `id`, a broad public `date`, `title`,
-short `story`, optional `place`, and optional public `photos` (`src`, `alt`,
-and `caption`). Render it with `travel-moment-timeline`; its item IDs become
-shareable fragment URLs such as `/exampleland-2054/timeline/#alishan-ochtend`.
+short `story`, and optional public `place`. Render it with
+`travel-timeline-media`; its item IDs become shareable fragment URLs such as
+`/exampleland-2054/timeline/#alishan-ochtend`. Public images are matched to those
+IDs from the separate media manifest, so image metadata stays consistent in
+the gallery and timeline.
+
+## Public photo assets
+
+Keep camera originals in `media/<trip-slug>/original/`, which is covered by
+Git LFS and never deployed. Public, metadata-free derivatives and their
+descriptive manifest live in `dist/<trip-slug>/public/media/`. The manifest
+is the single source for public filenames, responsive widths, alt text,
+captions, focal point, and optional timeline-moment association. See
+[docs/media-assets.md](docs/media-assets.md) for the folder contract, the
+EXIF-stripping preparation command, and gallery/timeline usage.
 
 To add the optional public map, put a `routeMap` object in that same public
 file and render it with `travel-public-route-map`. Its `mode` is deliberately

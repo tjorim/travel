@@ -63,11 +63,9 @@ deliberately selected data.
       moments, stays and booking status. ([#2](https://github.com/tjorim/travel/issues/2))
 - [x] Built Taiwan's public chronological trip timeline with stable moment
       URLs and a public-data-only renderer. ([#7](https://github.com/tjorim/travel/issues/7))
-
-## Next
-
-- [ ] Establish the Git/LFS media layout, captions, alt text and safe public
-      derivatives. ([#9](https://github.com/tjorim/travel/issues/9))
+- [x] Established Git/LFS camera-original storage, public derivative metadata,
+      responsive gallery and timeline-media components, and an EXIF-stripping
+      preparation workflow. ([#9](https://github.com/tjorim/travel/issues/9))
 
 ## Later
 
