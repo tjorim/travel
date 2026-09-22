@@ -134,6 +134,21 @@ export type BroadStayCard = {
   place: BroadPlace;
 };
 
+export type TransportLeg = {
+  id: string;
+  kind: "flight" | "train" | "bus" | "ferry" | "car" | "other";
+  status: "planned" | "booked" | "confirmed" | "cancelled";
+  departure_place: Place;
+  arrival_place: Place;
+  departs_at: string;
+  arrives_at: string;
+  carrier: string | null;
+  service_reference: string | null;
+  booking_reference: string | null;
+  notes: string | null;
+  document_asset_ids: string[];
+};
+
 export type DocumentAsset = {
   id: string;
   document_kind: "booking" | "itinerary" | "receipt" | "other";

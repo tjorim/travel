@@ -78,8 +78,6 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#121](https://github.com/tjorim/travel/issues/121) Add owner-managed
-      flight and transport itinerary records.
 - [ ] [#122](https://github.com/tjorim/travel/issues/122) Build an owner day
       plan and booking task list for each trip.
 - [ ] [#123](https://github.com/tjorim/travel/issues/123) Add an owner-wide
@@ -170,6 +168,13 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#121](https://github.com/tjorim/travel/issues/121) Added owner-managed
+      flight and transport itinerary records: departure/arrival exact places,
+      times, carrier/service reference, booking status, notes and optional
+      linked documents, with owner API and React manager coverage. A leg has
+      no share-scope kind of its own; a follower representation stays a
+      separately authored route stage or broad route, never copied from it.
 
 - [x] [#73](https://github.com/tjorim/travel/issues/73) Built the Travel
       application delivery contract and live, server-filtered public/unlisted

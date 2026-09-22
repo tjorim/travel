@@ -107,6 +107,22 @@ class TrackKind(StrEnum):
     POINT_ARRAY = "point_array"
 
 
+class TransportLegKind(StrEnum):
+    FLIGHT = "flight"
+    TRAIN = "train"
+    BUS = "bus"
+    FERRY = "ferry"
+    CAR = "car"
+    OTHER = "other"
+
+
+class TransportLegStatus(StrEnum):
+    PLANNED = "planned"
+    BOOKED = "booked"
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
+
+
 class AuditEventKind(StrEnum):
     PUBLIC_PROJECTION_PUBLISH = "public_projection.publish"
     PUBLIC_PROJECTION_UNPUBLISH = "public_projection.unpublish"
@@ -234,6 +250,9 @@ class Trip(Base):
     )
     recorded_tracks: Mapped[list["RecordedTrack"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="RecordedTrack.started_at"
+    )
+    transport_legs: Mapped[list["TransportLeg"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="TransportLeg.departs_at"
     )
     broad_routes: Mapped[list["BroadRoute"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="BroadRoute.created_at"
@@ -382,6 +401,72 @@ class BroadStayCard(Base):
 
     trip: Mapped[Trip] = relationship(back_populates="broad_stay_cards")
     place: Mapped[Place] = relationship(foreign_keys=[broad_place_id])
+
+
+class TransportLeg(Base):
+    """An owner-only booked leg -- a flight or other transport -- between two
+    exact places. Its schedule, carrier/service reference, booking reference
+    and linked documents are intentionally not shareable; a traveller who
+    wants to represent this leg publicly authors a separate
+    :class:`RouteStage`/:class:`BroadRoute` instead, exactly as a
+    :class:`Stay` requires a separate :class:`BroadStayCard`.
+    """
+
+    __tablename__ = "transport_legs"
+    __table_args__ = (CheckConstraint("arrives_at > departs_at", name="ck_transport_leg_arrival_after_departure"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind: Mapped[TransportLegKind] = mapped_column(_enum_column(TransportLegKind, "travel_transport_leg_kind"))
+    status: Mapped[TransportLegStatus] = mapped_column(
+        _enum_column(TransportLegStatus, "travel_transport_leg_status"), default=TransportLegStatus.PLANNED
+    )
+    departure_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
+    arrival_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
+    departs_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    arrives_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    carrier: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    service_reference: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    booking_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="transport_legs")
+    departure_place: Mapped[Place] = relationship(foreign_keys=[departure_place_id])
+    arrival_place: Mapped[Place] = relationship(foreign_keys=[arrival_place_id])
+    document_links: Mapped[list["TransportLegDocumentAsset"]] = relationship(
+        back_populates="transport_leg", cascade="all, delete-orphan", order_by="TransportLegDocumentAsset.created_at"
+    )
+
+    @property
+    def document_asset_ids(self) -> list[str]:
+        return [link.document_asset_id for link in self.document_links]
+
+
+class TransportLegDocumentAsset(Base):
+    """An owner-only, explicit attachment of a document to a transport leg.
+
+    Deliberately separate from a share derivative, exactly like
+    :class:`MomentMediaAsset`: attaching a document gives the owner a
+    private booking-material reference and never makes it eligible for
+    projection.
+    """
+
+    __tablename__ = "transport_leg_document_assets"
+
+    transport_leg_id: Mapped[str] = mapped_column(
+        ForeignKey("transport_legs.id", ondelete="CASCADE"), primary_key=True
+    )
+    document_asset_id: Mapped[str] = mapped_column(
+        ForeignKey("document_assets.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    transport_leg: Mapped[TransportLeg] = relationship(back_populates="document_links")
+    document_asset: Mapped["DocumentAsset"] = relationship()
 
 
 class RecordedTrack(Base):

@@ -20,6 +20,7 @@ from ..models import (
     PublicationState,
     RouteStage,
     Stay,
+    TransportLeg,
     Trip,
     Visibility,
     opaque_id,
@@ -57,6 +58,9 @@ def trip_query():
         selectinload(Trip.stays).selectinload(Stay.place),
         selectinload(Trip.broad_stay_cards).selectinload(BroadStayCard.place),
         selectinload(Trip.broad_routes),
+        selectinload(Trip.transport_legs).selectinload(TransportLeg.departure_place),
+        selectinload(Trip.transport_legs).selectinload(TransportLeg.arrival_place),
+        selectinload(Trip.transport_legs).selectinload(TransportLeg.document_links),
         selectinload(Trip.media_derivatives).selectinload(MediaDerivative.media_asset),
         selectinload(Trip.document_derivatives).selectinload(DocumentDerivative.document_asset),
     )

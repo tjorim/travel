@@ -20,6 +20,8 @@ from .models import (
     StayStatus,
     SurfaceState,
     TrackKind,
+    TransportLegKind,
+    TransportLegStatus,
     Visibility,
 )
 
@@ -307,6 +309,64 @@ class BroadStayCardResponse(BaseModel):
     title: str
     date_precision: DatePrecision
     place: BroadPlaceResponse
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TransportLegCreate(BaseModel):
+    kind: TransportLegKind
+    status: TransportLegStatus = TransportLegStatus.PLANNED
+    departure_place: ExactPlaceInput
+    arrival_place: ExactPlaceInput
+    departs_at: datetime
+    arrives_at: datetime
+    carrier: str | None = Field(default=None, max_length=160)
+    service_reference: str | None = Field(default=None, max_length=40)
+    booking_reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=4000)
+    document_asset_ids: list[str] = Field(default_factory=list, max_length=12)
+
+    @field_validator("document_asset_ids")
+    @classmethod
+    def require_unique_documents(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("A document can only be attached once")
+        return values
+
+
+class TransportLegUpdate(BaseModel):
+    kind: TransportLegKind | None = None
+    status: TransportLegStatus | None = None
+    departure_place: ExactPlaceInput | None = None
+    arrival_place: ExactPlaceInput | None = None
+    departs_at: datetime | None = None
+    arrives_at: datetime | None = None
+    carrier: str | None = Field(default=None, max_length=160)
+    service_reference: str | None = Field(default=None, max_length=40)
+    booking_reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=4000)
+    document_asset_ids: list[str] | None = Field(default=None, max_length=12)
+
+    @field_validator("document_asset_ids")
+    @classmethod
+    def require_unique_documents(cls, values: list[str] | None) -> list[str] | None:
+        if values is not None and len(values) != len(set(values)):
+            raise ValueError("A document can only be attached once")
+        return values
+
+
+class TransportLegResponse(BaseModel):
+    id: str
+    kind: TransportLegKind
+    status: TransportLegStatus
+    departure_place: ExactPlaceResponse
+    arrival_place: ExactPlaceResponse
+    departs_at: datetime
+    arrives_at: datetime
+    carrier: str | None
+    service_reference: str | None
+    booking_reference: str | None
+    notes: str | None
+    document_asset_ids: list[str]
     model_config = ConfigDict(from_attributes=True)
 
 

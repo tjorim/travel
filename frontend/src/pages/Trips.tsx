@@ -9,6 +9,7 @@ import { PublicationManager } from "../trips/PublicationManager";
 import { RouteStageManager } from "../trips/RouteStageManager";
 import { StayManager } from "../trips/StayManager";
 import { TrackManager } from "../trips/TrackManager";
+import { TransportLegManager } from "../trips/TransportLegManager";
 import { apiError, apiHeaders, type BroadPlace, type MomentExcerpt, type Trip } from "../tracker-model";
 
 export function Trips() {
@@ -178,6 +179,7 @@ export function Trips() {
       <RouteStageManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={() => loadTrips(selectedTrip.id)} />
       <TrackManager trip={selectedTrip} />
       <StayManager trip={selectedTrip} broadPlaces={broadPlaces} />
+      <TransportLegManager trip={selectedTrip} />
       <section className="card excerpt-editor"><div className="capture-heading"><div><h3>Moment-uittreksels</h3><p>Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.</p></div>{excerptDraft.id && <button className="secondary compact" type="button" onClick={newExcerpt}>Nieuw uittreksel</button>}</div>
         <form className="stack-form" onSubmit={(event) => void saveExcerpt(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden opgeslagen."))}>
           <div className="field-row"><label>Bronmoment <span className="optional">(optioneel)</span><select value={excerptDraft.sourceMomentId} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, sourceMomentId: event.target.value }))}><option value="">Geen bronmoment</option>{selectedTrip.moments.map((moment) => <option key={moment.id} value={moment.id}>{moment.title}</option>)}</select></label><label>Datumprecisie<select value={excerptDraft.datePrecision} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, datePrecision: event.target.value as MomentExcerpt["date_precision"] }))}><option value="day">Dag</option><option value="month">Maand</option><option value="year">Jaar</option></select></label></div>

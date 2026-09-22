@@ -29,6 +29,14 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added owner-managed flight and transport itinerary records: an owner can
+  create, edit, order and delete outbound, return and connecting legs with
+  departure/arrival exact places, times, carrier/service reference, booking
+  status, notes and optional linked documents. Legs are owner-only and have
+  no share-scope kind; a public/unlisted follower representation stays a
+  separately authored route stage or broad route.
+  ([#121](https://github.com/tjorim/travel/issues/121))
+
 - Completed the application side of live public and unlisted trip delivery:
   server-filtered projections, visitor routes and publication lifecycle.
   Production cutover remains in tjorim/apps#219. ([#73](https://github.com/tjorim/travel/issues/73))
