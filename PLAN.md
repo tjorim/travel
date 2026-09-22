@@ -20,6 +20,10 @@ deliberately selected data.
 
 ## Recently completed
 
+- [x] Added a repeatable public-route safety review covering operational data,
+      media GPS metadata, file-layout separation, and cache/indexing recovery.
+      ([#10](https://github.com/tjorim/travel/issues/10))
+
 - [x] Defined the privacy-first tracker MVP: one owner, private-by-default
       trips, explicit publication, broad place labels only, and no automatic
       archive migration. ([#20](https://github.com/tjorim/travel/issues/20))
@@ -64,8 +68,6 @@ deliberately selected data.
 
 - [ ] Establish the Git/LFS media layout, captions, alt text and safe public
       derivatives. ([#9](https://github.com/tjorim/travel/issues/9))
-- [ ] Add the public-data safety check before a deployment.
-      ([#10](https://github.com/tjorim/travel/issues/10))
 
 ## Later
 
@@ -80,6 +82,8 @@ deliberately selected data.
 
 - Git is the source of truth for content and documents.
 - Keep the public site static and dependency-light.
+- Complete `docs/public-route-safety-check.md` before deploying a public-route
+  change.
 - Prefer small reusable browser components in `dist/assets/travel/`.
 - Add a concrete GitHub issue when a new substantial improvement is found;
   update this plan when its relative order changes.

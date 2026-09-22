@@ -6,6 +6,10 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- A repeatable public-route safety check for pre-deployment review of
+  operational data, media GPS metadata, public/private file boundaries, and
+  cache/indexing recovery after an accidental exposure.
+  ([#10](https://github.com/tjorim/travel/issues/10))
 - Privacy-first tracker MVP decision and FastAPI core for owner-scoped trips,
   route stages, moments, broad places, explicit publication, a read-only public
   endpoint, Alembic migration, and API tests. It has no media storage or GPS

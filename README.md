@@ -61,6 +61,13 @@ sidecar's environment.
    short-lived; tampered or expired sessions are rejected.
 4. Logout expires the cookie and private routes redirect to login again.
 
+### Public-route safety review
+
+Before deploying a change to a public static route, complete the short
+[public-route safety check](docs/public-route-safety-check.md). It covers the
+public/private file boundary, operational data and media metadata, and the
+cache/indexing response needed if a page was accidentally exposed.
+
 ## Structure
 
 - `dist/index.html` — travel-hub overview
