@@ -7,13 +7,14 @@ export function EmptyState({ title, children }: { title: string; children: React
   return <section className="card"><h2>{title}</h2><p>{children}</p></section>;
 }
 
-export function TrackerRoutes({ Trips, Capture, Settings }: { Trips: ComponentType; Capture: ComponentType; Settings: ComponentType }) {
+export function TrackerRoutes({ Trips, Capture, Settings, Library }: { Trips: ComponentType; Capture: ComponentType; Settings: ComponentType; Library: ComponentType }) {
   return (
     <Boundary>
       <Routes>
         <Route path="/" element={<EmptyState title="Nog geen actieve reis">Maak straks een private reis aan en kies later bewust wat je deelt.</EmptyState>} />
         <Route path="/trips" element={<Trips />} />
         <Route path="/capture" element={<Capture />} />
+        <Route path="/library" element={<Library />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

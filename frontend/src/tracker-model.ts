@@ -191,6 +191,29 @@ export type DocumentDerivative = {
   file_url: string;
 };
 
+export type OwnerDocument = {
+  id: string;
+  document_kind: "booking" | "itinerary" | "receipt" | "other";
+  title: string;
+  byte_size: number;
+  content_type: string;
+  original_filename: string | null;
+  linked_trip_id: string | null;
+  created_at: string;
+  file_url: string;
+};
+
+export type EmergencyInfoKind = "contact" | "number" | "medical_note";
+
+export type EmergencyInfoEntry = {
+  id: string;
+  kind: EmergencyInfoKind;
+  label: string;
+  value: string;
+  notes: string | null;
+  created_at: string;
+};
+
 export type MediaDerivative = {
   id: string;
   media_asset_id: string;

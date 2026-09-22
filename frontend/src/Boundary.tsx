@@ -8,6 +8,7 @@ const navigation = [
   ["/", "Overzicht"],
   ["/trips", "Reizen"],
   ["/capture", "Vastleggen"],
+  ["/library", "Bibliotheek"],
   ["/settings", "Instellingen"],
 ] as const;
 

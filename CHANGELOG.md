@@ -29,6 +29,18 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added an owner-wide document library and emergency-information page: an
+  owner can upload, preview, download and delete reusable documents (a
+  policy, an identity copy, other travel essentials) and manage emergency
+  contacts, numbers and medical/assistance notes, all scoped directly to the
+  owner subject rather than to any one trip, so neither needs a dummy trip. A
+  library document can optionally link to an existing trip and appears there
+  as a read-only reference. Both resources reuse the existing owner-only
+  authorization and checksum-verified object storage pipeline, through a
+  separate owner-scoped storage inventory, and are never projected onto a
+  public or unlisted trip response.
+  ([#123](https://github.com/tjorim/travel/issues/123))
+
 - Added an owner day plan and booking task list for each trip: manually
   ordered itinerary entries that can optionally link to an existing stay,
   transport leg, route stage, exact place, document or moment (without

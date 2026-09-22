@@ -11,6 +11,7 @@ from .models import (
     DerivativePurpose,
     DerivativeReviewState,
     DocumentKind,
+    EmergencyInfoKind,
     ImportProvider,
     ImportSessionState,
     ItineraryLinkKind,
@@ -728,6 +729,54 @@ class DocumentDerivativeResponse(BaseModel):
     content_type: str
     created_at: datetime
     file_url: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Owner-wide document library and emergency information --------------------------
+
+
+class OwnerDocumentUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    document_kind: DocumentKind | None = None
+    linked_trip_id: str | None = Field(default=None)
+
+
+class OwnerDocumentResponse(BaseModel):
+    id: str
+    document_kind: DocumentKind
+    title: str
+    byte_size: int
+    content_type: str
+    original_filename: str | None
+    linked_trip_id: str | None
+    created_at: datetime
+    deleted_at: datetime | None
+    file_url: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmergencyInfoEntryCreate(BaseModel):
+    kind: EmergencyInfoKind
+    label: str = Field(min_length=1, max_length=160)
+    value: str = Field(min_length=1, max_length=255)
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class EmergencyInfoEntryUpdate(BaseModel):
+    kind: EmergencyInfoKind | None = None
+    label: str | None = Field(default=None, min_length=1, max_length=160)
+    value: str | None = Field(default=None, min_length=1, max_length=255)
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class EmergencyInfoEntryResponse(BaseModel):
+    id: str
+    kind: EmergencyInfoKind
+    label: str
+    value: str
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 

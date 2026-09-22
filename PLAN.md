@@ -78,8 +78,6 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#123](https://github.com/tjorim/travel/issues/123) Add an owner-wide
-      document library and emergency information.
 - [ ] [#124](https://github.com/tjorim/travel/issues/124) Implement
       owner-selected offline private copies in the React PWA.
 - [ ] [#119](https://github.com/tjorim/travel/issues/119) Render scoped
@@ -166,6 +164,12 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#123](https://github.com/tjorim/travel/issues/123) Added an owner-wide
+      document library and emergency-information page: reusable documents and
+      contacts/numbers/medical notes scoped directly to the owner subject
+      rather than to a trip, with an optional link from a document to a trip.
+      Neither resource is ever projected onto a public/unlisted trip response.
 
 - [x] [#122](https://github.com/tjorim/travel/issues/122) Built an owner day
       plan and booking task list for each trip: manually ordered itinerary

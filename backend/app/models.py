@@ -67,6 +67,12 @@ class DocumentKind(StrEnum):
     OTHER = "other"
 
 
+class EmergencyInfoKind(StrEnum):
+    CONTACT = "contact"
+    NUMBER = "number"
+    MEDICAL_NOTE = "medical_note"
+
+
 class ImportProvider(StrEnum):
     DIRECT_DEVICE = "direct_device"
     GOOGLE_PHOTOS_PICKER = "google_photos_picker"
@@ -868,3 +874,89 @@ class DocumentDerivative(Base):
     document_asset: Mapped[DocumentAsset] = relationship(back_populates="derivatives")
     object: Mapped[StoredObject] = relationship(foreign_keys=[object_id])
     redaction_manifest_object: Mapped[StoredObject] = relationship(foreign_keys=[redaction_manifest_object_id])
+
+
+class OwnerStoredObject(Base):
+    """Object-storage inventory for one owner-wide (trip-independent) file.
+
+    Mirrors :class:`StoredObject` field-for-field but is keyed by
+    ``owner_subject`` instead of ``trip_id``, since the owner-wide document
+    library is deliberately not attached to any trip. Kept as a separate
+    table rather than making ``StoredObject.trip_id`` nullable, so the
+    trip-scoped media/track/document pipeline is untouched.
+    """
+
+    __tablename__ = "owner_stored_objects"
+    __table_args__ = (UniqueConstraint("owner_subject", "sha256", name="uq_owner_stored_object_owner_sha256"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    bucket: Mapped[str] = mapped_column(String(64), nullable=False, default="library")
+    object_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    state: Mapped[ObjectState] = mapped_column(
+        _enum_column(ObjectState, "travel_object_state"), default=ObjectState.STAGED
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class OwnerDocument(Base):
+    """One owner-wide document original: a reusable policy, identity copy or
+    other travel essential that is not tied to a specific trip.
+
+    ``linked_trip_id`` is an optional, real foreign key (unlike
+    :class:`ItineraryEntry`'s polymorphic soft reference) because a document
+    here can only ever link to a trip. Deleting the linked trip clears the
+    link rather than the document (``ondelete="SET NULL"``); the document
+    itself is owner-wide and outlives any one trip.
+    """
+
+    __tablename__ = "owner_documents"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    original_object_id: Mapped[str] = mapped_column(
+        ForeignKey("owner_stored_objects.id"), unique=True, nullable=False
+    )
+    document_kind: Mapped[DocumentKind] = mapped_column(_enum_column(DocumentKind, "travel_document_kind"))
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    owner_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    linked_trip_id: Mapped[str | None] = mapped_column(
+        ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    original_object: Mapped[OwnerStoredObject] = relationship(foreign_keys=[original_object_id])
+    linked_trip: Mapped[Trip | None] = relationship(foreign_keys=[linked_trip_id])
+
+
+class EmergencyInfoEntry(Base):
+    """One owner-only emergency-information entry: a contact, a relevant
+    number, or a concise medical/assistance note.
+
+    Deliberately trip-independent and file-free, so it is hard-deleted like
+    :class:`TripTask`/:class:`ItineraryEntry` rather than soft-deleted like
+    the file-backed resources.
+    """
+
+    __tablename__ = "emergency_info_entries"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    kind: Mapped[EmergencyInfoKind] = mapped_column(_enum_column(EmergencyInfoKind, "travel_emergency_info_kind"))
+    label: Mapped[str] = mapped_column(String(160), nullable=False)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
