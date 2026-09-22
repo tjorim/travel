@@ -79,7 +79,23 @@ v2 after the app behavior is complete and verified.
 - [ ] [#34](https://github.com/tjorim/travel/issues/34) Replace the SVG maps
       with a shared MapLibre renderer, reconciled with #36's privacy contract.
 - [ ] [#38](https://github.com/tjorim/travel/issues/38) Evolve the tracker
-      API and PWA into the private Travel content app.
+      API and PWA into the private Travel content app. Too large for one PR;
+      delivered as seven ordered phases, each its own issue/PR, per
+      #37's "Implementation gates" section:
+  - [ ] [#56](https://github.com/tjorim/travel/issues/56) Split Travel
+        places into exact and broad models.
+  - [ ] [#57](https://github.com/tjorim/travel/issues/57) Add owner-managed
+        stays and broad stay cards to Travel.
+  - [ ] [#58](https://github.com/tjorim/travel/issues/58) Add recorded
+        tracks and broad routes to Travel.
+  - [ ] [#59](https://github.com/tjorim/travel/issues/59) Add owner-managed
+        documents to Travel.
+  - [ ] [#60](https://github.com/tjorim/travel/issues/60) Extend Travel
+        share scopes to cover every resource type.
+  - [ ] [#61](https://github.com/tjorim/travel/issues/61) Build tracker PWA
+        UI for trip content management.
+  - [ ] [#62](https://github.com/tjorim/travel/issues/62) Build tracker PWA
+        UI for publication and media management.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
       narrow owner-authenticated MCP management tools against the app service
       layer.
