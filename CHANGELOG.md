@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-facing tracker controls for the public projection and named unlisted
+  links. Each surface has a field-level `travel/share-scope@1` editor and
+  server-rendered preview so an owner can inspect the exact delivered
+  projection before publishing or sharing it. Named links can be created,
+  edited, activated, revoked and rotated from the PWA. The raw capability is
+  shown only from its activation/rotation response, kept only in component
+  memory, and can be copied before the owner dismisses it; the app never
+  fetches or persists it. ([#99](https://github.com/tjorim/travel/issues/99))
+
 - Private tracker PWA management for ordered route stages, completed-track
   uploads and independently authored broad routes. Route stages select an
   existing broad place and can be reordered or removed without position

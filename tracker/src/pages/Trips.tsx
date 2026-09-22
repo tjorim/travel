@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth-context";
 import { EmptyState } from "../tracker-routes";
 import { DocumentManager } from "../trips/DocumentManager";
+import { PublicationManager } from "../trips/PublicationManager";
 import { RouteStageManager } from "../trips/RouteStageManager";
 import { StayManager } from "../trips/StayManager";
 import { TrackManager } from "../trips/TrackManager";
@@ -186,6 +187,7 @@ export function Trips() {
         {selectedTrip.moment_excerpts.length > 0 && <div className="saved-moments">{selectedTrip.moment_excerpts.map((excerpt) => <article className="excerpt-row" key={excerpt.id}><div><strong>{excerpt.title}</strong><span>{excerpt.date_precision} · {excerpt.broad_place_id ? broadPlaces.find((place) => place.id === excerpt.broad_place_id)?.label ?? "brede plaats" : "geen plaats"}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editExcerpt(excerpt)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteExcerpt(excerpt).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
       </section>
       <DocumentManager trip={selectedTrip} />
+      <PublicationManager trip={selectedTrip} />
     </section>}
   </section>;
 }

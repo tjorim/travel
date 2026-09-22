@@ -149,6 +149,55 @@ export type DocumentDerivative = {
   file_url: string;
 };
 
+export type MediaDerivative = {
+  id: string;
+  media_asset_id: string;
+  review_state: "pending" | "approved";
+  width: number | null;
+  height: number | null;
+};
+
+export type ShareScopeKind = "exact_place" | "route_stage" | "broad_place" | "broad_route" | "moment_excerpt" | "broad_stay_card" | "media_derivative" | "document_derivative";
+
+export type ShareScopeItem = { kind: ShareScopeKind; id: string; fields: string[] };
+
+export type ShareScope = {
+  schema_version: "travel/share-scope@1";
+  trip: { title: boolean; summary: boolean };
+  items: ShareScopeItem[];
+};
+
+export type PublicProjectionStatus = {
+  trip_id: string;
+  scope: ShareScope;
+  surface_state: "unpublished" | "published";
+  slug: string | null;
+};
+
+export type ShareLink = {
+  id: string;
+  label: string;
+  state: "draft" | "active" | "revoked" | "expired";
+  scope: ShareScope;
+  expires_at: string | null;
+  created_at: string;
+  activated_at: string | null;
+  revoked_at: string | null;
+};
+
+export type ProjectionDocument = {
+  schema_version: string;
+  title: string | null;
+  summary: string | null;
+  route_stages: Record<string, unknown>[];
+  places: Record<string, unknown>[];
+  moments: Record<string, unknown>[];
+  stays: Record<string, unknown>[];
+  media: Record<string, unknown>[];
+  documents: Record<string, unknown>[];
+  route: Record<string, unknown>[];
+};
+
 const draftKey = "travel-tracker-moment-draft-v1";
 
 export function localDateTime(value = new Date()): string {
