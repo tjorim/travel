@@ -8,6 +8,7 @@ updates:
       day: "friday"
       time: "18:00"
       timezone: "Etc/UTC"
+    open-pull-requests-limit: 20
     assignees:
       - "tjorim"
     commit-message:
@@ -30,6 +31,7 @@ updates:
       day: "friday"
       time: "18:00"
       timezone: "Etc/UTC"
+    open-pull-requests-limit: 20
     assignees:
       - "tjorim"
     commit-message:
@@ -51,6 +53,7 @@ updates:
       day: "friday"
       time: "18:00"
       timezone: "Etc/UTC"
+    open-pull-requests-limit: 20
     assignees:
       - "tjorim"
     commit-message:
@@ -78,6 +81,7 @@ updates:
       day: "friday"
       time: "18:00"
       timezone: "Etc/UTC"
+    open-pull-requests-limit: 20
     assignees:
       - "tjorim"
     commit-message:
