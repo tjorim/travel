@@ -38,6 +38,14 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- `GET /api/mcp/capabilities` now follows the shared MCP capability manifest
+  contract (v1) used by all four apps: a top-level `contract_version`, and per
+  tool `effect` (`read`/`write`), `requires_confirmation` and an `access`
+  object (empty here, since Travel has a single owner-only policy). Tool
+  authorization is unchanged, and a test checks that every registered tool's
+  standard MCP annotations agree with its `effect`.
+  ([tjorim/apps#229](https://github.com/tjorim/apps/issues/229))
+
 - Let an owner explicitly create a revocable unlisted share link without a
   natural expiry. Timed links still default to 30 days and remain capped at
   90 days; the UI warns that an unexpiring link is a long-lived credential.

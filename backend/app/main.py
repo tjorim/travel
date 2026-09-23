@@ -6,7 +6,7 @@ from fastmcp.utilities.lifespan import combine_lifespans
 from sqlalchemy import text
 
 from .database import SessionLocal
-from .mcp_server import MCP_TOOL_CAPABILITIES, create_mcp_http_app, mcp_http_enabled
+from .mcp_server import MCP_CAPABILITY_CONTRACT_VERSION, MCP_TOOL_CAPABILITIES, create_mcp_http_app, mcp_http_enabled
 from .routers.documents import router as documents_router
 from .routers.highlights import router as highlights_router
 from .routers.itinerary import router as itinerary_router
@@ -70,11 +70,12 @@ def mcp_capabilities() -> dict[str, object]:
     data or a tool invocation path.
     """
     return {
+        "contract_version": MCP_CAPABILITY_CONTRACT_VERSION,
         "enabled": _mcp_app is not None,
         "mount_path": "/mcp",
         "version": _mcp.version if _mcp is not None else None,
         "tools": [
-            {"name": name, **capability}
+            {"name": name, **capability, "access": {}}
             for name, capability in sorted(MCP_TOOL_CAPABILITIES.items())
         ]
         if _mcp_app is not None

@@ -12,10 +12,12 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import main as app_main
 from app import schemas
 from app.config import settings
 from app.database import Base
 from app.mcp_server import (
+    MCP_TOOL_CAPABILITIES,
     ToolFailureMiddleware,
     TravelMcpBackend,
     create_mcp_http_app,
@@ -310,3 +312,49 @@ def test_an_unexpected_exception_type_becomes_a_correlated_tool_error(backend: T
     assert "SECRET" not in str(raised.value)
     with TestingSessionLocal() as session:
         assert session.scalars(select(McpAuditEvent)).one().resource_type == "tool_invocation"
+
+
+def test_capability_manifest_covers_every_registered_tool_with_consistent_annotations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = create_mcp_server(TestingSessionLocal)
+    registered = {tool.name: tool for tool in asyncio.run(server.list_tools())}
+    monkeypatch.setattr(app_main, "_mcp_app", object())
+    monkeypatch.setattr(app_main, "_mcp", SimpleNamespace(version="test"))
+
+    manifest = app_main.mcp_capabilities()
+
+    assert manifest["contract_version"] == 1
+    assert manifest["enabled"] is True
+    assert manifest["mount_path"] == "/mcp"
+    tools = manifest["tools"]
+    assert [tool["name"] for tool in tools] == sorted(registered)
+    assert set(registered) == set(MCP_TOOL_CAPABILITIES)
+    for tool in tools:
+        assert set(tool) == {"name", "effect", "requires_confirmation", "access"}
+        assert tool["effect"] in {"read", "write"}
+        assert isinstance(tool["requires_confirmation"], bool)
+        assert tool["access"] == {}
+        annotations = registered[tool["name"]].annotations
+        assert annotations is not None
+        assert annotations.read_only_hint is (tool["effect"] == "read")
+        assert annotations.destructive_hint is not None
+        assert annotations.idempotent_hint is not None
+        assert annotations.open_world_hint is not None
+
+
+def test_capability_manifest_reports_contract_version_when_mcp_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(app_main, "_mcp_app", None)
+    monkeypatch.setattr(app_main, "_mcp", None)
+
+    assert app_main.mcp_capabilities() == {
+        "contract_version": 1,
+        "enabled": False,
+        "mount_path": "/mcp",
+        "version": None,
+        "tools": [],
+        "resources": [],
+        "prompts": [],
+    }

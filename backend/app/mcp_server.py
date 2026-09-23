@@ -730,6 +730,13 @@ class ToolFailureMiddleware(Middleware):
 
 _TOOL_NAMES = tuple(name for name in TravelMcpBackend.__dict__ if not name.startswith("_") and callable(getattr(TravelMcpBackend, name)))
 
+# Version of the cross-app capability manifest contract shared by the Travel,
+# Worktime, Champagnefestival and Daynest `/api/mcp/capabilities` endpoints
+# (tjorim/apps#229). Each tool reports `effect`, `requires_confirmation` and an
+# app-specific `access` object; Travel has one owner-only policy, so `access` is
+# empty rather than an invented per-tool tier.
+MCP_CAPABILITY_CONTRACT_VERSION = 1
+
 # One authoritative manifest serves registration and FastAPI discovery, so an
 # operator can inspect exactly the tools mounted at /mcp without maintaining a
 # second hand-written list. `effect` is intentionally a small safety signal,
