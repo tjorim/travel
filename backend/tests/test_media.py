@@ -20,8 +20,8 @@ from app.media.providers import (
     ProviderSessionStatus,
     get_provider_resolver,
 )
-from app.media.service import delete_media_asset, direct_upload, purge_deleted_media
-from app.models import ImportProvider, ImportSession, MediaAsset
+from app.media.service import delete_media_asset, delete_media_derivative, direct_upload, purge_deleted_media
+from app.models import ImportProvider, ImportSession, MediaAsset, ObjectState, StoredObject
 from app.secrets import InMemorySecretStore, get_secret_store
 from app.storage import LocalObjectStorage, get_storage
 
@@ -598,3 +598,133 @@ def test_purge_deleted_media_reclaims_original_and_derivative_objects_after_the_
         assert not storage.exists(original_key)
         assert not storage.exists(derivative_key)
         assert session.get(MediaAsset, asset.id) is None
+
+
+def test_purge_deleted_media_retries_after_storage_failure_without_dangling_references(tmp_path: Path) -> None:
+    from app.media.service import create_derivative
+    from app.models import DerivativePurpose, Trip
+
+    storage = LocalObjectStorage(root=str(tmp_path))
+    with TestingSessionLocal() as session:
+        trip = Trip(owner_subject="owner-1", title="Exampleland")
+        session.add(trip)
+        session.commit()
+        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
+        object_keys = {asset.original_object.object_key, derivative.object.object_key}
+        delete_media_asset(session, media_asset=asset)
+
+        class FailingStorage(LocalObjectStorage):
+            def __init__(self) -> None:
+                super().__init__(root=str(tmp_path))
+                self.deletions = 0
+
+            def delete(self, key: str) -> None:
+                self.deletions += 1
+                if self.deletions == 2:
+                    raise OSError("simulated storage failure")
+                super().delete(key)
+
+        with pytest.raises(OSError, match="simulated storage failure"):
+            purge_deleted_media(session, FailingStorage(), older_than=timedelta(seconds=-1))
+        session.rollback()
+
+        assert session.get(MediaAsset, asset.id) is None
+        pending = session.scalars(select(StoredObject).where(StoredObject.state == ObjectState.PURGE_PENDING)).all()
+        assert len(pending) == 1
+        assert pending[0].object_key in object_keys
+        assert all(storage.exists(item.object_key) for item in pending)
+
+        assert purge_deleted_media(session, storage, older_than=timedelta(seconds=-1)) == 1
+        assert session.scalars(select(StoredObject).where(StoredObject.state == ObjectState.PURGE_PENDING)).all() == []
+        assert all(not storage.exists(key) for key in object_keys)
+
+
+def test_purge_deleted_media_keeps_a_shared_document_object(tmp_path: Path) -> None:
+    from app.document.service import direct_upload as upload_document
+    from app.models import DocumentKind, Trip
+
+    storage = LocalObjectStorage(root=str(tmp_path))
+    with TestingSessionLocal() as session:
+        trip = Trip(owner_subject="owner-1", title="Exampleland")
+        session.add(trip)
+        session.commit()
+        data = jpeg_bytes()
+        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=data)
+        document, _ = upload_document(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg",
+            data=data, document_kind=DocumentKind.OTHER, title="Receipt",
+        )
+        key = asset.original_object.object_key
+        assert document.original_object_id == asset.original_object_id
+
+        delete_media_asset(session, media_asset=asset)
+        assert purge_deleted_media(session, storage, older_than=timedelta(seconds=-1)) == 0
+        assert storage.exists(key)
+        assert session.get(StoredObject, document.original_object_id).state == ObjectState.AVAILABLE
+
+
+def test_purge_deleted_media_retries_when_commit_fails_after_file_deletion(tmp_path: Path, monkeypatch) -> None:
+    from app.models import Trip
+
+    storage = LocalObjectStorage(root=str(tmp_path))
+    with TestingSessionLocal() as session:
+        trip = Trip(owner_subject="owner-1", title="Exampleland")
+        session.add(trip)
+        session.commit()
+        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        object_id = asset.original_object_id
+        key = asset.original_object.object_key
+        delete_media_asset(session, media_asset=asset)
+
+        commit = session.commit
+        calls = 0
+
+        def fail_second_commit() -> None:
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise OSError("simulated commit failure")
+            commit()
+
+        monkeypatch.setattr(session, "commit", fail_second_commit)
+        with pytest.raises(OSError, match="simulated commit failure"):
+            purge_deleted_media(session, storage, older_than=timedelta(seconds=-1))
+        session.rollback()
+        monkeypatch.setattr(session, "commit", commit)
+
+        assert session.get(MediaAsset, asset.id) is None
+        assert session.get(StoredObject, object_id).state == ObjectState.PURGE_PENDING
+        assert not storage.exists(key)
+        assert purge_deleted_media(session, storage, older_than=timedelta(seconds=-1)) == 1
+        assert session.get(StoredObject, object_id) is None
+
+
+def test_derivative_deletion_failure_leaves_retryable_object(tmp_path: Path) -> None:
+    from app.media.service import create_derivative
+    from app.models import DerivativePurpose, MediaDerivative, Trip
+
+    storage = LocalObjectStorage(root=str(tmp_path))
+    with TestingSessionLocal() as session:
+        trip = Trip(owner_subject="owner-1", title="Exampleland")
+        session.add(trip)
+        session.commit()
+        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
+        derivative_id = derivative.id
+        object_id = derivative.object_id
+        key = derivative.object.object_key
+
+        class FailingStorage(LocalObjectStorage):
+            def delete(self, _key: str) -> None:
+                raise OSError("simulated storage failure")
+
+        with pytest.raises(OSError, match="simulated storage failure"):
+            delete_media_derivative(session, FailingStorage(root=str(tmp_path)), derivative=derivative)
+        session.rollback()
+
+        assert session.get(MediaDerivative, derivative_id) is None
+        assert session.get(StoredObject, object_id).state == ObjectState.PURGE_PENDING
+        assert storage.exists(key)
+        assert purge_deleted_media(session, storage, older_than=timedelta(days=30)) == 1
+        assert not storage.exists(key)

@@ -24,6 +24,8 @@ from ..config import settings
 from ..models import (
     DerivativePurpose,
     DerivativeReviewState,
+    DocumentAsset,
+    DocumentDerivative,
     ImportProvider,
     ImportRecord,
     ImportSession,
@@ -33,6 +35,7 @@ from ..models import (
     MediaDerivative,
     MediaKind,
     ObjectState,
+    RecordedTrack,
     StoredObject,
     opaque_id,
 )
@@ -151,7 +154,10 @@ def _merge_exif(raw_metadata: dict, exif: dict) -> tuple[dict, datetime | None]:
 
 def _store_bytes(session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes, content_type: str) -> StoredObject:
     digest = sha256_hex(data)
-    existing = session.scalar(select(StoredObject).where(StoredObject.trip_id == trip_id, StoredObject.sha256 == digest))
+    # Serialize reuse of a pending object with the purge's final deletion.
+    existing = session.scalar(
+        select(StoredObject).where(StoredObject.trip_id == trip_id, StoredObject.sha256 == digest).with_for_update()
+    )
     if existing is not None and existing.state == ObjectState.AVAILABLE:
         return existing
 
@@ -483,45 +489,71 @@ def delete_media_derivative(session: Session, storage: ObjectStorage, *, derivat
     Original media gets a recoverable-deletion period. Generated derivatives
     do not: once the owner deletes one it must disappear immediately.
     """
-    stored = derivative.object
+    object_id = derivative.object_id
     session.delete(derivative)
     session.flush()
-    still_referenced = session.scalar(
-        select(MediaAsset.id).where(MediaAsset.original_object_id == stored.id)
-    ) or session.scalar(select(MediaDerivative.id).where(MediaDerivative.object_id == stored.id))
-    if not still_referenced:
-        storage.delete(stored.object_key)
-        session.delete(stored)
+    if not _object_is_referenced(session, object_id):
+        session.get(StoredObject, object_id).state = ObjectState.PURGE_PENDING
     session.commit()
+    _purge_pending_objects(session, storage, object_ids=[object_id])
 
 
 def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than: timedelta) -> int:
     """Hard-delete soft-deleted media past the recoverable-deletion window
-    and reclaim any of their stored objects no other asset/derivative still
-    references (dedup means one shared original must not be purged out from
-    under a second reference). Returns the number of objects purged."""
+    and reclaim their unreferenced stored objects. Commit the database changes
+    before touching files; pending objects remain retryable if deletion fails.
+    Returns the number of objects purged."""
     cutoff = datetime.now(UTC) - older_than
     expired_assets = session.scalars(
         select(MediaAsset).where(MediaAsset.deleted_at.is_not(None), MediaAsset.deleted_at < cutoff)
     ).all()
-    purged = 0
+    object_ids: set[str] = set()
     for asset in expired_assets:
-        object_ids = {asset.original_object_id, *(derivative.object_id for derivative in asset.derivatives)}
+        object_ids.add(asset.original_object_id)
+        object_ids.update(derivative.object_id for derivative in asset.derivatives)
         for derivative in list(asset.derivatives):
             session.delete(derivative)
         session.delete(asset)
-        session.flush()
-        for object_id in object_ids:
-            stored = session.get(StoredObject, object_id)
-            if stored is None:
-                continue
-            still_referenced = session.scalar(
-                select(MediaAsset.id).where(MediaAsset.original_object_id == object_id)
-            ) or session.scalar(select(MediaDerivative.id).where(MediaDerivative.object_id == object_id))
-            if still_referenced:
-                continue
-            storage.delete(stored.object_key)
-            session.delete(stored)
-            purged += 1
+    session.flush()
+    for object_id in object_ids:
+        stored = session.get(StoredObject, object_id)
+        if stored is not None and not _object_is_referenced(session, object_id):
+            stored.state = ObjectState.PURGE_PENDING
     session.commit()
+
+    return _purge_pending_objects(session, storage)
+
+
+def _purge_pending_objects(session: Session, storage: ObjectStorage, *, object_ids: list[str] | None = None) -> int:
+    purged = 0
+    if object_ids is None:
+        object_ids = session.scalars(select(StoredObject.id).where(StoredObject.state == ObjectState.PURGE_PENDING)).all()
+    for object_id in object_ids:
+        # A failed file deletion or commit leaves this unreferenced row for a
+        # later run; the lock prevents an upload from reusing it meanwhile.
+        stored = session.scalar(select(StoredObject).where(StoredObject.id == object_id).with_for_update())
+        if stored is None or stored.state != ObjectState.PURGE_PENDING:
+            session.rollback()
+            continue
+        if _object_is_referenced(session, object_id):
+            stored.state = ObjectState.AVAILABLE
+            session.commit()
+            continue
+        storage.delete(stored.object_key)
+        session.delete(stored)
+        session.commit()
+        purged += 1
     return purged
+
+
+def _object_is_referenced(session: Session, object_id: str) -> bool:
+    """Include every trip-scoped resource that can share stored bytes."""
+    references = (
+        (RecordedTrack, RecordedTrack.source_object_id),
+        (MediaAsset, MediaAsset.original_object_id),
+        (MediaDerivative, MediaDerivative.object_id),
+        (DocumentAsset, DocumentAsset.original_object_id),
+        (DocumentDerivative, DocumentDerivative.object_id),
+        (DocumentDerivative, DocumentDerivative.redaction_manifest_object_id),
+    )
+    return any(session.scalar(select(model.id).where(column == object_id)) is not None for model, column in references)
