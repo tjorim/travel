@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth-context";
 import { EmptyState } from "../tracker-routes";
@@ -18,8 +18,11 @@ import { TripOverview } from "../trips/TripOverview";
 import { TripTaskManager } from "../trips/TripTaskManager";
 import { apiError, apiHeaders, timeZoneOptions, type BroadPlace, type MomentExcerpt, type Trip } from "../tracker-model";
 
-export function Trips() {
+export type TripWorkspaceSection = "overview" | "plan" | "story" | "media" | "sharing";
+
+export function Trips({ workspace }: { workspace?: { tripId: string; section: TripWorkspaceSection } } = {}) {
   const { session } = useAuth();
+  const navigate = useNavigate();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tripDraft, setTripDraft] = useState({ title: "", summary: "", startsOn: "", endsOn: "", visibility: "private" as Trip["visibility"], publicationState: "draft" as Trip["publication_state"] });
@@ -43,15 +46,15 @@ export function Trips() {
     if (!response.ok) return apiError(response, "Je reizen konden niet worden geladen.");
     const loaded = await response.json() as Trip[];
     setTrips(loaded);
-    setSelectedId((current) => selectId === null ? null : loaded.some((trip) => trip.id === (selectId ?? current)) ? (selectId ?? current) : loaded[0]?.id ?? null);
+    setSelectedId((current) => selectId === null ? null : loaded.some((trip) => trip.id === (selectId ?? current)) ? (selectId ?? current) : workspace ? null : loaded[0]?.id ?? null);
     setMessage(loaded.length ? "Kies een reis om de private details te beheren." : "Nog geen reizen. Maak je eerste private reis aan.");
   }
 
   useEffect(() => {
     if (!session) return;
-    void loadTrips()
+    void loadTrips(workspace?.tripId)
       .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je reizen konden niet worden geladen."));
-  }, [session]);
+  }, [session, workspace?.tripId]);
 
   const selectedTrip = trips.find((trip) => trip.id === selectedId) ?? null;
 
@@ -78,6 +81,7 @@ export function Trips() {
     setTripDraft({ title: trip.title, summary: trip.summary ?? "", startsOn: trip.starts_on ?? "", endsOn: trip.ends_on ?? "", visibility: trip.visibility, publicationState: trip.publication_state });
     setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", storyDate: "", title: "", body: "" });
     setBroadPlaceDraft({ id: null, label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" });
+    if (!workspace) navigate(`/trips/${encodeURIComponent(trip.id)}`);
   }
 
   async function saveTrip(event: FormEvent<HTMLFormElement>) {
@@ -95,6 +99,7 @@ export function Trips() {
     await loadTrips(saved.id);
     setTripDraft({ title: saved.title, summary: saved.summary ?? "", startsOn: saved.starts_on ?? "", endsOn: saved.ends_on ?? "", visibility: saved.visibility, publicationState: saved.publication_state });
     setMessage(isNew ? "Private reis gemaakt." : "Reis opgeslagen.");
+    if (isNew && !workspace) navigate(`/trips/${encodeURIComponent(saved.id)}`);
   }
 
   async function deleteTrip() {
@@ -169,6 +174,26 @@ export function Trips() {
   }
 
   if (!session) return <EmptyState title="Reizen">{message}</EmptyState>;
+  if (workspace && !selectedTrip && trips.length) return <EmptyState title="Reis niet gevonden">Deze private reis bestaat niet of is niet beschikbaar voor jouw account.</EmptyState>;
+
+  const currentSection = workspace?.section ?? "overview";
+  const sectionUrl = (section: TripWorkspaceSection) => `/trips/${encodeURIComponent(selectedTrip?.id ?? "")}${section === "overview" ? "" : `/${section}`}`;
+
+  if (workspace && selectedTrip) return <section className="trips trip-workspace" aria-labelledby="trip-detail-title">
+    <header className="trip-workspace-header">
+      <div><p className="eyebrow">Private reis</p><h2 id="trip-detail-title">{selectedTrip.title}</h2><p>{[selectedTrip.visibility === "private" ? "Privé" : selectedTrip.visibility === "public" ? "Publiek" : "Verborgen link", selectedTrip.starts_on && selectedTrip.ends_on ? `${selectedTrip.starts_on} — ${selectedTrip.ends_on}` : null, `${selectedTrip.moments.length} momenten`].filter(Boolean).join(" · ")}</p></div>
+      <div className="button-row"><NavLink className="action-link" to="/trips">Alle reizen</NavLink><NavLink className="action-link" to="/capture">Moment vastleggen</NavLink></div>
+    </header>
+    <nav className="trip-section-nav" aria-label="Reisonderdelen">
+      {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <NavLink key={section} to={sectionUrl(section)} end={section === "overview"} aria-current={currentSection === section ? "page" : undefined}>{label}</NavLink>)}
+    </nav>
+    <p className="help" role="status">{message}</p>
+    {currentSection === "overview" && <><TripOverview trip={selectedTrip} revision={planRevision} /><OwnerTripMap trip={selectedTrip} broadPlaces={broadPlaces} revision={mapRevision} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Momenten</h3>{selectedTrip.moments.length ? <div className="saved-moments">{selectedTrip.moments.slice().reverse().map((moment) => <div className="moment-summary" key={moment.id}><strong>{moment.title}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(moment.occurred_at))}</span></div>)}</div> : <p>Nog geen momenten. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} onChange={bumpPlan} /></div></>}
+    {currentSection === "plan" && <><RouteStageManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={() => loadTrips(selectedTrip.id)} /><StayManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={bumpPlan} /><TransportLegManager trip={selectedTrip} onChange={bumpPlan} /><ItineraryPlanManager trip={selectedTrip} revision={planRevision} onShowOnMap={showOnMap} /><TripTaskManager trip={selectedTrip} onChange={bumpPlan} /></>}
+    {currentSection === "story" && <><TrackManager trip={selectedTrip} onChange={() => setMapRevision((current) => current + 1)} /><HighlightManager trip={selectedTrip} onChange={() => loadTrips(selectedTrip.id)} /><section className="card excerpt-editor"><div className="capture-heading"><div><h3>Moment-uittreksels</h3><p>Een uittreksel blijft privé totdat je het expliciet publiceert.</p></div>{excerptDraft.id && <button className="secondary compact" type="button" onClick={newExcerpt}>Nieuw uittreksel</button>}</div><form className="stack-form" onSubmit={(event) => void saveExcerpt(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden opgeslagen."))}><label>Titel<input required maxLength={160} value={excerptDraft.title} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, title: event.target.value }))} /></label><label>Uittreksel<textarea required maxLength={10000} rows={5} value={excerptDraft.body} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, body: event.target.value }))} /></label><button type="submit">{excerptDraft.id ? "Uittreksel opslaan" : "Uittreksel maken"}</button></form>{selectedTrip.moment_excerpts.length > 0 && <div className="saved-moments">{selectedTrip.moment_excerpts.map((excerpt) => <article className="excerpt-row" key={excerpt.id}><div><strong>{excerpt.title}</strong><span>{excerpt.date_precision}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editExcerpt(excerpt)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteExcerpt(excerpt).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}</section></>}
+    {currentSection === "media" && <><DocumentManager trip={selectedTrip} /><LinkedLibraryDocuments tripId={selectedTrip.id} /><MediaManager trip={selectedTrip} /></>}
+    {currentSection === "sharing" && <PublicationManager trip={selectedTrip} />}
+  </section>;
 
   return <section className="trips" aria-labelledby="trips-title">
     <div className="capture-heading"><div><p className="eyebrow">Private reisbeheer</p><h2 id="trips-title">Reizen</h2></div><button className="secondary compact" type="button" onClick={newTrip}>Nieuwe reis</button></div>

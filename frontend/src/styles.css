@@ -123,6 +123,14 @@ textarea { min-height: 136px; resize: vertical; }
 .manager > .capture-heading p, .manager-subsection > .capture-heading p { max-width: 510px; margin: 6px 0 0; color: #4d665e; line-height: 1.5; }
 .manager-list { margin-top: 2px; }
 .manager-subsection { display: grid; gap: 15px; padding-top: 20px; border-top: 1px solid #d6e0d9; }
+.trip-workspace { display: grid; gap: 18px; }
+.trip-workspace-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.trip-workspace-header h2 { margin: 0; }
+.trip-workspace-header p { margin: 6px 0 0; color: #4d665e; }
+.trip-section-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid #d6e0d9; }
+.trip-section-nav a { flex: 0 0 auto; padding: 8px 10px; color: #36574c; text-decoration: none; border-radius: 7px 7px 0 0; }
+.trip-section-nav a[aria-current="page"] { color: #123c2e; font-weight: 700; background: #e5f0e8; }
+@media (max-width: 620px) { .trip-workspace-header { align-items: stretch; flex-direction: column; } }
 .selected-item { border-color: #0f493b; box-shadow: 0 0 0 2px #0f493b22; }
 .document-select { min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #19342d; text-align: left; }
 .document-select span { display: block; margin-top: 4px; color: #4d665e; font-size: .86rem; font-weight: 500; }
