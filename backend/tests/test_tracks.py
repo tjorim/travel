@@ -97,6 +97,9 @@ def test_owner_can_upload_and_read_a_finished_track_only_as_one_bounded_action(t
     assert gpx_upload.status_code == 201, gpx_upload.text
     assert gpx_upload.json()["kind"] == "gpx"
 
+    # A pinned map snapshot has a dedicated owner-only revalidation target.
+    assert owner.get(f"/api/trips/{trip['id']}/offline-map").status_code == 204
+
     # A retry is safe and still represents the same completed recording.
     assert upload_track(owner, trip["id"]).status_code == 200
 
@@ -124,6 +127,7 @@ def test_raw_tracks_are_unreachable_to_other_owners_and_all_public_surfaces(tmp_
     assert other.get(f"/api/trips/{trip['id']}/recorded-tracks").status_code == 404
     assert other.get(f"/api/trips/{trip['id']}/recorded-tracks/{track['id']}").status_code == 404
     assert other.get(track["source_file_url"]).status_code == 404
+    assert other.get(f"/api/trips/{trip['id']}/offline-map").status_code == 404
 
     owner = client_for("owner-1", tmp_path)
     assert owner.put(

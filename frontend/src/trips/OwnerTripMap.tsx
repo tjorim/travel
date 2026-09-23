@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth-context";
+import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
 import { apiHeaders, type BroadPlace, type BroadRoute, type Place, type RecordedTrack, type Trip } from "../tracker-model";
 import { parseRecordedTrack } from "./track-geometry";
 
 export function OwnerTripMap({ trip, broadPlaces, revision, focus }: { trip: Trip; broadPlaces: BroadPlace[]; revision: number; focus?: { id: string; request: number } | null }) {
   const { session } = useAuth();
+  const offline = useOfflineCopies();
   const [lines, setLines] = useState<MapLine[]>([]);
   const [exactPlaces, setExactPlaces] = useState<Place[]>([]);
+  const [offlinePoints, setOfflinePoints] = useState<MapPoint[] | null>(null);
   const [status, setStatus] = useState("");
   const points = useMemo<MapPoint[]>(() => [
     ...broadPlaces.flatMap((place): MapPoint[] => place.latitude !== null && place.longitude !== null ? [{ id: place.id, label: place.label, coordinates: [place.longitude, place.latitude] }] : []),
     ...exactPlaces.flatMap((place): MapPoint[] => place.latitude !== null && place.longitude !== null ? [{ id: place.id, label: place.display_name ?? place.locality ?? "Exacte plaats", coordinates: [place.longitude, place.latitude] }] : []),
   ], [exactPlaces, broadPlaces]);
+  const displayedPoints = offlinePoints ?? points;
 
   useEffect(() => {
     if (!session) return;
@@ -43,9 +47,47 @@ export function OwnerTripMap({ trip, broadPlaces, revision, focus }: { trip: Tri
     }
     setLines([]);
     setExactPlaces([]);
-    void load().catch((error: unknown) => { if (!controller.signal.aborted) setStatus(error instanceof Error ? error.message : "Kaartgegevens konden niet worden geladen."); });
+    setOfflinePoints(null);
+    void load().catch(async (error: unknown) => {
+      if (controller.signal.aborted) return;
+      const copy = offline.copies.find((candidate) => candidate.resourceKind === "map_route_data" && candidate.resourceId === trip.id);
+      if (copy) {
+        try {
+          const snapshot = await offline.open(copy!.id) as Blob;
+          const data = JSON.parse(await snapshot.text()) as { points?: MapPoint[]; lines?: MapLine[] };
+          if (!Array.isArray(data.points) || !Array.isArray(data.lines)) throw new Error("Ongeldige offline kaartkopie.");
+          if (!controller.signal.aborted) {
+            setOfflinePoints(data.points);
+            setLines(data.lines);
+            setStatus("Je gebruikt de bewust bewaarde offline kaart- en routegegevens. Kaarttegels worden niet offline opgeslagen.");
+          }
+          return;
+        } catch {
+          // Show the network error below when the pinned copy cannot be opened.
+        }
+      }
+      if (!controller.signal.aborted) setStatus(error instanceof Error ? error.message : "Kaartgegevens konden niet worden geladen.");
+    });
     return () => controller.abort();
-  }, [session, trip.id, revision]);
+  }, [session, trip.id, revision, offline.copies]);
 
-  return <><TripMap points={points} lines={lines} owner focus={focus} />{status && <p className="help" role="status">{status}</p>}</>;
+  async function toggleOffline() {
+    if (offline.isPinned("map_route_data", trip.id)) {
+      await offline.removeByResource("map_route_data", trip.id);
+      setStatus("Kaart- en routegegevens zijn niet langer offline beschikbaar.");
+      return;
+    }
+    const snapshot = { version: 1, trip_id: trip.id, points: displayedPoints, lines };
+    await offline.pin({
+      resourceKind: "map_route_data",
+      resourceId: trip.id,
+      metadataUrl: `/api/trips/${trip.id}/offline-map`,
+      title: `${trip.title} · kaart en route`,
+      contentType: "application/json",
+      bytes: new TextEncoder().encode(JSON.stringify(snapshot)).buffer as ArrayBuffer,
+    });
+    setStatus("Kaart- en routegegevens zijn offline bewaard op dit toestel. Kaarttegels worden niet gekopieerd; die blijven onder de voorwaarden van de kaartaanbieder vallen.");
+  }
+
+  return <><TripMap points={displayedPoints} lines={lines} owner focus={focus} /><div className="button-row"><button className="secondary compact" type="button" disabled={displayedPoints.length === 0 && lines.length === 0} onClick={() => void toggleOffline().catch((error: unknown) => setStatus(error instanceof Error ? error.message : "De kaartgegevens konden niet offline worden bewaard."))}>{offline.isPinned("map_route_data", trip.id) ? "Offline verwijderen" : "Kaart offline bewaren"}</button></div><p className="help">Alleen de private GeoJSON-kaartgegevens worden bewust bewaard; kaarttegels worden niet offline opgeslagen.</p>{status && <p className="help" role="status">{status}</p>}</>;
 }

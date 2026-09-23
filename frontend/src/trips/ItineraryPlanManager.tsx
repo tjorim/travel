@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
+import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { addDays, apiError, apiHeaders, formatDayRange, stayCoversNight, stayLabel, type DocumentAsset, type ItineraryEntry, type ItineraryEntryKind, type ItineraryLinkKind, type Place, type Stay, type TransportLeg, type Trip } from "../tracker-model";
 
 const KIND_LABELS: Record<ItineraryEntryKind, string> = { travel: "Reis", free: "Vrij", work: "Werk" };
@@ -38,6 +39,7 @@ function emptyDraft() {
 
 export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip: Trip; revision?: number; onShowOnMap?: (pointId: string) => void }) {
   const { session } = useAuth();
+  const offline = useOfflineCopies();
   const [entries, setEntries] = useState<ItineraryEntry[]>([]);
   const [stays, setStays] = useState<Stay[]>([]);
   const [legs, setLegs] = useState<TransportLeg[]>([]);
@@ -121,6 +123,7 @@ export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip
     };
     const response = await fetch(draft.id ? `/api/trips/${trip.id}/itinerary-entries/${draft.id}` : `/api/trips/${trip.id}/itinerary-entries`, { method: draft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload) });
     if (!response.ok) return apiError(response, "De planningsstap kon niet worden opgeslagen.");
+    if (draft.id) await offline.removeByResource("itinerary_entry", draft.id);
     await load();
     newEntry();
     setMessage("Planningsstap opgeslagen.");
@@ -140,9 +143,27 @@ export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip
     if (!session || !window.confirm(`Verwijder planningsstap “${entry.title}”?`)) return;
     const response = await fetch(`/api/trips/${trip.id}/itinerary-entries/${entry.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De planningsstap kon niet worden verwijderd.");
+    await offline.removeByResource("itinerary_entry", entry.id);
     await load();
     newEntry();
     setMessage("Planningsstap verwijderd.");
+  }
+
+  async function toggleOffline(entry: ItineraryEntry) {
+    if (offline.isPinned("itinerary_entry", entry.id)) {
+      await offline.removeByResource("itinerary_entry", entry.id);
+      setMessage(`“${entry.title}” is niet langer offline beschikbaar.`);
+      return;
+    }
+    await offline.pin({
+      resourceKind: "itinerary_entry",
+      resourceId: entry.id,
+      metadataUrl: `/api/trips/${trip.id}/itinerary-entries/${entry.id}`,
+      title: entry.title,
+      contentType: "application/json",
+      bytes: new TextEncoder().encode(JSON.stringify(entry)).buffer as ArrayBuffer,
+    });
+    setMessage(`“${entry.title}” is offline bewaard op dit toestel.`);
   }
 
   return <section className="card manager" aria-labelledby="itinerary-title">
@@ -175,6 +196,7 @@ export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip
           {(sleep.stays.length > 0 || sleep.uncovered > 0) && <span className="entry-detail">Overnachting: {sleep.stays.map(stayLabel).join(", ") || "—"}{sleep.uncovered > 0 ? ` · nog ${sleep.uncovered} ${sleep.uncovered === 1 ? "nacht" : "nachten"} zonder verblijf` : ""}</span>}</div>
         <div className="button-row">
           {mapPoint && <button className="secondary compact" type="button" onClick={() => onShowOnMap?.(mapPoint)}>Toon op kaart</button>}
+          <button className="secondary compact" type="button" onClick={() => void toggleOffline(entry).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet offline worden bewaard."))}>{offline.isPinned("itinerary_entry", entry.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
           <button className="secondary compact" type="button" disabled={index === 0} onClick={() => void moveEntry(entry, -1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet worden verplaatst."))}>Omhoog</button>
           <button className="secondary compact" type="button" disabled={index === entries.length - 1} onClick={() => void moveEntry(entry, 1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet worden verplaatst."))}>Omlaag</button>
           <button className="secondary compact" type="button" onClick={() => editEntry(entry)}>Bewerken</button>

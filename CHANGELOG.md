@@ -4,6 +4,14 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Added
+
+- Extended owner-selected, encrypted offline copies to private media,
+  individual itinerary entries and GeoJSON map/route snapshots. Each resource
+  has owner-scoped revalidation; map tiles are deliberately not cached, in
+  accordance with provider terms. Deleted media and itinerary entries also
+  remove their local copy immediately. ([#131](https://github.com/tjorim/travel/issues/131))
+
 ### Removed
 
 - Removed the archive-authoring guidance now that `dist/` is retired and no

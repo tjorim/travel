@@ -74,6 +74,21 @@ it("opens a pinned copy and decrypts its original bytes after a simulated reload
   expect(blob.type).toBe("application/pdf");
 });
 
+it("keeps explicitly pinned media, map data and itinerary entries private across a simulated reload", async () => {
+  await pinOfflineCopy(pinInput({ resourceKind: "media_asset", resourceId: "media-1", title: "Arrival.jpg", contentType: "image/jpeg", bytes: bytesOf("media bytes") }));
+  await pinOfflineCopy(pinInput({ resourceKind: "map_route_data", resourceId: "trip-1", title: "Exampleland · map", metadataUrl: "/api/trips/trip-1/offline-map", contentType: "application/json", bytes: bytesOf('{"lines":[]}') }));
+  await pinOfflineCopy(pinInput({ resourceKind: "itinerary_entry", resourceId: "entry-1", title: "Arrival", metadataUrl: "/api/trips/trip-1/itinerary-entries/entry-1", contentType: "application/json", bytes: bytesOf('{"title":"Arrival"}') }));
+
+  await __resetOfflineStoreForTests();
+
+  const copies = await listOfflineCopies(OWNER);
+  expect(copies.map((copy) => copy.resourceKind).sort()).toEqual(["itinerary_entry", "map_route_data", "media_asset"]);
+  await expect((await openOfflineCopy(OWNER, copies.find((copy) => copy.resourceKind === "media_asset")!.id)).text()).resolves.toBe("media bytes");
+  await removeOfflineCopy(copies.find((copy) => copy.resourceKind === "map_route_data")!.id);
+  expect(await listOfflineCopies(OTHER_OWNER)).toHaveLength(0);
+  expect((await listOfflineCopies(OWNER)).map((copy) => copy.resourceKind)).not.toContain("map_route_data");
+});
+
 it("removes an individual copy", async () => {
   const pinned = await pinOfflineCopy(pinInput());
   await removeOfflineCopy(pinned.id);

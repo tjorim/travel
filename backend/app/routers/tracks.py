@@ -231,6 +231,18 @@ def get_recorded_track_source(
     return StreamingResponse(iter([data]), media_type=track.source_object.content_type, headers={"Cache-Control": "no-store"})
 
 
+@router.get("/offline-map", status_code=status.HTTP_204_NO_CONTENT)
+def revalidate_offline_map(trip_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+    """Owner-only revalidation target for an explicitly pinned map snapshot.
+
+    The snapshot itself is assembled in the client from the already owner-scoped
+    routes, tracks and places endpoints.  This small endpoint deliberately has
+    no public counterpart and no cacheable response.
+    """
+    owned_trip(session, trip_id, subject)
+    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+
+
 def owned_broad_route(session: Session, trip_id: str, subject: str, route_id: str) -> BroadRoute:
     owned_trip(session, trip_id, subject)
     route = session.scalar(select(BroadRoute).where(BroadRoute.id == route_id, BroadRoute.trip_id == trip_id))

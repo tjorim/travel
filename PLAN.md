@@ -210,9 +210,13 @@ Polarsteps-like features require a fresh product and privacy decision.
       remove and clear-all controls for library documents, trip documents and
       emergency-info entries, encrypted on-device under #36's device-scoped
       offline policy with a short revalidated lease, no durable access token,
-      and full wipe on sign-out. Extending pinning to media, maps and
-      itinerary resources is tracked separately in
-      [#131](https://github.com/tjorim/travel/issues/131), pending #119/#120.
+      and full wipe on sign-out.
+
+- [x] [#131](https://github.com/tjorim/travel/issues/131) Extended explicit
+      owner offline pinning to private media, GeoJSON map/route snapshots and
+      individual itinerary entries, reusing the encrypted per-device store and
+      short revalidated lease. Map snapshots have a dedicated owner-only
+      revalidation endpoint and deliberately exclude provider map tiles.
 
 - [x] [#123](https://github.com/tjorim/travel/issues/123) Added an owner-wide
       document library and emergency-information page: reusable documents and
@@ -412,10 +416,6 @@ Polarsteps-like features require a fresh product and privacy decision.
       preparation workflow. ([#9](https://github.com/tjorim/travel/issues/9))
 
 ## Later
-
-- [ ] [#131](https://github.com/tjorim/travel/issues/131) Extend owner
-      offline pinning to media, maps and itinerary resources. Its #119 and
-      #120 dependencies are now delivered.
 - [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
       whether and how to move old `dist/` content out of Git. It is not a
       dependency of the fresh application launch or a source of URL aliases.

@@ -8,6 +8,9 @@ const KIND_LABELS: Record<OfflineResourceKind, string> = {
   library_document: "Bibliotheekdocument",
   trip_document: "Reisdocument",
   emergency_info: "Noodinformatie",
+  media_asset: "Privémedia",
+  map_route_data: "Kaart- en routegegevens",
+  itinerary_entry: "Planningsstap",
 };
 
 function formatMoment(timestamp: number): string {
@@ -70,7 +73,7 @@ export function OfflineManager() {
       {offline.persisted === false && (
         <p className="help">Je browser heeft geen persistente opslag toegekend voor deze offline kopieën; ze kunnen automatisch worden opgeruimd bij weinig opslagruimte op dit toestel.</p>
       )}
-      {!offline.copies.length && offline.loaded && <p>Zet “Offline bewaren” aan bij een document of noodinformatie om het hier te laten verschijnen.</p>}
+      {!offline.copies.length && offline.loaded && <p>Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of planningsstap om het hier te laten verschijnen.</p>}
       {offline.copies.length > 0 && (
         <div className="saved-moments manager-list">
           {offline.copies.map((copy) => (
