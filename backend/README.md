@@ -270,7 +270,9 @@ TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel
 GitHub Actions runs these API checks, including the upgrade/downgrade cycle
 against PostgreSQL, on changes to `backend/` and on every push to `main`.
 The initial migration can be reversed with `uv run alembic downgrade base`.
-The central deployment in apps#215 must take a database backup before running
-the first production upgrade. Its rollback is: stop `travel-api`, restore the
-pre-upgrade database backup if it exists, or (only for a confirmed empty MVP
-database) run `alembic downgrade base`, then deploy the previous API image.
+The central upgrade (`scripts/upgrade-apps.sh travel` in the `apps`
+repository) runs `alembic upgrade head` without a separate pre-migration dump;
+the latest encrypted Restic snapshot covers the database and media together
+(apps#220). Rollback is: stop `travel-api`, restore the database and media from
+that snapshot using the `apps` recovery guide, then deploy the previous API
+image. Never run `alembic downgrade base` against a database with content.

@@ -43,16 +43,15 @@ are checked at request time. The launch route check covers published,
 unpublished, missing, revoked and expired states, direct reloads, API errors,
 cache headers and private-path isolation. The unlisted shell and responses use
 the no-store, no-referrer, noindex and token-log protections in #103.
-Also verify that old public and private archive URLs return 404/410 and that
-no `dist/` asset is reachable through the new route boundary.
+Also verify that no `dist/` asset is reachable through the new route boundary.
 
-The root-scoped legacy `/travel-offline-service-worker.js` could control new
-browser paths on a device that visited the old archive. Before launch, retire
-its registration and ensure existing registrations cannot answer old archive
-paths, `/trips/*`, `/share/*` or their API requests. Handle explicitly saved
-private offline copies according to the existing deletion policy; do not
-import them into the app.
+[tjorim/apps#219](https://github.com/tjorim/apps/issues/219) added the new
+production routes without any `dist/` serving. There is no content-migration
+or rollback-parity dependency on #40.
 
-[tjorim/apps#219](https://github.com/tjorim/apps/issues/219) owns production
-routing, withdrawal of `dist/` serving and this worker boundary. There is no
-content-migration or rollback-parity dependency on #40.
+Two earlier launch requirements were dropped on 23 September 2026. Old archive
+paths are not required to return 404/410: the new boundary serves no archive
+content, so an unmatched path returns Caddy's empty response. The archive's
+root-scoped `/travel-offline-service-worker.js` is not retired by the
+deployment either. It registers only when someone saves a private archive
+document for offline use, and any such device is cleaned up manually.

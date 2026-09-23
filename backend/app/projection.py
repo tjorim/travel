@@ -7,7 +7,7 @@ make it past these explicit renderers by accident.
 
 from typing import Any
 
-from .models import DerivativePurpose, DerivativeReviewState, Place, Trip
+from .models import DerivativePurpose, DerivativeReviewState, Place, PlaceKind, Trip
 
 
 class ScopeError(ValueError):
@@ -53,7 +53,7 @@ def _selected(values: dict[str, Any], fields: list[str]) -> dict[str, Any]:
 
 def _resources(trip: Trip) -> dict[str, dict[str, Any]]:
     """Index each shareable kind from trip-scoped relationships only."""
-    broad_places: dict[str, Place] = {}
+    broad_places: dict[str, Place] = {item.id: item for item in trip.places if item.kind == PlaceKind.BROAD}
     for stage in trip.route_stages:
         broad_places[stage.place.id] = stage.place
     for excerpt in trip.moment_excerpts:

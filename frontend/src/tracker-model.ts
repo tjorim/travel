@@ -59,6 +59,8 @@ export type BroadPlace = {
   label: string;
   country_code: string | null;
   region: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type RouteStage = {

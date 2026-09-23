@@ -80,6 +80,7 @@ cache/indexing response needed if a page was accidentally exposed.
 ## Structure
 
 - `frontend/` — React source for the owner `/admin/` PWA and live public and unlisted trip views
+- `frontend/MAP-PROVIDER.md` — app map provider, attribution, privacy and failure policy
 - `backend/` — application service, FastAPI routes and future owner MCP workflows
 - `dist/index.html` — travel-hub overview
 - `dist/private/` — shared passport, insurance and emergency-document area (Caddy-protected)
@@ -129,13 +130,14 @@ uv run pytest
 
 The production service requires `TRAVEL_DATABASE_URL` and a Keycloak/OIDC
 validator configuration (`TRAVEL_OIDC_ISSUER_URL`, `TRAVEL_OIDC_JWKS_URL`, and
-`TRAVEL_OIDC_AUDIENCE`). Until the identity infrastructure in apps#216 is
-ready, local tests override the authenticated subject; production CRUD fails
+`TRAVEL_OIDC_AUDIENCE`), provided in production by the `travel` Keycloak realm
+from apps#216. Local tests override the authenticated subject; CRUD fails
 closed when token validation is not configured. A development subject header is
 accepted only when both `TRAVEL_ENVIRONMENT=development` and
 `TRAVEL_ALLOW_DEVELOPMENT_SUBJECT_HEADER=true` are set. Apply schema changes with
 `uv run alembic upgrade head`. Central deployment, PostgreSQL credentials,
-backup coverage, and Caddy routing remain tracked in apps#215.
+backup coverage, media storage and Caddy routing live in the `apps` repository
+(apps#215, apps#219 and apps#220).
 
 ## Per-trip data contract
 

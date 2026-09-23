@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { isProjection, ProjectionView, type Projection } from "./ProjectionView";
+import { isProjection, projectionMapLines, projectionMapPoints, ProjectionView, type Projection } from "./ProjectionView";
 import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
 
@@ -14,6 +14,15 @@ function projection(schema_version = "travel/public-trip@1"): Projection {
     route_stages: [], places: [], moments: [], stays: [], route: [], media: [], documents: [],
   };
 }
+
+it("derives tile-facing map bounds only from scoped route geometry", () => {
+  const data = projection("travel/unlisted-trip@1");
+  data.places = [{ id: "selected-place", label: "Broad city", latitude: 25, longitude: 121 }, { id: "incomplete", latitude: 25 }];
+  data.route_stages = [{ id: "selected-stage", place: { label: "Broad stage", latitude: 26, longitude: 122 } }];
+  data.route = [{ id: "selected", label: "Selected route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] } }, { id: "unselected", label: "No shared geometry" }];
+  expect(projectionMapLines(data)).toEqual([{ id: "selected", label: "Selected route", coordinates: [[1, 2], [3, 4]] }]);
+  expect(projectionMapPoints(data)).toEqual([{ id: "selected-place", label: "Broad city", coordinates: [121, 25] }, { id: "selected-stage", label: "Broad stage", coordinates: [122, 26] }]);
+});
 
 it("lists only server supplied public cards and opens their stable slugs", async () => {
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify([
@@ -67,7 +76,7 @@ it("renders every resource kind using only supplied fields", () => {
   for (const value of ["Hidden street", "Secret place note", "Secret story", "Secret booking", "Secret track", "Secret photo", "Secret PDF", "5"]) {
     expect(container.textContent).not.toContain(value);
   }
-  expect(screen.getByRole("img", { name: "Gegeneraliseerde route" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Shared route" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Routebeschrijving" }).getAttribute("href")).toBe("/api/public/trips/safe-slug/navigation/place");
   expect(screen.getByRole("img", { name: "Gedeelde afbeelding" }).getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media");
   expect(screen.getByRole("link", { name: "Document openen" }).getAttribute("href")).toBe("/api/public/trips/safe-slug/files/document");

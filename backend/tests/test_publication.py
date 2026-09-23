@@ -92,6 +92,75 @@ def item(kind: str, resource_id: str, *fields: str) -> dict:
 # --- Public follower view -----------------------------------------------------------
 
 
+def test_map_inputs_use_only_selected_broad_points_and_routes() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    selected = owner.post(
+        f"/api/trips/{trip['id']}/places/broad",
+        json={"label": "Taipei area", "latitude": 25.0, "longitude": 121.0},
+    ).json()
+    hidden = owner.post(
+        f"/api/trips/{trip['id']}/places/broad",
+        json={"label": "Hidden area", "latitude": 12.0, "longitude": 34.0},
+    ).json()
+    route = owner.post(
+        f"/api/trips/{trip['id']}/broad-routes",
+        json={"label": "Selected line", "date_precision": "month", "geometry": {"type": "LineString", "coordinates": [[120.0, 24.0], [121.0, 25.0]]}},
+    ).json()
+    selected_scope = scope(
+        item("broad_place", selected["id"], "label", "latitude", "longitude"),
+        item("broad_route", route["id"], "label", "geometry"),
+    )
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected_scope).status_code == 200
+    slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Map", "scope": selected_scope}).json()
+    token = activate(owner, trip["id"], link["id"])["token"]
+
+    for path in (f"/api/public/trips/{slug}", f"/api/shared/{token}"):
+        delivered = TestClient(app).get(path)
+        assert delivered.status_code == 200
+        document = delivered.json()
+        assert document["places"] == [{"id": "broad_place-1", "label": "Taipei area", "latitude": 25.0, "longitude": 121.0}]
+        assert document["route"] == [{"id": "broad_route-2", "label": "Selected line", "geometry": route["geometry"]}]
+        assert hidden["label"] not in delivered.text
+        assert "34.0" not in delivered.text
+
+
+def test_map_inputs_never_include_owner_only_geometry_or_unselected_coordinates(tmp_path: Path) -> None:
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    exact = owner.post(
+        f"/api/trips/{trip['id']}/places",
+        json={"display_name": "Private hotel", "latitude": 23.4567, "longitude": 120.9876},
+    )
+    assert exact.status_code == 201, exact.text
+    track = owner.post(
+        f"/api/trips/{trip['id']}/recorded-tracks/uploads",
+        data={"started_at": "2054-04-04T10:00:00Z", "ended_at": "2054-04-04T10:15:00Z", "kind": "point_array"},
+        files={"file": ("walk.json", b'[{"latitude": 22.1111, "longitude": 119.2222, "time": "2054-04-04T10:00:00Z"},'
+               b'{"latitude": 22.3333, "longitude": 119.4444, "time": "2054-04-04T10:15:00Z"}]', "application/json")},
+    )
+    assert track.status_code == 201, track.text
+    label_only = owner.post(
+        f"/api/trips/{trip['id']}/places/broad",
+        json={"label": "Label-only area", "latitude": 21.5555, "longitude": 118.6666},
+    ).json()
+    shared = scope(item("broad_place", label_only["id"], "label"))
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=shared).status_code == 200
+    slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Map", "scope": shared}).json()
+    token = activate(owner, trip["id"], link["id"])["token"]
+
+    for path in (f"/api/public/trips/{slug}", f"/api/shared/{token}"):
+        delivered = TestClient(app).get(path)
+        assert delivered.status_code == 200
+        assert delivered.json()["places"] == [{"id": "broad_place-1", "label": "Label-only area"}]
+        assert delivered.json()["route"] == []
+        for secret in ("Private hotel", "23.4567", "120.9876", "22.1111", "119.2222", "22.3333", "119.4444", "21.5555", "118.6666"):
+            assert secret not in delivered.text
+
+
 def test_public_listing_tracks_live_scope_and_publication_without_owner_data() -> None:
     owner = client_for("owner-1")
     draft = create_trip(owner, "Private draft")

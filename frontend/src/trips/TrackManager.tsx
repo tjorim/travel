@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth-context";
 import { apiError, apiHeaders, bytesLabel, localDateTime, openProtectedFile, type BroadRoute, type RecordedTrack, type Trip } from "../tracker-model";
 
-export function TrackManager({ trip }: { trip: Trip }) {
+export function TrackManager({ trip, onChange }: { trip: Trip; onChange?: () => void }) {
   const { session } = useAuth();
   const [tracks, setTracks] = useState<RecordedTrack[]>([]);
   const [routes, setRoutes] = useState<BroadRoute[]>([]);
@@ -36,6 +36,7 @@ export function TrackManager({ trip }: { trip: Trip }) {
     const response = await fetch(`/api/trips/${trip.id}/recorded-tracks/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body });
     if (!response.ok) return apiError(response, "De afgewerkte track kon niet worden geüpload.");
     await load();
+    onChange?.();
     setUpload({ file: null, kind: "gpx", startedAt: localDateTime(new Date(Date.now() - 3_600_000)), endedAt: localDateTime() });
     setMessage("Afgewerkte track opgeslagen. Er is geen opname- of achtergrondlocatiefunctie.");
   }
@@ -53,14 +54,14 @@ export function TrackManager({ trip }: { trip: Trip }) {
       method: routeDraft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify({ label: routeDraft.label.trim(), date_precision: routeDraft.datePrecision, geometry: { type: "LineString", coordinates } }),
     });
     if (!response.ok) return apiError(response, "De brede route kon niet worden opgeslagen.");
-    await load(); newRoute(); setMessage("Brede route opgeslagen als een afzonderlijk, bewust geschreven lijn.");
+    await load(); newRoute(); setMessage("Brede route opgeslagen als een afzonderlijk, bewust geschreven lijn."); onChange?.();
   }
 
   async function deleteRoute(route: BroadRoute) {
     if (!session || !window.confirm(`Verwijder brede route “${route.label}”?`)) return;
     const response = await fetch(`/api/trips/${trip.id}/broad-routes/${route.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De brede route kon niet worden verwijderd.");
-    await load(); newRoute(); setMessage("Brede route verwijderd.");
+    await load(); newRoute(); setMessage("Brede route verwijderd."); onChange?.();
   }
 
   return <section className="card manager" aria-labelledby="tracks-title">

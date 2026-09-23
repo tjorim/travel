@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { TripMap, type MapLine, type MapPoint } from "./TripMap";
 
 export type ProjectionItem = { id: string; [field: string]: unknown };
 
@@ -79,24 +80,30 @@ function hasFileMarker(item: ProjectionItem, field: "image" | "file"): boolean {
   return !!marker && typeof marker === "object" && !Array.isArray(marker) && (marker as { id?: unknown }).id === item.id;
 }
 
-function RouteLine({ geometry }: { geometry: unknown }) {
-  if (!geometry || typeof geometry !== "object" || Array.isArray(geometry)) return null;
-  const shape = geometry as { type?: unknown; coordinates?: unknown };
-  if (shape.type !== "LineString" || !Array.isArray(shape.coordinates)) return null;
-  const coordinates = shape.coordinates.filter((point): point is [number, number] =>
-    Array.isArray(point) && point.length === 2 && point.every((number) => typeof number === "number" && Number.isFinite(number)),
-  );
-  if (coordinates.length < 2 || coordinates.length !== shape.coordinates.length) return null;
-  const xs = coordinates.map(([x]) => x);
-  const ys = coordinates.map(([, y]) => y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-  const points = coordinates.map(([x, y]) => `${10 + (maxX === minX ? 50 : 100 * (x - minX) / (maxX - minX))},${110 - (maxY === minY ? 50 : 100 * (y - minY) / (maxY - minY))}`).join(" ");
-  return <svg className="visitor-route-line" viewBox="0 0 120 120" role="img" aria-label="Gegeneraliseerde route"><polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
 function ResourceSection({ title, items, render }: { title: string; items: ProjectionItem[]; render: (item: ProjectionItem) => ReactNode }) {
   if (!items.length) return null;
   return <section className="card visitor-section" aria-label={title}><h2>{title}</h2><ul className="visitor-items">{items.map((item) => <li key={item.id}>{render(item)}</li>)}</ul></section>;
+}
+
+export function projectionMapLines(projection: Projection): MapLine[] {
+  return projection.route.flatMap((item) => {
+    const geometry = item.geometry;
+    if (!geometry || typeof geometry !== "object" || Array.isArray(geometry)) return [];
+    const line = geometry as { type?: unknown; coordinates?: unknown };
+    if (line.type !== "LineString" || !Array.isArray(line.coordinates) || line.coordinates.length < 2 || !line.coordinates.every((point) => Array.isArray(point) && point.length === 2 && point.every((value) => typeof value === "number" && Number.isFinite(value)) && Math.abs(point[0]) <= 180 && Math.abs(point[1]) <= 90)) return [];
+    return [{ id: item.id, label: text(item, "label") ?? "Route", coordinates: line.coordinates as [number, number][] }];
+  });
+}
+
+export function projectionMapPoints(projection: Projection): MapPoint[] {
+  const point = (item: ProjectionItem, place: unknown): MapPoint[] => {
+    if (!place || typeof place !== "object" || Array.isArray(place)) return [];
+    const values = place as Record<string, unknown>;
+    const latitude = values.latitude, longitude = values.longitude;
+    if (typeof latitude !== "number" || typeof longitude !== "number" || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return [];
+    return [{ id: item.id, label: text(item, "label") ?? (typeof values.label === "string" ? values.label : "Plaats"), coordinates: [longitude, latitude] }];
+  };
+  return [...projection.places.flatMap((item) => point(item, item)), ...projection.route_stages.flatMap((item) => point(item, item.place))];
 }
 
 function Gallery({ items, fileUrl, title = "Galerij" }: { items: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string | null; title?: string }) {
@@ -120,6 +127,8 @@ function Story({ moments, media, fileUrl, navigationLink }: { moments: Projectio
 }
 
 export function ProjectionView({ projection, audience, identifier, previewResources }: { projection: Projection; audience: Audience; identifier: string; previewResources?: PreviewResources }) {
+  const mapLines = useMemo(() => projectionMapLines(projection), [projection]);
+  const mapPoints = useMemo(() => projectionMapPoints(projection), [projection]);
   useEffect(() => {
     if (previewResources) return;
     const fragment = window.location.hash.slice(1);
@@ -146,12 +155,13 @@ export function ProjectionView({ projection, audience, identifier, previewResour
 
   return <div className="visitor-content">
     {projection.summary && <section className="card"><h2>Reisoverzicht</h2><p>{projection.summary}</p></section>}
+    {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
     {empty && <section className="card" role="status"><h2>Nog geen gedeeld verhaal of foto’s</h2><p>Er zijn nog geen momenten of foto’s geselecteerd.</p></section>}
     <ResourceSection title="Etappes" items={projection.route_stages} render={(item) => <article><h3>{text(item, "label") ?? "Etappe"}</h3>{typeof item.position === "number" && Number.isFinite(item.position) && <p>Etappe {item.position}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
     <ResourceSection title="Plaatsen" items={projection.places} render={(item) => <article><h3>{text(item, "label") ?? "Plaats"}</h3>{[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>}{navigationLink(item)}</article>} />
     <Story moments={projection.moments} media={projection.media} fileUrl={fileUrl} navigationLink={navigationLink} />
     <ResourceSection title="Verblijven" items={projection.stays} render={(item) => <article><h3>{text(item, "title") ?? "Verblijf"}</h3>{precision(item) && <p>{precision(item)}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
-    <ResourceSection title="Routes" items={projection.route} render={(item) => <article><h3>{text(item, "label") ?? "Route"}</h3>{precision(item) && <p>{precision(item)}</p>}{Object.hasOwn(item, "geometry") && <RouteLine geometry={item.geometry} />}</article>} />
+    <ResourceSection title="Routes" items={projection.route} render={(item) => <article><h3>{text(item, "label") ?? "Route"}</h3>{precision(item) && <p>{precision(item)}</p>}</article>} />
     {looseMedia.length > 0 && <section className="card visitor-section"><h2>Galerij</h2><Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" /></section>}
     <ResourceSection title="Documenten" items={projection.documents} render={(item) => <article><h3>{text(item, "title") ?? "Gedeeld document"}</h3>{hasFileMarker(item, "file") && (previewResources ? <button className="visitor-resource-action" type="button" onClick={() => previewResources.openFile(item.id)}>Document downloaden</button> : <a href={fileUrl(item) ?? undefined} referrerPolicy="no-referrer" rel="noreferrer">Document openen</a>)}</article>} />
     {projection.navigation.some((item) => !displayed.has(item.id)) && <ResourceSection title="Navigatie" items={projection.navigation.filter((item) => !displayed.has(item.id))} render={(item) => <article><h3>Bestemming</h3>{navigationLink(item)}</article>} />}

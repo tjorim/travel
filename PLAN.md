@@ -78,22 +78,18 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#119](https://github.com/tjorim/travel/issues/119) Render scoped
-      interactive maps in the React owner and visitor views.
-- [x] [#120](https://github.com/tjorim/travel/issues/120) Build chronological
-      trip stories and responsive galleries in live visitor views.
-- [x] [#126](https://github.com/tjorim/travel/issues/126) Show the rendered
-      visitor preview in owner publication controls.
 - [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
       complete owner-authenticated MCP workflows for every #38 resource and
       #73 owner-side publication/preview operation, using typed tools against
       the app service layer.
+
 ### v2 — Fresh VPS launch and live trip delivery
 
-- [ ] [apps#219](https://github.com/tjorim/apps/issues/219) Add Travel
-      private-media storage and live application routing to the shared VPS.
-- [ ] [apps#220](https://github.com/tjorim/apps/issues/220) Extend backup and
-      restore verification to Travel media storage.
+- [ ] [#137](https://github.com/tjorim/travel/issues/137) Remove the retired
+      `travel-auth` service and its setup paths once the new boundary is
+      deployed.
+- [ ] [apps#226](https://github.com/tjorim/apps/issues/226) Wire the owner MCP
+      tools through the production Caddy and Keycloak boundary after #41.
 
 ## Confirmed release targets
 
@@ -139,8 +135,8 @@ There is no archive import or old URL preservation requirement.
   generated trip page or user content from Git.
 - Wire the already-tested MCP service through the production Caddy and Keycloak
   boundary with the same owner authorization and audit rules.
-- Stop serving all `dist/` trip and private archive URLs at launch. Verify
-  the old root-scoped service worker cannot answer old or new routes.
+- Stop serving all `dist/` trip and private archive URLs at launch. Devices
+  that saved archive documents offline are cleaned up manually (decision 101).
 
 v2 exit condition: no new app user content is added to Git and no `dist/`
 trip content is served; public/unlisted routes are live and server-filtered,
@@ -161,10 +157,36 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [apps#219](https://github.com/tjorim/apps/issues/219) and
+      [apps#220](https://github.com/tjorim/apps/issues/220) Added private VPS
+      media storage, the live `/admin/`, `/`, `/trips/` and `/share/` routes,
+      the owner Keycloak callback, database-plus-media backup and restore
+      verification, and scheduled retention purges in apps#223. Production MCP
+      wiring moved to apps#226.
+
+- [x] [#119](https://github.com/tjorim/travel/issues/119) Added scoped
+      MapLibre maps to the React owner, public and unlisted views. Visitor
+      maps are built only from the delivered projection's selected broad
+      points and routes; the owner map adds exact places and finished tracks
+      parsed in browser memory, with optional Mapterhorn terrain and Esri
+      imagery. Keyboard stop selection, route-in-words and WebGL/tile failure
+      fallbacks are included.
+
 - [x] [#125](https://github.com/tjorim/travel/issues/125) Added live published-trip
       discovery at `/` and `/trips/`, with scope-filtered public cards, stable
-      slugs, and accessible loading, error and empty states. Production route
-      coordination remains with [apps#219](https://github.com/tjorim/apps/issues/219).
+      slugs, and accessible loading, error and empty states. Production routes
+      were added in [apps#219](https://github.com/tjorim/apps/issues/219).
+
+- [x] [#126](https://github.com/tjorim/travel/issues/126) Added an owner-only
+      rendered preview for public and named-link publication scopes using the
+      visitor components, with scoped preview files and navigation before
+      activation and after withdrawal.
+
+- [x] [#120](https://github.com/tjorim/travel/issues/120) Added live
+      chronological visitor stories with stable moment links, authored dates at
+      the selected precision, broad places, and responsive galleries of
+      explicitly shared media derivatives, plus owner controls for captions,
+      alt text, focal position and moment association.
 
 - [x] [#124](https://github.com/tjorim/travel/issues/124) Added owner-selected
       offline private copies to the React PWA: explicit per-item pin, inspect,
@@ -199,9 +221,9 @@ Polarsteps-like features require a fresh product and privacy decision.
       application delivery contract and live, server-filtered public/unlisted
       visitor views through #89 and #90. Owner publication and link actions
       update database access state; trip content is fetched at request time
-      without generated pages. Production routing and storage remain in
+      without generated pages. Production routing and storage followed in
       [apps#219](https://github.com/tjorim/apps/issues/219); richer app
-      presentation and workflows remain in #119–#126.
+      presentation and workflows followed in #119–#126.
 
 - [x] [#34](https://github.com/tjorim/travel/issues/34) Replaced the three
       static archive SVG route maps with one MapLibre renderer and separate
@@ -374,8 +396,8 @@ Polarsteps-like features require a fresh product and privacy decision.
 ## Later
 
 - [ ] [#131](https://github.com/tjorim/travel/issues/131) Extend owner
-      offline pinning to media, maps and itinerary resources. Blocked on
-      #119 and #120, which do not exist yet.
+      offline pinning to media, maps and itinerary resources. Its #119 and
+      #120 dependencies are now delivered.
 - [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
       whether and how to move old `dist/` content out of Git. It is not a
       dependency of the fresh application launch or a source of URL aliases.

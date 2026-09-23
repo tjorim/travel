@@ -29,6 +29,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added scoped MapLibre maps to owner, public and unlisted trip views. The owner
+  map parses finished private GPX/JSON tracks in memory and offers optional
+  terrain and satellite controls; visitor maps use only selected broad points
+  and routes. ([#119](https://github.com/tjorim/travel/issues/119))
+
 - Added live public trip discovery on the Travel landing page and `/trips/`:
   only currently published, scope-approved titles and summaries appear, with
   no-store responses and visitor loading, error and empty states.
@@ -90,7 +95,7 @@ All notable changes to the travel hub are documented here.
 
 - Completed the application side of live public and unlisted trip delivery:
   server-filtered projections, visitor routes and publication lifecycle.
-  Production cutover remains in tjorim/apps#219. ([#73](https://github.com/tjorim/travel/issues/73))
+  Production routing followed in tjorim/apps#219. ([#73](https://github.com/tjorim/travel/issues/73))
 
 - Rendered all scoped trip resource types in the live public and unlisted React
   views, including generalized route sketches, navigation markers, and
