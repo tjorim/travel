@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -6,9 +7,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.auth import current_subject
+from app.config import settings
 from app.database import Base, get_session
 from app.main import app
 from app.storage import LocalObjectStorage, get_storage
+from app.task_alerts import deliver_pending_alert_emails, process_due_task_alerts
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -77,6 +80,52 @@ def test_owner_can_create_edit_list_and_delete_a_trip_task(tmp_path) -> None:
 
     assert owner.delete(f"/api/trips/{trip['id']}/trip-tasks/{task['id']}").status_code == 204
     assert owner.get(f"/api/trips/{trip['id']}/trip-tasks").json() == []
+
+
+def test_explicit_reminder_creates_one_private_alert_and_due_date_alone_does_not(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    create_task(owner, trip["id"], title="Due date only")
+    scheduled = create_task(owner, trip["id"], title="Check tickets", remind_at="2054-02-28T08:00:00Z")
+    with TestingSessionLocal() as session:
+        assert process_due_task_alerts(session, datetime(2054, 2, 28, 8, 1, tzinfo=UTC)) == 1
+        assert process_due_task_alerts(session, datetime(2054, 2, 28, 8, 2, tzinfo=UTC)) == 0
+    alerts = owner.get(f"/api/trips/{trip['id']}/task-alerts").json()
+    assert len(alerts) == 1
+    assert alerts[0]["task_id"] == scheduled["id"]
+    assert alerts[0]["kind"] == "reminder"
+    other = client_for("owner-2", tmp_path)
+    assert other.get(f"/api/trips/{trip['id']}/task-alerts").status_code == 404
+    assert other.patch(f"/api/trips/{trip['id']}/task-alerts/{alerts[0]['id']}/read").status_code == 404
+    owner = client_for("owner-1", tmp_path)
+    assert owner.patch(f"/api/trips/{trip['id']}/task-alerts/{alerts[0]['id']}/read").json()["read_at"] is not None
+
+
+def test_completed_task_does_not_emit_scheduled_alert(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    task = create_task(owner, trip["id"], remind_at="2054-02-28T08:00:00Z")
+    owner.patch(f"/api/trips/{trip['id']}/trip-tasks/{task['id']}", json={"completed": True})
+    with TestingSessionLocal() as session:
+        assert process_due_task_alerts(session, datetime(2054, 11, 20, tzinfo=UTC)) == 0
+    assert owner.get(f"/api/trips/{trip['id']}/task-alerts").json() == []
+
+
+def test_inbox_alert_is_also_emailed_to_its_configured_owner(tmp_path, monkeypatch) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    create_task(owner, trip["id"], remind_at="2054-02-28T08:00:00Z")
+    monkeypatch.setattr(settings, "task_alert_smtp_host", "smtp.example.test")
+    monkeypatch.setattr(settings, "task_alert_email_from", "travel@example.test")
+    monkeypatch.setattr(settings, "task_alert_recipients", {"owner-1": "owner@example.test"})
+    sent = []
+    with TestingSessionLocal() as session:
+        assert process_due_task_alerts(session, datetime(2054, 2, 28, 8, 1, tzinfo=UTC)) == 1
+        assert deliver_pending_alert_emails(session, lambda *args: sent.append(args)) == 1
+        assert deliver_pending_alert_emails(session, lambda *args: sent.append(args)) == 0
+    assert len(sent) == 1
+    assert sent[0][0] == "owner@example.test"
+    assert owner.get(f"/api/trips/{trip['id']}/task-alerts").json()[0]["email_sent_at"] is not None
 
 
 def test_a_task_can_be_completed_and_reopened(tmp_path) -> None:

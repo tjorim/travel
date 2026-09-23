@@ -1,4 +1,5 @@
 import asyncio
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine, event, select
@@ -10,6 +11,7 @@ from app.config import settings
 from app.database import Base
 from app.mcp_server import TravelMcpBackend, create_mcp_http_app, create_mcp_server, mcp_http_enabled
 from app.models import McpAuditEvent, Trip
+from app.task_alerts import process_due_task_alerts
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -146,6 +148,19 @@ def test_fastmcp_invokes_a_typed_tool_against_the_real_owner_handler(backend: Tr
     assert not result.is_error
     assert result.structured_content["title"] == "Protocol trip"
     assert result.structured_content["owner_subject"] == "owner-1"
+
+
+def test_mcp_can_schedule_and_read_a_task_alert(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Exampleland 2054"))["id"]
+    task = backend.create_trip_task(trip_id, schemas.TripTaskCreate(
+        title="Check train tickets", remind_at=datetime(2054, 11, 1, 8, tzinfo=UTC),
+    ))
+    with TestingSessionLocal() as session:
+        assert process_due_task_alerts(session, datetime(2054, 11, 1, 9, tzinfo=UTC)) == 1
+    alerts = backend.list_task_alerts(trip_id)
+    assert len(alerts) == 1
+    assert alerts[0]["task_id"] == task["id"]
+    assert backend.mark_task_alert_read(trip_id, alerts[0]["id"])["read_at"] is not None
 
 
 def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: pytest.MonkeyPatch) -> None:

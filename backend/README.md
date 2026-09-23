@@ -61,6 +61,25 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET` | `/provider-tokens` | Owner-only non-secret connection status for each import provider. |
 | `PUT`, `DELETE` | `/provider-tokens/{provider}` | Connect or revoke the owner's Google Photos/GoPro Cloud access token (write-only; never read back). |
 
+Trip tasks accept an optional `remind_at` timestamp. `due_date` only sorts
+tasks. A scheduled worker creates owner-only inbox items at
+`GET /trips/{trip_id}/task-alerts`; the owner can mark one read with
+`PATCH /trips/{trip_id}/task-alerts/{alert_id}/read`. Run the worker with
+`uv run python -m app.task_alerts` from `backend/`. It is safe to run repeatedly;
+the VPS scheduler is tracked in [apps#230](https://github.com/tjorim/apps/issues/230).
+
+The same worker sends each new inbox alert by email when SMTP and a recipient
+are configured. Set `TRAVEL_TASK_ALERT_SMTP_HOST`,
+`TRAVEL_TASK_ALERT_EMAIL_FROM`, and `TRAVEL_TASK_ALERT_RECIPIENTS` (a JSON
+mapping from authenticated owner subject to email address). Optional settings
+are `TRAVEL_TASK_ALERT_SMTP_PORT`, `TRAVEL_TASK_ALERT_SMTP_USERNAME`, and
+`TRAVEL_TASK_ALERT_SMTP_PASSWORD`. STARTTLS is required. Email delivery is
+recorded and retried up to five times; if SMTP succeeds but the database
+commit fails, a retry may send a duplicate. No email is sent for an owner
+without a configured address.
+
+Travelers check ticket availability and make bookings themselves. A task
+reminder never claims that tickets are available or makes a booking.
 ### Nights, local times and trip dates
 
 A stay is the set of nights slept at one accommodation: `check_in_date` is

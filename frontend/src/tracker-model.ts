@@ -195,12 +195,27 @@ export type TripTask = {
   title: string;
   notes: string | null;
   due_date: string | null;
+  remind_at: string | null;
+  reminded_at: string | null;
   links: TaskLink[];
   completed_at: string | null;
   created_at: string;
 };
 
 export type TaskLink = { label: string; url: string };
+
+export type TripTaskAlert = {
+  id: string;
+  task_id: string;
+  kind: "reminder";
+  title: string;
+  scheduled_for: string;
+  created_at: string;
+  read_at: string | null;
+  email_sent_at: string | null;
+  email_attempts: number;
+  email_last_error: string | null;
+};
 
 export type DocumentAsset = {
   id: string;

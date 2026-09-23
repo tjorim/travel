@@ -597,6 +597,8 @@ class TripTask(Base):
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    remind_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Owner-chosen HTTPS references such as a ticket or booking site:
     # ``[{"label": ..., "url": ...}]``.
     links: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
@@ -607,6 +609,25 @@ class TripTask(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="trip_tasks")
+
+
+class TripTaskAlert(Base):
+    """Owner inbox item produced once by the scheduled task processor."""
+
+    __tablename__ = "trip_task_alerts"
+    __table_args__ = (UniqueConstraint("task_id", "kind", "scheduled_for", name="uq_trip_task_alert_schedule"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    task_id: Mapped[str] = mapped_column(ForeignKey("trip_tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    email_last_error: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
 
 class TripHighlight(Base):

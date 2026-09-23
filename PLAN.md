@@ -78,11 +78,16 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
+- [ ] [#148](https://github.com/tjorim/travel/issues/148) Add generic
+      owner-inbox and email reminders for trip tasks; a due date alone
+      schedules nothing. Implementation is ready locally.
 
 ### v2 — Fresh VPS launch and live trip delivery
 
 - [ ] [apps#226](https://github.com/tjorim/apps/issues/226) Wire the owner MCP
       tools through the production Caddy and Keycloak boundary after #41.
+- [ ] [apps#230](https://github.com/tjorim/apps/issues/230) Schedule the
+      alert processor and configure the per-owner SMTP mapping on the VPS.
 
 ## Confirmed release targets
 
@@ -288,7 +293,7 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 - [x] Added owner-managed `travel/stay@1` records and separately authored
       `travel/broad-stay-card@1` records to the tracker API. Stays retain an
-      exact place, exact arrival/departure times, property, booking/contact
+      exact place, booked arrival/departure dates, optional verified times, property, booking/contact
       details and notes behind the owner boundary; a broad stay card has only
       an owner-selected broad place, title and date precision, with no link
       back to a stay. Owner CRUD, cross-owner 404s, and projection no-leak

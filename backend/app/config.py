@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,14 @@ class Settings(BaseSettings):
     # tests possible without weakening production authentication.
     mcp_base_url: str | None = None
     mcp_development_subject: str | None = None
+    # Explicit per-owner delivery mapping prevents one owner's private task
+    # title from being mailed to another owner's address.
+    task_alert_recipients: dict[str, str] = Field(default_factory=dict)
+    task_alert_smtp_host: str | None = None
+    task_alert_smtp_port: int = 587
+    task_alert_smtp_username: str | None = None
+    task_alert_smtp_password: str | None = None
+    task_alert_email_from: str | None = None
     # Keys the one-way verifier stored for each unlisted share-link capability.
     # The raw token is never stored; only a party holding this secret can
     # recognize a presented token as valid. Must be overridden in production.

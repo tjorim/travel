@@ -4,12 +4,13 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Trip, TripTask
-from ..schemas import TripTaskCreate, TripTaskResponse, TripTaskUpdate
+from ..models import Trip, TripTask, TripTaskAlert
+from ..schemas import TripTaskAlertResponse, TripTaskCreate, TripTaskResponse, TripTaskUpdate
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["trip-tasks"])
@@ -55,6 +56,12 @@ def update_trip_task(
         # The owner can only toggle completion, never set an arbitrary
         # completion timestamp themselves.
         task.completed_at = datetime.now(UTC) if payload.completed else None
+    if "remind_at" in payload.model_fields_set:
+        previous = task.remind_at
+        if previous is not None and previous.tzinfo is None:
+            previous = previous.replace(tzinfo=UTC)
+        if payload.remind_at != previous:
+            task.reminded_at = None
     values = payload.model_dump(exclude_unset=True, exclude={"completed"})
     if "links" in values and values["links"] is not None:
         values["links"] = payload.model_dump(mode="json", include={"links"})["links"]
@@ -75,3 +82,28 @@ def delete_trip_task(trip_id: str, task_id: str, session: SessionDep, subject: S
     session.delete(owned_task(trip, task_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/task-alerts", response_model=list[TripTaskAlertResponse])
+def list_task_alerts(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[TripTaskAlert]:
+    trip = owned_trip(session, trip_id, subject)
+    return list(session.scalars(
+        select(TripTaskAlert).join(TripTask, TripTask.id == TripTaskAlert.task_id)
+        .where(TripTask.trip_id == trip.id, TripTaskAlert.owner_subject == subject)
+        .order_by(TripTaskAlert.created_at.desc())
+    ))
+
+
+@router.patch("/task-alerts/{alert_id}/read", response_model=TripTaskAlertResponse)
+def mark_task_alert_read(trip_id: str, alert_id: str, session: SessionDep, subject: SubjectDep) -> TripTaskAlert:
+    trip = owned_trip(session, trip_id, subject)
+    alert = session.scalar(
+        select(TripTaskAlert).join(TripTask, TripTask.id == TripTaskAlert.task_id)
+        .where(TripTask.trip_id == trip.id, TripTaskAlert.owner_subject == subject, TripTaskAlert.id == alert_id)
+    )
+    if alert is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task alert not found")
+    if alert.read_at is None:
+        alert.read_at = datetime.now(UTC)
+        session.commit()
+    return alert

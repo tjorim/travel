@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from .models import (
     AuditEventKind,
@@ -534,6 +534,7 @@ class TripTaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
     due_date: date | None = None
+    remind_at: AwareDatetime | None = None
     links: list[TaskLink] = Field(default_factory=list, max_length=5)
 
 
@@ -541,6 +542,7 @@ class TripTaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
     due_date: date | None = None
+    remind_at: AwareDatetime | None = None
     links: list[TaskLink] | None = Field(default=None, max_length=5)
     completed: bool | None = None
 
@@ -550,9 +552,25 @@ class TripTaskResponse(BaseModel):
     title: str
     notes: str | None
     due_date: date | None
+    remind_at: datetime | None
+    reminded_at: datetime | None
     links: list[TaskLink]
     completed_at: datetime | None
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TripTaskAlertResponse(BaseModel):
+    id: str
+    task_id: str
+    kind: str
+    title: str
+    scheduled_for: datetime
+    created_at: datetime
+    read_at: datetime | None
+    email_sent_at: datetime | None
+    email_attempts: int
+    email_last_error: str | None
     model_config = ConfigDict(from_attributes=True)
 
 

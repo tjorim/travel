@@ -62,6 +62,10 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added explicit trip-task reminder times, an owner-only alert inbox and an
+  idempotent scheduled processor. Alerts can also be delivered by SMTP to an
+  explicitly configured per-owner address. Due dates by themselves remain
+  sorting metadata; travelers still check availability and make bookings.
 - Gave cities and areas an optional IANA time zone (owner-only, editable) and
   used it with stays and flights to show where the plan puts the owner: the
   trip overview shows the live local time there and, before departure, the

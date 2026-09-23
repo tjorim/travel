@@ -382,11 +382,11 @@ class TravelMcpBackend:
         return self._call("stay.list", "stay", None, trip_id, lambda s, sub: stays.list_stays(trip_id, s, sub), lambda x: _models(x, schemas.StayResponse))
 
     def create_stay(self, trip_id: str, payload: schemas.StayCreate) -> dict[str, Any]:
-        """Create an owner-only accommodation record."""
+        """Create a private stay with check-in and check-out dates; omit local times until verified."""
         return self._call("stay.create", "stay", None, trip_id, lambda s, sub: stays.create_stay(trip_id, payload, s, sub), lambda x: _model(x, schemas.StayResponse))
 
     def update_stay(self, trip_id: str, stay_id: str, payload: schemas.StayUpdate) -> dict[str, Any]:
-        """Update an owner-only accommodation record."""
+        """Update a private stay; set arrives_at/departs_at to null to clear unverified times."""
         return self._call("stay.update", "stay", stay_id, trip_id, lambda s, sub: stays.update_stay(trip_id, stay_id, payload, s, sub), lambda x: _model(x, schemas.StayResponse))
 
     def delete_stay(self, trip_id: str, stay_id: str, confirm: bool = False) -> dict[str, str]:
@@ -446,17 +446,24 @@ class TravelMcpBackend:
         return self._call("trip_task.list", "trip_task", None, trip_id, lambda s, sub: tasks.list_trip_tasks(trip_id, s, sub), lambda x: _models(x, schemas.TripTaskResponse))
 
     def create_trip_task(self, trip_id: str, payload: schemas.TripTaskCreate) -> dict[str, Any]:
-        """Create an owner preparation task."""
+        """Create a private task. Use remind_at for an inbox and email reminder; due_date alone schedules nothing."""
         return self._call("trip_task.create", "trip_task", None, trip_id, lambda s, sub: tasks.create_trip_task(trip_id, payload, s, sub), lambda x: _model(x, schemas.TripTaskResponse))
 
     def update_trip_task(self, trip_id: str, task_id: str, payload: schemas.TripTaskUpdate) -> dict[str, Any]:
-        """Update or complete an owner preparation task."""
+        """Update a private task, including its explicit reminder schedule."""
         return self._call("trip_task.update", "trip_task", task_id, trip_id, lambda s, sub: tasks.update_trip_task(trip_id, task_id, payload, s, sub), lambda x: _model(x, schemas.TripTaskResponse))
 
     def delete_trip_task(self, trip_id: str, task_id: str, confirm: bool = False) -> dict[str, str]:
         """Delete a preparation task after explicit confirmation."""
         return self._call("trip_task.delete", "trip_task", task_id, trip_id, lambda s, sub: tasks.delete_trip_task(trip_id, task_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
+    def list_task_alerts(self, trip_id: str) -> list[dict[str, Any]]:
+        """List delivered owner-inbox task reminders for a trip."""
+        return self._call("task_alert.list", "task_alert", None, trip_id, lambda s, sub: tasks.list_task_alerts(trip_id, s, sub), lambda x: _models(x, schemas.TripTaskAlertResponse))
+
+    def mark_task_alert_read(self, trip_id: str, alert_id: str) -> dict[str, Any]:
+        """Mark one owner-inbox task alert as read."""
+        return self._call("task_alert.read", "task_alert", alert_id, trip_id, lambda s, sub: tasks.mark_task_alert_read(trip_id, alert_id, s, sub), lambda x: _model(x, schemas.TripTaskAlertResponse))
     def list_trip_highlights(self, trip_id: str) -> list[dict[str, Any]]:
         """List authored trip highlights in display order."""
         return self._call("trip_highlight.list", "trip_highlight", None, trip_id, lambda s, sub: highlights.list_highlights(trip_id, s, sub), lambda x: _models(x, schemas.TripHighlightResponse))
