@@ -146,6 +146,7 @@ def test_owner_can_manage_broad_route_stages() -> None:
         "region": None,
         "latitude": None,
         "longitude": None,
+        "timezone": None,
     }
 
 

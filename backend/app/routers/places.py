@@ -12,6 +12,7 @@ from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_plac
 from ..schemas import (
     BroadPlaceInput,
     BroadPlaceResponse,
+    BroadPlaceUpdate,
     ExactPlaceInput,
     ExactPlaceResponse,
     NavigationResponse,
@@ -93,6 +94,28 @@ def save_broad_place(trip_id: str, payload: BroadPlaceInput, session: SessionDep
     trip = owned_trip(session, trip_id, subject)
     place = Place(trip_id=trip.id, kind=PlaceKind.BROAD, **payload.model_dump())
     session.add(place)
+    session.commit()
+    return place
+
+
+@router.patch("/broad/{place_id}", response_model=BroadPlaceResponse)
+def update_broad_place(
+    trip_id: str, place_id: str, payload: BroadPlaceUpdate, session: SessionDep, subject: SubjectDep
+) -> Place:
+    """Edit an owner's broad place, for example to add its time zone."""
+    trip = owned_trip(session, trip_id, subject)
+    place = session.scalar(
+        select(Place).where(Place.id == place_id, Place.trip_id == trip.id, Place.kind == PlaceKind.BROAD)
+    )
+    if place is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broad place not found")
+    values = payload.model_dump(exclude_unset=True)
+    if "label" in values and values["label"] is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="label is required")
+    for field, value in values.items():
+        setattr(place, field, value)
+    if (place.latitude is None) != (place.longitude is None):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Supply both coordinates or neither")
     session.commit()
     return place
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "../auth-context";
-import { addDays, apiHeaders, daysBetween, formatDay, stayCoversNight, type Stay, type TransportLeg, type Trip, type TripTask } from "../tracker-model";
+import { addDays, apiHeaders, browserTimeZone, daysBetween, formatDay, offsetLabel, stayCoversNight, utcOffsetMinutes, whereabouts, type Stay, type TransportLeg, type Trip, type TripTask } from "../tracker-model";
 
 type Badge = { label: string; value: string; done: boolean };
 
@@ -30,9 +30,47 @@ export function tripBadges(trip: Pick<Trip, "starts_on" | "ends_on">, stays: Sta
   return badges;
 }
 
+/** The trip's destination zone and when to evaluate it: the first stay with
+ * a zone, else the first flight's arrival zone. */
+export function tripZone(trip: Pick<Trip, "starts_on">, stays: Stay[], legs: TransportLeg[]): { zone: string; at: string } | null {
+  const stay = stays.filter((item) => item.status !== "cancelled" && item.broad_place?.timezone).sort((left, right) => left.check_in_date.localeCompare(right.check_in_date))[0];
+  if (stay) return { zone: stay.broad_place!.timezone!, at: `${stay.check_in_date}T12:00:00Z` };
+  const leg = legs.filter((item) => item.status !== "cancelled" && item.arrival_timezone).sort((left, right) => left.arrives_at.localeCompare(right.arrives_at))[0];
+  if (leg) return { zone: leg.arrival_timezone!, at: leg.arrives_at };
+  return null;
+}
+
+/** "Nu in Linkou: 21:15 · 7 u later dan hier" during the trip, and the
+ * difference at the trip's own dates (daylight saving can change it). */
+export function LocalTimes({ trip, stays, legs, now, homeZone = browserTimeZone() }: { trip: Pick<Trip, "starts_on">; stays: Stay[]; legs: TransportLeg[]; now: Date; homeZone?: string }) {
+  const instant = now.toISOString();
+  const here = whereabouts(instant, stays, legs, homeZone);
+  const destination = tripZone(trip, stays, legs);
+  const nowOffset = (zone: string) => utcOffsetMinutes(instant, zone) - utcOffsetMinutes(instant, homeZone);
+  const lines: string[] = [];
+  if (here.kind !== "home" && here.zone) {
+    const time = new Intl.DateTimeFormat("nl-BE", { timeZone: here.zone, weekday: "short", hour: "2-digit", minute: "2-digit" }).format(now);
+    lines.push(`Nu ${here.kind === "stay" ? `in ${here.label}` : here.label}: ${time} · ${offsetLabel(nowOffset(here.zone))}`);
+  }
+  if (destination) {
+    const during = utcOffsetMinutes(destination.at, destination.zone) - utcOffsetMinutes(destination.at, homeZone);
+    const current = nowOffset(destination.zone);
+    if (here.kind === "home") lines.push(`Tijdens de reis: ${offsetLabel(during)}${current !== during ? ` (nu ${offsetLabel(current).replace(" dan hier", "")})` : ""}`);
+  }
+  if (!lines.length) return null;
+  return <p className="local-times" aria-live="polite">{lines.map((line) => <span key={line}>{line}</span>)}</p>;
+}
+
 export function TripOverview({ trip, revision }: { trip: Trip; revision: number }) {
   const { session } = useAuth();
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [plan, setPlan] = useState<{ stays: Stay[]; legs: TransportLeg[] }>({ stays: [], legs: [] });
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -42,16 +80,18 @@ export function TripOverview({ trip, revision }: { trip: Trip; revision: number 
       .then(async (responses) => {
         if (responses.some((response) => !response.ok)) throw new Error("overview");
         const [stays, legs, tasks] = await Promise.all(responses.map((response) => response.json())) as [Stay[], TransportLeg[], TripTask[]];
-        if (!controller.signal.aborted) setBadges(tripBadges(trip, stays, legs, tasks));
+        if (!controller.signal.aborted) { setBadges(tripBadges(trip, stays, legs, tasks)); setPlan({ stays, legs }); }
       })
       .catch(() => { if (!controller.signal.aborted) setBadges([]); });
     return () => controller.abort();
   }, [session, trip, revision]);
 
   const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
-  if (!trip.starts_on && !badges.length) return null;
+  const localTimes = <LocalTimes trip={trip} stays={plan.stays} legs={plan.legs} now={now} />;
+  if (!trip.starts_on && !badges.length && !plan.stays.length && !plan.legs.length) return null;
   return <section className="card trip-overview" aria-label="Reisoverzicht">
     {trip.starts_on && <p className="eyebrow">{formatDay(trip.starts_on, { day: "numeric", month: "long" })}{trip.ends_on ? ` — ${formatDay(trip.ends_on, { day: "numeric", month: "long", year: "numeric" })}` : ""}{nights ? ` · ${nights} ${nights === 1 ? "nacht" : "nachten"}` : ""}</p>}
+    {localTimes}
     {badges.length > 0 && <ul className="status-badges">{badges.map((badge) => <li key={badge.label} className={badge.done ? "done" : "open"}><span>{badge.label}</span> <strong>{badge.value}</strong></li>)}</ul>}
   </section>;
 }

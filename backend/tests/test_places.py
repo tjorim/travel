@@ -182,3 +182,27 @@ def test_unlisted_navigation_requires_its_own_exact_place_capability() -> None:
     assert allowed.status_code == 302
     assert "destination=25.0330000%2C121.5650000" in allowed.headers["location"]
     assert allowed.headers["cache-control"] == "no-store, private"
+
+
+def test_a_broad_place_can_carry_and_change_its_time_zone() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    created = owner.post(f"/api/trips/{trip['id']}/places/broad", json={"label": "Linkou", "timezone": "Asia/Taipei"})
+    assert created.status_code == 201, created.text
+    assert created.json()["timezone"] == "Asia/Taipei"
+    endpoint = f"/api/trips/{trip['id']}/places/broad/{created.json()['id']}"
+
+    changed = owner.patch(endpoint, json={"timezone": "Europe/Brussels", "region": "Test"})
+    assert changed.status_code == 200, changed.text
+    assert (changed.json()["timezone"], changed.json()["label"]) == ("Europe/Brussels", "Linkou")
+    assert owner.patch(endpoint, json={"timezone": "Mars/Olympus"}).status_code == 422
+    assert owner.patch(endpoint, json={"latitude": 25.0}).status_code == 422
+    assert client_for("owner-2").patch(endpoint, json={"timezone": "Asia/Taipei"}).status_code == 404
+
+    # The zone helps the owner's views only; a shared projection never carries it.
+    owner = client_for("owner-1")
+    selected = {"schema_version": "travel/share-scope@1", "items": [
+        {"kind": "broad_place", "id": created.json()["id"], "fields": ["label", "country_code", "region", "latitude", "longitude"]}]}
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    preview = owner.post(f"/api/trips/{trip['id']}/public-projection/preview")
+    assert "Europe/Brussels" not in preview.text

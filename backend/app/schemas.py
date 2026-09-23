@@ -144,6 +144,20 @@ class BroadPlaceInput(BaseModel):
     region: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
+    timezone: str | None = Field(default=None, max_length=64)
+
+    _timezone = field_validator("timezone")(require_timezone)
+
+
+class BroadPlaceUpdate(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+    country_code: str | None = COUNTRY_CODE_FIELD
+    region: str | None = Field(default=None, max_length=120)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    timezone: str | None = Field(default=None, max_length=64)
+
+    _timezone = field_validator("timezone")(require_timezone)
 
 
 class BroadPlaceResponse(BroadPlaceInput):

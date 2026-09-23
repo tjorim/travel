@@ -207,6 +207,10 @@ class Place(Base):
     # Broad-only fields.
     label: Mapped[str | None] = mapped_column(String(120), nullable=True)
     region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # IANA zone of a broad city or area (for example ``Asia/Taipei``). It
+    # lets the owner's views place stays and live local time; it is never
+    # part of a shared projection.
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # Exact address country, or broad country -- shared by both kinds.
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)

@@ -88,6 +88,8 @@ textarea { min-height: 136px; resize: vertical; }
 .task-links a { color: #0f7760; font-weight: 700; }
 .trip-overview { display: grid; gap: 10px; }
 .trip-overview .eyebrow { margin: 0; }
+.local-times { display: grid; gap: 2px; margin: 0; color: #4d665e; }
+.local-times span:first-child { color: #19342d; font-weight: 700; }
 .status-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .status-badges li { display: inline-flex; gap: 6px; align-items: center; padding: 6px 12px; border: 1px solid #cbd7ce; border-radius: 999px; background: #fffdf8; color: #4d665e; font-size: .86rem; }
 .status-badges li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #d9a441; }

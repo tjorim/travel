@@ -120,6 +120,7 @@ def test_owner_can_create_edit_list_and_delete_stays_and_broad_stay_cards() -> N
         "region": None,
         "latitude": None,
         "longitude": None,
+        "timezone": None,
     }
     assert owner.get(f"/api/trips/{trip['id']}/broad-stay-cards").json() == [card]
 

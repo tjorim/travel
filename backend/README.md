@@ -76,6 +76,12 @@ Send `departs_at`/`arrives_at` without an offset together with
 as "AMS 10:40 → TPE 06:25 the next day"; a time with an explicit offset is
 used as-is. Responses always carry the UTC offset.
 
+A broad place (city or area) can carry an IANA `timezone`; edit it with
+`PATCH /trips/{trip_id}/places/broad/{place_id}`. Stays inherit it through
+their `broad_place`, so the owner PWA can tell where the plan puts the owner
+at any moment and show the live local time there, daylight saving included.
+The zone is owner-only and never part of a shared projection.
+
 A trip's `starts_on`/`ends_on` are owner-only local dates. A share scope can
 include them with `trip.dates` set to `day`, `month` or `year`; the
 projection then truncates both dates to that precision.

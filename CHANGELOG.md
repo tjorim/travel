@@ -62,6 +62,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Gave cities and areas an optional IANA time zone (owner-only, editable) and
+  used it with stays and flights to show where the plan puts the owner: the
+  trip overview shows the live local time there and, before departure, the
+  time difference at the trip's own dates, so a daylight-saving change such
+  as Belgium's end of summer time (6 h → 7 h to Taiwan) is already reflected.
+  Owner MCP tools can edit broad places.
+
 - Added `app.archive_import`, an owner-run importer that recreates an archived
   trip through the API as a private trip, and the extracted Taiwan data in
   `dist/exampleland-2054/private/app-import.json` (flights, stays, day plan, tasks,

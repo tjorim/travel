@@ -261,6 +261,10 @@ class TravelMcpBackend:
         """Save a broad place without making it public."""
         return self._call("broad_place.create", "broad_place", None, trip_id, lambda s, sub: places.save_broad_place(trip_id, payload, s, sub), lambda x: _model(x, schemas.BroadPlaceResponse))
 
+    def update_broad_place(self, trip_id: str, place_id: str, payload: schemas.BroadPlaceUpdate) -> dict[str, Any]:
+        """Edit a broad place, for example to set its IANA time zone."""
+        return self._call("broad_place.update", "broad_place", place_id, trip_id, lambda s, sub: places.update_broad_place(trip_id, place_id, payload, s, sub), lambda x: _model(x, schemas.BroadPlaceResponse))
+
     # Publication, previews, share capabilities -------------------------
     def get_public_projection_status(self, trip_id: str) -> dict[str, Any]:
         """Read the public-surface state and current explicit scope."""

@@ -61,6 +61,7 @@ export type BroadPlace = {
   region: string | null;
   latitude: number | null;
   longitude: number | null;
+  timezone: string | null;
 };
 
 export type RouteStage = {
@@ -401,6 +402,57 @@ export function wallClock(instant: string, timeZone: string | null): string {
 
 export function localDate(instant: string, timeZone: string | null): string {
   return wallClock(instant, timeZone).slice(0, 10);
+}
+
+/** Minutes a zone is ahead of UTC at an instant, daylight saving included. */
+export function utcOffsetMinutes(instant: string, timeZone: string | null): number {
+  const minute = Math.floor(Date.parse(instant) / 60_000) * 60_000;
+  return Math.round((Date.parse(`${wallClock(new Date(minute).toISOString(), timeZone)}:00Z`) - minute) / 60_000);
+}
+
+/** "7 u later dan hier", "1 u 30 min eerder dan hier" or "zelfde tijd als hier". */
+export function offsetLabel(minutes: number): string {
+  if (minutes === 0) return "zelfde tijd als hier";
+  const hours = Math.floor(Math.abs(minutes) / 60), rest = Math.abs(minutes) % 60;
+  return `${[hours ? `${hours} u` : "", rest ? `${rest} min` : ""].filter(Boolean).join(" ")} ${minutes > 0 ? "later" : "eerder"} dan hier`;
+}
+
+export type Whereabouts = { kind: "travel" | "stay" | "between" | "home"; zone: string | null; label: string };
+
+const placeName = (place: Place) => place.locality ?? place.display_name ?? "?";
+const stayZone = (stay: Stay) => stay.broad_place?.timezone ?? null;
+
+/** The night an owner is in at an instant, local to a zone: before noon the
+ * previous evening's stay still applies (check-out is in the morning). */
+function effectiveNight(instant: string, zone: string): string {
+  const wall = wallClock(instant, zone);
+  return Number(wall.slice(11, 13)) < 12 ? addDays(wall.slice(0, 10), -1) : wall.slice(0, 10);
+}
+
+/** Where the plan puts the owner at ``instant``: at home outside the trip
+ * (first departure or check-in to last arrival or check-out), otherwise
+ * travelling, at a stay, or between stays in the last known zone. */
+export function whereabouts(instant: string, stays: Stay[], legs: TransportLeg[], homeZone: string): Whereabouts {
+  const now = Date.parse(instant);
+  const active = legs.filter((leg) => leg.status !== "cancelled");
+  const zoned = stays.filter((stay) => stay.status !== "cancelled" && stayZone(stay));
+  const midday = (isoDate: string) => Date.parse(`${isoDate}T12:00:00Z`);
+  const bounds = [
+    ...active.flatMap((leg) => [Date.parse(leg.departs_at), Date.parse(leg.arrives_at)]),
+    ...zoned.flatMap((stay) => [midday(stay.check_in_date), midday(stay.check_out_date)]),
+  ];
+  const home: Whereabouts = { kind: "home", zone: homeZone, label: "thuis" };
+  if (!bounds.length || now < Math.min(...bounds) || now >= Math.max(...bounds)) return home;
+  const leg = active.find((candidate) => Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at));
+  if (leg) return { kind: "travel", zone: leg.arrival_timezone, label: `onderweg naar ${placeName(leg.arrival_place)}` };
+  const current = zoned.find((stay) => stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)));
+  if (current) return { kind: "stay", zone: stayZone(current), label: current.broad_place?.label ?? stayLabel(current) };
+  const last = [
+    ...active.filter((candidate) => Date.parse(candidate.arrives_at) <= now).map((candidate) => ({ at: Date.parse(candidate.arrives_at), zone: candidate.arrival_timezone, label: placeName(candidate.arrival_place) })),
+    // A stay that already began counts as recent up to its check-out.
+    ...zoned.filter((stay) => midday(stay.check_in_date) <= now).map((stay) => ({ at: Math.min(now, midday(stay.check_out_date)), zone: stayZone(stay), label: stay.broad_place?.label ?? stayLabel(stay) })),
+  ].sort((left, right) => right.at - left.at)[0];
+  return last ? { kind: "between", zone: last.zone, label: `tussen verblijven, laatst in ${last.label}` } : home;
 }
 
 export function localDateTime(value = new Date()): string {
