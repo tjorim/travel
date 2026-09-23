@@ -178,6 +178,20 @@ def test_mcp_can_schedule_and_read_a_task_alert(backend: TravelMcpBackend) -> No
     assert backend.mark_task_alert_read(trip_id, alerts[0]["id"])["read_at"] is not None
 
 
+def test_mcp_share_activation_and_rotation_return_complete_visitor_urls(
+    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "public_app_url", "https://travel.example.test/")
+    trip = backend.create_trip(schemas.TripCreate(title="Shareable"))
+    link = backend.create_share_link(trip["id"], schemas.ShareLinkCreate(label="Family"), confirm=True)
+
+    activated = backend.activate_share_link(trip["id"], link["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+    assert activated["share_url"] == f"https://travel.example.test/share/{activated['token']}"
+
+    rotated = backend.rotate_share_link(trip["id"], link["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+    assert rotated["share_url"] == f"https://travel.example.test/share/{rotated['token']}"
+
+
 def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "mcp_base_url", None)
     monkeypatch.setattr(settings, "oidc_issuer_url", None)

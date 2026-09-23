@@ -5,11 +5,12 @@ import { Capture } from "./pages/Capture";
 import { Callback } from "./pages/Callback";
 import { Library } from "./pages/Library";
 import { Trips } from "./pages/Trips";
+import { TripDetail } from "./pages/TripDetail";
 import { Settings } from "./pages/Settings";
 import { TrackerRoutes } from "./tracker-routes";
 
 function Tracker() {
-  return <TrackerRoutes Trips={Trips} Capture={Capture} Settings={Settings} Library={Library} />;
+  return <TrackerRoutes Trips={Trips} TripDetail={TripDetail} Capture={Capture} Settings={Settings} Library={Library} />;
 }
 
 export function App() {

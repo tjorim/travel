@@ -190,7 +190,7 @@ export function Trips() {
       </section>
     </div>
     {selectedTrip && <section className="trip-detail" aria-labelledby="trip-detail-title">
-      <div className="capture-heading"><div><p className="eyebrow">{selectedTrip.title}</p><h3 id="trip-detail-title">Private inhoud</h3></div><NavLink className="action-link" to="/capture">Moment vastleggen</NavLink></div>
+      <div className="capture-heading"><div><p className="eyebrow">{selectedTrip.title}</p><h3 id="trip-detail-title">Private inhoud</h3></div><div className="button-row"><NavLink className="action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}`}>Reis bekijken</NavLink><NavLink className="action-link" to="/capture">Moment vastleggen</NavLink></div></div>
       <TripOverview trip={selectedTrip} revision={planRevision} />
       <OwnerTripMap trip={selectedTrip} broadPlaces={broadPlaces} revision={mapRevision} focus={mapFocus} />
       <div className="detail-grid">

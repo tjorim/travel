@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import AnyHttpUrl, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     # tests possible without weakening production authentication.
     mcp_base_url: str | None = None
     mcp_development_subject: str | None = None
+    # The visitor-facing PWA origin. MCP runs without an HTTP request from
+    # which it could otherwise determine where an unlisted visitor URL lives.
+    # This points to Vite's default local origin in development; deployment
+    # must set it to the public Travel application origin.
+    public_app_url: AnyHttpUrl = "http://localhost:5173"
     # Explicit per-owner delivery mapping prevents one owner's private task
     # title from being mailed to another owner's address.
     task_alert_recipients: dict[str, str] = Field(default_factory=dict)

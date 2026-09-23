@@ -321,6 +321,7 @@ does not control.
 | `TRAVEL_OIDC_AUDIENCE` | Expected API audience; defaults to `travel-api`. |
 | `TRAVEL_MCP_BASE_URL` | Public MCP base URL when an authenticated HTTP mount is supplied by deployment infrastructure; unset for local stdio use. |
 | `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |
+| `TRAVEL_PUBLIC_APP_URL` | Visitor-facing Travel PWA origin used by MCP to return a complete `/share/<capability>` URL; defaults to `http://localhost:5173` for local Vite development. Set this to the deployed Travel origin in production. |
 | `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. Required in production; the code default is development-only. |
 | `TRAVEL_MEDIA_STORAGE_ROOT` | Filesystem root for the local object-storage adapter; production points this at the backed-up VPS media volume, never Git. |
 | `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` | Refuses a direct upload or a single imported item larger than this (default 200 MiB). |
@@ -348,7 +349,8 @@ The server exposes task-specific tools for all owner resources, including
 private media/document imports and derivatives, previews, publication and
 share-link lifecycle. Audience changes, capability activation/rotation and
 deletion require `confirm=true`; a raw share capability is returned only by
-activation or rotation and is never stored in the MCP audit table. The local
+activation or rotation, together with its complete visitor `share_url`, and is
+never stored in the MCP audit table. The local
 MCP server is mounted by FastAPI at `/mcp` only when both
 `TRAVEL_MCP_BASE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. Caddy
 routing, production Keycloak configuration and endpoint exposure remain

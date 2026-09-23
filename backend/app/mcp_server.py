@@ -20,6 +20,7 @@ import logging
 from collections.abc import Callable
 from io import BytesIO
 from typing import Any, Literal, TypeVar
+from urllib.parse import quote
 
 import anyio.to_thread
 from fastapi import HTTPException, Response
@@ -90,6 +91,17 @@ def _model(value: Any, model_type: type[BaseModel] | None = None) -> Any:
 
 def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, Any]]:
     return [_model(value, model_type) for value in values]
+
+
+def _share_url(token: str) -> str:
+    """Build the visitor URL that corresponds to a one-time capability.
+
+    MCP has no browser request or current page URL, so this must use the
+    configured visitor PWA origin rather than returning a relative path or an
+    API URL.  The token is URL-safe today, but quote it defensively because it
+    is a capability and must remain one path segment.
+    """
+    return f"{str(settings.public_app_url).rstrip('/')}/share/{quote(token, safe='')}"
 
 
 _AUDITED = "_travel_mcp_audited"
@@ -368,16 +380,16 @@ class TravelMcpBackend:
         return self._call("share_link.preview", "share_link", link_id, trip_id, lambda s, sub: publication.preview_share_link(trip_id, link_id, s, sub, Response()), lambda x: _model(x, schemas.ProjectionDocument))
 
     def activate_share_link(self, trip_id: str, link_id: str, payload: schemas.ShareLinkActivateRequest, confirm: bool = False) -> dict[str, Any]:
-        """Mint and return a one-time share capability after explicit confirmation. Store it securely now."""
-        return self._call("share_link.activate", "share_link", link_id, trip_id, lambda s, sub: publication.activate_share_link(trip_id, link_id, payload, s, sub), lambda x: _model(x, schemas.ShareLinkActivateResponse), confirm=confirm, needs_confirmation=True)
+        """Mint and return a one-time capability and its full visitor URL after confirmation. Store it securely now."""
+        return self._call("share_link.activate", "share_link", link_id, trip_id, lambda s, sub: publication.activate_share_link(trip_id, link_id, payload, s, sub), lambda x: {**_model(x, schemas.ShareLinkActivateResponse), "share_url": _share_url(x.token)}, confirm=confirm, needs_confirmation=True)
 
     def revoke_share_link(self, trip_id: str, link_id: str, reason: str | None = None, confirm: bool = False) -> dict[str, Any]:
         """Immediately revoke a share capability after explicit confirmation."""
         return self._call("share_link.revoke", "share_link", link_id, trip_id, lambda s, sub: publication.revoke_share_link(trip_id, link_id, schemas.AuditReasonInput(reason=reason), s, sub), lambda x: _model(x, schemas.ShareLinkResponse), confirm=confirm, needs_confirmation=True)
 
     def rotate_share_link(self, trip_id: str, link_id: str, payload: schemas.ShareLinkActivateRequest, confirm: bool = False) -> dict[str, Any]:
-        """Revoke the current share capability and return a new one after confirmation."""
-        return self._call("share_link.rotate", "share_link", link_id, trip_id, lambda s, sub: publication.rotate_share_link(trip_id, link_id, payload, s, sub), lambda x: _model(x, schemas.ShareLinkActivateResponse), confirm=confirm, needs_confirmation=True)
+        """Revoke the current capability and return a new full visitor URL after confirmation."""
+        return self._call("share_link.rotate", "share_link", link_id, trip_id, lambda s, sub: publication.rotate_share_link(trip_id, link_id, payload, s, sub), lambda x: {**_model(x, schemas.ShareLinkActivateResponse), "share_url": _share_url(x.token)}, confirm=confirm, needs_confirmation=True)
 
     def list_trip_audit_events(self, trip_id: str) -> list[dict[str, Any]]:
         """Read audience/publication lifecycle history for an owned trip."""
