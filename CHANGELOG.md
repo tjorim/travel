@@ -4,6 +4,12 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Keep MCP invocation audit records and their trip identifiers after a trip is
+  deleted. A failed audit write no longer reports a committed delete as a
+  failed tool call.
+
 ### Changed
 
 - Let an owner explicitly create a revocable unlisted share link without a

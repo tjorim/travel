@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -9,10 +9,15 @@ from app import schemas
 from app.config import settings
 from app.database import Base
 from app.mcp_server import TravelMcpBackend, create_mcp_http_app, create_mcp_server, mcp_http_enabled
-from app.models import McpAuditEvent
+from app.models import McpAuditEvent, Trip
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+@event.listens_for(engine, "connect")
+def enable_foreign_keys(dbapi_connection: object, _: object) -> None:
+    dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
 
 def setup_function() -> None:
@@ -42,6 +47,40 @@ def test_owner_tools_use_application_validation_and_audit_each_result(backend: T
         assert events[-1].owner_subject == "owner-1"
         assert events[-1].resource_id == trip["id"]
         assert "payload" not in events[-1].details
+
+
+def test_delete_trip_retains_success_and_rejection_audits(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Disposable"))["id"]
+
+    assert backend.delete_trip(trip_id, confirm=True) == {"status": "deleted"}
+    with pytest.raises(ValueError, match="Trip not found"):
+        backend.delete_trip(trip_id, confirm=True)
+
+    with TestingSessionLocal() as session:
+        assert session.get(Trip, trip_id) is None
+        events = list(session.scalars(
+            select(McpAuditEvent).where(McpAuditEvent.action == "trip.delete")
+            .order_by(McpAuditEvent.occurred_at, McpAuditEvent.id)
+        ))
+        assert sorted((event.result, event.trip_id) for event in events) == [
+            ("rejected", trip_id), ("succeeded", trip_id),
+        ]
+
+
+def test_committed_delete_is_reported_successful_if_audit_write_fails(
+    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Disposable"))["id"]
+
+    def fail_audit(*_: object, **__: object) -> None:
+        raise RuntimeError("audit unavailable")
+
+    monkeypatch.setattr(backend, "_audit", fail_audit)
+    assert backend.delete_trip(trip_id, confirm=True) == {"status": "deleted"}
+    with pytest.raises(ValueError, match="Trip not found"):
+        backend.delete_trip(trip_id, confirm=True)
+    with TestingSessionLocal() as session:
+        assert session.get(Trip, trip_id) is None
 
 
 def test_mcp_cannot_cross_owner_boundary(backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch) -> None:

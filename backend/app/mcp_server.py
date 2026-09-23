@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import logging
 from collections.abc import Callable
 from io import BytesIO
 from typing import Any, Literal, TypeVar
@@ -41,6 +42,7 @@ from .secrets import get_secret_store
 from .storage import get_storage
 
 Result = TypeVar("Result")
+logger = logging.getLogger(__name__)
 
 
 class BinaryUpload(BaseModel):
@@ -111,31 +113,43 @@ class TravelMcpBackend:
         ))
         session.commit()
 
+    def _record_audit(
+        self, *, subject: str, action: str, resource_type: str, resource_id: str | None,
+        trip_id: str | None, result: str, detail: str | None = None,
+    ) -> None:
+        try:
+            with self.factory() as session:
+                self._audit(session, subject=subject, action=action, resource_type=resource_type,
+                            resource_id=resource_id, trip_id=trip_id, result=result, detail=detail)
+        except Exception as error:
+            # Domain handlers may already have committed. An audit outage must
+            # not turn a completed operation into a reported tool failure.
+            logger.error("MCP audit write failed for %s: %s", action, type(error).__name__)
+
     def _call(
         self, action: str, resource_type: str, resource_id: str | None, trip_id: str | None,
         operation: Callable[[Session, str], Result], output: Callable[[Result], Any] = jsonable_encoder,
         *, confirm: bool = True, needs_confirmation: bool = False,
     ) -> Any:
         subject = self._subject()
-        with self.factory() as session:
-            try:
+        try:
+            with self.factory() as session:
                 if needs_confirmation:
                     self._confirmation(confirm)
                 result = operation(session, subject)
                 rendered = output(result)
-                self._audit(session, subject=subject, action=action, resource_type=resource_type,
-                            resource_id=resource_id, trip_id=trip_id, result="succeeded")
-                return rendered
-            except HTTPException as error:
-                session.rollback()
-                self._audit(session, subject=subject, action=action, resource_type=resource_type,
-                            resource_id=resource_id, trip_id=trip_id, result="rejected", detail=str(error.detail)[:240])
-                raise ValueError(str(error.detail)) from error
-            except Exception as error:
-                session.rollback()
-                self._audit(session, subject=subject, action=action, resource_type=resource_type,
-                            resource_id=resource_id, trip_id=trip_id, result="rejected", detail=str(error)[:240])
-                raise
+                session.commit()
+        except HTTPException as error:
+            self._record_audit(subject=subject, action=action, resource_type=resource_type,
+                               resource_id=resource_id, trip_id=trip_id, result="rejected", detail=str(error.detail)[:240])
+            raise ValueError(str(error.detail)) from error
+        except Exception as error:
+            self._record_audit(subject=subject, action=action, resource_type=resource_type,
+                               resource_id=resource_id, trip_id=trip_id, result="rejected", detail=str(error)[:240])
+            raise
+        self._record_audit(subject=subject, action=action, resource_type=resource_type,
+                           resource_id=resource_id, trip_id=trip_id, result="succeeded")
+        return rendered
 
     # Identity and audit -------------------------------------------------
     def whoami(self) -> dict[str, str]:

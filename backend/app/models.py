@@ -695,7 +695,8 @@ class McpAuditEvent(Base):
     action: Mapped[str] = mapped_column(String(120), nullable=False)
     resource_type: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    trip_id: Mapped[str | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Keep the trip identifier after the trip itself is permanently deleted.
+    trip_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     result: Mapped[str] = mapped_column(String(16), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     # Only a stable error code/message summary belongs here.  Never persist a
