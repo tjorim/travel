@@ -1,3 +1,6 @@
+# Local stack mirroring the production Travel boundary in tjorim/apps: Caddy
+# serves the built PWA shells and proxies the API. Build the frontend first
+# (`frontend/dist`) and apply migrations before signing in.
 services:
   caddy:
     image: caddy:2-alpine
@@ -6,28 +9,62 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./dist:/srv/travel:ro
+      - ./frontend/dist:/srv/travel-admin:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      travel-auth:
+      travel-api:
         condition: service_healthy
     restart: unless-stopped
 
-  travel-auth:
-    build: ./auth
-    env_file:
-      - ./travel-auth.env
+  postgres:
+    image: postgres:18.6-trixie
+    environment:
+      POSTGRES_DB: travel
+      POSTGRES_USER: travel
+      POSTGRES_PASSWORD: travel
+    volumes:
+      - postgres_data:/var/lib/postgresql
     expose:
-      - "8080"
+      - "5432"
     healthcheck:
-      test: ["CMD", "/travel-auth", "--healthcheck"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
+      test: ["CMD-SHELL", "pg_isready -U travel -d travel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  travel-media-init:
+    image: busybox:1.37.0
+    user: "0:0"
+    command: ["/bin/sh", "-ec", "chown 1000:1000 /var/lib/travel/media && chmod 0700 /var/lib/travel/media"]
+    restart: "no"
+    volumes:
+      - travel_media:/var/lib/travel/media
+
+  travel-api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      TRAVEL_DATABASE_URL: postgresql+psycopg://travel:travel@postgres:5432/travel
+      TRAVEL_MEDIA_STORAGE_ROOT: /var/lib/travel/media
+      TRAVEL_OIDC_ISSUER_URL: https://auth.tjor.im/realms/travel
+      TRAVEL_OIDC_JWKS_URL: https://auth.tjor.im/realms/travel/protocol/openid-connect/certs
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      travel-media-init:
+        condition: service_completed_successfully
+    volumes:
+      - travel_media:/var/lib/travel/media
     restart: unless-stopped
 
 volumes:
   caddy_data:
   caddy_config:
+  postgres_data:
+  # Private originals and derivatives. Never mount this volume into Caddy.
+  travel_media:

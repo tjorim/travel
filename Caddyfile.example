@@ -1,19 +1,66 @@
-# Copy this block to Caddyfile on the VPS and replace the domain. The
-# deployment-managed password hash and session key live only in travel-auth.env.
+# Copy this block to an ignored Caddyfile for the local compose.yaml stack.
+# Production routing lives in tjorim/apps (infra/Caddyfile); keep the two in
+# step. The application is the authorization and projection boundary: do not
+# serve dist/ or any archive alias from here.
 
-travel.example.com {
-	root * /srv/travel
+localhost {
 	encode zstd gzip
 
-	# The auth service owns /login and /logout. Protect shared documents and
-	# any trip-private route before Caddy serves its static file.
-	@auth-pages path /login /logout
-	reverse_proxy @auth-pages travel-auth:8080
-
-	@private path /private /private/* /*/private /*/private/*
-	forward_auth @private travel-auth:8080 {
-		uri /verify
+	handle /api/* {
+		reverse_proxy travel-api:8000
 	}
 
-	file_server
+	handle /openapi.json {
+		reverse_proxy travel-api:8000
+	}
+
+	handle /docs* {
+		reverse_proxy travel-api:8000
+	}
+
+	handle /admin {
+		redir /admin/ permanent
+	}
+
+	# Hashed bundles must stay files: returning the SPA shell for a typo would
+	# hide a broken build from the browser.
+	handle_path /admin/assets/* {
+		root * /srv/travel-admin
+		file_server
+	}
+
+	handle_path /admin/* {
+		root * /srv/travel-admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle /trips {
+		redir /trips/ permanent
+	}
+
+	handle / {
+		root * /srv/travel-admin
+		rewrite * /landing.html
+		file_server
+	}
+
+	handle /trips/* {
+		root * /srv/travel-admin
+		rewrite * /public.html
+		file_server
+	}
+
+	# Do not log, cache, index, or send a capability-bearing route as a
+	# referrer. The shell is data-free; its API request re-verifies the
+	# capability on every load.
+	@share path /share/*
+	header @share Cache-Control "no-store, private"
+	header @share Referrer-Policy "no-referrer"
+	header @share X-Robots-Tag "noindex, noarchive"
+	handle @share {
+		root * /srv/travel-admin
+		rewrite * /share.html
+		file_server
+	}
 }

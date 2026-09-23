@@ -23,28 +23,6 @@ updates:
           - "pytest"
           - "ruff"
 
-  # Monitor Go module dependencies for the authentication service.
-  - package-ecosystem: "gomod"
-    directory: "/auth"
-    schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "18:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 20
-    assignees:
-      - "tjorim"
-    commit-message:
-      prefix: "deps(auth)"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "go"
-    groups:
-      golang-x:
-        patterns:
-          - "golang.org/x/*"
-
   # pnpm projects use Dependabot's npm ecosystem support.
   - package-ecosystem: "npm"
     directory: "/frontend"

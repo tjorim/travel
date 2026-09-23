@@ -1,6 +1,4 @@
-# Deployment-managed Travel authentication secrets. Keep the real password
-# hash and session signing key on the server, never in Git.
-travel-auth.env
+# Local copy of Caddyfile.example.
 Caddyfile
 
 # Python backend local environments and test artifacts.

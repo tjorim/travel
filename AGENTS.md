@@ -28,10 +28,10 @@ with:
 python3 -m http.server 8080 --directory dist
 ```
 
-Open `http://localhost:8080`. Private routes are only password-protected by
-Caddy in deployment, so local serving intentionally does not test auth. Before
-committing static archive changes, run the checks against every tracked file
-they cover:
+Open `http://localhost:8080`. The archive is no longer deployed; production
+Caddy serves only the application routes, so never add a route that publishes
+`dist/` again. Before committing static archive changes, run the checks against
+every tracked file they cover:
 
 ```bash
 git ls-files -z -- 'dist/assets/travel/*.js' | xargs -0 -r -n 1 node --check
@@ -39,7 +39,8 @@ git ls-files -z -- 'dist/*.json' 'dist/**/*.json' | xargs -0 -r -n 1 jq empty
 git diff --check
 ```
 
-Validate `Caddyfile.example` with a Caddy container when its routing changes.
+Validate `Caddyfile.example` with a Caddy container when its routing changes,
+and keep it in step with the Travel block in `tjorim/apps` `infra/Caddyfile`.
 
 For tracker API work, use the locked Python environment:
 
@@ -53,15 +54,6 @@ TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel
   uv run alembic upgrade head
 TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
   uv run alembic downgrade base
-```
-
-For the Go authentication service, run:
-
-```bash
-cd auth
-go vet ./...
-go build ./...
-go test ./...
 ```
 
 For frontend work, use the repository's pinned Node version:

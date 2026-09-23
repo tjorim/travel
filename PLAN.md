@@ -81,9 +81,6 @@ archive-content import in #40.
 
 ### v2 — Fresh VPS launch and live trip delivery
 
-- [ ] [#137](https://github.com/tjorim/travel/issues/137) Remove the retired
-      `travel-auth` service and its setup paths once the new boundary is
-      deployed.
 - [ ] [apps#226](https://github.com/tjorim/apps/issues/226) Wire the owner MCP
       tools through the production Caddy and Keycloak boundary after #41.
 
@@ -152,6 +149,11 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#137](https://github.com/tjorim/travel/issues/137) Removed the retired
+      Go `travel-auth` service, its CI and Dependabot paths, and the
+      shared-password setup; the local Compose and Caddy example now mirror
+      the production owner, public and unlisted routes.
 
 - [x] [#41](https://github.com/tjorim/travel/issues/41) Added and locally
       tested 104 typed owner MCP tools for canonical trip, place, itinerary,

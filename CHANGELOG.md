@@ -4,6 +4,14 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Removed
+
+- Removed the retired Go `travel-auth` session gate, its CI job, Dependabot
+  entry and `travel-auth.env` setup. `compose.yaml` and `Caddyfile.example`
+  now run the local app stack (Caddy, `travel-api`, PostgreSQL) with the same
+  owner, public and unlisted routes as production; the archive is not served.
+  ([#137](https://github.com/tjorim/travel/issues/137))
+
 ### Fixed
 
 - Keep MCP invocation audit records and their trip identifiers after a trip is

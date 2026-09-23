@@ -26,49 +26,39 @@ python3 -m http.server 8080 --directory dist
 
 Then open `http://localhost:8080`.
 
-## VPS deployment
+## Local application stack
 
-The native session-gate work is active WIP. It provides a small Go service for
-the shared-password login flow on `/private/` and every `/<trip>/private/`
-route; Caddy asks it before serving a protected file, while `/login` and
-`/logout` are served by the same service. There is no database, Keycloak
-dependency, or browser-side password material.
+Production routing, secrets, backups and media storage live in the central
+`apps` infrastructure ([apps#223](https://github.com/tjorim/apps/pull/223)).
+Caddy there serves the built PWA shells and proxies the API; it no longer
+serves `dist/`, so the archive's `private/` files are not published anywhere.
+Owner access uses the Keycloak `travel` realm; public and unlisted visitors
+use the application's scoped projection routes.
 
-The standalone Compose configuration is available for local development and
-design verification. Production must instead be wired through the central
-`apps` infrastructure in [apps#214](https://github.com/tjorim/apps/issues/214)
-before this replaces its current Caddy Basic Auth policy.
+| Route | Served by | Access |
+|---|---|---|
+| `/` | `landing.html` shell | Public; lists currently published trips |
+| `/trips/`, `/trips/<slug>` | `public.html` shell | Public projection of a published trip |
+| `/share/<token>` | `share.html` shell | Unlisted capability link; `no-store`, `no-referrer`, `noindex` |
+| `/admin/` | Owner PWA | Keycloak/OIDC owner sign-in |
+| `/api/*`, `/openapi.json`, `/docs` | `travel-api` | Owner bearer token or scoped public/unlisted routes |
 
-For standalone use, copy `Caddyfile.example` to an ignored `Caddyfile`, set its
-domain, and create an ignored `travel-auth.env` next to `compose.yaml`:
+`compose.yaml` mirrors that boundary locally with Caddy, `travel-api` and
+PostgreSQL:
 
-```dotenv
-TRAVEL_AUTH_PASSWORD_HASH='$argon2id$v=19$m=65536,t=3,p=2$...'
-TRAVEL_AUTH_SESSION_KEY='a-base64url-encoded-random-key-at-least-32-bytes'
-TRAVEL_AUTH_SESSION_TTL=8h
-TRAVEL_AUTH_COOKIE_SECURE=true
+```bash
+(cd frontend && vp env exec --node "$(cat .node-version)" pnpm install --frozen-lockfile \
+  && vp env exec --node "$(cat .node-version)" pnpm build)
+cp Caddyfile.example Caddyfile
+docker compose up -d --build
+docker compose exec travel-api alembic upgrade head
 ```
 
-Generate the Argon2id PHC hash and a 32-byte signing key on the deployment
-host without committing either value. Restrict the secret file (`chmod 600
-travel-auth.env`). Start the standalone WIP stack with `docker compose up -d
---build`; only Caddy publishes ports.
-
-The service verifies the existing central-infrastructure
-`TRAVEL_PRIVATE_PASSWORD_HASH` variable too, so the production integration can
-reuse the current Argon2id password hash instead of creating a second one.
-For central production, `TRAVEL_AUTH_SESSION_KEY_FILE` points at the mounted
-Docker secret; the signing key is therefore not placed in Caddy's or the
-sidecar's environment.
-
-### Verification once deployed
-
-1. Public routes remain accessible.
-2. A signed-out protected route redirects to `/login` and safely returns after
-   a successful login.
-3. The `travel_session` cookie is `HttpOnly`, `Secure`, `SameSite=Lax`, and
-   short-lived; tampered or expired sessions are rejected.
-4. Logout expires the cookie and private routes redirect to login again.
+Then open `https://localhost`. Public and unlisted views work immediately.
+Owner sign-in uses the production `travel` realm configured in
+`frontend/src/auth.ts`, so it succeeds only if that Keycloak client accepts
+the local callback origin; for API-only work, run the backend directly with
+the development subject header described in [backend/README.md](backend/README.md).
 
 ### Public-route safety review
 
@@ -83,7 +73,7 @@ cache/indexing response needed if a page was accidentally exposed.
 - `frontend/MAP-PROVIDER.md` — app map provider, attribution, privacy and failure policy
 - `backend/` — application service, FastAPI routes and future owner MCP workflows
 - `dist/index.html` — travel-hub overview
-- `dist/private/` — shared passport, insurance and emergency-document area (Caddy-protected)
+- `dist/private/` — retained shared passport, insurance and emergency-document area (not deployed)
 - `dist/private/documents/` — document files committed to this private Git repository
 - `dist/assets/travel/travel-map.js` — shared MapLibre renderer for public and private GeoJSON routes
 - `dist/assets/travel/MAP-PROVIDER.md` — map provider, attribution, privacy and failure policy
@@ -105,9 +95,8 @@ cache/indexing response needed if a page was accidentally exposed.
 - `dist/exampleland-2054/public/route-map.geojson` — broad Taiwan public route
 - `dist/exampleland-2054/private/flight-map.geojson` and `local-route.geojson` — protected flight and local routes
 - `dist/example-trip/` — a deliberately small, data-driven reference trip
-- `auth/` — prepared server-side Argon2id login/session-gate component
-- `compose.yaml` — standalone WIP Caddy and internal auth-service setup
-- `Caddyfile.example` — Caddy static serving and protected-route auth check
+- `compose.yaml` — local Caddy, `travel-api` and PostgreSQL stack
+- `Caddyfile.example` — local copy of the production owner, public and unlisted routes
 The page has no build step or package dependencies. Public photos use committed,
 responsive derivatives rather than external image URLs.
 
