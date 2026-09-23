@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Removed
 
+- Removed the archive-authoring guidance now that `dist/` is retired and no
+  longer deployed: the per-trip data contract, photo workflow and renderer
+  sections of the README, `docs/media-assets.md`, and the unused Git LFS and
+  derivative rules in `.gitattributes`. The static-page safety check became
+  the app [publication safety check](docs/publication-safety-check.md).
+  ([#40](https://github.com/tjorim/travel/issues/40))
+
 - Removed the retired Go `travel-auth` session gate, its CI job, Dependabot
   entry and `travel-auth.env` setup. `compose.yaml` and `Caddyfile.example`
   now run the local app stack (Caddy, `travel-api`, PostgreSQL) with the same

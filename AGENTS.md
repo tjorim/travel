@@ -2,17 +2,12 @@
 
 ## Project Structure & Module Organization
 
-This is a Git-backed travel hub with a static archive and an application backend.
-`dist/` remains the deployable archive root; `backend/` contains the FastAPI
-service and its Alembic migrations.
+This is the Travel application: a FastAPI backend and a React PWA. Trips,
+documents and media are created in the application, never committed to Git.
 
-- `dist/index.html` is the public travel-hub landing page.
-- `dist/<trip-slug>/` contains a trip's public page; Taiwan lives in
-  `dist/exampleland-2054/`.
-- `dist/private/` holds shared protected documents and emergency information.
-- `dist/<trip-slug>/private/` holds protected itinerary and booking details.
-- `dist/assets/travel/` contains reusable browser components such as
-  `travel-map.js` and `document-list.js`.
+- `dist/` is the retired static archive. It is not deployed and takes no new
+  content; `dist/exampleland-2054/private/app-import.json` is its extracted trip for
+  the owner-run `app.archive_import` (#40), after which `dist/` is removed.
 - `backend/app/` contains the application service and API; `backend/alembic/`
   contains its migrations.
 - `frontend/` is the React source for the owner PWA below `/admin/` and the
@@ -69,16 +64,14 @@ of them on every push to `main`.
 
 ## Coding Style & Naming Conventions
 
-Use semantic HTML, modern browser JavaScript, and CSS custom properties. Keep
-the site dependency-free unless a clear need is documented in `PLAN.md`.
-Use two-space indentation in HTML, CSS, JSON, and JavaScript. Name trip folders
-and data files with lowercase kebab case, for example
-`dist/japan-2027/private/flight-route.json`. Reusable custom elements use the
-`travel-` prefix.
+Use two-space indentation in TypeScript, CSS and JSON, and match the
+surrounding code. Keep Python to the Ruff configuration in
+`backend/pyproject.toml`.
 
-Never place operational data on public routes. Keep documents in their private
-directory with a matching `manifest.json`; do not commit passwords, PINs,
-recovery codes, or payment-card details.
+Operational data (stays, transport, day plan, tasks, documents) stays
+owner-only; visitor views receive only fields an owner scope explicitly
+selects. Complete `docs/publication-safety-check.md` before publishing. Do not
+commit passwords, PINs, recovery codes, or payment-card details.
 
 Tracker endpoints must enforce ownership from the authenticated subject and
 must not expose it through published-trip responses. Do not add GPS capture,

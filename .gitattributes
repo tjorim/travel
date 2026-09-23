@@ -1,7 +1,0 @@
-# Camera originals stay in Git LFS and outside the deployable dist/ tree.
-media/*/original/** filter=lfs diff=lfs merge=lfs -text
-
-# Generated public derivatives are ordinary Git files; Git must not alter them.
-dist/*/public/media/**/*.avif -text
-dist/*/public/media/**/*.webp -text
-dist/*/public/media/**/*.jpg -text

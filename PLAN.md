@@ -427,8 +427,8 @@ Polarsteps-like features require a fresh product and privacy decision.
 - Serve published trips live through the application boundary. Public and
   unlisted requests always receive only their server-filtered projection.
 - Do not use Git history as a document vault for sensitive documents.
-- Complete `docs/public-route-safety-check.md` before deploying a public-route
-  change.
+- Complete `docs/publication-safety-check.md` before publishing a trip or
+  activating a share link.
 - Prefer small reusable application components for owner and viewer routes.
 - Add a concrete GitHub issue when a new substantial improvement is found,
   including a gap deliberately left out of scope with only a documented

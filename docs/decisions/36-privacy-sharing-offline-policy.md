@@ -7,11 +7,11 @@ defines the data model that implements it; it must not weaken this policy.
 
 ## Status and terms
 
-This policy applies to new Travel application data. Git-backed archive content
-is outside the fresh-launch application: it is not imported or used to infer
-publication. Any archive routes that remain deployed must continue to pass the
-[public-route safety check](../public-route-safety-check.md) until withdrawn.
-Their protected static routes are not an implementation of unlisted sharing.
+This policy applies to Travel application data. The Git-backed archive is no
+longer deployed; its Taiwan trip enters the application only through the
+owner-run #40 import, arrives private, and is never used to infer
+publication. Complete the [publication safety check](../publication-safety-check.md)
+before publishing or activating a share link.
 
 There is one account owner. The authenticated OpenID Connect `sub` is the only
 identity authorized to read or change canonical data. There are no viewer
