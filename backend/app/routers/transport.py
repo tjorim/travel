@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
@@ -47,6 +48,24 @@ def validate_leg_times(departs_at: datetime, arrives_at: datetime) -> None:
         )
 
 
+def endpoint_instant(value: datetime, zone: str | None) -> datetime:
+    """Resolve a leg time to a UTC instant.
+
+    A time with an offset is already an instant. A time without one is the
+    local wall-clock time at the endpoint, so it needs that endpoint's zone;
+    this keeps "AMS 10:40 -> TPE 06:25 the next day" exact regardless of the
+    owner's browser time zone.
+    """
+    if value.tzinfo is None:
+        if zone is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="A time without an offset needs the endpoint's time zone",
+            )
+        value = value.replace(tzinfo=ZoneInfo(zone))
+    return value.astimezone(UTC)
+
+
 def document_links_from_ids(session: Session, trip_id: str, document_asset_ids: list[str]) -> list[TransportLegDocumentAsset]:
     """Resolve attachments inside the already-authorized trip boundary.
 
@@ -82,13 +101,19 @@ def create_transport_leg(
     trip_id: str, payload: TransportLegCreate, session: SessionDep, subject: SubjectDep
 ) -> TransportLeg:
     trip = owned_trip(session, trip_id, subject)
-    validate_leg_times(payload.departs_at, payload.arrives_at)
+    departs_at = endpoint_instant(payload.departs_at, payload.departure_timezone)
+    arrives_at = endpoint_instant(payload.arrives_at, payload.arrival_timezone)
+    validate_leg_times(departs_at, arrives_at)
     leg = TransportLeg(
         trip=trip,
         departure_place=exact_place_from_input(session, trip.id, payload.departure_place),
         arrival_place=exact_place_from_input(session, trip.id, payload.arrival_place),
         document_links=document_links_from_ids(session, trip.id, payload.document_asset_ids),
-        **payload.model_dump(exclude={"departure_place", "arrival_place", "document_asset_ids"}),
+        departs_at=departs_at,
+        arrives_at=arrives_at,
+        **payload.model_dump(
+            exclude={"departure_place", "arrival_place", "document_asset_ids", "departs_at", "arrives_at"}
+        ),
     )
     session.add(leg)
     session.commit()
@@ -123,6 +148,15 @@ def update_transport_leg(
     values = payload.model_dump(
         exclude_unset=True, exclude={"departure_place", "arrival_place", "document_asset_ids"}
     )
+    for required in ("kind", "status", "departs_at", "arrives_at"):
+        if required in values and values[required] is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
+    if values.get("departs_at") is not None:
+        values["departs_at"] = endpoint_instant(
+            values["departs_at"], values.get("departure_timezone", leg.departure_timezone)
+        )
+    if values.get("arrives_at") is not None:
+        values["arrives_at"] = endpoint_instant(values["arrives_at"], values.get("arrival_timezone", leg.arrival_timezone))
     validate_leg_times(values.get("departs_at", leg.departs_at), values.get("arrives_at", leg.arrives_at))
     for field, value in values.items():
         setattr(leg, field, value)

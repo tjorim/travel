@@ -180,12 +180,12 @@ def test_public_listing_tracks_live_scope_and_publication_without_owner_data() -
     ).status_code == 200
     slug = owner.post(f"/api/trips/{published['id']}/public-projection/publish").json()["slug"]
     assert visitor.get("/api/public/trips").json() == [
-        {"slug": slug, "title": "Public trip", "summary": None}
+        {"slug": slug, "title": "Public trip", "summary": None, "dates": None}
     ]
 
     owner.put(f"/api/trips/{published['id']}/public-projection", json=scope(title=False, summary=True))
     cards = visitor.get("/api/public/trips").json()
-    assert cards == [{"slug": slug, "title": None, "summary": "A private trip."}]
+    assert cards == [{"slug": slug, "title": None, "summary": "A private trip.", "dates": None}]
     assert not {"id", "trip_id", "owner_subject", "scope", "token", "publication_state"} & cards[0].keys()
     assert draft["id"] not in str(cards) and unlisted["id"] not in str(cards)
 
@@ -837,3 +837,75 @@ def test_preview_navigation_is_owner_authenticated_and_scope_checked_after_withd
     assert owner.get(link_path).status_code == 200
     assert owner.get(link_path.replace("route_stage-1", "route_stage-2")).status_code == 404
     assert owner.patch(f"/api/trips/{trip['id']}/share-links/{link['id']}", json={"scope": scope()}).status_code == 409
+
+
+def test_stage_summaries_highlights_and_trip_dates_appear_only_when_selected() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    assert owner.patch(
+        f"/api/trips/{trip['id']}", json={"starts_on": "2054-11-16", "ends_on": "2054-12-06"}
+    ).status_code == 200
+    stage = owner.post(
+        f"/api/trips/{trip['id']}/route-stages",
+        json={"position": 0, "label": "Taipei", "summary": "City, food and a first weekend.",
+              "place": {"label": "Taipei", "country_code": "TW"}},
+    ).json()
+    second = owner.post(f"/api/trips/{trip['id']}/highlights", json={"title": "Mountains", "summary": "Alishan."}).json()
+    first = owner.post(
+        f"/api/trips/{trip['id']}/highlights", json={"title": "City and nature", "position": 0}
+    ).json()
+    hidden = owner.post(f"/api/trips/{trip['id']}/highlights", json={"title": "Unshared highlight"}).json()
+    assert [value["id"] for value in owner.get(f"/api/trips/{trip['id']}/highlights").json()] == [
+        first["id"], second["id"], hidden["id"]
+    ]
+
+    # Without explicit selection neither dates, highlights nor stage summaries appear.
+    owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope(item("route_stage", stage["id"], "label")))
+    slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
+    document = TestClient(app).get(f"/api/public/trips/{slug}").json()
+    assert document["dates"] is None
+    assert document["highlights"] == []
+    assert document["route_stages"] == [{"id": "route_stage-1", "label": "Taipei"}]
+    assert "2054-11" not in str(document)
+
+    selected = scope(
+        item("trip_highlight", second["id"], "title", "summary"),
+        item("route_stage", stage["id"], "label", "summary"),
+        item("trip_highlight", first["id"], "title"),
+    )
+    selected["trip"]["dates"] = "month"
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
+    delivered = TestClient(app).get(f"/api/public/trips/{slug}")
+    document = delivered.json()
+    assert document["dates"] == {"starts_on": "2054-11", "ends_on": "2054-12", "date_precision": "month"}
+    assert document["highlights"] == [
+        {"id": "trip_highlight-3", "title": "City and nature"},
+        {"id": "trip_highlight-1", "title": "Mountains", "summary": "Alishan."},
+    ]
+    assert document["route_stages"][0]["summary"] == "City, food and a first weekend."
+    assert "Unshared highlight" not in delivered.text
+    assert "2054-11-16" not in delivered.text
+    assert TestClient(app).get("/api/public/trips").json()[0]["dates"] == document["dates"]
+
+
+def test_trip_highlights_are_owner_scoped_and_trip_dates_are_ordered() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    highlight = owner.post(f"/api/trips/{trip['id']}/highlights", json={"title": "Mine"}).json()
+    other = client_for("owner-2")
+    assert other.get(f"/api/trips/{trip['id']}/highlights").status_code == 404
+    assert other.patch(f"/api/trips/{trip['id']}/highlights/{highlight['id']}", json={"title": "x"}).status_code == 404
+    assert other.delete(f"/api/trips/{trip['id']}/highlights/{highlight['id']}").status_code == 404
+    other_trip = create_trip(other, "Other")
+    foreign = scope(item("trip_highlight", highlight["id"], "title"))
+    assert other.put(f"/api/trips/{other_trip['id']}/public-projection", json=foreign).status_code == 422
+
+    owner = client_for("owner-1")
+    assert owner.patch(
+        f"/api/trips/{trip['id']}", json={"starts_on": "2054-12-06", "ends_on": "2054-11-16"}
+    ).status_code == 422
+    assert owner.post(
+        "/api/trips", json={"title": "Backwards", "starts_on": "2054-12-06", "ends_on": "2054-11-16"}
+    ).status_code == 422
+    assert owner.delete(f"/api/trips/{trip['id']}/highlights/{highlight['id']}").status_code == 204
+    assert owner.get(f"/api/trips/{trip['id']}/highlights").json() == []

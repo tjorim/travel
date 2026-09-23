@@ -1,8 +1,9 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from enum import StrEnum
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -12,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
     func,
 )
@@ -141,6 +143,12 @@ class TransportLegStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class ItineraryEntryKind(StrEnum):
+    TRAVEL = "travel"
+    FREE = "free"
+    WORK = "work"
+
+
 class ItineraryLinkKind(StrEnum):
     STAY = "stay"
     TRANSPORT_LEG = "transport_leg"
@@ -239,6 +247,10 @@ class Trip(Base):
     owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Local calendar dates of the first and last travel day. Owner-only
+    # unless a share scope explicitly selects them at a chosen precision.
+    starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     visibility: Mapped[Visibility] = mapped_column(
         Enum(Visibility, name="travel_visibility", values_callable=lambda enum: [member.value for member in enum]),
         default=Visibility.PRIVATE,
@@ -270,7 +282,7 @@ class Trip(Base):
         back_populates="trip", cascade="all, delete-orphan", order_by="MomentExcerpt.created_at"
     )
     stays: Mapped[list["Stay"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="Stay.arrives_at"
+        back_populates="trip", cascade="all, delete-orphan", order_by="Stay.check_in_date"
     )
     broad_stay_cards: Mapped[list["BroadStayCard"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="BroadStayCard.created_at"
@@ -286,6 +298,9 @@ class Trip(Base):
     )
     trip_tasks: Mapped[list["TripTask"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="TripTask.created_at"
+    )
+    highlights: Mapped[list["TripHighlight"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="TripHighlight.position"
     )
     broad_routes: Mapped[list["BroadRoute"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="BroadRoute.created_at"
@@ -307,6 +322,7 @@ class RouteStage(Base):
     broad_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     trip: Mapped[Trip] = relationship(back_populates="route_stages")
     place: Mapped[Place] = relationship(foreign_keys=[broad_place_id])
@@ -386,22 +402,35 @@ class MomentExcerpt(Base):
 
 
 class Stay(Base):
-    """An owner-only accommodation record. Its exact place, dates and
+    """An owner-only accommodation, modelled as the nights slept there.
+
+    ``check_in_date`` is the first night and ``check_out_date`` the morning
+    of departure, so the stay covers every night ``d`` with
+    ``check_in_date <= d < check_out_date``. Both are local calendar dates
+    at the accommodation, as are the optional check-in/check-out times.
+
+    A stay may be planned before the accommodation is chosen: the
+    ``broad_place`` (city or area) and nights are then known while the
+    property name and exact place stay empty. Its exact place, dates and
     booking/contact details are intentionally not shareable; a traveller who
     wants to share a stay authors a separate :class:`BroadStayCard` instead."""
 
     __tablename__ = "stays"
-    __table_args__ = (CheckConstraint("departs_at > arrives_at", name="ck_stay_departure_after_arrival"),)
+    __table_args__ = (CheckConstraint("check_out_date > check_in_date", name="ck_stay_check_out_after_check_in"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    exact_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
-    arrives_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    departs_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    exact_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+    broad_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+    check_in_date: Mapped[date] = mapped_column(Date, nullable=False)
+    check_out_date: Mapped[date] = mapped_column(Date, nullable=False)
+    check_in_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    check_out_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     status: Mapped[StayStatus] = mapped_column(
         _enum_column(StayStatus, "travel_stay_status"), default=StayStatus.PLANNED
     )
-    property_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    property_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     booking_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     contact_details: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -411,7 +440,8 @@ class Stay(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="stays")
-    place: Mapped[Place] = relationship(foreign_keys=[exact_place_id])
+    place: Mapped[Place | None] = relationship(foreign_keys=[exact_place_id])
+    broad_place: Mapped[Place | None] = relationship(foreign_keys=[broad_place_id])
 
 
 class BroadStayCard(Base):
@@ -460,8 +490,13 @@ class TransportLeg(Base):
     arrival_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
     departs_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     arrives_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # IANA zones of each endpoint. When set, the owner enters and reads the
+    # local wall-clock time there; the instants above stay in UTC.
+    departure_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    arrival_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     carrier: Mapped[str | None] = mapped_column(String(160), nullable=True)
     service_reference: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    travel_class: Mapped[str | None] = mapped_column(String(80), nullable=True)
     booking_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -521,7 +556,13 @@ class ItineraryEntry(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
-    day_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
+    day_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Inclusive last day of a multi-day entry such as "18-20 nov".
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    kind: Mapped[ItineraryEntryKind | None] = mapped_column(
+        _enum_column(ItineraryEntryKind, "travel_itinerary_entry_kind"), nullable=True
+    )
+    tentative: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     linked_kind: Mapped[ItineraryLinkKind | None] = mapped_column(
@@ -551,7 +592,10 @@ class TripTask(Base):
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    due_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Owner-chosen HTTPS references such as a ticket or booking site:
+    # ``[{"label": ..., "url": ...}]``.
+    links: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -559,6 +603,28 @@ class TripTask(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="trip_tasks")
+
+
+class TripHighlight(Base):
+    """A short, deliberately authored trip highlight for a visitor page.
+
+    It is written for sharing, but like every other resource it appears in
+    a projection only when a scope explicitly selects it.
+    """
+
+    __tablename__ = "trip_highlights"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="highlights")
 
 
 class RecordedTrack(Base):

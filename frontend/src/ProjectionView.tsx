@@ -7,6 +7,8 @@ export type Projection = {
   schema_version: string;
   title: string | null;
   summary: string | null;
+  dates: ProjectionItem | null;
+  highlights: ProjectionItem[];
   route_stages: ProjectionItem[];
   places: ProjectionItem[];
   moments: ProjectionItem[];
@@ -24,7 +26,7 @@ export type PreviewResources = {
   openNavigation: (id: string) => void;
 };
 
-const collections = ["route_stages", "places", "moments", "stays", "media", "documents", "route", "navigation"] as const;
+const collections = ["highlights", "route_stages", "places", "moments", "stays", "media", "documents", "route", "navigation"] as const;
 const navigableCollections = ["route_stages", "places", "moments", "stays"] as const;
 
 export function isProjection(value: unknown, audience: Audience): value is Projection {
@@ -33,6 +35,7 @@ export function isProjection(value: unknown, audience: Audience): value is Proje
   return document.schema_version === (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1")
     && (document.title === null || typeof document.title === "string")
     && (document.summary === null || typeof document.summary === "string")
+    && (document.dates === null || (!!document.dates && typeof document.dates === "object" && !Array.isArray(document.dates)))
     && collections.every((key) => Array.isArray(document[key]) && (document[key] as unknown[]).every(
       (item) => item !== null && typeof item === "object" && !Array.isArray(item) && typeof (item as ProjectionItem).id === "string",
     ));
@@ -53,8 +56,8 @@ function precision(item: ProjectionItem): string | null {
   return value === "day" ? "Dagprecisie" : value === "month" ? "Maandprecisie" : value === "year" ? "Jaarprecisie" : null;
 }
 
-function storyDate(item: ProjectionItem): string | null {
-  const value = text(item, "story_date");
+function storyDate(item: ProjectionItem, field = "story_date"): string | null {
+  const value = text(item, field);
   const precisionValue = text(item, "date_precision") ?? ({ 4: "year", 7: "month", 10: "day" } as Record<number, string>)[value?.length ?? 0];
   if (!value || !/^(\d{4}|\d{4}-\d{2}|\d{4}-\d{2}-\d{2})$/.test(value)) return null;
   if ((precisionValue === "day" && value.length !== 10) || (precisionValue === "month" && value.length !== 7) || (precisionValue === "year" && value.length !== 4)) return null;
@@ -63,6 +66,13 @@ function storyDate(item: ProjectionItem): string | null {
   if (day && (day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate())) return null;
   const date = new Date(Date.UTC(year, (month ?? 1) - 1, day ?? 1));
   return new Intl.DateTimeFormat("nl-BE", { timeZone: "UTC", year: "numeric", ...(precisionValue !== "year" ? { month: "long" as const } : {}), ...(precisionValue === "day" ? { day: "numeric" as const } : {}) }).format(date);
+}
+
+/** "november 2026 – december 2026" at whatever precision the owner shared. */
+export function tripDates(dates: ProjectionItem | null | undefined): string | null {
+  if (!dates) return null;
+  const [start, end] = [storyDate(dates, "starts_on"), storyDate(dates, "ends_on")];
+  return start && end && start !== end ? `${start} – ${end}` : start ?? end;
 }
 
 function positiveSize(item: ProjectionItem, field: "width" | "height"): number | undefined {
@@ -151,13 +161,15 @@ export function ProjectionView({ projection, audience, identifier, previewResour
   const momentIds = new Set(projection.moments.map((item) => item.id));
   const looseMedia = projection.media.filter((item) => typeof item.moment !== "string" || !momentIds.has(item.moment));
   const empty = collections.every((key) => projection[key].length === 0);
-  if (empty && !projection.summary) return <section className="card" role="status"><h2>Nog geen gedeelde inhoud</h2><p>Voor deze reis is nog geen inhoud geselecteerd.</p></section>;
+  const dates = tripDates(projection.dates);
+  if (empty && !projection.summary && !dates) return <section className="card" role="status"><h2>Nog geen gedeelde inhoud</h2><p>Voor deze reis is nog geen inhoud geselecteerd.</p></section>;
 
   return <div className="visitor-content">
-    {projection.summary && <section className="card"><h2>Reisoverzicht</h2><p>{projection.summary}</p></section>}
+    {(projection.summary || dates) && <section className="card"><h2>Reisoverzicht</h2>{dates && <p className="eyebrow">{dates}</p>}{projection.summary && <p>{projection.summary}</p>}</section>}
+    <ResourceSection title="Hoogtepunten" items={projection.highlights} render={(item) => <article><h3>{text(item, "title") ?? "Hoogtepunt"}</h3>{text(item, "summary") && <p>{text(item, "summary")}</p>}</article>} />
     {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
     {empty && <section className="card" role="status"><h2>Nog geen gedeeld verhaal of foto’s</h2><p>Er zijn nog geen momenten of foto’s geselecteerd.</p></section>}
-    <ResourceSection title="Etappes" items={projection.route_stages} render={(item) => <article><h3>{text(item, "label") ?? "Etappe"}</h3>{typeof item.position === "number" && Number.isFinite(item.position) && <p>Etappe {item.position}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
+    <ResourceSection title="Etappes" items={projection.route_stages} render={(item) => <article><h3>{text(item, "label") ?? "Etappe"}</h3>{typeof item.position === "number" && Number.isFinite(item.position) && <p>Etappe {item.position + 1}</p>}{text(item, "summary") && <p>{text(item, "summary")}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
     <ResourceSection title="Plaatsen" items={projection.places} render={(item) => <article><h3>{text(item, "label") ?? "Plaats"}</h3>{[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>}{navigationLink(item)}</article>} />
     <Story moments={projection.moments} media={projection.media} fileUrl={fileUrl} navigationLink={navigationLink} />
     <ResourceSection title="Verblijven" items={projection.stays} render={(item) => <article><h3>{text(item, "title") ?? "Verblijf"}</h3>{precision(item) && <p>{precision(item)}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />

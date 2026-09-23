@@ -8,6 +8,7 @@ from sqlalchemy import text
 from .database import SessionLocal
 from .mcp_server import MCP_TOOL_CAPABILITIES, create_mcp_http_app, mcp_http_enabled
 from .routers.documents import router as documents_router
+from .routers.highlights import router as highlights_router
 from .routers.itinerary import router as itinerary_router
 from .routers.library import router as library_router
 from .routers.media import provider_tokens_router
@@ -49,6 +50,7 @@ app.include_router(tracks_router, prefix="/api")
 app.include_router(transport_router, prefix="/api")
 app.include_router(itinerary_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
+app.include_router(highlights_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(library_router, prefix="/api")
 app.include_router(media_router, prefix="/api")

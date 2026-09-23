@@ -49,8 +49,8 @@ def create_stay(client: TestClient, trip_id: str) -> dict:
         f"/api/trips/{trip_id}/stays",
         json={
             "place": {"display_name": "Some Hotel", "locality": "Taipei", "country_code": "TW"},
-            "arrives_at": "2054-04-01T14:00:00Z",
-            "departs_at": "2054-04-03T11:00:00Z",
+            "check_in_date": "2054-04-01",
+            "check_out_date": "2054-04-03",
             "property_name": "Some Hotel",
             "booking_reference": "STAY-SECRET-1",
         },
@@ -212,3 +212,27 @@ def test_an_itinerary_entry_can_never_be_selected_into_a_public_or_unlisted_proj
     encoded_delivery = delivered.text
     for private_value in ("Arrive in Taipei", "Confidential prep notes."):
         assert private_value not in encoded_delivery
+
+
+def test_an_entry_can_span_days_and_carry_a_kind_and_tentative_flag(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    endpoint = f"/api/trips/{trip['id']}/itinerary-entries"
+    entry = owner.post(
+        endpoint,
+        json={"position": 0, "title": "Werken in Linkou", "day_date": "2054-11-18", "end_date": "2054-11-20",
+              "kind": "work"},
+    )
+    assert entry.status_code == 201, entry.text
+    assert entry.json()["end_date"] == "2054-11-20"
+    assert entry.json()["kind"] == "work"
+    assert entry.json()["tentative"] is False
+
+    changed = owner.patch(f"{endpoint}/{entry.json()['id']}", json={"tentative": True, "kind": "free"})
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["tentative"] is True
+    assert changed.json()["kind"] == "free"
+
+    assert owner.patch(f"{endpoint}/{entry.json()['id']}", json={"end_date": "2054-11-17"}).status_code == 422
+    assert owner.patch(f"{endpoint}/{entry.json()['id']}", json={"day_date": None}).status_code == 422
+    assert owner.post(endpoint, json={"position": 1, "title": "No start", "end_date": "2054-11-20"}).status_code == 422

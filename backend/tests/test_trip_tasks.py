@@ -148,3 +148,28 @@ def test_a_trip_task_can_never_be_selected_into_a_public_or_unlisted_projection(
     encoded_delivery = delivered.text
     for private_value in ("Book Taroko Gorge shuttle", "Still waiting on a reply."):
         assert private_value not in encoded_delivery
+
+
+def test_a_task_can_carry_https_reference_links(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    endpoint = f"/api/trips/{trip['id']}/trip-tasks"
+    task = owner.post(
+        endpoint,
+        json={"title": "HSR-tickets", "due_date": "2054-11-01",
+              "links": [{"label": "Exampleland HSR", "url": "https://en.thsrc.com.tw/"}]},
+    )
+    assert task.status_code == 201, task.text
+    assert task.json()["links"] == [{"label": "Exampleland HSR", "url": "https://en.thsrc.com.tw/"}]
+    assert task.json()["due_date"] == "2054-11-01"
+
+    cleared = owner.patch(f"{endpoint}/{task.json()['id']}", json={"links": []})
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["links"] == []
+
+    assert owner.post(
+        endpoint, json={"title": "Unsafe", "links": [{"label": "Plain", "url": "http://example.test/"}]}
+    ).status_code == 422
+    assert owner.post(
+        endpoint, json={"title": "Script", "links": [{"label": "x", "url": "javascript:alert(1)"}]}
+    ).status_code == 422

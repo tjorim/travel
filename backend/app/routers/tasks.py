@@ -33,7 +33,7 @@ def list_trip_tasks(trip_id: str, session: SessionDep, subject: SubjectDep) -> l
 @router.post("/trip-tasks", response_model=TripTaskResponse, status_code=status.HTTP_201_CREATED)
 def create_trip_task(trip_id: str, payload: TripTaskCreate, session: SessionDep, subject: SubjectDep) -> TripTask:
     trip = owned_trip(session, trip_id, subject)
-    task = TripTask(trip=trip, **payload.model_dump())
+    task = TripTask(trip=trip, **payload.model_dump(exclude={"links"}), links=payload.model_dump(mode="json")["links"])
     session.add(task)
     session.commit()
     session.refresh(task)
@@ -55,7 +55,14 @@ def update_trip_task(
         # The owner can only toggle completion, never set an arbitrary
         # completion timestamp themselves.
         task.completed_at = datetime.now(UTC) if payload.completed else None
-    for field, value in payload.model_dump(exclude_unset=True, exclude={"completed"}).items():
+    values = payload.model_dump(exclude_unset=True, exclude={"completed"})
+    if "links" in values and values["links"] is not None:
+        values["links"] = payload.model_dump(mode="json", include={"links"})["links"]
+    if "title" in values and values["title"] is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="title is required")
+    if "links" in values and values["links"] is None:
+        values["links"] = []
+    for field, value in values.items():
         setattr(task, field, value)
     session.commit()
     session.refresh(task)

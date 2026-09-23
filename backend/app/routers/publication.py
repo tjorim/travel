@@ -21,7 +21,7 @@ from ..models import (
     Trip,
 )
 from ..navigation import scoped_navigation_url
-from ..projection import ScopeError, render_projection, scoped_file, validate_scope
+from ..projection import ScopeError, render_projection, scoped_file, shared_trip_dates, validate_scope
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
@@ -404,6 +404,7 @@ def list_public_trips(session: SessionDep, response: Response) -> list[PublicTri
             slug=surface.slug,
             title=trip.title if surface.scope.get("trip", {}).get("title", True) else None,
             summary=trip.summary if surface.scope.get("trip", {}).get("summary", True) else None,
+            dates=shared_trip_dates(trip, surface.scope),
         )
         for surface, trip in rows
     ]

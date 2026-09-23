@@ -20,7 +20,7 @@ ALLOWED_FIELDS = {
     # ``navigation`` only grants a server endpoint the ability to construct a
     # city-level Google Maps target. It never serializes a provider id, point,
     # or external URL into a projection.
-    "route_stage": {"position", "label", "place", "navigation"},
+    "route_stage": {"position", "label", "summary", "place", "navigation"},
     "broad_place": {"label", "country_code", "region", "latitude", "longitude", "navigation"},
     "broad_route": {"label", "geometry", "date_precision"},
     "moment_excerpt": {"title", "body", "date_precision", "story_date", "place", "navigation"},
@@ -31,7 +31,15 @@ ALLOWED_FIELDS = {
     "exact_place": {"navigation"},
     "media_derivative": {"image", "caption", "alt_text", "width", "height", "focal_x", "focal_y", "moment"},
     "document_derivative": {"title", "file"},
+    "trip_highlight": {"title", "summary"},
 }
+
+_PRECISION_LENGTH = {"day": 10, "month": 7, "year": 4}
+
+
+def _safe_date(value: Any, precision: str) -> str | None:
+    """Truncate an ISO date to the precision the owner chose to share."""
+    return value.isoformat()[: _PRECISION_LENGTH[precision]] if value else None
 
 
 def _share_place(place: Place | None) -> dict[str, Any] | None:
@@ -70,6 +78,7 @@ def _resources(trip: Trip) -> dict[str, dict[str, Any]]:
         "broad_stay_card": {item.id: item for item in trip.broad_stay_cards},
         "media_derivative": {item.id: item for item in trip.media_derivatives},
         "document_derivative": {item.id: item for item in trip.document_derivatives},
+        "trip_highlight": {item.id: item for item in trip.highlights},
     }
 
 
@@ -112,17 +121,15 @@ def _render_item(kind: str, item: Any, fields: list[str], local_id: str) -> dict
     """Render an item using only its requested, contract-approved fields."""
     values: dict[str, Any]
     if kind == "route_stage":
-        values = {"position": item.position, "label": item.label, "place": _share_place(item.place)}
+        values = {"position": item.position, "label": item.label, "summary": item.summary, "place": _share_place(item.place)}
     elif kind == "broad_place":
         values = _share_place(item) or {}
     elif kind == "broad_route":
         values = {"label": item.label, "geometry": item.geometry, "date_precision": item.date_precision.value}
     elif kind == "moment_excerpt":
-        date_value = item.story_date
-        safe_date = (date_value.isoformat()[:{"day": 10, "month": 7, "year": 4}[item.date_precision.value]]
-                     if date_value else None)
         values = {"title": item.title, "body": item.body, "date_precision": item.date_precision.value,
-                  "story_date": safe_date, "place": _share_place(item.broad_place)}
+                  "story_date": _safe_date(item.story_date, item.date_precision.value),
+                  "place": _share_place(item.broad_place)}
     elif kind == "broad_stay_card":
         values = {"title": item.title, "date_precision": item.date_precision.value, "place": _share_place(item.place)}
     elif kind == "media_derivative":
@@ -132,9 +139,23 @@ def _render_item(kind: str, item: Any, fields: list[str], local_id: str) -> dict
                   "width": item.width, "height": item.height, "focal_x": item.focal_x, "focal_y": item.focal_y}
     elif kind == "document_derivative":
         values = {"title": item.document_asset.title, "file": {"id": local_id}}
+    elif kind == "trip_highlight":
+        values = {"title": item.title, "summary": item.summary}
     else:  # exact_place; navigation is represented in a separate collection.
         values = {}
     return {"id": local_id, **_selected(values, fields)}
+
+
+def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
+    """The trip's travel dates, only at the precision the scope selects."""
+    precision = scope.get("trip", {}).get("dates")
+    if precision not in _PRECISION_LENGTH or (trip.starts_on is None and trip.ends_on is None):
+        return None
+    return {
+        "starts_on": _safe_date(trip.starts_on, precision),
+        "ends_on": _safe_date(trip.ends_on, precision),
+        "date_precision": precision,
+    }
 
 
 def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
@@ -145,12 +166,15 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "schema_version": schema_version,
         "title": trip.title if scope.get("trip", {}).get("title", True) else None,
         "summary": trip.summary if scope.get("trip", {}).get("summary", True) else None,
+        "dates": shared_trip_dates(trip, scope),
+        "highlights": [],
         "route_stages": [], "places": [], "moments": [], "stays": [], "media": [], "documents": [], "route": [],
         "navigation": [],
     }
     destinations = {
         "route_stage": "route_stages", "broad_place": "places", "moment_excerpt": "moments", "broad_stay_card": "stays",
         "media_derivative": "media", "document_derivative": "documents", "broad_route": "route",
+        "trip_highlight": "highlights",
     }
     selected_moments = {
         selection["id"]: f"moment-{resources['moment_excerpt'][selection['id']].share_id}"
@@ -167,10 +191,11 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
             projection["navigation"].append({"id": local_id})
         if kind == "exact_place":
             continue
-        if kind == "route_stage":
+        if kind in {"route_stage", "trip_highlight"}:
             rendered["_sort_position"] = item.position
         projection[destinations[kind]].append(rendered)
     projection["route_stages"].sort(key=lambda item: item.pop("_sort_position"))
+    projection["highlights"].sort(key=lambda item: item.pop("_sort_position"))
     projection["moments"].sort(key=lambda item: (item.get("story_date") is None, item.get("story_date") or ""))
     return projection
 

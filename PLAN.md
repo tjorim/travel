@@ -150,6 +150,12 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#140](https://github.com/tjorim/travel/issues/140) Closed the remaining
+      static-archive parity gaps: stays as nights per city/area (also while
+      still choosing), time-zone-aware transport legs, a richer day plan with
+      per-night stays, trip dates and booking badges, task links, and
+      scope-selected trip dates, highlights and stage summaries for visitors.
+
 - [x] [#137](https://github.com/tjorim/travel/issues/137) Removed the retired
       Go `travel-auth` service, its CI and Dependabot paths, and the
       shared-password setup; the local Compose and Caddy example now mirror

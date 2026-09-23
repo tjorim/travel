@@ -1,6 +1,7 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime, time
 from enum import StrEnum
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
@@ -14,6 +15,7 @@ from .models import (
     EmergencyInfoKind,
     ImportProvider,
     ImportSessionState,
+    ItineraryEntryKind,
     ItineraryLinkKind,
     LinkState,
     MediaKind,
@@ -28,6 +30,28 @@ from .models import (
 )
 
 COUNTRY_CODE_FIELD = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")
+
+
+def require_https(value: HttpUrl | None) -> HttpUrl | None:
+    if value is not None and value.scheme != "https":
+        raise ValueError("Links must use HTTPS")
+    return value
+
+
+def require_timezone(value: str | None) -> str | None:
+    """Accept only a known IANA zone name such as ``Asia/Taipei``."""
+    if value is None:
+        return value
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise ValueError("Unknown time zone") from error
+    return value
+
+
+def require_ordered_dates(start: date | None, end: date | None, message: str) -> None:
+    if start is not None and end is not None and end < start:
+        raise ValueError(message)
 
 
 class ExactPlaceInput(BaseModel):
@@ -131,11 +155,20 @@ class BroadPlaceResponse(BroadPlaceInput):
 class TripCreate(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     summary: str | None = Field(default=None, max_length=4000)
+    starts_on: date | None = None
+    ends_on: date | None = None
+
+    @model_validator(mode="after")
+    def end_not_before_start(self):
+        require_ordered_dates(self.starts_on, self.ends_on, "The trip cannot end before it starts")
+        return self
 
 
 class TripUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     summary: str | None = Field(default=None, max_length=4000)
+    starts_on: date | None = None
+    ends_on: date | None = None
     visibility: Visibility | None = None
     publication_state: PublicationState | None = None
 
@@ -147,6 +180,7 @@ class RouteStageCreate(BaseModel):
     broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
     position: int = Field(ge=0)
     label: str | None = Field(default=None, max_length=120)
+    summary: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def require_one_broad_place(self):
@@ -160,6 +194,7 @@ class RouteStageUpdate(BaseModel):
     broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
     position: int | None = Field(default=None, ge=0)
     label: str | None = Field(default=None, max_length=120)
+    summary: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def do_not_mix_broad_place_inputs(self):
@@ -172,6 +207,7 @@ class RouteStageResponse(BaseModel):
     id: str
     position: int
     label: str | None
+    summary: str | None
     place: BroadPlaceResponse
     model_config = ConfigDict(from_attributes=True)
 
@@ -263,37 +299,58 @@ class MomentExcerptResponse(BaseModel):
 
 
 class StayCreate(BaseModel):
-    place: ExactPlaceInput
-    arrives_at: datetime
-    departs_at: datetime
+    """The nights at one accommodation. ``check_out_date`` is the departure
+    morning, so a stay covers the nights ``check_in_date`` up to, but not
+    including, ``check_out_date``. The property and exact place are optional
+    while the accommodation is still being chosen."""
+
+    place: ExactPlaceInput | None = None
+    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
+    check_in_date: date
+    check_out_date: date
+    check_in_time: time | None = None
+    check_out_time: time | None = None
     status: StayStatus = StayStatus.PLANNED
-    property_name: str = Field(min_length=1, max_length=160)
+    property_name: str | None = Field(default=None, min_length=1, max_length=160)
+    website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000)
     notes: str | None = Field(default=None, max_length=4000)
+
+    _https = field_validator("website_url")(require_https)
 
 
 class StayUpdate(BaseModel):
     place: ExactPlaceInput | None = None
-    arrives_at: datetime | None = None
-    departs_at: datetime | None = None
+    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
+    check_in_date: date | None = None
+    check_out_date: date | None = None
+    check_in_time: time | None = None
+    check_out_time: time | None = None
     status: StayStatus | None = None
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
+    website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000)
     notes: str | None = Field(default=None, max_length=4000)
 
+    _https = field_validator("website_url")(require_https)
+
 
 class StayResponse(BaseModel):
     id: str
-    arrives_at: datetime
-    departs_at: datetime
+    check_in_date: date
+    check_out_date: date
+    check_in_time: time | None
+    check_out_time: time | None
     status: StayStatus
-    property_name: str
+    property_name: str | None
+    website_url: str | None
     booking_reference: str | None
     contact_details: str | None
     notes: str | None
-    place: ExactPlaceResponse
+    place: ExactPlaceResponse | None
+    broad_place: BroadPlaceResponse | None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -322,13 +379,20 @@ class TransportLegCreate(BaseModel):
     status: TransportLegStatus = TransportLegStatus.PLANNED
     departure_place: ExactPlaceInput
     arrival_place: ExactPlaceInput
+    # With an endpoint time zone, a datetime without an offset is the local
+    # wall-clock time there. Without one it must carry an explicit offset.
     departs_at: datetime
     arrives_at: datetime
+    departure_timezone: str | None = Field(default=None, max_length=64)
+    arrival_timezone: str | None = Field(default=None, max_length=64)
     carrier: str | None = Field(default=None, max_length=160)
     service_reference: str | None = Field(default=None, max_length=40)
+    travel_class: str | None = Field(default=None, max_length=80)
     booking_reference: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=4000)
     document_asset_ids: list[str] = Field(default_factory=list, max_length=12)
+
+    _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
 
     @field_validator("document_asset_ids")
     @classmethod
@@ -345,11 +409,16 @@ class TransportLegUpdate(BaseModel):
     arrival_place: ExactPlaceInput | None = None
     departs_at: datetime | None = None
     arrives_at: datetime | None = None
+    departure_timezone: str | None = Field(default=None, max_length=64)
+    arrival_timezone: str | None = Field(default=None, max_length=64)
     carrier: str | None = Field(default=None, max_length=160)
     service_reference: str | None = Field(default=None, max_length=40)
+    travel_class: str | None = Field(default=None, max_length=80)
     booking_reference: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=4000)
     document_asset_ids: list[str] | None = Field(default=None, max_length=12)
+
+    _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
 
     @field_validator("document_asset_ids")
     @classmethod
@@ -367,16 +436,29 @@ class TransportLegResponse(BaseModel):
     arrival_place: ExactPlaceResponse
     departs_at: datetime
     arrives_at: datetime
+    departure_timezone: str | None
+    arrival_timezone: str | None
     carrier: str | None
     service_reference: str | None
+    travel_class: str | None
     booking_reference: str | None
     notes: str | None
     document_asset_ids: list[str]
     model_config = ConfigDict(from_attributes=True)
 
+    @field_validator("departs_at", "arrives_at")
+    @classmethod
+    def mark_utc(cls, value: datetime) -> datetime:
+        # SQLite returns stored UTC instants without an offset; a client must
+        # never read them as its own local time.
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
 
 class ItineraryEntryCreate(BaseModel):
     day_date: date | None = None
+    end_date: date | None = None
+    kind: ItineraryEntryKind | None = None
+    tentative: bool = False
     position: int = Field(ge=0)
     title: str = Field(min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
@@ -387,11 +469,17 @@ class ItineraryEntryCreate(BaseModel):
     def link_kind_and_id_are_paired(self):
         if (self.linked_kind is None) != (self.linked_id is None):
             raise ValueError("Supply both linked_kind and linked_id, or neither")
+        if self.end_date is not None and self.day_date is None:
+            raise ValueError("A last day needs a first day")
+        require_ordered_dates(self.day_date, self.end_date, "The last day cannot precede the first day")
         return self
 
 
 class ItineraryEntryUpdate(BaseModel):
     day_date: date | None = None
+    end_date: date | None = None
+    kind: ItineraryEntryKind | None = None
+    tentative: bool | None = None
     position: int | None = Field(default=None, ge=0)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
@@ -410,6 +498,9 @@ class ItineraryEntryUpdate(BaseModel):
 class ItineraryEntryResponse(BaseModel):
     id: str
     day_date: date | None
+    end_date: date | None
+    kind: ItineraryEntryKind | None
+    tentative: bool
     position: int
     title: str
     notes: str | None
@@ -418,16 +509,25 @@ class ItineraryEntryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class TaskLink(BaseModel):
+    label: str = Field(min_length=1, max_length=80)
+    url: HttpUrl
+
+    _https = field_validator("url")(require_https)
+
+
 class TripTaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
     due_date: date | None = None
+    links: list[TaskLink] = Field(default_factory=list, max_length=5)
 
 
 class TripTaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
     due_date: date | None = None
+    links: list[TaskLink] | None = Field(default=None, max_length=5)
     completed: bool | None = None
 
 
@@ -436,8 +536,29 @@ class TripTaskResponse(BaseModel):
     title: str
     notes: str | None
     due_date: date | None
+    links: list[TaskLink]
     completed_at: datetime | None
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TripHighlightCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    summary: str | None = Field(default=None, max_length=2000)
+    position: int | None = Field(default=None, ge=0)
+
+
+class TripHighlightUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    summary: str | None = Field(default=None, max_length=2000)
+    position: int | None = Field(default=None, ge=0)
+
+
+class TripHighlightResponse(BaseModel):
+    id: str
+    position: int
+    title: str
+    summary: str | None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -496,10 +617,13 @@ class TripResponse(BaseModel):
     owner_subject: str
     title: str
     summary: str | None
+    starts_on: date | None
+    ends_on: date | None
     visibility: Visibility
     publication_state: PublicationState
     public_id: str | None
     route_stages: list[RouteStageResponse]
+    highlights: list[TripHighlightResponse]
     moments: list[MomentResponse]
     moment_excerpts: list[MomentExcerptResponse]
     model_config = ConfigDict(from_attributes=True)
@@ -514,6 +638,7 @@ class ShareScopeKind(StrEnum):
     BROAD_STAY_CARD = "broad_stay_card"
     MEDIA_DERIVATIVE = "media_derivative"
     DOCUMENT_DERIVATIVE = "document_derivative"
+    TRIP_HIGHLIGHT = "trip_highlight"
 
 
 class ShareScopeTripInput(BaseModel):
@@ -521,6 +646,8 @@ class ShareScopeTripInput(BaseModel):
 
     title: bool = True
     summary: bool = True
+    # Trip dates are absent unless the owner chooses a precision to share.
+    dates: DatePrecision | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -553,6 +680,8 @@ class ProjectionDocument(BaseModel):
     schema_version: str
     title: str | None
     summary: str | None
+    dates: dict | None
+    highlights: list[dict]
     route_stages: list[dict]
     places: list[dict]
     moments: list[dict]
@@ -567,6 +696,7 @@ class PublicTripCard(BaseModel):
     slug: str
     title: str | None
     summary: str | None
+    dates: dict | None
 
 
 class PublicProjectionStatusResponse(BaseModel):

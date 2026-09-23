@@ -5,7 +5,7 @@ import { TripMap, type MapLine, type MapPoint } from "../TripMap";
 import { apiHeaders, type BroadPlace, type BroadRoute, type Place, type RecordedTrack, type Trip } from "../tracker-model";
 import { parseRecordedTrack } from "./track-geometry";
 
-export function OwnerTripMap({ trip, broadPlaces, revision }: { trip: Trip; broadPlaces: BroadPlace[]; revision: number }) {
+export function OwnerTripMap({ trip, broadPlaces, revision, focus }: { trip: Trip; broadPlaces: BroadPlace[]; revision: number; focus?: { id: string; request: number } | null }) {
   const { session } = useAuth();
   const [lines, setLines] = useState<MapLine[]>([]);
   const [exactPlaces, setExactPlaces] = useState<Place[]>([]);
@@ -47,5 +47,5 @@ export function OwnerTripMap({ trip, broadPlaces, revision }: { trip: Trip; broa
     return () => controller.abort();
   }, [session, trip.id, revision]);
 
-  return <><TripMap points={points} lines={lines} owner />{status && <p className="help" role="status">{status}</p>}</>;
+  return <><TripMap points={points} lines={lines} owner focus={focus} />{status && <p className="help" role="status">{status}</p>}</>;
 }

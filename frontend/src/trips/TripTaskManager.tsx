@@ -1,13 +1,20 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
-import { apiError, apiHeaders, type TripTask, type Trip } from "../tracker-model";
+import { apiError, apiHeaders, type TaskLink, type TripTask, type Trip } from "../tracker-model";
+
+const MAX_LINKS = 5;
 
 function emptyDraft() {
-  return { id: null as string | null, title: "", notes: "", dueDate: "" };
+  return { id: null as string | null, title: "", notes: "", dueDate: "", links: [] as TaskLink[] };
 }
 
-export function TripTaskManager({ trip }: { trip: Trip }) {
+function TaskLinks({ links }: { links: TaskLink[] }) {
+  if (!links.length) return null;
+  return <span className="task-links">{links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" referrerPolicy="no-referrer">{link.label} ↗</a>)}</span>;
+}
+
+export function TripTaskManager({ trip, onChange }: { trip: Trip; onChange?: () => void }) {
   const { session } = useAuth();
   const [tasks, setTasks] = useState<TripTask[]>([]);
   const [message, setMessage] = useState("Laad je private takenlijst…");
@@ -26,16 +33,19 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
   function newTask() { setDraft(emptyDraft()); }
 
   function editTask(task: TripTask) {
-    setDraft({ id: task.id, title: task.title, notes: task.notes ?? "", dueDate: task.due_date ?? "" });
+    setDraft({ id: task.id, title: task.title, notes: task.notes ?? "", dueDate: task.due_date ?? "", links: task.links.map((link) => ({ ...link })) });
   }
 
   async function saveTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
-    const payload = { title: draft.title.trim(), notes: draft.notes.trim() || null, due_date: draft.dueDate || null };
+    const links = draft.links.map((link) => ({ label: link.label.trim(), url: link.url.trim() })).filter((link) => link.label || link.url);
+    if (links.some((link) => !link.label || !link.url.startsWith("https://"))) throw new Error("Geef elke link een naam en een https-adres.");
+    const payload = { title: draft.title.trim(), notes: draft.notes.trim() || null, due_date: draft.dueDate || null, links };
     const response = await fetch(draft.id ? `/api/trips/${trip.id}/trip-tasks/${draft.id}` : `/api/trips/${trip.id}/trip-tasks`, { method: draft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload) });
     if (!response.ok) return apiError(response, "De taak kon niet worden opgeslagen.");
     await load();
+    onChange?.();
     newTask();
     setMessage("Taak opgeslagen.");
   }
@@ -45,6 +55,7 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
     const response = await fetch(`/api/trips/${trip.id}/trip-tasks/${task.id}`, { method: "PATCH", headers: apiHeaders(session), body: JSON.stringify({ completed: !task.completed_at }) });
     if (!response.ok) return apiError(response, "De taak kon niet worden bijgewerkt.");
     await load();
+    onChange?.();
     setMessage(task.completed_at ? "Taak heropend." : "Taak afgevinkt.");
   }
 
@@ -53,6 +64,7 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
     const response = await fetch(`/api/trips/${trip.id}/trip-tasks/${task.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "De taak kon niet worden verwijderd.");
     await load();
+    onChange?.();
     newTask();
     setMessage("Taak verwijderd.");
   }
@@ -69,11 +81,19 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
         <label>Deadline <span className="optional">(optioneel)</span><input type="date" value={draft.dueDate} onChange={(event) => setDraft((current) => ({ ...current, dueDate: event.target.value }))} /></label>
       </div>
       <label>Notities <span className="optional">(optioneel)</span><textarea maxLength={4000} rows={3} value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} /></label>
+      <fieldset><legend>Links <span className="optional">(optioneel, https)</span></legend>
+        {draft.links.map((link, index) => <div className="field-row" key={index}>
+          <label>Naam<input maxLength={80} value={link.label} onChange={(event) => setDraft((current) => ({ ...current, links: current.links.map((value, position) => position === index ? { ...value, label: event.target.value } : value) }))} placeholder="Bijvoorbeeld: Taiwan HSR" /></label>
+          <label>Adres<input type="url" pattern="https://.*" maxLength={2048} value={link.url} onChange={(event) => setDraft((current) => ({ ...current, links: current.links.map((value, position) => position === index ? { ...value, url: event.target.value } : value) }))} placeholder="https://" /></label>
+          <button className="secondary compact" type="button" onClick={() => setDraft((current) => ({ ...current, links: current.links.filter((_, position) => position !== index) }))}>Link verwijderen</button>
+        </div>)}
+        {draft.links.length < MAX_LINKS && <button className="secondary compact" type="button" onClick={() => setDraft((current) => ({ ...current, links: [...current.links, { label: "", url: "" }] }))}>Link toevoegen</button>}
+      </fieldset>
       <button type="submit">{draft.id ? "Taak opslaan" : "Taak toevoegen"}</button>
     </form>
     {tasks.length > 0 && <div className="saved-moments manager-list">
       {openTasks.map((task) => <article className="excerpt-row" key={task.id}>
-        <div><strong>{task.title}</strong><span>{task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}{task.notes ? ` · ${task.notes}` : ""}</span></div>
+        <div><strong>{task.title}</strong><span>{task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}{task.notes ? ` · ${task.notes}` : ""}</span><TaskLinks links={task.links} /></div>
         <div className="button-row">
           <button className="secondary compact" type="button" onClick={() => void toggleTask(task).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De taak kon niet worden bijgewerkt."))}>Afvinken</button>
           <button className="secondary compact" type="button" onClick={() => editTask(task)}>Bewerken</button>

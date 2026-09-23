@@ -82,6 +82,17 @@ textarea { min-height: 136px; resize: vertical; }
 .excerpt-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .excerpt-row.completed { opacity: .6; }
 .excerpt-row.completed strong { text-decoration: line-through; }
+.excerpt-row.tentative { border-style: dashed; }
+.excerpt-row .entry-detail { display: block; }
+.task-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.task-links a { color: #0f7760; font-weight: 700; }
+.trip-overview { display: grid; gap: 10px; }
+.trip-overview .eyebrow { margin: 0; }
+.status-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.status-badges li { display: inline-flex; gap: 6px; align-items: center; padding: 6px 12px; border: 1px solid #cbd7ce; border-radius: 999px; background: #fffdf8; color: #4d665e; font-size: .86rem; }
+.status-badges li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #d9a441; }
+.status-badges li.done::before { background: #0f7760; }
+.status-badges strong { color: #19342d; }
 .manager { display: grid; gap: 18px; }
 .manager > .capture-heading { margin-bottom: -4px; }
 .manager > .capture-heading h3, .manager-subsection h3 { margin: 0; }

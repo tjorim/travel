@@ -92,6 +92,7 @@ cache/indexing response needed if a page was accidentally exposed.
 - `dist/exampleland-2054/private/index.html` — Taiwan detailed itinerary, maps and bookings
 - `dist/exampleland-2054/private/documents/` — Taiwan-specific protected document files and manifest
 - `dist/exampleland-2054/private/trip.json` — protected Taiwan operational summary and booking status
+- `dist/exampleland-2054/private/app-import.json` — the whole Taiwan trip extracted for `app.archive_import` (#40)
 - `dist/exampleland-2054/public/route-map.geojson` — broad Taiwan public route
 - `dist/exampleland-2054/private/flight-map.geojson` and `local-route.geojson` — protected flight and local routes
 - `dist/example-trip/` — a deliberately small, data-driven reference trip

@@ -1,6 +1,6 @@
 """Owner-only accommodation records and separately authored broad cards."""
 
-from datetime import UTC, datetime
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -27,7 +27,7 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 
 def _stay_query():
-    return select(Stay).options(selectinload(Stay.place))
+    return select(Stay).options(selectinload(Stay.place), selectinload(Stay.broad_place))
 
 
 def _card_query():
@@ -57,16 +57,11 @@ def resolve_broad_place_id(session: Session, trip: Trip, broad_place_id: str) ->
     return place.id
 
 
-def validate_stay_dates(arrives_at: datetime, departs_at: datetime) -> None:
-    # SQLite drops timezone information despite DateTime(timezone=True),
-    # while PostgreSQL preserves it. Normalize only for the comparison so a
-    # partial owner edit is valid on both supported database backends.
-    comparable_arrival = arrives_at if arrives_at.tzinfo is not None else arrives_at.replace(tzinfo=UTC)
-    comparable_departure = departs_at if departs_at.tzinfo is not None else departs_at.replace(tzinfo=UTC)
-    if comparable_departure <= comparable_arrival:
+def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
+    if check_out_date <= check_in_date:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Departure must be after arrival",
+            detail="A stay covers at least one night: check out after the check-in date",
         )
 
 
@@ -78,11 +73,15 @@ def list_stays(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[S
 @router.post("/stays", response_model=StayResponse, status_code=status.HTTP_201_CREATED)
 def create_stay(trip_id: str, payload: StayCreate, session: SessionDep, subject: SubjectDep) -> Stay:
     trip = owned_trip(session, trip_id, subject)
-    validate_stay_dates(payload.arrives_at, payload.departs_at)
+    validate_stay_nights(payload.check_in_date, payload.check_out_date)
     stay = Stay(
         trip=trip,
-        place=exact_place_from_input(session, trip.id, payload.place),
-        **payload.model_dump(exclude={"place"}),
+        place=exact_place_from_input(session, trip.id, payload.place) if payload.place is not None else None,
+        broad_place_id=(
+            resolve_broad_place_id(session, trip, payload.broad_place_id) if payload.broad_place_id is not None else None
+        ),
+        website_url=str(payload.website_url) if payload.website_url is not None else None,
+        **payload.model_dump(exclude={"place", "broad_place_id", "website_url"}),
     )
     session.add(stay)
     session.commit()
@@ -99,11 +98,21 @@ def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: Sessio
     trip = owned_trip(session, trip_id, subject)
     stay = owned_stay(trip, stay_id)
     if "place" in payload.model_fields_set:
-        if payload.place is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="An exact place is required")
-        stay.place = exact_place_from_input(session, trip.id, payload.place)
-    values = payload.model_dump(exclude_unset=True, exclude={"place"})
-    validate_stay_dates(values.get("arrives_at", stay.arrives_at), values.get("departs_at", stay.departs_at))
+        # Clearing the exact place returns the stay to "still choosing".
+        stay.place = exact_place_from_input(session, trip.id, payload.place) if payload.place is not None else None
+    if "broad_place_id" in payload.model_fields_set:
+        stay.broad_place_id = (
+            resolve_broad_place_id(session, trip, payload.broad_place_id) if payload.broad_place_id is not None else None
+        )
+    values = payload.model_dump(exclude_unset=True, exclude={"place", "broad_place_id"})
+    for required in ("check_in_date", "check_out_date", "status"):
+        if required in values and values[required] is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
+    if "website_url" in values and values["website_url"] is not None:
+        values["website_url"] = str(values["website_url"])
+    validate_stay_nights(
+        values.get("check_in_date", stay.check_in_date), values.get("check_out_date", stay.check_out_date)
+    )
     for field, value in values.items():
         setattr(stay, field, value)
     session.commit()

@@ -10,7 +10,7 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 
 function projection(schema_version = "travel/public-trip@1"): Projection {
   return {
-    schema_version, title: "Selected trip", summary: "Shared summary", navigation: [],
+    schema_version, title: "Selected trip", summary: "Shared summary", dates: null, highlights: [], navigation: [],
     route_stages: [], places: [], moments: [], stays: [], route: [], media: [], documents: [],
   };
 }
@@ -226,4 +226,25 @@ it("renders the same scoped gallery in preview without requesting a visitor file
   expect(preview.container.querySelector(".visitor-timeline .visitor-gallery")?.textContent).toContain("Station");
   expect(preview.container.querySelector("img")?.getAttribute("src")).toBe("blob:owner-preview");
   expect(preview.container.innerHTML).not.toContain("/api/public/trips/");
+});
+
+it("shows shared trip dates, highlights and stage summaries only from the projection", () => {
+  const data = projection();
+  data.dates = { id: "dates", starts_on: "2054-11", ends_on: "2054-12", date_precision: "month" };
+  data.highlights = [{ id: "trip_highlight-1", title: "Stad en natuur", summary: "Bosspoor en bergpaden." }, { id: "trip_highlight-2", title: "Zonder tekst" }];
+  data.route_stages = [{ id: "route_stage-3", label: "Taipei", summary: "Stad, eten en een eerste weekend." }];
+  render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  expect(screen.getByText("november 2054 – december 2054")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Stad en natuur" })).toBeTruthy();
+  expect(screen.getByText("Bosspoor en bergpaden.")).toBeTruthy();
+  expect(screen.getByText("Stad, eten en een eerste weekend.")).toBeTruthy();
+  expect(isProjection({ ...data, dates: "2054" }, "public")).toBe(false);
+  expect(isProjection({ ...data, highlights: undefined }, "public")).toBe(false);
+});
+
+it("numbers shared stages from one, as visitors count them", () => {
+  const data = projection();
+  data.route_stages = [{ id: "route_stage-1", label: "Taipei", position: 0 }];
+  render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  expect(screen.getByText("Etappe 1")).toBeTruthy();
 });

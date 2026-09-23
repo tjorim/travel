@@ -14,20 +14,23 @@ type CatalogItem = { kind: ShareScopeKind; id: string; label: string; detail: st
 
 const fieldsFor: Record<ShareScopeKind, string[]> = {
   exact_place: ["navigation"],
-  route_stage: ["position", "label", "place", "navigation"],
+  route_stage: ["position", "label", "summary", "place", "navigation"],
   broad_place: ["label", "country_code", "region", "latitude", "longitude", "navigation"],
   broad_route: ["label", "geometry", "date_precision"],
   moment_excerpt: ["title", "body", "date_precision", "story_date", "place", "navigation"],
   broad_stay_card: ["title", "date_precision", "place", "navigation"],
   media_derivative: ["image", "caption", "alt_text", "width", "height", "focal_x", "focal_y", "moment"],
   document_derivative: ["title", "file"],
+  trip_highlight: ["title", "summary"],
 };
 
-const emptyScope = (): ShareScope => ({ schema_version: "travel/share-scope@1", trip: { title: true, summary: true }, items: [] });
+const DATE_PRECISIONS = { day: "per dag", month: "per maand", year: "alleen het jaar" } as const;
+
+const emptyScope = (): ShareScope => ({ schema_version: "travel/share-scope@1", trip: { title: true, summary: true, dates: null }, items: [] });
 function cloneScope(scope: Partial<ShareScope> | null | undefined): ShareScope {
   return {
     schema_version: "travel/share-scope@1",
-    trip: { title: scope?.trip?.title ?? true, summary: scope?.trip?.summary ?? true },
+    trip: { title: scope?.trip?.title ?? true, summary: scope?.trip?.summary ?? true, dates: scope?.trip?.dates ?? null },
     items: Array.isArray(scope?.items) ? scope.items.map((item) => ({ ...item, fields: [...item.fields] })) : [],
   };
 }
@@ -42,8 +45,8 @@ function dateLabel(value: string | null): string {
 }
 
 function projectionSummary(document: ProjectionDocument): string {
-  const count = document.route_stages.length + document.places.length + document.moments.length + document.stays.length + document.media.length + document.documents.length + document.route.length;
-  return `${count} gekozen onderdelen · ${document.title ? "titel" : "geen titel"} · ${document.summary ? "samenvatting" : "geen samenvatting"}`;
+  const count = document.highlights.length + document.route_stages.length + document.places.length + document.moments.length + document.stays.length + document.media.length + document.documents.length + document.route.length;
+  return `${count} gekozen onderdelen · ${document.title ? "titel" : "geen titel"} · ${document.summary ? "samenvatting" : "geen samenvatting"} · ${document.dates ? "reisdatums" : "geen reisdatums"}`;
 }
 
 export function PublicationManager({ trip }: { trip: Trip }) {
@@ -101,6 +104,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     const exactPlaces = new Map<string, { label: string }>();
     for (const moment of trip.moments) if (moment.place) exactPlaces.set(moment.place.id, { label: moment.title });
     const catalogItems: CatalogItem[] = [
+      ...trip.highlights.map((item) => ({ kind: "trip_highlight" as const, id: item.id, label: item.title, detail: "Hoogtepunt", fields: fieldsFor.trip_highlight })),
       ...trip.route_stages.map((item) => ({ kind: "route_stage" as const, id: item.id, label: item.label ?? item.place.label, detail: "Brede route-etappe", fields: fieldsFor.route_stage })),
       ...loadedPlaces.map((item) => ({ kind: "broad_place" as const, id: item.id, label: item.label, detail: "Brede plaats", fields: fieldsFor.broad_place })),
       ...loadedRoutes.map((item) => ({ kind: "broad_route" as const, id: item.id, label: item.label, detail: "Brede route", fields: fieldsFor.broad_route })),
@@ -193,7 +197,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
 
   function ScopeEditor({ scope, setScope, name, disabled = false }: { scope: ShareScope; setScope: (scope: ShareScope) => void; name: string; disabled?: boolean }) {
     return <fieldset className="scope-editor" disabled={disabled}><legend>{name}</legend><p>Kies per onderdeel expliciet welke velden de server mag leveren. Alles wat hier niet staat, blijft buiten de response.</p>
-      <div className="scope-trip-fields"><label className="scope-choice"><input type="checkbox" checked={scope.trip.title} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, title: event.target.checked } })} />Reistitel</label><label className="scope-choice"><input type="checkbox" checked={scope.trip.summary} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, summary: event.target.checked } })} />Samenvatting</label></div>
+      <div className="scope-trip-fields"><label className="scope-choice"><input type="checkbox" checked={scope.trip.title} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, title: event.target.checked } })} />Reistitel</label><label className="scope-choice"><input type="checkbox" checked={scope.trip.summary} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, summary: event.target.checked } })} />Samenvatting</label><label>Reisdatums<select value={scope.trip.dates ?? ""} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, dates: (event.target.value || null) as ShareScope["trip"]["dates"] } })}><option value="">Niet delen</option>{Object.entries(DATE_PRECISIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{scope.trip.dates && !trip.starts_on && <small>Deze reis heeft nog geen reisdatums.</small>}</div>
       <div className="scope-items">{catalog.map((item) => {
         const selected = scope.items.find((value) => value.kind === item.kind && value.id === item.id);
         return <article className={`scope-item ${selected ? "included" : ""}`} key={`${item.kind}-${item.id}`}><label className="scope-choice"><input type="checkbox" checked={Boolean(selected)} onChange={(event) => updateItem(scope, setScope, item, event.target.checked)} /><span><strong>{item.label}</strong><small>{item.detail}</small></span></label>{selected && <div className="scope-fields">{item.fields.map((field) => <label key={field}><input type="checkbox" checked={selected.fields.includes(field)} onChange={(event) => updateField(scope, setScope, item, field, event.target.checked)} />{field}</label>)}</div>}</article>;

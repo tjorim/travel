@@ -116,7 +116,17 @@ def update_itinerary_entry(
         session.flush()
         for position, item in enumerate(ordered):
             item.position = position
-    for field, value in payload.model_dump(exclude_unset=True, exclude={"position"}).items():
+    values = payload.model_dump(exclude_unset=True, exclude={"position"})
+    if "tentative" in values and values["tentative"] is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="tentative is required")
+    day_date = values.get("day_date", entry.day_date)
+    end_date = values.get("end_date", entry.end_date)
+    if end_date is not None and (day_date is None or end_date < day_date):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="The last day needs a first day and cannot precede it",
+        )
+    for field, value in values.items():
         setattr(entry, field, value)
     commit_or_conflict(session)
     session.refresh(entry)

@@ -67,7 +67,15 @@ export type RouteStage = {
   id: string;
   position: number;
   label: string | null;
+  summary: string | null;
   place: BroadPlace;
+};
+
+export type TripHighlight = {
+  id: string;
+  position: number;
+  title: string;
+  summary: string | null;
 };
 
 export type RecordedTrack = {
@@ -101,9 +109,12 @@ export type Trip = {
   id: string;
   title: string;
   summary: string | null;
+  starts_on: string | null;
+  ends_on: string | null;
   visibility: "private" | "unlisted" | "public";
   publication_state: "draft" | "published";
   route_stages: RouteStage[];
+  highlights: TripHighlight[];
   moments: Moment[];
   moment_excerpts: MomentExcerpt[];
 };
@@ -118,16 +129,22 @@ export type MomentDraft = {
   mediaAssetIds: string[];
 };
 
+/** The nights at one accommodation: every night from check-in up to, but
+ * not including, the check-out morning. Dates and times are local there. */
 export type Stay = {
   id: string;
-  arrives_at: string;
-  departs_at: string;
+  check_in_date: string;
+  check_out_date: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
   status: "planned" | "booked" | "confirmed" | "cancelled";
-  property_name: string;
+  property_name: string | null;
+  website_url: string | null;
   booking_reference: string | null;
   contact_details: string | null;
   notes: string | null;
-  place: Place;
+  place: Place | null;
+  broad_place: BroadPlace | null;
 };
 
 export type BroadStayCard = {
@@ -145,8 +162,11 @@ export type TransportLeg = {
   arrival_place: Place;
   departs_at: string;
   arrives_at: string;
+  departure_timezone: string | null;
+  arrival_timezone: string | null;
   carrier: string | null;
   service_reference: string | null;
+  travel_class: string | null;
   booking_reference: string | null;
   notes: string | null;
   document_asset_ids: string[];
@@ -154,9 +174,14 @@ export type TransportLeg = {
 
 export type ItineraryLinkKind = "stay" | "transport_leg" | "route_stage" | "place" | "document" | "moment";
 
+export type ItineraryEntryKind = "travel" | "free" | "work";
+
 export type ItineraryEntry = {
   id: string;
   day_date: string | null;
+  end_date: string | null;
+  kind: ItineraryEntryKind | null;
+  tentative: boolean;
   position: number;
   title: string;
   notes: string | null;
@@ -169,9 +194,12 @@ export type TripTask = {
   title: string;
   notes: string | null;
   due_date: string | null;
+  links: TaskLink[];
   completed_at: string | null;
   created_at: string;
 };
+
+export type TaskLink = { label: string; url: string };
 
 export type DocumentAsset = {
   id: string;
@@ -276,13 +304,13 @@ export type ImportCompleteResult = {
   failed: { provider_item_id: string; failure_code: string }[];
 };
 
-export type ShareScopeKind = "exact_place" | "route_stage" | "broad_place" | "broad_route" | "moment_excerpt" | "broad_stay_card" | "media_derivative" | "document_derivative";
+export type ShareScopeKind = "exact_place" | "route_stage" | "broad_place" | "broad_route" | "moment_excerpt" | "broad_stay_card" | "media_derivative" | "document_derivative" | "trip_highlight";
 
 export type ShareScopeItem = { kind: ShareScopeKind; id: string; fields: string[] };
 
 export type ShareScope = {
   schema_version: "travel/share-scope@1";
-  trip: { title: boolean; summary: boolean };
+  trip: { title: boolean; summary: boolean; dates: "day" | "month" | "year" | null };
   items: ShareScopeItem[];
 };
 
@@ -308,6 +336,8 @@ export type ProjectionDocument = {
   schema_version: string;
   title: string | null;
   summary: string | null;
+  dates: Record<string, unknown> | null;
+  highlights: Record<string, unknown>[];
   route_stages: Record<string, unknown>[];
   places: Record<string, unknown>[];
   moments: Record<string, unknown>[];
@@ -319,6 +349,59 @@ export type ProjectionDocument = {
 };
 
 const draftKey = "travel-tracker-moment-draft-v1";
+
+const dayMs = 86_400_000;
+
+/** Add whole days to an ISO calendar date without any time-zone drift. */
+export function addDays(isoDate: string, days: number): string {
+  return new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * dayMs).toISOString().slice(0, 10);
+}
+
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / dayMs);
+}
+
+/** A stay covers the night of ``isoDate`` when it sleeps there that evening. */
+export function stayCoversNight(stay: Stay, isoDate: string): boolean {
+  return stay.status !== "cancelled" && stay.check_in_date <= isoDate && isoDate < stay.check_out_date;
+}
+
+export function formatDay(isoDate: string, options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }): string {
+  return new Intl.DateTimeFormat("nl-BE", { timeZone: "UTC", ...options }).format(new Date(`${isoDate}T00:00:00Z`));
+}
+
+export function formatDayRange(first: string, last: string | null): string {
+  return last && last !== first ? `${formatDay(first)} – ${formatDay(last)}` : formatDay(first);
+}
+
+export function stayLabel(stay: Stay): string {
+  return stay.property_name ?? `Nog te kiezen${stay.broad_place ? ` in ${stay.broad_place.label}` : ""}`;
+}
+
+export function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+export function timeZoneOptions(): string[] {
+  const intl = Intl as typeof Intl & { supportedValuesOf?: (key: "timeZone") => string[] };
+  return intl.supportedValuesOf?.("timeZone") ?? [browserTimeZone()];
+}
+
+/** Local wall-clock parts of an instant in an IANA zone (browser zone if null). */
+function zonedParts(instant: string, timeZone: string | null): Record<string, string> {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timeZone ?? undefined, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(instant));
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+/** ``YYYY-MM-DDTHH:mm`` for a datetime-local input showing the zone's local time. */
+export function wallClock(instant: string, timeZone: string | null): string {
+  const part = zonedParts(instant, timeZone);
+  return `${part.year}-${part.month}-${part.day}T${part.hour}:${part.minute}`;
+}
+
+export function localDate(instant: string, timeZone: string | null): string {
+  return wallClock(instant, timeZone).slice(0, 10);
+}
 
 export function localDateTime(value = new Date()): string {
   const offset = value.getTimezoneOffset() * 60_000;

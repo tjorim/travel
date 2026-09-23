@@ -26,6 +26,7 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'dist/*/private/app-import.json'
               - '.github/workflows/ci.yaml'
             frontend:
               - 'frontend/**'

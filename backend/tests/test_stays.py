@@ -53,8 +53,10 @@ def create_stay(client: TestClient, trip_id: str) -> dict:
                 "latitude": 25.033,
                 "longitude": 121.565,
             },
-            "arrives_at": "2054-04-01T15:00:00Z",
-            "departs_at": "2054-04-05T11:00:00Z",
+            "check_in_date": "2054-04-01",
+            "check_out_date": "2054-04-05",
+            "check_in_time": "15:00:00",
+            "check_out_time": "11:00:00",
             "status": "confirmed",
             "property_name": "Private Hotel Taipei",
             "booking_reference": "BOOKING-SECRET-123",
@@ -99,13 +101,14 @@ def test_owner_can_create_edit_list_and_delete_stays_and_broad_stay_cards() -> N
         json={
             "property_name": "Private Hotel, revised",
             "status": "cancelled",
-            "departs_at": "2054-04-06T11:00:00Z",
+            "check_out_date": "2054-04-06",
         },
     )
     assert changed_stay.status_code == 200, changed_stay.text
     assert changed_stay.json()["property_name"] == "Private Hotel, revised"
     assert changed_stay.json()["status"] == "cancelled"
-    assert changed_stay.json()["departs_at"].startswith("2054-04-06T11:00:00")
+    assert changed_stay.json()["check_out_date"] == "2054-04-06"
+    assert changed_stay.json()["check_out_time"] == "11:00:00"
 
     broad_place = create_broad_place(owner, trip["id"])
     card = create_broad_stay_card(owner, trip["id"], broad_place["id"])
@@ -144,8 +147,8 @@ def test_other_subject_cannot_read_or_change_a_stay_or_broad_stay_card() -> None
         f"/api/trips/{trip['id']}/stays",
         json={
             "place": {"locality": "Taipei", "country_code": "TW"},
-            "arrives_at": "2054-04-01T15:00:00Z",
-            "departs_at": "2054-04-05T11:00:00Z",
+            "check_in_date": "2054-04-01",
+            "check_out_date": "2054-04-05",
             "property_name": "No access",
         },
     ).status_code == 404
@@ -199,3 +202,62 @@ def test_a_broad_stay_card_cannot_expose_its_trip_stay_data_through_a_projection
     assert delivered.json()["stays"] == [{"id": "broad_stay_card-1", "title": card["title"]}]
     for private_value in ("Private Hotel Taipei", "1 Xinyi Road", "BOOKING-SECRET-123", "host@example.test", "2054-04-01"):
         assert private_value not in encoded_delivery
+
+
+def test_a_stay_can_be_planned_for_an_area_before_the_accommodation_is_chosen() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    area = create_broad_place(owner, trip["id"], label="Alishan")
+
+    planned = owner.post(
+        f"/api/trips/{trip['id']}/stays",
+        json={"broad_place_id": area["id"], "check_in_date": "2054-11-29", "check_out_date": "2054-11-30"},
+    )
+    assert planned.status_code == 201, planned.text
+    assert planned.json()["property_name"] is None
+    assert planned.json()["place"] is None
+    assert planned.json()["broad_place"]["label"] == "Alishan"
+    assert planned.json()["status"] == "planned"
+
+    chosen = owner.patch(
+        f"/api/trips/{trip['id']}/stays/{planned.json()['id']}",
+        json={
+            "property_name": "Mountain Lodge",
+            "place": {"locality": "Alishan", "country_code": "TW"},
+            "website_url": "https://lodge.example.test/",
+            "status": "booked",
+        },
+    )
+    assert chosen.status_code == 200, chosen.text
+    assert chosen.json()["place"]["locality"] == "Alishan"
+    assert chosen.json()["website_url"] == "https://lodge.example.test/"
+    assert chosen.json()["broad_place"]["id"] == area["id"]
+
+    reopened = owner.patch(f"/api/trips/{trip['id']}/stays/{planned.json()['id']}", json={"place": None})
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["place"] is None
+
+
+def test_a_stay_covers_at_least_one_night_and_uses_only_this_trips_areas() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    other_trip = create_trip(owner, "Elsewhere")
+    foreign_area = create_broad_place(owner, other_trip["id"], label="Elsewhere")
+
+    for nights in ({"check_in_date": "2054-04-02", "check_out_date": "2054-04-02"},
+                   {"check_in_date": "2054-04-02", "check_out_date": "2054-04-01"}):
+        assert owner.post(f"/api/trips/{trip['id']}/stays", json=nights).status_code == 422
+    assert owner.post(
+        f"/api/trips/{trip['id']}/stays",
+        json={"broad_place_id": foreign_area["id"], "check_in_date": "2054-04-01", "check_out_date": "2054-04-02"},
+    ).status_code == 422
+    assert owner.post(
+        f"/api/trips/{trip['id']}/stays",
+        json={"check_in_date": "2054-04-01", "check_out_date": "2054-04-02", "website_url": "http://insecure.test/"},
+    ).status_code == 422
+
+    stay = create_stay(owner, trip["id"])
+    assert owner.patch(
+        f"/api/trips/{trip['id']}/stays/{stay['id']}", json={"check_in_date": "2054-04-05"}
+    ).status_code == 422
+    assert owner.patch(f"/api/trips/{trip['id']}/stays/{stay['id']}", json={"check_in_date": None}).status_code == 422

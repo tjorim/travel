@@ -112,6 +112,8 @@ def test_registered_tools_cover_owner_resource_families(backend: TravelMcpBacken
         "create_moment_excerpt",
         "create_stay",
         "get_stay",
+        "create_trip_highlight",
+        "delete_trip_highlight",
         "create_broad_stay_card",
         "get_broad_stay_card",
         "upload_finished_track",
@@ -159,3 +161,15 @@ def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: 
     server, http_app = create_mcp_http_app(TestingSessionLocal)
     assert server.name == "travel"
     assert http_app is not None
+
+
+def test_highlight_tools_use_the_owner_handlers_and_require_confirmation_to_delete(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Highlights"))
+    second = backend.create_trip_highlight(trip["id"], schemas.TripHighlightCreate(title="Mountains"))
+    first = backend.create_trip_highlight(trip["id"], schemas.TripHighlightCreate(title="City", position=0))
+    assert [item["title"] for item in backend.list_trip_highlights(trip["id"])] == ["City", "Mountains"]
+    assert backend.update_trip_highlight(trip["id"], second["id"], schemas.TripHighlightUpdate(summary="Alishan."))["summary"] == "Alishan."
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.delete_trip_highlight(trip["id"], first["id"])
+    assert backend.delete_trip_highlight(trip["id"], first["id"], confirm=True) == {"status": "deleted"}
+    assert [item["title"] for item in backend.list_trip_highlights(trip["id"])] == ["Mountains"]

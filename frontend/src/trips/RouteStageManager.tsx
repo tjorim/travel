@@ -5,14 +5,14 @@ import { apiError, apiHeaders, type BroadPlace, type RouteStage, type Trip } fro
 
 export function RouteStageManager({ trip, broadPlaces, onChange }: { trip: Trip; broadPlaces: BroadPlace[]; onChange: () => Promise<void> }) {
   const { session } = useAuth();
-  const [draft, setDraft] = useState({ id: null as string | null, broadPlaceId: "", label: "" });
+  const [draft, setDraft] = useState({ id: null as string | null, broadPlaceId: "", label: "", summary: "" });
   const [message, setMessage] = useState("Route-etappes zijn bewust algemeen; exacte plaatsen kunnen hier niet gekozen worden.");
   const stages = trip.route_stages.slice().sort((left, right) => left.position - right.position);
 
-  function newStage() { setDraft({ id: null, broadPlaceId: "", label: "" }); }
+  function newStage() { setDraft({ id: null, broadPlaceId: "", label: "", summary: "" }); }
 
   function editStage(stage: RouteStage) {
-    setDraft({ id: stage.id, broadPlaceId: stage.place.id, label: stage.label ?? "" });
+    setDraft({ id: stage.id, broadPlaceId: stage.place.id, label: stage.label ?? "", summary: stage.summary ?? "" });
   }
 
   async function saveStage(event: FormEvent<HTMLFormElement>) {
@@ -24,8 +24,8 @@ export function RouteStageManager({ trip, broadPlaces, onChange }: { trip: Trip;
       method: draft.id ? "PATCH" : "POST",
       headers: apiHeaders(session),
       body: JSON.stringify(draft.id
-        ? { broad_place_id: draft.broadPlaceId, label: draft.label.trim() || null }
-        : { broad_place_id: draft.broadPlaceId, position: stages.length, label: draft.label.trim() || null }),
+        ? { broad_place_id: draft.broadPlaceId, label: draft.label.trim() || null, summary: draft.summary.trim() || null }
+        : { broad_place_id: draft.broadPlaceId, position: stages.length, label: draft.label.trim() || null, summary: draft.summary.trim() || null }),
     });
     if (!response.ok) return apiError(response, "De route-etappe kon niet worden opgeslagen.");
     await onChange();
@@ -61,8 +61,9 @@ export function RouteStageManager({ trip, broadPlaces, onChange }: { trip: Trip;
       <label>Brede plaats<select required value={draft.broadPlaceId} onChange={(event) => setDraft((current) => ({ ...current, broadPlaceId: event.target.value }))}><option value="">Kies een brede plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}{place.region ? ` · ${place.region}` : ""}</option>)}</select></label>
       {!broadPlaces.length && <p className="help">Voeg hierboven eerst een brede plaats toe; exacte plaatsen zijn hier bewust niet beschikbaar.</p>}
       <label>Etappelabel <span className="optional">(optioneel)</span><input maxLength={120} value={draft.label} onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))} placeholder="Bijvoorbeeld: noordkust" /></label>
+      <label>Korte beschrijving <span className="optional">(optioneel, deelbaar als je dit veld kiest)</span><textarea maxLength={2000} rows={2} value={draft.summary} onChange={(event) => setDraft((current) => ({ ...current, summary: event.target.value }))} placeholder="Bijvoorbeeld: stad, eten en een eerste weekend in het noorden" /></label>
       <button type="submit">{draft.id ? "Etappe opslaan" : "Etappe toevoegen"}</button>
     </form>
-    {stages.length > 0 && <div className="saved-moments manager-list">{stages.map((stage, index) => <article className="excerpt-row" key={stage.id}><div><strong>{stage.label ?? stage.place.label}</strong><span>{stage.place.label} · etappe {index + 1}</span></div><div className="button-row"><button className="secondary compact" type="button" disabled={index === 0} onClick={() => void moveStage(stage, -1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verplaatst."))}>Omhoog</button><button className="secondary compact" type="button" disabled={index === stages.length - 1} onClick={() => void moveStage(stage, 1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verplaatst."))}>Omlaag</button><button className="secondary compact" type="button" onClick={() => editStage(stage)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteStage(stage).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+    {stages.length > 0 && <div className="saved-moments manager-list">{stages.map((stage, index) => <article className="excerpt-row" key={stage.id}><div><strong>{stage.label ?? stage.place.label}</strong><span>{stage.place.label} · etappe {index + 1}{stage.summary ? ` · ${stage.summary}` : ""}</span></div><div className="button-row"><button className="secondary compact" type="button" disabled={index === 0} onClick={() => void moveStage(stage, -1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verplaatst."))}>Omhoog</button><button className="secondary compact" type="button" disabled={index === stages.length - 1} onClick={() => void moveStage(stage, 1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verplaatst."))}>Omlaag</button><button className="secondary compact" type="button" onClick={() => editStage(stage)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteStage(stage).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De route-etappe kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
   </section>;
 }

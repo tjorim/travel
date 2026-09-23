@@ -56,6 +56,7 @@ def trip_query():
         selectinload(Trip.moments).selectinload(Moment.media_links),
         selectinload(Trip.moment_excerpts).selectinload(MomentExcerpt.broad_place),
         selectinload(Trip.stays).selectinload(Stay.place),
+        selectinload(Trip.stays).selectinload(Stay.broad_place),
         selectinload(Trip.broad_stay_cards).selectinload(BroadStayCard.place),
         selectinload(Trip.broad_routes),
         selectinload(Trip.transport_legs).selectinload(TransportLeg.departure_place),
@@ -63,6 +64,7 @@ def trip_query():
         selectinload(Trip.transport_legs).selectinload(TransportLeg.document_links),
         selectinload(Trip.itinerary_entries),
         selectinload(Trip.trip_tasks),
+        selectinload(Trip.highlights),
         selectinload(Trip.media_derivatives).selectinload(MediaDerivative.media_asset),
         selectinload(Trip.document_derivatives).selectinload(DocumentDerivative.document_asset),
     )
@@ -163,6 +165,8 @@ def update_trip(trip_id: str, payload: TripUpdate, session: SessionDep, subject:
     trip = owned_trip(session, trip_id, subject)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(trip, field, value)
+    if trip.starts_on is not None and trip.ends_on is not None and trip.ends_on < trip.starts_on:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="The trip cannot end before it starts")
     if trip.publication_state == PublicationState.PUBLISHED and trip.visibility == Visibility.PRIVATE:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Private trips cannot be published")
     if trip.publication_state == PublicationState.PUBLISHED and trip.public_id is None:
@@ -186,6 +190,7 @@ def create_route_stage(trip_id: str, payload: RouteStageCreate, session: Session
         place=broad_place_for_stage(session, trip.id, payload),
         position=payload.position,
         label=payload.label,
+        summary=payload.summary,
     )
     session.add(stage)
     commit_or_conflict(session)

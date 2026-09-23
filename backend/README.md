@@ -16,6 +16,16 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}` | Read, edit, or remove an owned trip. |
 | `POST` | `/trips/{trip_id}/route-stages` | Add a broad route stage. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/route-stages/{stage_id}` | Edit or remove a route stage. |
+| `GET`, `POST` | `/trips/{trip_id}/highlights` | List or add an authored trip highlight (shareable only when a scope selects it). |
+| `PATCH`, `DELETE` | `/trips/{trip_id}/highlights/{highlight_id}` | Edit, reorder or remove a highlight. |
+| `GET`, `POST` | `/trips/{trip_id}/stays` | List or add an owner-only stay: its nights, city/area and, once chosen, the accommodation. |
+| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/stays/{stay_id}` | Read, edit or remove a stay. |
+| `GET`, `POST` | `/trips/{trip_id}/transport-legs` | List or add an owner-only flight or other booked leg. |
+| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/transport-legs/{leg_id}` | Read, edit or remove a transport leg. |
+| `GET`, `POST` | `/trips/{trip_id}/itinerary-entries` | List or add an owner-only day-plan entry. |
+| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/itinerary-entries/{entry_id}` | Read, edit, reorder or remove a day-plan entry. |
+| `GET`, `POST` | `/trips/{trip_id}/trip-tasks` | List or add an owner-only booking/preparation task with optional HTTPS links. |
+| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/trip-tasks/{task_id}` | Read, complete/reopen, edit or remove a task. |
 | `POST` | `/trips/{trip_id}/moments` | Add a chronological moment. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/moments/{moment_id}` | Edit or remove a moment. |
 | `POST` | `/trips/{trip_id}/places/search` | Owner-only OSM search; returns attribution and a selected-result snapshot. |
@@ -50,6 +60,45 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
 | `GET` | `/provider-tokens` | Owner-only non-secret connection status for each import provider. |
 | `PUT`, `DELETE` | `/provider-tokens/{provider}` | Connect or revoke the owner's Google Photos/GoPro Cloud access token (write-only; never read back). |
+
+### Nights, local times and trip dates
+
+A stay is the set of nights slept at one accommodation: `check_in_date` is
+the first night and `check_out_date` the departure morning, so it covers
+every night from check-in up to, but not including, check-out. Both dates and
+the optional `check_in_time`/`check_out_time` are local to the stay. A stay
+can be planned for a city or area (`broad_place_id`) before the property is
+chosen; `property_name` and the exact `place` are then empty.
+
+A transport leg stores UTC instants plus each endpoint's IANA time zone.
+Send `departs_at`/`arrives_at` without an offset together with
+`departure_timezone`/`arrival_timezone` to enter local wall-clock times such
+as "AMS 10:40 → TPE 06:25 the next day"; a time with an explicit offset is
+used as-is. Responses always carry the UTC offset.
+
+A trip's `starts_on`/`ends_on` are owner-only local dates. A share scope can
+include them with `trip.dates` set to `day`, `month` or `year`; the
+projection then truncates both dates to that precision.
+
+### Importing an archived trip
+
+`app.archive_import` loads one trip extracted from the retired `dist/`
+archive (#40), such as `dist/exampleland-2054/private/app-import.json`, through the
+owner API. The trip and everything in it arrive private and unpublished; a
+failed import deletes the partly created trip, and a second run with the same
+title is refused unless `--allow-duplicate` is passed.
+
+```bash
+# Local development API
+uv run python -m app.archive_import ../dist/exampleland-2054/private/app-import.json \
+  --api-url http://localhost:8000/api --dev-subject owner
+# Production: an owner access token, never committed
+TRAVEL_API_TOKEN=... uv run python -m app.archive_import ../dist/exampleland-2054/private/app-import.json \
+  --api-url https://travel.tjor.im/api
+```
+
+`tests/test_archive_import.py` imports the committed Taiwan file on every
+backend run, so it stays valid against the current API.
 
 `GET /api/health` checks database connectivity. FastAPI publishes the full
 OpenAPI description at `/openapi.json` and interactive development docs at

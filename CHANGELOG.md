@@ -31,6 +31,7 @@ All notable changes to the travel hub are documented here.
   browser session storage is unavailable. The access token remains
   session-scoped; persistent browser storage holds only a non-secret recovery
   marker, cleared on sign-out or expired SSO session.
+- Numbered visitor route stages from one instead of zero.
 - Retired the archive-only photo preparation helper and GeoJSON contract test
   as new trip content and media move to the application workflow.
 - Replaced the static archive's three SVG route maps with a shared MapLibre
@@ -53,6 +54,23 @@ All notable changes to the travel hub are documented here.
   serves no versioned URL alias.
 
 ### Added
+
+- Added `app.archive_import`, an owner-run importer that recreates an archived
+  trip through the API as a private trip, and the extracted Taiwan data in
+  `dist/exampleland-2054/private/app-import.json` (flights, stays, day plan, tasks,
+  route, highlights and story). ([#40](https://github.com/tjorim/travel/issues/40))
+
+- Closed the remaining static-archive parity gaps. Stays are now nights
+  (check-in date to check-out morning, optional local times) linked to a
+  city or area, and can be planned before the accommodation is chosen. The
+  day plan takes date ranges, a day kind and a concept flag, shows each
+  night's stay, flags nights without one and can focus the owner map.
+  Transport legs record each endpoint's time zone and a travel class, and
+  show local times with the day shift. Tasks carry HTTPS reference links, and
+  trips gain travel dates with live booking badges. Visitors can see
+  owner-selected trip dates at a chosen precision, authored highlights and
+  route-stage summaries, and owner MCP tools manage highlights like the
+  other resources. ([#140](https://github.com/tjorim/travel/issues/140))
 
 - Added a typed, owner-authenticated local MCP server with 104 task-specific
   management tools for canonical travel content, media/document workflows,

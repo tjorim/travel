@@ -37,7 +37,20 @@ from . import schemas
 from .config import settings
 from .database import SessionLocal
 from .models import DocumentKind, ImportProvider, McpAuditEvent, TrackKind
-from .routers import documents, itinerary, library, media, places, publication, stays, tasks, tracks, transport, trips
+from .routers import (
+    documents,
+    highlights,
+    itinerary,
+    library,
+    media,
+    places,
+    publication,
+    stays,
+    tasks,
+    tracks,
+    transport,
+    trips,
+)
 from .secrets import get_secret_store
 from .storage import get_storage
 
@@ -439,6 +452,22 @@ class TravelMcpBackend:
     def delete_trip_task(self, trip_id: str, task_id: str, confirm: bool = False) -> dict[str, str]:
         """Delete a preparation task after explicit confirmation."""
         return self._call("trip_task.delete", "trip_task", task_id, trip_id, lambda s, sub: tasks.delete_trip_task(trip_id, task_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
+
+    def list_trip_highlights(self, trip_id: str) -> list[dict[str, Any]]:
+        """List authored trip highlights in display order."""
+        return self._call("trip_highlight.list", "trip_highlight", None, trip_id, lambda s, sub: highlights.list_highlights(trip_id, s, sub), lambda x: _models(x, schemas.TripHighlightResponse))
+
+    def create_trip_highlight(self, trip_id: str, payload: schemas.TripHighlightCreate) -> dict[str, Any]:
+        """Author a trip highlight; it is shared only when a scope selects it."""
+        return self._call("trip_highlight.create", "trip_highlight", None, trip_id, lambda s, sub: highlights.create_highlight(trip_id, payload, s, sub), lambda x: _model(x, schemas.TripHighlightResponse))
+
+    def update_trip_highlight(self, trip_id: str, highlight_id: str, payload: schemas.TripHighlightUpdate) -> dict[str, Any]:
+        """Edit or reorder a trip highlight."""
+        return self._call("trip_highlight.update", "trip_highlight", highlight_id, trip_id, lambda s, sub: highlights.update_highlight(trip_id, highlight_id, payload, s, sub), lambda x: _model(x, schemas.TripHighlightResponse))
+
+    def delete_trip_highlight(self, trip_id: str, highlight_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete a trip highlight after explicit confirmation."""
+        return self._call("trip_highlight.delete", "trip_highlight", highlight_id, trip_id, lambda s, sub: highlights.delete_highlight(trip_id, highlight_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     # Finished private tracks and broad reviewed routes ------------------
     def upload_finished_track(self, trip_id: str, started_at: str, ended_at: str, kind: TrackKind, file: BinaryUpload) -> dict[str, Any]:

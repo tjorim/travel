@@ -39,7 +39,7 @@ function fitToData(instance: MapLibreMap, Bounds: typeof import("maplibre-gl").L
   if (!bounds.isEmpty()) instance.fitBounds(bounds, { padding: 45, maxZoom: 10, duration, pitch: 0, bearing: 0 });
 }
 
-export function TripMap({ points, lines, owner = false, perspective, styleUrl = configuredStyleUrl }: { points: MapPoint[]; lines: MapLine[]; owner?: boolean; perspective?: MapPerspective; styleUrl?: string }) {
+export function TripMap({ points, lines, owner = false, perspective, styleUrl = configuredStyleUrl, focus }: { points: MapPoint[]; lines: MapLine[]; owner?: boolean; perspective?: MapPerspective; styleUrl?: string; focus?: { id: string; request: number } | null }) {
   const canvas = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -109,6 +109,13 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
   useEffect(() => {
     if (ready && map.current?.getLayer("selected-stop")) map.current.setFilter("selected-stop", ["==", ["get", "id"], selectedPoint?.id ?? ""]);
   }, [ready, selectedPoint]);
+
+  // An outside request (such as a day-plan entry) selects a stop by id; the
+  // request counter lets the same stop be chosen again.
+  useEffect(() => {
+    const point = focus ? points.find((candidate) => candidate.id === focus.id) : undefined;
+    if (point) selectPoint(point);
+  }, [focus?.request, ready]);
 
   function toggleTerrain() {
     const instance = map.current;

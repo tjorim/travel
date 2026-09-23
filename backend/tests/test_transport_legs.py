@@ -240,3 +240,40 @@ def test_a_transport_leg_can_never_be_selected_into_a_public_or_unlisted_project
     encoded_delivery = delivered.text
     for private_value in ("EVA Air", "BR-087", "BOOKING-SECRET-987", "Brussels Airport", "Taoyuan Airport"):
         assert private_value not in encoded_delivery
+
+
+def test_endpoint_time_zones_turn_local_wall_clock_times_into_exact_instants(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+
+    # AMS 10:40 local (CET, UTC+1) to TPE 06:25 local the next day (UTC+8).
+    leg = create_leg(
+        owner,
+        trip["id"],
+        departs_at="2054-11-16T10:40:00",
+        arrives_at="2054-11-17T06:25:00",
+        departure_timezone="Europe/Amsterdam",
+        arrival_timezone="Asia/Taipei",
+        travel_class="Premium Economy",
+    )
+    assert leg["departs_at"] == "2054-11-16T09:40:00Z"
+    assert leg["arrives_at"].startswith("2054-11-16T22:25:00")
+    assert leg["departure_timezone"] == "Europe/Amsterdam"
+    assert leg["arrival_timezone"] == "Asia/Taipei"
+    assert leg["travel_class"] == "Premium Economy"
+
+    moved = owner.patch(
+        f"/api/trips/{trip['id']}/transport-legs/{leg['id']}", json={"arrives_at": "2054-11-17T07:25:00"}
+    )
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["arrives_at"].startswith("2054-11-16T23:25:00")
+
+
+def test_a_local_time_needs_a_known_time_zone(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    endpoint = f"/api/trips/{trip['id']}/transport-legs"
+
+    assert owner.post(endpoint, json=leg_payload(departs_at="2054-11-16T10:40:00")).status_code == 422
+    assert owner.post(endpoint, json=leg_payload(departure_timezone="Mars/Olympus")).status_code == 422
+    assert owner.post(endpoint, json=leg_payload(departure_timezone="../../etc/passwd")).status_code == 422
