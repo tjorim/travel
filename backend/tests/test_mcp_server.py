@@ -358,3 +358,43 @@ def test_capability_manifest_reports_contract_version_when_mcp_is_disabled(
         "resources": [],
         "prompts": [],
     }
+
+
+def test_write_tool_destructive_hints_reflect_overwrites() -> None:
+    from app.mcp_server import _ADDITIVE_WRITE_TOOLS, _tool_annotations
+
+    write_tools = {name for name, cap in MCP_TOOL_CAPABILITIES.items() if cap["effect"] == "write"}
+    assert write_tools >= _ADDITIVE_WRITE_TOOLS
+    for name in write_tools:
+        destructive = _tool_annotations(name).destructive_hint
+        if name.startswith(("delete_", "update_", "revoke_", "unpublish_")):
+            assert destructive is True, name
+        if name.startswith("create_"):
+            assert destructive is False, name
+    # Overwrite/revoke tools whose names carry no destructive prefix.
+    assert _tool_annotations("set_public_projection_scope").destructive_hint is True
+    assert _tool_annotations("rotate_share_link").destructive_hint is True
+    # Additive state advances stay non-destructive.
+    assert _tool_annotations("activate_share_link").destructive_hint is False
+    assert _tool_annotations("save_exact_place").destructive_hint is False
+    # Reads are never destructive, and no write tool is advertised as idempotent.
+    assert _tool_annotations("get_trip").destructive_hint is False
+    assert all(_tool_annotations(n).idempotent_hint is False for n in write_tools)
+
+
+def test_preview_file_inspection_tools_are_read_only() -> None:
+    from app.mcp_server import _tool_annotations
+
+    for name in ("inspect_public_preview_file", "inspect_share_preview_file"):
+        assert MCP_TOOL_CAPABILITIES[name]["effect"] == "read", name
+        annotations = _tool_annotations(name)
+        assert annotations.read_only_hint is True, name
+        assert annotations.destructive_hint is False, name
+
+
+def test_external_provider_tools_are_open_world() -> None:
+    from app.mcp_server import _tool_annotations
+
+    for name in ("search_places", "reverse_geocode_place", "start_media_import_session", "complete_media_import_session"):
+        assert _tool_annotations(name).open_world_hint is True, name
+    assert _tool_annotations("list_trips").open_world_hint is False

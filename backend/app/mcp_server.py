@@ -743,7 +743,7 @@ MCP_CAPABILITY_CONTRACT_VERSION = 1
 # not an authorization mechanism.
 MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
     name: {
-        "effect": "read" if name.startswith(("get_", "list_", "search_", "reverse_", "preview_", "suggest_", "whoami")) else "write",
+        "effect": "read" if name.startswith(("get_", "list_", "search_", "reverse_", "preview_", "inspect_", "suggest_", "whoami")) else "write",
         "requires_confirmation": name.startswith(("delete_", "revoke_", "unpublish_", "publish_", "set_"))
         or name in {"create_share_link", "update_share_link", "activate_share_link", "rotate_share_link", "approve_media_derivative", "approve_document_derivative", "complete_media_import_session"},
     }
@@ -751,14 +751,47 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
 }
 
 
+# Write tools that only add data or advance a state (draft -> active, pending ->
+# approved); none replaces data that already exists.  MCP's ``destructiveHint``
+# means "may delete or overwrite", so anything absent from this set (every
+# ``update_*``, ``delete_*``, ``revoke_*``/``unpublish_*``,
+# ``set_public_projection_scope`` and ``rotate_share_link``, which revokes the
+# current capability, plus any future unclassified tool) is destructive.
+_ADDITIVE_WRITE_TOOLS = frozenset(
+    {name for name in _TOOL_NAMES if name.startswith("create_")}
+    | {
+        "save_exact_place",
+        "save_broad_place",
+        "upload_media",
+        "upload_document",
+        "upload_library_document",
+        "upload_finished_track",
+        "add_document_derivative",
+        "approve_media_derivative",
+        "approve_document_derivative",
+        "activate_share_link",
+        "publish_public_projection",
+        "start_media_import_session",
+        "complete_media_import_session",
+        "mark_task_alert_read",
+    }
+)
+
+# Tools that call an external service (the place-search provider, media import
+# providers), so their effect is not confined to Travel's own data.
+_OPEN_WORLD_TOOLS = frozenset(
+    {"search_places", "reverse_geocode_place", "start_media_import_session", "complete_media_import_session"}
+)
+
+
 def _tool_annotations(name: str) -> ToolAnnotations:
     capability = MCP_TOOL_CAPABILITIES[name]
     read = capability["effect"] == "read"
     return ToolAnnotations(
         read_only_hint=read,
-        destructive_hint=name.startswith(("delete_", "revoke_", "unpublish_")),
+        destructive_hint=False if read else name not in _ADDITIVE_WRITE_TOOLS,
         idempotent_hint=read,
-        open_world_hint=False,
+        open_world_hint=name in _OPEN_WORLD_TOOLS,
     )
 
 

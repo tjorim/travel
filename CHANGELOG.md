@@ -43,7 +43,13 @@ All notable changes to the travel hub are documented here.
   tool `effect` (`read`/`write`), `requires_confirmation` and an `access`
   object (empty here, since Travel has a single owner-only policy). Tool
   authorization is unchanged, and a test checks that every registered tool's
-  standard MCP annotations agree with its `effect`.
+  standard MCP annotations agree with its `effect`. MCP `destructiveHint` is
+  now true for every tool that overwrites or revokes existing data (all
+  `update_*` tools, `set_public_projection_scope` and `rotate_share_link`, not
+  just `delete_*`/`revoke_*`/`unpublish_*`), and `openWorldHint` is true for the
+  tools that call the place-search and media-import providers. The
+  `inspect_public_preview_file` and `inspect_share_preview_file` tools, which
+  only verify that a file is deliverable, are now reported as `read`.
   ([tjorim/apps#229](https://github.com/tjorim/apps/issues/229))
 
 - Let an owner explicitly create a revocable unlisted share link without a
