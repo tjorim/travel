@@ -21,15 +21,18 @@ from collections.abc import Callable
 from io import BytesIO
 from typing import Any, Literal, TypeVar
 
+import anyio.to_thread
 from fastapi import HTTPException, Response
 from fastapi.datastructures import UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastmcp import FastMCP
+from fastmcp.exceptions import DisabledError, FastMCPError, NotFoundError, ToolError
 from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
-from fastmcp.server.dependencies import get_access_token
+from fastmcp.server.dependencies import get_access_token, get_context
 from fastmcp.server.http import StarletteWithLifespan
+from fastmcp.server.middleware import Middleware, MiddlewareContext
 from mcp.types import ToolAnnotations
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -89,6 +92,32 @@ def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, An
     return [_model(value, model_type) for value in values]
 
 
+_AUDITED = "_travel_mcp_audited"
+
+
+def _request_id() -> str | None:
+    """The MCP request id, which correlates a client error, a log line and an audit row."""
+    try:
+        return str(get_context().request_id)
+    except Exception:  # no request context, for example a direct call in a test
+        return None
+
+
+def _validation_fields(error: ValidationError) -> str:
+    """Field paths and error types only; pydantic messages echo the rejected input."""
+    found = error.errors(include_input=False, include_context=False, include_url=False)
+    return ", ".join(f"{'.'.join(str(part) for part in item['loc']) or '<root>'}:{item['type']}" for item in found[:8])
+
+
+def _error_summary(error: BaseException) -> str:
+    """A short, payload-free description that is safe to log and to persist in the audit trail."""
+    if isinstance(error, HTTPException):
+        return str(error.detail)[:240]
+    if isinstance(error, ValidationError):
+        return f"Validation failed ({_validation_fields(error)})"[:240]
+    return str(error)[:240]
+
+
 class TravelMcpBackend:
     """Task-specific owner tools which share the application's validation rules."""
 
@@ -116,28 +145,58 @@ class TravelMcpBackend:
 
     def _audit(
         self, session: Session, *, subject: str, action: str, resource_type: str, resource_id: str | None,
-        trip_id: str | None, result: str, detail: str | None = None,
+        trip_id: str | None, result: str, detail: str | None = None, request_id: str | None = None,
     ) -> None:
         # Payloads and raw exception traces deliberately never become audit data.
+        details = {"error": detail} if detail else {}
+        if request_id:
+            details["request_id"] = request_id
         session.add(McpAuditEvent(
             owner_subject=subject, action=action, resource_type=resource_type,
-            resource_id=resource_id, trip_id=trip_id, result=result,
-            details={"error": detail} if detail else {},
+            resource_id=resource_id, trip_id=trip_id, result=result, details=details,
         ))
         session.commit()
 
     def _record_audit(
         self, *, subject: str, action: str, resource_type: str, resource_id: str | None,
-        trip_id: str | None, result: str, detail: str | None = None,
+        trip_id: str | None, result: str, detail: str | None = None, request_id: str | None = None,
     ) -> None:
         try:
             with self.factory() as session:
                 self._audit(session, subject=subject, action=action, resource_type=resource_type,
-                            resource_id=resource_id, trip_id=trip_id, result=result, detail=detail)
+                            resource_id=resource_id, trip_id=trip_id, result=result, detail=detail,
+                            request_id=request_id)
         except Exception as error:
             # Domain handlers may already have committed. An audit outage must
             # not turn a completed operation into a reported tool failure.
-            logger.error("MCP audit write failed for %s: %s", action, type(error).__name__)
+            logger.error("MCP audit write failed for %s request_id=%s: %s", action, request_id, type(error).__name__)
+
+    def _audit_unexecuted_rejection(self, tool: str, arguments: dict[str, Any] | None, error: BaseException) -> None:
+        """Audit a call refused before its tool body ran, such as invalid arguments.
+
+        Only the tool name and a payload-free summary are kept. Nothing is
+        recorded without an authenticated subject.
+        """
+        try:
+            subject = self._subject()
+        except PermissionError:
+            return
+        trip_id = (arguments or {}).get("trip_id")
+        self._record_audit(
+            subject=subject, action=tool, resource_type="tool_invocation", resource_id=None,
+            trip_id=trip_id if isinstance(trip_id, str) and len(trip_id) <= 32 else None,
+            result="rejected", detail=_error_summary(error), request_id=_request_id(),
+        )
+
+    def _reject(
+        self, error: Exception, subject: str, action: str, resource_type: str,
+        resource_id: str | None, trip_id: str | None, request_id: str | None,
+    ) -> None:
+        summary = _error_summary(error)
+        logger.warning("MCP tool %s rejected request_id=%s error=%s: %s", action, request_id, type(error).__name__, summary)
+        self._record_audit(subject=subject, action=action, resource_type=resource_type,
+                           resource_id=resource_id, trip_id=trip_id, result="rejected", detail=summary,
+                           request_id=request_id)
 
     def _call(
         self, action: str, resource_type: str, resource_id: str | None, trip_id: str | None,
@@ -145,6 +204,7 @@ class TravelMcpBackend:
         *, confirm: bool = True, needs_confirmation: bool = False,
     ) -> Any:
         subject = self._subject()
+        request_id = _request_id()
         try:
             with self.factory() as session:
                 if needs_confirmation:
@@ -153,15 +213,16 @@ class TravelMcpBackend:
                 rendered = output(result)
                 session.commit()
         except HTTPException as error:
-            self._record_audit(subject=subject, action=action, resource_type=resource_type,
-                               resource_id=resource_id, trip_id=trip_id, result="rejected", detail=str(error.detail)[:240])
-            raise ValueError(str(error.detail)) from error
+            self._reject(error, subject, action, resource_type, resource_id, trip_id, request_id)
+            translated = ValueError(str(error.detail))
+            setattr(translated, _AUDITED, True)
+            raise translated from error
         except Exception as error:
-            self._record_audit(subject=subject, action=action, resource_type=resource_type,
-                               resource_id=resource_id, trip_id=trip_id, result="rejected", detail=str(error)[:240])
+            self._reject(error, subject, action, resource_type, resource_id, trip_id, request_id)
+            setattr(error, _AUDITED, True)
             raise
         self._record_audit(subject=subject, action=action, resource_type=resource_type,
-                           resource_id=resource_id, trip_id=trip_id, result="succeeded")
+                           resource_id=resource_id, trip_id=trip_id, result="succeeded", request_id=request_id)
         return rendered
 
     # Identity and audit -------------------------------------------------
@@ -627,6 +688,46 @@ class TravelMcpBackend:
         return self._call("share_link.preview_file", "share_link", link_id, trip_id, lambda s, sub: publication.preview_share_file(trip_id, link_id, local_id, s, sub, get_storage()), lambda x: {"content_type": x.media_type, "cache_control": x.headers.get("cache-control")})
 
 
+class ToolFailureMiddleware(Middleware):
+    """Turn every failure that would surface as a bare protocol error into a correlated tool error.
+
+    FastMCP reports a pydantic error raised by a tool body as ``-32602 Invalid
+    request parameters`` and any other unexpected failure as a generic
+    ``-32603``; neither names the tool or can be found in the server logs.
+    This maps them to an ``isError`` result carrying the MCP request id, logs
+    the same id, and audits calls that were refused before ``_call`` ran (for
+    example invalid arguments). Only names, types and field paths are logged.
+    """
+
+    def __init__(self, backend: TravelMcpBackend) -> None:
+        self.backend = backend
+
+    async def on_call_tool(self, context: MiddlewareContext[Any], call_next: Callable[..., Any]) -> Any:
+        try:
+            return await call_next(context)
+        except (NotFoundError, DisabledError):
+            raise
+        except Exception as error:
+            tool = context.message.name
+            request_id = _request_id()
+            audited = getattr(error, _AUDITED, False) or getattr(error.__cause__, _AUDITED, False)
+            if not audited:
+                await anyio.to_thread.run_sync(
+                    self.backend._audit_unexecuted_rejection, tool, context.message.arguments, error
+                )
+            if isinstance(error, ValidationError):
+                fields = _validation_fields(error)
+                logger.warning("MCP tool %s failed validation request_id=%s fields=%s", tool, request_id, fields)
+                raise ToolError(
+                    f"{tool} failed validation ({fields}); the stored or generated data did not match the API schema. "
+                    f"Reference: {request_id}"
+                ) from None
+            if isinstance(error, FastMCPError):
+                raise ToolError(f"{error} Reference: {request_id}") from error
+            logger.error("MCP tool %s failed request_id=%s error=%s", tool, request_id, type(error).__name__)
+            raise ToolError(f"{tool} hit an unexpected {type(error).__name__}. Reference: {request_id}") from None
+
+
 _TOOL_NAMES = tuple(name for name in TravelMcpBackend.__dict__ if not name.startswith("_") and callable(getattr(TravelMcpBackend, name)))
 
 # One authoritative manifest serves registration and FastAPI discovery, so an
@@ -661,6 +762,7 @@ def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
         auth = KeycloakAuthProvider(realm_url=settings.oidc_issuer_url, base_url=settings.mcp_base_url, audience=settings.oidc_audience)
     server = FastMCP("travel", version="0.1.0", instructions="Private Travel owner-management tools. Review previews before confirmed audience, publication, or deletion actions.", auth=auth)
     backend = TravelMcpBackend(factory)
+    server.add_middleware(ToolFailureMiddleware(backend))
     for name in MCP_TOOL_CAPABILITIES:
         server.tool(name=name, annotations=_tool_annotations(name))(getattr(backend, name))
     return server

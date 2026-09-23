@@ -1,7 +1,13 @@
 import asyncio
+import json
+import logging
 from datetime import UTC, datetime
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from fastmcp import Client
+from fastmcp.exceptions import ToolError
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -9,8 +15,15 @@ from sqlalchemy.pool import StaticPool
 from app import schemas
 from app.config import settings
 from app.database import Base
-from app.mcp_server import TravelMcpBackend, create_mcp_http_app, create_mcp_server, mcp_http_enabled
+from app.mcp_server import (
+    ToolFailureMiddleware,
+    TravelMcpBackend,
+    create_mcp_http_app,
+    create_mcp_server,
+    mcp_http_enabled,
+)
 from app.models import McpAuditEvent, Trip
+from app.routers import trips as trips_router
 from app.task_alerts import process_due_task_alerts
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -188,3 +201,112 @@ def test_highlight_tools_use_the_owner_handlers_and_require_confirmation_to_dele
         backend.delete_trip_highlight(trip["id"], first["id"])
     assert backend.delete_trip_highlight(trip["id"], first["id"], confirm=True) == {"status": "deleted"}
     assert [item["title"] for item in backend.list_trip_highlights(trip["id"])] == ["Mountains"]
+
+
+def _protocol_client(factory: sessionmaker = TestingSessionLocal) -> Client:
+    return Client(create_mcp_server(factory))
+
+
+def test_parallel_list_calls_all_succeed_and_are_each_audited(
+    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    file_engine = create_engine(f"sqlite:///{tmp_path / 'mcp.db'}", connect_args={"timeout": 30})
+    Base.metadata.create_all(file_engine)
+    factory = sessionmaker(bind=file_engine, autocommit=False, autoflush=False)
+    tools = ["list_exact_places", "list_broad_places", "list_documents", "list_media", "list_share_links",
+             "list_stays", "list_transport_legs", "list_trip_tasks", "list_itinerary_entries"]
+
+    async def run() -> list[object]:
+        async with _protocol_client(factory) as client:
+            trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Parallel"}})).structured_content["id"]
+            return await asyncio.gather(*(
+                client.call_tool(tools[index % len(tools)], {"trip_id": trip_id}, raise_on_error=False)
+                for index in range(45)
+            ), return_exceptions=True)
+
+    results = asyncio.run(run())
+    assert [result for result in results if isinstance(result, Exception) or result.is_error] == []
+    with factory() as session:
+        events = list(session.scalars(select(McpAuditEvent)))
+    assert sorted(event.result for event in events) == ["succeeded"] * 46
+    assert all(event.details.get("request_id") for event in events)
+
+
+def test_response_validation_failure_is_a_correlated_tool_error_audited_once(
+    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def run() -> object:
+        async with _protocol_client() as client:
+            trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Broken"}})).structured_content["id"]
+            monkeypatch.setattr(trips_router, "get_trip", lambda *_: {"id": trip_id, "title": "SECRET-PRIVATE-NOTE"})
+            return await client.call_tool("get_trip", {"trip_id": trip_id}, raise_on_error=False)
+
+    with caplog.at_level(logging.INFO):
+        result = asyncio.run(run())
+
+    assert result.is_error
+    message = result.content[0].text
+    assert "get_trip failed validation" in message and "Reference:" in message
+    with TestingSessionLocal() as session:
+        rejected = list(session.scalars(select(McpAuditEvent).where(McpAuditEvent.result == "rejected")))
+    assert len(rejected) == 1
+    assert rejected[0].action == "trip.get"
+    assert rejected[0].details["request_id"] in message
+    assert "SECRET-PRIVATE-NOTE" not in json.dumps(rejected[0].details) + caplog.text + message
+
+
+def test_invalid_arguments_are_audited_without_the_payload(
+    backend: TravelMcpBackend, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def run() -> object:
+        async with _protocol_client() as client:
+            return await client.call_tool(
+                "create_trip", {"payload": {"title": "SECRET-TITLE", "starts_on": "not-a-date"}}, raise_on_error=False
+            )
+
+    result = asyncio.run(run())
+    assert result.is_error
+    with TestingSessionLocal() as session:
+        events = list(session.scalars(select(McpAuditEvent)))
+    assert [(event.action, event.result, event.resource_type) for event in events] == [
+        ("create_trip", "rejected", "tool_invocation")
+    ]
+    assert "SECRET-TITLE" not in json.dumps(events[0].details)
+
+
+def test_unknown_tools_are_not_audited_and_keep_their_specific_error(backend: TravelMcpBackend) -> None:
+    async def run() -> object:
+        async with _protocol_client() as client:
+            return await client.call_tool("no_such_tool", {}, raise_on_error=False)
+
+    result = asyncio.run(run())
+    assert result.is_error and "Unknown tool" in result.content[0].text
+    with TestingSessionLocal() as session:
+        assert list(session.scalars(select(McpAuditEvent))) == []
+
+
+def test_tool_errors_carry_the_reference_that_is_in_the_audit_row(backend: TravelMcpBackend) -> None:
+    async def run() -> object:
+        async with _protocol_client() as client:
+            return await client.call_tool("get_trip", {"trip_id": "missing"}, raise_on_error=False)
+
+    result = asyncio.run(run())
+    assert result.is_error and "Trip not found" in result.content[0].text
+    with TestingSessionLocal() as session:
+        rejected = session.scalars(select(McpAuditEvent)).one()
+    assert (rejected.action, rejected.result) == ("trip.get", "rejected")
+    assert f"Reference: {rejected.details['request_id']}" in result.content[0].text
+
+
+def test_an_unexpected_exception_type_becomes_a_correlated_tool_error(backend: TravelMcpBackend) -> None:
+    middleware = ToolFailureMiddleware(backend)
+    context = SimpleNamespace(message=SimpleNamespace(name="list_trips", arguments={}))
+
+    async def fail(_: object) -> None:
+        raise RuntimeError("SECRET")
+
+    with pytest.raises(ToolError, match=r"list_trips hit an unexpected RuntimeError\. Reference: None") as raised:
+        asyncio.run(middleware.on_call_tool(context, fail))
+    assert "SECRET" not in str(raised.value)
+    with TestingSessionLocal() as session:
+        assert session.scalars(select(McpAuditEvent)).one().resource_type == "tool_invocation"

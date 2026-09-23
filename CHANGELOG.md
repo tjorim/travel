@@ -25,6 +25,17 @@ All notable changes to the travel hub are documented here.
   deleted. A failed audit write no longer reports a committed delete as a
   failed tool call.
 
+- MCP tool failures now carry a correlatable request reference. A pydantic
+  error raised while a tool runs (for example a stored row that fails its
+  response schema) was reported as a misleading `-32602 Invalid request
+  parameters`; it is now an actionable tool error. Calls refused before a tool
+  ran, such as invalid arguments, are audited, and audit rows and log lines
+  share the MCP request id. Neither logs nor audit details include payload
+  values. The intermittent `-32603` failures on parallel list calls could not
+  be reproduced (200 concurrent calls against PostgreSQL all succeed), so the
+  cause is still unconfirmed and tracked in
+  [#147](https://github.com/tjorim/travel/issues/147).
+
 ### Changed
 
 - Let an owner explicitly create a revocable unlisted share link without a
