@@ -132,15 +132,21 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     if (!instance || !ready) return;
     try {
       if (!instance.getSource("satellite")) instance.addSource("satellite", { type: "raster", tiles: [satelliteUrl], tileSize: 256, maxzoom: 19 });
-      if (!instance.getLayer("satellite")) instance.addLayer({ id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" }, paint: { "raster-fade-duration": 150 } }, "route-flight");
+      if (!instance.getLayer("satellite")) {
+        const layers = instance.getStyle().layers;
+        const buildingLayer = layers.find((layer) => layer.type === "fill-extrusion" && layer["source-layer"] === "building");
+        const beforeLayer = buildingLayer?.id ?? layers.find((layer) => layer.type === "symbol")?.id ?? "route-flight";
+        instance.addLayer({ id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" }, paint: { "raster-fade-duration": 150 } }, beforeLayer);
+      }
       instance.setLayoutProperty("satellite", "visibility", satellite ? "none" : "visible");
+      if (!satellite && instance.getPitch() < 50) instance.easeTo({ pitch: 50, duration: 700, essential: true });
       setSatellite(!satellite); setError("");
     } catch { setError("Satellietbeelden konden niet worden geladen. De routekaart blijft beschikbaar."); }
   }
 
   function selectPoint(point: MapPoint) {
     setSelected(point.id);
-    map.current?.flyTo({ center: point.coordinates, zoom: Math.max(map.current.getZoom(), 9), essential: true });
+    map.current?.flyTo({ center: point.coordinates, zoom: Math.max(map.current.getZoom(), satellite ? 15 : 9), essential: true });
   }
 
   function selectLine(line: MapLine) {
@@ -161,6 +167,7 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     <div className="trip-map-canvas-wrap"><div ref={canvas} className="trip-map-canvas" role="img" aria-label="Kaart met haltes en routes" />{error && !ready && <p className="trip-map-fallback">Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de halteknoppen.</p>}<div className="trip-map-attribution">{attribution}{terrain && <> · <a href="https://mapterhorn.com/attribution" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Mapterhorn</a></>}{satellite && <> · <a href="https://www.esri.com/" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community</>}</div></div>
     {error && <p role="status" className="help">{error}</p>}
     {owner && <div className="button-row"><button className="secondary compact" type="button" aria-pressed={terrain} disabled={!ready} onClick={toggleTerrain}>{perspective?.label ?? "3D-terrein"}</button><button className="secondary compact" type="button" aria-pressed={satellite} disabled={!ready} onClick={toggleSatellite}>Satelliet</button></div>}
+    {owner && satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
     <p className="trip-map-privacy">Kaarttegels tonen de bekeken regio aan OpenFreeMap. {owner && "3D-terrein vraagt na inschakeling hoogtegegevens op bij Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri."}</p>
     {(selectedPoint || selectedLine) && <p aria-live="polite"><strong>Geselecteerd:</strong> {selectedPoint?.label ?? selectedLine?.label}{selectedPoint?.detail && <> · {selectedPoint.detail}</>}{selectedPoint?.dates && <> · {selectedPoint.dates}</>}</p>}
     {points.length > 0 && <div className="trip-map-stops"><h4>Haltes</h4><ol>{points.map((point) => <li key={point.id}><button className="secondary compact" type="button" aria-pressed={selected === point.id} onClick={() => selectPoint(point)}>{point.label}</button></li>)}</ol></div>}

@@ -53,7 +53,10 @@ while the layer is active, and a provider failure leaves the route map usable.
   MapLibre considers steeper angles experimental.
 - Satellite drapes Esri World Imagery under the routes and stops, creating a
   separate disclosure of the viewed region to Esri. Its attribution names Esri,
-  Maxar, Earthstar Geographics and the GIS User Community.
+  Maxar, Earthstar Geographics and the GIS User Community. The raster layer sits
+  below the base style's existing building extrusions, so available 3D building
+  shapes remain visible above satellite imagery when zoomed in. Their roofs and
+  facades use vector styling, not satellite photo textures.
 
 ## Transfer trade-off
 
