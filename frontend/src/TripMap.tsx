@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FeatureCollection, LineString, Point } from "geojson";
 import type { Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 
 export type MapPoint = { id: string; label: string; coordinates: [number, number]; kind?: "mountain" | "stay" | "airport" | "place"; detail?: string; dates?: string };
 export type MapLine = { id: string; label: string; coordinates: [number, number][]; exact?: boolean; transport?: "flight" | "rail" | "road" | "mountain"; from?: string; to?: string };
@@ -67,6 +68,7 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     } catch { setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden."); return; }
     void Promise.all([import("maplibre-gl"), mapStyle(styleUrl, controller.signal)]).then(([maplibregl, style]) => {
       if (disposed || !canvas.current) return;
+      maplibregl.setWorkerUrl(mapWorkerUrl);
       const created = new maplibregl.Map({ container: canvas.current, style, attributionControl: false, renderWorldCopies: false, maxPitch: 60, transformRequest: (url: string) => ({ url, credentials: "same-origin" }) });
       instance = created;
       map.current = instance;

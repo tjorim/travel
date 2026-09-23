@@ -1,4 +1,4 @@
-const CACHE = "travel-admin-shell-v1";
+const CACHE = "travel-admin-shell-v2";
 const SHELL = ["/admin/", "/admin/manifest.webmanifest", "/admin/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -14,6 +14,13 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET" || !new URL(event.request.url).pathname.startsWith("/admin/")) return;
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  if (event.request.mode !== "navigate" || !new URL(event.request.url).pathname.startsWith("/admin/")) return;
+  event.respondWith(
+    fetch(event.request).then((response) => {
+      if (response.ok && response.headers.get("Content-Type")?.includes("text/html")) {
+        event.waitUntil(caches.open(CACHE).then((cache) => cache.put("/admin/", response.clone())));
+      }
+      return response;
+    }).catch(async () => (await caches.match("/admin/")) || Response.error()),
+  );
 });
