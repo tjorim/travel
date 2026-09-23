@@ -99,6 +99,8 @@ textarea { min-height: 136px; resize: vertical; }
 .danger { background: #a63b32; }
 .action-link { display: inline-block; padding: 10px 13px; border-radius: 9px; background: #0f493b; color: #fffdf8; font-weight: 700; text-decoration: none; }
 .excerpt-editor > .capture-heading { margin-bottom: 18px; }
+.excerpt-editor { display: none; }
+.trip-detail > .detail-grid > .card:nth-child(2) { display: none; }
 .excerpt-editor > .capture-heading h3 { margin: 0; }
 .excerpt-editor > .capture-heading p { max-width: 460px; margin: 6px 0 0; color: #4d665e; line-height: 1.5; }
 .excerpt-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
@@ -122,6 +124,13 @@ textarea { min-height: 136px; resize: vertical; }
 .manager > .capture-heading h3, .manager-subsection h3 { margin: 0; }
 .manager > .capture-heading p, .manager-subsection > .capture-heading p { max-width: 510px; margin: 6px 0 0; color: #4d665e; line-height: 1.5; }
 .manager-list { margin-top: 2px; }
+.record-dialog { width: min(680px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 32px)); margin: auto; padding: 22px; border: 1px solid #b7c9be; border-radius: 16px; background: #fffdf8; color: #19342d; box-shadow: 0 24px 70px #19342d66; }
+.record-dialog::backdrop { background: #19342d80; }
+.record-dialog-header { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 18px; }
+.record-dialog-header h2 { margin: 0; }
+.record-confirm { display: grid; gap: 12px; margin-top: 16px; padding: 16px; border: 2px solid #b68110; border-radius: 12px; background: #fff6d9; }
+.record-confirm h3, .record-confirm p { margin: 0; }
+@media (max-width: 620px) { .record-dialog { width: 100%; max-height: calc(100dvh - 12px); margin: 12px 0 0; padding: 18px; border-radius: 16px 16px 0 0; } }
 .manager-subsection { display: grid; gap: 15px; padding-top: 20px; border-top: 1px solid #d6e0d9; }
 .trip-workspace { display: grid; gap: 18px; }
 .trip-workspace-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }

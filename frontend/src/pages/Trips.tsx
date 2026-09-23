@@ -2,11 +2,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth-context";
+import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { EmptyState } from "../tracker-routes";
 import { DocumentManager } from "../trips/DocumentManager";
 import { LinkedLibraryDocuments } from "../library/LinkedLibraryDocuments";
 import { ItineraryPlanManager } from "../trips/ItineraryPlanManager";
 import { HighlightManager } from "../trips/HighlightManager";
+import { BroadPlaceManager } from "../trips/BroadPlaceManager";
+import { MomentExcerptManager } from "../trips/MomentExcerptManager";
 import { MediaManager } from "../trips/MediaManager";
 import { OwnerTripMap } from "../trips/OwnerTripMap";
 import { PublicationManager } from "../trips/PublicationManager";
@@ -19,6 +22,7 @@ import { TripTaskManager } from "../trips/TripTaskManager";
 import { apiError, apiHeaders, timeZoneOptions, type BroadPlace, type MomentExcerpt, type Trip } from "../tracker-model";
 
 export type TripWorkspaceSection = "overview" | "plan" | "story" | "media" | "sharing";
+type BroadPlaceDraft = { id: string | null; label: string; countryCode: string; region: string; latitude: string; longitude: string; timezone?: string };
 
 export function Trips({ workspace }: { workspace?: { tripId: string; section: TripWorkspaceSection } } = {}) {
   const { session } = useAuth();
@@ -27,13 +31,25 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tripDraft, setTripDraft] = useState({ title: "", summary: "", startsOn: "", endsOn: "", visibility: "private" as Trip["visibility"], publicationState: "draft" as Trip["publication_state"] });
   const [excerptDraft, setExcerptDraft] = useState({ id: null as string | null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day" as MomentExcerpt["date_precision"], storyDate: "", title: "", body: "" });
-  const [broadPlaceDraft, setBroadPlaceDraft] = useState({ id: null as string | null, label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" });
+  const [broadPlaceDraft, setBroadPlaceDraft] = useState<BroadPlaceDraft>({ id: null, label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" });
+  const [excerptInitial, setExcerptInitial] = useState(excerptDraft);
+  const [broadPlaceInitial, setBroadPlaceInitial] = useState(broadPlaceDraft);
+  const [excerptEditor, setExcerptEditor] = useState(false);
+  const [broadPlaceEditor, setBroadPlaceEditor] = useState(false);
+  const [deleteExcerptTarget, setDeleteExcerptTarget] = useState<MomentExcerpt | null>(null);
   const [broadPlaces, setBroadPlaces] = useState<BroadPlace[]>([]);
   const [message, setMessage] = useState("Meld aan om je private reizen te laden.");
   const [mapRevision, setMapRevision] = useState(0);
   const [planRevision, setPlanRevision] = useState(0);
   const [mapFocus, setMapFocus] = useState<{ id: string; request: number } | null>(null);
   const bumpPlan = () => setPlanRevision((current) => current + 1);
+  async function refreshBroadPlaces() {
+    if (!session || !selectedId) return;
+    const response = await fetch(`/api/trips/${selectedId}/places/broad`, { headers: apiHeaders(session) });
+    if (!response.ok) return apiError(response, "De brede plaatsen konden niet worden geladen.");
+    setBroadPlaces(await response.json() as BroadPlace[]);
+    setMapRevision((current) => current + 1);
+  }
 
   function showOnMap(pointId: string) {
     setMapFocus((current) => ({ id: pointId, request: (current?.request ?? 0) + 1 }));
@@ -112,11 +128,11 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   }
 
   function editExcerpt(excerpt: MomentExcerpt) {
-    setExcerptDraft({ id: excerpt.id, sourceMomentId: excerpt.source_moment_id ?? "", broadPlaceId: excerpt.broad_place_id ?? "", datePrecision: excerpt.date_precision, storyDate: excerpt.story_date ?? "", title: excerpt.title, body: excerpt.body });
+    const next = { id: excerpt.id, sourceMomentId: excerpt.source_moment_id ?? "", broadPlaceId: excerpt.broad_place_id ?? "", datePrecision: excerpt.date_precision, storyDate: excerpt.story_date ?? "", title: excerpt.title, body: excerpt.body }; setExcerptDraft(next); setExcerptInitial(next); setExcerptEditor(true);
   }
 
   function newExcerpt() {
-    setExcerptDraft({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", storyDate: "", title: "", body: "" });
+    const next = { id: null as string | null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day" as MomentExcerpt["date_precision"], storyDate: "", title: "", body: "" }; setExcerptDraft(next); setExcerptInitial(next); setExcerptEditor(true);
   }
 
   async function saveExcerpt(event: FormEvent<HTMLFormElement>) {
@@ -136,16 +152,16 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     });
     if (!response.ok) return apiError(response, "Het uittreksel kon niet worden opgeslagen.");
     await loadTrips(selectedTrip.id);
-    newExcerpt();
+    setExcerptEditor(false);
     setMessage("Uittreksel opgeslagen. Het is nog niet gedeeld.");
   }
 
   async function deleteExcerpt(excerpt: MomentExcerpt) {
-    if (!session || !selectedTrip || !window.confirm(`Verwijder uittreksel “${excerpt.title}”?`)) return;
+    if (!session || !selectedTrip) return;
     const response = await fetch(`/api/trips/${selectedTrip.id}/moment-excerpts/${excerpt.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Het uittreksel kon niet worden verwijderd.");
     await loadTrips(selectedTrip.id);
-    newExcerpt();
+    setDeleteExcerptTarget(null); setExcerptEditor(false);
     setMessage("Uittreksel verwijderd.");
   }
 
@@ -163,13 +179,13 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         region: broadPlaceDraft.region.trim() || null,
         latitude: broadPlaceDraft.latitude === "" ? null : Number(broadPlaceDraft.latitude),
         longitude: broadPlaceDraft.longitude === "" ? null : Number(broadPlaceDraft.longitude),
-        timezone: broadPlaceDraft.timezone.trim() || null,
+        timezone: broadPlaceDraft.timezone?.trim() || null,
       }),
     });
     if (!response.ok) return apiError(response, "De brede plaats kon niet worden opgeslagen.");
     const saved = await response.json() as BroadPlace;
     setBroadPlaces((current) => broadPlaceDraft.id ? current.map((place) => place.id === saved.id ? saved : place) : [...current, saved]);
-    setBroadPlaceDraft({ id: null, label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" });
+    const next = { id: null as string | null, label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" }; setBroadPlaceDraft(next); setBroadPlaceInitial(next); setBroadPlaceEditor(false);
     setMessage("Brede plaats opgeslagen. Je kunt hem nu bewust aan een uittreksel koppelen.");
   }
 
@@ -188,9 +204,11 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <NavLink key={section} to={sectionUrl(section)} end={section === "overview"} aria-current={currentSection === section ? "page" : undefined}>{label}</NavLink>)}
     </nav>
     <p className="help" role="status">{message}</p>
+    {currentSection === "plan" && <BroadPlaceManager trip={selectedTrip} onChange={refreshBroadPlaces} />}
     {currentSection === "overview" && <><TripOverview trip={selectedTrip} revision={planRevision} /><OwnerTripMap trip={selectedTrip} broadPlaces={broadPlaces} revision={mapRevision} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Momenten</h3>{selectedTrip.moments.length ? <div className="saved-moments">{selectedTrip.moments.slice().reverse().map((moment) => <div className="moment-summary" key={moment.id}><strong>{moment.title}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(moment.occurred_at))}</span></div>)}</div> : <p>Nog geen momenten. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} onChange={bumpPlan} /></div></>}
     {currentSection === "plan" && <><RouteStageManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={() => loadTrips(selectedTrip.id)} /><StayManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={bumpPlan} /><TransportLegManager trip={selectedTrip} onChange={bumpPlan} /><ItineraryPlanManager trip={selectedTrip} revision={planRevision} onShowOnMap={showOnMap} /><TripTaskManager trip={selectedTrip} onChange={bumpPlan} /></>}
     {currentSection === "story" && <><TrackManager trip={selectedTrip} onChange={() => setMapRevision((current) => current + 1)} /><HighlightManager trip={selectedTrip} onChange={() => loadTrips(selectedTrip.id)} /><section className="card excerpt-editor"><div className="capture-heading"><div><h3>Moment-uittreksels</h3><p>Een uittreksel blijft privé totdat je het expliciet publiceert.</p></div>{excerptDraft.id && <button className="secondary compact" type="button" onClick={newExcerpt}>Nieuw uittreksel</button>}</div><form className="stack-form" onSubmit={(event) => void saveExcerpt(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden opgeslagen."))}><label>Titel<input required maxLength={160} value={excerptDraft.title} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, title: event.target.value }))} /></label><label>Uittreksel<textarea required maxLength={10000} rows={5} value={excerptDraft.body} onChange={(event) => setExcerptDraft((draft) => ({ ...draft, body: event.target.value }))} /></label><button type="submit">{excerptDraft.id ? "Uittreksel opslaan" : "Uittreksel maken"}</button></form>{selectedTrip.moment_excerpts.length > 0 && <div className="saved-moments">{selectedTrip.moment_excerpts.map((excerpt) => <article className="excerpt-row" key={excerpt.id}><div><strong>{excerpt.title}</strong><span>{excerpt.date_precision}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editExcerpt(excerpt)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteExcerpt(excerpt).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}</section></>}
+    {currentSection === "story" && <MomentExcerptManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={() => loadTrips(selectedTrip.id)} />}
     {currentSection === "media" && <><DocumentManager trip={selectedTrip} /><LinkedLibraryDocuments tripId={selectedTrip.id} /><MediaManager trip={selectedTrip} /></>}
     {currentSection === "sharing" && <PublicationManager trip={selectedTrip} />}
   </section>;
@@ -220,9 +238,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       <OwnerTripMap trip={selectedTrip} broadPlaces={broadPlaces} revision={mapRevision} focus={mapFocus} />
       <div className="detail-grid">
         <section className="card"><h3 id="moments-title">Momenten</h3>{selectedTrip.moments.length ? <div className="saved-moments">{selectedTrip.moments.slice().reverse().map((moment) => <div className="moment-summary" key={moment.id}><strong>{moment.title}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(moment.occurred_at))}{moment.place ? ` · ${moment.place.display_name ?? moment.place.locality ?? "exacte plaats"}` : ""}</span></div>)}</div> : <p>Nog geen momenten. Leg er één vast wanneer je wilt.</p>}</section>
-        <section className="card"><h3>Brede plaatsen</h3>{broadPlaces.length ? <div className="saved-moments">{broadPlaces.map((place) => <div className="moment-summary" key={place.id}><strong>{place.label}</strong><span>{[place.region, place.country_code, place.timezone].filter(Boolean).join(" · ") || "Alleen voor deze reis"}</span><button className="secondary compact" type="button" onClick={() => setBroadPlaceDraft({ id: place.id, label: place.label, countryCode: place.country_code ?? "", region: place.region ?? "", latitude: place.latitude?.toString() ?? "", longitude: place.longitude?.toString() ?? "", timezone: place.timezone ?? "" })}>Bewerken</button></div>)}</div> : <p>Voeg hieronder een bewust algemene plaats toe om die eventueel aan een uittreksel te koppelen.</p>}</section>
+        <section className="card"><div className="capture-heading"><h3>Brede plaatsen</h3><button className="secondary compact" type="button" onClick={() => { const next = { id: null as string | null, label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" }; setBroadPlaceDraft(next); setBroadPlaceInitial(next); setBroadPlaceEditor(true); }}>Brede plaats toevoegen</button></div>{broadPlaces.length ? <div className="saved-moments">{broadPlaces.map((place) => <div className="moment-summary" key={place.id}><strong>{place.label}</strong><span>{[place.region, place.country_code, place.timezone].filter(Boolean).join(" · ") || "Alleen voor deze reis"}</span><button className="secondary compact" type="button" onClick={() => { const next = { id: place.id, label: place.label, countryCode: place.country_code ?? "", region: place.region ?? "", latitude: place.latitude?.toString() ?? "", longitude: place.longitude?.toString() ?? "" }; setBroadPlaceDraft(next); setBroadPlaceInitial(next); setBroadPlaceEditor(true); }}>Bewerken</button></div>)}</div> : <p>Voeg een bewust algemene plaats toe om die eventueel aan een uittreksel te koppelen.</p>}</section>
       </div>
-      <section className="card"><h3>{broadPlaceDraft.id ? "Brede plaats bewerken" : "Brede plaats toevoegen"}</h3><p>Gebruik een bewust algemene plaats, zoals een stad of regio. Voeg alleen een zelf gekozen, gegeneraliseerd kaartpunt toe.</p><form className="stack-form" onSubmit={(event) => void saveBroadPlace(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede plaats kon niet worden opgeslagen."))}><div className="field-row"><label>Naam<input required maxLength={120} value={broadPlaceDraft.label} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, label: event.target.value }))} placeholder="Bijvoorbeeld: Taipei" /></label><label>Landcode <span className="optional">(optioneel)</span><input maxLength={2} value={broadPlaceDraft.countryCode} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, countryCode: event.target.value }))} placeholder="TW" /></label></div><div className="field-row"><label>Regio <span className="optional">(optioneel)</span><input maxLength={120} value={broadPlaceDraft.region} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder="Taipei City" /></label><label>Tijdzone <span className="optional">(optioneel, privé)</span><input list="broad-place-time-zones" maxLength={64} value={broadPlaceDraft.timezone} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, timezone: event.target.value }))} placeholder="Asia/Taipei" /></label></div><datalist id="broad-place-time-zones">{timeZoneOptions().map((zone) => <option key={zone} value={zone} />)}</datalist><p className="help">Met een tijdzone toont het reisoverzicht de lokale tijd ter plaatse, zomertijd inbegrepen.</p><div className="field-row"><label>Brede breedtegraad <span className="optional">(optioneel)</span><input type="number" min={-90} max={90} step="any" value={broadPlaceDraft.latitude} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, latitude: event.target.value }))} /></label><label>Brede lengtegraad <span className="optional">(optioneel)</span><input type="number" min={-180} max={180} step="any" value={broadPlaceDraft.longitude} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, longitude: event.target.value }))} /></label></div><p className="help">Vul beide coördinaten in, of laat beide leeg. Gedeelde kaarten tonen dit punt alleen wanneer je de plaats en coördinaten publiceert.</p><div className="button-row"><button type="submit">Brede plaats opslaan</button>{broadPlaceDraft.id && <button className="secondary compact" type="button" onClick={() => setBroadPlaceDraft({ id: null, label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" })}>Annuleren</button>}</div></form></section>
+      <BroadPlaceManager trip={selectedTrip} onChange={refreshBroadPlaces} />
+      <RecordDialog open={broadPlaceEditor} title={broadPlaceDraft.id ? "Brede plaats bewerken" : "Brede plaats toevoegen"} dirty={JSON.stringify(broadPlaceDraft) !== JSON.stringify(broadPlaceInitial)} onDismiss={() => setBroadPlaceEditor(false)}><p>Gebruik een bewust algemene plaats, zoals een stad of regio. Voeg alleen een zelf gekozen, gegeneraliseerd kaartpunt toe.</p><form className="stack-form" onSubmit={(event) => void saveBroadPlace(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De brede plaats kon niet worden opgeslagen."))}><div className="field-row"><label>Naam<input required maxLength={120} value={broadPlaceDraft.label} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, label: event.target.value }))} placeholder="Bijvoorbeeld: Taipei" /></label><label>Landcode <span className="optional">(optioneel)</span><input maxLength={2} value={broadPlaceDraft.countryCode} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, countryCode: event.target.value }))} placeholder="TW" /></label></div><div className="field-row"><label>Regio <span className="optional">(optioneel)</span><input maxLength={120} value={broadPlaceDraft.region} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder="Taipei City" /></label><label>Tijdzone <span className="optional">(optioneel, privé)</span><input list="broad-place-time-zones" maxLength={64} value={broadPlaceDraft.timezone} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, timezone: event.target.value }))} placeholder="Asia/Taipei" /></label></div><datalist id="broad-place-time-zones">{timeZoneOptions().map((zone) => <option key={zone} value={zone} />)}</datalist><p className="help">Met een tijdzone toont het reisoverzicht de lokale tijd ter plaatse, zomertijd inbegrepen.</p><div className="field-row"><label>Brede breedtegraad <span className="optional">(optioneel)</span><input type="number" min={-90} max={90} step="any" value={broadPlaceDraft.latitude} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, latitude: event.target.value }))} /></label><label>Brede lengtegraad <span className="optional">(optioneel)</span><input type="number" min={-180} max={180} step="any" value={broadPlaceDraft.longitude} onChange={(event) => setBroadPlaceDraft((draft) => ({ ...draft, longitude: event.target.value }))} /></label></div><p className="help">Vul beide coördinaten in, of laat beide leeg. Gedeelde kaarten tonen dit punt alleen wanneer je de plaats en coördinaten publiceert.</p><button type="submit">Brede plaats opslaan</button></form></RecordDialog>
       <RouteStageManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={() => loadTrips(selectedTrip.id)} />
       <TrackManager trip={selectedTrip} onChange={() => setMapRevision((current) => current + 1)} />
       <StayManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={bumpPlan} />
@@ -239,6 +258,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         </form>
         {selectedTrip.moment_excerpts.length > 0 && <div className="saved-moments">{selectedTrip.moment_excerpts.map((excerpt) => <article className="excerpt-row" key={excerpt.id}><div><strong>{excerpt.title}</strong><span>{excerpt.date_precision} · {excerpt.broad_place_id ? broadPlaces.find((place) => place.id === excerpt.broad_place_id)?.label ?? "brede plaats" : "geen plaats"}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editExcerpt(excerpt)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteExcerpt(excerpt).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het uittreksel kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
       </section>
+      <MomentExcerptManager trip={selectedTrip} broadPlaces={broadPlaces} onChange={() => loadTrips(selectedTrip.id)} />
       <DocumentManager trip={selectedTrip} />
       <LinkedLibraryDocuments tripId={selectedTrip.id} />
       <MediaManager trip={selectedTrip} />

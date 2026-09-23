@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
+import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { apiError, apiHeaders, browserTimeZone, daysBetween, localDate, localDateTime, timeZoneOptions, wallClock, type DocumentAsset, type TransportLeg, type Trip } from "../tracker-model";
 
 const KIND_LABELS: Record<TransportLeg["kind"], string> = {
@@ -43,6 +44,10 @@ export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?:
   const [documents, setDocuments] = useState<DocumentAsset[]>([]);
   const [message, setMessage] = useState("Laad je private transportonderdelen…");
   const [draft, setDraft] = useState(emptyDraft());
+  const [initial, setInitial] = useState(emptyDraft());
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [selectedLeg, setSelectedLeg] = useState<TransportLeg | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TransportLeg | null>(null);
 
   async function load() {
     if (!session) return;
@@ -59,10 +64,10 @@ export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?:
 
   useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je transportonderdelen konden niet worden geladen.")); }, [session, trip.id]);
 
-  function newLeg() { setDraft(emptyDraft()); }
+  function newLeg() { const next = emptyDraft(); setDraft(next); setInitial(next); setEditorOpen(true); }
 
   function editLeg(leg: TransportLeg) {
-    setDraft({
+    const next = {
       id: leg.id, kind: leg.kind, status: leg.status,
       departsAt: wallClock(leg.departs_at, leg.departure_timezone), arrivesAt: wallClock(leg.arrives_at, leg.arrival_timezone),
       departureTimezone: leg.departure_timezone ?? browserTimeZone(), arrivalTimezone: leg.arrival_timezone ?? browserTimeZone(), travelClass: leg.travel_class ?? "",
@@ -70,8 +75,9 @@ export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?:
       arrivalName: leg.arrival_place.display_name ?? "", arrivalLocality: leg.arrival_place.locality ?? "", arrivalCountryCode: leg.arrival_place.country_code ?? "", arrivalPlaceChanged: false,
       carrier: leg.carrier ?? "", serviceReference: leg.service_reference ?? "", bookingReference: leg.booking_reference ?? "", notes: leg.notes ?? "",
       documentAssetIds: leg.document_asset_ids,
-    });
+    }; setDraft(next); setInitial(next); setEditorOpen(true);
   }
+  function inspectLeg(leg: TransportLeg) { setSelectedLeg(leg); setEditorOpen(false); }
 
   function toggleDocument(documentId: string) {
     setDraft((current) => ({ ...current, documentAssetIds: current.documentAssetIds.includes(documentId) ? current.documentAssetIds.filter((id) => id !== documentId) : [...current.documentAssetIds, documentId] }));
@@ -101,21 +107,21 @@ export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?:
     if (!response.ok) return apiError(response, "Het transportonderdeel kon niet worden opgeslagen.");
     await load();
     onChange?.();
-    newLeg();
+    setEditorOpen(false);
     setMessage("Privétransport opgeslagen.");
   }
 
   async function deleteLeg(leg: TransportLeg) {
-    if (!session || !window.confirm(`Verwijder ${KIND_LABELS[leg.kind].toLowerCase()} “${leg.departure_place.locality ?? leg.departure_place.display_name ?? "?"} → ${leg.arrival_place.locality ?? leg.arrival_place.display_name ?? "?"}”?`)) return;
+    if (!session) return;
     const response = await fetch(`/api/trips/${trip.id}/transport-legs/${leg.id}`, { method: "DELETE", headers: apiHeaders(session) });
     if (!response.ok) return apiError(response, "Het transportonderdeel kon niet worden verwijderd.");
-    await load(); onChange?.(); newLeg(); setMessage("Privétransport verwijderd.");
+    await load(); onChange?.(); setEditorOpen(false); setSelectedLeg(null); setDeleteTarget(null); setMessage("Privétransport verwijderd.");
   }
 
   return <section className="card manager" aria-labelledby="transport-title">
-    <div className="capture-heading"><div><h3 id="transport-title">Vluchten &amp; ander vervoer</h3><p>Vluchtnummers, exacte tijden en boekingsreferenties zijn uitsluitend privé. Een gedeelde etappe blijft een aparte, bewust geschreven route-stap.</p></div>{draft.id && <button className="secondary compact" type="button" onClick={newLeg}>Nieuw onderdeel</button>}</div>
+    <div className="capture-heading"><div><h3 id="transport-title">Vluchten &amp; ander vervoer</h3><p>Vluchtnummers, exacte tijden en boekingsreferenties zijn uitsluitend privé. Een gedeelde etappe blijft een aparte, bewust geschreven route-stap.</p></div><button className="secondary compact" type="button" onClick={newLeg}>Nieuw onderdeel</button></div>
     <p className="help" role="status">{message}</p>
-    <form className="stack-form" onSubmit={(event) => void saveLeg(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het transportonderdeel kon niet worden opgeslagen."))}>
+    <RecordDialog open={editorOpen} title={draft.id ? "Transportonderdeel bewerken" : "Transportonderdeel toevoegen"} dirty={JSON.stringify(draft) !== JSON.stringify(initial)} onDismiss={() => setEditorOpen(false)}><form className="stack-form" onSubmit={(event) => void saveLeg(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het transportonderdeel kon niet worden opgeslagen."))}>
       <div className="field-row">
         <label>Type<select value={draft.kind} onChange={(event) => setDraft((current) => ({ ...current, kind: event.target.value as TransportLeg["kind"] }))}>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label>Status<select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as TransportLeg["status"] }))}>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -137,7 +143,9 @@ export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?:
       <label>Notities <span className="optional">(optioneel)</span><textarea maxLength={4000} rows={3} value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} /></label>
       {documents.length > 0 && <fieldset><legend>Gekoppelde documenten <span className="optional">(optioneel)</span></legend>{documents.map((document) => <label className="media-choice" key={document.id}><input type="checkbox" checked={draft.documentAssetIds.includes(document.id)} onChange={() => toggleDocument(document.id)} />{document.title}</label>)}</fieldset>}
       <button type="submit">{draft.id ? "Onderdeel opslaan" : "Onderdeel toevoegen"}</button>
-    </form>
-    {legs.length > 0 && <div className="saved-moments manager-list">{legs.map((leg) => <article className="excerpt-row" key={leg.id}><div><strong>{KIND_LABELS[leg.kind]}: {leg.departure_place.locality ?? leg.departure_place.display_name ?? "?"} → {leg.arrival_place.locality ?? leg.arrival_place.display_name ?? "?"}</strong><span>{endpointTime(leg.departs_at, leg.departure_timezone)} → {endpointTime(leg.arrives_at, leg.arrival_timezone)}{dayShift(leg) !== 0 ? ` (${dayShift(leg) > 0 ? "+" : ""}${dayShift(leg)} ${Math.abs(dayShift(leg)) === 1 ? "dag" : "dagen"})` : ""} · {STATUS_LABELS[leg.status]}{leg.carrier ? ` · ${leg.carrier}` : ""}{leg.service_reference ? ` ${leg.service_reference}` : ""}{leg.travel_class ? ` · ${leg.travel_class}` : ""}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editLeg(leg)}>Bewerken</button><button className="danger compact" type="button" onClick={() => void deleteLeg(leg).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het transportonderdeel kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
+    </form></RecordDialog>
+    {legs.length > 0 && <div className="saved-moments manager-list">{legs.map((leg) => <article className="excerpt-row" key={leg.id}><button className="document-select" type="button" onClick={() => inspectLeg(leg)}><strong>{KIND_LABELS[leg.kind]}: {leg.departure_place.locality ?? leg.departure_place.display_name ?? "?"} → {leg.arrival_place.locality ?? leg.arrival_place.display_name ?? "?"}</strong><span>{endpointTime(leg.departs_at, leg.departure_timezone)} → {endpointTime(leg.arrives_at, leg.arrival_timezone)}{dayShift(leg) !== 0 ? ` (${dayShift(leg) > 0 ? "+" : ""}${dayShift(leg)} ${Math.abs(dayShift(leg)) === 1 ? "dag" : "dagen"})` : ""} · {STATUS_LABELS[leg.status]}{leg.carrier ? ` · ${leg.carrier}` : ""}{leg.service_reference ? ` ${leg.service_reference}` : ""}{leg.travel_class ? ` · ${leg.travel_class}` : ""}</span></button><button className="danger compact" type="button" onClick={() => setDeleteTarget(leg)}>Verwijderen</button></article>)}</div>}
+    <RecordDialog open={selectedLeg !== null} title="Transportonderdeel" onDismiss={() => setSelectedLeg(null)}>{selectedLeg && <div className="stack-form"><div><h3>{KIND_LABELS[selectedLeg.kind]}: {selectedLeg.departure_place.locality ?? selectedLeg.departure_place.display_name ?? "?"} → {selectedLeg.arrival_place.locality ?? selectedLeg.arrival_place.display_name ?? "?"}</h3><p>{endpointTime(selectedLeg.departs_at, selectedLeg.departure_timezone)} → {endpointTime(selectedLeg.arrives_at, selectedLeg.arrival_timezone)}</p><p>{selectedLeg.booking_reference ? `Boekingsreferentie: ${selectedLeg.booking_reference}` : "Geen boekingsreferentie"}</p></div><div className="button-row"><button type="button" onClick={() => { const leg = selectedLeg; setSelectedLeg(null); editLeg(leg); }}>Bewerken</button><button className="danger" type="button" onClick={() => setDeleteTarget(selectedLeg)}>Verwijderen</button></div></div>}</RecordDialog>
+    {deleteTarget && <RecordDialog open title="Verwijderen bevestigen" onDismiss={() => setDeleteTarget(null)}><DeleteConfirmation title={`${KIND_LABELS[deleteTarget.kind]} verwijderen?`} onCancel={() => setDeleteTarget(null)} onConfirm={() => void deleteLeg(deleteTarget).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het transportonderdeel kon niet worden verwijderd."))} /></RecordDialog>}
   </section>;
 }
