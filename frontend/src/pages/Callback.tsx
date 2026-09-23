@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { completeSignIn } from "../auth";
+import { beginSignIn, completeSignIn } from "../auth";
 import { useAuth } from "../auth-context";
 
 export function Callback() {
@@ -9,6 +9,7 @@ export function Callback() {
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const [message, setMessage] = useState("Aanmelden wordt afgerond…");
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     void completeSignIn(search.toString())
@@ -16,8 +17,19 @@ export function Callback() {
         setSession(session);
         navigate(returnPath, { replace: true });
       })
-      .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Aanmelden is mislukt."));
+      .catch((error: unknown) => {
+        setFailed(true);
+        setMessage(error instanceof Error ? error.message : "Aanmelden is mislukt.");
+      });
   }, [navigate, search, setSession]);
 
-  return <main className="shell"><section className="card"><h1>Aanmelden</h1><p>{message}</p></section></main>;
+  return (
+    <main className="shell">
+      <section className="card">
+        <h1>Aanmelden</h1>
+        <p>{message}</p>
+        {failed && <button type="button" onClick={() => void beginSignIn("/")}>Opnieuw aanmelden</button>}
+      </section>
+    </main>
+  );
 }

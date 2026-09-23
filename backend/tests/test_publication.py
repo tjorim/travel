@@ -536,7 +536,7 @@ def test_projection_omits_out_of_scope_fields_for_stays_routes_media_and_documen
 # --- Named unlisted share links ------------------------------------------------------
 
 
-def activate(owner: TestClient, trip_id: str, link_id: str, expires_in_days: int = 30) -> dict:
+def activate(owner: TestClient, trip_id: str, link_id: str, expires_in_days: int | None = 30) -> dict:
     owner.post(f"/api/trips/{trip_id}/share-links/{link_id}/preview")
     response = owner.post(
         f"/api/trips/{trip_id}/share-links/{link_id}/activate", json={"expires_in_days": expires_in_days}
@@ -726,6 +726,31 @@ def test_expired_share_link_token_is_rejected() -> None:
 
     response = TestClient(app).get(f"/api/shared/{token}")
     assert response.status_code == 404
+
+
+def test_share_link_can_remain_active_until_its_owner_revokes_it() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    created = owner.post(
+        f"/api/trips/{trip['id']}/share-links",
+        json={"label": "Family", "scope": scope()},
+    )
+    link_id = created.json()["id"]
+
+    activated = activate(owner, trip["id"], link_id, expires_in_days=None)
+    token = activated["token"]
+    assert activated["expires_at"] is None
+
+    anonymous = TestClient(app)
+    assert anonymous.get(f"/api/shared/{token}").status_code == 200
+
+    rotated = owner.post(
+        f"/api/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": None}
+    )
+    assert rotated.status_code == 200
+    assert rotated.json()["expires_at"] is None
+    assert anonymous.get(f"/api/shared/{token}").status_code == 404
+    assert anonymous.get(f"/api/shared/{rotated.json()['token']}").status_code == 200
 
 
 def test_unavailable_capabilities_have_one_visitor_response_contract() -> None:

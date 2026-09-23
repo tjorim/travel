@@ -16,6 +16,8 @@ h1 { max-width: 10ch; margin: 0; font-size: clamp(2.8rem, 12vw, 5.8rem); line-he
 .trip-index { width: min(1000px, calc(100% - 32px)); }
 .trip-index h1 { max-width: none; }
 .trip-index section { margin-top: 40px; }
+.saved-trip { display: grid; gap: 8px; }
+.saved-trip > button { justify-self: start; }
 .trip-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; padding: 0; margin: 0; list-style: none; }
 .trip-card { display: flex; flex-direction: column; height: 100%; color: inherit; text-decoration: none; transition: transform .15s, box-shadow .15s; }
 .trip-card:hover { transform: translateY(-3px); box-shadow: 0 16px 38px #19342d24; }

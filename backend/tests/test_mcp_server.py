@@ -1,0 +1,122 @@
+import asyncio
+
+import pytest
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app import schemas
+from app.config import settings
+from app.database import Base
+from app.mcp_server import TravelMcpBackend, create_mcp_http_app, create_mcp_server, mcp_http_enabled
+from app.models import McpAuditEvent
+
+engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def setup_function() -> None:
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+
+
+@pytest.fixture
+def backend(monkeypatch: pytest.MonkeyPatch) -> TravelMcpBackend:
+    monkeypatch.setattr(settings, "environment", "development")
+    monkeypatch.setattr(settings, "mcp_development_subject", "owner-1")
+    return TravelMcpBackend(TestingSessionLocal)
+
+
+def test_owner_tools_use_application_validation_and_audit_each_result(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Exampleland 2054", summary="Private"))
+
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.delete_trip(trip["id"])
+
+    with TestingSessionLocal() as session:
+        events = list(session.scalars(select(McpAuditEvent).order_by(McpAuditEvent.occurred_at)))
+        assert [(event.action, event.result) for event in events] == [
+            ("trip.create", "succeeded"),
+            ("trip.delete", "rejected"),
+        ]
+        assert events[-1].owner_subject == "owner-1"
+        assert events[-1].resource_id == trip["id"]
+        assert "payload" not in events[-1].details
+
+
+def test_mcp_cannot_cross_owner_boundary(backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Exampleland 2054"))
+    monkeypatch.setattr(settings, "mcp_development_subject", "owner-2")
+
+    with pytest.raises(ValueError, match="Trip not found"):
+        backend.get_trip(trip["id"])
+
+    with TestingSessionLocal() as session:
+        rejected = session.scalar(
+            select(McpAuditEvent).where(McpAuditEvent.owner_subject == "owner-2", McpAuditEvent.action == "trip.get")
+        )
+        assert rejected is not None
+        assert rejected.result == "rejected"
+
+
+def test_registered_tools_cover_owner_resource_families(backend: TravelMcpBackend) -> None:
+    async def names() -> set[str]:
+        return {tool.name for tool in await create_mcp_server(TestingSessionLocal).list_tools()}
+
+    registered = asyncio.run(names())
+    assert {
+        "create_trip",
+        "save_exact_place",
+        "save_broad_place",
+        "create_route_stage",
+        "create_moment",
+        "create_moment_excerpt",
+        "create_stay",
+        "get_stay",
+        "create_broad_stay_card",
+        "get_broad_stay_card",
+        "upload_finished_track",
+        "get_recorded_track",
+        "create_broad_route",
+        "get_broad_route",
+        "upload_document",
+        "get_document",
+        "add_document_derivative",
+        "upload_media",
+        "get_media",
+        "create_media_derivative",
+        "preview_public_projection",
+        "preview_public_navigation",
+        "inspect_public_preview_file",
+        "activate_share_link",
+        "preview_share_navigation",
+        "inspect_share_preview_file",
+    } <= registered
+    assert not any("sql" in tool or "filesystem" in tool or "http" in tool for tool in registered)
+
+
+def test_fastmcp_invokes_a_typed_tool_against_the_real_owner_handler(backend: TravelMcpBackend) -> None:
+    async def create_through_protocol() -> object:
+        return await create_mcp_server(TestingSessionLocal).call_tool(
+            "create_trip", {"payload": {"title": "Protocol trip"}}
+        )
+
+    result = asyncio.run(create_through_protocol())
+    assert not result.is_error
+    assert result.structured_content["title"] == "Protocol trip"
+    assert result.structured_content["owner_subject"] == "owner-1"
+
+
+def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "mcp_base_url", None)
+    monkeypatch.setattr(settings, "oidc_issuer_url", None)
+    assert not mcp_http_enabled()
+    with pytest.raises(RuntimeError, match="MCP HTTP requires"):
+        create_mcp_http_app(TestingSessionLocal)
+
+    monkeypatch.setattr(settings, "mcp_base_url", "https://mcp.example.test/mcp")
+    monkeypatch.setattr(settings, "oidc_issuer_url", "https://identity.example.test/realms/travel")
+    assert mcp_http_enabled()
+    server, http_app = create_mcp_http_app(TestingSessionLocal)
+    assert server.name == "travel"
+    assert http_app is not None

@@ -678,6 +678,32 @@ class AuditEvent(Base):
     details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
 
+class McpAuditEvent(Base):
+    """Append-only record of an authenticated owner MCP tool invocation.
+
+    This is intentionally distinct from :class:`AuditEvent`, whose small,
+    audience-safe vocabulary records publication-link lifecycle changes.  MCP
+    tools need an owner operational audit for *every* invocation, including a
+    rejected one, without ever recording request bodies, uploaded bytes, or a
+    one-time share capability.
+    """
+
+    __tablename__ = "mcp_audit_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(120), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    trip_id: Mapped[str | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True)
+    result: Mapped[str] = mapped_column(String(16), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # Only a stable error code/message summary belongs here.  Never persist a
+    # tool payload: it can contain private notes, raw media, OAuth tokens, or
+    # share capabilities.
+    details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+
+
 class StoredObject(Base):
     """Object-storage inventory for one trip-owned file.
 

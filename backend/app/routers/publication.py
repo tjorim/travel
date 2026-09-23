@@ -289,11 +289,11 @@ def _preview_navigation(trip: Trip, scope: dict, local_id: str) -> JSONResponse:
     return JSONResponse({"url": target[0]}, headers=UNLISTED_HEADERS)
 
 
-def _activate_link(link: ShareLink, expires_in_days: int) -> str:
+def _activate_link(link: ShareLink, expires_in_days: int | None) -> str:
     token = generate_token()
     now = datetime.now(UTC)
     link.token_verifier = verifier_for(token)
-    link.expires_at = now + timedelta(days=expires_in_days)
+    link.expires_at = now + timedelta(days=expires_in_days) if expires_in_days is not None else None
     link.state = LinkState.ACTIVE
     link.activated_at = now
     return token
@@ -307,7 +307,10 @@ def activate_share_link(
     if link.state != LinkState.DRAFT:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only a draft link can be activated")
     token = _activate_link(link, payload.expires_in_days)
-    details: dict = {"scope_version": scope_fingerprint(link.scope), "expires_at": link.expires_at.isoformat()}
+    details: dict = {
+        "scope_version": scope_fingerprint(link.scope),
+        "expires_at": link.expires_at.isoformat() if link.expires_at else None,
+    }
     if payload.reason:
         details["reason"] = payload.reason
     record_audit_event(
@@ -365,7 +368,7 @@ def rotate_share_link(
     details: dict = {
         "predecessor_id": old_link.id,
         "scope_version": scope_fingerprint(new_link.scope),
-        "expires_at": new_link.expires_at.isoformat(),
+        "expires_at": new_link.expires_at.isoformat() if new_link.expires_at else None,
     }
     if payload.reason:
         details["reason"] = payload.reason

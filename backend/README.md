@@ -1,8 +1,9 @@
 # Travel application backend
 
-The backend currently exposes the Travel application through FastAPI. The
-owner MCP interface in #41 will use the same application service layer. This
-backend does not read the static archive's JSON, documents, or protected files.
+The backend exposes the Travel application through FastAPI and an
+owner-authenticated MCP server. MCP tools use the application's typed owner
+handlers and storage services; they do not read the static archive's JSON,
+documents, or protected files directly.
 
 ## API contract
 
@@ -78,7 +79,8 @@ already-granted audience sees. A named unlisted link additionally gets a
 only a keyed HMAC-SHA256 verifier is stored, the raw token is returned once
 (at activation or rotation), and it must be handled like a credential (never
 logged, analytics-tracked, or placed in page markup). Revoking or rotating a
-link, or its expiry (1-90 days, default 30), is enforced on every
+link, or its expiry (1-90 days, default 30; an owner can explicitly choose no
+expiry), is enforced on every
 `/shared/{token}` request — there is no separate cache to invalidate because
 delivery always re-checks live link state, and the response headers
 (`Cache-Control: no-store, private`, `X-Robots-Tag: noindex, noarchive`,
@@ -243,6 +245,8 @@ does not control.
 | `TRAVEL_OIDC_ISSUER_URL` | Required issuer for production bearer-token validation. |
 | `TRAVEL_OIDC_JWKS_URL` | Required JWKS endpoint for production bearer-token validation. |
 | `TRAVEL_OIDC_AUDIENCE` | Expected API audience; defaults to `travel-api`. |
+| `TRAVEL_MCP_BASE_URL` | Public MCP base URL when an authenticated HTTP mount is supplied by deployment infrastructure; unset for local stdio use. |
+| `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |
 | `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. Required in production; the code default is development-only. |
 | `TRAVEL_MEDIA_STORAGE_ROOT` | Filesystem root for the local object-storage adapter; production points this at the backed-up VPS media volume, never Git. |
 | `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` | Refuses a direct upload or a single imported item larger than this (default 200 MiB). |
@@ -255,6 +259,26 @@ does not control.
 Use a development subject header only with both
 `TRAVEL_ENVIRONMENT=development` and
 `TRAVEL_ALLOW_DEVELOPMENT_SUBJECT_HEADER=true`; it is rejected in production.
+
+### Owner MCP server
+
+Local stdio is deliberately development-only: set a development subject for
+an integration test or local owner workflow:
+
+```bash
+TRAVEL_ENVIRONMENT=development TRAVEL_MCP_DEVELOPMENT_SUBJECT=owner-local \
+  uv run python -m app.mcp_server
+```
+
+The server exposes task-specific tools for all owner resources, including
+private media/document imports and derivatives, previews, publication and
+share-link lifecycle. Audience changes, capability activation/rotation and
+deletion require `confirm=true`; a raw share capability is returned only by
+activation or rotation and is never stored in the MCP audit table. The local
+MCP server is mounted by FastAPI at `/mcp` only when both
+`TRAVEL_MCP_BASE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. Caddy
+routing, production Keycloak configuration and endpoint exposure remain
+`tjorim/apps#226` work.
 
 ```bash
 uv sync --all-groups --frozen

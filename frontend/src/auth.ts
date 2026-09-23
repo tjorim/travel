@@ -2,6 +2,8 @@ const issuer = "https://auth.tjor.im/realms/travel";
 const clientId = "travel-tracker";
 const storageKey = "travel-tracker-session";
 const transactionKey = "travel-tracker-pkce-transaction";
+const restoreMarkerKey = "travel-tracker-may-restore-session";
+const silentRestoreKey = "travel-tracker-silent-restore-in-progress";
 
 export type TrackerSession = {
   accessToken: string;
@@ -13,6 +15,11 @@ type PkceTransaction = {
   codeVerifier: string;
   returnPath: string;
   state: string;
+  silent: boolean;
+};
+
+type SignInOptions = {
+  silent?: boolean;
 };
 
 function base64Url(bytes: Uint8Array): string {
@@ -56,10 +63,25 @@ export function readSession(): TrackerSession | null {
   }
 }
 
-export async function beginSignIn(returnPath: string): Promise<void> {
+function storeSession(session: TrackerSession): void {
+  sessionStorage.setItem(storageKey, JSON.stringify(session));
+  // This contains no credential. It permits a reload to ask Keycloak for a
+  // fresh short-lived token through its existing SSO cookie if sessionStorage
+  // was discarded by a browser/PWA shell.
+  localStorage.setItem(restoreMarkerKey, "1");
+  sessionStorage.removeItem(silentRestoreKey);
+}
+
+export function shouldRestoreSession(): boolean {
+  return localStorage.getItem(restoreMarkerKey) === "1" && sessionStorage.getItem(silentRestoreKey) !== "1";
+}
+
+export async function beginSignIn(returnPath: string, { silent = false }: SignInOptions = {}): Promise<void> {
   const codeVerifier = randomValue();
   const state = randomValue();
-  sessionStorage.setItem(transactionKey, JSON.stringify({ codeVerifier, returnPath: trackerPath(returnPath), state }));
+  sessionStorage.setItem(transactionKey, JSON.stringify({ codeVerifier, returnPath: trackerPath(returnPath), state, silent }));
+  if (silent) sessionStorage.setItem(silentRestoreKey, "1");
+  else sessionStorage.removeItem(silentRestoreKey);
 
   const parameters = new URLSearchParams({
     client_id: clientId,
@@ -70,19 +92,18 @@ export async function beginSignIn(returnPath: string): Promise<void> {
     scope: "openid profile email",
     state,
   });
+  if (silent) parameters.set("prompt", "none");
   window.location.assign(`${issuer}/protocol/openid-connect/auth?${parameters}`);
 }
 
 export async function completeSignIn(search: string): Promise<{ returnPath: string; session: TrackerSession }> {
   const parameters = new URLSearchParams(search);
   const error = parameters.get("error");
-  if (error) throw new Error("Aanmelden is afgebroken of geweigerd.");
-
   const code = parameters.get("code");
   const state = parameters.get("state");
   const stored = sessionStorage.getItem(transactionKey);
   sessionStorage.removeItem(transactionKey);
-  if (!code || !state || !stored) throw new Error("De aanmeldsessie ontbreekt of is verlopen.");
+  if (!state || !stored) throw new Error("De aanmeldsessie ontbreekt of is verlopen.");
 
   let transaction: PkceTransaction;
   try {
@@ -91,6 +112,17 @@ export async function completeSignIn(search: string): Promise<{ returnPath: stri
     throw new Error("De aanmeldsessie is ongeldig.");
   }
   if (transaction.state !== state || !transaction.codeVerifier) throw new Error("De aanmeldsessie komt niet overeen.");
+  if (error) {
+    sessionStorage.removeItem(silentRestoreKey);
+    if (transaction.silent) {
+      // There is no longer a Keycloak SSO session to recover. Do not retry on
+      // every rendered route; the owner can choose the normal sign-in action.
+      localStorage.removeItem(restoreMarkerKey);
+      throw new Error("Je aanmeldsessie is verlopen. Meld opnieuw aan om verder te gaan.");
+    }
+    throw new Error("Aanmelden is afgebroken of geweigerd.");
+  }
+  if (!code) throw new Error("De aanmeldcode ontbreekt of is verlopen.");
 
   const response = await fetch(`${issuer}/protocol/openid-connect/token`, {
     method: "POST",
@@ -114,12 +146,14 @@ export async function completeSignIn(search: string): Promise<{ returnPath: stri
     expiresAt: Date.now() + token.expires_in * 1000,
     ...(typeof token.id_token === "string" ? { idToken: token.id_token } : {}),
   };
-  sessionStorage.setItem(storageKey, JSON.stringify(session));
+  storeSession(session);
   return { returnPath: trackerPath(transaction.returnPath), session };
 }
 
 export function clearSession(): void {
   sessionStorage.removeItem(storageKey);
+  sessionStorage.removeItem(silentRestoreKey);
+  localStorage.removeItem(restoreMarkerKey);
 }
 
 /**

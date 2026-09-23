@@ -78,10 +78,6 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#41](https://github.com/tjorim/travel/issues/41) Develop and test
-      complete owner-authenticated MCP workflows for every #38 resource and
-      #73 owner-side publication/preview operation, using typed tools against
-      the app service layer.
 
 ### v2 — Fresh VPS launch and live trip delivery
 
@@ -156,6 +152,14 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#41](https://github.com/tjorim/travel/issues/41) Added and locally
+      tested 104 typed owner MCP tools for canonical trip, place, itinerary,
+      asset, audience, preview and lifecycle workflows. Calls use the same
+      owner validation/storage handlers as the application, require explicit
+      confirmation for deletion and externally visible changes, and write a
+      payload-free authenticated invocation audit record. Production routing
+      remains [apps#226](https://github.com/tjorim/apps/issues/226).
 
 - [x] [apps#219](https://github.com/tjorim/apps/issues/219) and
       [apps#220](https://github.com/tjorim/apps/issues/220) Added private VPS
@@ -329,8 +333,9 @@ Polarsteps-like features require a fresh product and privacy decision.
       immediately with no republish step; only whether a page is served at
       all is gated (publish/unpublish; activate/revoke/rotate for a named
       unlisted link); named unlisted share links with 256-bit capability
-      tokens (only a keyed verifier is stored) and 1-90 day (default 30)
-      expiry; `no-store`, `noindex` and `no-referrer` delivery headers; and
+      tokens (only a keyed verifier is stored) and a 1-90 day (default 30)
+      expiry or an explicit no-expiry owner choice; `no-store`, `noindex` and
+      `no-referrer` delivery headers; and
       tests covering public, valid-link, revoked-link, rotated-link,
       expired-link and out-of-scope-resource responses.
       ([#42](https://github.com/tjorim/travel/issues/42))

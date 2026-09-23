@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, Route, Routes, useParams } from "react-router-dom";
 import { isProjection, ProjectionView, type Audience, type Projection } from "./ProjectionView";
+import { forgetSharedTrip, readSavedSharedTrips, rememberSharedTrip, type SavedSharedTrip } from "./saved-shared-trips";
 
 type LoadState =
   | { kind: "loading" }
@@ -21,6 +22,12 @@ function isPublicTripCards(value: unknown): value is PublicTripCard[] {
 function TripIndex() {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<IndexState>({ kind: "loading" });
+  const [savedTrips, setSavedTrips] = useState<SavedSharedTrip[]>(() => readSavedSharedTrips());
+
+  function forget(token: string) {
+    forgetSharedTrip(token);
+    setSavedTrips(readSavedSharedTrips());
+  }
   useEffect(() => {
     const controller = new AbortController();
     setState({ kind: "loading" });
@@ -48,6 +55,7 @@ function TripIndex() {
       {state.kind === "ready" && state.trips.length === 0 && <div className="card" role="status"><h2>Nog geen publieke reizen</h2><p>Kom later terug om nieuwe reizen te ontdekken.</p></div>}
       {state.kind === "ready" && state.trips.length > 0 && <ul className="trip-cards">{state.trips.map((trip) => <li key={trip.slug}><Link className="trip-card card" to={`/trips/${encodeURIComponent(trip.slug)}`}><span className="eyebrow">Publieke reis</span><h2>{trip.title ?? "Gepubliceerde reis"}</h2>{trip.summary && <p>{trip.summary}</p>}<span className="trip-card-link">Bekijk reis <span aria-hidden="true">→</span></span></Link></li>)}</ul>}
     </section>
+    {savedTrips.length > 0 && <section aria-label="Op dit apparaat bewaarde verborgen reizen"><h2>Eerder bekeken verborgen reizen</h2><p className="lede">Alleen in deze browser bewaard. Wie dit apparaat gebruikt, kan deze links openen.</p><ul className="trip-cards">{savedTrips.map((trip) => <li key={trip.token} className="saved-trip"><Link className="trip-card card" to={`/share/${encodeURIComponent(trip.token)}`}><span className="eyebrow">Verborgen reis</span><h2>{trip.title ?? "Gedeelde reis"}</h2>{trip.summary && <p>{trip.summary}</p>}<span className="trip-card-link">Bekijk reis <span aria-hidden="true">→</span></span></Link><button className="secondary compact" type="button" onClick={() => forget(trip.token)}>Verwijderen van dit apparaat</button></li>)}</ul></section>}
     <footer className="trip-index-footer"><a href="/admin/">Mijn reizen beheren</a></footer>
   </main>;
 }
@@ -72,13 +80,19 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           signal: controller.signal,
         });
         if (response.status === 404 || response.status === 403) {
+          if (audience === "share") forgetSharedTrip(identifier);
           setState({ kind: "unavailable" });
         } else if (!response.ok) {
           setState({ kind: "error" });
         } else {
           const data: unknown = await response.json();
           if (!controller.signal.aborted) {
-            setState(isProjection(data, audience) ? { kind: "ready", projection: data } : { kind: "error" });
+            if (isProjection(data, audience)) {
+              if (audience === "share") rememberSharedTrip(identifier, data);
+              setState({ kind: "ready", projection: data });
+            } else {
+              setState({ kind: "error" });
+            }
           }
         }
       } catch {

@@ -6,6 +6,17 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Let an owner explicitly create a revocable unlisted share link without a
+  natural expiry. Timed links still default to 30 days and remain capped at
+  90 days; the UI warns that an unexpiring link is a long-lived credential.
+- Automatically save successfully opened unlisted trips on the visitor's
+  current browser and show them on its homepage, with a clear device-local
+  warning and removal control. The server never receives a visitor index.
+- Restored the owner PWA session after a refresh by silently exchanging the
+  existing Keycloak SSO session for a fresh short-lived access token when
+  browser session storage is unavailable. The access token remains
+  session-scoped; persistent browser storage holds only a non-secret recovery
+  marker, cleared on sign-out or expired SSO session.
 - Retired the archive-only photo preparation helper and GeoJSON contract test
   as new trip content and media move to the application workflow.
 - Replaced the static archive's three SVG route maps with a shared MapLibre
@@ -28,6 +39,16 @@ All notable changes to the travel hub are documented here.
   serves no versioned URL alias.
 
 ### Added
+
+- Added a typed, owner-authenticated local MCP server with 104 task-specific
+  management tools for canonical travel content, media/document workflows,
+  previews, publication and revocable share links. Destructive and
+  externally-visible actions require confirmation; MCP invocation auditing
+  stores owner, action, resource and result without payloads or capabilities.
+  When MCP/OIDC configuration is present, FastAPI mounts its stateless,
+  authenticated HTTP surface at `/mcp` and exposes an authoritative capability
+  manifest.
+  ([#41](https://github.com/tjorim/travel/issues/41))
 
 - Added scoped MapLibre maps to owner, public and unlisted trip views. The owner
   map parses finished private GPX/JSON tracks in memory and offers optional

@@ -8,6 +8,12 @@ class Settings(BaseSettings):
     oidc_jwks_url: str | None = None
     oidc_audience: str = "travel-api"
     allow_development_subject_header: bool = False
+    # The MCP application surface is local/application-only in v1.  An HTTP
+    # mount is deliberately not enabled from this setting; apps#226 owns that
+    # deployment work.  In development a named subject makes stdio integration
+    # tests possible without weakening production authentication.
+    mcp_base_url: str | None = None
+    mcp_development_subject: str | None = None
     # Keys the one-way verifier stored for each unlisted share-link capability.
     # The raw token is never stored; only a party holding this secret can
     # recognize a presented token as valid. Must be overridden in production.

@@ -33,6 +33,10 @@ function cloneScope(scope: Partial<ShareScope> | null | undefined): ShareScope {
 }
 const endpoint = (tripId: string) => `/api/trips/${tripId}`;
 
+function shareUrl(token: string): string {
+  return new URL(`/share/${encodeURIComponent(token)}`, window.location.origin).toString();
+}
+
 function dateLabel(value: string | null): string {
   return value ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium" }).format(new Date(value)) : "—";
 }
@@ -53,8 +57,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [message, setMessage] = useState("Laad je publicaties…");
   const [preview, setPreview] = useState<{ name: string; audience: "public" | "share"; linkId?: string; document: Projection } | null>(null);
-  const [revealedToken, setRevealedToken] = useState<{ label: string; token: string } | null>(null);
-  const [expiresInDays, setExpiresInDays] = useState(30);
+  const [revealedLink, setRevealedLink] = useState<{ label: string; url: string } | null>(null);
+  const [expiresInDays, setExpiresInDays] = useState<number | null>(30);
   const [reason, setReason] = useState("");
 
   async function responseJson<T>(response: Response, fallback: string): Promise<T> {
@@ -111,14 +115,14 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   }
 
   useEffect(() => {
-    setPreview(null); setRevealedToken(null); setEditingLinkId(null); setLinkLabel(""); setLinkScope(emptyScope());
+    setPreview(null); setRevealedLink(null); setEditingLinkId(null); setLinkLabel(""); setLinkScope(emptyScope());
     void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je publicaties konden niet worden geladen."));
   }, [session, trip]);
 
   const selectedLink = useMemo(() => links.find((link) => link.id === editingLinkId) ?? null, [editingLinkId, links]);
 
   function selectLink(link: ShareLink) {
-    setEditingLinkId(link.id); setLinkLabel(link.label); setLinkScope(cloneScope(link.scope)); setPreview(null); setRevealedToken(null); setReason("");
+    setEditingLinkId(link.id); setLinkLabel(link.label); setLinkScope(cloneScope(link.scope)); setPreview(null); setRevealedLink(null); setReason("");
   }
 
   function updateItem(scope: ShareScope, setScope: (scope: ShareScope) => void, item: CatalogItem, included: boolean) {
@@ -172,7 +176,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   async function activateLink(action: "activate" | "rotate") {
     if (!session || !selectedLink) return;
     const response = await responseJson<ShareLink & { token: string }>(await fetch(`${endpoint(trip.id)}/share-links/${selectedLink.id}/${action}`, { method: "POST", headers: apiHeaders(session), body: JSON.stringify({ expires_in_days: expiresInDays, reason: reason.trim() || null }) }), "De veilige link kon niet worden gemaakt.");
-    setRevealedToken({ label: response.label, token: response.token }); setReason(""); await loadLinks(); selectLink(response); setMessage("De capability is nu één keer getoond. Bewaar hem nu veilig.");
+    setRevealedLink({ label: response.label, url: shareUrl(response.token) }); setReason(""); await loadLinks(); selectLink(response); setMessage("De veilige link is nu één keer getoond. Bewaar hem nu veilig.");
   }
 
   async function revokeLink() {
@@ -181,10 +185,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     await loadLinks(); selectLink(saved); setReason(""); setMessage("Deellink ingetrokken.");
   }
 
-  async function copyToken() {
-    if (!revealedToken) return;
-    await navigator.clipboard.writeText(revealedToken.token);
-    setMessage("Capability gekopieerd. Hij wordt niet opnieuw opgevraagd of opgeslagen door deze app.");
+  async function copyLink() {
+    if (!revealedLink) return;
+    await navigator.clipboard.writeText(revealedLink.url);
+    setMessage("Veilige link gekopieerd. Hij wordt niet opnieuw opgevraagd of opgeslagen door deze app.");
   }
 
   function ScopeEditor({ scope, setScope, name, disabled = false }: { scope: ShareScope; setScope: (scope: ShareScope) => void; name: string; disabled?: boolean }) {
@@ -201,7 +205,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   return <section className="card manager publication-manager" aria-labelledby="publication-manager-title">
     <div className="capture-heading"><div><h3 id="publication-manager-title">Publiceren en verborgen links</h3><p>Publicatie is een aparte, bewuste keuze. De server levert alleen de scope die je hieronder opslaat.</p></div></div>
     <p className="help" role="status">{message}</p>
-    {revealedToken && <section className="token-reveal" aria-live="assertive"><strong>Bewaar deze capability nu</strong><p>Deze token wordt niet opnieuw opgehaald of bewaard. Wie hem heeft, kan de actieve verborgen link openen.</p><code>{revealedToken.token}</code><button type="button" onClick={() => void copyToken().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Kopiëren lukte niet."))}>Kopieer capability</button><button className="secondary compact" type="button" onClick={() => setRevealedToken(null)}>Ik heb hem bewaard</button></section>}
+    {revealedLink && <section className="token-reveal" aria-live="assertive"><strong>Bewaar deze veilige link nu</strong><p>Deze capability wordt niet opnieuw opgehaald of bewaard. Wie deze link heeft, kan de actieve verborgen pagina openen.</p><code>{revealedLink.url}</code><button type="button" onClick={() => void copyLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Kopiëren lukte niet."))}>Kopieer veilige link</button><button className="secondary compact" type="button" onClick={() => setRevealedLink(null)}>Ik heb hem bewaard</button></section>}
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Publieke pagina</h3><p>{publicStatus?.surface_state === "published" ? "Deze scope is publiek bereikbaar." : "Nog niet publiek bereikbaar."}</p></div></div>
       <ScopeEditor name="Publieke scope" scope={publicScope} setScope={(scope) => { setPublicScope(scope); setPreview(null); }} />
       <div className="button-row"><button type="button" onClick={() => void savePublicScope().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Opslaan lukte niet."))}>Publieke scope opslaan</button><button className="secondary" type="button" onClick={() => void previewPublic().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Preview lukte niet."))}>Preview</button><button className={publicStatus?.surface_state === "published" ? "danger" : ""} type="button" onClick={() => void togglePublic().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Status wijzigen lukte niet."))}>{publicStatus?.surface_state === "published" ? "Publicatie intrekken" : "Publiceren"}</button></div>
@@ -209,7 +213,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Verborgen deellinks</h3><p>Elke link heeft een eigen live scope en kan later worden ingetrokken of geroteerd.</p></div><button className="secondary compact" type="button" onClick={() => { setEditingLinkId(null); setLinkLabel(""); setLinkScope(emptyScope()); setPreview(null); }}>Nieuwe link</button></div>
       {links.length > 0 && <div className="link-list">{links.map((link) => <button type="button" className={`link-row ${link.id === editingLinkId ? "selected" : ""}`} key={link.id} onClick={() => selectLink(link)}><strong>{link.label}</strong><span>{link.state} · verloopt {dateLabel(link.expires_at)}</span></button>)}</div>}
       {(editingLinkId !== null || links.length === 0) && <div className="link-editor"><label>Naam van de link<input required maxLength={120} disabled={selectedLink?.state === "revoked" || selectedLink?.state === "expired"} value={linkLabel} onChange={(event) => { setLinkLabel(event.target.value); setPreview(null); }} placeholder="Bijvoorbeeld: familie" /></label><ScopeEditor name="Scope voor verborgen link" scope={linkScope} setScope={(scope) => { setLinkScope(scope); setPreview(null); }} disabled={selectedLink?.state === "revoked" || selectedLink?.state === "expired"} /><div className="button-row"><button type="button" disabled={!linkLabel.trim() || selectedLink?.state === "revoked" || selectedLink?.state === "expired"} onClick={() => void saveLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Opslaan lukte niet."))}>{selectedLink ? "Link opslaan" : "Conceptlink maken"}</button><button className="secondary" type="button" disabled={!linkLabel.trim()} onClick={() => void previewLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Preview lukte niet."))}>Preview</button></div>
-        {selectedLink && <div className="lifecycle"><div className="field-row"><label>Geldig gedurende (dagen)<input type="number" min="1" max="90" value={expiresInDays} onChange={(event) => setExpiresInDays(Number(event.target.value))} /></label><label>Reden <span className="optional">(optioneel)</span><input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label></div><div className="button-row">{selectedLink.state === "draft" && <button type="button" onClick={() => void activateLink("activate").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Activeren lukte niet."))}>Activeren en capability tonen</button>}{selectedLink.state === "active" && <><button className="danger" type="button" onClick={() => void revokeLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Intrekken lukte niet."))}>Link intrekken</button><button type="button" onClick={() => void activateLink("rotate").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Roteren lukte niet."))}>Roteren en nieuwe capability tonen</button></>}</div></div>}
+        {selectedLink && <div className="lifecycle"><div className="field-row"><label>Geldig gedurende (dagen)<input type="number" min="1" max="90" disabled={expiresInDays === null} value={expiresInDays ?? 30} onChange={(event) => setExpiresInDays(Number(event.target.value))} /></label><label className="scope-choice"><input type="checkbox" checked={expiresInDays === null} onChange={(event) => setExpiresInDays(event.target.checked ? null : 30)} />Geen vervaldatum</label><label>Reden <span className="optional">(optioneel)</span><input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label></div>{expiresInDays === null && <p className="help">Deze link blijft geldig totdat je hem intrekt of roteert. Behandel hem als een wachtwoord.</p>}<div className="button-row">{selectedLink.state === "draft" && <button type="button" onClick={() => void activateLink("activate").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Activeren lukte niet."))}>Activeren en capability tonen</button>}{selectedLink.state === "active" && <><button className="danger" type="button" onClick={() => void revokeLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Intrekken lukte niet."))}>Link intrekken</button><button type="button" onClick={() => void activateLink("rotate").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Roteren lukte niet."))}>Roteren en nieuwe capability tonen</button></>}</div></div>}
       </div>}
     </div>
     {preview && session && <section className="projection-preview" aria-live="polite"><h3>{preview.name}</h3><p>{preview.audience === "public" ? "Doelgroep: iedereen" : "Doelgroep: alleen wie de actieve verborgen link heeft"} · {preview.audience === "public" ? publicStatus?.surface_state === "published" ? "nu gepubliceerd" : "concept of ingetrokken" : links.find((link) => link.id === preview.linkId)?.state ?? "concept"}</p><p>{projectionSummary(preview.document)}</p><p className="help">Alleen geselecteerde velden verschijnen hieronder. Privégegevens, boekingen en andere niet-geselecteerde velden blijven verborgen. Deze preview publiceert niets en maakt geen toegangscode aan.</p><RenderedPreview projection={preview.document} audience={preview.audience} tripId={trip.id} linkId={preview.linkId} session={session} /><details><summary>Geleverde velden inspecteren</summary><pre>{JSON.stringify(preview.document, null, 2)}</pre></details></section>}

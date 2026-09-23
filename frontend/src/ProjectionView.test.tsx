@@ -6,7 +6,7 @@ import { isProjection, projectionMapLines, projectionMapPoints, ProjectionView, 
 import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 
 function projection(schema_version = "travel/public-trip@1"): Projection {
   return {
@@ -133,6 +133,27 @@ it("renders a successful unlisted response without requesting public or owner da
   render(<MemoryRouter initialEntries={["/share/token"]}><VisitorRoutes /></MemoryRouter>);
   await screen.findByText("Shared excerpt");
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/shared/token"]);
+});
+
+it("automatically saves a successfully visited hidden trip on this browser's homepage", async () => {
+  const token = "oBj31R7FHNyTEx8Q6qFusqpBPpMDzhq1fb34nwAbCu0";
+  const data = projection("travel/unlisted-trip@1");
+  data.title = "Family trip";
+  const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+    if (url === `/api/shared/${token}`) return new Response(JSON.stringify(data));
+    return new Response("[]");
+  });
+  vi.stubGlobal("fetch", fetcher);
+
+  const visited = render(<MemoryRouter initialEntries={[`/share/${token}`]}><VisitorRoutes /></MemoryRouter>);
+  await screen.findByRole("heading", { name: "Family trip" });
+  visited.unmount();
+
+  render(<MemoryRouter initialEntries={["/"]}><VisitorRoutes /></MemoryRouter>);
+  const saved = await screen.findByRole("link", { name: /Family trip/ });
+  expect(saved.getAttribute("href")).toBe(`/share/${token}`);
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen van dit apparaat" }));
+  expect(screen.queryByRole("link", { name: /Family trip/ })).toBeNull();
 });
 
 it("renders dated moments in projection order with direct links and scoped photo galleries", () => {

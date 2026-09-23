@@ -187,10 +187,21 @@ any time, and an already-`active` link reflects the change immediately for
 anyone holding its token — there is no separate replacement link needed just
 to change what it shows. What requires a deliberate owner action is only
 whether the link is currently usable at all: `activate` mints its capability,
-and `revoke` or expiry ends it. The v1 default lifetime is 30 days; the owner
-must set an expiry no later than 90 days after activation. It cannot be
-reactivated after expiry or revocation. A link must never be a generic
+and `revoke` or expiry ends it. The default lifetime is 30 days and a timed
+link can last at most 90 days. An owner may instead explicitly choose no
+expiry, with a warning that the link remains a forwardable credential until it
+is revoked or rotated. It cannot be reactivated after expiry or revocation. A
+link must never be a generic
 "everything in this trip" switch.
+
+After a visitor successfully opens an unlisted link, the browser automatically
+adds that capability and the delivered title/summary to its local “previously
+viewed hidden trips” list. This is a convenience feature, not a server-side
+recipient record: it stays on that browser/device, is never sent to an index
+endpoint, and can be removed there. Since the raw capability remains a bearer
+credential in local browser storage, the homepage explicitly warns that anyone
+using that browser profile can reopen a saved trip. A `404` for a revoked or
+expired saved link removes it from the list.
 
 The service generates at least 256 bits of entropy with a cryptographically
 secure random generator and encodes the capability in a URL-safe form. It

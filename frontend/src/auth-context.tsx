@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
-import { readSession, type TrackerSession } from "./auth";
+import { beginSignIn, readSession, shouldRestoreSession, type TrackerSession } from "./auth";
 
 type AuthContextValue = {
   session: TrackerSession | null;
@@ -17,5 +17,14 @@ export function useAuth(): AuthContextValue {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<TrackerSession | null>(() => readSession());
+  const restoring = useRef(false);
+
+  useEffect(() => {
+    if (session || restoring.current || !shouldRestoreSession() || window.location.pathname.endsWith("/auth/callback")) return;
+    restoring.current = true;
+    const returnPath = window.location.pathname.replace(/^\/admin(?=\/|$)/, "") || "/";
+    void beginSignIn(returnPath, { silent: true });
+  }, [session]);
+
   return <AuthContext.Provider value={{ session, setSession }}>{children}</AuthContext.Provider>;
 }

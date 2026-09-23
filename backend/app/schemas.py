@@ -587,7 +587,9 @@ class ShareLinkUpdate(BaseModel):
 
 
 class ShareLinkActivateRequest(BaseModel):
-    expires_in_days: int = Field(default=30, ge=1, le=90)
+    # `null` is an explicit owner choice for a revocable link without natural
+    # expiry. Omitted retains the safer 30-day default.
+    expires_in_days: int | None = Field(default=30, ge=1, le=90)
     reason: str | None = Field(default=None, max_length=500)
 
 

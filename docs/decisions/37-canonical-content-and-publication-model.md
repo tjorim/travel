@@ -177,7 +177,8 @@ route boundary is defined by [#101](101-legacy-route-transition.md).
    it at any time as a non-gating, owner-authenticated check.
 2. `activate` is the one deliberate, one-time action that mints the
    high-entropy capability, stores only its verifier, and moves the link to
-   `active` with an expiry no later than 90 days (30 days by default).
+   `active` with a 30-day default expiry, a chosen expiry no later than 90
+   days, or an explicit owner choice of no expiry.
 3. A capability exchange verifies state and expiry, then renders the unlisted
    contract live against current canonical data filtered to the link's
    current `scope_json` — there is no frozen representation to load. It uses
