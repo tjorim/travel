@@ -1,29 +1,89 @@
-import { useState, type FormEvent } from "react";
-import { useAuth } from "../auth-context";
+import { useState } from "react";
+
+import { RecordForm, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { useRecordDialog } from "../forms/useRecordDialog";
+import { useRecordForm } from "../forms/useRecordForm";
+import { errorMessage } from "../query/api";
+import { ownerKeys } from "../query/keys";
+import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { apiError, apiHeaders, type BroadPlace, type RouteStage, type Trip } from "../tracker-model";
+import type { BroadPlace, RouteStage, Trip } from "../tracker-model";
 
-type Draft = { id: string | null; broadPlaceId: string; label: string; summary: string };
-const empty = (): Draft => ({ id: null, broadPlaceId: "", label: "", summary: "" });
-const fromStage = (stage: RouteStage): Draft => ({ id: stage.id, broadPlaceId: stage.place.id, label: stage.label ?? "", summary: stage.summary ?? "" });
+type Values = { broadPlaceId: string; label: string; summary: string };
+const blank = (): Values => ({ broadPlaceId: "", label: "", summary: "" });
+const fromStage = (stage: RouteStage): Values => ({ broadPlaceId: stage.place.id, label: stage.label ?? "", summary: stage.summary ?? "" });
+const serverFields = { broad_place_id: "broadPlaceId", label: "label", summary: "summary" };
+const needsPlace = ({ value }: { value: string }) => value ? undefined : "Kies eerst een brede plaats.";
 
-export function RouteStageManager({ trip, broadPlaces, onChange }: { trip: Trip; broadPlaces: BroadPlace[]; onChange: () => Promise<void> }) {
-  const { session } = useAuth(); const [draft, setDraft] = useState<Draft>(empty()); const [initial, setInitial] = useState<Draft>(empty());
-  const [selected, setSelected] = useState<RouteStage | null>(null); const [editing, setEditing] = useState(false); const [confirmDelete, setConfirmDelete] = useState(false);
+/** Route stages are embedded in the trip, so every write refreshes the trip list. */
+export function RouteStageManager({ trip, broadPlaces }: { trip: Trip; broadPlaces: BroadPlace[] }) {
+  const stages = trip.route_stages.slice().sort((a, b) => a.position - b.position);
+  const dialog = useRecordDialog(stages);
   const [message, setMessage] = useState("Route-etappes zijn bewust algemeen; exacte plaatsen kunnen hier niet gekozen worden.");
-  const stages = trip.route_stages.slice().sort((a, b) => a.position - b.position); const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
-  function close() { setSelected(null); setEditing(false); setConfirmDelete(false); setDraft(empty()); setInitial(empty()); }
-  function create() { const next = empty(); setDraft(next); setInitial(next); setSelected(null); setEditing(true); }
-  function inspect(stage: RouteStage) { setSelected(stage); setEditing(false); setConfirmDelete(false); }
-  function edit(stage: RouteStage) { const next = fromStage(stage); setDraft(next); setInitial(next); setSelected(stage); setEditing(true); }
-  async function save(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!session) return; if (!draft.broadPlaceId) throw new Error("Kies eerst een brede plaats."); const response = await fetch(draft.id ? `/api/trips/${trip.id}/route-stages/${draft.id}` : `/api/trips/${trip.id}/route-stages`, { method: draft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(draft.id ? { broad_place_id: draft.broadPlaceId, label: draft.label.trim() || null, summary: draft.summary.trim() || null } : { broad_place_id: draft.broadPlaceId, position: stages.length, label: draft.label.trim() || null, summary: draft.summary.trim() || null }) }); if (!response.ok) return apiError(response, "De route-etappe kon niet worden opgeslagen."); await onChange(); close(); setMessage("Route-etappe opgeslagen. Hij blijft privé totdat je hem expliciet deelt."); }
-  async function move(stage: RouteStage, direction: -1 | 1) { if (!session) return; const position = stage.position + direction; if (position < 0 || position >= stages.length) return; const response = await fetch(`/api/trips/${trip.id}/route-stages/${stage.id}`, { method: "PATCH", headers: apiHeaders(session), body: JSON.stringify({ position }) }); if (!response.ok) return apiError(response, "De route-etappe kon niet worden verplaatst."); await onChange(); }
-  async function remove(stage: RouteStage) { if (!session) return; const response = await fetch(`/api/trips/${trip.id}/route-stages/${stage.id}`, { method: "DELETE", headers: apiHeaders(session) }); if (!response.ok) return apiError(response, "De route-etappe kon niet worden verwijderd."); await onChange(); close(); setMessage("Route-etappe verwijderd."); }
-  const fail = (fallback: string) => (error: unknown) => setMessage(error instanceof Error ? error.message : fallback);
-  return <section className="card manager" aria-labelledby="route-stages-title"><div className="capture-heading"><div><h3 id="route-stages-title">Route-etappes</h3><p>Elke etappe verwijst naar een bewust brede plaats. Je kiest zelf later of je die deelt.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe etappe</button></div><p className="help" role="status">{message}</p>
-    {stages.length > 0 && <div className="saved-moments manager-list">{stages.map((stage, index) => <article className="excerpt-row" key={stage.id}><button className="document-select" type="button" onClick={() => inspect(stage)} aria-label={`Route-etappe ${stage.label ?? stage.place.label} bekijken`}><strong>{stage.label ?? stage.place.label}</strong><span>{stage.place.label} · etappe {index + 1}{stage.summary ? ` · ${stage.summary}` : ""}</span></button><div className="button-row"><button className="secondary compact" type="button" disabled={index === 0} onClick={() => void move(stage, -1).catch(fail("De route-etappe kon niet worden verplaatst."))}>Omhoog</button><button className="secondary compact" type="button" disabled={index === stages.length - 1} onClick={() => void move(stage, 1).catch(fail("De route-etappe kon niet worden verplaatst."))}>Omlaag</button></div></article>)}</div>}
-    <RecordDialog open={editing || selected !== null} title={editing ? (draft.id ? "Route-etappe bewerken" : "Route-etappe toevoegen") : "Route-etappe"} dirty={editing && dirty} onDismiss={close}>
-      {!editing && selected && <div className="stack-form"><div><h3>{selected.label ?? selected.place.label}</h3><p>{selected.place.label}</p>{selected.summary && <p>{selected.summary}</p>}</div><div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => setConfirmDelete(true)}>Verwijderen</button></div>{confirmDelete && <DeleteConfirmation title={`Route-etappe “${selected.label ?? selected.place.label}” verwijderen?`} onCancel={() => setConfirmDelete(false)} onConfirm={() => void remove(selected).catch(fail("De route-etappe kon niet worden verwijderd."))} />}</div>}
-      {editing && <form className="stack-form" onSubmit={(event) => void save(event).catch(fail("De route-etappe kon niet worden opgeslagen."))}><label>Brede plaats<select required value={draft.broadPlaceId} onChange={(event) => setDraft((current) => ({ ...current, broadPlaceId: event.target.value }))}><option value="">Kies een brede plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}{place.region ? ` · ${place.region}` : ""}</option>)}</select></label>{!broadPlaces.length && <p className="help">Voeg hierboven eerst een brede plaats toe; exacte plaatsen zijn hier bewust niet beschikbaar.</p>}<label>Etappelabel <span className="optional">(optioneel)</span><input maxLength={120} value={draft.label} onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))} placeholder="Bijvoorbeeld: noordkust" /></label><label>Korte beschrijving <span className="optional">(optioneel, deelbaar als je dit veld kiest)</span><textarea maxLength={2000} rows={2} value={draft.summary} onChange={(event) => setDraft((current) => ({ ...current, summary: event.target.value }))} placeholder="Bijvoorbeeld: stad, eten en een eerste weekend in het noorden" /></label><button type="submit">{draft.id ? "Etappe opslaan" : "Etappe toevoegen"}</button></form>}
-    </RecordDialog></section>;
+  const path = tripPath(trip.id, "route-stages");
+  const invalidate = (subject: string) => [ownerKeys.trips(subject)];
+
+  const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, RouteStage>({
+    fallback: "De route-etappe kon niet worden opgeslagen.",
+    request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
+    invalidate,
+  });
+  const move = useOwnerMutation<{ stage: RouteStage; position: number }, RouteStage>({
+    fallback: "De route-etappe kon niet worden verplaatst.",
+    request: ({ stage, position }) => ({ path: `${path}/${stage.id}`, method: "PATCH", body: { position } }),
+    invalidate,
+  });
+  const remove = useOwnerMutation<RouteStage>({
+    fallback: "De route-etappe kon niet worden verwijderd.",
+    request: (stage) => ({ path: `${path}/${stage.id}`, method: "DELETE" }),
+    invalidate,
+  });
+
+  const record = useRecordForm<Values>({
+    defaultValues: blank(),
+    fallback: "De route-etappe kon niet worden opgeslagen.",
+    serverFields,
+    submit: async (values) => {
+      const details = { broad_place_id: values.broadPlaceId, label: values.label.trim() || null, summary: values.summary.trim() || null };
+      await save.mutateAsync({ id: dialog.editingId ?? null, payload: dialog.editingId ? details : { ...details, position: stages.length } });
+    },
+    onSuccess: () => { close(); setMessage("Route-etappe opgeslagen. Hij blijft privé totdat je hem expliciet deelt."); },
+  });
+
+  function close() { dialog.close(); record.load(blank()); }
+  function create() { record.load(blank()); dialog.create(); }
+  function edit(stage: RouteStage) { record.load(fromStage(stage)); dialog.edit(stage.id); }
+  const fail = (fallback: string) => (error: unknown) => setMessage(errorMessage(error, fallback));
+  function shift(stage: RouteStage, direction: -1 | 1) {
+    const position = stage.position + direction;
+    if (position < 0 || position >= stages.length) return;
+    move.mutateAsync({ stage, position }).catch(fail("De route-etappe kon niet worden verplaatst."));
+  }
+  function erase(stage: RouteStage) {
+    remove.mutateAsync(stage).then(() => { close(); setMessage("Route-etappe verwijderd."); }, fail("De route-etappe kon niet worden verwijderd."));
+  }
+  const { selected, editing, editingId } = dialog;
+  const stageName = (stage: RouteStage) => stage.label ?? stage.place.label;
+
+  return <section className="card manager" aria-labelledby="route-stages-title">
+    <div className="capture-heading"><div><h3 id="route-stages-title">Route-etappes</h3><p>Elke etappe verwijst naar een bewust brede plaats. Je kiest zelf later of je die deelt.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe etappe</button></div>
+    <p className="help" role="status">{message}</p>
+    {stages.length > 0 && <div className="saved-moments manager-list">{stages.map((stage, index) => <article className="excerpt-row" key={stage.id}>
+      <button className="document-select" type="button" onClick={() => dialog.inspect(stage.id)} aria-label={`Route-etappe ${stageName(stage)} bekijken`}><strong>{stageName(stage)}</strong><span>{stage.place.label} · etappe {index + 1}{stage.summary ? ` · ${stage.summary}` : ""}</span></button>
+      <div className="button-row"><button className="secondary compact" type="button" disabled={index === 0} onClick={() => shift(stage, -1)}>Omhoog</button><button className="secondary compact" type="button" disabled={index === stages.length - 1} onClick={() => shift(stage, 1)}>Omlaag</button></div>
+    </article>)}</div>}
+    <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Route-etappe bewerken" : "Route-etappe toevoegen") : "Route-etappe"} dirty={editing && record.dirty} onDismiss={close}>
+      {!editing && selected && <div className="stack-form">
+        <div><h3>{stageName(selected)}</h3><p>{selected.place.label}</p>{selected.summary && <p>{selected.summary}</p>}</div>
+        <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
+        {dialog.confirmDelete && <DeleteConfirmation title={`Route-etappe “${stageName(selected)}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
+      </div>}
+      {editing && <RecordForm record={record} submitLabel={editingId ? "Etappe opslaan" : "Etappe toevoegen"} pendingLabel="Opslaan…">
+        <record.form.Field name="broadPlaceId" validators={{ onChange: needsPlace, onSubmit: needsPlace }}>{(field) => <SelectField field={field} label="Brede plaats" required><option value="">Kies een brede plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}{place.region ? ` · ${place.region}` : ""}</option>)}</SelectField>}</record.form.Field>
+        {!broadPlaces.length && <p className="help">Voeg hierboven eerst een brede plaats toe; exacte plaatsen zijn hier bewust niet beschikbaar.</p>}
+        <record.form.Field name="label">{(field) => <TextField field={field} label="Etappelabel" optional maxLength={120} placeholder="Bijvoorbeeld: noordkust" />}</record.form.Field>
+        <record.form.Field name="summary">{(field) => <TextAreaField field={field} label="Korte beschrijving" optional="(optioneel, deelbaar als je dit veld kiest)" maxLength={2000} rows={2} placeholder="Bijvoorbeeld: stad, eten en een eerste weekend in het noorden" />}</record.form.Field>
+      </RecordForm>}
+    </RecordDialog>
+  </section>;
 }

@@ -55,6 +55,17 @@ it("shows the edited title straight after saving, without a reload", async () =>
   expect(screen.getByText("Taak opgeslagen.")).toBeTruthy();
 });
 
+it("opens the editor with the saved task instead of a blank form", async () => {
+  api.tasks = [task("a", "Visum regelen", { notes: "Bij de ambassade", due_date: "2054-10-01", links: [{ label: "Ambassade", url: "https://example.test" }] })];
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  await openTask("Visum regelen");
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Visum regelen");
+  expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe("Bij de ambassade");
+  expect((screen.getByLabelText("Deadline (optioneel)") as HTMLInputElement).value).toBe("2054-10-01");
+  expect((screen.getByLabelText("Adres") as HTMLInputElement).value).toBe("https://example.test");
+});
+
 it("removes a deleted task at once and after the refetch", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
   await openTask("Reisverzekering");

@@ -13,13 +13,13 @@ export type RecordFormState = {
 };
 
 /** The form shell of the shared editor: submit handling, server error and pending button. */
-export function RecordForm({ record, submitLabel, pendingLabel, actions, children }: { record: RecordFormState; submitLabel: string; pendingLabel: string; actions?: ReactNode; children: ReactNode }) {
+export function RecordForm({ record, submitLabel, pendingLabel, disabled = false, actions, children }: { record: RecordFormState; submitLabel: string; pendingLabel: string; /** Blocks submitting without a pending save, for example while a required part is missing. */ disabled?: boolean; actions?: ReactNode; children: ReactNode }) {
   const { form, formRef, serverError, serverFieldErrors, pending } = record;
   return <ServerFieldErrors.Provider value={serverFieldErrors}>
     <form ref={formRef} className="stack-form" noValidate aria-busy={pending} onSubmit={(event) => { event.preventDefault(); event.stopPropagation(); void form.handleSubmit(); }}>
       {children}
       {serverError && <p className="form-error" role="alert">{serverError}</p>}
-      <div className="button-row"><button type="submit" disabled={pending}>{pending ? pendingLabel : submitLabel}</button>{actions}</div>
+      <div className="button-row"><button type="submit" disabled={pending || disabled}>{pending ? pendingLabel : submitLabel}</button>{actions}</div>
     </form>
   </ServerFieldErrors.Provider>;
 }
@@ -69,3 +69,9 @@ export function SelectField({ field, label, optional, children, ...input }: Comm
 
 /** The value is required once trimmed. */
 export const requiredText = (message: string) => ({ value }: { value: string }) => value.trim() ? undefined : message;
+
+export function CheckboxField({ field, label, className = "media-choice", ...input }: { field: AnyFieldApi; label: ReactNode; className?: string } & Omit<InputHTMLAttributes<HTMLInputElement>, "checked" | "value" | "onChange" | "onBlur" | "name" | "type">) {
+  return <label className={className}>
+    <input {...input} type="checkbox" name={field.name} checked={Boolean(field.state.value)} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.checked)} />{label}
+  </label>;
+}

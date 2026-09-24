@@ -27,7 +27,7 @@ const linkUrlError = ({ value, fieldApi }: { value: string; fieldApi: { form: { 
   return isHttps(value) ? undefined : "Gebruik een https-adres.";
 };
 
-export function TripTaskManager({ trip, onChange }: { trip: Trip; onChange?: () => void }) {
+export function TripTaskManager({ trip }: { trip: Trip }) {
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const alertsQuery = useTripResource(trip.id, "task-alerts");
   const tasks = tasksQuery.data ?? [];
@@ -73,7 +73,7 @@ export function TripTaskManager({ trip, onChange }: { trip: Trip; onChange?: () 
       const links = values.links.map((link) => ({ label: link.label.trim(), url: link.url.trim() })).filter((link) => link.label || link.url);
       await saveTask.mutateAsync({ id: editingId ?? null, payload: { title: values.title.trim(), notes: values.notes.trim() || null, due_date: values.dueDate || null, remind_at: values.remindAt ? new Date(values.remindAt).toISOString() : null, links } });
     },
-    onSuccess: () => { onChange?.(); close(); setNotice("Taak opgeslagen."); },
+    onSuccess: () => { close(); setNotice("Taak opgeslagen."); },
   });
 
   function close() { setSelectedId(null); setEditingId(undefined); setConfirmDelete(false); record.load(blank()); }
@@ -87,10 +87,10 @@ export function TripTaskManager({ trip, onChange }: { trip: Trip; onChange?: () 
   const completedTasks = tasks.filter((task) => task.completed_at);
 
   function toggle(task: TripTask) {
-    toggleTask.mutateAsync(task).then(() => { onChange?.(); setNotice(task.completed_at ? "Taak heropend." : "Taak afgevinkt."); }, fail("De taak kon niet worden bijgewerkt."));
+    toggleTask.mutateAsync(task).then(() => { setNotice(task.completed_at ? "Taak heropend." : "Taak afgevinkt."); }, fail("De taak kon niet worden bijgewerkt."));
   }
   function remove(task: TripTask) {
-    deleteTask.mutateAsync(task).then(() => { onChange?.(); close(); setNotice("Taak verwijderd."); }, fail("De taak kon niet worden verwijderd."));
+    deleteTask.mutateAsync(task).then(() => { close(); setNotice("Taak verwijderd."); }, fail("De taak kon niet worden verwijderd."));
   }
 
   const row = (task: TripTask) => <article key={task.id} className={`excerpt-row${task.completed_at ? " completed" : ""}`}>

@@ -1,5 +1,3 @@
-import type { TrackerSession } from "./auth";
-
 export type Place = {
   id: string;
   display_name: string | null;
@@ -504,23 +502,8 @@ export function publicationDescription(trip: Trip): string {
   return trip.visibility === "public" ? "Publieke reis — dit moment wordt na opslaan publiek zichtbaar." : "Verborgen link — dit moment wordt na opslaan via de reislink zichtbaar.";
 }
 
-export function apiHeaders(session: TrackerSession): HeadersInit {
-  return { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" };
-}
-
-export async function apiError(response: Response, fallback: string): Promise<never> {
-  const body = await response.json().catch(() => null) as { detail?: string } | null;
-  throw new Error(body?.detail || fallback);
-}
-
 export function bytesLabel(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} kB`;
-}
-
-export async function fetchProtectedFile(session: TrackerSession, fileUrl: string, fallback: string): Promise<Blob> {
-  const response = await fetch(fileUrl, { headers: { Authorization: `Bearer ${session.accessToken}` } });
-  if (!response.ok) return apiError(response, fallback);
-  return response.blob();
 }
 
 export function openBlobInNewTab(blob: Blob): void {
@@ -531,8 +514,4 @@ export function openBlobInNewTab(blob: Blob): void {
     throw new Error("Je browser blokkeerde het openen van het bestand.");
   }
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-}
-
-export async function openProtectedFile(session: TrackerSession, fileUrl: string, fallback: string): Promise<void> {
-  openBlobInNewTab(await fetchProtectedFile(session, fileUrl, fallback));
 }

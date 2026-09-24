@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { decodeSubject } from "../auth";
 import { useAuth } from "../auth-context";
-import { apiHeaders } from "../tracker-model";
+import { ApiError, ownerRequest } from "../query/api";
 import {
   clearOfflineCopies,
   getKeyDisclosure,
@@ -85,7 +85,16 @@ export function useOfflineCopies(): UseOfflineCopies {
 
   useEffect(() => {
     if (!subject || !session || !online) return;
-    void revalidateOfflineCopies(subject, (url) => fetch(url, { headers: apiHeaders(session) })).then(() => refresh());
+    // Only the status matters: a refused or missing record removes its copy, an unreachable server leaves it.
+    const probe = (url: string) => ownerRequest(session, url, "De offline kopie kon niet worden gecontroleerd.").then(
+      () => new Response(null, { status: 200 }),
+      (error: unknown) => {
+        if (!(error instanceof ApiError)) return new Response(null, { status: 200 });
+        if (error.offline) throw error;
+        return new Response(null, { status: error.status });
+      },
+    );
+    void revalidateOfflineCopies(subject, probe).then(() => refresh());
     // Intentionally re-runs only when connectivity flips back on or the signed-in subject changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject, online]);

@@ -18,11 +18,35 @@ All notable changes to the travel hub are documented here.
   screens follow in [#165](https://github.com/tjorim/travel/issues/165).
   ([#161](https://github.com/tjorim/travel/issues/161))
 
+- Moved the remaining owner PWA screens onto the TanStack Query and Form
+  foundation: stays, transport, broad places, itinerary, route stages,
+  highlights, excerpts, tracks, documents, media, publication, the library,
+  emergency info, settings, capture, the trip map and the trip detail page.
+  No owner screen calls `fetch` itself any more: JSON, multipart uploads and
+  protected file downloads all go through `ownerRequest`/`ownerFile`, and
+  downloaded files are never stored in the query cache. Editors use
+  `useRecordForm` with the dialog's unsaved-changes state, and the
+  `revision`/`onChange` refresh props are replaced by query invalidation, so a
+  saved or deleted record is never shown stale. One-time share-link tokens,
+  provider tokens and previews are dropped from the mutation cache once
+  settled. ([#165](https://github.com/tjorim/travel/issues/165))
+
 - Extended owner-selected, encrypted offline copies to private media,
   individual itinerary entries and GeoJSON map/route snapshots. Each resource
   has owner-scoped revalidation; map tiles are deliberately not cached, in
   accordance with provider terms. Deleted media and itinerary entries also
   remove their local copy immediately. ([#131](https://github.com/tjorim/travel/issues/131))
+
+### Fixed
+
+- Editing an existing record in a `useRecordForm` editor opened blank because
+  TanStack Form re-applied its initial defaults after the record was loaded;
+  the editor now keeps the loaded record as its baseline.
+- Adding a second hidden share link now opens its editor, and the one-time
+  link token stays visible after activation instead of being cleared at once.
+- The publish button waits until the publication status has loaded.
+- Removed the duplicate inline excerpt and broad-place editors from the trips
+  page; the managers already provide both.
 
 ### Removed
 

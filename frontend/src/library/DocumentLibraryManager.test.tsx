@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
-import { __resetOfflineStoreForTests } from "../offline/offline-store";
+import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import type { OwnerDocument, Trip } from "../tracker-model";
 import { DocumentLibraryManager } from "./DocumentLibraryManager";
 
@@ -16,14 +16,9 @@ function fakeAccessToken(subject: string): string {
 afterEach(async () => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   sessionStorage.clear();
-  await __resetOfflineStoreForTests();
-  await new Promise<void>((resolve) => {
-    const request = indexedDB.deleteDatabase("travel-offline-v1");
-    request.onsuccess = () => resolve();
-    request.onerror = () => resolve();
-    request.onblocked = () => resolve();
-  });
+  await resetOfflineDb();
 });
 
 function withSession(): void {
@@ -41,6 +36,12 @@ function stubFetch(documents: OwnerDocument[], trips: Partial<Trip>[] = []): { c
       return Promise.resolve(new Response(null, { status: 204 }));
     }
     if (url === "/api/library/documents") return Promise.resolve(new Response(JSON.stringify(state.documents), { status: 200 }));
+    if (url === "/api/library/documents/uploads" && method === "POST") {
+      const data = init?.body as FormData;
+      const created = libraryDocument({ id: "doc-new", title: String(data.get("title")), linked_trip_id: (data.get("linked_trip_id") as string | null) ?? null, file_url: "/api/library/documents/doc-new/original" });
+      state.documents = [...state.documents, created];
+      return Promise.resolve(new Response(JSON.stringify(created), { status: 201 }));
+    }
     if (url === "/api/trips") return Promise.resolve(new Response(JSON.stringify(trips), { status: 200 }));
     const original = state.documents.find((document) => url === document.file_url);
     if (original) return Promise.resolve(new Response("private pdf bytes", { status: 200, headers: { "Content-Type": original.content_type } }));
@@ -50,7 +51,7 @@ function stubFetch(documents: OwnerDocument[], trips: Partial<Trip>[] = []): { c
   return state;
 }
 
-function document(overrides: Partial<OwnerDocument> = {}): OwnerDocument {
+function libraryDocument(overrides: Partial<OwnerDocument> = {}): OwnerDocument {
   return {
     id: "doc-1",
     document_kind: "other",
@@ -67,8 +68,8 @@ function document(overrides: Partial<OwnerDocument> = {}): OwnerDocument {
 
 it("lists owner-wide documents without needing a trip", async () => {
   withSession();
-  stubFetch([document()]);
-  render(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
+  stubFetch([libraryDocument()]);
+  renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   await screen.findByText("Insurance policy");
   expect(screen.getByText((content) => content.includes("policy.pdf"))).toBeTruthy();
 });
@@ -76,10 +77,10 @@ it("lists owner-wide documents without needing a trip", async () => {
 it("shows the linked trip's title when a document is linked", async () => {
   withSession();
   stubFetch(
-    [document({ linked_trip_id: "trip-1" })],
+    [libraryDocument({ linked_trip_id: "trip-1" })],
     [{ id: "trip-1", title: "Exampleland 2054" } as unknown as Trip],
   );
-  render(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
+  renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   const summaries = await screen.findAllByText((content) => content.includes("Exampleland 2054"));
   expect(summaries.some((element) => element.tagName === "SPAN")).toBe(true);
 });
@@ -87,15 +88,15 @@ it("shows the linked trip's title when a document is linked", async () => {
 it("shows an empty state when the library has no documents", async () => {
   withSession();
   stubFetch([]);
-  render(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
+  renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
 });
 
 it("deletes a document after explicit confirmation", async () => {
   withSession();
   vi.spyOn(window, "confirm").mockReturnValue(true);
-  const state = stubFetch([document()]);
-  render(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
+  const state = stubFetch([libraryDocument()]);
+  renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   await screen.findByText("Insurance policy");
 
   screen.getByRole("button", { name: "Verwijderen" }).click();
@@ -106,8 +107,8 @@ it("deletes a document after explicit confirmation", async () => {
 
 it("lets the owner pin a document for offline access and unpin it again", async () => {
   withSession();
-  stubFetch([document()]);
-  render(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
+  stubFetch([libraryDocument()]);
+  renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   await screen.findByText("Insurance policy");
 
   screen.getByRole("button", { name: "Offline bewaren" }).click();
@@ -117,4 +118,40 @@ it("lets the owner pin a document for offline access and unpin it again", async 
   screen.getByRole("button", { name: "Offline verwijderen" }).click();
   await screen.findByText("“Insurance policy” is niet langer offline beschikbaar.");
   await screen.findByRole("button", { name: "Offline bewaren" });
+});
+
+it("lists an uploaded document at once, linked to its trip, and clears the form", async () => {
+  withSession();
+  const state = stubFetch([], [{ id: "trip-1", title: "Exampleland 2054" } as unknown as Trip]);
+  renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
+  await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
+
+  fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
+  await screen.findByText("Geef het document een titel.");
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Reisverzekering" } });
+  await screen.findByRole("option", { name: "Exampleland 2054" });
+  fireEvent.change(screen.getByLabelText("Gekoppelde reis (optioneel)"), { target: { value: "trip-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
+  await screen.findByText("Kies een bestand om te uploaden.");
+  fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(["x"], "polis.pdf", { type: "application/pdf" })] } });
+  fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
+
+  await screen.findByText("Reisverzekering");
+  expect(screen.getByText((content) => content.includes("Exampleland 2054"), { selector: "span" })).toBeTruthy();
+  expect(screen.getByText("Document toegevoegd aan je bibliotheek.")).toBeTruthy();
+  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("");
+  expect(state.calls.filter((call) => call.method === "POST")).toHaveLength(1);
+});
+
+it("opens a document with the bearer token in the request", async () => {
+  withSession();
+  const state = stubFetch([libraryDocument()]);
+  const open = vi.spyOn(window, "open").mockReturnValue({} as Window);
+  Object.defineProperty(URL, "createObjectURL", { configurable: true, writable: true, value: () => "blob:doc" });
+  renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
+  await screen.findByText("Insurance policy");
+  screen.getByRole("button", { name: "Bekijken" }).click();
+  await vi.waitFor(() => expect(open).toHaveBeenCalledWith("blob:doc", "_blank", "noopener"));
+  expect(state.calls.some((call) => call.url === "/api/library/documents/doc-1/original")).toBe(true);
+  Reflect.deleteProperty(URL, "createObjectURL");
 });

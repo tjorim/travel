@@ -1,21 +1,11 @@
-import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
-import { useAuth } from "../auth-context";
-import { apiError, apiHeaders, bytesLabel, type OwnerDocument } from "../tracker-model";
+import { useLinkedLibraryDocuments } from "../query/owner-queries";
+import { bytesLabel } from "../tracker-model";
 
 export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
-  const { session } = useAuth();
-  const [documents, setDocuments] = useState<OwnerDocument[]>([]);
-
-  useEffect(() => {
-    if (!session) return;
-    void fetch(`/api/library/documents?linked_trip_id=${tripId}`, { headers: apiHeaders(session) })
-      .then((response) => response.ok ? response.json() as Promise<OwnerDocument[]> : apiError(response, "Gekoppelde bibliotheekdocumenten konden niet worden geladen."))
-      .then(setDocuments)
-      .catch(() => setDocuments([]));
-  }, [session, tripId]);
-
+  // A failed read shows nothing: the documents are managed in the library itself.
+  const documents = useLinkedLibraryDocuments(tripId).data ?? [];
   if (!documents.length) return null;
 
   return <section className="card" aria-labelledby="linked-library-documents-title">

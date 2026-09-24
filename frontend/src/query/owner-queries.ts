@@ -3,9 +3,12 @@ import { useMemo } from "react";
 
 import { decodeSubject, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
-import type { BroadPlace, Stay, TransportLeg, Trip, TripTask, TripTaskAlert } from "../tracker-model";
+import type {
+  BroadPlace, BroadRoute, BroadStayCard, DocumentAsset, DocumentDerivative, EmergencyInfoEntry, ItineraryEntry, MediaAsset, MediaDerivative,
+  OwnerDocument, Place, ProviderConnectionStatus, PublicProjectionStatus, RecordedTrack, ShareLink, Stay, TransportLeg, Trip, TripTask, TripTaskAlert,
+} from "../tracker-model";
 import { ApiError, ownerRequest, type OwnerRequest } from "./api";
-import { ownerKeys, type TripResource } from "./keys";
+import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
 
 export type Owner = { session: TrackerSession; subject: string };
 
@@ -24,6 +27,15 @@ type TripResourceData = {
   "trip-tasks": TripTask[];
   "task-alerts": TripTaskAlert[];
   "places/broad": BroadPlace[];
+  places: Place[];
+  "broad-routes": BroadRoute[];
+  "broad-stay-cards": BroadStayCard[];
+  "itinerary-entries": ItineraryEntry[];
+  documents: DocumentAsset[];
+  media: MediaAsset[];
+  "recorded-tracks": RecordedTrack[];
+  "public-projection": PublicProjectionStatus;
+  "share-links": ShareLink[];
 };
 
 const resourceFailure: Record<TripResource, string> = {
@@ -32,6 +44,15 @@ const resourceFailure: Record<TripResource, string> = {
   "trip-tasks": "Je taken konden niet worden geladen.",
   "task-alerts": "Je meldingen konden niet worden geladen.",
   "places/broad": "De brede plaatsen konden niet worden geladen.",
+  places: "Je exacte plaatsen konden niet worden geladen.",
+  "broad-routes": "Je brede routes konden niet worden geladen.",
+  "broad-stay-cards": "Je brede verblijfskaarten konden niet worden geladen.",
+  "itinerary-entries": "Je dagplanning kon niet worden geladen.",
+  documents: "Je documenten konden niet worden geladen.",
+  media: "Je media konden niet worden geladen.",
+  "recorded-tracks": "Je afgewerkte tracks konden niet worden geladen.",
+  "public-projection": "De publieke publicatie kon niet worden geladen.",
+  "share-links": "De deellinks konden niet worden geladen.",
 };
 
 export const tripPath = (tripId: string, resource?: string) => `/api/trips/${encodeURIComponent(tripId)}${resource ? `/${resource}` : ""}`;
@@ -61,15 +82,74 @@ export function useTripResource<R extends TripResource>(tripId: string | null, r
   return useQuery(tripResourceQueryOptions(useOwner(), tripId, resource));
 }
 
+type DerivativeData = { documents: DocumentDerivative[]; media: MediaDerivative[] };
+const derivativeFailure: Record<DerivativeParent, string> = {
+  documents: "De afgeleide documenten konden niet worden geladen.",
+  media: "De afgeleiden konden niet worden geladen.",
+};
+
+/** The redacted copies of one document or media asset; nothing is read until an asset is chosen. */
+export function derivativesQueryOptions<K extends DerivativeParent>(owner: Owner | null, tripId: string | null, kind: K, assetId: string | null) {
+  return {
+    queryKey: ownerKeys.derivatives(owner?.subject ?? "", tripId ?? "", kind, assetId ?? ""),
+    enabled: owner !== null && tripId !== null && assetId !== null,
+    queryFn: ({ signal }: { signal: AbortSignal }) => ownerRequest<DerivativeData[K]>(owner!.session, `${tripPath(tripId!, kind)}/${encodeURIComponent(assetId!)}/derivatives`, derivativeFailure[kind], { signal }),
+  };
+}
+
+export function useDerivatives<K extends DerivativeParent>(tripId: string | null, kind: K, assetId: string | null) {
+  return useQuery(derivativesQueryOptions(useOwner(), tripId, kind, assetId));
+}
+
+type LibraryData = { documents: OwnerDocument[]; "emergency-info": EmergencyInfoEntry[] };
+const libraryFailure: Record<LibraryResource, string> = {
+  documents: "Je bibliotheek kon niet worden geladen.",
+  "emergency-info": "Je noodinformatie kon niet worden geladen.",
+};
+
+export const libraryPath = (resource: LibraryResource) => `/api/library/${resource}`;
+
+/** Owner-wide records that belong to no single trip. */
+export function useLibrary<R extends LibraryResource>(resource: R) {
+  const owner = useOwner();
+  return useQuery({
+    queryKey: ownerKeys.library(owner?.subject ?? "", resource),
+    enabled: owner !== null,
+    queryFn: ({ signal }: { signal: AbortSignal }) => ownerRequest<LibraryData[R]>(owner!.session, libraryPath(resource), libraryFailure[resource], { signal }),
+  });
+}
+
+export function useLinkedLibraryDocuments(tripId: string) {
+  const owner = useOwner();
+  return useQuery({
+    queryKey: ownerKeys.linkedLibraryDocuments(owner?.subject ?? "", tripId),
+    enabled: owner !== null,
+    queryFn: ({ signal }: { signal: AbortSignal }) => ownerRequest<OwnerDocument[]>(owner!.session, `${libraryPath("documents")}?linked_trip_id=${encodeURIComponent(tripId)}`, "Gekoppelde bibliotheekdocumenten konden niet worden geladen.", { signal }),
+  });
+}
+
+/** Which media providers are connected. Only the state is returned, never a token. */
+export function useProviderConnections() {
+  const owner = useOwner();
+  return useQuery({
+    queryKey: ownerKeys.providers(owner?.subject ?? ""),
+    enabled: owner !== null,
+    queryFn: ({ signal }: { signal: AbortSignal }) => ownerRequest<ProviderConnectionStatus[]>(owner!.session, "/api/provider-tokens", "De providerstatus kon niet worden geladen.", { signal }),
+  });
+}
+
 type Invalidation = readonly QueryKey[];
 
 type MutationSpec<V, R> = {
   fallback: string;
+  /** A `FormData` body is sent as an upload. */
   request: (variables: V) => { path: string } & Pick<OwnerRequest, "method" | "body">;
   /** Queries a successful write makes stale; they are refetched before the write settles. */
   invalidate: (subject: string, variables: V, result: R) => Invalidation;
   /** A safe, reversible cache edit applied immediately and rolled back if the write fails. */
   optimistic?: { key: (subject: string, variables: V) => QueryKey; update: (current: never, variables: V) => unknown };
+  /** How long a settled write stays in the mutation cache. Use 0 when its result is a secret or a one-off preview. */
+  gcTime?: number;
 };
 
 /**
@@ -77,11 +157,12 @@ type MutationSpec<V, R> = {
  * `mutateAsync` resolves only after the affected reads are fresh, so the UI
  * never shows the record as it was before the edit.
  */
-export function useOwnerMutation<V, R = unknown>({ fallback, request, invalidate, optimistic }: MutationSpec<V, R>) {
+export function useOwnerMutation<V, R = unknown>({ fallback, request, invalidate, optimistic, gcTime }: MutationSpec<V, R>) {
   const owner = useOwner();
   const client = useQueryClient();
   const refresh = (subject: string, variables: V, result: R) => Promise.all(invalidate(subject, variables, result).map((queryKey) => client.invalidateQueries({ queryKey })));
   return useMutation<R, Error, V, { key: QueryKey; previous: unknown } | undefined>({
+    ...(gcTime === undefined ? {} : { gcTime }),
     mutationFn: (variables) => {
       if (!owner) throw new ApiError("Meld aan om je private reizen te wijzigen.", 401);
       const { path, ...options } = request(variables);

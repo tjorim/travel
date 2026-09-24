@@ -1,8 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 
-import { useAuth } from "../auth-context";
+import { CheckboxField, RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
-import { addDays, apiError, apiHeaders, formatDayRange, stayCoversNight, stayLabel, type DocumentAsset, type ItineraryEntry, type ItineraryEntryKind, type ItineraryLinkKind, type Place, type Stay, type TransportLeg, type Trip } from "../tracker-model";
+import { errorMessage } from "../query/api";
+import { ownerKeys } from "../query/keys";
+import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { addDays, formatDayRange, stayCoversNight, stayLabel, type ItineraryEntry, type ItineraryEntryKind, type ItineraryLinkKind, type Stay, type Trip } from "../tracker-model";
 
 const KIND_LABELS: Record<ItineraryEntryKind, string> = { travel: "Reis", free: "Vrij", work: "Werk" };
 
@@ -33,44 +37,79 @@ const LINK_ANCHORS: Record<ItineraryLinkKind, string | null> = {
   stay: "#stays-title", transport_leg: "#transport-title", route_stage: "#route-stages-title", place: null, document: "#documents-title", moment: "#moments-title",
 };
 
-function emptyDraft() {
-  return { id: null as string | null, dayDate: "", endDate: "", kind: "" as ItineraryEntryKind | "", tentative: false, title: "", notes: "", linkedKind: "" as ItineraryLinkKind | "", linkedId: "" };
-}
+type Values = { dayDate: string; endDate: string; kind: ItineraryEntryKind | ""; tentative: boolean; title: string; notes: string; linkedKind: ItineraryLinkKind | ""; linkedId: string };
+const blank = (): Values => ({ dayDate: "", endDate: "", kind: "", tentative: false, title: "", notes: "", linkedKind: "", linkedId: "" });
+const fromEntry = (entry: ItineraryEntry): Values => ({ dayDate: entry.day_date ?? "", endDate: entry.end_date ?? "", kind: entry.kind ?? "", tentative: entry.tentative, title: entry.title, notes: entry.notes ?? "", linkedKind: entry.linked_kind ?? "", linkedId: entry.linked_id ?? "" });
+const serverFields = { day_date: "dayDate", end_date: "endDate", kind: "kind", tentative: "tentative", title: "title", notes: "notes", linked_kind: "linkedKind", linked_id: "linkedId" };
 
-export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip: Trip; revision?: number; onShowOnMap?: (pointId: string) => void }) {
-  const { session } = useAuth();
+type FormContext = { fieldApi: { form: { getFieldValue: (name: never) => unknown } } };
+const linkedPart = ({ value, fieldApi }: { value: string } & FormContext) =>
+  String(fieldApi.form.getFieldValue("linkedKind" as never) ?? "") && !value ? "Kies een gekoppeld onderdeel of laat het gekoppelde type leeg." : undefined;
+const lastDay = ({ value, fieldApi }: { value: string } & FormContext) => {
+  if (!value) return undefined;
+  const first = String(fieldApi.form.getFieldValue("dayDate" as never) ?? "");
+  return !first || value < first ? "De laatste dag volgt op de eerste dag." : undefined;
+};
+
+export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: (pointId: string) => void }) {
   const offline = useOfflineCopies();
-  const [entries, setEntries] = useState<ItineraryEntry[]>([]);
-  const [stays, setStays] = useState<Stay[]>([]);
-  const [legs, setLegs] = useState<TransportLeg[]>([]);
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [documents, setDocuments] = useState<DocumentAsset[]>([]);
-  const [message, setMessage] = useState("Laad je private dagplanning…");
-  const [draft, setDraft] = useState(emptyDraft());
+  const entriesQuery = useTripResource(trip.id, "itinerary-entries");
+  const staysQuery = useTripResource(trip.id, "stays");
+  const legsQuery = useTripResource(trip.id, "transport-legs");
+  const placesQuery = useTripResource(trip.id, "places");
+  const documentsQuery = useTripResource(trip.id, "documents");
+  const entries = useMemo(() => (entriesQuery.data ?? []).slice().sort((left, right) => left.position - right.position), [entriesQuery.data]);
+  const stays = staysQuery.data ?? [];
+  const legs = legsQuery.data ?? [];
+  const places = placesQuery.data ?? [];
+  const documents = documentsQuery.data ?? [];
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [message, setMessage] = useState("De dagplanning is een private navigatiehulp; ze verwijst alleen naar reeds bestaande onderdelen.");
+  const path = tripPath(trip.id, "itinerary-entries");
+  const invalidate = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "itinerary-entries")];
 
-  async function load() {
-    if (!session) return;
-    const [entriesResponse, staysResponse, legsResponse, placesResponse, documentsResponse] = await Promise.all([
-      fetch(`/api/trips/${trip.id}/itinerary-entries`, { headers: apiHeaders(session) }),
-      fetch(`/api/trips/${trip.id}/stays`, { headers: apiHeaders(session) }),
-      fetch(`/api/trips/${trip.id}/transport-legs`, { headers: apiHeaders(session) }),
-      fetch(`/api/trips/${trip.id}/places`, { headers: apiHeaders(session) }),
-      fetch(`/api/trips/${trip.id}/documents`, { headers: apiHeaders(session) }),
-    ]);
-    if (!entriesResponse.ok) return apiError(entriesResponse, "Je dagplanning kon niet worden geladen.");
-    if (!staysResponse.ok) return apiError(staysResponse, "Je verblijven konden niet worden geladen.");
-    if (!legsResponse.ok) return apiError(legsResponse, "Je transportonderdelen konden niet worden geladen.");
-    if (!placesResponse.ok) return apiError(placesResponse, "Je exacte plaatsen konden niet worden geladen.");
-    if (!documentsResponse.ok) return apiError(documentsResponse, "Je documenten konden niet worden geladen.");
-    setEntries((await entriesResponse.json() as ItineraryEntry[]).slice().sort((left, right) => left.position - right.position));
-    setStays(await staysResponse.json() as Stay[]);
-    setLegs(await legsResponse.json() as TransportLeg[]);
-    setPlaces(await placesResponse.json() as Place[]);
-    setDocuments(await documentsResponse.json() as DocumentAsset[]);
-    setMessage("De dagplanning is een private navigatiehulp; ze verwijst alleen naar reeds bestaande onderdelen.");
-  }
+  const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, ItineraryEntry>({
+    fallback: "De planningsstap kon niet worden opgeslagen.",
+    request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
+    invalidate,
+  });
+  const move = useOwnerMutation<{ entry: ItineraryEntry; position: number }, ItineraryEntry>({
+    fallback: "De planningsstap kon niet worden verplaatst.",
+    request: ({ entry, position }) => ({ path: `${path}/${entry.id}`, method: "PATCH", body: { position } }),
+    invalidate,
+  });
+  const remove = useOwnerMutation<ItineraryEntry>({
+    fallback: "De planningsstap kon niet worden verwijderd.",
+    request: (entry) => ({ path: `${path}/${entry.id}`, method: "DELETE" }),
+    invalidate,
+  });
 
-  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je dagplanning kon niet worden geladen.")); }, [session, trip.id, revision]);
+  const record = useRecordForm<Values>({
+    defaultValues: blank(),
+    fallback: "De planningsstap kon niet worden opgeslagen.",
+    serverFields,
+    submit: async (values) => {
+      const payload = {
+        day_date: values.dayDate || null,
+        end_date: values.endDate && values.endDate !== values.dayDate ? values.endDate : null,
+        kind: values.kind || null,
+        tentative: values.tentative,
+        title: values.title.trim(),
+        notes: values.notes.trim() || null,
+        linked_kind: values.linkedKind || null,
+        linked_id: values.linkedKind ? values.linkedId : null,
+        ...(editingId ? {} : { position: entries.length }),
+      };
+      await save.mutateAsync({ id: editingId, payload });
+      // A pinned copy holds the previous version of the step.
+      if (editingId) await offline.removeByResource("itinerary_entry", editingId);
+    },
+    onSuccess: () => { newEntry(); setMessage("Planningsstap opgeslagen."); },
+  });
+
+  function newEntry() { setEditingId(null); record.load(blank()); }
+  function editEntry(entry: ItineraryEntry) { setEditingId(entry.id); record.load(fromEntry(entry)); }
+  const fail = (fallback: string) => (error: unknown) => setMessage(errorMessage(error, fallback));
 
   function linkOptions(kind: ItineraryLinkKind): { id: string; label: string }[] {
     if (kind === "stay") return stays.map((stay) => ({ id: stay.id, label: `${stayLabel(stay)} · ${formatDayRange(stay.check_in_date, addDays(stay.check_out_date, -1))}` }));
@@ -99,54 +138,20 @@ export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip
     return null;
   }
 
-  function newEntry() { setDraft(emptyDraft()); }
-
-  function editEntry(entry: ItineraryEntry) {
-    setDraft({ id: entry.id, dayDate: entry.day_date ?? "", endDate: entry.end_date ?? "", kind: entry.kind ?? "", tentative: entry.tentative, title: entry.title, notes: entry.notes ?? "", linkedKind: entry.linked_kind ?? "", linkedId: entry.linked_id ?? "" });
+  function shift(entry: ItineraryEntry, direction: -1 | 1) {
+    const position = entry.position + direction;
+    if (position < 0 || position >= entries.length) return;
+    move.mutateAsync({ entry, position }).then(() => setMessage("Volgorde van de dagplanning opgeslagen."), fail("De planningsstap kon niet worden verplaatst."));
   }
 
-  async function saveEntry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!session) return;
-    if (draft.linkedKind && !draft.linkedId) { setMessage("Kies een gekoppeld onderdeel of laat het gekoppelde type leeg."); return; }
-    if (draft.endDate && (!draft.dayDate || draft.endDate < draft.dayDate)) { setMessage("De laatste dag volgt op de eerste dag."); return; }
-    const payload = {
-      day_date: draft.dayDate || null,
-      end_date: draft.endDate && draft.endDate !== draft.dayDate ? draft.endDate : null,
-      kind: draft.kind || null,
-      tentative: draft.tentative,
-      title: draft.title.trim(),
-      notes: draft.notes.trim() || null,
-      linked_kind: draft.linkedKind || null,
-      linked_id: draft.linkedKind ? draft.linkedId : null,
-      ...(draft.id ? {} : { position: entries.length }),
-    };
-    const response = await fetch(draft.id ? `/api/trips/${trip.id}/itinerary-entries/${draft.id}` : `/api/trips/${trip.id}/itinerary-entries`, { method: draft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload) });
-    if (!response.ok) return apiError(response, "De planningsstap kon niet worden opgeslagen.");
-    if (draft.id) await offline.removeByResource("itinerary_entry", draft.id);
-    await load();
-    newEntry();
-    setMessage("Planningsstap opgeslagen.");
-  }
-
-  async function moveEntry(entry: ItineraryEntry, direction: -1 | 1) {
-    if (!session) return;
-    const nextPosition = entry.position + direction;
-    if (nextPosition < 0 || nextPosition >= entries.length) return;
-    const response = await fetch(`/api/trips/${trip.id}/itinerary-entries/${entry.id}`, { method: "PATCH", headers: apiHeaders(session), body: JSON.stringify({ position: nextPosition }) });
-    if (!response.ok) return apiError(response, "De planningsstap kon niet worden verplaatst.");
-    await load();
-    setMessage("Volgorde van de dagplanning opgeslagen.");
-  }
-
-  async function deleteEntry(entry: ItineraryEntry) {
-    if (!session || !window.confirm(`Verwijder planningsstap “${entry.title}”?`)) return;
-    const response = await fetch(`/api/trips/${trip.id}/itinerary-entries/${entry.id}`, { method: "DELETE", headers: apiHeaders(session) });
-    if (!response.ok) return apiError(response, "De planningsstap kon niet worden verwijderd.");
-    await offline.removeByResource("itinerary_entry", entry.id);
-    await load();
-    newEntry();
-    setMessage("Planningsstap verwijderd.");
+  function erase(entry: ItineraryEntry) {
+    if (!window.confirm(`Verwijder planningsstap “${entry.title}”?`)) return;
+    remove.mutateAsync(entry)
+      .then(async () => {
+        await offline.removeByResource("itinerary_entry", entry.id);
+        if (editingId === entry.id) newEntry();
+        setMessage("Planningsstap verwijderd.");
+      }, fail("De planningsstap kon niet worden verwijderd."));
   }
 
   async function toggleOffline(entry: ItineraryEntry) {
@@ -166,26 +171,27 @@ export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip
     setMessage(`“${entry.title}” is offline bewaard op dit toestel.`);
   }
 
+  const readError = entriesQuery.error ?? staysQuery.error ?? legsQuery.error ?? placesQuery.error ?? documentsQuery.error;
+
   return <section className="card manager" aria-labelledby="itinerary-title">
-    <div className="capture-heading"><div><h3 id="itinerary-title">Dagplanning</h3><p>Een concept-planning die verwijst naar bestaande onderdelen. Ze blijft privé en kopieert nooit hun details.</p></div>{draft.id && <button className="secondary compact" type="button" onClick={newEntry}>Nieuwe stap</button>}</div>
-    <p className="help" role="status">{message}</p>
-    <form className="stack-form" onSubmit={(event) => void saveEntry(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet worden opgeslagen."))}>
+    <div className="capture-heading"><div><h3 id="itinerary-title">Dagplanning</h3><p>Een concept-planning die verwijst naar bestaande onderdelen. Ze blijft privé en kopieert nooit hun details.</p></div>{editingId && <button className="secondary compact" type="button" onClick={newEntry}>Nieuwe stap</button>}</div>
+    <p className="help" role="status">{readError ? errorMessage(readError, "Je dagplanning kon niet worden geladen.") : entriesQuery.isPending ? "Laad je private dagplanning…" : message}</p>
+    <RecordForm record={record} submitLabel={editingId ? "Stap opslaan" : "Stap toevoegen"} pendingLabel="Opslaan…">
       <div className="field-row">
-        <label>Eerste dag <span className="optional">(optioneel)</span><input type="date" value={draft.dayDate} onChange={(event) => setDraft((current) => ({ ...current, dayDate: event.target.value }))} /></label>
-        <label>Laatste dag <span className="optional">(optioneel)</span><input type="date" min={draft.dayDate || undefined} disabled={!draft.dayDate} value={draft.endDate} onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))} /></label>
+        <record.form.Field name="dayDate">{(field) => <TextField field={field} label="Eerste dag" optional type="date" />}</record.form.Field>
+        <record.form.Subscribe selector={(state) => state.values.dayDate}>{(dayDate) => <record.form.Field name="endDate" validators={{ onChangeListenTo: ["dayDate"], onChange: lastDay, onSubmit: lastDay }}>{(field) => <TextField field={field} label="Laatste dag" optional type="date" min={dayDate || undefined} disabled={!dayDate} />}</record.form.Field>}</record.form.Subscribe>
       </div>
-      <label>Titel<input required maxLength={160} value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Bijvoorbeeld: Aankomst Taipei" /></label>
+      <record.form.Field name="title" validators={{ onChange: requiredText("Geef de stap een titel."), onSubmit: requiredText("Geef de stap een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} placeholder="Bijvoorbeeld: Aankomst Taipei" />}</record.form.Field>
       <div className="field-row">
-        <label>Soort dag <span className="optional">(optioneel)</span><select value={draft.kind} onChange={(event) => setDraft((current) => ({ ...current, kind: event.target.value as ItineraryEntryKind | "" }))}><option value="">Geen soort</option>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label className="media-choice"><input type="checkbox" checked={draft.tentative} onChange={(event) => setDraft((current) => ({ ...current, tentative: event.target.checked }))} />Concept — kan nog verschuiven</label>
+        <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort dag" optional><option value="">Geen soort</option>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
+        <record.form.Field name="tentative">{(field) => <CheckboxField field={field} label="Concept — kan nog verschuiven" />}</record.form.Field>
       </div>
-      <label>Notities <span className="optional">(optioneel)</span><textarea maxLength={4000} rows={3} value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} /></label>
+      <record.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
       <div className="field-row">
-        <label>Gekoppeld type <span className="optional">(optioneel)</span><select value={draft.linkedKind} onChange={(event) => setDraft((current) => ({ ...current, linkedKind: event.target.value as ItineraryLinkKind | "", linkedId: "" }))}><option value="">Geen koppeling</option>{Object.entries(LINK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        {draft.linkedKind && <label>Gekoppeld onderdeel<select required value={draft.linkedId} onChange={(event) => setDraft((current) => ({ ...current, linkedId: event.target.value }))}><option value="">Kies een onderdeel</option>{linkOptions(draft.linkedKind).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>}
+        <record.form.Field name="linkedKind" listeners={{ onChange: () => record.form.setFieldValue("linkedId", "") }}>{(field) => <SelectField field={field} label="Gekoppeld type" optional><option value="">Geen koppeling</option>{Object.entries(LINK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
+        <record.form.Subscribe selector={(state) => state.values.linkedKind}>{(linkedKind) => linkedKind && <record.form.Field name="linkedId" validators={{ onChangeListenTo: ["linkedKind"], onSubmit: linkedPart }}>{(field) => <SelectField field={field} label="Gekoppeld onderdeel" required><option value="">Kies een onderdeel</option>{linkOptions(linkedKind).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</SelectField>}</record.form.Field>}</record.form.Subscribe>
       </div>
-      <button type="submit">{draft.id ? "Stap opslaan" : "Stap toevoegen"}</button>
-    </form>
+    </RecordForm>
     {entries.length > 0 && <div className="saved-moments manager-list">{entries.map((entry, index) => {
       const link = resolveLink(entry);
       const mapPoint = onShowOnMap ? mapPointFor(entry) : null;
@@ -196,11 +202,11 @@ export function ItineraryPlanManager({ trip, revision = 0, onShowOnMap }: { trip
           {(sleep.stays.length > 0 || sleep.uncovered > 0) && <span className="entry-detail">Overnachting: {sleep.stays.map(stayLabel).join(", ") || "—"}{sleep.uncovered > 0 ? ` · nog ${sleep.uncovered} ${sleep.uncovered === 1 ? "nacht" : "nachten"} zonder verblijf` : ""}</span>}</div>
         <div className="button-row">
           {mapPoint && <button className="secondary compact" type="button" onClick={() => onShowOnMap?.(mapPoint)}>Toon op kaart</button>}
-          <button className="secondary compact" type="button" onClick={() => void toggleOffline(entry).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet offline worden bewaard."))}>{offline.isPinned("itinerary_entry", entry.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
-          <button className="secondary compact" type="button" disabled={index === 0} onClick={() => void moveEntry(entry, -1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet worden verplaatst."))}>Omhoog</button>
-          <button className="secondary compact" type="button" disabled={index === entries.length - 1} onClick={() => void moveEntry(entry, 1).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet worden verplaatst."))}>Omlaag</button>
+          <button className="secondary compact" type="button" onClick={() => void toggleOffline(entry).catch(fail("De planningsstap kon niet offline worden bewaard."))}>{offline.isPinned("itinerary_entry", entry.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
+          <button className="secondary compact" type="button" disabled={index === 0} onClick={() => shift(entry, -1)}>Omhoog</button>
+          <button className="secondary compact" type="button" disabled={index === entries.length - 1} onClick={() => shift(entry, 1)}>Omlaag</button>
           <button className="secondary compact" type="button" onClick={() => editEntry(entry)}>Bewerken</button>
-          <button className="danger compact" type="button" onClick={() => void deleteEntry(entry).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De planningsstap kon niet worden verwijderd."))}>Verwijderen</button>
+          <button className="danger compact" type="button" onClick={() => erase(entry)}>Verwijderen</button>
         </div>
       </article>;
     })}</div>}

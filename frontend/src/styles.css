@@ -173,6 +173,7 @@ textarea { min-height: 136px; resize: vertical; }
 .provider-actions { display: flex; align-items: end; flex-wrap: wrap; gap: 9px; }
 .provider-actions .provider-status { color: inherit; }
 .provider-connect { display: flex; flex: 1 1 280px; align-items: end; gap: 9px; }
+.provider-connect .stack-form { flex: 1; }
 .provider-connect label { flex: 1; }
 .provider-connect input { min-width: 0; }
 .link-row { display: grid; gap: 3px; width: 100%; border: 1px solid #cbd7ce; background: #fffdf8; color: #19342d; text-align: left; }

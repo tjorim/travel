@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { ApiError, apiFailure, ownerRequest } from "./api";
+import { ApiError, apiFailure, ownerFile, ownerRequest } from "./api";
 import { shouldRetryQuery } from "./client";
 import { ownerKeys } from "./keys";
 
@@ -39,6 +39,36 @@ it("reports an unreachable server as offline and leaves aborts alone", async () 
   controller.abort();
   vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new DOMException("Aborted", "AbortError"))));
   await expect(ownerRequest(session, "/api/trips", "fallback", { signal: controller.signal })).rejects.toMatchObject({ name: "AbortError" });
+});
+
+it("sends an upload as multipart without forcing a JSON content type", async () => {
+  const fetcher = vi.fn(() => reply(201, { id: "doc" }));
+  vi.stubGlobal("fetch", fetcher);
+  const body = new FormData();
+  body.set("title", "Polis");
+  await ownerRequest(session, "/api/library/documents/uploads", "fallback", { method: "POST", body });
+  const [, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+  expect(init.body).toBe(body);
+  expect(init.headers).toEqual({ Authorization: "Bearer secret-token" });
+});
+
+it("downloads a protected file as a blob with the same auth, failure and abort handling", async () => {
+  const fetcher = vi.fn(() => Promise.resolve(new Response("pdf bytes", { status: 200, headers: { "Content-Type": "application/pdf" } })));
+  vi.stubGlobal("fetch", fetcher);
+  const blob = await ownerFile(session, "/api/library/documents/1/original", "fallback", { cache: "no-store" });
+  expect(blob.type).toBe("application/pdf");
+  expect(await blob.text()).toBe("pdf bytes");
+  const [, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+  expect(init.headers).toEqual({ Authorization: "Bearer secret-token" });
+  expect(init.cache).toBe("no-store");
+
+  vi.stubGlobal("fetch", vi.fn(() => reply(404, { detail: "Bestand bestaat niet." })));
+  await expect(ownerFile(session, "/x", "fallback")).rejects.toMatchObject({ message: "Bestand bestaat niet.", status: 404 });
+
+  const controller = new AbortController();
+  controller.abort();
+  vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new DOMException("Aborted", "AbortError"))));
+  await expect(ownerFile(session, "/x", "fallback", { signal: controller.signal })).rejects.toMatchObject({ name: "AbortError" });
 });
 
 it("retries transient failures but never a rejection or an offline read", () => {

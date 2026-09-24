@@ -1,66 +1,89 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
-import { useAuth } from "../auth-context";
-import { apiError, apiHeaders, bytesLabel, fetchProtectedFile, openProtectedFile, type DocumentAsset, type DocumentDerivative, type Trip } from "../tracker-model";
+import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
+import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
+import { ownerKeys } from "../query/keys";
+import { tripPath, useDerivatives, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { bytesLabel, type DocumentAsset, type DocumentDerivative, type Trip } from "../tracker-model";
+
+type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
+const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
 
 export function DocumentManager({ trip }: { trip: Trip }) {
-  const { session } = useAuth();
+  const owner = useOwner();
   const offline = useOfflineCopies();
-  const [documents, setDocuments] = useState<DocumentAsset[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [derivatives, setDerivatives] = useState<DocumentDerivative[]>([]);
-  const [message, setMessage] = useState("Laad je private documenten…");
-  const [upload, setUpload] = useState({ title: "", kind: "booking" as DocumentAsset["document_kind"], file: null as File | null });
+  const documentsQuery = useTripResource(trip.id, "documents");
+  const documents = documentsQuery.data ?? [];
+  // undefined: follow the first document; null: none chosen (after a delete); a string: the chosen document.
+  const [selectedId, setSelectedId] = useState<string | null | undefined>(undefined);
+  const selected = selectedId === undefined ? documents[0] ?? null : documents.find((document) => document.id === selectedId) ?? null;
+  const derivativesQuery = useDerivatives(trip.id, "documents", selected?.id ?? null);
+  const derivatives = derivativesQuery.data ?? [];
+  const [notice, setNotice] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [redaction, setRedaction] = useState({ file: null as File | null, manifest: null as File | null });
+  // Remount the file inputs after a finished upload so the chosen files clear.
+  const [inputKey, setInputKey] = useState(0);
 
-  async function load(selectId?: string | null) {
-    if (!session) return;
-    const response = await fetch(`/api/trips/${trip.id}/documents`, { headers: apiHeaders(session) });
-    if (!response.ok) return apiError(response, "Je documenten konden niet worden geladen.");
-    const loaded = await response.json() as DocumentAsset[];
-    setDocuments(loaded);
-    setSelectedId((current) => selectId === null ? null : loaded.some((document) => document.id === (selectId ?? current)) ? (selectId ?? current) : loaded[0]?.id ?? null);
-    setMessage(loaded.length ? "Documenten en originelen blijven uitsluitend in je private tracker." : "Upload een privédocument wanneer je het wilt bewaren.");
-  }
+  const upload = useOwnerMutation<FormData, DocumentAsset>({
+    fallback: "Het document kon niet worden geüpload.",
+    request: (body) => ({ path: `${tripPath(trip.id, "documents")}/uploads`, method: "POST", body }),
+    invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "documents")],
+  });
+  const remove = useOwnerMutation<DocumentAsset>({
+    fallback: "Het document kon niet worden verwijderd.",
+    request: (document) => ({ path: `${tripPath(trip.id, "documents")}/${document.id}`, method: "DELETE" }),
+    // A leg drops the link to a deleted document on the server.
+    invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "documents"), ownerKeys.tripResource(subject, trip.id, "transport-legs")],
+  });
+  const addDerivative = useOwnerMutation<{ documentId: string; body: FormData }, DocumentDerivative>({
+    fallback: "De geredigeerde afgeleide kon niet worden opgeslagen.",
+    request: ({ documentId, body }) => ({ path: `${tripPath(trip.id, "documents")}/${documentId}/derivatives`, method: "POST", body }),
+    invalidate: (subject, { documentId }) => [ownerKeys.derivatives(subject, trip.id, "documents", documentId)],
+  });
+  const approve = useOwnerMutation<{ documentId: string; derivative: DocumentDerivative }, DocumentDerivative>({
+    fallback: "De afgeleide kon niet worden goedgekeurd.",
+    request: ({ documentId, derivative }) => ({ path: `${tripPath(trip.id, "documents")}/${documentId}/derivatives/${derivative.id}/approve`, method: "POST" }),
+    invalidate: (subject, { documentId }) => [ownerKeys.derivatives(subject, trip.id, "documents", documentId)],
+  });
 
-  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je documenten konden niet worden geladen.")); }, [session, trip.id]);
-  useEffect(() => {
-    if (!session || !selectedId) { setDerivatives([]); return; }
-    void fetch(`/api/trips/${trip.id}/documents/${selectedId}/derivatives`, { headers: apiHeaders(session) })
-      .then((response) => response.ok ? response.json() as Promise<DocumentDerivative[]> : apiError(response, "De afgeleide documenten konden niet worden geladen."))
-      .then(setDerivatives)
-      .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide documenten konden niet worden geladen."));
-  }, [selectedId, session, trip.id]);
+  const uploadRecord = useRecordForm<UploadValues>({
+    defaultValues: blankUpload(),
+    fallback: "Het document kon niet worden geüpload.",
+    serverFields: { title: "title", document_kind: "kind" },
+    submit: async (values) => {
+      if (!file) throw new Error("Kies een bestand om te uploaden.");
+      const body = new FormData();
+      body.set("title", values.title.trim());
+      body.set("document_kind", values.kind);
+      body.set("file", file);
+      const saved = await upload.mutateAsync(body);
+      setSelectedId(saved.id);
+    },
+    onSuccess: () => { setFile(null); setInputKey((current) => current + 1); uploadRecord.load(blankUpload()); setNotice("Privédocument geüpload."); },
+  });
 
-  const selected = documents.find((document) => document.id === selectedId) ?? null;
+  const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
 
-  async function uploadDocument(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!session || !upload.file) { setMessage("Kies een bestand om te uploaden."); return; }
-    const data = new FormData(); data.set("title", upload.title.trim()); data.set("document_kind", upload.kind); data.set("file", upload.file);
-    const response = await fetch(`/api/trips/${trip.id}/documents/uploads`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
-    if (!response.ok) return apiError(response, "Het document kon niet worden geüpload.");
-    const saved = await response.json() as DocumentAsset;
-    setUpload({ title: "", kind: "booking", file: null }); await load(saved.id); setMessage("Privédocument geüpload.");
-  }
-
-  async function deleteDocument(document: DocumentAsset) {
-    if (!session || !window.confirm(`Verwijder document “${document.title}”?`)) return;
-    const response = await fetch(`/api/trips/${trip.id}/documents/${document.id}`, { method: "DELETE", headers: apiHeaders(session) });
-    if (!response.ok) return apiError(response, "Het document kon niet worden verwijderd.");
-    await offline.removeByResource("trip_document", document.id);
-    await load(null); setMessage("Privédocument verwijderd.");
+  function erase(document: DocumentAsset) {
+    if (!window.confirm(`Verwijder document “${document.title}”?`)) return;
+    remove.mutateAsync(document).then(async () => {
+      await offline.removeByResource("trip_document", document.id);
+      setSelectedId(null);
+      setNotice("Privédocument verwijderd.");
+    }, fail("Het document kon niet worden verwijderd."));
   }
 
   async function togglePin(document: DocumentAsset) {
-    if (!session) return;
+    if (!owner) return;
     if (offline.isPinned("trip_document", document.id)) {
       await offline.removeByResource("trip_document", document.id);
-      setMessage(`“${document.title}” is niet langer offline beschikbaar.`);
+      setNotice(`“${document.title}” is niet langer offline beschikbaar.`);
       return;
     }
-    const blob = await fetchProtectedFile(session, document.file_url, "Het document kon niet worden opgehaald voor offline gebruik.");
+    const blob = await ownerFile(owner.session, document.file_url, "Het document kon niet worden opgehaald voor offline gebruik.");
     await offline.pin({
       resourceKind: "trip_document",
       resourceId: document.id,
@@ -69,30 +92,38 @@ export function DocumentManager({ trip }: { trip: Trip }) {
       contentType: blob.type || document.content_type,
       bytes: await blob.arrayBuffer(),
     });
-    setMessage(`“${document.title}” is offline bewaard op dit toestel.`);
+    setNotice(`“${document.title}” is offline bewaard op dit toestel.`);
   }
 
-  async function addDerivative(event: FormEvent<HTMLFormElement>) {
+  function open(url: string, fallback: string) {
+    if (owner) openOwnerFile(owner.session, url, fallback).catch(fail(fallback));
+  }
+
+  function submitDerivative(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session || !selected || !redaction.file || !redaction.manifest) { setMessage("Kies een geredigeerd bestand én een redactie-manifest."); return; }
-    const data = new FormData(); data.set("file", redaction.file); data.set("redaction_manifest", redaction.manifest);
-    const response = await fetch(`/api/trips/${trip.id}/documents/${selected.id}/derivatives`, { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: data });
-    if (!response.ok) return apiError(response, "De geredigeerde afgeleide kon niet worden opgeslagen.");
-    const saved = await response.json() as DocumentDerivative;
-    setRedaction({ file: null, manifest: null }); setDerivatives((current) => [saved, ...current]); setMessage("Geredigeerde afgeleide opgeslagen en wacht op jouw expliciete goedkeuring.");
+    if (!selected || !redaction.file || !redaction.manifest) { setNotice("Kies een geredigeerd bestand én een redactie-manifest."); return; }
+    const body = new FormData();
+    body.set("file", redaction.file);
+    body.set("redaction_manifest", redaction.manifest);
+    addDerivative.mutateAsync({ documentId: selected.id, body }).then(() => {
+      setRedaction({ file: null, manifest: null });
+      setInputKey((current) => current + 1);
+      setNotice("Geredigeerde afgeleide opgeslagen en wacht op jouw expliciete goedkeuring.");
+    }, fail("De geredigeerde afgeleide kon niet worden opgeslagen."));
   }
 
-  async function approveDerivative(derivative: DocumentDerivative) {
-    if (!session || !selected) return;
-    const response = await fetch(`/api/trips/${trip.id}/documents/${selected.id}/derivatives/${derivative.id}/approve`, { method: "POST", headers: apiHeaders(session) });
-    if (!response.ok) return apiError(response, "De afgeleide kon niet worden goedgekeurd.");
-    const saved = await response.json() as DocumentDerivative;
-    setDerivatives((current) => current.map((item) => item.id === saved.id ? saved : item)); setMessage("Afgeleide expliciet goedgekeurd. Delen gebeurt nog steeds alleen via een aparte scope.");
-  }
+  const readError = documentsQuery.error ?? derivativesQuery.error;
+  const message = notice ?? (readError ? errorMessage(readError, "Je documenten konden niet worden geladen.") : documentsQuery.isPending ? "Laad je private documenten…" : documents.length ? "Documenten en originelen blijven uitsluitend in je private tracker." : "Upload een privédocument wanneer je het wilt bewaren.");
 
   return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Originelen staan alleen in je private tracker. Een mogelijke gedeelde kopie moet eerst geredigeerd én goedgekeurd zijn.</p></div></div><p className="help" role="status">{message}</p>
-    <form className="stack-form" onSubmit={(event) => void uploadDocument(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden geüpload."))}><div className="field-row"><label>Titel<input required maxLength={160} value={upload.title} onChange={(event) => setUpload((draft) => ({ ...draft, title: event.target.value }))} /></label><label>Soort<select value={upload.kind} onChange={(event) => setUpload((draft) => ({ ...draft, kind: event.target.value as DocumentAsset["document_kind"] }))}><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></select></label></div><label>Privébestand<input required type="file" onChange={(event) => setUpload((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><button type="submit">Document uploaden</button></form>
-    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className={`excerpt-row ${document.id === selectedId ? "selected-item" : ""}`} key={document.id}><button className="document-select" type="button" onClick={() => setSelectedId(document.id)}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, document.file_url, "Het private origineel kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het private origineel kon niet worden geopend."))}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button><button className="danger compact" type="button" onClick={() => void deleteDocument(document).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het document kon niet worden verwijderd."))}>Verwijderen</button></div></article>)}</div>}
-    {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {selected.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={(event) => void addDerivative(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden opgeslagen."))}><label>Geredigeerd bestand<input required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit">Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session!, derivative.file_url, "De geredigeerde kopie kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De geredigeerde kopie kon niet worden geopend."))}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => void approveDerivative(derivative).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>}
+    <RecordForm record={uploadRecord} submitLabel="Document uploaden" pendingLabel="Uploaden…">
+      <div className="field-row">
+        <uploadRecord.form.Field name="title" validators={{ onChange: requiredText("Geef het document een titel."), onSubmit: requiredText("Geef het document een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</uploadRecord.form.Field>
+        <uploadRecord.form.Field name="kind">{(field) => <SelectField field={field} label="Soort"><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></SelectField>}</uploadRecord.form.Field>
+      </div>
+      <div className="field"><label>Privébestand<input key={inputKey} required type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label></div>
+    </RecordForm>
+    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className={`excerpt-row ${document.id === selected?.id ? "selected-item" : ""}`} key={document.id}><button className="document-select" type="button" onClick={() => setSelectedId(document.id)}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button><button className="danger compact" type="button" onClick={() => erase(document)}>Verwijderen</button></div></article>)}</div>}
+    {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {selected.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={submitDerivative}><label>Geredigeerd bestand<input key={`file-${inputKey}`} required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input key={`manifest-${inputKey}`} required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit" disabled={addDerivative.isPending}>Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De geredigeerde kopie kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ documentId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Delen gebeurt nog steeds alleen via een aparte scope."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>}
   </section>;
 }

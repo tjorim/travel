@@ -1,27 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 
 import { useAuth } from "../auth-context";
+import { errorMessage, openOwnerFile } from "../query/api";
+import { useOwner, useTripResource, useTripsQuery } from "../query/owner-queries";
 import { EmptyState } from "../tracker-routes";
-import {
-  apiError, apiHeaders, bytesLabel, formatDay, formatDayRange, openProtectedFile, stayLabel,
-  type BroadPlace, type BroadRoute, type DocumentAsset, type ItineraryEntry, type MediaAsset,
-  type Place, type RecordedTrack, type Stay, type TransportLeg, type Trip, type TripTask,
-} from "../tracker-model";
-
-type Detail = {
-  trip: Trip;
-  places: Place[];
-  broadPlaces: BroadPlace[];
-  broadRoutes: BroadRoute[];
-  stays: Stay[];
-  legs: TransportLeg[];
-  itinerary: ItineraryEntry[];
-  tasks: TripTask[];
-  documents: DocumentAsset[];
-  media: MediaAsset[];
-  tracks: RecordedTrack[];
-};
+import { bytesLabel, formatDay, formatDayRange, stayLabel, type Place } from "../tracker-model";
 
 function placeLabel(place: Place | null): string {
   if (!place) return "Geen plaats vastgelegd";
@@ -41,56 +25,57 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function TripDetail() {
   const { tripId } = useParams();
   const { session } = useAuth();
-  const [detail, setDetail] = useState<Detail | null>(null);
-  const [message, setMessage] = useState("Private reis laden…");
+  const owner = useOwner();
+  const tripsQuery = useTripsQuery();
+  const trip = tripId ? tripsQuery.data?.find((candidate) => candidate.id === tripId) ?? null : null;
+  // Nothing is read for a trip that does not exist.
+  const id = trip ? trip.id : null;
+  const placesQuery = useTripResource(id, "places");
+  const broadPlacesQuery = useTripResource(id, "places/broad");
+  const broadRoutesQuery = useTripResource(id, "broad-routes");
+  const staysQuery = useTripResource(id, "stays");
+  const legsQuery = useTripResource(id, "transport-legs");
+  const itineraryQuery = useTripResource(id, "itinerary-entries");
+  const tasksQuery = useTripResource(id, "trip-tasks");
+  const documentsQuery = useTripResource(id, "documents");
+  const mediaQuery = useTripResource(id, "media");
+  const tracksQuery = useTripResource(id, "recorded-tracks");
+  const [notice, setNotice] = useState("");
 
-  useEffect(() => {
-    if (!session || !tripId) return;
-    const controller = new AbortController();
-    const headers = apiHeaders(session);
-    const base = `/api/trips/${encodeURIComponent(tripId)}`;
-    void Promise.all([
-      fetch(base, { headers, signal: controller.signal }),
-      fetch(`${base}/places`, { headers, signal: controller.signal }),
-      fetch(`${base}/places/broad`, { headers, signal: controller.signal }),
-      fetch(`${base}/broad-routes`, { headers, signal: controller.signal }),
-      fetch(`${base}/stays`, { headers, signal: controller.signal }),
-      fetch(`${base}/transport-legs`, { headers, signal: controller.signal }),
-      fetch(`${base}/itinerary-entries`, { headers, signal: controller.signal }),
-      fetch(`${base}/trip-tasks`, { headers, signal: controller.signal }),
-      fetch(`${base}/documents`, { headers, signal: controller.signal }),
-      fetch(`${base}/media`, { headers, signal: controller.signal }),
-      fetch(`${base}/recorded-tracks`, { headers, signal: controller.signal }),
-    ]).then(async (responses) => {
-      if (responses.some((response) => !response.ok)) throw new Error("De private reis kon niet volledig worden geladen.");
-      const [trip, places, broadPlaces, broadRoutes, stays, legs, itinerary, tasks, documents, media, tracks] = await Promise.all(responses.map((response) => response.json()));
-      if (!controller.signal.aborted) {
-        setDetail({ trip, places, broadPlaces, broadRoutes, stays, legs, itinerary, tasks, documents, media, tracks });
-        setMessage("");
-      }
-    }).catch((error: unknown) => {
-      if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "De private reis kon niet worden geladen.");
-    });
-    return () => controller.abort();
-  }, [session, tripId]);
+  const places = placesQuery.data;
+  const broadPlaces = broadPlacesQuery.data;
+  const broadRoutes = broadRoutesQuery.data;
+  const stays = staysQuery.data;
+  const legs = legsQuery.data;
+  const itinerary = itineraryQuery.data;
+  const tasks = tasksQuery.data;
+  const documents = documentsQuery.data;
+  const media = mediaQuery.data;
+  const tracks = tracksQuery.data;
 
   const linkedLabels = useMemo(() => {
-    if (!detail) return new Map<string, string>();
+    if (!trip || !stays || !legs || !places || !documents) return new Map<string, string>();
     return new Map<string, string>([
-      ...detail.stays.map((item): [string, string] => [item.id, `Verblijf: ${stayLabel(item)}`]),
-      ...detail.legs.map((item): [string, string] => [item.id, `Vervoer: ${placeLabel(item.departure_place)} → ${placeLabel(item.arrival_place)}`]),
-      ...detail.trip.route_stages.map((item): [string, string] => [item.id, `Route-etappe: ${item.label ?? item.place.label}`]),
-      ...detail.places.map((item): [string, string] => [item.id, `Exacte plaats: ${placeLabel(item)}`]),
-      ...detail.documents.map((item): [string, string] => [item.id, `Document: ${item.title}`]),
-      ...detail.trip.moments.map((item): [string, string] => [item.id, `Moment: ${item.title}`]),
+      ...stays.map((item): [string, string] => [item.id, `Verblijf: ${stayLabel(item)}`]),
+      ...legs.map((item): [string, string] => [item.id, `Vervoer: ${placeLabel(item.departure_place)} → ${placeLabel(item.arrival_place)}`]),
+      ...trip.route_stages.map((item): [string, string] => [item.id, `Route-etappe: ${item.label ?? item.place.label}`]),
+      ...places.map((item): [string, string] => [item.id, `Exacte plaats: ${placeLabel(item)}`]),
+      ...documents.map((item): [string, string] => [item.id, `Document: ${item.title}`]),
+      ...trip.moments.map((item): [string, string] => [item.id, `Moment: ${item.title}`]),
     ]);
-  }, [detail]);
+  }, [trip, stays, legs, places, documents]);
+
+  const readError = [tripsQuery, placesQuery, broadPlacesQuery, broadRoutesQuery, staysQuery, legsQuery, itineraryQuery, tasksQuery, documentsQuery, mediaQuery, tracksQuery].find((query) => query.isError)?.error;
 
   if (!session) return <EmptyState title="Private reis">Meld aan om private reisdetails te bekijken.</EmptyState>;
   if (!tripId) return <EmptyState title="Reis niet gevonden">Deze reis heeft geen geldige identificatie.</EmptyState>;
-  if (!detail) return <section className="card" role="status"><h2>Private reis</h2><p>{message}</p></section>;
+  if (tripsQuery.isSuccess && !trip) return <EmptyState title="Reis niet gevonden">Deze private reis bestaat niet of is niet beschikbaar voor jouw account.</EmptyState>;
+  // The page shows a whole trip or nothing: a partial page would read as if records were missing.
+  if (!trip || !places || !broadPlaces || !broadRoutes || !stays || !legs || !itinerary || !tasks || !documents || !media || !tracks) {
+    return <section className="card" role={readError ? "alert" : "status"}><h2>Private reis</h2><p>{readError ? "De private reis kon niet volledig worden geladen." : "Private reis laden…"}</p></section>;
+  }
 
-  const { trip, places, broadPlaces, broadRoutes, stays, legs, itinerary, tasks, documents, media, tracks } = detail;
+  const openFile = (url: string, fallback: string) => { if (owner) openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorMessage(error, fallback))); };
   return <main className="admin-trip-detail" aria-labelledby="admin-trip-title">
     <header className="capture-heading"><div><p className="eyebrow">Alleen voor jou · private reis</p><h1 id="admin-trip-title">{trip.title}</h1>{trip.summary && <p className="lede">{trip.summary}</p>}{trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}</div><NavLink className="action-link" to="/trips">Naar beheren</NavLink></header>
     <p className="help">Deze pagina gebruikt uitsluitend owner-endpoints. Hij maakt geen deellink en levert geen gegevens aan bezoekers.</p>
@@ -120,12 +105,12 @@ export function TripDetail() {
       {!trip.route_stages.length && !broadPlaces.length && !broadRoutes.length && <p>Geen brede route of plaatsen vastgelegd.</p>}
     </Section>
     <Section title="Privédocumenten">
-      {documents.length ? <div className="admin-detail-list">{documents.map((document) => <article key={document.id}><h3>{document.title}</h3><p>{document.document_kind} · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</p><button className="secondary compact" type="button" onClick={() => void openProtectedFile(session, document.file_url, "Het private document kon niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het private document kon niet worden geopend."))}>Document openen</button></article>)}</div> : <p>Geen privédocumenten vastgelegd.</p>}
+      {documents.length ? <div className="admin-detail-list">{documents.map((document) => <article key={document.id}><h3>{document.title}</h3><p>{document.document_kind} · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</p><button className="secondary compact" type="button" onClick={() => openFile(document.file_url, "Het private document kon niet worden geopend.")}>Document openen</button></article>)}</div> : <p>Geen privédocumenten vastgelegd.</p>}
     </Section>
     <Section title="Privémedia en opgenomen routes">
-      {media.length ? <div className="admin-detail-list">{media.map((asset) => <article key={asset.id}><h3>{asset.original_filename ?? "Naamloos medium"}</h3><p>{asset.media_kind} · {bytesLabel(asset.byte_size)} · vastgelegd {timestamp(asset.captured_at)}</p>{asset.gps && <p>GPS: {asset.gps.latitude}, {asset.gps.longitude}</p>}<button className="secondary compact" type="button" onClick={() => void openProtectedFile(session, asset.file_url, "De privemedia konden niet worden geopend.").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "De privemedia konden niet worden geopend."))}>Media openen</button></article>)}</div> : <p>Geen privémedia vastgelegd.</p>}
+      {media.length ? <div className="admin-detail-list">{media.map((asset) => <article key={asset.id}><h3>{asset.original_filename ?? "Naamloos medium"}</h3><p>{asset.media_kind} · {bytesLabel(asset.byte_size)} · vastgelegd {timestamp(asset.captured_at)}</p>{asset.gps && <p>GPS: {asset.gps.latitude}, {asset.gps.longitude}</p>}<button className="secondary compact" type="button" onClick={() => openFile(asset.file_url, "De privemedia konden niet worden geopend.")}>Media openen</button></article>)}</div> : <p>Geen privémedia vastgelegd.</p>}
       {tracks.length > 0 && <div className="admin-detail-list">{tracks.map((track) => <article key={track.id}><h3>Opgenomen route</h3><p>{timestamp(track.started_at)} — {timestamp(track.ended_at)} · {track.kind} · {bytesLabel(track.byte_size)}</p></article>)}</div>}
     </Section>
-    {message && <p className="help" role="status">{message}</p>}
+    {notice && <p className="help" role="status">{notice}</p>}
   </main>;
 }

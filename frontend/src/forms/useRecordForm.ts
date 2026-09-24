@@ -23,10 +23,14 @@ type RecordFormOptions<TValues, TResult> = {
  */
 export function useRecordForm<TValues extends Record<string, unknown>, TResult = void>({ defaultValues, submit, onSuccess, fallback, serverFields = {} }: RecordFormOptions<TValues, TResult>) {
   const formRef = useRef<HTMLFormElement>(null);
+  // TanStack Form re-applies `defaultValues` on every render where they differ from the ones it saw last and the
+  // form is untouched. The baseline therefore lives in a ref and is handed back unchanged after each reset, so
+  // loading a record into the editor is not undone by the next render.
+  const baseline = useRef(defaultValues);
   const [serverError, setServerError] = useState<string | null>(null);
   const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({});
   const form = useForm({
-    defaultValues,
+    defaultValues: baseline.current,
     onSubmit: async ({ value, formApi }) => {
       setServerError(null);
       setServerFieldErrors({});
@@ -42,6 +46,7 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
         setServerError(errorMessage(error, fallback));
         return;
       }
+      baseline.current = value;
       formApi.reset(value);
       onSuccess?.(result, value);
     },
@@ -67,8 +72,9 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
   const load = useCallback((next: TValues) => {
     setServerError(null);
     setServerFieldErrors({});
+    baseline.current = next;
     form.reset(next);
   }, [form]);
 
-  return { form, formRef, serverError, serverFieldErrors, pending, dirty, load };
+  return { form, formRef, values, serverError, serverFieldErrors, pending, dirty, load };
 }

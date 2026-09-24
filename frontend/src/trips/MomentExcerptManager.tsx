@@ -1,25 +1,82 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 
-import { useAuth } from "../auth-context";
+import { RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { useRecordDialog } from "../forms/useRecordDialog";
+import { useRecordForm } from "../forms/useRecordForm";
+import { errorMessage } from "../query/api";
+import { ownerKeys } from "../query/keys";
+import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { apiError, apiHeaders, type BroadPlace, type MomentExcerpt, type Trip } from "../tracker-model";
+import type { BroadPlace, MomentExcerpt, Trip } from "../tracker-model";
 
-type Draft = { id: string | null; sourceMomentId: string; broadPlaceId: string; datePrecision: MomentExcerpt["date_precision"]; storyDate: string; title: string; body: string };
-const empty = (): Draft => ({ id: null, sourceMomentId: "", broadPlaceId: "", datePrecision: "day", storyDate: "", title: "", body: "" });
-const fromExcerpt = (excerpt: MomentExcerpt): Draft => ({ id: excerpt.id, sourceMomentId: excerpt.source_moment_id ?? "", broadPlaceId: excerpt.broad_place_id ?? "", datePrecision: excerpt.date_precision, storyDate: excerpt.story_date ?? "", title: excerpt.title, body: excerpt.body });
+type Values = { sourceMomentId: string; broadPlaceId: string; datePrecision: MomentExcerpt["date_precision"]; storyDate: string; title: string; body: string };
+const blank = (): Values => ({ sourceMomentId: "", broadPlaceId: "", datePrecision: "day", storyDate: "", title: "", body: "" });
+const fromExcerpt = (excerpt: MomentExcerpt): Values => ({ sourceMomentId: excerpt.source_moment_id ?? "", broadPlaceId: excerpt.broad_place_id ?? "", datePrecision: excerpt.date_precision, storyDate: excerpt.story_date ?? "", title: excerpt.title, body: excerpt.body });
+const serverFields = { source_moment_id: "sourceMomentId", broad_place_id: "broadPlaceId", date_precision: "datePrecision", story_date: "storyDate", title: "title", body: "body" };
 
-export function MomentExcerptManager({ trip, broadPlaces, onChange }: { trip: Trip; broadPlaces: BroadPlace[]; onChange: () => Promise<void> }) {
-  const { session } = useAuth(); const [draft, setDraft] = useState<Draft>(empty()); const [initial, setInitial] = useState<Draft>(empty()); const [selected, setSelected] = useState<MomentExcerpt | null>(null); const [editing, setEditing] = useState(false); const [confirmDelete, setConfirmDelete] = useState(false); const [message, setMessage] = useState("Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.");
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
-  function close() { setSelected(null); setEditing(false); setConfirmDelete(false); setDraft(empty()); setInitial(empty()); }
-  function create() { const next = empty(); setDraft(next); setInitial(next); setSelected(null); setEditing(true); }
-  function inspect(item: MomentExcerpt) { setSelected(item); setEditing(false); setConfirmDelete(false); }
-  function edit(item: MomentExcerpt) { const next = fromExcerpt(item); setDraft(next); setInitial(next); setSelected(item); setEditing(true); }
-  async function save(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!session) return; const response = await fetch(draft.id ? `/api/trips/${trip.id}/moment-excerpts/${draft.id}` : `/api/trips/${trip.id}/moment-excerpts`, { method: draft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify({ source_moment_id: draft.sourceMomentId || null, broad_place_id: draft.broadPlaceId || null, date_precision: draft.datePrecision, story_date: draft.storyDate || null, title: draft.title.trim(), body: draft.body.trim() }) }); if (!response.ok) return apiError(response, "Het uittreksel kon niet worden opgeslagen."); await onChange(); close(); setMessage("Uittreksel opgeslagen. Het is nog niet gedeeld."); }
-  async function remove(item: MomentExcerpt) { if (!session) return; const response = await fetch(`/api/trips/${trip.id}/moment-excerpts/${item.id}`, { method: "DELETE", headers: apiHeaders(session) }); if (!response.ok) return apiError(response, "Het uittreksel kon niet worden verwijderd."); await onChange(); close(); setMessage("Uittreksel verwijderd."); }
-  const fail = (fallback: string) => (error: unknown) => setMessage(error instanceof Error ? error.message : fallback);
-  return <section className="card manager" aria-labelledby="excerpts-title"><div className="capture-heading"><div><h3 id="excerpts-title">Moment-uittreksels</h3><p>Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw uittreksel</button></div><p className="help" role="status">{message}</p>
-    {trip.moment_excerpts.length > 0 && <div className="saved-moments manager-list">{trip.moment_excerpts.map((item) => <article className="excerpt-row" key={item.id}><button className="document-select" type="button" onClick={() => inspect(item)} aria-label={`Uittreksel ${item.title} bekijken`}><strong>{item.title}</strong><span>{item.date_precision} · {item.broad_place_id ? broadPlaces.find((place) => place.id === item.broad_place_id)?.label ?? "brede plaats" : "geen plaats"}</span></button></article>)}</div>}
-    <RecordDialog open={editing || selected !== null} title={editing ? (draft.id ? "Uittreksel bewerken" : "Uittreksel maken") : "Moment-uittreksel"} dirty={editing && dirty} onDismiss={close}>{!editing && selected && <div className="stack-form"><div><h3>{selected.title}</h3><p>{selected.body}</p></div><div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => setConfirmDelete(true)}>Verwijderen</button></div>{confirmDelete && <DeleteConfirmation title={`Uittreksel “${selected.title}” verwijderen?`} onCancel={() => setConfirmDelete(false)} onConfirm={() => void remove(selected).catch(fail("Het uittreksel kon niet worden verwijderd."))} />}</div>}{editing && <form className="stack-form" onSubmit={(event) => void save(event).catch(fail("Het uittreksel kon niet worden opgeslagen."))}><div className="field-row"><label>Bronmoment <span className="optional">(optioneel)</span><select value={draft.sourceMomentId} onChange={(event) => setDraft((current) => ({ ...current, sourceMomentId: event.target.value }))}><option value="">Geen bronmoment</option>{trip.moments.map((moment) => <option key={moment.id} value={moment.id}>{moment.title}</option>)}</select></label><label>Datumprecisie<select value={draft.datePrecision} onChange={(event) => setDraft((current) => ({ ...current, datePrecision: event.target.value as MomentExcerpt["date_precision"] }))}><option value="day">Dag</option><option value="month">Maand</option><option value="year">Jaar</option></select></label></div><div className="field-row"><label>Verhaalsdatum <span className="optional">(optioneel)</span><input type="date" value={draft.storyDate} onChange={(event) => setDraft((current) => ({ ...current, storyDate: event.target.value }))} /></label><label>Brede plaats <span className="optional">(optioneel)</span><select value={draft.broadPlaceId} onChange={(event) => setDraft((current) => ({ ...current, broadPlaceId: event.target.value }))}><option value="">Geen plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}</option>)}</select></label></div><label>Titel<input required maxLength={160} value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label><label>Uittreksel<textarea required maxLength={10000} rows={5} value={draft.body} onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))} /></label><button type="submit">{draft.id ? "Uittreksel opslaan" : "Uittreksel maken"}</button></form>}</RecordDialog>
+/** Excerpts are embedded in the trip, so every write refreshes the trip list. */
+export function MomentExcerptManager({ trip, broadPlaces }: { trip: Trip; broadPlaces: BroadPlace[] }) {
+  const dialog = useRecordDialog(trip.moment_excerpts);
+  const [message, setMessage] = useState("Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.");
+  const path = tripPath(trip.id, "moment-excerpts");
+  const invalidate = (subject: string) => [ownerKeys.trips(subject)];
+
+  const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, MomentExcerpt>({
+    fallback: "Het uittreksel kon niet worden opgeslagen.",
+    request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
+    invalidate,
+  });
+  const remove = useOwnerMutation<MomentExcerpt>({
+    fallback: "Het uittreksel kon niet worden verwijderd.",
+    request: (item) => ({ path: `${path}/${item.id}`, method: "DELETE" }),
+    invalidate,
+  });
+
+  const record = useRecordForm<Values>({
+    defaultValues: blank(),
+    fallback: "Het uittreksel kon niet worden opgeslagen.",
+    serverFields,
+    submit: async (values) => {
+      await save.mutateAsync({
+        id: dialog.editingId ?? null,
+        payload: { source_moment_id: values.sourceMomentId || null, broad_place_id: values.broadPlaceId || null, date_precision: values.datePrecision, story_date: values.storyDate || null, title: values.title.trim(), body: values.body.trim() },
+      });
+    },
+    onSuccess: () => { close(); setMessage("Uittreksel opgeslagen. Het is nog niet gedeeld."); },
+  });
+
+  function close() { dialog.close(); record.load(blank()); }
+  function create() { record.load(blank()); dialog.create(); }
+  function edit(item: MomentExcerpt) { record.load(fromExcerpt(item)); dialog.edit(item.id); }
+  function erase(item: MomentExcerpt) {
+    remove.mutateAsync(item).then(() => { close(); setMessage("Uittreksel verwijderd."); }, (error: unknown) => setMessage(errorMessage(error, "Het uittreksel kon niet worden verwijderd.")));
+  }
+  const { selected, editing, editingId } = dialog;
+
+  return <section className="card manager" aria-labelledby="excerpts-title">
+    <div className="capture-heading"><div><h3 id="excerpts-title">Moment-uittreksels</h3><p>Een uittreksel is afzonderlijk geschreven en blijft privé totdat je het expliciet publiceert.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw uittreksel</button></div>
+    <p className="help" role="status">{message}</p>
+    {trip.moment_excerpts.length > 0 && <div className="saved-moments manager-list">{trip.moment_excerpts.map((item) => <article className="excerpt-row" key={item.id}>
+      <button className="document-select" type="button" onClick={() => dialog.inspect(item.id)} aria-label={`Uittreksel ${item.title} bekijken`}><strong>{item.title}</strong><span>{item.date_precision} · {item.broad_place_id ? broadPlaces.find((place) => place.id === item.broad_place_id)?.label ?? "brede plaats" : "geen plaats"}</span></button>
+    </article>)}</div>}
+    <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Uittreksel bewerken" : "Uittreksel maken") : "Moment-uittreksel"} dirty={editing && record.dirty} onDismiss={close}>
+      {!editing && selected && <div className="stack-form">
+        <div><h3>{selected.title}</h3><p>{selected.body}</p></div>
+        <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
+        {dialog.confirmDelete && <DeleteConfirmation title={`Uittreksel “${selected.title}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
+      </div>}
+      {editing && <RecordForm record={record} submitLabel={editingId ? "Uittreksel opslaan" : "Uittreksel maken"} pendingLabel="Opslaan…">
+        <div className="field-row">
+          <record.form.Field name="sourceMomentId">{(field) => <SelectField field={field} label="Bronmoment" optional><option value="">Geen bronmoment</option>{trip.moments.map((moment) => <option key={moment.id} value={moment.id}>{moment.title}</option>)}</SelectField>}</record.form.Field>
+          <record.form.Field name="datePrecision">{(field) => <SelectField field={field} label="Datumprecisie"><option value="day">Dag</option><option value="month">Maand</option><option value="year">Jaar</option></SelectField>}</record.form.Field>
+        </div>
+        <div className="field-row">
+          <record.form.Field name="storyDate">{(field) => <TextField field={field} label="Verhaalsdatum" optional type="date" />}</record.form.Field>
+          <record.form.Field name="broadPlaceId">{(field) => <SelectField field={field} label="Brede plaats" optional><option value="">Geen plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}</option>)}</SelectField>}</record.form.Field>
+        </div>
+        <record.form.Field name="title" validators={{ onChange: requiredText("Geef het uittreksel een titel."), onSubmit: requiredText("Geef het uittreksel een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</record.form.Field>
+        <record.form.Field name="body" validators={{ onChange: requiredText("Schrijf het uittreksel."), onSubmit: requiredText("Schrijf het uittreksel.") }}>{(field) => <TextAreaField field={field} label="Uittreksel" required maxLength={10000} rows={5} />}</record.form.Field>
+      </RecordForm>}
+    </RecordDialog>
   </section>;
 }

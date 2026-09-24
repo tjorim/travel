@@ -1,4 +1,5 @@
-import { defineConfig, type Plugin } from "vite";
+import type { Plugin } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 function visitorRoutes(): Plugin {
@@ -27,6 +28,7 @@ function visitorRoutes(): Plugin {
 
 export default defineConfig({
   base: "/admin/",
+  test: { setupFiles: ["./src/test-setup.ts"] },
   plugins: [react(), visitorRoutes()],
   build: {
     outDir: "dist",
