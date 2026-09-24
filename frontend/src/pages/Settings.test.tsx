@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import { Settings } from "./Settings";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -54,21 +55,21 @@ it("requires a token, connects the provider and never keeps the token", async ()
   expect(JSON.stringify(client.getQueryCache().getAll().map((query) => query.state.data))).not.toContain("geheim-token");
 });
 
-it("disconnects a provider after the browser confirmation and shows its new state", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+it("disconnects a provider after the in-app confirmation and shows its new state", async () => {
   renderWithOwner(<Settings />);
   fireEvent.click(await screen.findByRole("button", { name: "Loskoppelen" }));
+  await answerConfirmation("Loskoppelen");
   await screen.findByText("GoPro Cloud is losgekoppeld.");
   await waitFor(() => expect(screen.queryByRole("button", { name: "Loskoppelen" })).toBeNull());
   expect(screen.getAllByRole("button", { name: "Verbinden" })).toHaveLength(2);
 });
 
 it("keeps a connected provider when the server refuses to disconnect it", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   renderWithOwner(<Settings />);
   const disconnect = await screen.findByRole("button", { name: "Loskoppelen" });
   api.failNext = { status: 500, body: { detail: "Loskoppelen mislukt." } };
   fireEvent.click(disconnect);
+  await answerConfirmation("Loskoppelen");
   await screen.findByText("Loskoppelen mislukt.");
   expect(screen.getByRole("button", { name: "Loskoppelen" })).toBeTruthy();
 });

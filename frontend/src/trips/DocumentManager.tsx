@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
@@ -12,6 +13,7 @@ type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
 
 export function DocumentManager({ trip }: { trip: Trip }) {
+  const confirmation = useConfirmation();
   const owner = useOwner();
   const offline = useOfflineCopies();
   const documentsQuery = useTripResource(trip.id, "documents");
@@ -68,7 +70,10 @@ export function DocumentManager({ trip }: { trip: Trip }) {
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
 
   function erase(document: DocumentAsset) {
-    if (!window.confirm(`Verwijder document “${document.title}”?`)) return;
+    confirmation.ask({ title: `Document “${document.title}” verwijderen?`, onConfirm: () => performErase(document) });
+  }
+
+  function performErase(document: DocumentAsset) {
     remove.mutateAsync(document).then(async () => {
       await offline.removeByResource("trip_document", document.id);
       setSelectedId(null);
@@ -125,5 +130,6 @@ export function DocumentManager({ trip }: { trip: Trip }) {
     </RecordForm>
     {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className={`excerpt-row ${document.id === selected?.id ? "selected-item" : ""}`} key={document.id}><button className="document-select" type="button" onClick={() => setSelectedId(document.id)}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button><button className="danger compact" type="button" onClick={() => erase(document)}>Verwijderen</button></div></article>)}</div>}
     {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {selected.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={submitDerivative}><label>Geredigeerd bestand<input key={`file-${inputKey}`} required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input key={`manifest-${inputKey}`} required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit" disabled={addDerivative.isPending}>Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De geredigeerde kopie kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ documentId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Delen gebeurt nog steeds alleen via een aparte scope."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>}
+    {confirmation.dialog}
   </section>;
 }

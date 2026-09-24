@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth-context";
 import { requiredText, TextAreaField, TextField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
@@ -28,6 +29,7 @@ const timestamp = (value: string) => new Intl.DateTimeFormat("nl-BE", { dateStyl
 const SAVE_FALLBACK = "Het moment kon niet worden opgeslagen. Je lokale concept blijft bewaard.";
 
 export function Capture() {
+  const confirmation = useConfirmation();
   const { session } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -205,9 +207,14 @@ export function Capture() {
   }
 
   function removeMoment() {
-    if (!selectedTrip || !draft.momentId || !window.confirm(`Verwijder moment “${draft.title}”?`)) return;
+    const { momentId } = draft;
+    if (!selectedTrip || !momentId) return;
+    confirmation.ask({ title: `Moment “${draft.title}” verwijderen?`, onConfirm: () => performRemoveMoment(selectedTrip.id, momentId) });
+  }
+
+  function performRemoveMoment(tripId: string, momentId: string) {
     setSaveState("Moment verwijderen…");
-    deleteMoment.mutateAsync({ tripId: selectedTrip.id, momentId: draft.momentId }).then(() => {
+    deleteMoment.mutateAsync({ tripId, momentId }).then(() => {
       clearDraft();
       startNew();
       setDraftState("Moment verwijderd.");
@@ -255,6 +262,7 @@ export function Capture() {
         <div className="save-row"><button type="submit" disabled={record.pending}>{draft.momentId ? "Wijzigingen opslaan" : "Moment opslaan"}</button><span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span></div>
       </form>
       {selectedTrip && selectedTrip.moments.length > 0 && <section className="saved-moments"><h3>Opgeslagen momenten</h3>{selectedTrip.moments.slice().reverse().map((moment) => <button className="moment-row" type="button" key={moment.id} onClick={() => editMoment(moment)}><strong>{moment.title}</strong><span>{timestamp(moment.occurred_at)}{moment.place ? ` · ${moment.place.display_name}` : " · zonder locatie"}</span></button>)}</section>}
+      {confirmation.dialog}
     </section>
   );
 }

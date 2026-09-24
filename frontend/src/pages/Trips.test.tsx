@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { renderWithOwner, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { Trip } from "../tracker-model";
 import { Trips } from "./Trips";
 
@@ -73,10 +74,10 @@ it("shows the renamed trip in the list after saving, with one refreshed read", a
 });
 
 it("drops a deleted trip from the list and falls back to a blank draft", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   renderTrips();
   await waitFor(() => expect((editor().getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
   fireEvent.click(editor().getByRole("button", { name: "Reis verwijderen" }));
+  await answerConfirmation();
   await waitFor(() => expect(screen.queryByRole("button", { name: /Exampleland/ })).toBeNull());
   expect(screen.getByRole("button", { name: /IJsland/ })).toBeTruthy();
   expect((editor().getByLabelText("Titel") as HTMLInputElement).value).toBe("");

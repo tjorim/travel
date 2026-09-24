@@ -55,10 +55,19 @@ export function RecordDialog({ open, title, children, dirty = false, onDismiss, 
   </dialog>;
 }
 
-export function DeleteConfirmation({ title, onCancel, onConfirm }: { title: string; onCancel: () => void; onConfirm: () => void }) {
-  return <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby="delete-record-title">
-    <h3 id="delete-record-title">{title}</h3>
-    <p>Deze actie kan niet ongedaan worden gemaakt.</p>
-    <div className="button-row"><button className="danger compact" type="button" autoFocus onClick={onConfirm}>Verwijderen</button><button className="secondary compact" type="button" onClick={onCancel}>Annuleren</button></div>
+type DeleteConfirmationProps = {
+  title: string;
+  description?: string;
+  confirmLabel?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export function DeleteConfirmation({ title, description = "Deze actie kan niet ongedaan worden gemaakt.", confirmLabel = "Verwijderen", onCancel, onConfirm }: DeleteConfirmationProps) {
+  const headingId = useId();
+  return <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby={headingId}>
+    <h3 id={headingId}>{title}</h3>
+    <p>{description}</p>
+    <div className="button-row"><button className="danger compact" type="button" autoFocus onClick={onConfirm}>{confirmLabel}</button><button className="secondary compact" type="button" onClick={onCancel}>Annuleren</button></div>
   </div>;
 }

@@ -5,6 +5,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { OwnerDocument, Trip } from "../tracker-model";
 import { DocumentLibraryManager } from "./DocumentLibraryManager";
 
@@ -94,12 +95,12 @@ it("shows an empty state when the library has no documents", async () => {
 
 it("deletes a document after explicit confirmation", async () => {
   withSession();
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const state = stubFetch([libraryDocument()]);
   renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   await screen.findByText("Insurance policy");
 
   screen.getByRole("button", { name: "Verwijderen" }).click();
+  await answerConfirmation();
 
   await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
   expect(state.calls.some((call) => call.method === "DELETE" && call.url === "/api/library/documents/doc-1")).toBe(true);

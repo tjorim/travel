@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import { clearDraft, emptyDraft, readDraft, saveDraft, type Moment, type Trip } from "../tracker-model";
 import { Capture } from "./Capture";
 
@@ -75,11 +76,11 @@ it("opens a saved moment prefilled and shows its edit at once", async () => {
   expect(screen.getByRole("heading", { name: "Nieuw moment" })).toBeTruthy();
 });
 
-it("removes a deleted moment from the list after the browser confirmation", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+it("removes a deleted moment from the list after the in-app confirmation", async () => {
   renderCapture();
   fireEvent.click(await screen.findByRole("button", { name: /Tweede dag/ }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  await answerConfirmation();
   await waitFor(() => expect(savedMoments().queryByText("Tweede dag")).toBeNull());
   expect(savedMoments().getByText("Eerste avond")).toBeTruthy();
   expect(screen.getByText("Moment verwijderd.")).toBeTruthy();

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { CheckboxField, RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage } from "../query/api";
@@ -52,6 +53,7 @@ const lastDay = ({ value, fieldApi }: { value: string } & FormContext) => {
 };
 
 export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: (pointId: string) => void }) {
+  const confirmation = useConfirmation();
   const offline = useOfflineCopies();
   const entriesQuery = useTripResource(trip.id, "itinerary-entries");
   const staysQuery = useTripResource(trip.id, "stays");
@@ -145,7 +147,10 @@ export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShow
   }
 
   function erase(entry: ItineraryEntry) {
-    if (!window.confirm(`Verwijder planningsstap “${entry.title}”?`)) return;
+    confirmation.ask({ title: `Planningsstap “${entry.title}” verwijderen?`, onConfirm: () => performErase(entry) });
+  }
+
+  function performErase(entry: ItineraryEntry) {
     remove.mutateAsync(entry)
       .then(async () => {
         await offline.removeByResource("itinerary_entry", entry.id);
@@ -210,5 +215,6 @@ export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShow
         </div>
       </article>;
     })}</div>}
+    {confirmation.dialog}
   </section>;
 }

@@ -5,6 +5,7 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { EmergencyInfoEntry } from "../tracker-model";
 import { EmergencyInfoManager } from "./EmergencyInfoManager";
 
@@ -81,12 +82,12 @@ it("shows an empty state without any emergency-info entry", async () => {
 
 it("deletes an entry after explicit confirmation", async () => {
   withSession();
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const state = stubFetch([entry()]);
   renderWithOwner(<AuthProvider><EmergencyInfoManager /></AuthProvider>);
   await screen.findByText("Mom");
 
   screen.getByRole("button", { name: "Verwijderen" }).click();
+  await answerConfirmation();
 
   await screen.findByText("Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.");
   expect(state.calls.some((call) => call.method === "DELETE" && call.url === "/api/library/emergency-info/entry-1")).toBe(true);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useConfirmation } from "../forms/useConfirmation";
 import { bytesLabel, openBlobInNewTab } from "../tracker-model";
 import { useOfflineCopies } from "./useOfflineCopies";
 import type { OfflineCopySummary, OfflineResourceKind } from "./offline-store";
@@ -18,6 +19,7 @@ function formatMoment(timestamp: number): string {
 }
 
 export function OfflineManager() {
+  const confirmation = useConfirmation();
   const offline = useOfflineCopies();
   const [message, setMessage] = useState("");
   const [viewingText, setViewingText] = useState<{ title: string; text: string } | null>(null);
@@ -38,16 +40,28 @@ export function OfflineManager() {
     }
   }
 
-  async function remove(copy: OfflineCopySummary) {
-    if (!window.confirm(`“${copy.title}” niet langer offline bewaren op dit toestel?`)) return;
-    await offline.remove(copy.id);
-    setMessage(`“${copy.title}” is niet langer offline beschikbaar.`);
+  function remove(copy: OfflineCopySummary) {
+    confirmation.ask({
+      title: `“${copy.title}” niet langer offline bewaren?`,
+      description: "De kopie wordt van dit toestel verwijderd; het origineel blijft bewaard.",
+      confirmLabel: "Niet meer bewaren",
+      onConfirm: async () => {
+        await offline.remove(copy.id);
+        setMessage(`“${copy.title}” is niet langer offline beschikbaar.`);
+      },
+    });
   }
 
-  async function clearAll() {
-    if (!window.confirm("Alle offline kopieën op dit toestel verwijderen?")) return;
-    await offline.clearAll();
-    setMessage("Alle offline kopieën op dit toestel zijn verwijderd.");
+  function clearAll() {
+    confirmation.ask({
+      title: "Alle offline kopieën verwijderen?",
+      description: "Dit wist alleen de kopieën op dit toestel.",
+      confirmLabel: "Alles wissen",
+      onConfirm: async () => {
+        await offline.clearAll();
+        setMessage("Alle offline kopieën op dit toestel zijn verwijderd.");
+      },
+    });
   }
 
   const totalBytes = offline.copies.reduce((sum, copy) => sum + copy.byteSize, 0);
@@ -59,7 +73,7 @@ export function OfflineManager() {
           <h3 id="offline-title">Offline</h3>
           <p>Bewust bewaarde kopieën blijven alleen op dit toestel en verdwijnen bij afmelden.</p>
         </div>
-        {offline.copies.length > 0 && <button className="danger compact" type="button" onClick={() => void clearAll()}>Alles wissen</button>}
+        {offline.copies.length > 0 && <button className="danger compact" type="button" onClick={clearAll}>Alles wissen</button>}
       </div>
       <p className="help" role="status">
         {message
@@ -86,7 +100,7 @@ export function OfflineManager() {
               </div>
               <div className="button-row">
                 <button className="secondary compact" type="button" onClick={() => void view(copy)}>Bekijken</button>
-                <button className="danger compact" type="button" onClick={() => void remove(copy)}>Verwijderen</button>
+                <button className="danger compact" type="button" onClick={() => remove(copy)}>Verwijderen</button>
               </div>
             </article>
           ))}
@@ -99,6 +113,7 @@ export function OfflineManager() {
           <button className="secondary compact" type="button" onClick={() => setViewingText(null)}>Sluiten</button>
         </div>
       )}
+      {confirmation.dialog}
     </section>
   );
 }

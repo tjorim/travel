@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { DocumentAsset, DocumentDerivative, Trip } from "../tracker-model";
 import { DocumentManager } from "./DocumentManager";
 
@@ -56,10 +57,10 @@ it("lists a new upload straight away and selects it", async () => {
 });
 
 it("removes a deleted document and its redacted copies from the screen", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   renderWithOwner(<DocumentManager trip={trip} />);
   await screen.findByText("Vliegticket");
   fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[0]);
+  await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("Vliegticket")).toBeNull());
   expect(screen.getByText("Hotelbevestiging")).toBeTruthy();
   expect(screen.getByText("Privédocument verwijderd.")).toBeTruthy();

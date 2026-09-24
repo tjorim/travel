@@ -1,4 +1,5 @@
 import { RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { ownerKeys } from "../query/keys";
 import { errorMessage } from "../query/api";
@@ -16,6 +17,7 @@ const serverFields = { title: "title", summary: "summary", starts_on: "startsOn"
  * form starts from that record and treats the last saved values as clean.
  */
 export function TripEditor({ trip, onSaved, onDeleted, onNotice }: { trip: Trip | null; onSaved: (saved: Trip, created: boolean) => void; onDeleted: () => void; onNotice: (message: string) => void }) {
+  const confirmation = useConfirmation();
   const refresh = useRefreshTrip();
   const save = useOwnerMutation<Values, Trip>({
     fallback: "De reis kon niet worden opgeslagen.",
@@ -43,7 +45,11 @@ export function TripEditor({ trip, onSaved, onDeleted, onNotice }: { trip: Trip 
   const { form } = record;
 
   function deleteTrip() {
-    if (!trip || !window.confirm(`Verwijder ${trip.title} met alle private inhoud?`)) return;
+    if (!trip) return;
+    confirmation.ask({ title: `“${trip.title}” verwijderen?`, description: "Alle private inhoud van deze reis wordt verwijderd. Deze actie kan niet ongedaan worden gemaakt.", onConfirm: () => performDeleteTrip(trip) });
+  }
+
+  function performDeleteTrip(trip: Trip) {
     remove.mutateAsync(trip).then(() => { refresh.forget(trip.id); onDeleted(); onNotice("Reis verwijderd."); }, (error: unknown) => onNotice(errorMessage(error, "De reis kon niet worden verwijderd.")));
   }
 
@@ -62,5 +68,6 @@ export function TripEditor({ trip, onSaved, onDeleted, onNotice }: { trip: Trip 
         <p className="help">Zichtbaarheid maakt niets automatisch deelbaar: kies aparte publicaties wanneer je klaar bent.</p>
       </>}
     </RecordForm>
+    {confirmation.dialog}
   </section>;
 }

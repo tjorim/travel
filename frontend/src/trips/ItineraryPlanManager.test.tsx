@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { ItineraryEntry, Stay, Trip } from "../tracker-model";
 import { ItineraryPlanManager } from "./ItineraryPlanManager";
 
@@ -54,22 +55,22 @@ it("adds a step at the end without a revision prop", async () => {
   expect(api.lastBody("POST /api/trips/trip/itinerary-entries")).toMatchObject({ title: "Vertrek", position: 2 });
 });
 
-it("removes a deleted step after the browser confirmation", async () => {
-  const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+it("removes a deleted step after the in-app confirmation", async () => {
   renderWithOwner(<ItineraryPlanManager trip={trip} />);
   await screen.findByText("Stadswandeling");
   fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[1]);
+  await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("Stadswandeling")).toBeNull());
-  expect(confirm).toHaveBeenCalled();
   expect(screen.getByText("Planningsstap verwijderd.")).toBeTruthy();
   expect(titles()).toEqual(["Aankomst"]);
 });
 
 it("does not delete when the confirmation is declined", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(false);
   renderWithOwner(<ItineraryPlanManager trip={trip} />);
   await screen.findByText("Stadswandeling");
   fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[1]);
+  await answerConfirmation("Annuleren");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(api.count("DELETE /api/trips/trip/itinerary-entries/b")).toBe(0);
 });
 

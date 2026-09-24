@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
+import { answerConfirmation } from "../test-confirm";
 import { OfflineManager } from "./OfflineManager";
 import { __resetOfflineStoreForTests, pinOfflineCopy } from "./offline-store";
 
@@ -67,8 +68,8 @@ it("lists a pinned document, opens it, and removes it individually", async () =>
   screen.getByRole("button", { name: "Bekijken" }).click();
   await vi.waitFor(() => expect(openSpy).toHaveBeenCalled());
 
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   screen.getByRole("button", { name: "Verwijderen" }).click();
+  await answerConfirmation("Niet meer bewaren");
   await screen.findByText("“Insurance policy” is niet langer offline beschikbaar.");
   expect(screen.queryByText("Insurance policy")).toBeNull();
 });
@@ -118,11 +119,11 @@ it("clears every pinned copy on this device after confirmation", async () => {
     bytes: new TextEncoder().encode("{}").buffer as ArrayBuffer,
   });
 
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   render(<AuthProvider><OfflineManager /></AuthProvider>);
   await screen.findByText("Insurance policy");
 
   screen.getByRole("button", { name: "Alles wissen" }).click();
+  await answerConfirmation("Alles wissen");
   await screen.findByText("Alle offline kopieën op dit toestel zijn verwijderd.");
   await screen.findByText("Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of planningsstap om het hier te laten verschijnen.");
   expect(screen.queryByText("Insurance policy")).toBeNull();

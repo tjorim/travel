@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { MediaAsset, MediaDerivative, Trip } from "../tracker-model";
 import { MediaManager } from "./MediaManager";
 
@@ -46,10 +47,10 @@ it("lists a new upload straight away and selects it", async () => {
 });
 
 it("removes a deleted photo and its derivatives from the screen", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   renderMedia();
   await screen.findByText("kust.jpg");
   fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[0]);
+  await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("kust.jpg")).toBeNull());
   expect(screen.getByText("markt.jpg")).toBeTruthy();
   expect(screen.getByText("Privémedia verwijderd. Eventuele momentkoppelingen zijn ook weggehaald.")).toBeTruthy();
@@ -71,7 +72,6 @@ it("creates a derivative within the allowed size and lists it", async () => {
 });
 
 it("shows an approved derivative and drops a deleted one without a reload", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   api.on("POST", /\/media\/p1\/derivatives\/x1\/approve$/, () => { const rows = api.rows("/api/trips/trip/media/p1/derivatives"); rows[0].review_state = "approved"; return rows[0]; });
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "Expliciet goedkeuren" }));
@@ -79,6 +79,7 @@ it("shows an approved derivative and drops a deleted one without a reload", asyn
   expect(screen.queryByText("Wacht op goedkeuring")).toBeNull();
   const derivativeRow = screen.getByText("Goedgekeurde afgeleide").closest("article")!;
   fireEvent.click(Array.from(derivativeRow.querySelectorAll("button")).find((button) => button.textContent === "Verwijderen")!);
+  await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("Goedgekeurde afgeleide")).toBeNull());
   expect(screen.getByText("Afgeleide verwijderd en uit eventuele deelscopes gehaald.")).toBeTruthy();
 });

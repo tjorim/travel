@@ -37,6 +37,16 @@ All notable changes to the travel hub are documented here.
   accordance with provider terms. Deleted media and itinerary entries also
   remove their local copy immediately. ([#131](https://github.com/tjorim/travel/issues/131))
 
+### Changed
+
+- Replaced the last browser `confirm()` prompts in the owner PWA with the
+  accessible in-app confirmation already used by the record dialogs: deleting
+  a trip, document, medium, derivative, planning step, broad route, moment or
+  emergency-info entry, disconnecting a provider, and removing offline copies.
+  The confirmation is a modal with a focus trap, Escape and return focus, and
+  states what will happen before anything is sent.
+  ([#157](https://github.com/tjorim/travel/issues/157))
+
 ### Fixed
 
 - Editing an existing record in a `useRecordForm` editor opened blank because

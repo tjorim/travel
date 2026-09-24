@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { BroadRoute, RecordedTrack, Trip } from "../tracker-model";
 import { TrackManager } from "./TrackManager";
 
@@ -39,11 +40,11 @@ it("shows an edited broad route at once, opening the editor with its saved line"
   expect(screen.getByRole("button", { name: "Brede route maken" })).toBeTruthy();
 });
 
-it("forgets a deleted broad route after the browser confirmation", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+it("forgets a deleted broad route after the in-app confirmation", async () => {
   renderWithOwner(<TrackManager trip={trip} />);
   await screen.findByText("Westkust");
   fireEvent.click(routeRow("Westkust").querySelector("button.danger")!);
+  await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("Westkust")).toBeNull());
   expect(screen.getByText("Oostkust")).toBeTruthy();
   expect(screen.getByText("Brede route verwijderd.")).toBeTruthy();

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { RecordForm, SelectField, TextField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
@@ -62,6 +63,7 @@ function PresentationForm({ derivative, excerpts, save }: { derivative: MediaDer
 }
 
 export function MediaManager({ trip }: { trip: Trip }) {
+  const confirmation = useConfirmation();
   const owner = useOwner();
   const offline = useOfflineCopies();
   const navigate = useNavigate();
@@ -165,7 +167,10 @@ export function MediaManager({ trip }: { trip: Trip }) {
   }
 
   function erase(asset: MediaAsset) {
-    if (!window.confirm(`Verwijder “${asset.original_filename ?? "dit medium"}” uit deze reis?`)) return;
+    confirmation.ask({ title: `“${asset.original_filename ?? "dit medium"}” uit deze reis verwijderen?`, description: "Eventuele momentkoppelingen worden ook weggehaald.", onConfirm: () => performErase(asset) });
+  }
+
+  function performErase(asset: MediaAsset) {
     remove.mutateAsync(asset).then(async () => {
       await offline.removeByResource("media_asset", asset.id);
       setSelectedId(null);
@@ -197,8 +202,12 @@ export function MediaManager({ trip }: { trip: Trip }) {
   }
 
   function eraseDerivative(derivative: MediaDerivative) {
-    if (!selected || !window.confirm("Verwijder deze afgeleide? Hij wordt direct uit eventuele deelscopes gehaald.")) return;
-    removeDerivative.mutateAsync({ assetId: selected.id, derivative }).then(() => setNotice("Afgeleide verwijderd en uit eventuele deelscopes gehaald."), fail("De afgeleide kon niet worden verwijderd."));
+    if (!selected) return;
+    confirmation.ask({ title: "Deze afgeleide verwijderen?", description: "Hij wordt direct uit eventuele deelscopes gehaald.", onConfirm: () => performEraseDerivative(selected, derivative) });
+  }
+
+  function performEraseDerivative(asset: MediaAsset, derivative: MediaDerivative) {
+    removeDerivative.mutateAsync({ assetId: asset.id, derivative }).then(() => setNotice("Afgeleide verwijderd en uit eventuele deelscopes gehaald."), fail("De afgeleide kon niet worden verwijderd."));
   }
 
   function startProvider(provider: ImportSession["provider"]) {
@@ -283,5 +292,6 @@ export function MediaManager({ trip }: { trip: Trip }) {
       </RecordForm>}
       {derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="scope-item" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.purpose.replace("_", " ")} · {derivative.width && derivative.height ? `${derivative.width} × ${derivative.height}` : "afmetingen onbekend"}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De private afgeleide kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ assetId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Delen vraagt nog altijd een aparte scope."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}<button className="danger compact" type="button" onClick={() => eraseDerivative(derivative)}>Verwijderen</button></div>{derivative.purpose === "share" && <PresentationForm key={derivative.id} derivative={derivative} excerpts={trip.moment_excerpts} save={async (values) => { await presentation.mutateAsync({ assetId: selected.id, derivative, values }); setNotice("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar."); }} />}</article>)}</div>}
     </div>}
+    {confirmation.dialog}
   </section>;
 }

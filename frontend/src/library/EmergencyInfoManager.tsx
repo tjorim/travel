@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage } from "../query/api";
@@ -19,6 +20,7 @@ const blank = (): Values => ({ kind: "contact", label: "", value: "", notes: "" 
 const fromEntry = (entry: EmergencyInfoEntry): Values => ({ kind: entry.kind, label: entry.label, value: entry.value, notes: entry.notes ?? "" });
 
 export function EmergencyInfoManager() {
+  const confirmation = useConfirmation();
   const offline = useOfflineCopies();
   const entriesQuery = useLibrary("emergency-info");
   const entries = entriesQuery.data ?? [];
@@ -51,7 +53,10 @@ export function EmergencyInfoManager() {
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
 
   function erase(entry: EmergencyInfoEntry) {
-    if (!window.confirm(`Verwijder “${entry.label}”?`)) return;
+    confirmation.ask({ title: `“${entry.label}” verwijderen?`, onConfirm: () => performErase(entry) });
+  }
+
+  function performErase(entry: EmergencyInfoEntry) {
     remove.mutateAsync(entry).then(async () => {
       await offline.removeByResource("emergency_info", entry.id);
       if (editingId === entry.id) newEntry();
@@ -99,5 +104,6 @@ export function EmergencyInfoManager() {
       </div>
     </article>)}</div>}
     {!entries.length && !entriesQuery.isPending && <p>Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.</p>}
+    {confirmation.dialog}
   </section>;
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField, TextAreaField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage, openOwnerFile } from "../query/api";
 import { ownerKeys } from "../query/keys";
@@ -30,6 +31,7 @@ const validCoordinates = ({ value }: { value: string }) => {
 const trackDate = (label: string) => ({ value }: { value: string }) => value ? undefined : `Geef de ${label} op.`;
 
 export function TrackManager({ trip }: { trip: Trip }) {
+  const confirmation = useConfirmation();
   const owner = useOwner();
   const tracksQuery = useTripResource(trip.id, "recorded-tracks");
   const routesQuery = useTripResource(trip.id, "broad-routes");
@@ -94,7 +96,10 @@ export function TrackManager({ trip }: { trip: Trip }) {
   function newRoute() { setEditingRouteId(null); routeRecord.load(blankRoute()); }
   function editRoute(route: BroadRoute) { setEditingRouteId(route.id); routeRecord.load({ label: route.label, datePrecision: route.date_precision, coordinates: JSON.stringify(route.geometry.coordinates) }); }
   function eraseRoute(route: BroadRoute) {
-    if (!window.confirm(`Verwijder brede route “${route.label}”?`)) return;
+    confirmation.ask({ title: `Brede route “${route.label}” verwijderen?`, onConfirm: () => performEraseRoute(route) });
+  }
+
+  function performEraseRoute(route: BroadRoute) {
     removeRoute.mutateAsync(route).then(() => { if (editingRouteId === route.id) newRoute(); setMessage("Brede route verwijderd."); }, (error: unknown) => setMessage(errorMessage(error, "De brede route kon niet worden verwijderd.")));
   }
   function openTrack(track: RecordedTrack) {
@@ -129,5 +134,6 @@ export function TrackManager({ trip }: { trip: Trip }) {
       </RecordForm>
       {routes.length > 0 && <div className="saved-moments manager-list">{routes.map((route) => <article className="excerpt-row" key={route.id}><div><strong>{route.label}</strong><span>{route.date_precision} · {route.geometry.coordinates.length} algemene punten</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => editRoute(route)}>Bewerken</button><button className="danger compact" type="button" onClick={() => eraseRoute(route)}>Verwijderen</button></div></article>)}</div>}
     </div>
+    {confirmation.dialog}
   </section>;
 }

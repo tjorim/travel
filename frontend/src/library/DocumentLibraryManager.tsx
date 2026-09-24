@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
@@ -12,6 +13,7 @@ type Values = { title: string; kind: OwnerDocument["document_kind"]; linkedTripI
 const blank = (): Values => ({ title: "", kind: "other", linkedTripId: "" });
 
 export function DocumentLibraryManager() {
+  const confirmation = useConfirmation();
   const owner = useOwner();
   const offline = useOfflineCopies();
   const documentsQuery = useLibrary("documents");
@@ -56,7 +58,10 @@ export function DocumentLibraryManager() {
   const tripTitle = (tripId: string) => trips.find((trip) => trip.id === tripId)?.title ?? "verwijderde reis";
 
   function erase(document: OwnerDocument) {
-    if (!window.confirm(`Verwijder document “${document.title}”?`)) return;
+    confirmation.ask({ title: `Document “${document.title}” verwijderen?`, onConfirm: () => performErase(document) });
+  }
+
+  function performErase(document: OwnerDocument) {
     remove.mutateAsync(document).then(async () => {
       await offline.removeByResource("library_document", document.id);
       setNotice("Document verwijderd.");
@@ -105,5 +110,6 @@ export function DocumentLibraryManager() {
       </div>
     </article>)}</div>}
     {!documents.length && !documentsQuery.isPending && <p>Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.</p>}
+    {confirmation.dialog}
   </section>;
 }
