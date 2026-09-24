@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
+import { errorMessage } from "../query/api";
+import { useRefreshTrip, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { apiError, apiHeaders, browserTimeZone, daysBetween, localDate, localDateTime, timeZoneOptions, wallClock, type DocumentAsset, type TransportLeg, type Trip } from "../tracker-model";
 
@@ -40,7 +42,9 @@ function emptyDraft() {
 
 export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?: () => void }) {
   const { session } = useAuth();
-  const [legs, setLegs] = useState<TransportLeg[]>([]);
+  const legsQuery = useTripResource(trip.id, "transport-legs");
+  const legs = legsQuery.data ?? [];
+  const refresh = useRefreshTrip();
   const [documents, setDocuments] = useState<DocumentAsset[]>([]);
   const [message, setMessage] = useState("Laad je private transportonderdelen…");
   const [draft, setDraft] = useState(emptyDraft());
@@ -49,20 +53,21 @@ export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?:
   const [selectedLeg, setSelectedLeg] = useState<TransportLeg | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TransportLeg | null>(null);
 
-  async function load() {
+  // Legs come from the shared query (the overview reads the same records); only the documents are local.
+  async function loadDocuments() {
     if (!session) return;
-    const [legsResponse, documentsResponse] = await Promise.all([
-      fetch(`/api/trips/${trip.id}/transport-legs`, { headers: apiHeaders(session) }),
-      fetch(`/api/trips/${trip.id}/documents`, { headers: apiHeaders(session) }),
-    ]);
-    if (!legsResponse.ok) return apiError(legsResponse, "Je transportonderdelen konden niet worden geladen.");
+    const documentsResponse = await fetch(`/api/trips/${trip.id}/documents`, { headers: apiHeaders(session) });
     if (!documentsResponse.ok) return apiError(documentsResponse, "Je documenten konden niet worden geladen.");
-    setLegs(await legsResponse.json() as TransportLeg[]);
     setDocuments(await documentsResponse.json() as DocumentAsset[]);
     setMessage("Vluchten en ander vervoer blijven private details tot je bewust een aparte etappe of route deelt.");
   }
 
-  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je transportonderdelen konden niet worden geladen.")); }, [session, trip.id]);
+  /** After a write: refetch the shared legs and this manager's documents. */
+  async function load() {
+    await Promise.all([refresh.resources(trip.id, ["transport-legs"]), loadDocuments()]);
+  }
+
+  useEffect(() => { void loadDocuments().catch((error: unknown) => setMessage(errorMessage(error, "Je documenten konden niet worden geladen."))); }, [session, trip.id]);
 
   function newLeg() { const next = emptyDraft(); setDraft(next); setInitial(next); setEditorOpen(true); }
 
@@ -120,7 +125,7 @@ export function TransportLegManager({ trip, onChange }: { trip: Trip; onChange?:
 
   return <section className="card manager" aria-labelledby="transport-title">
     <div className="capture-heading"><div><h3 id="transport-title">Vluchten &amp; ander vervoer</h3><p>Vluchtnummers, exacte tijden en boekingsreferenties zijn uitsluitend privé. Een gedeelde etappe blijft een aparte, bewust geschreven route-stap.</p></div><button className="secondary compact" type="button" onClick={newLeg}>Nieuw onderdeel</button></div>
-    <p className="help" role="status">{message}</p>
+    <p className="help" role="status">{legsQuery.error ? errorMessage(legsQuery.error, "Je transportonderdelen konden niet worden geladen.") : message}</p>
     <RecordDialog open={editorOpen} title={draft.id ? "Transportonderdeel bewerken" : "Transportonderdeel toevoegen"} dirty={JSON.stringify(draft) !== JSON.stringify(initial)} onDismiss={() => setEditorOpen(false)}><form className="stack-form" onSubmit={(event) => void saveLeg(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het transportonderdeel kon niet worden opgeslagen."))}>
       <div className="field-row">
         <label>Type<select value={draft.kind} onChange={(event) => setDraft((current) => ({ ...current, kind: event.target.value as TransportLeg["kind"] }))}>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

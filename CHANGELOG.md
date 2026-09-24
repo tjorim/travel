@@ -6,6 +6,18 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added a TanStack Query and TanStack Form foundation to the owner PWA: one
+  authenticated fetcher, subject-scoped query keys that never share a cache
+  with the public or unlisted views, deliberate abort/401/offline/retry
+  defaults, targeted invalidation and safe optimistic updates, and a shared
+  accessible form editor contract (validation, dirty state, pending state,
+  server errors, reset after success). The owner home, trip list and editor,
+  trip overview and private tasks use it; the trip editor now opens with the
+  selected trip's saved values. Devtools are opt-in in development
+  (`VITE_QUERY_DEVTOOLS=1`) and never bundled for production. The remaining
+  screens follow in [#165](https://github.com/tjorim/travel/issues/165).
+  ([#161](https://github.com/tjorim/travel/issues/161))
+
 - Extended owner-selected, encrypted offline copies to private media,
   individual itinerary entries and GeoJSON map/route snapshots. Each resource
   has owner-scoped revalidation; map tiles are deliberately not cached, in

@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth-context";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { errorMessage } from "../query/api";
+import { useRefreshTrip, useTripResource } from "../query/owner-queries";
 import { addDays, apiError, apiHeaders, daysBetween, formatDay, stayLabel, type BroadPlace, type BroadStayCard, type Stay, type Trip } from "../tracker-model";
 
 const STATUS_LABELS: Record<Stay["status"], string> = { planned: "Gepland", booked: "Geboekt", confirmed: "Bevestigd", cancelled: "Geannuleerd" };
@@ -19,7 +21,9 @@ function emptyStayDraft(trip: Trip) {
 
 export function StayManager({ trip, broadPlaces, onChange }: { trip: Trip; broadPlaces: BroadPlace[]; onChange?: () => void }) {
   const { session } = useAuth();
-  const [stays, setStays] = useState<Stay[]>([]);
+  const staysQuery = useTripResource(trip.id, "stays");
+  const stays = staysQuery.data ?? [];
+  const refresh = useRefreshTrip();
   const [cards, setCards] = useState<BroadStayCard[]>([]);
   const [message, setMessage] = useState("Laad je private verblijven…");
   const [stayDraft, setStayDraft] = useState(() => emptyStayDraft(trip));
@@ -31,20 +35,21 @@ export function StayManager({ trip, broadPlaces, onChange }: { trip: Trip; broad
   const [cardInitial, setCardInitial] = useState({ id: null as string | null, broadPlaceId: "", title: "", datePrecision: "month" as BroadStayCard["date_precision"] });
   const [deleteTarget, setDeleteTarget] = useState<{ kind: "stay"; item: Stay } | { kind: "card"; item: BroadStayCard } | null>(null);
 
-  async function load() {
+  // Stays come from the shared query (the overview reads the same records); only the cards are local.
+  async function loadCards() {
     if (!session) return;
-    const [staysResponse, cardsResponse] = await Promise.all([
-      fetch(`/api/trips/${trip.id}/stays`, { headers: apiHeaders(session) }),
-      fetch(`/api/trips/${trip.id}/broad-stay-cards`, { headers: apiHeaders(session) }),
-    ]);
-    if (!staysResponse.ok) return apiError(staysResponse, "Je verblijven konden niet worden geladen.");
+    const cardsResponse = await fetch(`/api/trips/${trip.id}/broad-stay-cards`, { headers: apiHeaders(session) });
     if (!cardsResponse.ok) return apiError(cardsResponse, "Je brede verblijfskaarten konden niet worden geladen.");
-    setStays(await staysResponse.json() as Stay[]);
     setCards(await cardsResponse.json() as BroadStayCard[]);
     setMessage("Verblijven blijven private details. Brede kaarten worden altijd afzonderlijk geschreven.");
   }
 
-  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je verblijven konden niet worden geladen.")); }, [session, trip.id]);
+  /** After a write: refetch the shared stays and this manager's cards. */
+  async function load() {
+    await Promise.all([refresh.resources(trip.id, ["stays"]), loadCards()]);
+  }
+
+  useEffect(() => { void loadCards().catch((error: unknown) => setMessage(errorMessage(error, "Je brede verblijfskaarten konden niet worden geladen."))); }, [session, trip.id]);
 
   function newStay() {
     const next = emptyStayDraft(trip); setStayDraft(next); setStayInitial(next); setStayEditor(true);
@@ -110,7 +115,7 @@ export function StayManager({ trip, broadPlaces, onChange }: { trip: Trip; broad
 
   return <section className="card manager" aria-labelledby="stays-title">
     <div className="capture-heading"><div><h3 id="stays-title">Verblijven</h3><p>Een verblijf is een reeks nachten: inchecken de namiddag van de eerste nacht, uitchecken de ochtend erna. Adressen, boekingen en contactgegevens zijn uitsluitend privé.</p></div><button className="secondary compact" type="button" onClick={newStay}>Nieuw verblijf</button></div>
-    <p className="help" role="status">{message}</p>
+    <p className="help" role="status">{staysQuery.error ? errorMessage(staysQuery.error, "Je verblijven konden niet worden geladen.") : message}</p>
     <RecordDialog open={stayEditor} title={stayDraft.id ? "Verblijf bewerken" : "Verblijf toevoegen"} dirty={JSON.stringify(stayDraft) !== JSON.stringify(stayInitial)} onDismiss={() => setStayEditor(false)}><form className="stack-form" onSubmit={(event) => void saveStay(event).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Het verblijf kon niet worden opgeslagen."))}>
       <div className="field-row"><label>Stad of gebied <span className="optional">(optioneel)</span><select value={stayDraft.broadPlaceId} onChange={(event) => setStayDraft((draft) => ({ ...draft, broadPlaceId: event.target.value }))}><option value="">Geen brede plaats</option>{broadPlaces.map((place) => <option key={place.id} value={place.id}>{place.label}</option>)}</select></label><label>Status<select value={stayDraft.status} onChange={(event) => setStayDraft((draft) => ({ ...draft, status: event.target.value as Stay["status"] }))}>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
       <label>Accommodatie <span className="optional">(leeg zolang je nog kiest)</span><input maxLength={160} value={stayDraft.propertyName} onChange={(event) => setStayDraft((draft) => ({ ...draft, propertyName: event.target.value, placeChanged: true }))} /></label>

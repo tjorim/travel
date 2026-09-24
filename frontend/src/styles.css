@@ -59,6 +59,9 @@ label { display: grid; gap: 7px; color: #27483e; font-size: .9rem; font-weight: 
 input, textarea, select { width: 100%; padding: 11px 12px; border: 1px solid #9eb4aa; border-radius: 9px; background: #fff; color: #19342d; font: inherit; font-weight: 400; }
 textarea { min-height: 136px; resize: vertical; }
 .field-row { display: grid; gap: 14px; }
+.field { display: grid; gap: 6px; align-content: start; }
+.field-error { color: #a63b32; font-size: .85rem; font-weight: 700; }
+.form-error { margin: 0; padding: 9px 11px; border-radius: 9px; background: #fbeceb; color: #8a2e27; font-size: .9rem; font-weight: 700; }
 .publication { display: grid; gap: 3px; border: 1px solid #d1b971; background: #fff6d9; color: #65551d; }
 .admin-trip-detail { display: grid; gap: 18px; }
 .admin-detail-section { display: grid; gap: 12px; }

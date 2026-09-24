@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
@@ -15,6 +16,7 @@ const navigation = [
 
 export function Boundary({ children }: { children: ReactNode }) {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
 
   function signIn() {
     void beginSignIn(window.location.pathname.replace(/^\/admin(?=\/|$)/, "") || "/");
@@ -24,6 +26,7 @@ export function Boundary({ children }: { children: ReactNode }) {
     if (!session) return;
     const subject = decodeSubject(session.accessToken);
     if (subject) await wipeOfflineData(subject).catch(() => undefined);
+    queryClient.clear();
     beginSignOut(session);
   }
 

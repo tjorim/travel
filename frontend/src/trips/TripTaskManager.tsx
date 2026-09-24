@@ -1,32 +1,135 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { useAuth } from "../auth-context";
+import { useState } from "react";
+
+import { RecordForm, requiredText, TextAreaField, TextField } from "../forms/fields";
+import { useRecordForm } from "../forms/useRecordForm";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { apiError, apiHeaders, localDateTime, type TaskLink, type TripTaskAlert, type TripTask, type Trip } from "../tracker-model";
+import { ownerKeys } from "../query/keys";
+import { errorMessage } from "../query/api";
+import { tripPath, useMarkAlertRead, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { localDateTime, type TaskLink, type Trip, type TripTask } from "../tracker-model";
+
 const MAX_LINKS = 5;
-type Draft = { id: string | null; title: string; notes: string; dueDate: string; remindAt: string; links: TaskLink[] };
-const empty = (): Draft => ({ id: null, title: "", notes: "", dueDate: "", remindAt: "", links: [] });
-const fromTask = (task: TripTask): Draft => ({ id: task.id, title: task.title, notes: task.notes ?? "", dueDate: task.due_date ?? "", remindAt: task.remind_at ? localDateTime(new Date(task.remind_at)) : "", links: task.links.map((link) => ({ ...link })) });
-function TaskLinks({ links }: { links: TaskLink[] }) { return links.length ? <span className="task-links">{links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" referrerPolicy="no-referrer">{link.label} ↗</a>)}</span> : null; }
+type Values = { title: string; notes: string; dueDate: string; remindAt: string; links: TaskLink[] };
+const blank = (): Values => ({ title: "", notes: "", dueDate: "", remindAt: "", links: [] });
+const fromTask = (task: TripTask): Values => ({ title: task.title, notes: task.notes ?? "", dueDate: task.due_date ?? "", remindAt: task.remind_at ? localDateTime(new Date(task.remind_at)) : "", links: task.links.map((link) => ({ ...link })) });
+const serverFields = { title: "title", notes: "notes", due_date: "dueDate", remind_at: "remindAt" };
+
+function TaskLinks({ links }: { links: TaskLink[] }) {
+  return links.length ? <span className="task-links">{links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" referrerPolicy="no-referrer">{link.label} ↗</a>)}</span> : null;
+}
+
+const isHttps = (url: string) => url.trim().startsWith("https://");
+const linkNameError = ({ value, fieldApi }: { value: string; fieldApi: { form: { getFieldValue: (name: never) => unknown } } }, index: number) =>
+  !value.trim() && String(fieldApi.form.getFieldValue(`links[${index}].url` as never) ?? "").trim() ? "Geef de link een naam." : undefined;
+const linkUrlError = ({ value, fieldApi }: { value: string; fieldApi: { form: { getFieldValue: (name: never) => unknown } } }, index: number) => {
+  const named = String(fieldApi.form.getFieldValue(`links[${index}].label` as never) ?? "").trim() !== "";
+  if (!value.trim()) return named ? "Geef een https-adres op." : undefined;
+  return isHttps(value) ? undefined : "Gebruik een https-adres.";
+};
 
 export function TripTaskManager({ trip, onChange }: { trip: Trip; onChange?: () => void }) {
-  const { session } = useAuth(); const [tasks, setTasks] = useState<TripTask[]>([]); const [alerts, setAlerts] = useState<TripTaskAlert[]>([]); const [message, setMessage] = useState("Laad je private takenlijst…");
-  const [draft, setDraft] = useState<Draft>(empty()); const [initial, setInitial] = useState<Draft>(empty()); const [selected, setSelected] = useState<TripTask | null>(null); const [editing, setEditing] = useState(false); const [confirmDelete, setConfirmDelete] = useState(false);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
-  async function load() { if (!session) return; const [response, alertsResponse] = await Promise.all([fetch(`/api/trips/${trip.id}/trip-tasks`, { headers: apiHeaders(session) }), fetch(`/api/trips/${trip.id}/task-alerts`, { headers: apiHeaders(session) })]); if (!response.ok) return apiError(response, "Je taken konden niet worden geladen."); if (!alertsResponse.ok) return apiError(alertsResponse, "Je meldingen konden niet worden geladen."); setTasks(await response.json() as TripTask[]); setAlerts(await alertsResponse.json() as TripTaskAlert[]); setMessage("Openstaande boekingen en voorbereidingen blijven een private lijst."); }
-  useEffect(() => { void load().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Je taken konden niet worden geladen.")); }, [session, trip.id]);
-  function close() { setSelected(null); setEditing(false); setConfirmDelete(false); setDraft(empty()); setInitial(empty()); }
-  function create() { const next = empty(); setDraft(next); setInitial(next); setSelected(null); setEditing(true); }
-  function inspect(task: TripTask) { setSelected(task); setEditing(false); setConfirmDelete(false); }
-  function edit(task: TripTask) { const next = fromTask(task); setDraft(next); setInitial(next); setSelected(task); setEditing(true); }
-  async function save(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!session) return; const links = draft.links.map((link) => ({ label: link.label.trim(), url: link.url.trim() })).filter((link) => link.label || link.url); if (links.some((link) => !link.label || !link.url.startsWith("https://"))) throw new Error("Geef elke link een naam en een https-adres."); const payload = { title: draft.title.trim(), notes: draft.notes.trim() || null, due_date: draft.dueDate || null, remind_at: draft.remindAt ? new Date(draft.remindAt).toISOString() : null, links }; const response = await fetch(draft.id ? `/api/trips/${trip.id}/trip-tasks/${draft.id}` : `/api/trips/${trip.id}/trip-tasks`, { method: draft.id ? "PATCH" : "POST", headers: apiHeaders(session), body: JSON.stringify(payload) }); if (!response.ok) return apiError(response, "De taak kon niet worden opgeslagen."); await load(); onChange?.(); close(); setMessage("Taak opgeslagen."); }
-  async function toggle(task: TripTask) { if (!session) return; const response = await fetch(`/api/trips/${trip.id}/trip-tasks/${task.id}`, { method: "PATCH", headers: apiHeaders(session), body: JSON.stringify({ completed: !task.completed_at }) }); if (!response.ok) return apiError(response, "De taak kon niet worden bijgewerkt."); await load(); onChange?.(); setMessage(task.completed_at ? "Taak heropend." : "Taak afgevinkt."); }
-  async function remove(task: TripTask) { if (!session) return; const response = await fetch(`/api/trips/${trip.id}/trip-tasks/${task.id}`, { method: "DELETE", headers: apiHeaders(session) }); if (!response.ok) return apiError(response, "De taak kon niet worden verwijderd."); await load(); onChange?.(); close(); setMessage("Taak verwijderd."); }
-  async function markRead(alert: TripTaskAlert) { if (!session) return; const response = await fetch(`/api/trips/${trip.id}/task-alerts/${alert.id}/read`, { method: "PATCH", headers: apiHeaders(session) }); if (!response.ok) return apiError(response, "De melding kon niet worden bijgewerkt."); await load(); }
-  const fail = (fallback: string) => (error: unknown) => setMessage(error instanceof Error ? error.message : fallback); const openTasks = tasks.filter((task) => !task.completed_at).sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999")); const completedTasks = tasks.filter((task) => task.completed_at);
-  const TaskRow = ({ task }: { task: TripTask }) => <article className={`excerpt-row${task.completed_at ? " completed" : ""}`}><button className="document-select" type="button" onClick={() => inspect(task)} aria-label={`Taak ${task.title} bekijken`}><strong>{task.title}</strong><span>{task.completed_at ? `Afgevinkt${task.due_date ? ` · was voor ${task.due_date}` : ""}` : `${task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}${task.remind_at ? ` · Herinnering ${new Intl.DateTimeFormat("nl-BE", { dateStyle: "short", timeStyle: "short" }).format(new Date(task.remind_at))}` : ""}`}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => void toggle(task).catch(fail("De taak kon niet worden bijgewerkt."))}>{task.completed_at ? "Heropenen" : "Afvinken"}</button></div></article>;
-  return <section className="card manager" aria-labelledby="tasks-title"><div className="capture-heading"><div><h3 id="tasks-title">Nog te regelen</h3><p>Een deadline sorteert taken. Kies apart een herinnering; meldingen verschijnen hier en worden per e-mail verstuurd zodra de geplande verwerking draait.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe taak</button></div><p className="help" role="status">{message}</p>
-    {alerts.length > 0 && <div className="manager-subsection"><h4>Meldingen</h4><div className="saved-moments manager-list">{alerts.map((alert) => <article className="excerpt-row" key={alert.id}><div><strong>{alert.title}</strong><span>Geplande herinnering{alert.read_at ? " · Gelezen" : " · Nieuw"}{alert.email_sent_at ? " · E-mail verzonden" : alert.email_attempts >= 5 ? " · E-mailbezorging mislukt" : " · E-mail nog niet verzonden"}</span></div>{!alert.read_at && <button className="secondary compact" type="button" onClick={() => void markRead(alert).catch(fail("De melding kon niet worden bijgewerkt."))}>Gelezen</button>}</article>)}</div></div>}
-    {tasks.length > 0 && <div className="saved-moments manager-list">{openTasks.map((task) => <TaskRow key={task.id} task={task} />)}{completedTasks.map((task) => <TaskRow key={task.id} task={task} />)}</div>}{!tasks.length && <p>Nog geen taken. Voeg er één toe zodra iets nog geboekt of geregeld moet worden.</p>}
-    <RecordDialog open={editing || selected !== null} title={editing ? (draft.id ? "Taak bewerken" : "Taak toevoegen") : "Taak"} dirty={editing && dirty} onDismiss={close}>{!editing && selected && <div className="stack-form"><div><h3>{selected.title}</h3>{selected.notes && <p>{selected.notes}</p>}<TaskLinks links={selected.links} /></div><div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => setConfirmDelete(true)}>Verwijderen</button></div>{confirmDelete && <DeleteConfirmation title={`Taak “${selected.title}” verwijderen?`} onCancel={() => setConfirmDelete(false)} onConfirm={() => void remove(selected).catch(fail("De taak kon niet worden verwijderd."))} />}</div>}{editing && <form className="stack-form" onSubmit={(event) => void save(event).catch(fail("De taak kon niet worden opgeslagen."))}><div className="field-row"><label>Titel<input required maxLength={160} value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label><label>Deadline <span className="optional">(optioneel)</span><input type="date" value={draft.dueDate} onChange={(event) => setDraft((current) => ({ ...current, dueDate: event.target.value }))} /></label></div><label>Herinnering <span className="optional">(optioneel)</span><input type="datetime-local" value={draft.remindAt} onChange={(event) => setDraft((current) => ({ ...current, remindAt: event.target.value }))} /></label><label>Notities <span className="optional">(optioneel)</span><textarea maxLength={4000} rows={3} value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} /></label><fieldset><legend>Links <span className="optional">(optioneel, https)</span></legend>{draft.links.map((link, index) => <div className="field-row" key={index}><label>Naam<input maxLength={80} value={link.label} onChange={(event) => setDraft((current) => ({ ...current, links: current.links.map((value, position) => position === index ? { ...value, label: event.target.value } : value) }))} /></label><label>Adres<input type="url" pattern="https://.*" maxLength={2048} value={link.url} onChange={(event) => setDraft((current) => ({ ...current, links: current.links.map((value, position) => position === index ? { ...value, url: event.target.value } : value) }))} /></label><button className="secondary compact" type="button" onClick={() => setDraft((current) => ({ ...current, links: current.links.filter((_, position) => position !== index) }))}>Link verwijderen</button></div>)}{draft.links.length < MAX_LINKS && <button className="secondary compact" type="button" onClick={() => setDraft((current) => ({ ...current, links: [...current.links, { label: "", url: "" }] }))}>Link toevoegen</button>}</fieldset><button type="submit">{draft.id ? "Taak opslaan" : "Taak toevoegen"}</button></form>}</RecordDialog>
+  const tasksQuery = useTripResource(trip.id, "trip-tasks");
+  const alertsQuery = useTripResource(trip.id, "task-alerts");
+  const tasks = tasksQuery.data ?? [];
+  const alerts = alertsQuery.data ?? [];
+  const [notice, setNotice] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const selected = tasks.find((task) => task.id === selectedId) ?? null;
+  const editing = editingId !== undefined;
+
+  const taskKeys = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "trip-tasks"), ownerKeys.tripResource(subject, trip.id, "task-alerts")];
+  const saveTask = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, TripTask>({
+    fallback: "De taak kon niet worden opgeslagen.",
+    request: ({ id, payload }) => ({ path: id ? `${tripPath(trip.id, "trip-tasks")}/${id}` : tripPath(trip.id, "trip-tasks"), method: id ? "PATCH" : "POST", body: payload }),
+    invalidate: taskKeys,
+  });
+  const toggleTask = useOwnerMutation<TripTask, TripTask>({
+    fallback: "De taak kon niet worden bijgewerkt.",
+    request: (task) => ({ path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`, method: "PATCH", body: { completed: !task.completed_at } }),
+    invalidate: taskKeys,
+    optimistic: {
+      key: (subject) => ownerKeys.tripResource(subject, trip.id, "trip-tasks"),
+      update: (current: TripTask[], task) => current.map((item) => item.id === task.id ? { ...item, completed_at: task.completed_at ? null : new Date().toISOString() } : item),
+    },
+  });
+  const deleteTask = useOwnerMutation<TripTask>({
+    fallback: "De taak kon niet worden verwijderd.",
+    request: (task) => ({ path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`, method: "DELETE" }),
+    invalidate: taskKeys,
+    optimistic: {
+      key: (subject) => ownerKeys.tripResource(subject, trip.id, "trip-tasks"),
+      update: (current: TripTask[], task) => current.filter((item) => item.id !== task.id),
+    },
+  });
+  const markRead = useMarkAlertRead();
+
+  const record = useRecordForm<Values>({
+    defaultValues: blank(),
+    fallback: "De taak kon niet worden opgeslagen.",
+    serverFields,
+    submit: async (values) => {
+      const links = values.links.map((link) => ({ label: link.label.trim(), url: link.url.trim() })).filter((link) => link.label || link.url);
+      await saveTask.mutateAsync({ id: editingId ?? null, payload: { title: values.title.trim(), notes: values.notes.trim() || null, due_date: values.dueDate || null, remind_at: values.remindAt ? new Date(values.remindAt).toISOString() : null, links } });
+    },
+    onSuccess: () => { onChange?.(); close(); setNotice("Taak opgeslagen."); },
+  });
+
+  function close() { setSelectedId(null); setEditingId(undefined); setConfirmDelete(false); record.load(blank()); }
+  function create() { record.load(blank()); setSelectedId(null); setEditingId(null); }
+  function edit(task: TripTask) { record.load(fromTask(task)); setSelectedId(task.id); setEditingId(task.id); }
+  function inspect(task: TripTask) { setSelectedId(task.id); setEditingId(undefined); setConfirmDelete(false); }
+
+  const message = notice ?? (tasksQuery.error ? errorMessage(tasksQuery.error, "Je taken konden niet worden geladen.") : alertsQuery.error ? errorMessage(alertsQuery.error, "Je meldingen konden niet worden geladen.") : tasksQuery.isPending ? "Laad je private takenlijst…" : "Openstaande boekingen en voorbereidingen blijven een private lijst.");
+  const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const openTasks = tasks.filter((task) => !task.completed_at).sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
+  const completedTasks = tasks.filter((task) => task.completed_at);
+
+  function toggle(task: TripTask) {
+    toggleTask.mutateAsync(task).then(() => { onChange?.(); setNotice(task.completed_at ? "Taak heropend." : "Taak afgevinkt."); }, fail("De taak kon niet worden bijgewerkt."));
+  }
+  function remove(task: TripTask) {
+    deleteTask.mutateAsync(task).then(() => { onChange?.(); close(); setNotice("Taak verwijderd."); }, fail("De taak kon niet worden verwijderd."));
+  }
+
+  const row = (task: TripTask) => <article key={task.id} className={`excerpt-row${task.completed_at ? " completed" : ""}`}>
+    <button className="document-select" type="button" onClick={() => inspect(task)} aria-label={`Taak ${task.title} bekijken`}>
+      <strong>{task.title}</strong>
+      <span>{task.completed_at ? `Afgevinkt${task.due_date ? ` · was voor ${task.due_date}` : ""}` : `${task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}${task.remind_at ? ` · Herinnering ${new Intl.DateTimeFormat("nl-BE", { dateStyle: "short", timeStyle: "short" }).format(new Date(task.remind_at))}` : ""}`}</span>
+    </button>
+    <div className="button-row"><button className="secondary compact" type="button" onClick={() => toggle(task)}>{task.completed_at ? "Heropenen" : "Afvinken"}</button></div>
+  </article>;
+
+  return <section className="card manager" aria-labelledby="tasks-title">
+    <div className="capture-heading"><div><h3 id="tasks-title">Nog te regelen</h3><p>Een deadline sorteert taken. Kies apart een herinnering; meldingen verschijnen hier en worden per e-mail verstuurd zodra de geplande verwerking draait.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe taak</button></div>
+    <p className="help" role="status">{message}</p>
+    {alerts.length > 0 && <div className="manager-subsection"><h4>Meldingen</h4><div className="saved-moments manager-list">{alerts.map((alert) => <article className="excerpt-row" key={alert.id}><div><strong>{alert.title}</strong><span>Geplande herinnering{alert.read_at ? " · Gelezen" : " · Nieuw"}{alert.email_sent_at ? " · E-mail verzonden" : alert.email_attempts >= 5 ? " · E-mailbezorging mislukt" : " · E-mail nog niet verzonden"}</span></div>{!alert.read_at && <button className="secondary compact" type="button" onClick={() => markRead.mutateAsync({ tripId: trip.id, alertId: alert.id }).catch(fail("De melding kon niet worden bijgewerkt."))}>Gelezen</button>}</article>)}</div></div>}
+    {tasks.length > 0 && <div className="saved-moments manager-list">{openTasks.map(row)}{completedTasks.map(row)}</div>}
+    {!tasksQuery.isPending && !tasks.length && <p>Nog geen taken. Voeg er één toe zodra iets nog geboekt of geregeld moet worden.</p>}
+    <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Taak bewerken" : "Taak toevoegen") : "Taak"} dirty={editing && record.dirty} onDismiss={close}>
+      {!editing && selected && <div className="stack-form">
+        <div><h3>{selected.title}</h3>{selected.notes && <p>{selected.notes}</p>}<TaskLinks links={selected.links} /></div>
+        <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => setConfirmDelete(true)}>Verwijderen</button></div>
+        {confirmDelete && <DeleteConfirmation title={`Taak “${selected.title}” verwijderen?`} onCancel={() => setConfirmDelete(false)} onConfirm={() => remove(selected)} />}
+      </div>}
+      {editing && <RecordForm record={record} submitLabel={editingId ? "Taak opslaan" : "Taak toevoegen"} pendingLabel="Opslaan…">
+        <div className="field-row">
+          <record.form.Field name="title" validators={{ onChange: requiredText("Geef de taak een titel."), onSubmit: requiredText("Geef de taak een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</record.form.Field>
+          <record.form.Field name="dueDate">{(field) => <TextField field={field} label="Deadline" optional type="date" />}</record.form.Field>
+        </div>
+        <record.form.Field name="remindAt">{(field) => <TextField field={field} label="Herinnering" optional type="datetime-local" />}</record.form.Field>
+        <record.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
+        <record.form.Field name="links" mode="array">{(links) => <fieldset>
+          <legend>Links <span className="optional">(optioneel, https)</span></legend>
+          {links.state.value.map((_, index) => <div className="field-row" key={index}>
+            <record.form.Field name={`links[${index}].label`} validators={{ onBlur: (context) => linkNameError(context, index), onSubmit: (context) => linkNameError(context, index) }}>{(field) => <TextField field={field} label="Naam" maxLength={80} />}</record.form.Field>
+            <record.form.Field name={`links[${index}].url`} validators={{ onBlur: (context) => linkUrlError(context, index), onSubmit: (context) => linkUrlError(context, index) }}>{(field) => <TextField field={field} label="Adres" type="url" maxLength={2048} />}</record.form.Field>
+            <button className="secondary compact" type="button" onClick={() => void links.removeValue(index)}>Link verwijderen</button>
+          </div>)}
+          {links.state.value.length < MAX_LINKS && <button className="secondary compact" type="button" onClick={() => void links.pushValue({ label: "", url: "" })}>Link toevoegen</button>}
+        </fieldset>}</record.form.Field>
+      </RecordForm>}
+    </RecordDialog>
   </section>;
 }

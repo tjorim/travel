@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { useAuth } from "../auth-context";
-import { addDays, apiHeaders, browserTimeZone, daysBetween, formatDay, offsetLabel, stayCoversNight, utcOffsetMinutes, whereabouts, type Stay, type TransportLeg, type Trip, type TripTask } from "../tracker-model";
+import { useTripResource } from "../query/owner-queries";
+import { addDays, browserTimeZone, daysBetween, formatDay, offsetLabel, stayCoversNight, utcOffsetMinutes, whereabouts, type Stay, type TransportLeg, type Trip, type TripTask } from "../tracker-model";
 
 type Badge = { label: string; value: string; done: boolean };
 
@@ -61,10 +61,10 @@ export function LocalTimes({ trip, stays, legs, now, homeZone = browserTimeZone(
   return <p className="local-times" aria-live="polite">{lines.map((line) => <span key={line}>{line}</span>)}</p>;
 }
 
-export function TripOverview({ trip, revision }: { trip: Trip; revision: number }) {
-  const { session } = useAuth();
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const [plan, setPlan] = useState<{ stays: Stay[]; legs: TransportLeg[] }>({ stays: [], legs: [] });
+export function TripOverview({ trip }: { trip: Trip }) {
+  const staysQuery = useTripResource(trip.id, "stays");
+  const legsQuery = useTripResource(trip.id, "transport-legs");
+  const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -72,23 +72,14 @@ export function TripOverview({ trip, revision }: { trip: Trip; revision: number 
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (!session) return;
-    const controller = new AbortController();
-    const headers = apiHeaders(session);
-    void Promise.all(["stays", "transport-legs", "trip-tasks"].map((path) => fetch(`/api/trips/${trip.id}/${path}`, { headers, signal: controller.signal })))
-      .then(async (responses) => {
-        if (responses.some((response) => !response.ok)) throw new Error("overview");
-        const [stays, legs, tasks] = await Promise.all(responses.map((response) => response.json())) as [Stay[], TransportLeg[], TripTask[]];
-        if (!controller.signal.aborted) { setBadges(tripBadges(trip, stays, legs, tasks)); setPlan({ stays, legs }); }
-      })
-      .catch(() => { if (!controller.signal.aborted) setBadges([]); });
-    return () => controller.abort();
-  }, [session, trip, revision]);
+  const stays = staysQuery.data ?? [];
+  const legs = legsQuery.data ?? [];
+  // The badges need all three records; one failed read shows none rather than a misleading partial count.
+  const badges = useMemo(() => staysQuery.data && legsQuery.data && tasksQuery.data ? tripBadges(trip, staysQuery.data, legsQuery.data, tasksQuery.data) : [], [trip, staysQuery.data, legsQuery.data, tasksQuery.data]);
 
   const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
-  const localTimes = <LocalTimes trip={trip} stays={plan.stays} legs={plan.legs} now={now} />;
-  if (!trip.starts_on && !badges.length && !plan.stays.length && !plan.legs.length) return null;
+  const localTimes = <LocalTimes trip={trip} stays={stays} legs={legs} now={now} />;
+  if (!trip.starts_on && !badges.length && !stays.length && !legs.length) return null;
   return <section className="card trip-overview" aria-label="Reisoverzicht">
     {trip.starts_on && <p className="eyebrow">{formatDay(trip.starts_on, { day: "numeric", month: "long" })}{trip.ends_on ? ` — ${formatDay(trip.ends_on, { day: "numeric", month: "long", year: "numeric" })}` : ""}{nights ? ` · ${nights} ${nights === 1 ? "nacht" : "nachten"}` : ""}</p>}
     {localTimes}
