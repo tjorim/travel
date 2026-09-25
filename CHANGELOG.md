@@ -6,6 +6,10 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Squashed the original 30 Alembic revisions into `000_baseline`, a
+  baseline of the schema already deployed. Fresh PostgreSQL databases build
+  directly from it; existing databases at the former `0030_spots_require_areas`
+  head are stamped to the baseline without changing their tables or rows.
 - Made saved private spots reusable from stay, transport and reisupdate
   editors. Selecting one sends only its existing reference, so a Brussels
   Airport can serve both legs and a corrected stay or endpoint never silently
@@ -24,14 +28,14 @@ All notable changes to the travel hub are documented here.
   chosen precision, so the broad stay card is gone. A transport leg shows its
   endpoints on the map only when those places are shared. A photo attached to a
   reisupdate is delivered with it. Leaving `custom`, or deleting a record,
-  withdraws it from every scope. Migration `0027` is a clean break: stored
+  withdraws it from every scope. The earlier `0027` migration made a clean break: stored
   scopes lose their listed items and every record starts private.
 - Merged the private moment into the reisupdate: one record with a private part
   (notes, exact place, attached photos) and a shared part (title, text for
   visitors, date, area). Capture now creates a private reisupdate with your
   notes; you write the text for visitors later, and an update without it cannot
   be shared. Moments, their API and MCP tools, and the source-moment link are
-  gone. Migration `0028` turns each moment into a private reisupdate with the
+  gone. The earlier `0028` migration turned each moment into a private reisupdate with the
   same id, so photos and day-plan links carry over.
 - Made the reisupdate the only story record, end to end, as a clean break.
   Highlights are gone (model, API, MCP tools, editor and visitor section) and
@@ -46,7 +50,7 @@ All notable changes to the travel hub are documented here.
   delivery ignores a stale entry. Delen shows how many updates are Everyone
   or Private and offers just the Custom ones. The archive import file
   (`travel/archive-import@1`) now names them `travel_updates`, drops its highlights,
-  and imports them as private updates. Migration `0026` renames the table and column, drops the
+  and imports them as private updates. The earlier `0026` migration renamed the table and column, dropped the
   highlights and removes retired selections from stored scopes, so every
   existing update stays private until chosen otherwise; `alembic check` now
   runs in CI to prove the migrated schema matches the models, and the models
