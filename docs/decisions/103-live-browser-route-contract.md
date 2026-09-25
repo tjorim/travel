@@ -18,7 +18,7 @@ routes. The fresh-launch route boundary is specified by
 The listing uses `Cache-Control: no-store` and excludes draft, private and
 unlisted surfaces. An empty response shows an empty state; a failed request
 shows an error and retry. The public slug comes from the published public surface. The unlisted token is
-the one-time value returned to the owner on link activation or rotation. Both
+a high-entropy owner-managed URL value, retrievable only through owner-authenticated link management. Both
 visitor pages use the same projection renderer, with no authenticated owner
 session requirement. They never request `/api/trips/{trip_id}` or owner
 previews. The pre-launch `/api/published/trips/{public_id}` endpoint has been

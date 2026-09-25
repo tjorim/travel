@@ -8,7 +8,6 @@ from sqlalchemy import text
 from .database import SessionLocal
 from .mcp_server import MCP_CAPABILITY_CONTRACT_VERSION, MCP_TOOL_CAPABILITIES, create_mcp_http_app, mcp_http_enabled
 from .routers.documents import router as documents_router
-from .routers.highlights import router as highlights_router
 from .routers.itinerary import router as itinerary_router
 from .routers.library import router as library_router
 from .routers.media import provider_tokens_router
@@ -21,6 +20,7 @@ from .routers.tasks import router as tasks_router
 from .routers.tracks import router as tracks_router
 from .routers.transport import router as transport_router
 from .routers.trips import router as trips_router
+from .routers.visibility import router as visibility_router
 
 if mcp_http_enabled():
     _mcp, _mcp_app = create_mcp_http_app()
@@ -38,11 +38,12 @@ _lifespan = combine_lifespans(_application_lifespan, _mcp_app.lifespan) if _mcp_
 
 app = FastAPI(
     title="Travel tracker API",
-    description="Private-by-default trip and moment tracking API.",
+    description="Private-by-default trip and reisupdate tracking API.",
     version="0.1.0",
     lifespan=_lifespan,
 )
 app.include_router(trips_router, prefix="/api")
+app.include_router(visibility_router, prefix="/api")
 app.include_router(publication_router, prefix="/api")
 app.include_router(publication_delivery_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
@@ -50,7 +51,6 @@ app.include_router(tracks_router, prefix="/api")
 app.include_router(transport_router, prefix="/api")
 app.include_router(itinerary_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
-app.include_router(highlights_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(library_router, prefix="/api")
 app.include_router(media_router, prefix="/api")

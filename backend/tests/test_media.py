@@ -169,7 +169,7 @@ def test_direct_upload_extracts_exif_for_the_owner_while_the_original_keeps_it_e
     assert response.status_code == 201, response.text
     body = response.json()
 
-    # The owner gets a parsed convenience subset for pre-filling a moment...
+    # The owner gets a parsed convenience subset for pre-filling a reisupdate...
     assert body["captured_at"].startswith("2054-04-01T08:30:00")
     assert body["camera_make"] == "ExampleCam"
     assert body["camera_model"] == "ExampleModel"
@@ -226,7 +226,7 @@ def test_deleting_media_removes_it_from_owner_queries_immediately(tmp_path: Path
 # --- Visit candidates: transient owner review, never canonical data --------------
 
 
-def test_owner_can_review_selected_media_as_visits_without_creating_moments_or_places(tmp_path: Path) -> None:
+def test_owner_can_review_selected_media_as_visits_without_creating_updates_or_places(tmp_path: Path) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
 
@@ -273,9 +273,9 @@ def test_owner_can_review_selected_media_as_visits_without_creating_moments_or_p
     assert first_candidate["location_options"][1]["latitude"] == 26.0
 
     # Candidate generation is a read-only review operation: it cannot create
-    # a moment, place, shareable item, or persistent candidate row.
+    # a reisupdate, place, shareable item, or persistent candidate row.
     trip_after_review = owner.get(f"/api/trips/{trip['id']}").json()
-    assert trip_after_review["moments"] == []
+    assert trip_after_review["travel_updates"] == []
     assert owner.get(f"/api/trips/{trip['id']}/places").json() == []
 
     other = client_for("owner-2", tmp_path)
@@ -333,10 +333,13 @@ def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path
         f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
     ).status_code == 200
 
+    assert owner.put(
+        f"/api/trips/{trip['id']}/visibility/media_derivative/{derivative['id']}", json={"visibility": "custom"}
+    ).status_code == 200
     scope = {
         "schema_version": "travel/share-scope@1",
         "trip": {"title": True, "summary": True},
-        "items": [{"kind": "media_derivative", "id": derivative["id"], "fields": ["image"]}],
+        "items": [{"kind": "media_derivative", "id": derivative["id"]}],
     }
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope).status_code == 200
     link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Gallery", "scope": scope})

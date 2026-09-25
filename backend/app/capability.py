@@ -1,8 +1,8 @@
 """Unlisted share-link capability tokens.
 
-A capability is 256 bits of CSPRNG entropy encoded URL-safe. The database
-never stores the raw token, only a keyed HMAC-SHA256 verifier, so a database
-disclosure alone cannot forward a live link.
+A capability is 256 bits of CSPRNG entropy encoded URL-safe. Its separate
+keyed HMAC-SHA256 verifier is what anonymous delivery queries use; the URL
+itself is available only through owner-authenticated link management.
 """
 
 import hashlib

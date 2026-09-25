@@ -26,10 +26,48 @@ function visitorRoutes(): Plugin {
   };
 }
 
+// Local sign-in without Keycloak, kept out of the application code: with the
+// same TRAVEL_DEV_AUTH_BYPASS_TOKEN the API runs with (development only), the
+// dev proxy authenticates `/api` requests with it and the dev server seeds the
+// owner PWA's browser session, as an OIDC sign-in would have left behind, before
+// the app loads. Unset, `/admin/` signs in through Keycloak as in production.
+const devBypassToken = process.env.TRAVEL_DEV_AUTH_BYPASS_TOKEN;
+
+function devSession(): Plugin {
+  // Mirrors auth.ts. The subject must match app/auth.py's DEV_BYPASS_SUBJECT so
+  // the per-owner query cache is keyed like the API's owner.
+  const seed = `
+    const encode = (value) => btoa(JSON.stringify(value)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+    sessionStorage.setItem("travel-tracker-session", JSON.stringify({
+      accessToken: encode({ alg: "none" }) + "." + encode({ sub: "dev-bypass-user" }) + ".",
+      expiresAt: Date.now() + 12 * 60 * 60 * 1000,
+    }));`;
+  return {
+    name: "travel-dev-session",
+    apply: "serve",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html, context) => context.filename.endsWith("/frontend/index.html")
+        ? html.replace("<head>", `<head><script>${seed}</script>`)
+        : html,
+    },
+  };
+}
+
 export default defineConfig({
   base: "/admin/",
   test: { setupFiles: ["./src/test-setup.ts"] },
-  plugins: [react(), visitorRoutes()],
+  plugins: [react(), visitorRoutes(), ...(devBypassToken ? [devSession()] : [])],
+  // Mirrors Caddy's `/api/*` route so `pnpm dev` reaches a locally running API.
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        // The seeded session's token is unsigned; the API only accepts the bypass token itself.
+        ...(devBypassToken ? { headers: { Authorization: `Bearer ${devBypassToken}` } } : {}),
+      },
+    },
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

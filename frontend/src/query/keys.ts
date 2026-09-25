@@ -22,7 +22,7 @@ export const ownerKeys = {
 /** Owner-only collections that hang off one trip, named by their API path. */
 export type TripResource =
   | "stays" | "transport-legs" | "trip-tasks" | "task-alerts" | "places/broad" | "places" | "broad-routes"
-  | "broad-stay-cards" | "itinerary-entries" | "documents" | "media" | "recorded-tracks" | "public-projection" | "share-links";
+  | "itinerary-entries" | "documents" | "media" | "recorded-tracks" | "public-projection" | "share-links";
 
 export type DerivativeParent = "documents" | "media";
 export type LibraryResource = "documents" | "emergency-info";

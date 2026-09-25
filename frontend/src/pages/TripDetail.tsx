@@ -6,6 +6,7 @@ import { errorMessage, openOwnerFile } from "../query/api";
 import { useOwner, useTripResource, useTripsQuery } from "../query/owner-queries";
 import { EmptyState } from "../tracker-routes";
 import { bytesLabel, formatDay, formatDayRange, stayLabel, type Place } from "../tracker-model";
+import { visibilityLabel } from "../trips/visibility";
 
 function placeLabel(place: Place | null): string {
   if (!place) return "Geen plaats vastgelegd";
@@ -58,10 +59,10 @@ export function TripDetail() {
     return new Map<string, string>([
       ...stays.map((item): [string, string] => [item.id, `Verblijf: ${stayLabel(item)}`]),
       ...legs.map((item): [string, string] => [item.id, `Vervoer: ${placeLabel(item.departure_place)} → ${placeLabel(item.arrival_place)}`]),
-      ...trip.route_stages.map((item): [string, string] => [item.id, `Route-etappe: ${item.label ?? item.place.label}`]),
+      ...trip.route_stages.map((item): [string, string] => [item.id, `Halte: ${item.label ?? item.place.label}`]),
       ...places.map((item): [string, string] => [item.id, `Exacte plaats: ${placeLabel(item)}`]),
       ...documents.map((item): [string, string] => [item.id, `Document: ${item.title}`]),
-      ...trip.moments.map((item): [string, string] => [item.id, `Moment: ${item.title}`]),
+      ...trip.travel_updates.map((item): [string, string] => [item.id, `Reisupdate: ${item.title}`]),
     ]);
   }, [trip, stays, legs, places, documents]);
 
@@ -77,11 +78,11 @@ export function TripDetail() {
 
   const openFile = (url: string, fallback: string) => { if (owner) openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorMessage(error, fallback))); };
   return <main className="admin-trip-detail" aria-labelledby="admin-trip-title">
-    <header className="capture-heading"><div><p className="eyebrow">Alleen voor jou · private reis</p><h1 id="admin-trip-title">{trip.title}</h1>{trip.summary && <p className="lede">{trip.summary}</p>}{trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}</div><NavLink className="action-link" to="/trips">Naar beheren</NavLink></header>
+    <header className="capture-heading"><div><p className="eyebrow">Alleen voor jou · private reis</p><h1 id="admin-trip-title">{trip.title}</h1>{trip.summary && <p className="lede">{trip.summary}</p>}{trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}</div><NavLink className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>Naar reisbeheer</NavLink></header>
     <p className="help">Deze pagina gebruikt uitsluitend owner-endpoints. Hij maakt geen deellink en levert geen gegevens aan bezoekers.</p>
 
-    <Section title="Momenten">
-      {trip.moments.length ? <div className="admin-detail-list">{trip.moments.slice().sort((a, b) => a.occurred_at.localeCompare(b.occurred_at)).map((moment) => <article key={moment.id}><h3>{moment.title}</h3><p>{timestamp(moment.occurred_at)} · {placeLabel(moment.place)}</p>{moment.story && <p>{moment.story}</p>}<small>{moment.media_asset_ids.length} gekoppelde {moment.media_asset_ids.length === 1 ? "media-item" : "media-items"}</small></article>)}</div> : <p>Geen momenten vastgelegd.</p>}
+    <Section title="Reisupdates">
+      {trip.travel_updates.length ? <div className="admin-detail-list">{trip.travel_updates.slice().sort((a, b) => a.occurred_at.localeCompare(b.occurred_at)).map((update) => <article key={update.id}><h3>{update.title}</h3><p>{timestamp(update.occurred_at)} · {placeLabel(update.place)}</p>{update.private_notes && <p>{update.private_notes}</p>}<small>{update.media_asset_ids.length} gekoppelde {update.media_asset_ids.length === 1 ? "media-item" : "media-items"} · {visibilityLabel(update.visibility)}</small></article>)}</div> : <p>Geen reisupdates vastgelegd.</p>}
     </Section>
     <Section title="Dagplanning">
       {itinerary.length ? <ol className="admin-detail-list">{itinerary.slice().sort((a, b) => a.position - b.position).map((entry) => <li key={entry.id}><strong>{entry.title}</strong><span>{entry.day_date ? formatDayRange(entry.day_date, entry.end_date ?? entry.day_date) : "Zonder datum"}{entry.kind ? ` · ${entry.kind}` : ""}{entry.tentative ? " · voorlopig" : ""}</span>{entry.notes && <p>{entry.notes}</p>}{entry.linked_id && <small>{linkedLabels.get(entry.linked_id) ?? "Gekoppeld onderdeel is verwijderd"}</small>}</li>)}</ol> : <p>Geen dagplanning vastgelegd.</p>}
@@ -98,11 +99,11 @@ export function TripDetail() {
     <Section title="Exacte plaatsen">
       {places.length ? <div className="admin-detail-list">{places.map((place) => <article key={place.id}><h3>{placeLabel(place)}</h3>{place.notes && <p>{place.notes}</p>}{place.latitude != null && place.longitude != null && <p>Coördinaten: {place.latitude}, {place.longitude}</p>}</article>)}</div> : <p>Geen exacte plaatsen vastgelegd.</p>}
     </Section>
-    <Section title="Brede route en plaatsen">
+    <Section title="Route, haltes en plaatsen">
       {trip.route_stages.length > 0 && <div className="admin-detail-list">{trip.route_stages.slice().sort((a, b) => a.position - b.position).map((stage) => <article key={stage.id}><h3>{stage.label ?? stage.place.label}</h3><p>{stage.place.label}{stage.summary ? ` · ${stage.summary}` : ""}</p></article>)}</div>}
       {broadPlaces.length > 0 && <p>{broadPlaces.map((place) => [place.label, place.region, place.country_code].filter(Boolean).join(" · ")).join("; ")}</p>}
       {broadRoutes.length > 0 && <p>{broadRoutes.map((route) => `${route.label} (${route.geometry.coordinates.length} punten)`).join("; ")}</p>}
-      {!trip.route_stages.length && !broadPlaces.length && !broadRoutes.length && <p>Geen brede route of plaatsen vastgelegd.</p>}
+      {!trip.route_stages.length && !broadPlaces.length && !broadRoutes.length && <p>Nog geen route, haltes of plaatsen vastgelegd.</p>}
     </Section>
     <Section title="Privédocumenten">
       {documents.length ? <div className="admin-detail-list">{documents.map((document) => <article key={document.id}><h3>{document.title}</h3><p>{document.document_kind} · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</p><button className="secondary compact" type="button" onClick={() => openFile(document.file_url, "Het private document kon niet worden geopend.")}>Document openen</button></article>)}</div> : <p>Geen privédocumenten vastgelegd.</p>}

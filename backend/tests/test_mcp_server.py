@@ -125,14 +125,13 @@ def test_registered_tools_cover_owner_resource_families(backend: TravelMcpBacken
         "save_exact_place",
         "save_broad_place",
         "create_route_stage",
-        "create_moment",
-        "create_moment_excerpt",
+        "create_travel_update",
         "create_stay",
         "get_stay",
-        "create_trip_highlight",
-        "delete_trip_highlight",
-        "create_broad_stay_card",
-        "get_broad_stay_card",
+        "update_travel_update",
+        "delete_travel_update",
+        "set_visibility",
+        "update_exact_place",
         "upload_finished_track",
         "get_recorded_track",
         "create_broad_route",
@@ -207,16 +206,30 @@ def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: 
     assert http_app is not None
 
 
-def test_highlight_tools_use_the_owner_handlers_and_require_confirmation_to_delete(backend: TravelMcpBackend) -> None:
-    trip = backend.create_trip(schemas.TripCreate(title="Highlights"))
-    second = backend.create_trip_highlight(trip["id"], schemas.TripHighlightCreate(title="Mountains"))
-    first = backend.create_trip_highlight(trip["id"], schemas.TripHighlightCreate(title="City", position=0))
-    assert [item["title"] for item in backend.list_trip_highlights(trip["id"])] == ["City", "Mountains"]
-    assert backend.update_trip_highlight(trip["id"], second["id"], schemas.TripHighlightUpdate(summary="Alishan."))["summary"] == "Alishan."
+def test_travel_update_tools_use_the_owner_handlers_and_require_confirmation_to_delete(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Updates"))
+    created = backend.create_travel_update(
+        trip["id"], schemas.TravelUpdateCreate(occurred_at="2054-04-04T10:00:00Z", title="Arrival", body="We landed.")
+    )
+    assert created["visibility"] == "private"
+    edited = backend.update_travel_update(trip["id"], created["id"], schemas.TravelUpdatePatch(visibility="everyone"))
+    assert edited["visibility"] == "everyone"
     with pytest.raises(ValueError, match="confirm=true"):
-        backend.delete_trip_highlight(trip["id"], first["id"])
-    assert backend.delete_trip_highlight(trip["id"], first["id"], confirm=True) == {"status": "deleted"}
-    assert [item["title"] for item in backend.list_trip_highlights(trip["id"])] == ["Mountains"]
+        backend.delete_travel_update(trip["id"], created["id"])
+    assert backend.delete_travel_update(trip["id"], created["id"], confirm=True) == {"status": "deleted"}
+
+
+def test_set_visibility_tool_needs_confirmation_and_uses_the_owner_rules(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Sharing"))
+    spot = backend.save_exact_place(trip["id"], schemas.ExactPlaceInput(display_name="Hotel, 1 Main Street"))
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.set_visibility(trip["id"], "place", spot["id"], "everyone")
+    # A spot cannot be shared without a public name, whoever asks.
+    with pytest.raises(ValueError, match="public name"):
+        backend.set_visibility(trip["id"], "place", spot["id"], "everyone", confirm=True)
+    backend.update_exact_place(trip["id"], spot["id"], schemas.ExactPlaceUpdate(label="Riverside lookout"))
+    assert backend.set_visibility(trip["id"], "place", spot["id"], "everyone", confirm=True) == {"visibility": "everyone"}
+    assert backend.list_exact_places(trip["id"])[0]["visibility"] == "everyone"
 
 
 def _protocol_client(factory: sessionmaker = TestingSessionLocal) -> Client:

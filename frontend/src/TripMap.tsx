@@ -1,37 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { FeatureCollection, LineString, Point } from "geojson";
-import type { Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+import { configuredMapStyleUrl, loadMapStyle } from "./map-style";
 
 export type MapPoint = { id: string; label: string; coordinates: [number, number]; kind?: "mountain" | "stay" | "airport" | "place"; detail?: string; dates?: string };
 export type MapLine = { id: string; label: string; coordinates: [number, number][]; exact?: boolean; transport?: "flight" | "rail" | "road" | "mountain"; from?: string; to?: string };
 export type MapPerspective = { center: [number, number]; zoom: number; pitch: number; bearing: number; label?: string; exaggeration?: number };
 
-const defaultStyleUrl = "https://tiles.openfreemap.org/styles/liberty";
-const configuredStyleUrl = import.meta.env.VITE_MAP_STYLE_URL || defaultStyleUrl;
 const terrainUrl = "https://tiles.mapterhorn.com/tilejson.json";
 const satelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const attribution = <><a href="https://openfreemap.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© OpenFreeMap</a> · <a href="https://openmaptiles.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© OpenStreetMap</a></>;
-const numericFilters: Record<string, string> = {
-  boundary_3: "admin_level",
-  "highway-shield-non-us": "ref_length",
-  "highway-shield-us-interstate": "ref_length",
-  road_shield_us: "ref_length",
-};
-
-async function mapStyle(styleUrl: string, signal: AbortSignal): Promise<string | StyleSpecification> {
-  if (styleUrl !== defaultStyleUrl) return styleUrl;
-  const response = await fetch(styleUrl, { signal, referrerPolicy: "no-referrer", credentials: "omit" });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const style = await response.json() as StyleSpecification;
-  for (const layer of style.layers ?? []) {
-    const property = numericFilters[layer.id];
-    if (property && "filter" in layer && layer.filter) layer.filter = ["all", ["==", ["typeof", ["get", property]], "number"], layer.filter] as typeof layer.filter;
-  }
-  return style;
-}
-
 function fitToData(instance: MapLibreMap, Bounds: typeof import("maplibre-gl").LngLatBounds, points: MapPoint[], lines: MapLine[], duration = 0) {
   const bounds = new Bounds();
   points.forEach((point) => bounds.extend(point.coordinates));
@@ -39,7 +19,7 @@ function fitToData(instance: MapLibreMap, Bounds: typeof import("maplibre-gl").L
   if (!bounds.isEmpty()) instance.fitBounds(bounds, { padding: 45, maxZoom: 10, duration, pitch: 0, bearing: 0 });
 }
 
-export function TripMap({ points, lines, owner = false, perspective, styleUrl = configuredStyleUrl, focus }: { points: MapPoint[]; lines: MapLine[]; owner?: boolean; perspective?: MapPerspective; styleUrl?: string; focus?: { id: string; request: number } | null }) {
+export function TripMap({ points, lines, owner = false, perspective, styleUrl = configuredMapStyleUrl, focus }: { points: MapPoint[]; lines: MapLine[]; owner?: boolean; perspective?: MapPerspective; styleUrl?: string; focus?: { id: string; request: number } | null }) {
   const canvas = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -66,7 +46,7 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
       const probe = document.createElement("canvas");
       if (!probe.getContext("webgl2") && !probe.getContext("webgl")) { setError("Deze browser ondersteunt geen WebGL. Gebruik de route in woorden."); return; }
     } catch { setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden."); return; }
-    void Promise.all([import("maplibre-gl"), mapStyle(styleUrl, controller.signal)]).then(([maplibregl, style]) => {
+    void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal)]).then(([maplibregl, style]) => {
       if (disposed || !canvas.current) return;
       maplibregl.setWorkerUrl(mapWorkerUrl);
       const created = new maplibregl.Map({ container: canvas.current, style, attributionControl: false, renderWorldCopies: false, maxPitch: 60, transformRequest: (url: string) => ({ url, credentials: "same-origin" }) });
@@ -123,12 +103,12 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     try {
       if (terrain) {
         instance.setTerrain(null);
-        void import("maplibre-gl").then(({ LngLatBounds }) => fitToData(instance, LngLatBounds, points, lines, 700));
+        instance.easeTo({ pitch: 0, duration: 700, essential: true });
       }
       else {
         if (!instance.getSource("terrain")) instance.addSource("terrain", { type: "raster-dem", url: terrainUrl, tileSize: 512, encoding: "terrarium" });
         instance.setTerrain({ source: "terrain", exaggeration: perspective?.exaggeration ?? 1.35 });
-        instance.easeTo(perspective ? { center: perspective.center, zoom: perspective.zoom, pitch: Math.min(perspective.pitch, 60), bearing: perspective.bearing, duration: 700, essential: true } : { pitch: 55, duration: 700, essential: true });
+        instance.easeTo({ pitch: Math.min(perspective?.pitch ?? 55, 60), duration: 700, essential: true });
       }
       setTerrain(!terrain); setError("");
     } catch { setError("3D-terrein kon niet worden geladen. De routekaart blijft beschikbaar."); }
@@ -146,7 +126,6 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
         instance.addLayer({ id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" }, paint: { "raster-fade-duration": 150 } }, beforeLayer);
       }
       instance.setLayoutProperty("satellite", "visibility", satellite ? "none" : "visible");
-      if (!satellite && instance.getPitch() < 50) instance.easeTo({ pitch: 50, duration: 700, essential: true });
       setSatellite(!satellite); setError("");
     } catch { setError("Satellietbeelden konden niet worden geladen. De routekaart blijft beschikbaar."); }
   }
@@ -173,11 +152,11 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     <h3>Kaart</h3>
     <div className="trip-map-canvas-wrap"><div ref={canvas} className="trip-map-canvas" role="img" aria-label="Kaart met haltes en routes" />{error && !ready && <p className="trip-map-fallback">Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de halteknoppen.</p>}<div className="trip-map-attribution">{attribution}{terrain && <> · <a href="https://mapterhorn.com/attribution" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Mapterhorn</a></>}{satellite && <> · <a href="https://www.esri.com/" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community</>}</div></div>
     {error && <p role="status" className="help">{error}</p>}
-    {owner && <div className="button-row"><button className="secondary compact" type="button" aria-pressed={terrain} disabled={!ready} onClick={toggleTerrain}>{perspective?.label ?? "3D-terrein"}</button><button className="secondary compact" type="button" aria-pressed={satellite} disabled={!ready} onClick={toggleSatellite}>Satelliet</button></div>}
-    {owner && satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
-    <p className="trip-map-privacy">Kaarttegels tonen de bekeken regio aan OpenFreeMap. {owner && "3D-terrein vraagt na inschakeling hoogtegegevens op bij Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri."}</p>
+    <div className="button-row"><button className={`secondary compact map-layer-toggle ${terrain ? "active" : ""}`} type="button" aria-pressed={terrain} disabled={!ready} onClick={toggleTerrain}>{perspective?.label ?? "3D-terrein"}{terrain && " · aan"}</button><button className={`secondary compact map-layer-toggle ${satellite ? "active" : ""}`} type="button" aria-pressed={satellite} disabled={!ready} onClick={toggleSatellite}>Satelliet{satellite && " · aan"}</button></div>
+    {satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
+    <p className="trip-map-privacy">Kaarttegels tonen de bekeken regio aan OpenFreeMap. 3D-terrein vraagt na inschakeling hoogtegegevens op bij Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri.</p>
     {(selectedPoint || selectedLine) && <p aria-live="polite"><strong>Geselecteerd:</strong> {selectedPoint?.label ?? selectedLine?.label}{selectedPoint?.detail && <> · {selectedPoint.detail}</>}{selectedPoint?.dates && <> · {selectedPoint.dates}</>}</p>}
     {points.length > 0 && <div className="trip-map-stops"><h4>Haltes</h4><ol>{points.map((point) => <li key={point.id}><button className="secondary compact" type="button" aria-pressed={selected === point.id} onClick={() => selectPoint(point)}>{point.label}</button></li>)}</ol></div>}
-    <div className="trip-map-words"><h4>Route in woorden</h4><ol>{lines.map((line) => <li key={line.id}><button className="secondary compact" type="button" aria-pressed={selected === line.id} onClick={() => selectLine(line)}>{line.from && line.to ? `${line.from} → ${line.to} · ` : ""}{line.label}</button></li>)}{points.map((point) => <li key={point.id}>{point.label}</li>)}</ol></div>
+    {lines.length > 0 && <div className="trip-map-words"><h4>Route in woorden</h4><ol>{lines.map((line) => <li key={line.id}><button className="secondary compact" type="button" aria-pressed={selected === line.id} onClick={() => selectLine(line)}>{line.from && line.to ? `${line.from} → ${line.to} · ` : ""}{line.label}</button></li>)}</ol></div>}
   </section>;
 }

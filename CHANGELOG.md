@@ -4,7 +4,94 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Made saved private spots reusable from stay, transport and reisupdate
+  editors. Selecting one sends only its existing reference, so a Brussels
+  Airport can serve both legs and a corrected stay or endpoint never silently
+  creates a duplicate. Spot and area views refresh after those records change.
+- Gave every shareable record the same private / everyone / custom choice and
+  dropped the twins that only restated a private record. One `visibility` on
+  places, route stages, broad routes, stays, transport legs, reisupdates and
+  approved photo and document copies decides who receives a record, set by one
+  endpoint (`PUT /trips/{id}/visibility/{kind}/{record_id}`) and one reusable
+  control that appears in each item's editor and in Delen, where both write the
+  same field. A scope now lists only `custom` records and never names fields;
+  each kind has a fixed allowlist. Places are shared as themselves: an area
+  shows its label, region and point, and a spot (a monument, a hot spring) can
+  be named and shared without its address ("Plekken delen"), with directions to
+  its point. A stay is shared as itself, showing only its area and nights at a
+  chosen precision, so the broad stay card is gone. A transport leg shows its
+  endpoints on the map only when those places are shared. A photo attached to a
+  reisupdate is delivered with it. Leaving `custom`, or deleting a record,
+  withdraws it from every scope. Migration `0027` is a clean break: stored
+  scopes lose their listed items and every record starts private.
+- Merged the private moment into the reisupdate: one record with a private part
+  (notes, exact place, attached photos) and a shared part (title, text for
+  visitors, date, area). Capture now creates a private reisupdate with your
+  notes; you write the text for visitors later, and an update without it cannot
+  be shared. Moments, their API and MCP tools, and the source-moment link are
+  gone. Migration `0028` turns each moment into a private reisupdate with the
+  same id, so photos and day-plan links carry over.
+- Made the reisupdate the only story record, end to end, as a clean break.
+  Highlights are gone (model, API, MCP tools, editor and visitor section) and
+  the moment excerpt is now the travel update (`travel_updates`,
+  `/travel-updates`, the `travel_update` share kind, `update` on a photo and
+  `updates` in the visitor document, with `#update-…` fragments). Who sees an
+  update is its own Private / Everyone / Custom choice (`private`, `everyone`,
+  `custom`): Private reaches
+  nobody, Everyone reaches the public page and every hidden link, and only
+  Custom updates are chosen per audience in Delen, without a field checklist.
+  Leaving Custom or deleting an update withdraws it from every live scope, and
+  delivery ignores a stale entry. Delen shows how many updates are Everyone
+  or Private and offers just the Custom ones. The archive import file
+  (`travel/archive-import@1`) now names them `travel_updates`, drops its highlights,
+  and imports them as private updates. Migration `0026` renames the table and column, drops the
+  highlights and removes retired selections from stored scopes, so every
+  existing update stays private until chosen otherwise; `alembic check` now
+  runs in CI to prove the migrated schema matches the models, and the models
+  declare three indexes the migrations already created.
+
 ### Added
+
+- Allowed friends and family to follow an explicitly selected transport leg in
+  public and hidden-trip views: its kind/status, carrier/service reference,
+  city/country endpoints and schedule can be shared. Booking references,
+  travel class, notes, documents and endpoint addresses remain owner-only. A
+  selected broad route remains the sole authoritative map line; only without
+  any selected route does a general line join shared broad city points without
+  reading private endpoint geometry.
+
+- Shortened the "Delen" page: the scope editors group shareable items by type
+  in collapsed sections that show how many are chosen, with "Alles kiezen" and
+  "Niets kiezen" per section, and the hidden-link editor only opens when a link
+  is started or chosen. With many broad routes and places the page was several
+  times taller than it now is.
+
+- Moved the remaining record editors onto the same dialog pattern as the other
+  trip managers: a "new" button opens the add form in a dialog, and a record
+  opens a view dialog with edit and delete (in-app confirmation, unsaved-changes
+  guard). This covers the day plan, broad routes and track upload, trip
+  documents (with their redacted copies), media upload, the library documents,
+  emergency info and the trip editor itself (`/trips?new=1` opens the new-trip
+  dialog from the home page). Long day-plan steps stack under their text and no
+  longer squeeze into a narrow column. On phones every trip manager does the
+  same: list rows put their actions under the text, the "new" button sits under
+  the section description instead of wrapping into a tall narrow button, and
+  dialogs use the full width. The public publication scope and the media import
+  and review workflows keep their inline forms; named share links use the same
+  record dialog as the other trip entities. The deliberately different
+  workflow boundaries for publication, media, Capture and Settings are
+  recorded in [the editor-workflow decision](docs/decisions/104-editor-workflow-boundaries.md).
+  ([#170](https://github.com/tjorim/travel/issues/170))
+
+- Added local sign-in without Keycloak, aligned with champagnefestival and
+  worktime: `TRAVEL_DEV_AUTH_BYPASS_TOKEN` authenticates a request bearing that
+  exact token as a fixed development owner (startup refuses it outside
+  `TRAVEL_ENVIRONMENT=development`), replacing the `X-Travel-Subject` header and
+  `--dev-subject`. With the same token exported, `pnpm dev` proxies `/api` to
+  the local API, authenticates it with the token and opens `/admin/` already
+  signed in; the application code itself has no dev path.
 
 - Added a TanStack Query and TanStack Form foundation to the owner PWA: one
   authenticated fetcher, subject-scoped query keys that never share a cache
@@ -27,9 +114,10 @@ All notable changes to the travel hub are documented here.
   downloaded files are never stored in the query cache. Editors use
   `useRecordForm` with the dialog's unsaved-changes state, and the
   `revision`/`onChange` refresh props are replaced by query invalidation, so a
-  saved or deleted record is never shown stale. One-time share-link tokens,
-  provider tokens and previews are dropped from the mutation cache once
-  settled. ([#165](https://github.com/tjorim/travel/issues/165))
+  saved or deleted record is never shown stale. Owner-managed share-link URLs
+  remain only in the owner-only in-memory cache; provider tokens and previews
+  are dropped from the mutation cache once settled.
+  ([#165](https://github.com/tjorim/travel/issues/165))
 
 - Extended owner-selected, encrypted offline copies to private media,
   individual itinerary entries and GeoJSON map/route snapshots. Each resource
@@ -38,6 +126,52 @@ All notable changes to the travel hub are documented here.
   remove their local copy immediately. ([#131](https://github.com/tjorim/travel/issues/131))
 
 ### Changed
+
+- Replaced the owner-facing technical word “broad” with the job each record
+  does: reusable places, ordered stops, routes on a map and stay summaries.
+  The privacy-safe boundary remains enforced internally; creating any of these
+  records still never makes it public.
+  ([#171](https://github.com/tjorim/travel/pull/171))
+
+- Reused the owner-only place lookup wherever an editor creates a place:
+  general places, private stays and transport endpoints. A general-place result stays
+  deliberately kilometre-rounded; a stay or endpoint retains its selected
+  exact provider metadata and coordinates while remaining private. Every
+  suggested field remains editable and nothing is saved until its record is
+  saved. ([#171](https://github.com/tjorim/travel/pull/171))
+
+- Replaced the route JSON textbox with a map editor: owners click general
+  points in order, drag a point to correct it, see the resulting line and can
+  remove or clear points. Every saved route also has a read-only map
+  preview before editing. Map clicks are rounded to roughly 100 metres so the
+  editor remains for deliberate routes, while JSON remains available only
+  as an advanced import path.
+  ([#171](https://github.com/tjorim/travel/pull/171))
+
+- Named share links are now reusable owner-managed URLs: an active link can
+  be opened and copied again whenever the owner edits it, without disrupting
+  the people who already received it. The server continues to validate a
+  separate verifier for anonymous visits, and revoking or rotating a link
+  removes the old URL. Links created before this change cannot be recovered
+  from their existing one-way verifier; rotate one once to make it reusable.
+  ([#171](https://github.com/tjorim/travel/pull/171))
+
+- Rotating a named link now keeps its previous, revoked URL inside the same
+  link history instead of presenting it as another independent link. Existing
+  rotations are grouped from their audit trail during migration.
+  ([#171](https://github.com/tjorim/travel/pull/171))
+
+- The normal “Nieuwe link” flow now creates an active URL in one action. Its
+  expiry is selected before saving, rather than making the owner create a
+  confusing intermediate draft and activate it separately.
+  ([#171](https://github.com/tjorim/travel/pull/171))
+
+- Simplified sharing around the two records that actually control visitor
+  access: a public page and named share links. Removed the superseded trip-level
+  visibility, publication state and public-ID fields from the API, PWA and
+  database, so they can no longer contradict a scoped publication. The sharing
+  page now describes its choices in visitor terms, and explains date sharing as
+  full dates, months only, year only or not shown. ([#171](https://github.com/tjorim/travel/pull/171))
 
 - Replaced the last browser `confirm()` prompts in the owner PWA with the
   accessible in-app confirmation already used by the record dialogs: deleting
@@ -48,6 +182,26 @@ All notable changes to the travel hub are documented here.
   ([#157](https://github.com/tjorim/travel/issues/157))
 
 ### Fixed
+
+- Public trip pages link to the owner sign-in, and the owner dashboard links
+  back to the public trip index.
+
+- The complete private trip overview is now linked from every trip workspace
+  and returns to that trip's workspace instead of the generic trip list.
+
+- Switching a hidden-link editor no longer silently discards an unsaved name
+  or scope, and revoking a hidden link now asks for in-app confirmation before
+  invalidating it.
+
+- "Alle reizen" (`/trips`) no longer stacks every manager of the first trip
+  under the list, as it did before the workspace tabs existed: it only lists
+  trips, and a row opens that trip's workspace. "Reis bewerken" moved to the
+  workspace header, and deleting a trip returns to the list with its
+  confirmation.
+- "Toon op kaart" on a day-plan step did nothing in the workspace, because the
+  map only exists on the overview tab and the scroll target belonged to the old
+  stacked page. It now opens the overview, scrolls to the map and focuses the
+  point.
 
 - Editing an existing record in a `useRecordForm` editor opened blank because
   TanStack Form re-applied its initial defaults after the record was loaded;
@@ -439,8 +593,8 @@ All notable changes to the travel hub are documented here.
   deliberate owner action is only whether a page is served at all:
   publish/unpublish for the public view, activate/revoke/rotate for a named
   link. Named unlisted links use 256-bit
-  capability tokens with a keyed, one-way verifier (the raw token is
-  returned once and never stored) and a 1-90 day (default 30) expiry;
+  owner-managed URL tokens with a separate keyed, one-way verifier for
+  anonymous delivery and a 1-90 day (default 30) expiry;
   revoking or rotating a link invalidates its token immediately. Unlisted
   delivery responses carry
   `Cache-Control: no-store, private`, `X-Robots-Tag: noindex, noarchive` and

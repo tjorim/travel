@@ -1,26 +1,26 @@
 import { useState, type FormEvent } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
-import { useConfirmation } from "../forms/useConfirmation";
+import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useDerivatives, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type DocumentAsset, type DocumentDerivative, type Trip } from "../tracker-model";
+import { VisibilityControl } from "./visibility";
 
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
 
 export function DocumentManager({ trip }: { trip: Trip }) {
-  const confirmation = useConfirmation();
   const owner = useOwner();
   const offline = useOfflineCopies();
   const documentsQuery = useTripResource(trip.id, "documents");
   const documents = documentsQuery.data ?? [];
-  // undefined: follow the first document; null: none chosen (after a delete); a string: the chosen document.
-  const [selectedId, setSelectedId] = useState<string | null | undefined>(undefined);
-  const selected = selectedId === undefined ? documents[0] ?? null : documents.find((document) => document.id === selectedId) ?? null;
+  const dialog = useRecordDialog(documents);
+  const { selected, editing } = dialog;
   const derivativesQuery = useDerivatives(trip.id, "documents", selected?.id ?? null);
   const derivatives = derivativesQuery.data ?? [];
   const [notice, setNotice] = useState<string | null>(null);
@@ -61,22 +61,26 @@ export function DocumentManager({ trip }: { trip: Trip }) {
       body.set("title", values.title.trim());
       body.set("document_kind", values.kind);
       body.set("file", file);
-      const saved = await upload.mutateAsync(body);
-      setSelectedId(saved.id);
+      await upload.mutateAsync(body);
     },
-    onSuccess: () => { setFile(null); setInputKey((current) => current + 1); uploadRecord.load(blankUpload()); setNotice("Privédocument geüpload."); },
+    onSuccess: () => { close(); setNotice("Privédocument geüpload."); },
   });
 
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
 
-  function erase(document: DocumentAsset) {
-    confirmation.ask({ title: `Document “${document.title}” verwijderen?`, onConfirm: () => performErase(document) });
+  function close() {
+    dialog.close();
+    setFile(null);
+    setRedaction({ file: null, manifest: null });
+    setInputKey((current) => current + 1);
+    uploadRecord.load(blankUpload());
   }
+  function create() { close(); dialog.create(); }
 
-  function performErase(document: DocumentAsset) {
+  function erase(document: DocumentAsset) {
     remove.mutateAsync(document).then(async () => {
       await offline.removeByResource("trip_document", document.id);
-      setSelectedId(null);
+      close();
       setNotice("Privédocument verwijderd.");
     }, fail("Het document kon niet worden verwijderd."));
   }
@@ -120,16 +124,24 @@ export function DocumentManager({ trip }: { trip: Trip }) {
   const readError = documentsQuery.error ?? derivativesQuery.error;
   const message = notice ?? (readError ? errorMessage(readError, "Je documenten konden niet worden geladen.") : documentsQuery.isPending ? "Laad je private documenten…" : documents.length ? "Documenten en originelen blijven uitsluitend in je private tracker." : "Upload een privédocument wanneer je het wilt bewaren.");
 
-  return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Originelen staan alleen in je private tracker. Een mogelijke gedeelde kopie moet eerst geredigeerd én goedgekeurd zijn.</p></div></div><p className="help" role="status">{message}</p>
-    <RecordForm record={uploadRecord} submitLabel="Document uploaden" pendingLabel="Uploaden…">
-      <div className="field-row">
-        <uploadRecord.form.Field name="title" validators={{ onChange: requiredText("Geef het document een titel."), onSubmit: requiredText("Geef het document een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</uploadRecord.form.Field>
-        <uploadRecord.form.Field name="kind">{(field) => <SelectField field={field} label="Soort"><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></SelectField>}</uploadRecord.form.Field>
-      </div>
-      <div className="field"><label>Privébestand<input key={inputKey} required type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label></div>
-    </RecordForm>
-    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className={`excerpt-row ${document.id === selected?.id ? "selected-item" : ""}`} key={document.id}><button className="document-select" type="button" onClick={() => setSelectedId(document.id)}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button><button className="danger compact" type="button" onClick={() => erase(document)}>Verwijderen</button></div></article>)}</div>}
-    {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {selected.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={submitDerivative}><label>Geredigeerd bestand<input key={`file-${inputKey}`} required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input key={`manifest-${inputKey}`} required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit" disabled={addDerivative.isPending}>Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De geredigeerde kopie kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ documentId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Delen gebeurt nog steeds alleen via een aparte scope."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>}
-    {confirmation.dialog}
+  const derivativeSection = (document: DocumentAsset) => <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {document.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={submitDerivative}><label>Geredigeerd bestand<input key={`file-${inputKey}`} required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input key={`manifest-${inputKey}`} required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit" disabled={addDerivative.isPending}>Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span>{derivative.review_state === "approved" && <VisibilityControl tripId={trip.id} kind="document_derivative" id={derivative.id} value={derivative.visibility} name={`${document.title} (geredigeerde kopie)`} />}</div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De geredigeerde kopie kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ documentId: document.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Kies nu wie de kopie mag zien."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>;
+
+  return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Originelen staan alleen in je private tracker. Een mogelijke gedeelde kopie moet eerst geredigeerd én goedgekeurd zijn.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw document</button></div><p className="help" role="status">{message}</p>
+    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className="excerpt-row stacked" key={document.id}><button className="document-select" type="button" onClick={() => dialog.inspect(document.id)} aria-label={`Document ${document.title} bekijken`}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button></div></article>)}</div>}
+    <RecordDialog open={editing || selected !== null} title={editing ? "Document uploaden" : "Document"} dirty={editing && uploadRecord.dirty} onDismiss={close}>
+      {!editing && selected && <div className="stack-form">
+        <div><h3>{selected.title}</h3><p>{selected.original_filename ?? "Naamloos bestand"} · {bytesLabel(selected.byte_size)}</p></div>
+        <div className="button-row"><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
+        {dialog.confirmDelete && <DeleteConfirmation title={`Document “${selected.title}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
+        {derivativeSection(selected)}
+      </div>}
+      {editing && <RecordForm record={uploadRecord} submitLabel="Document uploaden" pendingLabel="Uploaden…">
+        <div className="field-row">
+          <uploadRecord.form.Field name="title" validators={{ onChange: requiredText("Geef het document een titel."), onSubmit: requiredText("Geef het document een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</uploadRecord.form.Field>
+          <uploadRecord.form.Field name="kind">{(field) => <SelectField field={field} label="Soort"><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></SelectField>}</uploadRecord.form.Field>
+        </div>
+        <div className="field"><label>Privébestand<input key={inputKey} required type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label></div>
+      </RecordForm>}
+    </RecordDialog>
   </section>;
 }

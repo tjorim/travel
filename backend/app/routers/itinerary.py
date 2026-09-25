@@ -43,8 +43,8 @@ def validate_itinerary_link(session: Session, trip: Trip, kind: ItineraryLinkKin
         exists = any(item.id == linked_id for item in trip.transport_legs)
     elif kind == ItineraryLinkKind.ROUTE_STAGE:
         exists = any(item.id == linked_id for item in trip.route_stages)
-    elif kind == ItineraryLinkKind.MOMENT:
-        exists = any(item.id == linked_id for item in trip.moments)
+    elif kind == ItineraryLinkKind.TRAVEL_UPDATE:
+        exists = any(item.id == linked_id for item in trip.travel_updates)
     elif kind == ItineraryLinkKind.PLACE:
         exists = any(item.id == linked_id and item.kind == PlaceKind.EXACT for item in trip.places)
     elif kind == ItineraryLinkKind.DOCUMENT:

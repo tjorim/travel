@@ -7,7 +7,7 @@ import { tripBadges } from "./TripOverview";
 import { stayCoversNight, wallClock, type ItineraryEntry, type Stay, type TransportLeg, type TripTask } from "../tracker-model";
 
 function stay(overrides: Partial<Stay>): Stay {
-  return { id: "stay", check_in_date: "2054-11-16", check_out_date: "2054-11-28", check_in_time: null, check_out_time: null, status: "booked", property_name: "Example Lodge Linkou", website_url: null, booking_reference: null, contact_details: null, notes: null, place: null, broad_place: null, ...overrides };
+  return { id: "stay", check_in_date: "2054-11-16", check_out_date: "2054-11-28", check_in_time: null, check_out_time: null, status: "booked", property_name: "Example Lodge Linkou", website_url: null, booking_reference: null, contact_details: null, notes: null, place: null, broad_place: null, visibility: "private", share_date_precision: "month", ...overrides };
 }
 
 function entry(overrides: Partial<ItineraryEntry>): ItineraryEntry {

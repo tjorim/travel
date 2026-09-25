@@ -45,6 +45,7 @@ def _derivative_response(derivative: DocumentDerivative, trip_id: str) -> Docume
         review_state=derivative.review_state,
         byte_size=redacted.byte_size,
         content_type=redacted.content_type,
+        visibility=derivative.visibility,
         created_at=derivative.created_at,
         file_url=(
             f"/api/trips/{trip_id}/documents/{derivative.document_asset_id}/derivatives/{derivative.id}/file"

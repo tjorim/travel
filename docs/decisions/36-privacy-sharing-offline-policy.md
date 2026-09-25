@@ -50,78 +50,80 @@ projection is still carefully owner-curated and redacted, but it is a single
 deliberate publication available identically to every anonymous visitor; it
 has no per-link label, recipient-specific detail level, or capability check.
 
-## Per-trip visibility and custom links
+## Public page and named share links
 
-Every new trip starts private and in draft. Its simple visibility control sets
-the broad baseline to either `private` (only the owner) or `public` (one
-owner-reviewed **default follower view**, identically available to anonymous
-visitors). No trip is public by default. For each trip, the owner selects the
-public view's approved moments, media derivatives, broad places, route stages,
-text and field precision; it never becomes a view of all canonical trip data.
+Canonical trip data has no visibility or publication fields. It is always
+owner-only; sharing is possible only through a separate delivery record. This
+keeps the model honest: there is no trip-level setting that suggests all of a
+trip has become visible.
 
-Named share links are an always-available, optional layer over that baseline.
-They are the product's unlisted capabilities: the owner can create zero or more
-of them for a private or public trip, each with its own selected resources,
-fields and precision. A private trip with active named links is shown in the UI
-as "Custom links" rather than "Only me"; a public trip with active named links
-is shown as "Public + custom links". This status makes the combination clear
-without making custom sharing a restrictive third baseline mode.
+The owner can create one optional public surface for everyone and zero or more
+optional named share links for people with a capability URL. Each has its own
+list of records; what a record shows is a fixed allowlist per kind. A public surface is
+reachable only while its `state` is `published`; a link is reachable only while
+its own `state` is `active`, unexpired and unrevoked. No trip is public by
+default, and neither kind ever becomes a view of all canonical trip data.
 
 A named share link remains forwardable and does not authenticate its holder.
-Its owner-only label and field-level scope make it useful for distinct audiences
+Its owner-only label and scope make it useful for distinct audiences
 without turning it into a recipient account or owner API token. It may reveal
 more or different owner-approved detail than the public projection, but never a
 field prohibited by this policy.
 
-Changing the public/private visibility control is a security-sensitive owner
-action. Switching to `private` unpublishes the public projection and invalidates
-its application-controlled caches; it does not silently revoke named links.
-Switching to `public` activates only the reviewed public projection and does not
-expand or alter any named link. The owner revokes links individually or uses an
-explicit revoke-all action. Changing visibility or links never changes canonical
-content or silently selects new shared items.
-
-The canonical model records the private/public baseline, an optional public
-projection, and independent named-link records. The existing MVP `visibility` value is not a launch compatibility contract;
-the link layer is separate from the public baseline.
+Publishing or withdrawing the public surface never changes canonical content,
+silently selects new items, or affects named links. Links are revoked or rotated
+individually. Saving a changed scope is a live update for the relevant active
+surface or link, so the owner must preview and review it carefully.
 
 ## Default resource policy
 
 All canonical resources start owner-only. `Not included` below means that a
 new resource is absent from that audience until the owner expressly adds a
-safe projection. A public projection is an owner-reviewed allowlist of
-resource IDs and allowed fields for every public follower. The owner sees a
+safe projection. A public projection is an owner-reviewed set of records,
+each shown through a fixed allowlist of fields, for every public follower. The owner sees a
 public-view preview before activating it. An unlisted scope is an independent,
 link-specific allowlist; neither kind grants access to an entire trip merely
 because one trip item was selected.
 
+**Amended 2026-09-25 (visibility).** Every shareable record carries its own
+`visibility`: `private` (the default, reaches nobody), `everyone` (reaches the
+public view and every hidden link) or `custom` (reaches only the audiences whose
+scope lists it). A scope lists records, never fields; what a record shows is
+fixed per kind and can never include a field prohibited by this policy. Only
+records that are themselves share-safe carry a visibility: a private original
+never gets one, and a record that cannot yet be shared safely (a spot without a
+public name, a stay without an area, an unapproved copy) is rejected with a
+reason. Leaving `custom`, or deleting a record, removes it from every scope.
+The earlier requirement of a separately authored twin now applies only where the
+shared thing is a different artifact: files (reviewed derivatives) and routes
+(reviewed broad lines). A place and a stay are shared as themselves through a
+fixed allowlist, and the reisupdate is the one story record.
+
 The owner can create multiple named share links for the same trip, each with a
-different scope and level of detail. A scope records the selected resource IDs,
-the permitted shared fields, and precision choices such as month/day for dates
-or city/region for places. It cannot grant a field prohibited by this policy.
-For example, one link may share selected photo derivatives and moment excerpts
-with a city label, while another exposes only an explicitly authored broad stay
-card. The owner must not reuse the same capability merely because two links
+different scope. For example, one link may list selected custom photos and
+updates, while another lists nothing beyond what is set to everyone. The owner must not reuse the same capability merely because two links
 happen to have similar audiences.
 
 | Resource | Owner default | Public default | Unlisted default | Allowed shared representation |
 |---|---|---|---|---|
 | Trip and route stages | Full canonical trip. | Not included. | Not included. | Selected title, summary, dates at the chosen precision, and broad route/city stages. |
-| Places and maps | Exact place, address, coordinates, viewport and provider identifiers. | Not included. | Not included. | A separate broad place label or generalized geometry; no precise viewport. |
-| Moments | Full text, timestamp, linked canonical resources and selected location. | Not included. | Not included. | An owner-edited shared excerpt with chosen date precision, text and broad place. |
-| Stays | Exact property, address, dates, booking and contact data. | Not included. | Not included. | At most a separately authored broad city/region stay card. Exact property, check-in details, contacts and booking data are never shared by implication. |
+| Places and maps | Exact place, address, coordinates, viewport and provider identifiers. | Not included. | Not included. | A shared area shows its label, region, country and generalized point. A shared spot shows only its owner-chosen public name, city, country and point; never its address, notes, provider identifiers or display name. |
+| Reisupdates | Private notes, timestamp, exact place and attached originals. | Not included. | Not included. | Title, text, date at the chosen precision and the broad place. Its own visibility decides who receives it. |
+| Stays | Exact property, address, dates, booking and contact data. | Not included. | Not included. | Only the city or area and the nights at the chosen date precision. The property, exact place, check-in details, contacts and booking data are never shared. |
+| Transport legs | Exact endpoints, schedule, carrier/service reference, booking reference, travel class, notes and linked documents. | Not included. | Not included. | A summary of kind, status, carrier/service reference, city/country endpoints and scheduled times/time zones. An endpoint appears on the map only when that place is itself shared, which suits public infrastructure such as airports and stations. Booking reference, class, notes and documents never. A shared broad route is authoritative on the map; only without one is a general line drawn between shared city points. |
 | Documents | Original file, preview, extracted text, filename and metadata. | Never an original document. | Never an original document by default. | A deliberately prepared, field-redacted share derivative may be selected as one item; its own URL and metadata are scoped. |
 | Media | Original file, import provenance, EXIF/XMP/IPTC, face/person tags and exact capture data. | Not included. | Not included. | An explicitly selected derivative with all metadata stripped and owner-approved visible content, caption and alt text. |
 | Recorded tracks | Raw/private track, timestamps, points, speed and elevation data. | Not included. | Not included. | A distinct generalized, deliberately bounded route line or broad stages; never raw points or timestamps. |
-| Private journal | Full entry and all metadata. | Never included. | Never included. | Only a new, owner-authored moment/excerpt that contains no link back to the journal entry. |
-| Navigation and external-map links | Exact destination, route, provider URL and map viewport. | Not included. | Not included. | A broad city/region link only, when intentionally selected. |
+| Private journal | The private notes of a reisupdate and all its metadata. | Never included. | Never included. | Never. The shared text of a reisupdate is a separate field written for visitors. |
+| Navigation and external-map links | Exact destination, route, provider URL and map viewport. | Not included. | Not included. | A shared place offers directions: to a shared spot's point, or a city/region link for an area. Never an address. |
 
 An owner can revise or remove a projection without changing the canonical
 record. Sharing an item never changes its default or makes later items shared.
 No projection may contain an owner subject, internal database ID, booking or
 confirmation code, precise address, travel-party contact detail, emergency
 information, raw document/media metadata, exact location, or live/near-real-
-time position.
+time position. A flight or other service reference is permitted only in the
+selected transport summary described above; it is not a booking credential.
 
 ## Server authorization and projection contract
 
@@ -152,6 +154,19 @@ Map rendering receives only the audience projection. It must not calculate a
 viewport, geocoding request, navigation target, tile request parameter or
 fallback link from owner geometry. A broad place is stored/rendered as its own
 approved representation rather than a rounded canonical coordinate.
+
+Both owner and visitor maps may offer optional terrain and satellite layers.
+Those layer requests use only the same audience-scoped viewport and geometry
+already used for the base map; enabling them cannot obtain or infer owner-only
+location data.
+
+An audience map reuses selected broad routes as the authoritative reviewed map
+representation; it must not guess which leg one belongs to, or draw an
+additional line beside it. Only when the scope has no broad route may it draw a
+straight, clearly generalized line between two already selected broad map
+points whose labels match the selected city/country endpoint context. It must
+not create that line from a leg's exact endpoint coordinates or a private
+recorded track.
 
 ## Public and custom-link publication
 
@@ -216,16 +231,17 @@ Revoking a link immediately rejects new capability exchanges, invalidates the
 link's server sessions and signed-file URLs, and purges all application-
 controlled responses and derivatives for that link. Rotation revokes the old
 capability and activates a replacement with the same current scope and a
-fresh token; it exists for replacing a suspected-leaked token, not for
-changing scope, which the owner can already edit live on an active link
-without rotating. Revocation cannot withdraw a file, screenshot, screen
+fresh token; both remain grouped as one owner-visible link history. It exists
+for replacing a suspected-leaked token, not for changing scope, which the
+owner can already edit live on an active link without rotating. Revocation
+cannot withdraw a file, screenshot, screen
 recording, copied text, or browser cache already possessed by a recipient.
 The UI must say this plainly before activation and revocation.
 
 The audit log records link/projection IDs (not raw tokens), the scope in
 effect at the time of the action, owner action, creation/activation/revocation/
-rotation/expiry timestamps, and an optional owner-entered reason. The owner-only link label is available in the
-link-management view but is not copied into recipient-facing responses or
+rotation/expiry timestamps, and an optional owner-entered reason. The owner-only link label and active URL are available in the
+owner-authenticated link-management view but are not copied into recipient-facing responses or
 access logs. The service deliberately does not create recipient profiles or
 retain recipient IP addresses as a sharing feature. Audit events are owner-only
 and retained for 24 months, then deleted unless a shorter legal or security
@@ -252,8 +268,8 @@ is genuinely offline.
 
 Each pinned copy has a short access lease and policy version. On the next
 connection, and no later than the lease expiry, the app revalidates owner
-access and current visibility; it removes a copy that was deleted, unshared,
-redacted, or no longer owned. A remote revocation or visibility change cannot
+access and current sharing state; it removes a copy that was deleted, unshared,
+redacted, or no longer owned. A remote revocation or publication change cannot
 reach a genuinely offline device, so that copy can remain readable only until
 its lease expires or it reconnects. The app must show its last validation time
 and expiry rather than claiming immediate remote erasure. Link revocation never

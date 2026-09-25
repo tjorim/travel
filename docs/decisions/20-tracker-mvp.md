@@ -1,5 +1,10 @@
 # Privacy-first Travel tracker MVP
 
+> **Superseded for sharing.** The scoped public-surface and named-share-link
+> model in [decision 36](36-privacy-sharing-offline-policy.md) replaced this
+> MVP's trip-level visibility, publication state and published-ID design. This
+> document remains as historical context for the first tracker release.
+
 ## Decision
 
 The first tracker release has exactly one account owner for each trip. The API

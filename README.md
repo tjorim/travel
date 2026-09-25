@@ -20,8 +20,15 @@ under #40, after which `dist/` is removed. Old archive URLs are not preserved.
 See [Application backend](#application-backend) and
 [backend/README.md](backend/README.md) for the API, `frontend/` for the PWA
 (`pnpm dev`), or the [local application stack](#local-application-stack)
-below. Until #40 removes it, the retained archive can still be browsed with
-`python3 -m http.server 8080 --directory dist`.
+below. `pnpm dev` proxies `/api` to `http://localhost:8000`, so run the API
+there (PostgreSQL and `alembic upgrade head` are required; SQLite does not
+support the migrations). Locally no Keycloak is needed: export one
+`TRAVEL_DEV_AUTH_BYPASS_TOKEN` (any string) for both processes and start the API
+with `TRAVEL_ENVIRONMENT=development`. `pnpm dev` then authenticates `/api`
+with it, and opening `http://localhost:5173/admin/` is already signed in as the
+fixed development owner (restart `pnpm dev` after exporting it). Without the
+variable, `/admin/` uses Keycloak as in production. Until #40 removes it, the retained archive can still
+be browsed with `python3 -m http.server 8080 --directory dist`.
 
 ## Local application stack
 
@@ -52,10 +59,10 @@ docker compose exec travel-api alembic upgrade head
 ```
 
 Then open `https://localhost`. Public and unlisted views work immediately.
-Owner sign-in uses the production `travel` realm configured in
-`frontend/src/auth.ts`, so it succeeds only if that Keycloak client accepts
-the local callback origin; for API-only work, run the backend directly with
-the development subject header described in [backend/README.md](backend/README.md).
+This stack serves the built PWA, which always signs in through the production
+`travel` realm configured in `frontend/src/auth.ts`, so owner sign-in succeeds
+only if that Keycloak client accepts the local callback origin. For owner work
+run `pnpm dev` and the API directly as described above.
 
 ### Publication safety review
 
@@ -78,7 +85,7 @@ mistake.
 
 `backend/` contains the FastAPI service for the Travel application. The API
 stores only owner-scoped trip data: exact and broad places, route stages,
-moments and moment excerpts, and owner-authorized media uploads/imports copied into
+moments and travel updates, and owner-authorized media uploads/imports copied into
 application-controlled object storage (with owner-only EXIF GPS surfaced when
 present). It does not perform continuous or automatic location tracking.
 
@@ -94,9 +101,9 @@ The production service requires `TRAVEL_DATABASE_URL` and a Keycloak/OIDC
 validator configuration (`TRAVEL_OIDC_ISSUER_URL`, `TRAVEL_OIDC_JWKS_URL`, and
 `TRAVEL_OIDC_AUDIENCE`), provided in production by the `travel` Keycloak realm
 from apps#216. Local tests override the authenticated subject; CRUD fails
-closed when token validation is not configured. A development subject header is
-accepted only when both `TRAVEL_ENVIRONMENT=development` and
-`TRAVEL_ALLOW_DEVELOPMENT_SUBJECT_HEADER=true` are set. Apply schema changes with
+closed when token validation is not configured. `TRAVEL_DEV_AUTH_BYPASS_TOKEN`
+authenticates a request bearing exactly that token as a fixed development owner;
+startup refuses it outside `TRAVEL_ENVIRONMENT=development`. Apply schema changes with
 `uv run alembic upgrade head`. Central deployment, PostgreSQL credentials,
 backup coverage, media storage and Caddy routing live in the `apps` repository
 (apps#215, apps#219 and apps#220).

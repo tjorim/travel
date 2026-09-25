@@ -1,4 +1,4 @@
-"""Owner-only accommodation records and separately authored broad cards."""
+"""Owner-only accommodation records; sharing one shows only its area and nights."""
 
 from datetime import date
 from typing import Annotated
@@ -9,15 +9,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import BroadStayCard, Place, PlaceKind, Stay, Trip
-from ..schemas import (
-    BroadStayCardCreate,
-    BroadStayCardResponse,
-    BroadStayCardUpdate,
-    StayCreate,
-    StayResponse,
-    StayUpdate,
-)
+from ..models import Place, PlaceKind, Stay, Trip
+from ..schemas import StayCreate, StayResponse, StayUpdate
 from .trips import exact_place_from_input, owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["stays"])
@@ -27,11 +20,7 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 
 def _stay_query():
-    return select(Stay).options(selectinload(Stay.place), selectinload(Stay.broad_place))
-
-
-def _card_query():
-    return select(BroadStayCard).options(selectinload(BroadStayCard.place))
+    return select(Stay).options(selectinload(Stay.place).selectinload(Place.area), selectinload(Stay.broad_place))
 
 
 def owned_stay(trip: Trip, stay_id: str) -> Stay:
@@ -39,13 +28,6 @@ def owned_stay(trip: Trip, stay_id: str) -> Stay:
     if stay is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found")
     return stay
-
-
-def owned_broad_stay_card(trip: Trip, card_id: str) -> BroadStayCard:
-    card = next((item for item in trip.broad_stay_cards if item.id == card_id), None)
-    if card is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broad stay card not found")
-    return card
 
 
 def resolve_broad_place_id(session: Session, trip: Trip, broad_place_id: str) -> str:
@@ -74,11 +56,17 @@ def list_stays(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[S
 def create_stay(trip_id: str, payload: StayCreate, session: SessionDep, subject: SubjectDep) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     validate_stay_nights(payload.check_in_date, payload.check_out_date)
+    spot = exact_place_from_input(session, trip.id, payload.place) if payload.place is not None else None
+    if spot is not None and payload.broad_place_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A stay with a hotel gets its area from that spot",
+        )
     stay = Stay(
         trip=trip,
-        place=exact_place_from_input(session, trip.id, payload.place) if payload.place is not None else None,
+        place=spot,
         broad_place_id=(
-            resolve_broad_place_id(session, trip, payload.broad_place_id) if payload.broad_place_id is not None else None
+            resolve_broad_place_id(session, trip, payload.broad_place_id) if spot is None and payload.broad_place_id is not None else None
         ),
         website_url=str(payload.website_url) if payload.website_url is not None else None,
         **payload.model_dump(exclude={"place", "broad_place_id", "website_url"}),
@@ -100,7 +88,14 @@ def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: Sessio
     if "place" in payload.model_fields_set:
         # Clearing the exact place returns the stay to "still choosing".
         stay.place = exact_place_from_input(session, trip.id, payload.place) if payload.place is not None else None
-    if "broad_place_id" in payload.model_fields_set:
+    if stay.place is not None:
+        if "broad_place_id" in payload.model_fields_set and payload.broad_place_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="A stay with a hotel gets its area from that spot",
+            )
+        stay.broad_place_id = None
+    elif "broad_place_id" in payload.model_fields_set:
         stay.broad_place_id = (
             resolve_broad_place_id(session, trip, payload.broad_place_id) if payload.broad_place_id is not None else None
         )
@@ -122,54 +117,5 @@ def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: Sessio
 @router.delete("/stays/{stay_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_stay(trip_id: str, stay_id: str, session: SessionDep, subject: SubjectDep) -> Response:
     session.delete(owned_stay(owned_trip(session, trip_id, subject), stay_id))
-    session.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.get("/broad-stay-cards", response_model=list[BroadStayCardResponse])
-def list_broad_stay_cards(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[BroadStayCard]:
-    return list(owned_trip(session, trip_id, subject).broad_stay_cards)
-
-
-@router.post("/broad-stay-cards", response_model=BroadStayCardResponse, status_code=status.HTTP_201_CREATED)
-def create_broad_stay_card(
-    trip_id: str, payload: BroadStayCardCreate, session: SessionDep, subject: SubjectDep
-) -> BroadStayCard:
-    trip = owned_trip(session, trip_id, subject)
-    card = BroadStayCard(
-        trip=trip,
-        broad_place_id=resolve_broad_place_id(session, trip, payload.broad_place_id),
-        title=payload.title,
-        date_precision=payload.date_precision,
-    )
-    session.add(card)
-    session.commit()
-    return session.scalar(_card_query().where(BroadStayCard.id == card.id))  # type: ignore[return-value]
-
-
-@router.get("/broad-stay-cards/{card_id}", response_model=BroadStayCardResponse)
-def get_broad_stay_card(trip_id: str, card_id: str, session: SessionDep, subject: SubjectDep) -> BroadStayCard:
-    return owned_broad_stay_card(owned_trip(session, trip_id, subject), card_id)
-
-
-@router.patch("/broad-stay-cards/{card_id}", response_model=BroadStayCardResponse)
-def update_broad_stay_card(
-    trip_id: str, card_id: str, payload: BroadStayCardUpdate, session: SessionDep, subject: SubjectDep
-) -> BroadStayCard:
-    trip = owned_trip(session, trip_id, subject)
-    card = owned_broad_stay_card(trip, card_id)
-    if "broad_place_id" in payload.model_fields_set:
-        if payload.broad_place_id is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A broad place is required")
-        card.broad_place_id = resolve_broad_place_id(session, trip, payload.broad_place_id)
-    for field, value in payload.model_dump(exclude_unset=True, exclude={"broad_place_id"}).items():
-        setattr(card, field, value)
-    session.commit()
-    return session.scalar(_card_query().where(BroadStayCard.id == card.id))  # type: ignore[return-value]
-
-
-@router.delete("/broad-stay-cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_broad_stay_card(trip_id: str, card_id: str, session: SessionDep, subject: SubjectDep) -> Response:
-    session.delete(owned_broad_stay_card(owned_trip(session, trip_id, subject), card_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

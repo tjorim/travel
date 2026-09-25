@@ -5,9 +5,10 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
+from pydantic import ValidationError
 
-from app.auth import current_subject
-from app.config import settings
+from app.auth import DEV_BYPASS_SUBJECT, current_subject
+from app.config import Settings, settings
 
 
 class StaticSigningKey:
@@ -47,7 +48,7 @@ def test_current_subject_accepts_a_valid_travel_audience_token(monkeypatch: pyte
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
     monkeypatch.setattr(settings, "oidc_jwks_url", "https://auth.example.test/realms/travel/protocol/openid-connect/certs")
 
-    subject = current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token), None)
+    subject = current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
 
     assert subject == "travel-account-id"
 
@@ -62,6 +63,43 @@ def test_current_subject_rejects_a_wrong_audience(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(settings, "oidc_jwks_url", "https://auth.example.test/realms/travel/protocol/openid-connect/certs")
 
     with pytest.raises(HTTPException, match="Invalid bearer token") as error:
-        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token), None)
+        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
 
     assert error.value.status_code == 401
+
+
+def test_dev_bypass_token_authenticates_the_fixed_development_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "dev_auth_bypass_token", "local-dev-token")
+
+    subject = current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials="local-dev-token"))
+
+    assert subject == DEV_BYPASS_SUBJECT
+
+
+def test_a_different_token_does_not_trigger_the_dev_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "dev_auth_bypass_token", "local-dev-token")
+    monkeypatch.setattr(settings, "oidc_issuer_url", None)
+    monkeypatch.setattr(settings, "oidc_jwks_url", None)
+
+    with pytest.raises(HTTPException) as error:
+        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials="another-token"))
+
+    assert error.value.status_code == 503
+
+
+def test_dev_bypass_is_off_unless_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "dev_auth_bypass_token", "")
+    monkeypatch.setattr(settings, "oidc_issuer_url", None)
+    monkeypatch.setattr(settings, "oidc_jwks_url", None)
+
+    with pytest.raises(HTTPException) as error:
+        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=""))
+
+    assert error.value.status_code == 503
+
+
+def test_startup_refuses_the_dev_bypass_outside_development() -> None:
+    with pytest.raises(ValidationError, match="TRAVEL_DEV_AUTH_BYPASS_TOKEN"):
+        Settings(environment="production", dev_auth_bypass_token="local-dev-token")
+
+    assert Settings(environment="development", dev_auth_bypass_token="local-dev-token").dev_auth_bypass_token

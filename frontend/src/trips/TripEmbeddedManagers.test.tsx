@@ -6,25 +6,23 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { useTripsQuery } from "../query/owner-queries";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { BroadPlace, MomentExcerpt, RouteStage, Trip, TripHighlight } from "../tracker-model";
-import { HighlightManager } from "./HighlightManager";
-import { MomentExcerptManager } from "./MomentExcerptManager";
+import type { BroadPlace, RouteStage, TravelUpdate, Trip } from "../tracker-model";
 import { RouteStageManager } from "./RouteStageManager";
+import { TravelUpdateManager } from "./TravelUpdateManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const taipei: BroadPlace = { id: "taipei", label: "Taipei", country_code: "TW", region: null, latitude: null, longitude: null, timezone: null };
-const tainan: BroadPlace = { id: "tainan", label: "Tainan", country_code: "TW", region: null, latitude: null, longitude: null, timezone: null };
-const highlight = (id: string, title: string, position: number): TripHighlight => ({ id, title, summary: null, position });
-const stage = (id: string, label: string, position: number): RouteStage => ({ id, label, summary: null, position, place: taipei });
-const excerpt = (id: string, title: string): MomentExcerpt => ({ id, source_moment_id: null, broad_place_id: null, date_precision: "day", story_date: null, title, body: "De eerste avond." });
+const taipei: BroadPlace = { id: "taipei", visibility: "private", label: "Taipei", country_code: "TW", region: null, latitude: null, longitude: null, timezone: null };
+const tainan: BroadPlace = { id: "tainan", visibility: "private", label: "Tainan", country_code: "TW", region: null, latitude: null, longitude: null, timezone: null };
+const stage = (id: string, label: string, position: number): RouteStage => ({ id, label, summary: null, position, place: taipei, visibility: "private" });
+const update = (id: string, title: string, visibility: TravelUpdate["visibility"] = "private"): TravelUpdate => ({ id, occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title, body: "De eerste avond.", private_notes: null, broad_place_id: null, place: null, media_asset_ids: [], visibility });
 
 let state: { trip: Trip };
 let api: FakeApi;
 
-/** Highlights, stages and excerpts live inside the trip: writes change it and the trip list is what refreshes. */
-function embed(key: "highlights" | "route_stages" | "moment_excerpts", path: string, shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => item) {
+/** Stages and travel updates live inside the trip: writes change it and the trip list is what refreshes. */
+function embed(key: "route_stages" | "travel_updates", path: string, shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => item) {
   const list = () => state.trip[key] as { id: string }[];
   const set = (items: unknown[]) => { state.trip = { ...state.trip, [key]: items }; };
   api.on("POST", new RegExp(`^/api/trips/trip/${path}$`), (body) => { const created = shape({ id: `new-${list().length}`, position: list().length, ...(body as object) }); set([...list(), created]); return created; });
@@ -51,124 +49,109 @@ function Screen({ children }: { children: (trip: Trip) => ReactNode }) {
 
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  state = { trip: { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, visibility: "private", publication_state: "draft", route_stages: [stage("s1", "Noordkust", 0), stage("s2", "Zuiden", 1)], highlights: [highlight("h1", "Stad ↔ natuur", 0), highlight("h2", "Eten", 1)], moments: [], moment_excerpts: [excerpt("e1", "Aankomst"), excerpt("e2", "Vertrek")] } };
+  state = { trip: { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, route_stages: [stage("s1", "Noordkust", 0), stage("s2", "Zuiden", 1)], travel_updates: [update("e1", "Aankomst"), update("e2", "Vertrek")] } };
   api = fakeApi();
+  api.collection("/api/trips/trip/places", []);
   api.on("GET", /^\/api\/trips$/, () => [state.trip]);
-  embed("highlights", "highlights");
   embed("route_stages", "route-stages", (item) => ({ ...item, place: [taipei, tainan].find((place) => place.id === item.broad_place_id) ?? item.place }));
-  embed("moment_excerpts", "moment-excerpts");
+  embed("travel_updates", "travel-updates");
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); expect(api.unexpected).toEqual([]); });
 
 const confirmDelete = () => fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
 
-it("shows an edited highlight at once and never the old title", async () => {
-  renderWithOwner(<Screen>{(trip) => <HighlightManager trip={trip} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Hoogtepunt Eten bekijken" }));
-  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Eten en drinken" } });
-  fireEvent.click(screen.getByRole("button", { name: "Hoogtepunt opslaan" }));
-  await screen.findByRole("button", { name: "Hoogtepunt Eten en drinken bekijken" });
-  expect(screen.queryByRole("button", { name: "Hoogtepunt Eten bekijken" })).toBeNull();
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(screen.getByText("Hoogtepunt opgeslagen. Het is nog niet gedeeld.")).toBeTruthy();
-});
-
-it("removes a deleted highlight and keeps the order of the rest", async () => {
-  renderWithOwner(<Screen>{(trip) => <HighlightManager trip={trip} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Hoogtepunt Stad ↔ natuur bekijken" }));
-  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  expect(api.count("DELETE /api/trips/trip/highlights/h1")).toBe(0);
-  confirmDelete();
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Hoogtepunt Stad ↔ natuur bekijken" })).toBeNull());
-  expect(screen.getByRole("button", { name: "Hoogtepunt Eten bekijken" })).toBeTruthy();
-  expect(screen.getByText("Hoogtepunt verwijderd.")).toBeTruthy();
-});
-
-it("reorders highlights from the refetched trip", async () => {
-  renderWithOwner(<Screen>{(trip) => <HighlightManager trip={trip} />}</Screen>);
-  await screen.findByRole("button", { name: "Hoogtepunt Eten bekijken" });
-  fireEvent.click(screen.getAllByRole("button", { name: "Omlaag" })[0]);
-  await waitFor(() => expect(screen.getAllByRole("button", { name: /bekijken$/ }).map((button) => button.getAttribute("aria-label"))).toEqual(["Hoogtepunt Eten bekijken", "Hoogtepunt Stad ↔ natuur bekijken"]));
-});
-
 it("shows an edited route stage and forgets a deleted one", async () => {
   renderWithOwner(<Screen>{(trip) => <RouteStageManager trip={trip} broadPlaces={[taipei, tainan]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Route-etappe Zuiden bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Halte Zuiden bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.change(screen.getByLabelText("Etappelabel (optioneel)"), { target: { value: "Zuidkust" } });
-  fireEvent.click(screen.getByRole("button", { name: "Etappe opslaan" }));
-  await screen.findByRole("button", { name: "Route-etappe Zuidkust bekijken" });
-  expect(screen.queryByRole("button", { name: "Route-etappe Zuiden bekijken" })).toBeNull();
+  fireEvent.change(screen.getByLabelText("Naam van halte (optioneel)"), { target: { value: "Zuidkust" } });
+  fireEvent.click(screen.getByRole("button", { name: "Halte opslaan" }));
+  await screen.findByRole("button", { name: "Halte Zuidkust bekijken" });
+  expect(screen.queryByRole("button", { name: "Halte Zuiden bekijken" })).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Route-etappe Noordkust bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Halte Noordkust bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   confirmDelete();
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Route-etappe Noordkust bekijken" })).toBeNull());
-  expect(screen.getByText(/etappe 1/)).toBeTruthy();
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Halte Noordkust bekijken" })).toBeNull());
+  expect(screen.getByText(/halte 1/)).toBeTruthy();
 });
 
 it("requires a broad place before a route stage is sent", async () => {
   renderWithOwner(<Screen>{(trip) => <RouteStageManager trip={trip} broadPlaces={[taipei]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe etappe" }));
-  fireEvent.click(screen.getByRole("button", { name: "Etappe toevoegen" }));
-  await screen.findByText("Kies eerst een brede plaats.");
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe halte" }));
+  fireEvent.click(screen.getByRole("button", { name: "Halte toevoegen" }));
+  await screen.findByText("Kies eerst een plaats.");
   expect(api.count("POST /api/trips/trip/route-stages")).toBe(0);
-  fireEvent.change(screen.getByLabelText("Brede plaats"), { target: { value: "taipei" } });
-  fireEvent.click(screen.getByRole("button", { name: "Etappe toevoegen" }));
+  fireEvent.change(screen.getByLabelText("Plaats"), { target: { value: "taipei" } });
+  fireEvent.click(screen.getByRole("button", { name: "Halte toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/route-stages")).toMatchObject({ broad_place_id: "taipei", position: 2 });
 });
 
-it("opens an excerpt in detail before editing and asks before discarding edits", async () => {
-  renderWithOwner(<Screen>{(trip) => <MomentExcerptManager trip={trip} broadPlaces={[]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Uittreksel Aankomst bekijken" }));
+it("opens a travel update in detail before editing and asks before discarding edits", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} broadPlaces={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Reisupdate Aankomst bekijken" }));
   expect(await screen.findByRole("heading", { name: "Aankomst" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  expect(screen.getByRole("heading", { name: "Uittreksel bewerken" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Reisupdate bewerken" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Late aankomst" } });
-  fireEvent.click(screen.getByRole("button", { name: /Uittreksel bewerken sluiten/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Reisupdate bewerken sluiten/ }));
   expect(screen.getByText("Wijzigingen verwerpen?")).toBeTruthy();
 });
 
-it("keeps the typed excerpt after a rejected save and marks the field", async () => {
-  renderWithOwner(<Screen>{(trip) => <MomentExcerptManager trip={trip} broadPlaces={[]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuw uittreksel" }));
-  expect(screen.getByRole("heading", { name: "Uittreksel maken" })).toBeTruthy();
+it("keeps the typed update after a rejected save and marks the field", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} broadPlaces={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  expect(screen.getByRole("heading", { name: "Reisupdate maken" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw verhaal" } });
-  fireEvent.change(screen.getByLabelText("Uittreksel"), { target: { value: "Tekst" } });
+  fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
   api.failNext = { status: 422, body: { detail: [{ loc: ["body", "title"], msg: "Deze titel bestaat al." }] } };
-  fireEvent.click(screen.getByRole("button", { name: "Uittreksel maken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
   await screen.findByText("Deze titel bestaat al.", { selector: ".field-error" });
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Nieuw verhaal");
 });
 
-it("adds an excerpt to the list once saved", async () => {
-  renderWithOwner(<Screen>{(trip) => <MomentExcerptManager trip={trip} broadPlaces={[]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuw uittreksel" }));
+it("adds an update to the list once saved", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} broadPlaces={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw verhaal" } });
-  fireEvent.change(screen.getByLabelText("Uittreksel"), { target: { value: "Tekst" } });
-  fireEvent.click(screen.getByRole("button", { name: "Uittreksel maken" }));
-  await screen.findByRole("button", { name: "Uittreksel Nieuw verhaal bekijken" });
-  expect(screen.getByText("Uittreksel opgeslagen. Het is nog niet gedeeld.")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
+  await screen.findByRole("button", { name: "Reisupdate Nieuw verhaal bekijken" });
+  expect(screen.getByText("Reisupdate opgeslagen.")).toBeTruthy();
 });
 
-it("shows an edited excerpt and removes a deleted one only after the in-app confirmation", async () => {
-  renderWithOwner(<Screen>{(trip) => <MomentExcerptManager trip={trip} broadPlaces={[]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Uittreksel Vertrek bekijken" }));
+it("shows an edited update and removes it only after the in-app confirmation", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} broadPlaces={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Reisupdate Vertrek bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   // The editor opens with the saved record, not a blank form.
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Vertrek");
-  expect((screen.getByLabelText("Uittreksel") as HTMLTextAreaElement).value).toBe("De eerste avond.");
+  expect((screen.getByLabelText(/^Tekst voor bezoekers/) as HTMLTextAreaElement).value).toBe("De eerste avond.");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Terugvlucht" } });
-  fireEvent.click(screen.getByRole("button", { name: "Uittreksel opslaan" }));
-  await screen.findByRole("button", { name: "Uittreksel Terugvlucht bekijken" });
-  expect(screen.queryByRole("button", { name: "Uittreksel Vertrek bekijken" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
+  await screen.findByRole("button", { name: "Reisupdate Terugvlucht bekijken" });
+  expect(screen.queryByRole("button", { name: "Reisupdate Vertrek bekijken" })).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Uittreksel Aankomst bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate Aankomst bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  expect(api.count("DELETE /api/trips/trip/moment-excerpts/e1")).toBe(0);
+  expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(0);
   confirmDelete();
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Uittreksel Aankomst bekijken" })).toBeNull());
-  expect(api.count("DELETE /api/trips/trip/moment-excerpts/e1")).toBe(1);
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Reisupdate Aankomst bekijken" })).toBeNull());
+  expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(1);
+});
+
+it("saves who may see an update with the update itself, private by default", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} broadPlaces={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  expect((screen.getByLabelText("Zichtbaarheid") as HTMLSelectElement).value).toBe("private");
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Voor iedereen" } });
+  fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
+  fireEvent.change(screen.getByLabelText("Zichtbaarheid"), { target: { value: "everyone" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
+  await screen.findByRole("button", { name: "Reisupdate Voor iedereen bekijken" });
+  expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({ visibility: "everyone" });
+  // The list says who sees each update.
+  expect(screen.getByRole("button", { name: "Reisupdate Voor iedereen bekijken" }).textContent).toContain("Iedereen");
+  expect(screen.getByRole("button", { name: "Reisupdate Aankomst bekijken" }).textContent).toContain("Privé");
 });

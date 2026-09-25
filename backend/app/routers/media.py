@@ -28,8 +28,7 @@ from ..models import (
     ImportSession,
     MediaAsset,
     MediaDerivative,
-    PublicSurface,
-    ShareLink,
+    TravelUpdate,
 )
 from ..schemas import (
     ImportSessionCompleteResponse,
@@ -92,11 +91,12 @@ def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeri
         metadata_stripped_at=derivative.metadata_stripped_at,
         width=derivative.width,
         height=derivative.height,
-        moment_excerpt_id=derivative.moment_excerpt_id,
+        travel_update_id=derivative.travel_update_id,
         caption=derivative.caption,
         alt_text=derivative.alt_text,
         focal_x=derivative.focal_x,
         focal_y=derivative.focal_y,
+        visibility=derivative.visibility,
         created_at=derivative.created_at,
         file_url=f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/file",
     )
@@ -271,29 +271,14 @@ def update_derivative_presentation(
 ) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     values = payload.model_dump(exclude_unset=True)
-    if values.get("moment_excerpt_id") is not None:
-        from ..models import MomentExcerpt
-
-        excerpt = session.get(MomentExcerpt, values["moment_excerpt_id"])
-        if excerpt is None or excerpt.trip_id != trip_id:
-            raise HTTPException(status_code=422, detail="Moment excerpt is unavailable for this trip")
+    if values.get("travel_update_id") is not None:
+        update = session.get(TravelUpdate, values["travel_update_id"])
+        if update is None or update.trip_id != trip_id:
+            raise HTTPException(status_code=422, detail="Travel update is unavailable for this trip")
     for field, value in values.items():
         setattr(derivative, field, value)
     session.commit()
     return _derivative_response(derivative, trip_id)
-
-
-def _remove_from_live_scopes(session: Session, *, trip_id: str, derivative_id: str) -> None:
-    """Withdraw a deleted derivative from public and unlisted live scopes."""
-    holders = [session.get(PublicSurface, trip_id), *session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id))]
-    for holder in holders:
-        if holder is None:
-            continue
-        scope = dict(holder.scope)
-        items = scope.get("items", [])
-        filtered = [item for item in items if not (item.get("kind") == "media_derivative" and item.get("id") == derivative_id)]
-        if len(filtered) != len(items):
-            holder.scope = {**scope, "items": filtered}
 
 
 @router.delete("/{media_id}/derivatives/{derivative_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -301,7 +286,6 @@ def remove_derivative(
     trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    _remove_from_live_scopes(session, trip_id=trip_id, derivative_id=derivative.id)
     delete_media_derivative(session, storage, derivative=derivative)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

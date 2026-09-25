@@ -111,7 +111,7 @@ def _exif_captured_at(exif) -> datetime | None:
 
 def extract_exif_metadata(data: bytes) -> dict:
     """Best-effort capture time/camera/GPS extraction from a photo original,
-    for the owner's own convenience — e.g. pre-filling a moment's date or
+    for the owner's own convenience — e.g. pre-filling a reisupdate's date or
     suggesting a place when they add media to a trip. This is the one place
     EXIF is read, never stripped: the original keeps it embedded untouched,
     and only a share/static-export derivative (`create_derivative`) discards
@@ -476,8 +476,8 @@ def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
     purged later by `purge_deleted_media`, after the recoverable-deletion
     window, never synchronously here."""
     # A removed original is no longer an attachment. Keep no hidden link on a
-    # moment that might later be mistaken for a publishable reference.
-    for link in list(media_asset.moment_links):
+    # reisupdate that might later be mistaken for a publishable reference.
+    for link in list(media_asset.update_links):
         session.delete(link)
     media_asset.deleted_at = datetime.now(UTC)
     session.commit()

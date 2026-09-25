@@ -11,7 +11,7 @@ import { TripDetail } from "./TripDetail";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: "Drie weken", starts_on: "2054-11-16", ends_on: "2054-12-06", visibility: "private", publication_state: "draft", route_stages: [], highlights: [], moments: [{ id: "m1", occurred_at: "2054-11-17T10:00:00Z", title: "Eerste avond", story: "Nachtmarkt", place: null, media_asset_ids: [] }], moment_excerpts: [] };
+const trip: Trip = { id: "trip", title: "Exampleland", summary: "Drie weken", starts_on: "2054-11-16", ends_on: "2054-12-06", route_stages: [], travel_updates: [{ id: "m1", occurred_at: "2054-11-17T10:00:00Z", date_precision: "day", title: "Eerste avond", body: "", private_notes: "Nachtmarkt", broad_place_id: null, place: null, media_asset_ids: [], visibility: "private" }] };
 const path = (resource: string) => `/api/trips/trip/${resource}`;
 
 let api: FakeApi;
@@ -34,6 +34,7 @@ it("shows the whole private trip once every read has arrived", async () => {
   expect(screen.getByText("Hotel Royal")).toBeTruthy();
   expect(screen.getByText("Boekingsreferentie: ABC")).toBeTruthy();
   expect(screen.getByText("Visum regelen")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Naar reisbeheer" }).getAttribute("href")).toBe("/trips/trip");
   expect(api.unexpected).toEqual([]);
 });
 

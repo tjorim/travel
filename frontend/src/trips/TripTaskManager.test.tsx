@@ -10,7 +10,7 @@ import { TripTaskManager } from "./TripTaskManager";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: "2054-11-16", ends_on: null, visibility: "private", publication_state: "draft", route_stages: [], highlights: [], moments: [], moment_excerpts: [] };
+const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: "2054-11-16", ends_on: null, route_stages: [], travel_updates: [] };
 const task = (id: string, title: string, extra: Partial<TripTask> = {}): TripTask => ({ id, title, notes: null, due_date: null, remind_at: null, reminded_at: null, links: [], completed_at: null, created_at: "2054-09-01T00:00:00Z", ...extra });
 
 type Api = { tasks: TripTask[]; alerts: TripTaskAlert[]; failNext: { status: number; body: unknown } | null; requests: string[] };

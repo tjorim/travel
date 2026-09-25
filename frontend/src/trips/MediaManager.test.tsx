@@ -14,12 +14,11 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
-  id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, visibility: "private", publication_state: "draft", route_stages: [], highlights: [],
-  moments: [{ id: "m1", occurred_at: "2054-11-16T10:00:00Z", title: "Aankomst", story: "", place: null, media_asset_ids: ["p2"] }],
-  moment_excerpts: [{ id: "e1", source_moment_id: null, broad_place_id: null, date_precision: "day", story_date: null, title: "Eerste avond", body: "…" }],
+  id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, route_stages: [],
+  travel_updates: [{ id: "e1", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Eerste avond", body: "…", private_notes: null, broad_place_id: null, place: null, media_asset_ids: ["p2"], visibility: "private" }],
 };
 const photo = (id: string, name: string): MediaAsset => ({ id, media_kind: "photo", original_filename: name, byte_size: 2048, content_type: "image/jpeg", captured_at: null, gps: null, file_url: `/api/trips/trip/media/${id}/original` } as MediaAsset);
-const derivative = (id: string, state: "pending" | "approved", extra: Partial<MediaDerivative> = {}): MediaDerivative => ({ id, media_asset_id: "p1", purpose: "share", review_state: state, metadata_stripped_at: null, width: 800, height: 600, moment_excerpt_id: null, caption: null, alt_text: null, focal_x: null, focal_y: null, created_at: "2054-01-01T00:00:00Z", file_url: `/files/${id}`, ...extra });
+const derivative = (id: string, state: "pending" | "approved", extra: Partial<MediaDerivative> = {}): MediaDerivative => ({ id, media_asset_id: "p1", purpose: "share", review_state: state, metadata_stripped_at: null, width: 800, height: 600, travel_update_id: null, caption: null, alt_text: null, focal_x: null, focal_y: null, visibility: "private", created_at: "2054-01-01T00:00:00Z", file_url: `/files/${id}`, ...extra });
 
 let api: FakeApi;
 beforeEach(() => {
@@ -38,12 +37,15 @@ it("lists a new upload straight away and selects it", async () => {
   api.collection("/api/trips/trip/media/p3/derivatives", []);
   renderMedia();
   await screen.findByText("kust.jpg");
+  expect(document.querySelector('input[type="file"]')).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Media uploaden" }));
   fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(["x"], "nieuw.jpg", { type: "image/jpeg" })] } });
   fireEvent.submit(screen.getByRole("button", { name: "Privémedia uploaden" }).closest("form")!);
   await screen.findByText("nieuw.jpg");
   expect(screen.getByText(/Voor nieuw\.jpg\./)).toBeTruthy();
-  expect(screen.getByText("Privémedia geüpload. Je kunt ze nu aan een moment koppelen.")).toBeTruthy();
+  expect(screen.getByText("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.")).toBeTruthy();
   expect(api.lastBody<FormData>("POST /api/trips/trip/media/uploads")!.get("file")).toBeInstanceOf(File);
+  expect(document.querySelector('input[type="file"]')).toBeNull();
 });
 
 it("removes a deleted photo and its derivatives from the screen", async () => {
@@ -53,7 +55,7 @@ it("removes a deleted photo and its derivatives from the screen", async () => {
   await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("kust.jpg")).toBeNull());
   expect(screen.getByText("markt.jpg")).toBeTruthy();
-  expect(screen.getByText("Privémedia verwijderd. Eventuele momentkoppelingen zijn ook weggehaald.")).toBeTruthy();
+  expect(screen.getByText("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.")).toBeTruthy();
   expect(screen.queryByText("Afgeleiden")).toBeNull();
 });
 
@@ -98,13 +100,13 @@ it("opens the presentation form with the saved values, saves it and shows the sa
   fireEvent.change(screen.getByLabelText("Focus horizontaal (%)"), { target: { value: "40" } });
   fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
   await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
-  expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({ caption: "Kust bij zonsopgang", focal_x: 40, moment_excerpt_id: null });
+  expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({ caption: "Kust bij zonsopgang", focal_x: 40, travel_update_id: null });
   await waitFor(() => expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe("Kust bij zonsopgang"));
 });
 
-it("reviews possible visits without storing them, and attaches media to an existing moment", async () => {
+it("reviews possible visits without storing them, and attaches media to an existing reisupdate", async () => {
   api.on("POST", /\/media\/visit-candidates$/, () => ({ grouping_window_minutes: 120, gps_agreement_metres: 500, unavailable_media_asset_ids: [], candidates: [{ id: "c1", media_asset_ids: ["p1"], starts_at: null, ends_at: null, time_options: [], location_options: [] }] }));
-  api.on("PATCH", /\/moments\/m1$/, () => ({ id: "m1" }));
+  api.on("PATCH", /\/travel-updates\/e1$/, () => ({ id: "e1" }));
   renderMedia();
   await screen.findByText("kust.jpg");
   fireEvent.click(screen.getByRole("button", { name: "Geselecteerde media beoordelen" }));
@@ -114,10 +116,10 @@ it("reviews possible visits without storing them, and attaches media to an exist
   await screen.findByText("Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen.");
   expect(api.lastBody("POST /api/trips/trip/media/visit-candidates")).toEqual({ media_asset_ids: ["p1"] });
 
-  fireEvent.change(screen.getByLabelText("Koppel aan"), { target: { value: "m1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Aan moment koppelen" }));
-  await screen.findByText("Private media gekoppeld aan “Aankomst”. Er is geen plaats of deelbare inhoud gemaakt.");
-  expect(api.lastBody("PATCH /api/trips/trip/moments/m1")).toEqual({ media_asset_ids: ["p2", "p1"] });
+  fireEvent.change(screen.getByLabelText("Koppel aan"), { target: { value: "e1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Aan reisupdate koppelen" }));
+  await screen.findByText("Private media gekoppeld aan “Eerste avond”. Er is geen plaats of deelbare inhoud gemaakt.");
+  expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e1")).toEqual({ media_asset_ids: ["p2", "p1"] });
 });
 
 it("starts an import and reports a selection that is not ready yet", async () => {

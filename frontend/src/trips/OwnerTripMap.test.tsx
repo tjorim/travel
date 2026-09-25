@@ -13,9 +13,9 @@ import { OwnerTripMap } from "./OwnerTripMap";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, visibility: "private", publication_state: "draft", route_stages: [], highlights: [], moments: [], moment_excerpts: [] };
-const taipei: BroadPlace = { id: "taipei", label: "Taipei", country_code: "TW", region: null, latitude: 25.03, longitude: 121.56, timezone: null };
-const route = (id: string, label: string): BroadRoute => ({ id, label, date_precision: "day", geometry: { type: "LineString", coordinates: [[121.5, 25], [121.6, 25.1]] } } as BroadRoute);
+const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, route_stages: [], travel_updates: [] };
+const taipei: BroadPlace = { id: "taipei", visibility: "private", label: "Taipei", country_code: "TW", region: null, latitude: 25.03, longitude: 121.56, timezone: null };
+const route = (id: string, label: string): BroadRoute => ({ id, label, date_precision: "day", visibility: "private", geometry: { type: "LineString", coordinates: [[121.5, 25], [121.6, 25.1]] } } as BroadRoute);
 const cafe = { id: "cafe", display_name: "Café", locality: null, latitude: 25.04, longitude: 121.5 } as Place;
 const track = { id: "t1", kind: "point_array", started_at: "2054-11-16T08:00:00Z", source_file_url: "/api/trips/trip/recorded-tracks/t1/source" } as RecordedTrack;
 

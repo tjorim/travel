@@ -2,7 +2,7 @@
 
 Candidates are calculated for a single request and deliberately have no
 database model.  They are a review aid, not a new source of canonical trip
-data: the owner must still explicitly create or edit a moment and choose a
+data: the owner must still explicitly create or edit a reisupdate and choose a
 place through the normal place flow.
 """
 

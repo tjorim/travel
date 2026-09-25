@@ -16,8 +16,10 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}` | Read, edit, or remove an owned trip. |
 | `POST` | `/trips/{trip_id}/route-stages` | Add a broad route stage. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/route-stages/{stage_id}` | Edit or remove a route stage. |
-| `GET`, `POST` | `/trips/{trip_id}/highlights` | List or add an authored trip highlight (shareable only when a scope selects it). |
-| `PATCH`, `DELETE` | `/trips/{trip_id}/highlights/{highlight_id}` | Edit, reorder or remove a highlight. |
+| `POST` | `/trips/{trip_id}/travel-updates` | Add a reisupdate, the one record for something that happened. Its private part (`private_notes`, the exact `place`, attached `media_asset_ids`) is never shared; its shared part (title, `body`, date, area) reaches visitors only as its `visibility` allows: `private` (the default), `everyone` or `custom`. |
+| `PATCH`, `DELETE` | `/trips/{trip_id}/travel-updates/{update_id}` | Edit or remove a reisupdate. Leaving `custom` or deleting it withdraws it from every live scope. |
+| `PUT` | `/trips/{trip_id}/visibility/{kind}/{record_id}` | Choose `private`, `everyone` or `custom` for any shareable record (place, stage, route, stay, transport leg, reisupdate, approved photo or document copy). The reason is returned when a record cannot be shared yet. |
+| `PATCH` | `/trips/{trip_id}/places/{place_id}` | Give an exact place its public name; a spot cannot be shared without one. |
 | `GET`, `POST` | `/trips/{trip_id}/stays` | List or add an owner-only stay: its nights, city/area and, once chosen, the accommodation. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/stays/{stay_id}` | Read, edit or remove a stay. |
 | `GET`, `POST` | `/trips/{trip_id}/transport-legs` | List or add an owner-only flight or other booked leg. |
@@ -26,8 +28,6 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/itinerary-entries/{entry_id}` | Read, edit, reorder or remove a day-plan entry. |
 | `GET`, `POST` | `/trips/{trip_id}/trip-tasks` | List or add an owner-only booking/preparation task with optional HTTPS links. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/trip-tasks/{task_id}` | Read, complete/reopen, edit or remove a task. |
-| `POST` | `/trips/{trip_id}/moments` | Add a chronological moment. |
-| `PATCH`, `DELETE` | `/trips/{trip_id}/moments/{moment_id}` | Edit or remove a moment. |
 | `POST` | `/trips/{trip_id}/places/search` | Owner-only OSM search; returns attribution and a selected-result snapshot. |
 | `POST` | `/trips/{trip_id}/places/reverse` | Owner-only, explicit coordinate-to-place suggestion; never writes a place. |
 | `GET`, `POST` | `/trips/{trip_id}/places` | List or save owner-only exact places. |
@@ -114,9 +114,9 @@ failed import deletes the partly created trip, and a second run with the same
 title is refused unless `--allow-duplicate` is passed.
 
 ```bash
-# Local development API
-uv run python -m app.archive_import ../dist/exampleland-2054/private/app-import.json \
-  --api-url http://localhost:8000/api --dev-subject owner
+# Local development API (the token the API runs with as TRAVEL_DEV_AUTH_BYPASS_TOKEN)
+TRAVEL_API_TOKEN="$TRAVEL_DEV_AUTH_BYPASS_TOKEN" uv run python -m app.archive_import \
+  ../dist/exampleland-2054/private/app-import.json --api-url http://localhost:8000/api
 # Production: an owner access token, never committed
 TRAVEL_API_TOKEN=... uv run python -m app.archive_import ../dist/exampleland-2054/private/app-import.json \
   --api-url https://travel.tjor.im/api
@@ -140,7 +140,7 @@ The live browser route and request sequence are defined in
 
 A public or unlisted view never serializes a full trip: it always renders
 live from current trip data, filtered to an explicit scope (which route
-stages, moments, and title/summary fields the owner selected). Both the scope
+stages and other items, and title/summary fields the owner selected; a reisupdate's own visibility decides who receives it). Both the scope
 and the content it selects are live — an owner can add, remove, or edit the
 underlying items at any time, public or already-shared-and-active alike, and
 visitors see the change on their next request with no separate republish
@@ -178,13 +178,13 @@ reverse lookup is only a suggestion: it does not create or attach a place. It
 is intended for an owner-confirmed media-EXIF suggestion flow (#52), never for
 automatic capture or canonical writes.
 
-A moment can explicitly reference up to twelve owner-only `media_asset_ids`.
-These attachments are private editing context, distinct from `photo_urls` and
-share derivatives: they cannot be put in a public or unlisted scope. An owner
+A reisupdate can explicitly reference up to twelve owner-only `media_asset_ids`.
+These attachments are private editing context, distinct from share
+derivatives: they cannot be put in a public or unlisted scope. An owner
 may use an attached photo's capture time as a date suggestion or send its GPS
 to the explicit reverse endpoint, then choose a returned place before saving
-the moment. Neither action creates or changes a moment or exact place on its
-own.
+the reisupdate. Neither action creates or changes a reisupdate or exact place
+on its own.
 
 `POST /trips/{trip_id}/media/visit-candidates` adds a separate review step
 for a set of media the owner selected. It calculates, but does not persist,
@@ -193,8 +193,8 @@ capture time. GPS readings within 500 m share an explicit option; readings
 outside that threshold remain separate choices, and media with no capture
 time or GPS is omitted rather than guessed into a visit. The response is
 owner-only and cannot be referenced from a share scope. Choosing a candidate
-can only prefill a local moment draft or explicitly attach the selected
-private media to an existing moment. Looking up its GPS still requires the
+can only prefill a local reisupdate draft or explicitly attach the selected
+private media to an existing reisupdate. Looking up its GPS still requires the
 owner to invoke the normal reverse-geocode endpoint and select the result.
 
 Search text can itself be sensitive. The service sends it only to the
@@ -261,7 +261,7 @@ the same time, `direct_upload`/`complete_import_session` best-effort-parse
 each photo's EXIF (`app/media/service.py:extract_exif_metadata`) and keep
 both: `MediaAsset.captured_at` and a small convenience subset in
 `raw_metadata.exif` (camera make/model, decimal-degree GPS) so the owner API
-response can pre-fill a moment's date or suggest a place without any client
+response can pre-fill a reisupdate's date or suggest a place without any client
 needing to parse the file itself — a provider's own capture-time metadata
 (e.g. Google's `createTime`) is used only as a fallback when a photo has no
 usable EXIF `DateTimeOriginal`. This is a read, never a strip: nothing here
@@ -331,9 +331,11 @@ does not control.
 | `TRAVEL_OSM_PLACE_SEARCH_API_BASE`, `TRAVEL_OSM_PLACE_SEARCH_USER_AGENT` | Nominatim-compatible provider URL and required identifying user agent. |
 | `TRAVEL_OSM_PLACE_SEARCH_TIMEOUT_SECONDS`, `TRAVEL_OSM_PLACE_SEARCH_CACHE_TTL_SECONDS`, `TRAVEL_OSM_PLACE_SEARCH_CACHE_MAX_ENTRIES` | Provider timeout and bounded in-memory confidential-query cache controls. |
 
-Use a development subject header only with both
-`TRAVEL_ENVIRONMENT=development` and
-`TRAVEL_ALLOW_DEVELOPMENT_SUBJECT_HEADER=true`; it is rejected in production.
+`TRAVEL_DEV_AUTH_BYPASS_TOKEN` is a local-development shortcut that skips OIDC
+verification: a request whose bearer token equals it acts as the fixed
+`dev-bypass-user` owner. Startup refuses it unless
+`TRAVEL_ENVIRONMENT=development`. It is the same contract as champagnefestival's
+and worktime's `DEV_AUTH_BYPASS_TOKEN`.
 
 ### Owner MCP server
 

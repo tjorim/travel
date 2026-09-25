@@ -10,8 +10,8 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 
 function projection(schema_version = "travel/public-trip@1"): Projection {
   return {
-    schema_version, title: "Selected trip", summary: "Shared summary", dates: null, highlights: [], navigation: [],
-    route_stages: [], places: [], moments: [], stays: [], route: [], media: [], documents: [],
+    schema_version, title: "Selected trip", summary: "Shared summary", dates: null, navigation: [],
+    route_stages: [], places: [], updates: [], stays: [], route: [], transport: [], media: [], documents: [],
   };
 }
 
@@ -22,6 +22,45 @@ it("derives tile-facing map bounds only from scoped route geometry", () => {
   data.route = [{ id: "selected", label: "Selected route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] } }, { id: "unselected", label: "No shared geometry" }];
   expect(projectionMapLines(data)).toEqual([{ id: "selected", label: "Selected route", coordinates: [[1, 2], [3, 4]] }]);
   expect(projectionMapPoints(data)).toEqual([{ id: "selected-place", label: "Broad city", coordinates: [121, 25] }, { id: "selected-stage", label: "Broad stage", coordinates: [122, 26] }]);
+});
+
+it("uses a selected broad route for a train journey, otherwise draws only a general line between shared broad points", () => {
+  const data = projection("travel/unlisted-trip@1");
+  data.places = [
+    { id: "brussels", label: "Brussels", latitude: 50.85, longitude: 4.35 },
+    { id: "amsterdam", label: "Amsterdam", latitude: 52.37, longitude: 4.9 },
+  ];
+  data.transport = [{ id: "leg", kind: "train", status: "planned", carrier: "Eurostar", service_reference: "ES 9167", departure: { locality: "Brussels" }, arrival: { locality: "Amsterdam" } }];
+  expect(projectionMapLines(data)).toEqual([{
+    id: "transport-leg", label: "Eurostar · ES 9167", coordinates: [[4.35, 50.85], [4.9, 52.37]], transport: "rail", from: "Brussels", to: "Amsterdam",
+  }]);
+
+  // An owner-selected broad route is authoritative even when its generalized
+  // endpoints differ from the city points, so it never gains a duplicate
+  // guessed line beside it.
+  data.route = [{ id: "rail-track", label: "Eurostar route", geometry: { type: "LineString", coordinates: [[4.1, 50.7], [4.6, 51.5], [5.1, 52.5]] } }];
+  expect(projectionMapLines(data)).toEqual([{
+    id: "rail-track", label: "Eurostar route", coordinates: [[4.1, 50.7], [4.6, 51.5], [5.1, 52.5]],
+  }]);
+
+  data.route = [];
+  data.places = [];
+  expect(projectionMapLines(data)).toEqual([]);
+});
+
+it("shows explicitly shared transport endpoints as map points and uses them for a generalized line", () => {
+  const data = projection("travel/unlisted-trip@1");
+  data.transport = [{ id: "flight", kind: "flight", status: "confirmed", carrier: "EVA Air", service_reference: "BR 75", map: {
+    departure: { label: "Amsterdam Schiphol", latitude: 52.31, longitude: 4.76, kind: "airport" },
+    arrival: { label: "Taoyuan Airport", latitude: 25.0797, longitude: 121.2328, kind: "airport" },
+  } }];
+  expect(projectionMapPoints(data)).toEqual([
+    { id: "transport-flight-departure", label: "Amsterdam Schiphol", coordinates: [4.76, 52.31], kind: "airport" },
+    { id: "transport-flight-arrival", label: "Taoyuan Airport", coordinates: [121.2328, 25.0797], kind: "airport" },
+  ]);
+  expect(projectionMapLines(data)).toEqual([{
+    id: "transport-flight", label: "EVA Air · BR 75", coordinates: [[4.76, 52.31], [121.2328, 25.0797]], transport: "flight", from: "Amsterdam Schiphol", to: "Taoyuan Airport",
+  }]);
 });
 
 it("lists only server supplied public cards and opens their stable slugs", async () => {
@@ -35,6 +74,7 @@ it("lists only server supplied public cards and opens their stable slugs", async
   const first = await screen.findByRole("link", { name: /Visible journey/ });
   expect(first.getAttribute("href")).toBe("/trips/safe-slug");
   expect(screen.getByRole("link", { name: /Gepubliceerde reis/ }).getAttribute("href")).toBe("/trips/hidden-title");
+  expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe("/admin/");
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit" });
 });
@@ -63,16 +103,18 @@ it("renders every resource kind using only supplied fields", () => {
   const data = projection();
   data.route_stages = [{ id: "stage", label: "First stage", place: { label: "Broad city" }, private_address: "Hidden street" }];
   data.places = [{ id: "place", label: "Shared place", region: "Region", latitude: 5, owner_note: "Secret place note" }];
-  data.moments = [{ id: "moment", title: "Shared moment", body: "Shared story", date_precision: "month", private_body: "Secret story" }];
-  data.stays = [{ id: "stay", title: "Shared stay", place: { label: "Broad stay place" }, booking_reference: "Secret booking" }];
+  data.updates = [{ id: "update-shared", title: "Shared update", body: "Shared story", date_precision: "month", private_body: "Secret story" }];
+  data.stays = [{ id: "stay", title: "Shared stay", place: { label: "Broad stay place" }, date_precision: "month", starts_on: "2054-11", ends_on: "2054-11", booking_reference: "Secret booking" }];
+  data.transport = [{ id: "leg", kind: "flight", status: "confirmed", carrier: "EVA Air", service_reference: "BR-087", departure: { locality: "Zaventem", country_code: "BE", display_name: "Brussels Airport" }, arrival: { locality: "Taoyuan", country_code: "TW", display_name: "Taoyuan Airport" }, departs_at: "2054-04-01T09:00:00Z", arrives_at: "2054-04-01T23:00:00Z", booking_reference: "Secret booking" }];
   data.route = [{ id: "route", label: "Shared route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] }, raw_track: "Secret track" }];
   data.media = [{ id: "media", image: { id: "media" }, original_filename: "Secret photo" }];
   data.documents = [{ id: "document", title: "Shared document", file: { id: "document" }, original_filename: "Secret PDF" }];
   data.navigation = [{ id: "place" }];
   const { container } = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
-  for (const value of ["Shared summary", "First stage", "Broad city", "Shared place", "Region", "Shared moment", "Shared story", "Maandprecisie", "Shared stay", "Broad stay place", "Shared route", "Gedeelde foto’s", "Shared document"]) {
+  for (const value of ["Shared summary", "First stage", "Broad city", "Shared place", "Region", "Shared update", "Shared story", "Maandprecisie", "Shared stay", "Broad stay place", "Vervoer", "EVA Air", "BR-087", "Zaventem", "Taoyuan", "Bevestigd", "Shared route", "Gedeelde foto’s", "Shared document"]) {
     expect(container.textContent).toContain(value);
   }
+  for (const value of ["Secret booking", "Brussels Airport", "Taoyuan Airport"]) expect(container.textContent).not.toContain(value);
   for (const value of ["Hidden street", "Secret place note", "Secret story", "Secret booking", "Secret track", "Secret photo", "Secret PDF", "5"]) {
     expect(container.textContent).not.toContain(value);
   }
@@ -106,6 +148,7 @@ it("requests a fresh scoped projection after navigation and shows live edits", a
   vi.stubGlobal("fetch", fetcher);
   const first = render(<MemoryRouter initialEntries={["/trips/slug"]}><VisitorRoutes /></MemoryRouter>);
   await screen.findByRole("heading", { name: "Before edit" });
+  expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe("/admin/");
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips/slug");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" });
   first.unmount();
@@ -127,11 +170,11 @@ it("uses only the unlisted endpoint and a uniform unavailable state", async () =
 
 it("renders a successful unlisted response without requesting public or owner data", async () => {
   const data = projection("travel/unlisted-trip@1");
-  data.moments = [{ id: "moment_excerpt-1", body: "Shared excerpt" }];
+  data.updates = [{ id: "update-1", body: "Shared update text" }];
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(data)));
   vi.stubGlobal("fetch", fetcher);
   render(<MemoryRouter initialEntries={["/share/token"]}><VisitorRoutes /></MemoryRouter>);
-  await screen.findByText("Shared excerpt");
+  await screen.findByText("Shared update text");
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/shared/token"]);
 });
 
@@ -156,19 +199,19 @@ it("automatically saves a successfully visited hidden trip on this browser's hom
   expect(screen.queryByRole("link", { name: /Family trip/ })).toBeNull();
 });
 
-it("renders dated moments in projection order with direct links and scoped photo galleries", () => {
+it("renders dated updates in projection order with direct links and scoped photo galleries", () => {
   const data = projection("travel/unlisted-trip@1");
-  data.moments = [
-    { id: "moment-later", title: "Later", story_date: "2054-05", date_precision: "month", place: { label: "Broad coast" } },
-    { id: "moment-first", title: "First", story_date: "2054-04-02", date_precision: "day", body: "Shared text" },
+  data.updates = [
+    { id: "update-later", title: "Later", story_date: "2054-05", date_precision: "month", place: { label: "Broad coast" } },
+    { id: "update-first", title: "First", story_date: "2054-04-02", date_precision: "day", body: "Shared text" },
   ];
   data.media = [
-    { id: "media-1", image: { id: "media-1" }, moment: "moment-first", caption: "At the station", alt_text: "Train platform", width: 900, height: 600, focal_x: 25, focal_y: 60 },
+    { id: "media-1", image: { id: "media-1" }, update: "update-first", caption: "At the station", alt_text: "Train platform", width: 900, height: 600, focal_x: 25, focal_y: 60 },
     { id: "media-2", image: { id: "media-2" }, caption: "Elsewhere", alt_text: "Trees" },
   ];
   const { container } = render(<ProjectionView projection={data} audience="share" identifier="token" />);
-  expect(screen.getByRole("navigation", { name: "Momenten in dit verhaal" }).querySelectorAll("a")[1]?.getAttribute("href")).toBe("#moment-moment-first");
-  expect(container.querySelectorAll(".visitor-timeline > li")[1]?.id).toBe("moment-moment-first");
+  expect(screen.getByRole("navigation", { name: "Updates in dit verhaal" }).querySelectorAll("a")[1]?.getAttribute("href")).toBe("#update-first");
+  expect(container.querySelectorAll(".visitor-timeline > li")[1]?.id).toBe("update-first");
   expect(screen.getByText("Broad coast")).toBeTruthy();
   expect(screen.getByText("2 april 2054")).toBeTruthy();
   expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("src")).toBe("/api/shared/token/files/media-1");
@@ -180,12 +223,12 @@ it("renders dated moments in projection order with direct links and scoped photo
 it("keeps story-only, image-only, and empty projections readable", () => {
   const data = projection();
   data.title = null; data.summary = null;
-  data.moments = [{ id: "moment-safe", body: "Story only" }];
+  data.updates = [{ id: "update-safe", body: "Story only" }];
   const first = render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   expect(screen.getByText("Story only")).toBeTruthy();
   expect(screen.queryByRole("img")).toBeNull();
   first.unmount();
-  data.moments = []; data.media = [{ id: "photo", image: { id: "photo" }, alt_text: "Image only" }];
+  data.updates = []; data.media = [{ id: "photo", image: { id: "photo" }, alt_text: "Image only" }];
   const second = render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   expect(screen.getByRole("img", { name: "Image only" })).toBeTruthy();
   second.unmount();
@@ -196,30 +239,31 @@ it("keeps story-only, image-only, and empty projections readable", () => {
 
 it("uses the visitor story renderer for an owner preview and requests only owner scoped resources", async () => {
   const data = projection("travel/unlisted-trip@1");
-  data.moments = [{ id: "moment_excerpt-1", title: "Shared story", body: "Visitor text", private_body: "Owner secret" }];
+  data.updates = [{ id: "update-1", title: "Shared story", body: "Visitor text", private_body: "Owner secret" }];
+  data.places = [{ id: "broad_place-1", label: "Taipei" }];
   data.documents = [{ id: "document_derivative-2", title: "Shared document", file: { id: "document_derivative-2" } }];
-  data.navigation = [{ id: "moment_excerpt-1" }];
+  data.navigation = [{ id: "broad_place-1" }];
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" })));
   vi.stubGlobal("fetch", fetcher);
   vi.spyOn(window, "open").mockImplementation(() => null);
   const session = { accessToken: "owner-token", expiresAt: Date.now() + 60_000 };
   const preview = render(<RenderedPreview projection={data} audience="share" tripId="trip" linkId="draft-link" session={session} />);
   const visitor = render(<ProjectionView projection={data} audience="share" identifier="live-token" />);
-  for (const value of ["Shared story", "Visitor text", "Shared document", "Reisverhaal", "Routebeschrijving"]) {
+  for (const value of ["Shared story", "Visitor text", "Shared document", "Reisupdates", "Routebeschrijving"]) {
     expect(preview.container.textContent).toContain(value);
     expect(visitor.container.textContent).toContain(value);
   }
   expect(preview.container.textContent).not.toContain("Owner secret");
   fireEvent.click(preview.container.querySelector(".visitor-resource-action")!);
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/trips/trip/share-links/draft-link/preview/navigation/moment_excerpt-1");
+  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/trips/trip/share-links/draft-link/preview/navigation/broad_place-1");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ credentials: "omit", cache: "no-store", headers: { Authorization: "Bearer owner-token" } });
 });
 
 it("renders the same scoped gallery in preview without requesting a visitor file URL", () => {
   const data = projection();
-  data.moments = [{ id: "moment-1", title: "Arrival" }];
-  data.media = [{ id: "photo-1", image: { id: "photo-1" }, moment: "moment-1", caption: "Station", alt_text: "Platform", focal_x: 20, focal_y: 70 }];
+  data.updates = [{ id: "update-1", title: "Arrival" }];
+  data.media = [{ id: "photo-1", image: { id: "photo-1" }, update: "update-1", caption: "Station", alt_text: "Platform", focal_x: 20, focal_y: 70 }];
   const visitor = render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   const preview = render(<ProjectionView projection={data} audience="public" identifier="" previewResources={{ images: { "photo-1": "blob:owner-preview" }, openFile: vi.fn(), openNavigation: vi.fn() }} />);
   expect(visitor.container.querySelector(".visitor-timeline .visitor-gallery")?.textContent).toContain("Station");
@@ -228,23 +272,20 @@ it("renders the same scoped gallery in preview without requesting a visitor file
   expect(preview.container.innerHTML).not.toContain("/api/public/trips/");
 });
 
-it("shows shared trip dates, highlights and stage summaries only from the projection", () => {
+it("shows shared trip dates and stage summaries only from the projection", () => {
   const data = projection();
   data.dates = { id: "dates", starts_on: "2054-11", ends_on: "2054-12", date_precision: "month" };
-  data.highlights = [{ id: "trip_highlight-1", title: "Stad en natuur", summary: "Bosspoor en bergpaden." }, { id: "trip_highlight-2", title: "Zonder tekst" }];
   data.route_stages = [{ id: "route_stage-3", label: "Taipei", summary: "Stad, eten en een eerste weekend." }];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   expect(screen.getByText("november 2054 – december 2054")).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "Stad en natuur" })).toBeTruthy();
-  expect(screen.getByText("Bosspoor en bergpaden.")).toBeTruthy();
   expect(screen.getByText("Stad, eten en een eerste weekend.")).toBeTruthy();
   expect(isProjection({ ...data, dates: "2054" }, "public")).toBe(false);
-  expect(isProjection({ ...data, highlights: undefined }, "public")).toBe(false);
+  expect(isProjection({ ...data, updates: undefined }, "public")).toBe(false);
 });
 
 it("numbers shared stages from one, as visitors count them", () => {
   const data = projection();
   data.route_stages = [{ id: "route_stage-1", label: "Taipei", position: 0 }];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
-  expect(screen.getByText("Etappe 1")).toBeTruthy();
+  expect(screen.getByText("Halte 1")).toBeTruthy();
 });

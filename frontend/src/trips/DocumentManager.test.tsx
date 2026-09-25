@@ -1,18 +1,17 @@
 // @vitest-environment jsdom
 import "fake-indexeddb/auto";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
-import { answerConfirmation } from "../test-confirm";
 import type { DocumentAsset, DocumentDerivative, Trip } from "../tracker-model";
 import { DocumentManager } from "./DocumentManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, visibility: "private", publication_state: "draft", route_stages: [], highlights: [], moments: [], moment_excerpts: [] };
+const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, route_stages: [], travel_updates: [] };
 const asset = (id: string, title: string): DocumentAsset => ({ id, title, document_kind: "booking", byte_size: 512, content_type: "application/pdf", original_filename: `${id}.pdf`, created_at: "2054-01-01T00:00:00Z", file_url: `/api/trips/trip/documents/${id}/original` } as DocumentAsset);
 const derivative = (id: string, state: "pending" | "approved"): DocumentDerivative => ({ id, review_state: state, content_type: "application/pdf", byte_size: 100, file_url: `/files/${id}` } as DocumentDerivative);
 
@@ -28,17 +27,24 @@ afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); 
 
 const pickFile = (input: Element | null, name = "bestand.pdf") => fireEvent.change(input!, { target: { files: [new File(["x"], name, { type: "application/pdf" })] } });
 
-it("selects the first document and shows its redacted copies", async () => {
+const openDocument = async (title: string) => fireEvent.click(await screen.findByRole("button", { name: `Document ${title} bekijken` }));
+
+it("shows the redacted copies of an opened document, and no upload form until asked", async () => {
   renderWithOwner(<DocumentManager trip={trip} />);
+  await screen.findByText("Vliegticket");
+  expect(screen.queryByLabelText("Titel")).toBeNull();
+  expect(screen.queryByText("Geredigeerde afgeleiden")).toBeNull();
+  await openDocument("Vliegticket");
   await screen.findByText("Wacht op goedkeuring");
   expect(screen.getByText(/Voor Vliegticket\./)).toBeTruthy();
 });
 
-it("lists a new upload straight away and selects it", async () => {
+it("lists a new upload straight away", async () => {
   api.on("POST", /\/documents\/uploads$/, () => api.push("/api/trips/trip/documents", asset("d3", "Verzekering")));
   api.collection("/api/trips/trip/documents/d3/derivatives", []);
   renderWithOwner(<DocumentManager trip={trip} />);
   await screen.findByText("Vliegticket");
+  fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
   await screen.findByText("Geef het document een titel.");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Verzekering" } });
@@ -48,23 +54,23 @@ it("lists a new upload straight away and selects it", async () => {
 
   pickFile(document.querySelector('input[type="file"]'));
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
-  await screen.findByText(/Voor Verzekering\./);
-  expect(screen.getByText("Verzekering")).toBeTruthy();
+  await screen.findByRole("button", { name: "Document Verzekering bekijken" });
   const sent = api.lastBody<FormData>("POST /api/trips/trip/documents/uploads")!;
   expect(sent.get("title")).toBe("Verzekering");
   expect(sent.get("document_kind")).toBe("booking");
-  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("");
+  expect(screen.getByText("Privédocument geüpload.")).toBeTruthy();
+  expect(screen.queryByLabelText("Titel")).toBeNull();
 });
 
 it("removes a deleted document and its redacted copies from the screen", async () => {
   renderWithOwner(<DocumentManager trip={trip} />);
-  await screen.findByText("Vliegticket");
-  fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[0]);
-  await answerConfirmation();
-  await waitFor(() => expect(screen.queryByText("Vliegticket")).toBeNull());
-  expect(screen.getByText("Hotelbevestiging")).toBeTruthy();
+  await openDocument("Vliegticket");
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Document Vliegticket bekijken" })).toBeNull());
+  expect(screen.getByRole("button", { name: "Document Hotelbevestiging bekijken" })).toBeTruthy();
   expect(screen.getByText("Privédocument verwijderd.")).toBeTruthy();
-  // Nothing is selected after a delete until the owner picks one.
+  // Nothing stays open after a delete.
   expect(screen.queryByText("Geredigeerde afgeleiden")).toBeNull();
 });
 
@@ -79,6 +85,7 @@ it("adds a redacted copy and shows it approved without a reload", async () => {
     return rows[0];
   });
   renderWithOwner(<DocumentManager trip={trip} />);
+  await openDocument("Vliegticket");
   await screen.findByText("Wacht op goedkeuring");
   fireEvent.click(screen.getByRole("button", { name: "Expliciet goedkeuren" }));
   await screen.findByText("Goedgekeurde afgeleide");

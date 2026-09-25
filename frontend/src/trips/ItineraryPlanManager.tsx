@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 
 import { CheckboxField, RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
-import { useConfirmation } from "../forms/useConfirmation";
+import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { addDays, formatDayRange, stayCoversNight, stayLabel, type ItineraryEntry, type ItineraryEntryKind, type ItineraryLinkKind, type Stay, type Trip } from "../tracker-model";
 
 const KIND_LABELS: Record<ItineraryEntryKind, string> = { travel: "Reis", free: "Vrij", work: "Werk" };
@@ -31,11 +32,11 @@ export function overnights(entry: ItineraryEntry, stays: Stay[], trip: TripDates
 }
 
 const LINK_LABELS: Record<ItineraryLinkKind, string> = {
-  stay: "Verblijf", transport_leg: "Vervoer", route_stage: "Route-etappe", place: "Exacte plaats", document: "Document", moment: "Moment",
+  stay: "Verblijf", transport_leg: "Vervoer", route_stage: "Halte", place: "Exacte plaats", document: "Document", travel_update: "Reisupdate",
 };
 
 const LINK_ANCHORS: Record<ItineraryLinkKind, string | null> = {
-  stay: "#stays-title", transport_leg: "#transport-title", route_stage: "#route-stages-title", place: null, document: "#documents-title", moment: "#moments-title",
+  stay: "#stays-title", transport_leg: "#transport-title", route_stage: "#route-stages-title", place: null, document: "#documents-title", travel_update: "#updates-title",
 };
 
 type Values = { dayDate: string; endDate: string; kind: ItineraryEntryKind | ""; tentative: boolean; title: string; notes: string; linkedKind: ItineraryLinkKind | ""; linkedId: string };
@@ -53,7 +54,6 @@ const lastDay = ({ value, fieldApi }: { value: string } & FormContext) => {
 };
 
 export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: (pointId: string) => void }) {
-  const confirmation = useConfirmation();
   const offline = useOfflineCopies();
   const entriesQuery = useTripResource(trip.id, "itinerary-entries");
   const staysQuery = useTripResource(trip.id, "stays");
@@ -65,7 +65,8 @@ export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShow
   const legs = legsQuery.data ?? [];
   const places = placesQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const dialog = useRecordDialog(entries);
+  const { selected, editing, editingId } = dialog;
   const [message, setMessage] = useState("De dagplanning is een private navigatiehulp; ze verwijst alleen naar reeds bestaande onderdelen.");
   const path = tripPath(trip.id, "itinerary-entries");
   const invalidate = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "itinerary-entries")];
@@ -91,6 +92,7 @@ export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShow
     fallback: "De planningsstap kon niet worden opgeslagen.",
     serverFields,
     submit: async (values) => {
+      const id = dialog.editingId ?? null;
       const payload = {
         day_date: values.dayDate || null,
         end_date: values.endDate && values.endDate !== values.dayDate ? values.endDate : null,
@@ -100,26 +102,27 @@ export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShow
         notes: values.notes.trim() || null,
         linked_kind: values.linkedKind || null,
         linked_id: values.linkedKind ? values.linkedId : null,
-        ...(editingId ? {} : { position: entries.length }),
+        ...(id ? {} : { position: entries.length }),
       };
-      await save.mutateAsync({ id: editingId, payload });
+      await save.mutateAsync({ id, payload });
       // A pinned copy holds the previous version of the step.
-      if (editingId) await offline.removeByResource("itinerary_entry", editingId);
+      if (id) await offline.removeByResource("itinerary_entry", id);
     },
-    onSuccess: () => { newEntry(); setMessage("Planningsstap opgeslagen."); },
+    onSuccess: () => { close(); setMessage("Planningsstap opgeslagen."); },
   });
 
-  function newEntry() { setEditingId(null); record.load(blank()); }
-  function editEntry(entry: ItineraryEntry) { setEditingId(entry.id); record.load(fromEntry(entry)); }
+  function close() { dialog.close(); record.load(blank()); }
+  function create() { record.load(blank()); dialog.create(); }
+  function edit(entry: ItineraryEntry) { record.load(fromEntry(entry)); dialog.edit(entry.id); }
   const fail = (fallback: string) => (error: unknown) => setMessage(errorMessage(error, fallback));
 
   function linkOptions(kind: ItineraryLinkKind): { id: string; label: string }[] {
     if (kind === "stay") return stays.map((stay) => ({ id: stay.id, label: `${stayLabel(stay)} · ${formatDayRange(stay.check_in_date, addDays(stay.check_out_date, -1))}` }));
-    if (kind === "transport_leg") return legs.map((leg) => ({ id: leg.id, label: `${leg.departure_place.locality ?? leg.departure_place.display_name ?? "?"} → ${leg.arrival_place.locality ?? leg.arrival_place.display_name ?? "?"}` }));
+    if (kind === "transport_leg") return legs.map((leg) => ({ id: leg.id, label: `${leg.departure_area?.label ?? leg.departure_place.locality ?? leg.departure_place.display_name ?? "?"} → ${leg.arrival_area?.label ?? leg.arrival_place.locality ?? leg.arrival_place.display_name ?? "?"}` }));
     if (kind === "route_stage") return trip.route_stages.map((stage) => ({ id: stage.id, label: stage.label ?? stage.place.label }));
     if (kind === "place") return places.map((place) => ({ id: place.id, label: place.display_name ?? place.locality ?? place.id }));
     if (kind === "document") return documents.map((document) => ({ id: document.id, label: document.title }));
-    return trip.moments.map((moment) => ({ id: moment.id, label: moment.title }));
+    return trip.travel_updates.map((update) => ({ id: update.id, label: update.title }));
   }
 
   function resolveLink(entry: ItineraryEntry): { label: string; anchor: string | null } | null {
@@ -147,14 +150,10 @@ export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShow
   }
 
   function erase(entry: ItineraryEntry) {
-    confirmation.ask({ title: `Planningsstap “${entry.title}” verwijderen?`, onConfirm: () => performErase(entry) });
-  }
-
-  function performErase(entry: ItineraryEntry) {
     remove.mutateAsync(entry)
       .then(async () => {
         await offline.removeByResource("itinerary_entry", entry.id);
-        if (editingId === entry.id) newEntry();
+        close();
         setMessage("Planningsstap verwijderd.");
       }, fail("De planningsstap kon niet worden verwijderd."));
   }
@@ -178,43 +177,64 @@ export function ItineraryPlanManager({ trip, onShowOnMap }: { trip: Trip; onShow
 
   const readError = entriesQuery.error ?? staysQuery.error ?? legsQuery.error ?? placesQuery.error ?? documentsQuery.error;
 
+  const dayLine = (entry: ItineraryEntry) => {
+    const tags = [entry.kind ? KIND_LABELS[entry.kind] : null, entry.tentative ? "Concept" : null].filter(Boolean).join(" · ");
+    return `${entry.day_date ? formatDayRange(entry.day_date, entry.end_date) : "Nog geen dag"}${tags ? ` · ${tags}` : ""}`;
+  };
+
+  /** What the step points at and where its nights are spent; the list links to the section, the dialog cannot. */
+  function details(entry: ItineraryEntry, anchored: boolean) {
+    const link = resolveLink(entry);
+    const sleep = overnights(entry, stays, trip);
+    const sleeping = sleep.stays.length > 0 || sleep.uncovered > 0;
+    if (!link && !sleeping) return null;
+    return <div className="entry-details">
+      {link && <span className="entry-detail">{anchored && link.anchor ? <a href={link.anchor}>{link.label}</a> : link.label}</span>}
+      {sleeping && <span className="entry-detail">Overnachting: {sleep.stays.map(stayLabel).join(", ") || "—"}{sleep.uncovered > 0 ? ` · nog ${sleep.uncovered} ${sleep.uncovered === 1 ? "nacht" : "nachten"} zonder verblijf` : ""}</span>}
+    </div>;
+  }
+
   return <section className="card manager" aria-labelledby="itinerary-title">
-    <div className="capture-heading"><div><h3 id="itinerary-title">Dagplanning</h3><p>Een concept-planning die verwijst naar bestaande onderdelen. Ze blijft privé en kopieert nooit hun details.</p></div>{editingId && <button className="secondary compact" type="button" onClick={newEntry}>Nieuwe stap</button>}</div>
+    <div className="capture-heading"><div><h3 id="itinerary-title">Dagplanning</h3><p>Een concept-planning die verwijst naar bestaande onderdelen. Ze blijft privé en kopieert nooit hun details.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe stap</button></div>
     <p className="help" role="status">{readError ? errorMessage(readError, "Je dagplanning kon niet worden geladen.") : entriesQuery.isPending ? "Laad je private dagplanning…" : message}</p>
-    <RecordForm record={record} submitLabel={editingId ? "Stap opslaan" : "Stap toevoegen"} pendingLabel="Opslaan…">
-      <div className="field-row">
-        <record.form.Field name="dayDate">{(field) => <TextField field={field} label="Eerste dag" optional type="date" />}</record.form.Field>
-        <record.form.Subscribe selector={(state) => state.values.dayDate}>{(dayDate) => <record.form.Field name="endDate" validators={{ onChangeListenTo: ["dayDate"], onChange: lastDay, onSubmit: lastDay }}>{(field) => <TextField field={field} label="Laatste dag" optional type="date" min={dayDate || undefined} disabled={!dayDate} />}</record.form.Field>}</record.form.Subscribe>
-      </div>
-      <record.form.Field name="title" validators={{ onChange: requiredText("Geef de stap een titel."), onSubmit: requiredText("Geef de stap een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} placeholder="Bijvoorbeeld: Aankomst Taipei" />}</record.form.Field>
-      <div className="field-row">
-        <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort dag" optional><option value="">Geen soort</option>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
-        <record.form.Field name="tentative">{(field) => <CheckboxField field={field} label="Concept — kan nog verschuiven" />}</record.form.Field>
-      </div>
-      <record.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
-      <div className="field-row">
-        <record.form.Field name="linkedKind" listeners={{ onChange: () => record.form.setFieldValue("linkedId", "") }}>{(field) => <SelectField field={field} label="Gekoppeld type" optional><option value="">Geen koppeling</option>{Object.entries(LINK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
-        <record.form.Subscribe selector={(state) => state.values.linkedKind}>{(linkedKind) => linkedKind && <record.form.Field name="linkedId" validators={{ onChangeListenTo: ["linkedKind"], onSubmit: linkedPart }}>{(field) => <SelectField field={field} label="Gekoppeld onderdeel" required><option value="">Kies een onderdeel</option>{linkOptions(linkedKind).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</SelectField>}</record.form.Field>}</record.form.Subscribe>
-      </div>
-    </RecordForm>
     {entries.length > 0 && <div className="saved-moments manager-list">{entries.map((entry, index) => {
-      const link = resolveLink(entry);
       const mapPoint = onShowOnMap ? mapPointFor(entry) : null;
-      const sleep = overnights(entry, stays, trip);
-      const tags = [entry.kind ? KIND_LABELS[entry.kind] : null, entry.tentative ? "Concept" : null].filter(Boolean).join(" · ");
-      return <article className={`excerpt-row ${entry.tentative ? "tentative" : ""}`} key={entry.id}>
-        <div><strong>{entry.title}</strong><span>{entry.day_date ? formatDayRange(entry.day_date, entry.end_date) : "Nog geen dag"}{tags ? ` · ${tags}` : ""}{entry.notes ? ` · ${entry.notes}` : ""}</span>{link && <span className="entry-detail">{link.anchor ? <a href={link.anchor}>{link.label}</a> : link.label}</span>}
-          {(sleep.stays.length > 0 || sleep.uncovered > 0) && <span className="entry-detail">Overnachting: {sleep.stays.map(stayLabel).join(", ") || "—"}{sleep.uncovered > 0 ? ` · nog ${sleep.uncovered} ${sleep.uncovered === 1 ? "nacht" : "nachten"} zonder verblijf` : ""}</span>}</div>
+      return <article className={`excerpt-row stacked ${entry.tentative ? "tentative" : ""}`} key={entry.id}>
+        <button className="document-select" type="button" onClick={() => dialog.inspect(entry.id)} aria-label={`Planningsstap ${entry.title} bekijken`}>
+          <strong>{entry.title}</strong><span>{dayLine(entry)}{entry.notes ? ` · ${entry.notes}` : ""}</span>
+        </button>
+        {details(entry, true)}
         <div className="button-row">
           {mapPoint && <button className="secondary compact" type="button" onClick={() => onShowOnMap?.(mapPoint)}>Toon op kaart</button>}
           <button className="secondary compact" type="button" onClick={() => void toggleOffline(entry).catch(fail("De planningsstap kon niet offline worden bewaard."))}>{offline.isPinned("itinerary_entry", entry.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
           <button className="secondary compact" type="button" disabled={index === 0} onClick={() => shift(entry, -1)}>Omhoog</button>
           <button className="secondary compact" type="button" disabled={index === entries.length - 1} onClick={() => shift(entry, 1)}>Omlaag</button>
-          <button className="secondary compact" type="button" onClick={() => editEntry(entry)}>Bewerken</button>
-          <button className="danger compact" type="button" onClick={() => erase(entry)}>Verwijderen</button>
         </div>
       </article>;
     })}</div>}
-    {confirmation.dialog}
+    {!entriesQuery.isPending && !entriesQuery.error && entries.length === 0 && <p>Nog geen planningsstappen. Voeg er één toe om je dagen te ordenen.</p>}
+    <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Planningsstap bewerken" : "Planningsstap toevoegen") : "Planningsstap"} dirty={editing && record.dirty} onDismiss={close}>
+      {!editing && selected && <div className="stack-form">
+        <div><h3>{selected.title}</h3><p>{dayLine(selected)}</p>{selected.notes && <p>{selected.notes}</p>}{details(selected, false)}</div>
+        <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
+        {dialog.confirmDelete && <DeleteConfirmation title={`Planningsstap “${selected.title}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
+      </div>}
+      {editing && <RecordForm record={record} submitLabel={editingId ? "Stap opslaan" : "Stap toevoegen"} pendingLabel="Opslaan…">
+        <div className="field-row">
+          <record.form.Field name="dayDate">{(field) => <TextField field={field} label="Eerste dag" optional type="date" />}</record.form.Field>
+          <record.form.Subscribe selector={(state) => state.values.dayDate}>{(dayDate) => <record.form.Field name="endDate" validators={{ onChangeListenTo: ["dayDate"], onChange: lastDay, onSubmit: lastDay }}>{(field) => <TextField field={field} label="Laatste dag" optional type="date" min={dayDate || undefined} disabled={!dayDate} />}</record.form.Field>}</record.form.Subscribe>
+        </div>
+        <record.form.Field name="title" validators={{ onChange: requiredText("Geef de stap een titel."), onSubmit: requiredText("Geef de stap een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} placeholder="Bijvoorbeeld: Aankomst Taipei" />}</record.form.Field>
+        <div className="field-row">
+          <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort dag" optional><option value="">Geen soort</option>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
+          <record.form.Field name="tentative">{(field) => <CheckboxField field={field} label="Concept — kan nog verschuiven" />}</record.form.Field>
+        </div>
+        <record.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
+        <div className="field-row">
+          <record.form.Field name="linkedKind" listeners={{ onChange: () => record.form.setFieldValue("linkedId", "") }}>{(field) => <SelectField field={field} label="Gekoppeld type" optional><option value="">Geen koppeling</option>{Object.entries(LINK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
+          <record.form.Subscribe selector={(state) => state.values.linkedKind}>{(linkedKind) => linkedKind && <record.form.Field name="linkedId" validators={{ onChangeListenTo: ["linkedKind"], onSubmit: linkedPart }}>{(field) => <SelectField field={field} label="Gekoppeld onderdeel" required><option value="">Kies een onderdeel</option>{linkOptions(linkedKind).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</SelectField>}</record.form.Field>}</record.form.Subscribe>
+        </div>
+      </RecordForm>}
+    </RecordDialog>
   </section>;
 }

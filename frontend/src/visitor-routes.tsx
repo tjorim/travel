@@ -20,6 +20,10 @@ function isPublicTripCards(value: unknown): value is PublicTripCard[] {
     && (card.dates == null || (typeof card.dates === "object" && !Array.isArray(card.dates))));
 }
 
+function OwnerLink() {
+  return <footer className="trip-index-footer"><a href="/admin/" referrerPolicy="no-referrer">Mijn reizen beheren</a></footer>;
+}
+
 function TripIndex() {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<IndexState>({ kind: "loading" });
@@ -57,7 +61,7 @@ function TripIndex() {
       {state.kind === "ready" && state.trips.length > 0 && <ul className="trip-cards">{state.trips.map((trip) => <li key={trip.slug}><Link className="trip-card card" to={`/trips/${encodeURIComponent(trip.slug)}`}><span className="eyebrow">{tripDates(trip.dates) ?? "Publieke reis"}</span><h2>{trip.title ?? "Gepubliceerde reis"}</h2>{trip.summary && <p>{trip.summary}</p>}<span className="trip-card-link">Bekijk reis <span aria-hidden="true">→</span></span></Link></li>)}</ul>}
     </section>
     {savedTrips.length > 0 && <section aria-label="Op dit apparaat bewaarde verborgen reizen"><h2>Eerder bekeken verborgen reizen</h2><p className="lede">Alleen in deze browser bewaard. Wie dit apparaat gebruikt, kan deze links openen.</p><ul className="trip-cards">{savedTrips.map((trip) => <li key={trip.token} className="saved-trip"><Link className="trip-card card" to={`/share/${encodeURIComponent(trip.token)}`}><span className="eyebrow">Verborgen reis</span><h2>{trip.title ?? "Gedeelde reis"}</h2>{trip.summary && <p>{trip.summary}</p>}<span className="trip-card-link">Bekijk reis <span aria-hidden="true">→</span></span></Link><button className="secondary compact" type="button" onClick={() => forget(trip.token)}>Verwijderen van dit apparaat</button></li>)}</ul></section>}
-    <footer className="trip-index-footer"><a href="/admin/">Mijn reizen beheren</a></footer>
+    <OwnerLink />
   </main>;
 }
 
@@ -115,6 +119,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
       {state.kind === "unavailable" && <section className="card" role="status"><h2>Reis niet beschikbaar</h2><p>Deze reis is niet beschikbaar.</p></section>}
       {state.kind === "error" && <section className="card" role="alert"><h2>Reis kan niet worden geladen</h2><p>Probeer het opnieuw wanneer de verbinding werkt.</p><button type="button" onClick={retry}>Opnieuw proberen</button></section>}
       {state.kind === "ready" && <ProjectionView projection={state.projection} audience={audience} identifier={identifier} />}
+      <OwnerLink />
     </main>
   );
 }

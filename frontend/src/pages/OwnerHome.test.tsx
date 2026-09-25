@@ -12,7 +12,7 @@ vi.mock("../auth-context", () => ({ useAuth: () => ({ session: auth.session }) }
 function json(value: unknown) { return new Response(JSON.stringify(value), { status: 200, headers: { "Content-Type": "application/json" } }); }
 
 function trip(id: string, title: string, startsOn: string | null, endsOn: string | null) {
-  return { id, title, summary: null, starts_on: startsOn, ends_on: endsOn, visibility: "private", publication_state: "draft", route_stages: [], highlights: [], moments: [], moment_excerpts: [] };
+  return { id, title, summary: null, starts_on: startsOn, ends_on: endsOn, route_stages: [], travel_updates: [] };
 }
 
 beforeEach(() => {
@@ -40,6 +40,7 @@ it("shows active and planning-first trips with unread alerts", async () => {
   expect(screen.getByText("Nog plannen")).toBeTruthy();
   expect(screen.getByText("Check in")).toBeTruthy();
   expect(screen.getAllByRole("link", { name: "Open reis" })[0].getAttribute("href")).toBe("/trips/active");
+  expect(screen.getByRole("link", { name: "Publieke reizen bekijken" }).getAttribute("href")).toBe("/");
 });
 
 it("offers a first private trip when the owner has none", async () => {

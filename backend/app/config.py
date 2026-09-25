@@ -1,4 +1,4 @@
-from pydantic import AnyHttpUrl, Field
+from pydantic import AnyHttpUrl, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,7 +8,12 @@ class Settings(BaseSettings):
     oidc_issuer_url: str | None = None
     oidc_jwks_url: str | None = None
     oidc_audience: str = "travel-api"
-    allow_development_subject_header: bool = False
+    # Local-development-only shortcut that skips OIDC/JWKS verification: a
+    # request whose bearer token equals this value is the fixed development
+    # owner (app.auth.DEV_BYPASS_SUBJECT). Empty by default; startup refuses
+    # it outside environment == "development". Same contract as the
+    # DEV_AUTH_BYPASS_TOKEN of champagnefestival and worktime.
+    dev_auth_bypass_token: str = ""
     # The MCP application surface is local/application-only in v1.  An HTTP
     # mount is deliberately not enabled from this setting; apps#226 owns that
     # deployment work.  In development a named subject makes stdio integration
@@ -57,6 +62,12 @@ class Settings(BaseSettings):
     osm_place_search_cache_max_entries: int = 100
 
     model_config = SettingsConfigDict(env_prefix="TRAVEL_", case_sensitive=False)
+
+    @model_validator(mode="after")
+    def validate_no_dev_bypass_outside_development(self) -> "Settings":
+        if self.dev_auth_bypass_token and self.environment != "development":
+            raise ValueError("TRAVEL_DEV_AUTH_BYPASS_TOKEN must not be set outside TRAVEL_ENVIRONMENT=development.")
+        return self
 
 
 settings = Settings()

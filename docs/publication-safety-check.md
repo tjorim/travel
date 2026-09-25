@@ -9,14 +9,32 @@ enforces the scope; this check is about choosing it deliberately.
 - [ ] Open the rendered preview in the publication controls and read every
       shown item as a stranger would, then inspect the delivered fields. Do
       not rely only on the list of ticked items.
-- [ ] Check that no selected text (titles, summaries, highlights, stage
-      summaries, excerpts, captions, broad-route labels) contains an exact
+- [ ] List every record set to "Iedereen" (`everyone`), in "Zichtbaarheid per
+      onderdeel" in Delen: it reaches the public page and every hidden link
+      without being ticked, so read each one as a stranger would. "Privé"
+      records reach nobody.
+- [ ] Check that no shared text (titles, summaries, stage summaries, the text
+      written for visitors in a reisupdate, public spot names, captions,
+      broad-route labels) contains an exact
       accommodation, home or meeting address, a booking or confirmation code,
-      a flight or ticket number, a travel-party name or contact detail, or a
-      live or near-real-time location. Stays, transport legs, the day plan and
-      tasks are owner-only and cannot be selected; keep their details there.
+      a ticket document, a travel-party name or contact detail, or a live or
+      near-real-time location. A selected transport summary may show a
+      carrier, flight/service number, city/country endpoints, schedule and
+      status, but never an endpoint address, booking code, travel class, notes
+      or document.
 - [ ] Choose trip dates only at the precision you intend to share (year,
       month or day), and prefer broad places and deliberately drawn routes.
+- [ ] A reisupdate shares only its title, the text written for visitors, its
+      date and its area; never its private notes. Read the text as a stranger
+      would, and remember the date precision applies.
+- [ ] A shared spot (a monument, a hot spring) shows its public name, city and
+      point. Do not share a place that is a home, a hotel or a meeting point.
+- [ ] A shared stay shows only its area and its nights at the precision you
+      chose, never the property. Check that the area is not too specific.
+- [ ] If a transport leg should appear on the map, share its reviewed broad
+      route, or the endpoint places themselves (for instance an airport)
+      under their public names. Without those, the leg stays a text summary
+      rather than gaining a line from its private endpoints.
 - [ ] For every selected image, check the visible content and caption; only
       approved, metadata-stripped share derivatives can be selected.
 - [ ] For a named link, choose the shortest sensible lifetime and send the
@@ -24,7 +42,7 @@ enforces the scope; this check is about choosing it deliberately.
 
 ## If something was shared by mistake
 
-1. Remove the item or field from the scope, or unpublish the public view or
+1. Set the record back to "Privé" (or remove it from the scope), or unpublish the public view or
    revoke the link. Views are rendered live, so the next request no longer
    receives it; public and unlisted responses are sent `no-store`.
 2. Rotate a named link if its capability itself reached the wrong people.

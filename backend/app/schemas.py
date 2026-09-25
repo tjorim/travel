@@ -20,7 +20,6 @@ from .models import (
     LinkState,
     MediaKind,
     PlaceKind,
-    PublicationState,
     StayStatus,
     SurfaceState,
     TrackKind,
@@ -54,9 +53,9 @@ def require_ordered_dates(start: date | None, end: date | None, message: str) ->
         raise ValueError(message)
 
 
-class ExactPlaceInput(BaseModel):
-    """An owner-only exact place: address parts, coordinates, viewport and
-    navigation/provider IDs. Never appears in a public/unlisted response."""
+class ExactPlaceFields(BaseModel):
+    """An owner-only spot: address parts, coordinates, viewport and
+    navigation/provider IDs. A shared spot shows only what its allowlist says."""
 
     osm_element_type: Literal["node", "way", "relation"] | None = None
     osm_element_id: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[0-9]+$")
@@ -78,6 +77,13 @@ class ExactPlaceInput(BaseModel):
     navigation_provider: str | None = Field(default=None, max_length=40)
     navigation_provider_place_id: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=2000)
+    # The name a shared spot goes by. Owner-only until the place is shared,
+    # and required for that: the display name usually contains the address.
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+    # The area the spot belongs to. Left out, it is derived from the spot's city.
+    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    # Show the address too when the spot is shared. Off unless the owner chooses it.
+    share_address: bool = False
 
     @field_validator("osm_element_id")
     @classmethod
@@ -88,9 +94,34 @@ class ExactPlaceInput(BaseModel):
         return value
 
 
-class ExactPlaceResponse(ExactPlaceInput):
+class ExactPlaceInput(ExactPlaceFields):
+    """A spot to create, or, with ``existing_place_id``, a spot the trip already has.
+
+    Reusing a spot keeps one "Brussels Airport" for the outbound and the return
+    leg. It replaces creating a copy, so nothing else may be supplied with it."""
+
+    existing_place_id: str | None = Field(default=None, min_length=1, max_length=32)
+
+    @model_validator(mode="after")
+    def reuse_supplies_nothing_else(self):
+        if self.existing_place_id is not None and self.model_fields_set - {"existing_place_id"}:
+            raise ValueError("Supply an existing place on its own, without other place fields")
+        return self
+
+
+class ExactPlaceUpdate(BaseModel):
+    """What an existing spot lets the owner change: its public name, its area
+    and whether its address is shown when it is shared."""
+
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    share_address: bool | None = None
+
+
+class ExactPlaceResponse(ExactPlaceFields):
     id: str
     kind: Literal[PlaceKind.EXACT] = PlaceKind.EXACT
+    visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -163,6 +194,7 @@ class BroadPlaceUpdate(BaseModel):
 class BroadPlaceResponse(BroadPlaceInput):
     id: str
     kind: Literal[PlaceKind.BROAD] = PlaceKind.BROAD
+    visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -171,6 +203,7 @@ class TripCreate(BaseModel):
     summary: str | None = Field(default=None, max_length=4000)
     starts_on: date | None = None
     ends_on: date | None = None
+    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def end_not_before_start(self):
@@ -183,8 +216,7 @@ class TripUpdate(BaseModel):
     summary: str | None = Field(default=None, max_length=4000)
     starts_on: date | None = None
     ends_on: date | None = None
-    visibility: Visibility | None = None
-    publication_state: PublicationState | None = None
+    model_config = ConfigDict(extra="forbid")
 
 
 class RouteStageCreate(BaseModel):
@@ -223,92 +255,63 @@ class RouteStageResponse(BaseModel):
     label: str | None
     summary: str | None
     place: BroadPlaceResponse
+    visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
 
-class MomentCreate(BaseModel):
+def _require_unique_media_assets(values: list[str] | None) -> list[str] | None:
+    if values is not None and len(values) != len(set(values)):
+        raise ValueError("A media asset can only be attached once")
+    return values
+
+
+class TravelUpdateCreate(BaseModel):
+    """A reisupdate: what happened, with a private part and a shared part.
+
+    Private: ``private_notes``, the exact ``place`` and the attached
+    ``media_asset_ids``. Shared once ``visibility`` allows it: ``title``,
+    ``body`` (empty until written for visitors), the date at ``date_precision``
+    and the ``broad_place_id`` (an area)."""
+
     occurred_at: datetime
+    date_precision: DatePrecision = DatePrecision.DAY
     title: str = Field(min_length=1, max_length=160)
-    story: str = Field(min_length=1, max_length=10000)
+    body: str = Field(default="", max_length=10000)
+    private_notes: str | None = Field(default=None, max_length=10000)
+    broad_place_id: str | None = None
     place: ExactPlaceInput | None = None
-    photo_urls: list[HttpUrl] = Field(default_factory=list, max_length=12)
     media_asset_ids: list[str] = Field(default_factory=list, max_length=12)
+    visibility: Visibility = Visibility.PRIVATE
 
-    @field_validator("photo_urls")
-    @classmethod
-    def require_https(cls, values: list[HttpUrl]) -> list[HttpUrl]:
-        if any(value.scheme != "https" for value in values):
-            raise ValueError("Photo references must use HTTPS")
-        return values
-
-    @field_validator("media_asset_ids")
-    @classmethod
-    def require_unique_media_assets(cls, values: list[str]) -> list[str]:
-        if len(values) != len(set(values)):
-            raise ValueError("A media asset can only be attached once")
-        return values
+    _unique_media = field_validator("media_asset_ids")(_require_unique_media_assets)
 
 
-class MomentUpdate(BaseModel):
+class TravelUpdatePatch(BaseModel):
     occurred_at: datetime | None = None
+    date_precision: DatePrecision | None = None
     title: str | None = Field(default=None, min_length=1, max_length=160)
-    story: str | None = Field(default=None, min_length=1, max_length=10000)
+    body: str | None = Field(default=None, max_length=10000)
+    private_notes: str | None = Field(default=None, max_length=10000)
+    broad_place_id: str | None = None
     place: ExactPlaceInput | None = None
-    photo_urls: list[HttpUrl] | None = Field(default=None, max_length=12)
     media_asset_ids: list[str] | None = Field(default=None, max_length=12)
+    visibility: Visibility | None = None
 
-    @field_validator("photo_urls")
-    @classmethod
-    def require_https(cls, values: list[HttpUrl] | None) -> list[HttpUrl] | None:
-        if values is not None and any(value.scheme != "https" for value in values):
-            raise ValueError("Photo references must use HTTPS")
-        return values
-
-    @field_validator("media_asset_ids")
-    @classmethod
-    def require_unique_media_assets(cls, values: list[str] | None) -> list[str] | None:
-        if values is not None and len(values) != len(set(values)):
-            raise ValueError("A media asset can only be attached once")
-        return values
+    _unique_media = field_validator("media_asset_ids")(_require_unique_media_assets)
 
 
-class MomentResponse(BaseModel):
+class TravelUpdateResponse(BaseModel):
     id: str
     occurred_at: datetime
-    title: str
-    story: str
-    photo_urls: list[str]
-    media_asset_ids: list[str]
-    place: ExactPlaceResponse | None
-    model_config = ConfigDict(from_attributes=True)
-
-
-class MomentExcerptCreate(BaseModel):
-    source_moment_id: str | None = None
-    broad_place_id: str | None = None
     date_precision: DatePrecision
-    story_date: date | None = None
-    title: str = Field(min_length=1, max_length=160)
-    body: str = Field(min_length=1, max_length=10000)
-
-
-class MomentExcerptUpdate(BaseModel):
-    source_moment_id: str | None = None
-    broad_place_id: str | None = None
-    date_precision: DatePrecision | None = None
-    story_date: date | None = None
-    title: str | None = Field(default=None, min_length=1, max_length=160)
-    body: str | None = Field(default=None, min_length=1, max_length=10000)
-
-
-class MomentExcerptResponse(BaseModel):
-    id: str
-    source_moment_id: str | None
-    broad_place_id: str | None
-    date_precision: DatePrecision
-    story_date: date | None
     title: str
     body: str
+    private_notes: str | None
+    broad_place_id: str | None
+    area: BroadPlaceResponse | None
+    place: ExactPlaceResponse | None
+    media_asset_ids: list[str]
+    visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -330,6 +333,7 @@ class StayCreate(BaseModel):
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000)
     notes: str | None = Field(default=None, max_length=4000)
+    share_date_precision: DatePrecision = DatePrecision.MONTH
 
     _https = field_validator("website_url")(require_https)
 
@@ -347,6 +351,7 @@ class StayUpdate(BaseModel):
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000)
     notes: str | None = Field(default=None, max_length=4000)
+    share_date_precision: DatePrecision | None = None
 
     _https = field_validator("website_url")(require_https)
 
@@ -365,26 +370,9 @@ class StayResponse(BaseModel):
     notes: str | None
     place: ExactPlaceResponse | None
     broad_place: BroadPlaceResponse | None
-    model_config = ConfigDict(from_attributes=True)
-
-
-class BroadStayCardCreate(BaseModel):
-    broad_place_id: str
-    title: str = Field(min_length=1, max_length=160)
-    date_precision: DatePrecision
-
-
-class BroadStayCardUpdate(BaseModel):
-    broad_place_id: str | None = None
-    title: str | None = Field(default=None, min_length=1, max_length=160)
-    date_precision: DatePrecision | None = None
-
-
-class BroadStayCardResponse(BaseModel):
-    id: str
-    title: str
-    date_precision: DatePrecision
-    place: BroadPlaceResponse
+    area: BroadPlaceResponse | None
+    visibility: Visibility
+    share_date_precision: DatePrecision
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -448,6 +436,8 @@ class TransportLegResponse(BaseModel):
     status: TransportLegStatus
     departure_place: ExactPlaceResponse
     arrival_place: ExactPlaceResponse
+    departure_area: BroadPlaceResponse | None
+    arrival_area: BroadPlaceResponse | None
     departs_at: datetime
     arrives_at: datetime
     departure_timezone: str | None
@@ -458,6 +448,7 @@ class TransportLegResponse(BaseModel):
     booking_reference: str | None
     notes: str | None
     document_asset_ids: list[str]
+    visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator("departs_at", "arrives_at")
@@ -574,26 +565,6 @@ class TripTaskAlertResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class TripHighlightCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=160)
-    summary: str | None = Field(default=None, max_length=2000)
-    position: int | None = Field(default=None, ge=0)
-
-
-class TripHighlightUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=160)
-    summary: str | None = Field(default=None, max_length=2000)
-    position: int | None = Field(default=None, ge=0)
-
-
-class TripHighlightResponse(BaseModel):
-    id: str
-    position: int
-    title: str
-    summary: str | None
-    model_config = ConfigDict(from_attributes=True)
-
-
 class GeoJsonLineString(BaseModel):
     """A reviewed GeoJSON line, entered by the owner rather than computed
     from a raw recording. Coordinates are longitude, latitude pairs."""
@@ -627,6 +598,7 @@ class BroadRouteResponse(BaseModel):
     label: str
     geometry: GeoJsonLineString
     date_precision: DatePrecision
+    visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -651,26 +623,23 @@ class TripResponse(BaseModel):
     summary: str | None
     starts_on: date | None
     ends_on: date | None
-    visibility: Visibility
-    publication_state: PublicationState
-    public_id: str | None
     route_stages: list[RouteStageResponse]
-    highlights: list[TripHighlightResponse]
-    moments: list[MomentResponse]
-    moment_excerpts: list[MomentExcerptResponse]
+    travel_updates: list[TravelUpdateResponse]
     model_config = ConfigDict(from_attributes=True)
 
 
 class ShareScopeKind(StrEnum):
-    EXACT_PLACE = "exact_place"
+    """Every kind of record that can be shared. A scope lists only records
+    whose visibility is ``custom``; it never says which fields to show."""
+
+    PLACE = "place"
     ROUTE_STAGE = "route_stage"
-    BROAD_PLACE = "broad_place"
     BROAD_ROUTE = "broad_route"
-    MOMENT_EXCERPT = "moment_excerpt"
-    BROAD_STAY_CARD = "broad_stay_card"
+    STAY = "stay"
+    TRANSPORT_LEG = "transport_leg"
+    TRAVEL_UPDATE = "travel_update"
     MEDIA_DERIVATIVE = "media_derivative"
     DOCUMENT_DERIVATIVE = "document_derivative"
-    TRIP_HIGHLIGHT = "trip_highlight"
 
 
 class ShareScopeTripInput(BaseModel):
@@ -685,11 +654,10 @@ class ShareScopeTripInput(BaseModel):
 
 
 class ShareScopeItemInput(BaseModel):
-    """One explicitly selected share-safe resource and its output fields."""
+    """One record, with visibility ``custom``, that this audience includes."""
 
     kind: ShareScopeKind
     id: str = Field(min_length=1, max_length=32)
-    fields: list[str] = Field(default_factory=list, max_length=20)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -713,14 +681,14 @@ class ProjectionDocument(BaseModel):
     title: str | None
     summary: str | None
     dates: dict | None
-    highlights: list[dict]
     route_stages: list[dict]
     places: list[dict]
-    moments: list[dict]
+    updates: list[dict]
     stays: list[dict]
     media: list[dict]
     documents: list[dict]
     route: list[dict]
+    transport: list[dict]
     navigation: list[dict]
 
 
@@ -736,6 +704,12 @@ class PublicProjectionStatusResponse(BaseModel):
     scope: dict
     surface_state: SurfaceState
     slug: str | None
+
+
+class VisibilityUpdate(BaseModel):
+    """Set who receives one record: the same choice for every shareable kind."""
+
+    visibility: Visibility
 
 
 class ShareLinkCreate(BaseModel):
@@ -757,9 +731,11 @@ class ShareLinkActivateRequest(BaseModel):
 
 class ShareLinkResponse(BaseModel):
     id: str
+    series_id: str
     label: str
     state: LinkState
     scope: dict
+    token: str | None
     expires_at: datetime | None
     created_at: datetime
     activated_at: datetime | None
@@ -768,7 +744,7 @@ class ShareLinkResponse(BaseModel):
 
 
 class ShareLinkActivateResponse(ShareLinkResponse):
-    token: str
+    pass
 
 
 class AuditReasonInput(BaseModel):
@@ -828,11 +804,12 @@ class MediaDerivativeResponse(BaseModel):
     metadata_stripped_at: datetime | None
     width: int | None
     height: int | None
-    moment_excerpt_id: str | None
+    travel_update_id: str | None
     caption: str | None
     alt_text: str | None
     focal_x: int | None
     focal_y: int | None
+    visibility: Visibility
     created_at: datetime
     file_url: str
     model_config = ConfigDict(from_attributes=True)
@@ -844,7 +821,7 @@ class MediaDerivativeCreate(BaseModel):
 
 
 class MediaDerivativePresentationUpdate(BaseModel):
-    moment_excerpt_id: str | None = None
+    travel_update_id: str | None = None
     caption: str | None = Field(default=None, max_length=500)
     alt_text: str | None = Field(default=None, max_length=300)
     focal_x: int | None = Field(default=None, ge=0, le=100)
@@ -915,6 +892,7 @@ class DocumentDerivativeResponse(BaseModel):
     review_state: DerivativeReviewState
     byte_size: int
     content_type: str
+    visibility: Visibility
     created_at: datetime
     file_url: str
     model_config = ConfigDict(from_attributes=True)

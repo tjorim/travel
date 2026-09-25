@@ -8,13 +8,15 @@ import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useDerivatives, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { RecordDialog } from "../RecordDialog";
+import { VisibilityControl } from "./visibility";
 import {
   bytesLabel,
   type ImportCompleteResult,
   type ImportSession,
   type MediaAsset,
   type MediaDerivative,
-  type MomentExcerpt,
+  type TravelUpdate,
   type Trip,
   type VisitCandidate,
   type VisitCandidatesResponse,
@@ -32,17 +34,17 @@ const dimensionInRange = ({ value }: { value: string }) => {
   return value.trim() && Number.isInteger(size) && size >= 64 && size <= 4000 ? undefined : "Kies een maximale zijde tussen 64 en 4000 px.";
 };
 
-type PresentationValues = { momentExcerptId: string; caption: string; altText: string; focalX: string; focalY: string };
-const fromDerivative = (derivative: MediaDerivative): PresentationValues => ({ momentExcerptId: derivative.moment_excerpt_id ?? "", caption: derivative.caption ?? "", altText: derivative.alt_text ?? "", focalX: derivative.focal_x?.toString() ?? "", focalY: derivative.focal_y?.toString() ?? "" });
+type PresentationValues = { travelUpdateId: string; caption: string; altText: string; focalX: string; focalY: string };
+const fromDerivative = (derivative: MediaDerivative): PresentationValues => ({ travelUpdateId: derivative.travel_update_id ?? "", caption: derivative.caption ?? "", altText: derivative.alt_text ?? "", focalX: derivative.focal_x?.toString() ?? "", focalY: derivative.focal_y?.toString() ?? "" });
 const percentage = ({ value }: { value: string }) => value === "" || (Number(value) >= 0 && Number(value) <= 100) ? undefined : "Kies een waarde tussen 0 en 100.";
 
-function PresentationForm({ derivative, excerpts, save }: { derivative: MediaDerivative; excerpts: MomentExcerpt[]; save: (values: Record<string, unknown>) => Promise<void> }) {
+function PresentationForm({ derivative, updates, save }: { derivative: MediaDerivative; updates: TravelUpdate[]; save: (values: Record<string, unknown>) => Promise<void> }) {
   const record = useRecordForm<PresentationValues>({
     defaultValues: fromDerivative(derivative),
     fallback: "De presentatie kon niet worden opgeslagen.",
-    serverFields: { moment_excerpt_id: "momentExcerptId", caption: "caption", alt_text: "altText", focal_x: "focalX", focal_y: "focalY" },
+    serverFields: { travel_update_id: "travelUpdateId", caption: "caption", alt_text: "altText", focal_x: "focalX", focal_y: "focalY" },
     submit: (values) => save({
-      moment_excerpt_id: values.momentExcerptId || null,
+      travel_update_id: values.travelUpdateId || null,
       caption: values.caption || null,
       alt_text: values.altText || null,
       focal_x: values.focalX === "" ? null : Number(values.focalX),
@@ -51,7 +53,7 @@ function PresentationForm({ derivative, excerpts, save }: { derivative: MediaDer
   });
   return <div className="derivative-presentation">
     <RecordForm record={record} submitLabel="Presentatie opslaan" pendingLabel="Opslaan…">
-      <record.form.Field name="momentExcerptId">{(field) => <SelectField field={field} label="Gedeeld moment"><option value="">Losse galerijfoto</option>{excerpts.map((excerpt) => <option key={excerpt.id} value={excerpt.id}>{excerpt.title}</option>)}</SelectField>}</record.form.Field>
+      <record.form.Field name="travelUpdateId">{(field) => <SelectField field={field} label="Bij reisupdate"><option value="">Losse galerijfoto</option>{updates.map((update) => <option key={update.id} value={update.id}>{update.title}</option>)}</SelectField>}</record.form.Field>
       <record.form.Field name="caption">{(field) => <TextField field={field} label="Bijschrift" maxLength={500} />}</record.form.Field>
       <record.form.Field name="altText">{(field) => <TextField field={field} label="Alternatieve tekst" maxLength={300} />}</record.form.Field>
       <div className="field-row">
@@ -76,6 +78,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
   const derivatives = derivativesQuery.data ?? [];
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadKey, setUploadKey] = useState(0);
+  const [uploading, setUploading] = useState(false);
   const [importSession, setImportSession] = useState<ImportSession | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const reviewSelection = selection.filter((id) => assets.some((asset) => asset.id === id));
@@ -96,7 +99,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
   const remove = useOwnerMutation<MediaAsset>({
     fallback: "De media konden niet worden verwijderd.",
     request: (asset) => ({ path: `${mediaPath}/${asset.id}`, method: "DELETE" }),
-    // The server also drops the deleted asset from the moments that used it.
+    // The server also drops the deleted asset from the reisupdates that used it.
     invalidate: (subject) => [...refreshMedia(subject), ownerKeys.trips(subject)],
   });
   const requestDerivative = useOwnerMutation<{ assetId: string; purpose: MediaDerivative["purpose"]; maxDimension: number }, MediaDerivative>({
@@ -135,9 +138,9 @@ export function MediaManager({ trip }: { trip: Trip }) {
     // A review is computed for this screen only; nothing is stored.
     invalidate: () => [],
   });
-  const attach = useOwnerMutation<{ momentId: string; mediaAssetIds: string[] }>({
-    fallback: "De private media konden niet aan het moment worden gekoppeld.",
-    request: ({ momentId, mediaAssetIds }) => ({ path: tripPath(trip.id, `moments/${momentId}`), method: "PATCH", body: { media_asset_ids: mediaAssetIds } }),
+  const attach = useOwnerMutation<{ updateId: string; mediaAssetIds: string[] }>({
+    fallback: "De private media konden niet aan de reisupdate worden gekoppeld.",
+    request: ({ updateId, mediaAssetIds }) => ({ path: tripPath(trip.id, `travel-updates/${updateId}`), method: "PATCH", body: { media_asset_ids: mediaAssetIds } }),
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
 
@@ -152,6 +155,9 @@ export function MediaManager({ trip }: { trip: Trip }) {
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
   const timestamp = (value: string) => new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
+  function openUpload() { setUploadFile(null); setUploadKey((current) => current + 1); setUploading(true); }
+  function closeUpload() { setUploading(false); setUploadFile(null); setUploadKey((current) => current + 1); }
+
   function submitUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!uploadFile) { setNotice("Kies eerst een foto of video."); return; }
@@ -159,22 +165,21 @@ export function MediaManager({ trip }: { trip: Trip }) {
     data.set("file", uploadFile);
     setNotice("Privémedia uploaden…");
     upload.mutateAsync(data).then((saved) => {
-      setUploadFile(null);
-      setUploadKey((current) => current + 1);
+      closeUpload();
       setSelectedId(saved.id);
-      setNotice("Privémedia geüpload. Je kunt ze nu aan een moment koppelen.");
+      setNotice("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.");
     }, fail("De media konden niet worden geüpload."));
   }
 
   function erase(asset: MediaAsset) {
-    confirmation.ask({ title: `“${asset.original_filename ?? "dit medium"}” uit deze reis verwijderen?`, description: "Eventuele momentkoppelingen worden ook weggehaald.", onConfirm: () => performErase(asset) });
+    confirmation.ask({ title: `“${asset.original_filename ?? "dit medium"}” uit deze reis verwijderen?`, description: "Eventuele koppelingen aan reisupdates worden ook weggehaald.", onConfirm: () => performErase(asset) });
   }
 
   function performErase(asset: MediaAsset) {
     remove.mutateAsync(asset).then(async () => {
       await offline.removeByResource("media_asset", asset.id);
       setSelectedId(null);
-      setNotice("Privémedia verwijderd. Eventuele momentkoppelingen zijn ook weggehaald.");
+      setNotice("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.");
     }, fail("De media konden niet worden verwijderd."));
   }
 
@@ -247,7 +252,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
     return candidate.media_asset_ids.map((id) => assets.find((asset) => asset.id === id)?.original_filename ?? "naamloos medium").join(", ");
   }
 
-  function startCandidateMoment(candidate: VisitCandidate) {
+  function startCandidateUpdate(candidate: VisitCandidate) {
     const time = candidateTimes[candidate.id] || (candidate.time_options.length === 1 ? candidate.time_options[0].captured_at : "");
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.time_options.length > 1 && !time) { setNotice("Kies eerst welke opnametijd je voor dit kandidaatbezoek wilt gebruiken."); return; }
@@ -259,11 +264,11 @@ export function MediaManager({ trip }: { trip: Trip }) {
   }
 
   function attachCandidate(candidate: VisitCandidate) {
-    const moment = trip.moments.find((item) => item.id === candidateAttachments[candidate.id]);
-    if (!moment) { setNotice("Kies eerst een bestaand moment om de private media aan te koppelen."); return; }
-    attach.mutateAsync({ momentId: moment.id, mediaAssetIds: [...new Set([...moment.media_asset_ids, ...candidate.media_asset_ids])] }).then(
-      () => setNotice(`Private media gekoppeld aan “${moment.title}”. Er is geen plaats of deelbare inhoud gemaakt.`),
-      fail("De private media konden niet aan het moment worden gekoppeld."),
+    const update = trip.travel_updates.find((item) => item.id === candidateAttachments[candidate.id]);
+    if (!update) { setNotice("Kies eerst een bestaande reisupdate om de private media aan te koppelen."); return; }
+    attach.mutateAsync({ updateId: update.id, mediaAssetIds: [...new Set([...update.media_asset_ids, ...candidate.media_asset_ids])] }).then(
+      () => setNotice(`Private media gekoppeld aan “${update.title}”. Er is geen plaats of deelbare inhoud gemaakt.`),
+      fail("De private media konden niet aan de reisupdate worden gekoppeld."),
     );
   }
 
@@ -271,18 +276,20 @@ export function MediaManager({ trip }: { trip: Trip }) {
   const message = notice ?? (readError ? errorMessage(readError, "Je media konden niet worden geladen.") : mediaQuery.isPending ? "Laad je private media…" : assets.length ? "Originelen, EXIF en koppelingen blijven alleen in je private tracker." : "Upload foto’s of video’s vanaf dit apparaat, of importeer je geselecteerde media.");
 
   return <section className="card manager" aria-labelledby="media-title">
-    <div className="capture-heading"><div><h3 id="media-title">Mediabibliotheek</h3><p>Originelen en metadata blijven privé. Alleen een aparte, metadata-vrije en goedgekeurde afgeleide kan later bewust worden gedeeld.</p></div></div>
+    <div className="capture-heading"><div><h3 id="media-title">Mediabibliotheek</h3><p>Originelen en metadata blijven privé. Alleen een aparte, metadata-vrije en goedgekeurde afgeleide kan later bewust worden gedeeld.</p></div><button className="secondary compact" type="button" onClick={openUpload}>Media uploaden</button></div>
     <p className="help" role="status">{message}</p>
-    <form className="stack-form" onSubmit={submitUpload}>
-      <label>Foto of video van dit apparaat<input key={uploadKey} required type="file" accept="image/*,video/*" onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)} /></label>
-      <button type="submit" disabled={upload.isPending}>Privémedia uploaden</button>
-    </form>
+    <RecordDialog open={uploading} title="Media uploaden" dirty={uploading && uploadFile !== null} onDismiss={closeUpload}>
+      {uploading && <form className="stack-form" onSubmit={submitUpload}>
+        <label>Foto of video van dit apparaat<input key={uploadKey} required type="file" accept="image/*,video/*" onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)} /></label>
+        <button type="submit" disabled={upload.isPending}>Privémedia uploaden</button>
+      </form>}
+    </RecordDialog>
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Importeren</h3><p>Verbind je provider in <NavLink to="/settings">Instellingen</NavLink>. De volledige OAuth-koppeling volgt in #55; hier start en voltooi je alleen een expliciete selectie.</p></div></div>
       <div className="button-row"><button className="secondary" type="button" onClick={() => startProvider("google_photos_picker")}>Kies in Google Photos</button><button className="secondary" type="button" onClick={() => startProvider("gopro_cloud")}>Kies in GoPro Cloud</button></div>
       {importSession && <aside className="import-session"><strong>{providerLabel[importSession.provider]}-selectie</strong><span>Kies eerst alleen de media die je naar deze private reis wilt kopiëren.</span>{importSession.picker_uri && <a className="action-link" href={importSession.picker_uri} target="_blank" rel="noreferrer">Selectie openen</a>}<button type="button" onClick={finishImport}>Selectie importeren</button></aside>}
     </div>
     {assets.length > 0 && <div className="saved-moments manager-list">{assets.map((asset) => <article className={`excerpt-row ${asset.id === selected?.id ? "selected-item" : ""}`} key={asset.id}><button className="document-select" type="button" onClick={() => setSelectedId(asset.id)}><strong>{asset.original_filename ?? "Naamloos medium"}</strong><span>{asset.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(asset.byte_size)}{asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}</span></button><div className="button-row"><label className="scope-choice"><input type="checkbox" checked={reviewSelection.includes(asset.id)} onChange={() => toggleReviewSelection(asset.id)} />Bezoeken beoordelen</label><button className="secondary compact" type="button" onClick={() => open(asset.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void toggleOffline(asset).catch(fail("Het private medium kon niet offline worden bewaard."))}>{offline.isPinned("media_asset", asset.id) ? "Offline verwijderen" : "Offline bewaren"}</button><button className="danger compact" type="button" onClick={() => erase(asset)}>Verwijderen</button></div></article>)}</div>}
-    {assets.length > 0 && <div className="manager-subsection"><div className="capture-heading"><div><h3>Mogelijke bezoeken beoordelen</h3><p>Kies hierboven private media. Kandidaten gebruiken een venster van twee uur en houden GPS-punten die meer dan {candidateReview?.gps_agreement_metres ?? 500} meter verschillen als afzonderlijke keuzes. Ze worden nooit automatisch opgeslagen.</p></div></div><button type="button" onClick={review}>Geselecteerde media beoordelen</button>{candidateReview?.unavailable_media_asset_ids.length ? <p className="help">{candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of GPS-metadata en is niet gegokt in een kandidaat.</p> : null}{candidateReview?.candidates.map((candidate) => <article className="scope-item" key={candidate.id}><strong>{candidateAssetNames(candidate)}</strong><span>{candidate.starts_at ? `${timestamp(candidate.starts_at)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${new Intl.DateTimeFormat("nl-BE", { timeStyle: "short" }).format(new Date(candidate.ends_at))}` : ""}` : "Geen opnametijd beschikbaar"}</span>{candidate.time_options.length > 1 && <label>Gebruik opnametijd<select value={candidateTimes[candidate.id] ?? ""} onChange={(event) => setCandidateTimes((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies zelf een tijd</option>{candidate.time_options.map((option) => <option key={option.media_asset_id} value={option.captured_at}>{timestamp(option.captured_at)}</option>)}</select></label>}{candidate.location_options.length > 1 && <label>GPS-keuze<select value={candidateLocations[candidate.id] ?? ""} onChange={(event) => setCandidateLocations((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Locatie negeren</option>{candidate.location_options.map((option, index) => <option key={option.media_asset_ids.join("-")} value={index}>Locatie uit {option.media_asset_ids.length} medium/media</option>)}</select></label>}{candidate.location_options.length === 0 && <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>}{candidate.location_options.length > 1 && <p className="help">De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.</p>}<div className="button-row"><button type="button" onClick={() => startCandidateMoment(candidate)}>Als nieuw moment openen</button>{trip.moments.length > 0 && <><label className="scope-choice">Koppel aan<select value={candidateAttachments[candidate.id] ?? ""} onChange={(event) => setCandidateAttachments((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies bestaand moment</option>{trip.moments.map((moment) => <option value={moment.id} key={moment.id}>{moment.title}</option>)}</select></label><button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>Aan moment koppelen</button></>}</div></article>)}</div>}
+    {assets.length > 0 && <div className="manager-subsection"><div className="capture-heading"><div><h3>Mogelijke bezoeken beoordelen</h3><p>Kies hierboven private media. Kandidaten gebruiken een venster van twee uur en houden GPS-punten die meer dan {candidateReview?.gps_agreement_metres ?? 500} meter verschillen als afzonderlijke keuzes. Ze worden nooit automatisch opgeslagen.</p></div></div><button type="button" onClick={review}>Geselecteerde media beoordelen</button>{candidateReview?.unavailable_media_asset_ids.length ? <p className="help">{candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of GPS-metadata en is niet gegokt in een kandidaat.</p> : null}{candidateReview?.candidates.map((candidate) => <article className="scope-item" key={candidate.id}><strong>{candidateAssetNames(candidate)}</strong><span>{candidate.starts_at ? `${timestamp(candidate.starts_at)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${new Intl.DateTimeFormat("nl-BE", { timeStyle: "short" }).format(new Date(candidate.ends_at))}` : ""}` : "Geen opnametijd beschikbaar"}</span>{candidate.time_options.length > 1 && <label>Gebruik opnametijd<select value={candidateTimes[candidate.id] ?? ""} onChange={(event) => setCandidateTimes((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies zelf een tijd</option>{candidate.time_options.map((option) => <option key={option.media_asset_id} value={option.captured_at}>{timestamp(option.captured_at)}</option>)}</select></label>}{candidate.location_options.length > 1 && <label>GPS-keuze<select value={candidateLocations[candidate.id] ?? ""} onChange={(event) => setCandidateLocations((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Locatie negeren</option>{candidate.location_options.map((option, index) => <option key={option.media_asset_ids.join("-")} value={index}>Locatie uit {option.media_asset_ids.length} medium/media</option>)}</select></label>}{candidate.location_options.length === 0 && <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>}{candidate.location_options.length > 1 && <p className="help">De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.</p>}<div className="button-row"><button type="button" onClick={() => startCandidateUpdate(candidate)}>Als nieuwe reisupdate openen</button>{trip.travel_updates.length > 0 && <><label className="scope-choice">Koppel aan<select value={candidateAttachments[candidate.id] ?? ""} onChange={(event) => setCandidateAttachments((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies bestaande reisupdate</option>{trip.travel_updates.map((update) => <option value={update.id} key={update.id}>{update.title}</option>)}</select></label><button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>Aan reisupdate koppelen</button></>}</div></article>)}</div>}
     {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Afgeleiden</h3><p>Voor {selected.original_filename ?? "dit medium"}. {selected.media_kind === "video" ? "Video-afgeleiden zijn nog niet beschikbaar." : "Een nieuwe kopie start altijd als ‘wacht op goedkeuring’."}</p></div></div>
       {selected.media_kind === "photo" && <RecordForm record={derivativeRecord} submitLabel="Metadata-vrije afgeleide maken" pendingLabel="Afgeleide maken…">
         <div className="field-row">
@@ -290,7 +297,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
           <derivativeRecord.form.Field name="maxDimension" validators={{ onChange: dimensionInRange, onSubmit: dimensionInRange }}>{(field) => <TextField field={field} label="Maximale zijde (px)" required min={64} max={4000} type="number" />}</derivativeRecord.form.Field>
         </div>
       </RecordForm>}
-      {derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="scope-item" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.purpose.replace("_", " ")} · {derivative.width && derivative.height ? `${derivative.width} × ${derivative.height}` : "afmetingen onbekend"}</span></div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De private afgeleide kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ assetId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Delen vraagt nog altijd een aparte scope."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}<button className="danger compact" type="button" onClick={() => eraseDerivative(derivative)}>Verwijderen</button></div>{derivative.purpose === "share" && <PresentationForm key={derivative.id} derivative={derivative} excerpts={trip.moment_excerpts} save={async (values) => { await presentation.mutateAsync({ assetId: selected.id, derivative, values }); setNotice("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar."); }} />}</article>)}</div>}
+      {derivatives.length > 0 && <div className="saved-moments manager-list">{derivatives.map((derivative) => <article className="scope-item" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.purpose.replace("_", " ")} · {derivative.width && derivative.height ? `${derivative.width} × ${derivative.height}` : "afmetingen onbekend"}</span>{derivative.review_state === "approved" && derivative.purpose === "share" && <VisibilityControl tripId={trip.id} kind="media_derivative" id={derivative.id} value={derivative.visibility} name={`afgeleide van ${selected.original_filename ?? "foto"}`} followsUpdate={trip.travel_updates.find((update) => update.id === derivative.travel_update_id)?.title} />}</div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De private afgeleide kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ assetId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Kies nu wie hem mag zien."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}<button className="danger compact" type="button" onClick={() => eraseDerivative(derivative)}>Verwijderen</button></div>{derivative.purpose === "share" && <PresentationForm key={derivative.id} derivative={derivative} updates={trip.travel_updates} save={async (values) => { await presentation.mutateAsync({ assetId: selected.id, derivative, values }); setNotice("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar."); }} />}</article>)}</div>}
     </div>}
     {confirmation.dialog}
   </section>;

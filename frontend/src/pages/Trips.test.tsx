@@ -4,20 +4,21 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { renderWithOwner, testToken } from "../query/test-utils";
-import { answerConfirmation } from "../test-confirm";
 import type { Trip } from "../tracker-model";
+import { TripWorkspace } from "./TripWorkspace";
 import { Trips } from "./Trips";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("../trips/DocumentManager", () => ({ DocumentManager: () => null }));
-vi.mock("../trips/ItineraryPlanManager", () => ({ ItineraryPlanManager: () => null }));
-vi.mock("../trips/HighlightManager", () => ({ HighlightManager: () => null }));
+vi.mock("../trips/ItineraryPlanManager", () => ({ ItineraryPlanManager: ({ onShowOnMap }: { onShowOnMap?: (id: string) => void }) => <button type="button" onClick={() => onShowOnMap?.("p1")}>Toon op kaart</button> }));
 vi.mock("../trips/BroadPlaceManager", () => ({ BroadPlaceManager: () => null }));
-vi.mock("../trips/MomentExcerptManager", () => ({ MomentExcerptManager: () => null }));
+vi.mock("../trips/ExactPlaceManager", () => ({ ExactPlaceManager: () => null }));
+vi.mock("../trips/AreaView", () => ({ AreaView: () => null }));
+vi.mock("../trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
 vi.mock("../trips/MediaManager", () => ({ MediaManager: () => null }));
-vi.mock("../trips/OwnerTripMap", () => ({ OwnerTripMap: () => null }));
+vi.mock("../trips/OwnerTripMap", () => ({ OwnerTripMap: ({ focus }: { focus?: { id: string } | null }) => <p>Kaartfocus {focus?.id ?? "geen"}</p> }));
 vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
 vi.mock("../trips/StayManager", () => ({ StayManager: () => null }));
@@ -27,7 +28,7 @@ vi.mock("../trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
 vi.mock("../library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 vi.mock("../trips/TripOverview", () => ({ TripOverview: () => null }));
 
-const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({ id, title, summary: null, starts_on: null, ends_on: null, visibility: "private", publication_state: "draft", route_stages: [], highlights: [], moments: [], moment_excerpts: [], ...extra });
+const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({ id, title, summary: null, starts_on: null, ends_on: null, route_stages: [], travel_updates: [], ...extra });
 let trips: Trip[];
 let requests: string[];
 const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
@@ -52,55 +53,90 @@ beforeEach(() => {
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-// The list page also hosts other forms with a "Titel" field; scope to the trip editor.
-const editor = () => within(screen.getByRole("heading", { name: /^(Reis bewerken|Nieuwe reis)$/ }).closest("section")!);
-const renderTrips = (path = "/trips") => renderWithOwner(<MemoryRouter initialEntries={[path]}><Routes><Route path="/trips" element={<Trips />} /><Route path="/trips/:id" element={<p>Werkruimte</p>} /></Routes></MemoryRouter>);
+// The trip dialogs share labels with the managers' forms; scope to the dialog.
+const editor = (name: "Reis bewerken" | "Nieuwe reis") => within(screen.getByRole("heading", { name }).closest("dialog")!);
+const openEditor = async () => fireEvent.click(await screen.findByRole("button", { name: "Reis bewerken" }));
+const renderTrips = (path = "/trips") => renderWithOwner(<MemoryRouter initialEntries={[path]}><Routes>
+  <Route path="/trips" element={<Trips />} />
+  <Route path="/trips/:tripId" element={<TripWorkspace />} />
+  <Route path="/trips/:tripId/:section" element={<TripWorkspace />} />
+</Routes></MemoryRouter>);
 
-it("opens the first trip with its saved values in the editor", async () => {
+it("lists trips only, and opens a trip's workspace from its row", async () => {
   renderTrips();
-  await waitFor(() => expect((editor().getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  expect((editor().getByLabelText(/Eerste reisdag/) as HTMLInputElement).value).toBe("2054-11-16");
+  await screen.findByRole("button", { name: /Exampleland/ });
+  // The list page no longer stacks a trip's content or editor under the list.
+  expect(screen.queryByText("Private inhoud")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Reis bewerken" })).toBeNull();
+  expect(screen.queryByLabelText("Titel")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /IJsland/ }));
+  await screen.findByRole("heading", { name: "IJsland" });
+  expect(screen.getByRole("link", { name: "Alle reizen" })).toBeTruthy();
 });
 
-it("shows the renamed trip in the list after saving, with one refreshed read", async () => {
-  renderTrips();
-  await waitFor(() => expect((editor().getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  fireEvent.change(editor().getByLabelText("Titel"), { target: { value: "Exampleland 2054" } });
-  fireEvent.click(editor().getByRole("button", { name: "Reis opslaan" }));
-  await screen.findByRole("button", { name: /Exampleland 2054/ });
-  expect(screen.queryByRole("button", { name: /^Exampleland ·/ })).toBeNull();
+it("keeps the editor closed in the workspace until asked, then opens the trip with its saved values", async () => {
+  renderTrips("/trips/t1");
+  await screen.findByRole("heading", { name: "Exampleland" });
+  expect(screen.getByRole("link", { name: "Volledig privéoverzicht" }).getAttribute("href")).toBe("/trips/t1/details");
+  expect(screen.queryByLabelText("Titel")).toBeNull();
+  await openEditor();
+  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  expect((editor("Reis bewerken").getByLabelText(/Eerste reisdag/) as HTMLInputElement).value).toBe("2054-11-16");
+});
+
+it("shows the renamed trip in the workspace after saving, with one refreshed read", async () => {
+  renderTrips("/trips/t1");
+  await openEditor();
+  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  fireEvent.change(editor("Reis bewerken").getByLabelText("Titel"), { target: { value: "Exampleland 2054" } });
+  fireEvent.click(editor("Reis bewerken").getByRole("button", { name: "Reis opslaan" }));
+  await screen.findByRole("heading", { name: "Exampleland 2054" });
   expect(screen.getByText("Reis opgeslagen.")).toBeTruthy();
+  expect(screen.queryByLabelText("Titel")).toBeNull();
   expect(requests.filter((request) => request === "GET /api/trips")).toHaveLength(2);
 });
 
-it("drops a deleted trip from the list and falls back to a blank draft", async () => {
-  renderTrips();
-  await waitFor(() => expect((editor().getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  fireEvent.click(editor().getByRole("button", { name: "Reis verwijderen" }));
-  await answerConfirmation();
+it("drops a deleted trip and returns to the list", async () => {
+  renderTrips("/trips/t1");
+  await openEditor();
+  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  fireEvent.click(editor("Reis bewerken").getByRole("button", { name: "Reis verwijderen" }));
+  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+  await screen.findByRole("heading", { name: "Reizen" });
   await waitFor(() => expect(screen.queryByRole("button", { name: /Exampleland/ })).toBeNull());
   expect(screen.getByRole("button", { name: /IJsland/ })).toBeTruthy();
-  expect((editor().getByLabelText("Titel") as HTMLInputElement).value).toBe("");
-  expect(screen.getByRole("heading", { name: "Nieuwe reis" })).toBeTruthy();
+  expect(screen.getByText("Reis verwijderd.")).toBeTruthy();
 });
 
 it("creates a trip and opens its workspace", async () => {
   renderTrips();
   await screen.findByRole("button", { name: /IJsland/ });
   fireEvent.click(screen.getByRole("button", { name: "Nieuwe reis" }));
-  fireEvent.change(editor().getByLabelText("Titel"), { target: { value: "Japan" } });
-  fireEvent.click(editor().getByRole("button", { name: "Reis maken" }));
-  await screen.findByText("Werkruimte");
+  fireEvent.change(editor("Nieuwe reis").getByLabelText("Titel"), { target: { value: "Japan" } });
+  fireEvent.click(editor("Nieuwe reis").getByRole("button", { name: "Reis maken" }));
+  await screen.findByRole("heading", { name: "Japan" });
   expect(trips.map((item) => item.title)).toContain("Japan");
 });
 
+it("opens the new-trip dialog straight from the home page link", async () => {
+  renderTrips("/trips?new=1");
+  await waitFor(() => expect((editor("Nieuwe reis").getByLabelText("Titel") as HTMLInputElement).value).toBe(""));
+});
+
 it("rejects an end date before the start date without calling the server", async () => {
-  renderTrips();
-  await waitFor(() => expect((editor().getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  fireEvent.change(editor().getByLabelText(/Laatste reisdag/), { target: { value: "2054-11-01" } });
-  fireEvent.click(editor().getByRole("button", { name: "Reis opslaan" }));
+  renderTrips("/trips/t1");
+  await openEditor();
+  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  fireEvent.change(editor("Reis bewerken").getByLabelText(/Laatste reisdag/), { target: { value: "2054-11-01" } });
+  fireEvent.click(editor("Reis bewerken").getByRole("button", { name: "Reis opslaan" }));
   await screen.findByText("De laatste reisdag ligt vóór de eerste.");
   expect(requests.some((request) => request.startsWith("PATCH"))).toBe(false);
+});
+
+it("shows a step on the map by opening the overview, whose map focuses that point", async () => {
+  renderTrips("/trips/t1/plan");
+  fireEvent.click(await screen.findByRole("button", { name: "Toon op kaart" }));
+  await screen.findByText("Kaartfocus p1");
 });
 
 it("says so when a workspace trip does not exist for this account", async () => {

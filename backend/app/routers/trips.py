@@ -1,42 +1,36 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from ..access import set_visibility
 from ..auth import current_subject
 from ..database import get_session
 from ..models import (
-    BroadStayCard,
     DocumentDerivative,
     MediaAsset,
     MediaDerivative,
-    Moment,
-    MomentExcerpt,
-    MomentMediaAsset,
     Place,
     PlaceKind,
-    PublicationState,
     RouteStage,
     Stay,
     TransportLeg,
+    TravelUpdate,
+    TravelUpdateMediaAsset,
     Trip,
     Visibility,
-    opaque_id,
 )
 from ..schemas import (
     BroadPlaceInput,
     ExactPlaceInput,
-    MomentCreate,
-    MomentExcerptCreate,
-    MomentExcerptResponse,
-    MomentExcerptUpdate,
-    MomentResponse,
-    MomentUpdate,
     RouteStageCreate,
     RouteStageResponse,
     RouteStageUpdate,
+    TravelUpdateCreate,
+    TravelUpdatePatch,
+    TravelUpdateResponse,
     TripCreate,
     TripResponse,
     TripUpdate,
@@ -52,19 +46,17 @@ def trip_query():
     return select(Trip).options(
         selectinload(Trip.route_stages).selectinload(RouteStage.place),
         selectinload(Trip.places),
-        selectinload(Trip.moments).selectinload(Moment.place),
-        selectinload(Trip.moments).selectinload(Moment.media_links),
-        selectinload(Trip.moment_excerpts).selectinload(MomentExcerpt.broad_place),
-        selectinload(Trip.stays).selectinload(Stay.place),
+        selectinload(Trip.travel_updates).selectinload(TravelUpdate.broad_place),
+        selectinload(Trip.travel_updates).selectinload(TravelUpdate.place).selectinload(Place.area),
+        selectinload(Trip.travel_updates).selectinload(TravelUpdate.media_links),
+        selectinload(Trip.stays).selectinload(Stay.place).selectinload(Place.area),
         selectinload(Trip.stays).selectinload(Stay.broad_place),
-        selectinload(Trip.broad_stay_cards).selectinload(BroadStayCard.place),
         selectinload(Trip.broad_routes),
-        selectinload(Trip.transport_legs).selectinload(TransportLeg.departure_place),
-        selectinload(Trip.transport_legs).selectinload(TransportLeg.arrival_place),
+        selectinload(Trip.transport_legs).selectinload(TransportLeg.departure_place).selectinload(Place.area),
+        selectinload(Trip.transport_legs).selectinload(TransportLeg.arrival_place).selectinload(Place.area),
         selectinload(Trip.transport_legs).selectinload(TransportLeg.document_links),
         selectinload(Trip.itinerary_entries),
         selectinload(Trip.trip_tasks),
-        selectinload(Trip.highlights),
         selectinload(Trip.media_derivatives).selectinload(MediaDerivative.media_asset),
         selectinload(Trip.document_derivatives).selectinload(DocumentDerivative.document_asset),
     )
@@ -94,14 +86,55 @@ def broad_place_for_stage(session: Session, trip_id: str, payload: RouteStageCre
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A broad place is required")
 
 
+def area_for_spot(session: Session, trip_id: str, spot: Place) -> Place:
+    """The area a new spot belongs to, found or made from the spot's own city.
+
+    An existing area with the same name (and a compatible country) is reused, so
+    every hotel and airport in Taipei ends up in one "Taipei". A spot without
+    city data is still filed, temporarily, under one private "Unassigned"
+    area for its trip. This preserves the one non-negotiable relationship:
+    every spot has an area, while making those incomplete records easy to find
+    and rename in the owner UI."""
+    name = (spot.locality or spot.admin_area or "").strip()
+    fallback = not name
+    if fallback:
+        name = "Unassigned"
+    for area in session.scalars(
+        select(Place).where(Place.trip_id == trip_id, Place.kind == PlaceKind.BROAD, func.lower(Place.label) == name.lower())
+    ):
+        if not area.country_code or not spot.country_code or area.country_code == spot.country_code:
+            return area
+    area = Place(
+        trip_id=trip_id, kind=PlaceKind.BROAD, label=name[:120], country_code=spot.country_code,
+        region=spot.admin_area if spot.locality and not fallback else None,
+    )
+    session.add(area)
+    session.flush()
+    return area
+
+
 def exact_place_from_input(session: Session, trip_id: str, payload: ExactPlaceInput) -> Place:
-    place = Place(trip_id=trip_id, kind=PlaceKind.EXACT, **payload.model_dump())
+    """Create a spot in its area, or return the spot the trip already has."""
+    if payload.existing_place_id is not None:
+        existing = session.scalar(
+            select(Place).where(
+                Place.id == payload.existing_place_id, Place.trip_id == trip_id, Place.kind == PlaceKind.EXACT
+            )
+        )
+        if existing is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Place not found on this trip")
+        return existing
+    place = Place(trip_id=trip_id, kind=PlaceKind.EXACT, **payload.model_dump(exclude={"existing_place_id", "area_id"}))
+    if payload.area_id is not None:
+        place.area = selected_broad_place(session, trip_id, payload.area_id)
+    else:
+        place.area = area_for_spot(session, trip_id, place)
     session.add(place)
     session.flush()
     return place
 
 
-def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[str]) -> list[MomentMediaAsset]:
+def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[str]) -> list[TravelUpdateMediaAsset]:
     """Resolve attachments inside the already-authorized trip boundary.
 
     The association intentionally stores no EXIF, file URL or share state.
@@ -124,7 +157,7 @@ def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[s
             detail="One or more media assets are unavailable for this trip",
         )
     by_id = {asset.id: asset for asset in assets}
-    return [MomentMediaAsset(media_asset=by_id[asset_id]) for asset_id in media_asset_ids]
+    return [TravelUpdateMediaAsset(media_asset=by_id[asset_id]) for asset_id in media_asset_ids]
 
 
 def owned_trip(session: Session, trip_id: str, subject: str) -> Trip:
@@ -167,10 +200,6 @@ def update_trip(trip_id: str, payload: TripUpdate, session: SessionDep, subject:
         setattr(trip, field, value)
     if trip.starts_on is not None and trip.ends_on is not None and trip.ends_on < trip.starts_on:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="The trip cannot end before it starts")
-    if trip.publication_state == PublicationState.PUBLISHED and trip.visibility == Visibility.PRIVATE:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Private trips cannot be published")
-    if trip.publication_state == PublicationState.PUBLISHED and trip.public_id is None:
-        trip.public_id = opaque_id()
     session.commit()
     return owned_trip(session, trip_id, subject)
 
@@ -250,63 +279,6 @@ def delete_route_stage(trip_id: str, stage_id: str, session: SessionDep, subject
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/{trip_id}/moments", response_model=MomentResponse, status_code=status.HTTP_201_CREATED)
-def create_moment(trip_id: str, payload: MomentCreate, session: SessionDep, subject: SubjectDep) -> Moment:
-    trip = owned_trip(session, trip_id, subject)
-    values = payload.model_dump(exclude={"place", "photo_urls", "media_asset_ids"})
-    moment = Moment(
-        trip=trip,
-        author_subject=subject,
-        place=exact_place_from_input(session, trip.id, payload.place) if payload.place else None,
-        photo_urls=[str(url) for url in payload.photo_urls],
-        media_links=media_links_from_ids(session, trip.id, payload.media_asset_ids),
-        **values,
-    )
-    session.add(moment)
-    session.commit()
-    return session.scalar(
-        select(Moment).options(selectinload(Moment.place), selectinload(Moment.media_links)).where(Moment.id == moment.id)
-    )  # type: ignore[return-value]
-
-
-def owned_moment(trip: Trip, moment_id: str) -> Moment:
-    moment = next((item for item in trip.moments if item.id == moment_id), None)
-    if moment is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Moment not found")
-    return moment
-
-
-@router.patch("/{trip_id}/moments/{moment_id}", response_model=MomentResponse)
-def update_moment(
-    trip_id: str, moment_id: str, payload: MomentUpdate, session: SessionDep, subject: SubjectDep
-) -> Moment:
-    trip = owned_trip(session, trip_id, subject)
-    moment = owned_moment(trip, moment_id)
-    # A present null is intentional: the traveller may remove an attached
-    # place while editing a moment.  Pydantic otherwise represents both an
-    # omitted field and null as None.
-    if "place" in payload.model_fields_set:
-        moment.place = exact_place_from_input(session, trip.id, payload.place) if payload.place else None
-    values = payload.model_dump(exclude_unset=True, exclude={"place", "photo_urls", "media_asset_ids"})
-    for field, value in values.items():
-        setattr(moment, field, value)
-    if payload.photo_urls is not None:
-        moment.photo_urls = [str(url) for url in payload.photo_urls]
-    if "media_asset_ids" in payload.model_fields_set:
-        moment.media_links = media_links_from_ids(session, trip.id, payload.media_asset_ids or [])
-    session.commit()
-    return session.scalar(
-        select(Moment).options(selectinload(Moment.place), selectinload(Moment.media_links)).where(Moment.id == moment.id)
-    )  # type: ignore[return-value]
-
-
-@router.delete("/{trip_id}/moments/{moment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_moment(trip_id: str, moment_id: str, session: SessionDep, subject: SubjectDep) -> Response:
-    session.delete(owned_moment(owned_trip(session, trip_id, subject), moment_id))
-    session.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 def resolve_broad_place_id(session: Session, trip: Trip, broad_place_id: str | None) -> str | None:
     if broad_place_id is None:
         return None
@@ -318,64 +290,98 @@ def resolve_broad_place_id(session: Session, trip: Trip, broad_place_id: str | N
     return place.id
 
 
-def resolve_source_moment_id(trip: Trip, source_moment_id: str | None) -> str | None:
-    if source_moment_id is None:
-        return None
-    if not any(moment.id == source_moment_id for moment in trip.moments):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Source moment not found on this trip"
-        )
-    return source_moment_id
+def _loaded(session: Session, update_id: str) -> TravelUpdate:
+    return session.scalar(
+        select(TravelUpdate)
+        .options(selectinload(TravelUpdate.broad_place), selectinload(TravelUpdate.place), selectinload(TravelUpdate.media_links))
+        .where(TravelUpdate.id == update_id)
+    )  # type: ignore[return-value]
 
 
-@router.post(
-    "/{trip_id}/moment-excerpts", response_model=MomentExcerptResponse, status_code=status.HTTP_201_CREATED
-)
-def create_moment_excerpt(
-    trip_id: str, payload: MomentExcerptCreate, session: SessionDep, subject: SubjectDep
-) -> MomentExcerpt:
+@router.post("/{trip_id}/travel-updates", response_model=TravelUpdateResponse, status_code=status.HTTP_201_CREATED)
+def create_travel_update(
+    trip_id: str, payload: TravelUpdateCreate, session: SessionDep, subject: SubjectDep
+) -> TravelUpdate:
     trip = owned_trip(session, trip_id, subject)
-    excerpt = MomentExcerpt(
+    spot = exact_place_from_input(session, trip.id, payload.place) if payload.place else None
+    if spot is not None and payload.broad_place_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="An update with a spot gets its area from that spot",
+        )
+    update = TravelUpdate(
         trip=trip,
-        source_moment_id=resolve_source_moment_id(trip, payload.source_moment_id),
-        broad_place_id=resolve_broad_place_id(session, trip, payload.broad_place_id),
+        broad_place_id=resolve_broad_place_id(session, trip, payload.broad_place_id) if spot is None else None,
+        place=spot,
+        media_links=media_links_from_ids(session, trip.id, payload.media_asset_ids),
+        occurred_at=payload.occurred_at,
         date_precision=payload.date_precision,
-        story_date=payload.story_date,
         title=payload.title,
         body=payload.body,
+        private_notes=payload.private_notes,
     )
-    session.add(excerpt)
+    session.add(update)
+    session.flush()
+    if payload.visibility != Visibility.PRIVATE:
+        _choose_visibility(trip, update, payload.visibility)
     session.commit()
-    return excerpt
+    return _loaded(session, update.id)
 
 
-def owned_excerpt(trip: Trip, excerpt_id: str) -> MomentExcerpt:
-    excerpt = next((item for item in trip.moment_excerpts if item.id == excerpt_id), None)
-    if excerpt is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Moment excerpt not found")
-    return excerpt
+def owned_update(trip: Trip, update_id: str) -> TravelUpdate:
+    update = next((item for item in trip.travel_updates if item.id == update_id), None)
+    if update is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel update not found")
+    return update
 
 
-@router.patch("/{trip_id}/moment-excerpts/{excerpt_id}", response_model=MomentExcerptResponse)
-def update_moment_excerpt(
-    trip_id: str, excerpt_id: str, payload: MomentExcerptUpdate, session: SessionDep, subject: SubjectDep
-) -> MomentExcerpt:
+def _choose_visibility(trip: Trip, update: TravelUpdate, visibility: Visibility) -> None:
+    try:
+        set_visibility(trip, "travel_update", update.id, visibility)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+
+
+@router.patch("/{trip_id}/travel-updates/{update_id}", response_model=TravelUpdateResponse)
+def update_travel_update(
+    trip_id: str, update_id: str, payload: TravelUpdatePatch, session: SessionDep, subject: SubjectDep
+) -> TravelUpdate:
     trip = owned_trip(session, trip_id, subject)
-    excerpt = owned_excerpt(trip, excerpt_id)
-    if "source_moment_id" in payload.model_fields_set:
-        excerpt.source_moment_id = resolve_source_moment_id(trip, payload.source_moment_id)
-    if "broad_place_id" in payload.model_fields_set:
-        excerpt.broad_place_id = resolve_broad_place_id(session, trip, payload.broad_place_id)
-    values = payload.model_dump(exclude_unset=True, exclude={"source_moment_id", "broad_place_id"})
+    update = owned_update(trip, update_id)
+    # A present null is intentional: the owner may remove a place or notes
+    # while editing. Pydantic otherwise represents omitted and null alike.
+    if "place" in payload.model_fields_set:
+        update.place = exact_place_from_input(session, trip.id, payload.place) if payload.place else None
+    if update.place is not None:
+        if "broad_place_id" in payload.model_fields_set and payload.broad_place_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="An update with a spot gets its area from that spot",
+            )
+        update.broad_place_id = None
+    elif "broad_place_id" in payload.model_fields_set:
+        update.broad_place_id = resolve_broad_place_id(session, trip, payload.broad_place_id)
+    if "media_asset_ids" in payload.model_fields_set:
+        update.media_links = media_links_from_ids(session, trip.id, payload.media_asset_ids or [])
+    values = payload.model_dump(
+        exclude_unset=True, exclude={"broad_place_id", "place", "media_asset_ids", "visibility"}
+    )
     for field, value in values.items():
-        setattr(excerpt, field, value)
+        if value is None and field in {"occurred_at", "date_precision", "title", "body"}:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{field} is required")
+        setattr(update, field, value)
+    if payload.visibility is not None:
+        _choose_visibility(trip, update, payload.visibility)
+    elif update.visibility != Visibility.PRIVATE and not update.body.strip():
+        # An update cannot keep reaching visitors once its text is emptied.
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Write the text for visitors before sharing this update")
     session.commit()
-    return excerpt
+    return _loaded(session, update.id)
 
 
-@router.delete("/{trip_id}/moment-excerpts/{excerpt_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_moment_excerpt(trip_id: str, excerpt_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+@router.delete("/{trip_id}/travel-updates/{update_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_travel_update(trip_id: str, update_id: str, session: SessionDep, subject: SubjectDep) -> Response:
     trip = owned_trip(session, trip_id, subject)
-    session.delete(owned_excerpt(trip, excerpt_id))
+    session.delete(owned_update(trip, update_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

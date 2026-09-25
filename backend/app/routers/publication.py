@@ -20,8 +20,14 @@ from ..models import (
     SurfaceState,
     Trip,
 )
-from ..navigation import scoped_navigation_url
-from ..projection import ScopeError, render_projection, scoped_file, shared_trip_dates, validate_scope
+from ..projection import (
+    ScopeError,
+    render_projection,
+    scoped_file,
+    scoped_navigation_url,
+    shared_trip_dates,
+    validate_scope,
+)
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
@@ -181,10 +187,9 @@ def _public_status(surface: PublicSurface) -> PublicProjectionStatusResponse:
 #
 # `state` gates whether the token works at all. While `active`, `scope` is
 # likewise live: editing it takes effect immediately for anyone already
-# holding the token. `activate` remains a distinct, one-time action because
-# it is the only step that mints the token itself; `rotate` remains useful on
-# its own (a fresh token for a suspected-leaked one) since scope changes no
-# longer need it.
+# holding the token. `activate` is the only step that mints the URL; `rotate`
+# remains useful on its own (a fresh URL for a suspected-leaked one) since
+# scope changes no longer need it.
 
 EDITABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
 
@@ -200,9 +205,10 @@ def owned_link(session: Session, trip_id: str, subject: str, link_id: str) -> Sh
 @router.post("/share-links", response_model=ShareLinkResponse, status_code=status.HTTP_201_CREATED)
 def create_share_link(trip_id: str, payload: ShareLinkCreate, session: SessionDep, subject: SubjectDep) -> ShareLink:
     scope = _apply_scope(session, trip_id, subject, payload.scope)
-    link = ShareLink(trip_id=trip_id, label=payload.label, scope=scope, state=LinkState.DRAFT)
+    link = ShareLink(trip_id=trip_id, label=payload.label, series_id="", scope=scope, state=LinkState.DRAFT)
     session.add(link)
     session.flush()
+    link.series_id = link.id
     record_audit_event(
         session,
         trip_id=trip_id,
@@ -286,12 +292,13 @@ def _preview_navigation(trip: Trip, scope: dict, local_id: str) -> JSONResponse:
     target = scoped_navigation_url(trip, scope, local_id)
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS)
-    return JSONResponse({"url": target[0]}, headers=UNLISTED_HEADERS)
+    return JSONResponse({"url": target}, headers=UNLISTED_HEADERS)
 
 
 def _activate_link(link: ShareLink, expires_in_days: int | None) -> str:
     token = generate_token()
     now = datetime.now(UTC)
+    link.token = token
     link.token_verifier = verifier_for(token)
     link.expires_at = now + timedelta(days=expires_in_days) if expires_in_days is not None else None
     link.state = LinkState.ACTIVE
@@ -306,7 +313,7 @@ def activate_share_link(
     link = owned_link(session, trip_id, subject, link_id)
     if link.state != LinkState.DRAFT:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only a draft link can be activated")
-    token = _activate_link(link, payload.expires_in_days)
+    _activate_link(link, payload.expires_in_days)
     details: dict = {
         "scope_version": scope_fingerprint(link.scope),
         "expires_at": link.expires_at.isoformat() if link.expires_at else None,
@@ -323,7 +330,7 @@ def activate_share_link(
         details=details,
     )
     session.commit()
-    return ShareLinkActivateResponse(**ShareLinkResponse.model_validate(link).model_dump(), token=token)
+    return ShareLinkActivateResponse.model_validate(link)
 
 
 @router.post("/share-links/{link_id}/revoke", response_model=ShareLinkResponse)
@@ -334,6 +341,7 @@ def revoke_share_link(
     if link.state != LinkState.ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only an active link can be revoked")
     link.state = LinkState.REVOKED
+    link.token = None
     link.revoked_at = datetime.now(UTC)
     details: dict = {}
     if payload.reason:
@@ -359,12 +367,19 @@ def rotate_share_link(
     if old_link.state != LinkState.ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only an active link can be rotated")
     old_link.state = LinkState.REVOKED
+    old_link.token = None
     old_link.revoked_at = datetime.now(UTC)
 
-    new_link = ShareLink(trip_id=trip_id, label=old_link.label, scope=old_link.scope, state=LinkState.DRAFT)
+    new_link = ShareLink(
+        trip_id=trip_id,
+        label=old_link.label,
+        series_id=old_link.series_id or old_link.id,
+        scope=old_link.scope,
+        state=LinkState.DRAFT,
+    )
     session.add(new_link)
     session.flush()
-    token = _activate_link(new_link, payload.expires_in_days)
+    _activate_link(new_link, payload.expires_in_days)
     details: dict = {
         "predecessor_id": old_link.id,
         "scope_version": scope_fingerprint(new_link.scope),
@@ -382,7 +397,7 @@ def rotate_share_link(
         details=details,
     )
     session.commit()
-    return ShareLinkActivateResponse(**ShareLinkResponse.model_validate(new_link).model_dump(), token=token)
+    return ShareLinkActivateResponse.model_validate(new_link)
 
 
 # --- Anonymous delivery -------------------------------------------------------------
@@ -438,7 +453,7 @@ def get_public_navigation(slug: str, local_id: str, session: SessionDep) -> Redi
     target = scoped_navigation_url(trip, surface.scope, local_id) if trip is not None else None
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found")
-    return RedirectResponse(target[0], status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
+    return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
 
 
 def _file_response(trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict) -> StreamingResponse:
@@ -522,7 +537,7 @@ def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> Red
     target = scoped_navigation_url(trip, link.scope, local_id) if trip is not None else None
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS)
-    return RedirectResponse(target[0], status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)
+    return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)
 
 
 @delivery_router.get("/shared/{token}/files/{local_id}")

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from test_publication import share
 
 from app.auth import current_subject
 from app.database import Base, get_session
@@ -209,37 +210,70 @@ def test_other_subject_cannot_read_or_change_a_transport_leg(tmp_path) -> None:
     assert other.delete(f"/api/trips/{trip['id']}/transport-legs/{leg['id']}").status_code == 404
 
 
-def test_a_transport_leg_can_never_be_selected_into_a_public_or_unlisted_projection(tmp_path) -> None:
+def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_views(tmp_path) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
-    leg = create_leg(owner, trip["id"])
+    leg = create_leg(
+        owner,
+        trip["id"],
+        departure_place={"label": "Brussels Airport", "display_name": "Brussels Airport, Leopoldlaan, Zaventem", "locality": "Zaventem", "country_code": "BE", "latitude": 50.9, "longitude": 4.48},
+        arrival_place={"label": "Taoyuan Airport", "display_name": "Taoyuan Airport, Dayuan", "locality": "Taoyuan", "country_code": "TW", "latitude": 25.08, "longitude": 121.23},
+    )
 
-    # There is no share-scope kind for a transport leg at all: the only way
-    # to represent it publicly is a separately authored route stage or
-    # broad route, exactly like a stay requires a broad stay card.
+    trips_path = f"/api/trips/{trip['id']}"
     scoped = owner.put(
-        f"/api/trips/{trip['id']}/public-projection",
-        json={
-            "schema_version": "travel/share-scope@1",
-            "trip": {"title": True, "summary": True},
-            "items": [{"kind": "transport_leg", "id": leg["id"], "fields": []}],
-        },
+        f"{trips_path}/public-projection",
+        json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True},
+              "items": [share(owner, trip["id"], "transport_leg", leg["id"])]},
     )
-    assert scoped.status_code == 422, scoped.text
+    assert scoped.status_code == 200, scoped.text
 
-    published = owner.put(
-        f"/api/trips/{trip['id']}/public-projection",
-        json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+    # Booking data is not a choice at all: a scope item names no fields.
+    rejected = owner.put(
+        f"{trips_path}/public-projection",
+        json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True},
+              "items": [{"kind": "transport_leg", "id": leg["id"], "fields": ["booking_reference"]}]},
     )
-    assert published.status_code == 200, published.text
+    assert rejected.status_code == 422, rejected.text
+
     result = owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     assert result.status_code == 200, result.text
 
-    delivered = TestClient(app).get(f"/api/public/trips/{result.json()['slug']}")
-    assert delivered.status_code == 200, delivered.text
-    encoded_delivery = delivered.text
-    for private_value in ("EVA Air", "BR-087", "BOOKING-SECRET-987", "Brussels Airport", "Taoyuan Airport"):
-        assert private_value not in encoded_delivery
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": scoped.json()["scope"]})
+    assert link.status_code == 201, link.text
+    active = owner.post(f"/api/trips/{trip['id']}/share-links/{link.json()['id']}/activate", json={"expires_in_days": 30})
+    assert active.status_code == 200, active.text
+
+    for delivered in (
+        TestClient(app).get(f"/api/public/trips/{result.json()['slug']}"),
+        TestClient(app).get(f"/api/shared/{active.json()['token']}"),
+    ):
+        assert delivered.status_code == 200, delivered.text
+        summary = delivered.json()["transport"]
+        assert len(summary) == 1
+        assert summary[0]["kind"] == "flight"
+        assert summary[0]["status"] == "confirmed"
+        assert summary[0]["departure"] == {"label": "Zaventem", "country_code": "BE", "region": None, "latitude": None, "longitude": None}
+        assert summary[0]["arrival"] == {"label": "Taoyuan", "country_code": "TW", "region": None, "latitude": None, "longitude": None}
+        assert summary[0]["carrier"] == "EVA Air"
+        assert summary[0]["service_reference"] == "BR-087"
+        # Endpoints appear on the map only when the place itself is shared.
+        assert "map" not in summary[0]
+        assert "booking_reference" not in summary[0]
+        assert "travel_class" not in summary[0]
+        assert "notes" not in summary[0]
+        assert "document_asset_ids" not in summary[0]
+        assert "display_name" not in str(summary[0])
+        assert "BOOKING-SECRET-987" not in delivered.text
+
+    # Sharing the airports, under their public names, puts them on the map.
+    for endpoint in ("departure_place", "arrival_place"):
+        share(owner, trip["id"], "place", leg[endpoint]["id"], "everyone")
+    (with_map,) = TestClient(app).get(f"/api/public/trips/{result.json()['slug']}").json()["transport"]
+    assert with_map["map"] == {
+        "departure": {"label": "Brussels Airport", "country_code": "BE", "latitude": 50.9, "longitude": 4.48, "kind": "airport"},
+        "arrival": {"label": "Taoyuan Airport", "country_code": "TW", "latitude": 25.08, "longitude": 121.23, "kind": "airport"},
+    }
 
 
 def test_endpoint_time_zones_turn_local_wall_clock_times_into_exact_instants(tmp_path) -> None:
@@ -277,3 +311,36 @@ def test_a_local_time_needs_a_known_time_zone(tmp_path) -> None:
     assert owner.post(endpoint, json=leg_payload(departs_at="2054-11-16T10:40:00")).status_code == 422
     assert owner.post(endpoint, json=leg_payload(departure_timezone="Mars/Olympus")).status_code == 422
     assert owner.post(endpoint, json=leg_payload(departure_timezone="../../etc/passwd")).status_code == 422
+
+
+def test_a_return_leg_reuses_the_airport_instead_of_making_a_copy(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    outbound = create_leg(owner, trip["id"])
+    airport = outbound["departure_place"]
+    taoyuan = outbound["arrival_place"]
+
+    # The way home starts where the way out ended and ends where it began.
+    homeward = create_leg(
+        owner, trip["id"],
+        departure_place={"existing_place_id": taoyuan["id"]}, arrival_place={"existing_place_id": airport["id"]},
+        departs_at="2054-04-20T09:00:00Z", arrives_at="2054-04-20T23:00:00Z",
+    )
+    assert homeward["departure_place"]["id"] == taoyuan["id"] and homeward["arrival_place"]["id"] == airport["id"]
+    assert homeward["departure_area"]["label"] == "Taoyuan"
+    assert homeward["arrival_area"]["label"] == "Zaventem"
+    assert len(owner.get(f"{trips_path}/places").json()) == 2
+    # Each airport is filed under its own city.
+    areas = {area["label"] for area in owner.get(f"{trips_path}/places/broad").json()}
+    assert areas == {"Zaventem", "Taoyuan"}
+
+    # A reused place stands alone, and must belong to this trip.
+    mixed = owner.post(f"{trips_path}/transport-legs", json=leg_payload(departure_place={"existing_place_id": airport["id"], "locality": "X"}))
+    assert mixed.status_code == 422
+    other_trip = create_trip(owner, "Other")
+    foreign = owner.post(
+        f"/api/trips/{other_trip['id']}/transport-legs",
+        json=leg_payload(departure_place={"existing_place_id": airport["id"]}),
+    )
+    assert foreign.status_code == 422

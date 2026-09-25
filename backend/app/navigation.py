@@ -2,8 +2,7 @@
 
 from urllib.parse import urlencode
 
-from .models import Place, Trip
-from .projection import _resources
+from .models import Place
 
 
 def google_maps_url(destination: str) -> str:
@@ -28,31 +27,3 @@ def broad_navigation_url(place: Place) -> str:
     """
     destination = ", ".join(filter(None, [place.label, place.region, place.country_code]))
     return google_maps_url(destination)
-
-
-def scoped_navigation_url(trip: Trip, scope: dict, local_id: str) -> tuple[str, bool] | None:
-    """Resolve a projection-local navigation marker after scope validation.
-
-    IDs are deliberately local to one rendered response. An internal place ID
-    never becomes a public route parameter, and an exact target has no
-    fallback path unless its own scope item explicitly grants navigation.
-    """
-    resources = _resources(trip)
-    for index, scope_item in enumerate(scope.get("items", []), start=1):
-        kind = scope_item.get("kind")
-        item = resources.get(kind, {}).get(scope_item.get("id"))
-        expected_id = f"moment-{item.share_id}" if kind == "moment_excerpt" and item is not None else f"{kind}-{index}"
-        if local_id != expected_id or "navigation" not in scope_item.get("fields", []):
-            continue
-        if item is None:
-            return None
-        if kind == "exact_place":
-            destination = exact_navigation_url(item)
-            return (destination, True) if destination else None
-        if kind == "broad_place":
-            return broad_navigation_url(item), False
-        if kind in {"route_stage", "moment_excerpt", "broad_stay_card"}:
-            place = item.place if kind != "moment_excerpt" else item.broad_place
-            if place is not None:
-                return broad_navigation_url(place), False
-    return None

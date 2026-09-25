@@ -31,7 +31,7 @@ export function Boundary({ children }: { children: ReactNode }) {
   }
 
   return (
-    <main className="shell">
+    <main className="shell owner-shell">
       <header>
         <p className="eyebrow">Travel · privé standaard</p>
         <h1>Jouw route, bewust gedeeld.</h1>

@@ -74,6 +74,7 @@ jobs:
       - name: Verify migrations against PostgreSQL
         run: |
           uv run alembic upgrade head
+          uv run alembic check
           uv run alembic downgrade base
 
   frontend:

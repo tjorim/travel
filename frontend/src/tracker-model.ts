@@ -1,5 +1,15 @@
+/** Who receives a record: nobody, every visitor, or only the audiences that list it in Delen. */
+export type Visibility = "private" | "everyone" | "custom";
+
 export type Place = {
   id: string;
+  visibility: Visibility;
+  /** The public name of a spot the owner shares; its display name usually contains the address. */
+  label: string | null;
+  /** The area this spot belongs to, derived from its city when it was created. */
+  area_id: string | null;
+  /** Show the address too when the spot is shared. Off unless the owner chooses it. */
+  share_address: boolean;
   display_name: string | null;
   osm_element_type: "node" | "way" | "relation" | null;
   osm_element_id: string | null;
@@ -20,7 +30,11 @@ export type Place = {
   notes: string | null;
 };
 
-export type ExactPlaceInput = Partial<Omit<Place, "id">>;
+/** A spot to create, or with `existing_place_id` a spot the trip already has (sent on its own). */
+export type ExactPlaceInput = Partial<Omit<Place, "id" | "visibility" | "area_id" | "share_address">> & { existing_place_id?: string };
+
+/** What the owner calls a spot: the first part of its name, never a full address line. */
+export const spotName = (place: Partial<Pick<Place, "display_name" | "locality" | "label">>): string => place.label || place.display_name?.split(",")[0]?.trim() || place.locality || "Plek zonder naam";
 export type PlaceSearchResult = ExactPlaceInput;
 
 export type MediaAsset = {
@@ -43,17 +57,9 @@ export type PlaceSearchResponse = {
   results: PlaceSearchResult[];
 };
 
-export type Moment = {
-  id: string;
-  occurred_at: string;
-  title: string;
-  story: string;
-  place: Place | null;
-  media_asset_ids: string[];
-};
-
 export type BroadPlace = {
   id: string;
+  visibility: Visibility;
   label: string;
   country_code: string | null;
   region: string | null;
@@ -68,13 +74,7 @@ export type RouteStage = {
   label: string | null;
   summary: string | null;
   place: BroadPlace;
-};
-
-export type TripHighlight = {
-  id: string;
-  position: number;
-  title: string;
-  summary: string | null;
+  visibility: Visibility;
 };
 
 export type RecordedTrack = {
@@ -89,19 +89,30 @@ export type RecordedTrack = {
 
 export type BroadRoute = {
   id: string;
+  visibility: Visibility;
   label: string;
   geometry: { type: "LineString"; coordinates: [number, number][] };
   date_precision: "day" | "month" | "year";
 };
 
-export type MomentExcerpt = {
+/**
+ * A reisupdate: what happened, with a private part and a shared part. The private part — `private_notes`,
+ * the exact `place` and the attached originals — is never shared. The title, the `body` written for
+ * visitors, the date at `date_precision` and the broad place are shared only as `visibility` allows.
+ */
+export type TravelUpdate = {
   id: string;
-  source_moment_id: string | null;
-  broad_place_id: string | null;
+  occurred_at: string;
   date_precision: "day" | "month" | "year";
-  story_date: string | null;
   title: string;
   body: string;
+  private_notes: string | null;
+  broad_place_id: string | null;
+  /** The area of its spot, or the direct area of a spot-less update. */
+  area?: BroadPlace | null;
+  place: Place | null;
+  media_asset_ids: string[];
+  visibility: Visibility;
 };
 
 export type Trip = {
@@ -110,20 +121,17 @@ export type Trip = {
   summary: string | null;
   starts_on: string | null;
   ends_on: string | null;
-  visibility: "private" | "unlisted" | "public";
-  publication_state: "draft" | "published";
   route_stages: RouteStage[];
-  highlights: TripHighlight[];
-  moments: Moment[];
-  moment_excerpts: MomentExcerpt[];
+  travel_updates: TravelUpdate[];
 };
 
-export type MomentDraft = {
+export type UpdateDraft = {
   tripId: string;
-  momentId: string | null;
+  updateId: string | null;
   occurredAt: string;
   title: string;
-  story: string;
+  /** Private notes: what the owner wants to remember. The text for visitors is written later. */
+  notes: string;
   place: ExactPlaceInput | null;
   mediaAssetIds: string[];
 };
@@ -144,13 +152,11 @@ export type Stay = {
   notes: string | null;
   place: Place | null;
   broad_place: BroadPlace | null;
-};
-
-export type BroadStayCard = {
-  id: string;
-  title: string;
-  date_precision: "day" | "month" | "year";
-  place: BroadPlace;
+  /** The area of its hotel spot (legacy planned stays can retain an area). */
+  area?: BroadPlace | null;
+  visibility: Visibility;
+  /** How exactly visitors see the nights of a shared stay. */
+  share_date_precision: "day" | "month" | "year";
 };
 
 export type TransportLeg = {
@@ -159,6 +165,9 @@ export type TransportLeg = {
   status: "planned" | "booked" | "confirmed" | "cancelled";
   departure_place: Place;
   arrival_place: Place;
+  /** Areas are derived from the endpoint spots, not copied city text. */
+  departure_area?: BroadPlace | null;
+  arrival_area?: BroadPlace | null;
   departs_at: string;
   arrives_at: string;
   departure_timezone: string | null;
@@ -169,9 +178,10 @@ export type TransportLeg = {
   booking_reference: string | null;
   notes: string | null;
   document_asset_ids: string[];
+  visibility: Visibility;
 };
 
-export type ItineraryLinkKind = "stay" | "transport_leg" | "route_stage" | "place" | "document" | "moment";
+export type ItineraryLinkKind = "stay" | "transport_leg" | "route_stage" | "place" | "document" | "travel_update";
 
 export type ItineraryEntryKind = "travel" | "free" | "work";
 
@@ -232,6 +242,7 @@ export type DocumentDerivative = {
   review_state: "pending" | "approved";
   byte_size: number;
   content_type: string;
+  visibility: Visibility;
   created_at: string;
   file_url: string;
 };
@@ -267,11 +278,12 @@ export type MediaDerivative = {
   metadata_stripped_at: string | null;
   width: number | null;
   height: number | null;
-  moment_excerpt_id: string | null;
+  travel_update_id: string | null;
   caption: string | null;
   alt_text: string | null;
   focal_x: number | null;
   focal_y: number | null;
+  visibility: Visibility;
   created_at: string;
   file_url: string;
 };
@@ -318,9 +330,11 @@ export type ImportCompleteResult = {
   failed: { provider_item_id: string; failure_code: string }[];
 };
 
-export type ShareScopeKind = "exact_place" | "route_stage" | "broad_place" | "broad_route" | "moment_excerpt" | "broad_stay_card" | "media_derivative" | "document_derivative" | "trip_highlight";
+/** Every kind of record that can be shared, and so can carry a visibility. */
+export type ShareScopeKind = "place" | "route_stage" | "broad_route" | "stay" | "transport_leg" | "travel_update" | "media_derivative" | "document_derivative";
 
-export type ShareScopeItem = { kind: ShareScopeKind; id: string; fields: string[] };
+/** An audience lists only records whose visibility is custom; which fields show is fixed per kind. */
+export type ShareScopeItem = { kind: ShareScopeKind; id: string };
 
 export type ShareScope = {
   schema_version: "travel/share-scope@1";
@@ -337,9 +351,11 @@ export type PublicProjectionStatus = {
 
 export type ShareLink = {
   id: string;
+  series_id: string;
   label: string;
   state: "draft" | "active" | "revoked" | "expired";
   scope: ShareScope;
+  token: string | null;
   expires_at: string | null;
   created_at: string;
   activated_at: string | null;
@@ -351,14 +367,14 @@ export type ProjectionDocument = {
   title: string | null;
   summary: string | null;
   dates: Record<string, unknown> | null;
-  highlights: Record<string, unknown>[];
   route_stages: Record<string, unknown>[];
   places: Record<string, unknown>[];
-  moments: Record<string, unknown>[];
+  updates: Record<string, unknown>[];
   stays: Record<string, unknown>[];
   media: Record<string, unknown>[];
   documents: Record<string, unknown>[];
   route: Record<string, unknown>[];
+  transport: Record<string, unknown>[];
   navigation: Record<string, unknown>[];
 };
 
@@ -473,17 +489,21 @@ export function localDateTime(value = new Date()): string {
   return new Date(value.getTime() - offset).toISOString().slice(0, 16);
 }
 
-export function emptyDraft(tripId = ""): MomentDraft {
-  return { tripId, momentId: null, occurredAt: localDateTime(), title: "", story: "", place: null, mediaAssetIds: [] };
+export function emptyDraft(tripId = ""): UpdateDraft {
+  return { tripId, updateId: null, occurredAt: localDateTime(), title: "", notes: "", place: null, mediaAssetIds: [] };
 }
 
-export function readDraft(): MomentDraft | null {
+export function readDraft(): UpdateDraft | null {
   try {
     const value = localStorage.getItem(draftKey);
     if (!value) return null;
-    const draft = JSON.parse(value) as Partial<MomentDraft>;
-    if (typeof draft.tripId !== "string" || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof draft.story !== "string") return null;
-    return { ...emptyDraft(draft.tripId), ...draft, momentId: typeof draft.momentId === "string" ? draft.momentId : null };
+    // A draft saved before moments became reisupdates used `momentId` and `story`; its ids are still valid.
+    const draft = JSON.parse(value) as Partial<UpdateDraft> & { momentId?: unknown; story?: unknown };
+    const notes = draft.notes ?? draft.story;
+    if (typeof draft.tripId !== "string" || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof notes !== "string") return null;
+    const { momentId, story: _story, ...current } = draft;
+    const updateId = typeof draft.updateId === "string" ? draft.updateId : typeof momentId === "string" ? momentId : null;
+    return { ...emptyDraft(draft.tripId), ...current, notes, updateId };
   } catch {
     return null;
   }
@@ -493,13 +513,8 @@ export function clearDraft(): void {
   localStorage.removeItem(draftKey);
 }
 
-export function saveDraft(draft: MomentDraft): void {
+export function saveDraft(draft: UpdateDraft): void {
   localStorage.setItem(draftKey, JSON.stringify(draft));
-}
-
-export function publicationDescription(trip: Trip): string {
-  if (trip.publication_state !== "published" || trip.visibility === "private") return "Privé concept — dit moment is nergens publiek zichtbaar.";
-  return trip.visibility === "public" ? "Publieke reis — dit moment wordt na opslaan publiek zichtbaar." : "Verborgen link — dit moment wordt na opslaan via de reislink zichtbaar.";
 }
 
 export function bytesLabel(bytes: number): string {

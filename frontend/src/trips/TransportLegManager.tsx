@@ -7,7 +7,9 @@ import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { browserTimeZone, daysBetween, localDate, localDateTime, timeZoneOptions, wallClock, type TransportLeg, type Trip } from "../tracker-model";
+import { browserTimeZone, daysBetween, localDate, localDateTime, timeZoneOptions, wallClock, type ExactPlaceInput, type PlaceSearchResult, type TransportLeg, type Trip } from "../tracker-model";
+import { VisibilityControl, visibilityLabel } from "./visibility";
+import { PlaceSearchField } from "./PlaceSearchField";
 
 const KIND_LABELS: Record<TransportLeg["kind"], string> = {
   flight: "Vlucht", train: "Trein", bus: "Bus", ferry: "Veerboot", car: "Auto", other: "Anders",
@@ -32,6 +34,7 @@ type Values = {
   departsAt: string; arrivesAt: string; departureTimezone: string; arrivalTimezone: string; travelClass: string;
   departureName: string; departureLocality: string; departureCountryCode: string;
   arrivalName: string; arrivalLocality: string; arrivalCountryCode: string;
+  departurePlace: ExactPlaceInput | null; arrivalPlace: ExactPlaceInput | null;
   carrier: string; serviceReference: string; bookingReference: string; notes: string;
   documentAssetIds: string[];
 };
@@ -44,10 +47,15 @@ function blank(): Values {
     departureTimezone: zone, arrivalTimezone: zone, travelClass: "",
     departureName: "", departureLocality: "", departureCountryCode: "",
     arrivalName: "", arrivalLocality: "", arrivalCountryCode: "",
+    departurePlace: null, arrivalPlace: null,
     carrier: "", serviceReference: "", bookingReference: "", notes: "",
     documentAssetIds: [],
   };
 }
+
+const exactPlace = (place: TransportLeg["departure_place"]): ExactPlaceInput => {
+  return { existing_place_id: place.id };
+};
 
 const fromLeg = (leg: TransportLeg): Values => ({
   kind: leg.kind, status: leg.status,
@@ -55,6 +63,7 @@ const fromLeg = (leg: TransportLeg): Values => ({
   departureTimezone: leg.departure_timezone ?? browserTimeZone(), arrivalTimezone: leg.arrival_timezone ?? browserTimeZone(), travelClass: leg.travel_class ?? "",
   departureName: leg.departure_place.display_name ?? "", departureLocality: leg.departure_place.locality ?? "", departureCountryCode: leg.departure_place.country_code ?? "",
   arrivalName: leg.arrival_place.display_name ?? "", arrivalLocality: leg.arrival_place.locality ?? "", arrivalCountryCode: leg.arrival_place.country_code ?? "",
+  departurePlace: exactPlace(leg.departure_place), arrivalPlace: exactPlace(leg.arrival_place),
   carrier: leg.carrier ?? "", serviceReference: leg.service_reference ?? "", bookingReference: leg.booking_reference ?? "", notes: leg.notes ?? "",
   documentAssetIds: [...leg.document_asset_ids],
 });
@@ -63,8 +72,18 @@ const serverFields = {
   kind: "kind", status: "status", departs_at: "departsAt", arrives_at: "arrivesAt", departure_timezone: "departureTimezone", arrival_timezone: "arrivalTimezone",
   carrier: "carrier", service_reference: "serviceReference", travel_class: "travelClass", booking_reference: "bookingReference", notes: "notes",
 };
-const DEPARTURE_FIELDS = ["departureName", "departureLocality", "departureCountryCode"] as const;
-const ARRIVAL_FIELDS = ["arrivalName", "arrivalLocality", "arrivalCountryCode"] as const;
+const DEPARTURE_FIELDS = ["departureName", "departureLocality", "departureCountryCode", "departurePlace"] as const;
+const ARRIVAL_FIELDS = ["arrivalName", "arrivalLocality", "arrivalCountryCode", "arrivalPlace"] as const;
+
+function endpointPlace(selected: ExactPlaceInput | null, name: string, locality: string, countryCode: string): ExactPlaceInput {
+  if (selected?.existing_place_id) return { existing_place_id: selected.existing_place_id };
+  return {
+    ...selected,
+    display_name: name.trim() || null,
+    locality: locality.trim() || null,
+    country_code: countryCode.trim().toUpperCase() || null,
+  };
+}
 
 export function TransportLegManager({ trip }: { trip: Trip }) {
   const legsQuery = useTripResource(trip.id, "transport-legs");
@@ -72,11 +91,12 @@ export function TransportLegManager({ trip }: { trip: Trip }) {
   const legs = legsQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
   const dialog = useRecordDialog(legs);
-  const [message, setMessage] = useState("Vluchten en ander vervoer blijven private details tot je bewust een aparte etappe of route deelt.");
+  const [message, setMessage] = useState("Vluchten en ander vervoer blijven private details tot je bewust een vervoeronderdeel of route deelt.");
   const [deleteTarget, setDeleteTarget] = useState<TransportLeg | null>(null);
   // An endpoint's place is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<Values>(blank());
-  const refreshLegs = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "transport-legs")];
+  // A new endpoint can create a reusable spot and its derived area.
+  const refreshLegs = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "transport-legs"), ownerKeys.tripResource(subject, trip.id, "places"), ownerKeys.tripResource(subject, trip.id, "places/broad")];
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, TransportLeg>({
     fallback: "Het transportonderdeel kon niet worden opgeslagen.",
@@ -112,8 +132,8 @@ export function TransportLegManager({ trip }: { trip: Trip }) {
           booking_reference: values.bookingReference.trim() || null,
           notes: values.notes.trim() || null,
           document_asset_ids: values.documentAssetIds,
-          ...(!id || changed(DEPARTURE_FIELDS) ? { departure_place: { display_name: values.departureName.trim() || null, locality: values.departureLocality.trim() || null, country_code: values.departureCountryCode.trim().toUpperCase() || null } } : {}),
-          ...(!id || changed(ARRIVAL_FIELDS) ? { arrival_place: { display_name: values.arrivalName.trim() || null, locality: values.arrivalLocality.trim() || null, country_code: values.arrivalCountryCode.trim().toUpperCase() || null } } : {}),
+          ...(!id || changed(DEPARTURE_FIELDS) ? { departure_place: endpointPlace(values.departurePlace, values.departureName, values.departureLocality, values.departureCountryCode) } : {}),
+          ...(!id || changed(ARRIVAL_FIELDS) ? { arrival_place: endpointPlace(values.arrivalPlace, values.arrivalName, values.arrivalLocality, values.arrivalCountryCode) } : {}),
         },
       });
     },
@@ -124,20 +144,36 @@ export function TransportLegManager({ trip }: { trip: Trip }) {
   function close() { dialog.close(); load(blank()); }
   function create() { load(blank()); dialog.create(); }
   function edit(leg: TransportLeg) { load(fromLeg(leg)); dialog.edit(leg.id); }
+  function usePlaceResult(endpoint: "departure" | "arrival", result: PlaceSearchResult, existingPlace?: TransportLeg["departure_place"]) {
+    const place = existingPlace ?? result;
+    if (endpoint === "departure") {
+      record.form.setFieldValue("departureName", place.display_name ?? "");
+      record.form.setFieldValue("departureLocality", place.locality ?? "");
+      record.form.setFieldValue("departureCountryCode", place.country_code ?? "");
+      record.form.setFieldValue("departurePlace", result);
+    } else {
+      record.form.setFieldValue("arrivalName", place.display_name ?? "");
+      record.form.setFieldValue("arrivalLocality", place.locality ?? "");
+      record.form.setFieldValue("arrivalCountryCode", place.country_code ?? "");
+      record.form.setFieldValue("arrivalPlace", result);
+    }
+  }
   function confirmDelete(leg: TransportLeg) {
     remove.mutateAsync(leg).then(() => { close(); setDeleteTarget(null); setMessage("Privétransport verwijderd."); }, (error: unknown) => { setDeleteTarget(null); setMessage(errorMessage(error, "Het transportonderdeel kon niet worden verwijderd.")); });
   }
 
-  const title = (leg: TransportLeg) => `${KIND_LABELS[leg.kind]}: ${leg.departure_place.locality ?? leg.departure_place.display_name ?? "?"} → ${leg.arrival_place.locality ?? leg.arrival_place.display_name ?? "?"}`;
+  const title = (leg: TransportLeg) => `${KIND_LABELS[leg.kind]}: ${leg.departure_area?.label ?? leg.departure_place.locality ?? leg.departure_place.display_name ?? "?"} → ${leg.arrival_area?.label ?? leg.arrival_place.locality ?? leg.arrival_place.display_name ?? "?"}`;
   const { selected, editing, editingId } = dialog;
   const readError = legsQuery.error ?? documentsQuery.error;
 
   return <section className="card manager" aria-labelledby="transport-title">
-    <div className="capture-heading"><div><h3 id="transport-title">Vluchten &amp; ander vervoer</h3><p>Vluchtnummers, exacte tijden en boekingsreferenties zijn uitsluitend privé. Een gedeelde etappe blijft een aparte, bewust geschreven route-stap.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw onderdeel</button></div>
+    <div className="capture-heading"><div><h3 id="transport-title">Vluchten &amp; ander vervoer</h3><p>Vluchtnummers, exacte tijden en boekingsreferenties zijn uitsluitend privé. Een gedeeld vervoeronderdeel is een bewuste, afzonderlijke keuze.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw onderdeel</button></div>
     <p className="help" role="status">{readError ? errorMessage(readError, "Je transportonderdelen konden niet worden geladen.") : legsQuery.isPending ? "Laad je private transportonderdelen…" : message}</p>
     <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Transportonderdeel bewerken" : "Transportonderdeel toevoegen") : "Transportonderdeel"} dirty={editing && record.dirty} onDismiss={close}>
       {!editing && selected && <div className="stack-form">
         <div><h3>{title(selected)}</h3><p>{endpointTime(selected.departs_at, selected.departure_timezone)} → {endpointTime(selected.arrives_at, selected.arrival_timezone)}</p><p>{selected.booking_reference ? `Boekingsreferentie: ${selected.booking_reference}` : "Geen boekingsreferentie"}</p></div>
+        <VisibilityControl tripId={trip.id} kind="transport_leg" id={selected.id} value={selected.visibility} name={title(selected)} />
+        <p className="help">Bezoekers zien nooit je boekingscode, klasse, notities of documenten. Het vertrek- en aankomstpunt staat alleen op de kaart als je die plaats zelf deelt.</p>
         <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => setDeleteTarget(selected)}>Verwijderen</button></div>
       </div>}
       {editing && <RecordForm record={record} submitLabel={editingId ? "Onderdeel opslaan" : "Onderdeel toevoegen"} pendingLabel="Opslaan…">
@@ -155,6 +191,7 @@ export function TransportLegManager({ trip }: { trip: Trip }) {
           <record.form.Field name="arrivalTimezone" validators={{ onChange: requiredText("Geef de tijdzone van de aankomst op."), onSubmit: requiredText("Geef de tijdzone van de aankomst op.") }}>{(field) => <TextField field={field} label="Tijdzone aankomst" required list="transport-time-zones" maxLength={64} placeholder="Asia/Taipei" />}</record.form.Field>
         </div>
         <fieldset><legend>Vertrekplaats</legend>
+          <PlaceSearchField tripId={trip.id} legend="Vertrekplaats zoeken" inputLabel="Zoek vertrekplaats" placeholder="Bijvoorbeeld: Brussels Airport" help="Een gekozen exacte plaats blijft privé. Delen van transport blijft een afzonderlijke, bewuste keuze." onSelect={(result, existingPlace) => usePlaceResult("departure", result, existingPlace)} allowExisting />
           <div className="field-row">
             <record.form.Field name="departureName">{(field) => <TextField field={field} label="Naam" optional maxLength={500} placeholder="Bijvoorbeeld: Brussels Airport" />}</record.form.Field>
             <record.form.Field name="departureLocality">{(field) => <TextField field={field} label="Plaats" optional maxLength={120} />}</record.form.Field>
@@ -162,6 +199,7 @@ export function TransportLegManager({ trip }: { trip: Trip }) {
           <record.form.Field name="departureCountryCode">{(field) => <TextField field={field} label="Landcode" optional maxLength={2} placeholder="BE" />}</record.form.Field>
         </fieldset>
         <fieldset><legend>Aankomstplaats</legend>
+          <PlaceSearchField tripId={trip.id} legend="Aankomstplaats zoeken" inputLabel="Zoek aankomstplaats" placeholder="Bijvoorbeeld: Taoyuan Airport" help="Een gekozen exacte plaats blijft privé. Delen van transport blijft een afzonderlijke, bewuste keuze." onSelect={(result, existingPlace) => usePlaceResult("arrival", result, existingPlace)} allowExisting />
           <div className="field-row">
             <record.form.Field name="arrivalName">{(field) => <TextField field={field} label="Naam" optional maxLength={500} placeholder="Bijvoorbeeld: Taoyuan Airport" />}</record.form.Field>
             <record.form.Field name="arrivalLocality">{(field) => <TextField field={field} label="Plaats" optional maxLength={120} />}</record.form.Field>
@@ -181,7 +219,7 @@ export function TransportLegManager({ trip }: { trip: Trip }) {
       </RecordForm>}
     </RecordDialog>
     {legs.length > 0 && <div className="saved-moments manager-list">{legs.map((leg) => <article className="excerpt-row" key={leg.id}>
-      <button className="document-select" type="button" onClick={() => dialog.inspect(leg.id)}><strong>{title(leg)}</strong><span>{endpointTime(leg.departs_at, leg.departure_timezone)} → {endpointTime(leg.arrives_at, leg.arrival_timezone)}{dayShift(leg) !== 0 ? ` (${dayShift(leg) > 0 ? "+" : ""}${dayShift(leg)} ${Math.abs(dayShift(leg)) === 1 ? "dag" : "dagen"})` : ""} · {STATUS_LABELS[leg.status]}{leg.carrier ? ` · ${leg.carrier}` : ""}{leg.service_reference ? ` ${leg.service_reference}` : ""}{leg.travel_class ? ` · ${leg.travel_class}` : ""}</span></button>
+      <button className="document-select" type="button" onClick={() => dialog.inspect(leg.id)}><strong>{title(leg)}</strong><span>{endpointTime(leg.departs_at, leg.departure_timezone)} → {endpointTime(leg.arrives_at, leg.arrival_timezone)}{dayShift(leg) !== 0 ? ` (${dayShift(leg) > 0 ? "+" : ""}${dayShift(leg)} ${Math.abs(dayShift(leg)) === 1 ? "dag" : "dagen"})` : ""} · {STATUS_LABELS[leg.status]}{leg.carrier ? ` · ${leg.carrier}` : ""}{leg.service_reference ? ` ${leg.service_reference}` : ""}{leg.travel_class ? ` · ${leg.travel_class}` : ""} · {visibilityLabel(leg.visibility)}</span></button>
       <button className="danger compact" type="button" onClick={() => setDeleteTarget(leg)}>Verwijderen</button>
     </article>)}</div>}
     {deleteTarget && <RecordDialog open title="Verwijderen bevestigen" onDismiss={() => setDeleteTarget(null)}><DeleteConfirmation title={`${KIND_LABELS[deleteTarget.kind]} verwijderen?`} onCancel={() => setDeleteTarget(null)} onConfirm={() => confirmDelete(deleteTarget)} /></RecordDialog>}

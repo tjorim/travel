@@ -40,10 +40,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from . import schemas
 from .config import settings
 from .database import SessionLocal
-from .models import DocumentKind, ImportProvider, McpAuditEvent, TrackKind
+from .models import DocumentKind, ImportProvider, McpAuditEvent, TrackKind, Visibility
 from .routers import (
     documents,
-    highlights,
     itinerary,
     library,
     media,
@@ -55,6 +54,7 @@ from .routers import (
     transport,
     trips,
 )
+from .routers import visibility as visibility_routes
 from .secrets import get_secret_store
 from .storage import get_storage
 
@@ -94,7 +94,7 @@ def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, An
 
 
 def _share_url(token: str) -> str:
-    """Build the visitor URL that corresponds to a one-time capability.
+    """Build the visitor URL that corresponds to an unlisted capability.
 
     MCP has no browser request or current page URL, so this must use the
     configured visitor PWA origin rather than returning a relative path or an
@@ -250,7 +250,7 @@ class TravelMcpBackend:
                                               .order_by(McpAuditEvent.occurred_at.desc()).limit(limit))),
             lambda rows: [_model(row) for row in rows])
 
-    # Trips, route stages, moments, and excerpts ------------------------
+    # Trips, route stages and travel updates ------------------------
     def list_trips(self) -> list[dict[str, Any]]:
         """List the caller's private trips and their owner-only editing context."""
         return self._call("trip.list", "trip", None, None, lambda s, sub: trips.list_trips(s, sub), lambda x: _models(x, schemas.TripResponse))
@@ -283,29 +283,17 @@ class TravelMcpBackend:
         """Delete a route stage after explicit confirmation."""
         return self._call("route_stage.delete", "route_stage", stage_id, trip_id, lambda s, sub: trips.delete_route_stage(trip_id, stage_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
-    def create_moment(self, trip_id: str, payload: schemas.MomentCreate) -> dict[str, Any]:
-        """Add an owner-authored chronological moment and optional private media attachments."""
-        return self._call("moment.create", "moment", None, trip_id, lambda s, sub: trips.create_moment(trip_id, payload, s, sub), lambda x: _model(x, schemas.MomentResponse))
+    def create_travel_update(self, trip_id: str, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
+        """Create a reisupdate: private notes, exact place and attached media stay private; the title, text, date and area are shared only as its visibility allows."""
+        return self._call("travel_update.create", "travel_update", None, trip_id, lambda s, sub: trips.create_travel_update(trip_id, payload, s, sub), lambda x: _model(x, schemas.TravelUpdateResponse))
 
-    def update_moment(self, trip_id: str, moment_id: str, payload: schemas.MomentUpdate) -> dict[str, Any]:
-        """Edit one moment without exposing its private media to an audience."""
-        return self._call("moment.update", "moment", moment_id, trip_id, lambda s, sub: trips.update_moment(trip_id, moment_id, payload, s, sub), lambda x: _model(x, schemas.MomentResponse))
+    def update_travel_update(self, trip_id: str, update_id: str, payload: schemas.TravelUpdatePatch) -> dict[str, Any]:
+        """Edit a reisupdate, including who may see it (private, everyone or custom)."""
+        return self._call("travel_update.update", "travel_update", update_id, trip_id, lambda s, sub: trips.update_travel_update(trip_id, update_id, payload, s, sub), lambda x: _model(x, schemas.TravelUpdateResponse))
 
-    def delete_moment(self, trip_id: str, moment_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a moment after explicit confirmation."""
-        return self._call("moment.delete", "moment", moment_id, trip_id, lambda s, sub: trips.delete_moment(trip_id, moment_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
-
-    def create_moment_excerpt(self, trip_id: str, payload: schemas.MomentExcerptCreate) -> dict[str, Any]:
-        """Create a shareable broad story excerpt; scope selection remains separate."""
-        return self._call("moment_excerpt.create", "moment_excerpt", None, trip_id, lambda s, sub: trips.create_moment_excerpt(trip_id, payload, s, sub), lambda x: _model(x, schemas.MomentExcerptResponse))
-
-    def update_moment_excerpt(self, trip_id: str, excerpt_id: str, payload: schemas.MomentExcerptUpdate) -> dict[str, Any]:
-        """Edit a broad story excerpt."""
-        return self._call("moment_excerpt.update", "moment_excerpt", excerpt_id, trip_id, lambda s, sub: trips.update_moment_excerpt(trip_id, excerpt_id, payload, s, sub), lambda x: _model(x, schemas.MomentExcerptResponse))
-
-    def delete_moment_excerpt(self, trip_id: str, excerpt_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a story excerpt after explicit confirmation."""
-        return self._call("moment_excerpt.delete", "moment_excerpt", excerpt_id, trip_id, lambda s, sub: trips.delete_moment_excerpt(trip_id, excerpt_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
+    def delete_travel_update(self, trip_id: str, update_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete a reisupdate after explicit confirmation."""
+        return self._call("travel_update.delete", "travel_update", update_id, trip_id, lambda s, sub: trips.delete_travel_update(trip_id, update_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     # Exact and broad places --------------------------------------------
     def search_places(self, trip_id: str, payload: schemas.PlaceSearchRequest) -> dict[str, Any]:
@@ -337,6 +325,15 @@ class TravelMcpBackend:
     def update_broad_place(self, trip_id: str, place_id: str, payload: schemas.BroadPlaceUpdate) -> dict[str, Any]:
         """Edit a broad place, for example to set its IANA time zone."""
         return self._call("broad_place.update", "broad_place", place_id, trip_id, lambda s, sub: places.update_broad_place(trip_id, place_id, payload, s, sub), lambda x: _model(x, schemas.BroadPlaceResponse))
+
+    def update_exact_place(self, trip_id: str, place_id: str, payload: schemas.ExactPlaceUpdate) -> dict[str, Any]:
+        """Give an exact place its public name; a spot cannot be shared without one."""
+        return self._call("exact_place.update", "exact_place", place_id, trip_id, lambda s, sub: places.update_exact_place(trip_id, place_id, payload, s, sub), lambda x: _model(x, schemas.ExactPlaceResponse))
+
+    def set_visibility(self, trip_id: str, kind: schemas.ShareScopeKind, record_id: str, visibility: Visibility, confirm: bool = False) -> dict[str, Any]:
+        """Choose who receives one record: private, everyone, or custom (only audiences that list it)."""
+        kind, visibility = schemas.ShareScopeKind(kind), Visibility(visibility)
+        return self._call("visibility.set", kind.value, record_id, trip_id, lambda s, sub: visibility_routes.put_visibility(trip_id, kind, record_id, schemas.VisibilityUpdate(visibility=visibility), s, sub), lambda x: _model(x, schemas.VisibilityUpdate), confirm=confirm, needs_confirmation=True)
 
     # Publication, previews, share capabilities -------------------------
     def get_public_projection_status(self, trip_id: str) -> dict[str, Any]:
@@ -380,7 +377,7 @@ class TravelMcpBackend:
         return self._call("share_link.preview", "share_link", link_id, trip_id, lambda s, sub: publication.preview_share_link(trip_id, link_id, s, sub, Response()), lambda x: _model(x, schemas.ProjectionDocument))
 
     def activate_share_link(self, trip_id: str, link_id: str, payload: schemas.ShareLinkActivateRequest, confirm: bool = False) -> dict[str, Any]:
-        """Mint and return a one-time capability and its full visitor URL after confirmation. Store it securely now."""
+        """Activate a reusable owner-managed URL and return its full visitor URL."""
         return self._call("share_link.activate", "share_link", link_id, trip_id, lambda s, sub: publication.activate_share_link(trip_id, link_id, payload, s, sub), lambda x: {**_model(x, schemas.ShareLinkActivateResponse), "share_url": _share_url(x.token)}, confirm=confirm, needs_confirmation=True)
 
     def revoke_share_link(self, trip_id: str, link_id: str, reason: str | None = None, confirm: bool = False) -> dict[str, Any]:
@@ -466,22 +463,6 @@ class TravelMcpBackend:
         """Delete an accommodation record after explicit confirmation."""
         return self._call("stay.delete", "stay", stay_id, trip_id, lambda s, sub: stays.delete_stay(trip_id, stay_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
-    def list_broad_stay_cards(self, trip_id: str) -> list[dict[str, Any]]:
-        """List deliberately broad accommodation cards for story planning."""
-        return self._call("broad_stay_card.list", "broad_stay_card", None, trip_id, lambda s, sub: stays.list_broad_stay_cards(trip_id, s, sub), lambda x: _models(x, schemas.BroadStayCardResponse))
-
-    def create_broad_stay_card(self, trip_id: str, payload: schemas.BroadStayCardCreate) -> dict[str, Any]:
-        """Create a broad accommodation card without revealing exact stay data."""
-        return self._call("broad_stay_card.create", "broad_stay_card", None, trip_id, lambda s, sub: stays.create_broad_stay_card(trip_id, payload, s, sub), lambda x: _model(x, schemas.BroadStayCardResponse))
-
-    def update_broad_stay_card(self, trip_id: str, card_id: str, payload: schemas.BroadStayCardUpdate) -> dict[str, Any]:
-        """Update a broad accommodation card."""
-        return self._call("broad_stay_card.update", "broad_stay_card", card_id, trip_id, lambda s, sub: stays.update_broad_stay_card(trip_id, card_id, payload, s, sub), lambda x: _model(x, schemas.BroadStayCardResponse))
-
-    def delete_broad_stay_card(self, trip_id: str, card_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a broad accommodation card after explicit confirmation."""
-        return self._call("broad_stay_card.delete", "broad_stay_card", card_id, trip_id, lambda s, sub: stays.delete_broad_stay_card(trip_id, card_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
-
     def list_transport_legs(self, trip_id: str) -> list[dict[str, Any]]:
         """List owner-only transport itinerary records."""
         return self._call("transport_leg.list", "transport_leg", None, trip_id, lambda s, sub: transport.list_transport_legs(trip_id, s, sub), lambda x: _models(x, schemas.TransportLegResponse))
@@ -537,22 +518,6 @@ class TravelMcpBackend:
     def mark_task_alert_read(self, trip_id: str, alert_id: str) -> dict[str, Any]:
         """Mark one owner-inbox task alert as read."""
         return self._call("task_alert.read", "task_alert", alert_id, trip_id, lambda s, sub: tasks.mark_task_alert_read(trip_id, alert_id, s, sub), lambda x: _model(x, schemas.TripTaskAlertResponse))
-    def list_trip_highlights(self, trip_id: str) -> list[dict[str, Any]]:
-        """List authored trip highlights in display order."""
-        return self._call("trip_highlight.list", "trip_highlight", None, trip_id, lambda s, sub: highlights.list_highlights(trip_id, s, sub), lambda x: _models(x, schemas.TripHighlightResponse))
-
-    def create_trip_highlight(self, trip_id: str, payload: schemas.TripHighlightCreate) -> dict[str, Any]:
-        """Author a trip highlight; it is shared only when a scope selects it."""
-        return self._call("trip_highlight.create", "trip_highlight", None, trip_id, lambda s, sub: highlights.create_highlight(trip_id, payload, s, sub), lambda x: _model(x, schemas.TripHighlightResponse))
-
-    def update_trip_highlight(self, trip_id: str, highlight_id: str, payload: schemas.TripHighlightUpdate) -> dict[str, Any]:
-        """Edit or reorder a trip highlight."""
-        return self._call("trip_highlight.update", "trip_highlight", highlight_id, trip_id, lambda s, sub: highlights.update_highlight(trip_id, highlight_id, payload, s, sub), lambda x: _model(x, schemas.TripHighlightResponse))
-
-    def delete_trip_highlight(self, trip_id: str, highlight_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a trip highlight after explicit confirmation."""
-        return self._call("trip_highlight.delete", "trip_highlight", highlight_id, trip_id, lambda s, sub: highlights.delete_highlight(trip_id, highlight_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
-
     # Finished private tracks and broad reviewed routes ------------------
     def upload_finished_track(self, trip_id: str, started_at: str, ended_at: str, kind: TrackKind, file: BinaryUpload) -> dict[str, Any]:
         """Upload one complete recorded track; live point streaming is not supported."""
@@ -642,10 +607,6 @@ class TravelMcpBackend:
     def get_stay(self, trip_id: str, stay_id: str) -> dict[str, Any]:
         """Read one owner-only exact accommodation record."""
         return self._call("stay.get", "stay", stay_id, trip_id, lambda s, sub: stays.get_stay(trip_id, stay_id, s, sub), lambda x: _model(x, schemas.StayResponse))
-
-    def get_broad_stay_card(self, trip_id: str, card_id: str) -> dict[str, Any]:
-        """Read one broad accommodation card."""
-        return self._call("broad_stay_card.get", "broad_stay_card", card_id, trip_id, lambda s, sub: stays.get_broad_stay_card(trip_id, card_id, s, sub), lambda x: _model(x, schemas.BroadStayCardResponse))
 
     def get_transport_leg(self, trip_id: str, leg_id: str) -> dict[str, Any]:
         """Read one owner-only transport itinerary record."""

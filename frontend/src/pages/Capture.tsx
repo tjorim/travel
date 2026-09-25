@@ -14,19 +14,18 @@ import {
   clearDraft,
   emptyDraft,
   localDateTime,
-  publicationDescription,
   readDraft,
   saveDraft,
   type MediaAsset,
-  type Moment,
-  type MomentDraft,
+  type TravelUpdate,
+  type UpdateDraft,
   type PlaceSearchResponse,
   type PlaceSearchResult,
   type VisitCandidateIntent,
 } from "../tracker-model";
 
 const timestamp = (value: string) => new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-const SAVE_FALLBACK = "Het moment kon niet worden opgeslagen. Je lokale concept blijft bewaard.";
+const SAVE_FALLBACK = "De reisupdate kon niet worden opgeslagen. Je lokale concept blijft bewaard.";
 
 export function Capture() {
   const confirmation = useConfirmation();
@@ -46,14 +45,14 @@ export function Capture() {
   const [candidateGps, setCandidateGps] = useState<{ latitude: number; longitude: number } | null>(null);
   const candidateIntent = (location.state as { candidate?: VisitCandidateIntent } | null)?.candidate;
 
-  const saveMoment = useOwnerMutation<{ tripId: string; momentId: string | null; payload: Record<string, unknown> }, Moment>({
+  const saveUpdate = useOwnerMutation<{ tripId: string; updateId: string | null; payload: Record<string, unknown> }, TravelUpdate>({
     fallback: SAVE_FALLBACK,
-    request: ({ tripId, momentId, payload }) => ({ path: momentId ? tripPath(tripId, `moments/${momentId}`) : tripPath(tripId, "moments"), method: momentId ? "PATCH" : "POST", body: payload }),
+    request: ({ tripId, updateId, payload }) => ({ path: updateId ? tripPath(tripId, `travel-updates/${updateId}`) : tripPath(tripId, "travel-updates"), method: updateId ? "PATCH" : "POST", body: payload }),
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
-  const deleteMoment = useOwnerMutation<{ tripId: string; momentId: string }>({
-    fallback: "Het moment kon niet worden verwijderd.",
-    request: ({ tripId, momentId }) => ({ path: tripPath(tripId, `moments/${momentId}`), method: "DELETE" }),
+  const deleteUpdate = useOwnerMutation<{ tripId: string; updateId: string }>({
+    fallback: "De reisupdate kon niet worden verwijderd.",
+    request: ({ tripId, updateId }) => ({ path: tripPath(tripId, `travel-updates/${updateId}`), method: "DELETE" }),
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
   // A search phrase or a photo's coordinates are private: those calls are dropped from the mutation cache once settled.
@@ -70,23 +69,25 @@ export function Capture() {
     gcTime: 0,
   });
 
-  const record = useRecordForm<MomentDraft, Moment>({
+  const record = useRecordForm<UpdateDraft, TravelUpdate>({
     defaultValues: restored.current ?? emptyDraft(),
     fallback: SAVE_FALLBACK,
     submit: async (values) => {
       if (!session || !values.tripId) throw new Error("Kies eerst een reis en meld aan om op te slaan.");
       if (!connection) throw new Error("Je bent offline. Dit concept blijft alleen lokaal bewaard en wordt niet automatisch verstuurd.");
       setSaveState("Opslaan…");
-      return saveMoment.mutateAsync({
+      // A place that already exists on the server is left as it is: sending it again would make a new one and lose its public name.
+      const keepsPlace = Boolean((values.place as { id?: string } | null)?.id);
+      return saveUpdate.mutateAsync({
         tripId: values.tripId,
-        momentId: values.momentId,
-        payload: { occurred_at: new Date(values.occurredAt).toISOString(), title: values.title.trim(), story: values.story.trim(), place: values.place, media_asset_ids: values.mediaAssetIds },
+        updateId: values.updateId,
+        payload: { occurred_at: new Date(values.occurredAt).toISOString(), title: values.title.trim(), private_notes: values.notes.trim() || null, ...(keepsPlace ? {} : { place: values.place }), media_asset_ids: values.mediaAssetIds },
       });
     },
     onSuccess: (_saved, values) => {
       clearDraft();
       setDraftState("Opgeslagen in je private reis.");
-      setSaveState("Moment opgeslagen.");
+      setSaveState("Reisupdate opgeslagen.");
       record.load(emptyDraft(values.tripId));
       resetPlaceSearch();
     },
@@ -101,7 +102,7 @@ export function Capture() {
     () => draft.mediaAssetIds.map((id) => media.find((asset) => asset.id === id)).filter((asset): asset is MediaAsset => Boolean(asset)),
     [draft.mediaAssetIds, media],
   );
-  const mediaState = !selectedTrip ? "" : mediaQuery.error ? errorMessage(mediaQuery.error, "Je media konden niet worden geladen.") : mediaQuery.isPending ? "Media laden…" : mediaQuery.data?.length ? "Kies privéfoto’s om aan dit moment te koppelen." : "Nog geen foto’s in deze reis.";
+  const mediaState = !selectedTrip ? "" : mediaQuery.error ? errorMessage(mediaQuery.error, "Je media konden niet worden geladen.") : mediaQuery.isPending ? "Media laden…" : mediaQuery.data?.length ? "Kies privéfoto’s om aan deze reisupdate te koppelen." : "Nog geen foto’s in deze reis.";
 
   useEffect(() => {
     const updateConnection = () => setConnection(navigator.onLine);
@@ -119,7 +120,7 @@ export function Capture() {
   }, [form, trips]);
 
   useEffect(() => {
-    if (!draft.momentId && !draft.title && !draft.story) {
+    if (!draft.updateId && !draft.title && !draft.notes) {
       clearDraft();
       return;
     }
@@ -141,8 +142,8 @@ export function Capture() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateIntent, navigate, trips]);
 
-  function updateDraft(values: Partial<MomentDraft>) {
-    for (const [name, value] of Object.entries(values)) form.setFieldValue(name as keyof MomentDraft, value as never);
+  function updateDraft(values: Partial<UpdateDraft>) {
+    for (const [name, value] of Object.entries(values)) form.setFieldValue(name as keyof UpdateDraft, value as never);
     setSaveState("");
   }
 
@@ -160,18 +161,18 @@ export function Capture() {
     setSaveState("");
   }
 
-  function editMoment(moment: Moment) {
+  function editUpdate(update: TravelUpdate) {
     record.load({
       tripId: selectedTrip?.id ?? "",
-      momentId: moment.id,
-      occurredAt: localDateTime(new Date(moment.occurred_at)),
-      title: moment.title,
-      story: moment.story,
-      place: moment.place,
-      mediaAssetIds: moment.media_asset_ids,
+      updateId: update.id,
+      occurredAt: localDateTime(new Date(update.occurred_at)),
+      title: update.title,
+      notes: update.private_notes ?? "",
+      place: update.place,
+      mediaAssetIds: update.media_asset_ids,
     });
     resetPlaceSearch();
-    setSaveState("Je bewerkt een opgeslagen moment.");
+    setSaveState("Je bewerkt een opgeslagen reisupdate.");
   }
 
   function toggleMedia(assetId: string) {
@@ -181,7 +182,7 @@ export function Capture() {
 
   function selectPlace(result: PlaceSearchResult) {
     updateDraft({ place: result });
-    setPlaceState("Plaats geselecteerd. Hij wordt pas gemaakt wanneer je het moment opslaat.");
+    setPlaceState("Plaats geselecteerd. Hij wordt pas gemaakt wanneer je de reisupdate opslaat.");
     setPlaceResults(null);
   }
 
@@ -206,43 +207,43 @@ export function Capture() {
     }, (error: unknown) => setPlaceState(errorMessage(error, "Deze fotolocatie kon niet worden opgezocht.")));
   }
 
-  function removeMoment() {
-    const { momentId } = draft;
-    if (!selectedTrip || !momentId) return;
-    confirmation.ask({ title: `Moment “${draft.title}” verwijderen?`, onConfirm: () => performRemoveMoment(selectedTrip.id, momentId) });
+  function removeUpdate() {
+    const { updateId } = draft;
+    if (!selectedTrip || !updateId) return;
+    confirmation.ask({ title: `Reisupdate “${draft.title}” verwijderen?`, onConfirm: () => performRemoveUpdate(selectedTrip.id, updateId) });
   }
 
-  function performRemoveMoment(tripId: string, momentId: string) {
-    setSaveState("Moment verwijderen…");
-    deleteMoment.mutateAsync({ tripId, momentId }).then(() => {
+  function performRemoveUpdate(tripId: string, updateId: string) {
+    setSaveState("Reisupdate verwijderen…");
+    deleteUpdate.mutateAsync({ tripId, updateId }).then(() => {
       clearDraft();
       startNew();
-      setDraftState("Moment verwijderd.");
-    }, (error: unknown) => setSaveState(errorMessage(error, "Het moment kon niet worden verwijderd.")));
+      setDraftState("Reisupdate verwijderd.");
+    }, (error: unknown) => setSaveState(errorMessage(error, "De reisupdate kon niet worden verwijderd.")));
   }
 
-  if (!session) return <EmptyState title="Moment vastleggen">Meld aan om een concept lokaal te bewaren of een moment aan een private reis toe te voegen.</EmptyState>;
-  if (tripsQuery.isPending) return <EmptyState title="Moment vastleggen">{connection ? "Je reizen laden…" : "Je bent offline. Je reizen laden zodra je opnieuw verbinding hebt."}</EmptyState>;
-  if (tripsQuery.isError) return <EmptyState title="Moment vastleggen">{errorMessage(tripsQuery.error, "Je reizen konden niet worden geladen.")}</EmptyState>;
-  if (trips.length === 0) return <EmptyState title="Moment vastleggen">Maak eerst een private reis aan; daarna kun je hier een moment aan toevoegen.</EmptyState>;
+  if (!session) return <EmptyState title="Reisupdate vastleggen">Meld aan om een concept lokaal te bewaren of een reisupdate aan een private reis toe te voegen.</EmptyState>;
+  if (tripsQuery.isPending) return <EmptyState title="Reisupdate vastleggen">{connection ? "Je reizen laden…" : "Je bent offline. Je reizen laden zodra je opnieuw verbinding hebt."}</EmptyState>;
+  if (tripsQuery.isError) return <EmptyState title="Reisupdate vastleggen">{errorMessage(tripsQuery.error, "Je reizen konden niet worden geladen.")}</EmptyState>;
+  if (trips.length === 0) return <EmptyState title="Reisupdate vastleggen">Maak eerst een private reis aan; daarna kun je hier een reisupdate aan toevoegen.</EmptyState>;
 
   const clearSaveState = { onChange: () => setSaveState("") };
 
   return (
     <section className="capture" aria-labelledby="capture-title">
       <div className="capture-heading">
-        <div><p className="eyebrow">Mobiel vastleggen</p><h2 id="capture-title">{draft.momentId ? "Moment bewerken" : "Nieuw moment"}</h2></div>
-        {draft.momentId && <div className="button-row"><button className="secondary compact" type="button" onClick={startNew}>Nieuw moment</button><button className="danger compact" type="button" onClick={removeMoment}>Verwijderen</button></div>}
+        <div><p className="eyebrow">Mobiel vastleggen</p><h2 id="capture-title">{draft.updateId ? "Reisupdate bewerken" : "Nieuwe reisupdate"}</h2></div>
+        {draft.updateId && <div className="button-row"><button className="secondary compact" type="button" onClick={startNew}>Nieuwe reisupdate</button><button className="danger compact" type="button" onClick={removeUpdate}>Verwijderen</button></div>}
       </div>
       <p className={`connection ${connection ? "online" : "offline"}`} role="status">{connection ? "Verbonden — je kiest zelf wanneer je opslaat." : "Offline — concepten blijven lokaal; er is geen automatische synchronisatie."}</p>
       <form ref={record.formRef} className="capture-form" noValidate onSubmit={(event) => { event.preventDefault(); void form.handleSubmit(); }}>
-        <label>Reis<select value={draft.tripId} onChange={(event) => updateDraft({ tripId: event.target.value, momentId: null, place: null, mediaAssetIds: [] })}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
-        {selectedTrip && <aside className="publication" aria-label="Zichtbaarheid van dit moment"><strong>Voor je opslaat</strong><span>{publicationDescription(selectedTrip)}</span></aside>}
+        <label>Reis<select value={draft.tripId} onChange={(event) => updateDraft({ tripId: event.target.value, updateId: null, place: null, mediaAssetIds: [] })}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>
+        {selectedTrip && <aside className="publication" aria-label="Delen van deze reisupdate"><strong>Voor je opslaat</strong><span>Een nieuwe reisupdate is privé. Je notities, exacte plaats en foto’s worden nooit gedeeld; de tekst voor bezoekers schrijf je later bij Verhaal.</span></aside>}
         <div className="field-row">
           <form.Field name="occurredAt" listeners={clearSaveState} validators={{ onChange: requiredText("Geef de datum en tijd op."), onSubmit: requiredText("Geef de datum en tijd op.") }}>{(field) => <TextField field={field} label="Datum en tijd" required type="datetime-local" />}</form.Field>
-          <form.Field name="title" listeners={clearSaveState} validators={{ onChange: requiredText("Geef het moment een titel."), onSubmit: requiredText("Geef het moment een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} placeholder="Bijvoorbeeld: eerste avond" />}</form.Field>
+          <form.Field name="title" listeners={clearSaveState} validators={{ onChange: requiredText("Geef de reisupdate een titel."), onSubmit: requiredText("Geef de reisupdate een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} placeholder="Bijvoorbeeld: eerste avond" />}</form.Field>
         </div>
-        <form.Field name="story" listeners={clearSaveState} validators={{ onChange: requiredText("Schrijf wat je wilt onthouden."), onSubmit: requiredText("Schrijf wat je wilt onthouden.") }}>{(field) => <TextAreaField field={field} label="Je moment" required maxLength={10000} rows={6} placeholder="Wat wil je onthouden?" />}</form.Field>
+        <form.Field name="notes" listeners={clearSaveState}>{(field) => <TextAreaField field={field} label="Privénotitie" optional maxLength={10000} rows={6} placeholder="Wat wil je onthouden? Dit deel je nooit." />}</form.Field>
         <fieldset className="location"><legend>Privéfoto’s koppelen</legend><p>Een koppeling is privé. EXIF wordt alleen hieronder als voorstel gebruikt; geen datum of plaats verandert zonder jouw keuze.</p>
           <p className="help" role="status">{mediaState}</p>
           {media.map((asset) => <label className="media-choice" key={asset.id}><input type="checkbox" checked={draft.mediaAssetIds.includes(asset.id)} onChange={() => toggleMedia(asset.id)} />{asset.original_filename ?? "Naamloze foto"}{asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}</label>)}
@@ -252,16 +253,16 @@ export function Capture() {
           </aside>)}
           {attachedMedia.filter((asset) => asset.captured_at || asset.gps).length > 1 && <p className="help">Foto’s kunnen verschillen. Elk voorstel blijft afzonderlijk zichtbaar; jij kiest er hoogstens één en kunt die altijd weer aanpassen.</p>}
         </fieldset>
-        <fieldset className="location"><legend>Exacte plaats — volledig optioneel</legend><p>Zoek en kies een plaats. Deze wordt pas samen met jouw opgeslagen moment als private plaats gemaakt.</p>
+        <fieldset className="location"><legend>Exacte plaats — volledig optioneel</legend><p>Zoek en kies een plaats. Deze wordt pas samen met jouw opgeslagen reisupdate als private plaats gemaakt.</p>
           {candidateGps && <aside className="exif-suggestion"><strong>Gekozen locatie uit kandidaat</strong><span>Deze EXIF-coördinaat blijft privé en is nog niet opgezocht of opgeslagen.</span><div className="button-row"><button className="secondary compact" type="button" onClick={() => reverseGeocode(candidateGps)}>Zoek deze kandidaatplaats</button><button className="secondary compact" type="button" onClick={() => setCandidateGps(null)}>Locatie negeren</button></div></aside>}
           <div className="field-row"><label>Zoek plaats<input value={placeQuery} onChange={(event) => setPlaceQuery(event.target.value)} placeholder="Bijvoorbeeld: Taipei Main Station" /></label><div className="button-field"><button className="secondary" type="button" onClick={searchPlace}>Zoeken</button></div></div>
           {draft.place && <p className="selected-place"><strong>Gekozen plaats:</strong> {draft.place.display_name ?? draft.place.locality ?? "Naamloze plaats"} <button className="secondary compact" type="button" onClick={() => updateDraft({ place: null })}>Verwijderen</button></p>}
           {placeState && <p className="help" role="status">{placeState}</p>}
           {placeResults && <div className="place-results">{placeResults.results.map((result) => <button className="place-result" type="button" key={`${result.osm_element_type}-${result.osm_element_id}`} onClick={() => selectPlace(result)}>{result.display_name}</button>)}<p className="help">Zoekresultaten: <a href={placeResults.attribution_url} target="_blank" rel="noreferrer">{placeResults.attribution}</a></p></div>}
         </fieldset>
-        <div className="save-row"><button type="submit" disabled={record.pending}>{draft.momentId ? "Wijzigingen opslaan" : "Moment opslaan"}</button><span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span></div>
+        <div className="save-row"><button type="submit" disabled={record.pending}>{draft.updateId ? "Wijzigingen opslaan" : "Reisupdate opslaan"}</button><span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span></div>
       </form>
-      {selectedTrip && selectedTrip.moments.length > 0 && <section className="saved-moments"><h3>Opgeslagen momenten</h3>{selectedTrip.moments.slice().reverse().map((moment) => <button className="moment-row" type="button" key={moment.id} onClick={() => editMoment(moment)}><strong>{moment.title}</strong><span>{timestamp(moment.occurred_at)}{moment.place ? ` · ${moment.place.display_name}` : " · zonder locatie"}</span></button>)}</section>}
+      {selectedTrip && selectedTrip.travel_updates.length > 0 && <section className="saved-moments"><h3>Opgeslagen reisupdates</h3>{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <button className="moment-row" type="button" key={update.id} onClick={() => editUpdate(update)}><strong>{update.title}</strong><span>{timestamp(update.occurred_at)}{update.place ? ` · ${update.place.display_name}` : " · zonder locatie"}</span></button>)}</section>}
       {confirmation.dialog}
     </section>
   );

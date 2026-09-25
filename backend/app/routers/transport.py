@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import DocumentAsset, TransportLeg, TransportLegDocumentAsset, Trip
+from ..models import DocumentAsset, Place, TransportLeg, TransportLegDocumentAsset, Trip
 from ..schemas import TransportLegCreate, TransportLegResponse, TransportLegUpdate
 from .trips import exact_place_from_input, owned_trip
 
@@ -22,8 +22,8 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 def _leg_query():
     return select(TransportLeg).options(
-        selectinload(TransportLeg.departure_place),
-        selectinload(TransportLeg.arrival_place),
+        selectinload(TransportLeg.departure_place).selectinload(Place.area),
+        selectinload(TransportLeg.arrival_place).selectinload(Place.area),
         selectinload(TransportLeg.document_links),
     )
 

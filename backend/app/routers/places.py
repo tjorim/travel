@@ -1,12 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Place, PlaceKind
+from ..models import Place, PlaceKind, RouteStage, Stay, TravelUpdate, Visibility
 from ..navigation import exact_navigation_url
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
 from ..schemas import (
@@ -15,12 +15,13 @@ from ..schemas import (
     BroadPlaceUpdate,
     ExactPlaceInput,
     ExactPlaceResponse,
+    ExactPlaceUpdate,
     NavigationResponse,
     PlaceReverseGeocodeRequest,
     PlaceSearchRequest,
     PlaceSearchResponse,
 )
-from .trips import exact_place_from_input, owned_trip
+from .trips import exact_place_from_input, owned_trip, selected_broad_place
 
 router = APIRouter(prefix="/trips/{trip_id}/places", tags=["places"])
 
@@ -120,6 +121,41 @@ def update_broad_place(
     return place
 
 
+def _broad_place_references(session: Session, trip_id: str, place_id: str) -> list[str]:
+    """Return the owner-facing records that must be changed before deletion.
+
+    A broad place is deliberately reusable. Deleting it must never silently
+    remove a route stop or detach a shared story/stay summary from its context.
+    """
+    references = (
+        ("halte", select(func.count()).select_from(RouteStage).where(RouteStage.trip_id == trip_id, RouteStage.broad_place_id == place_id)),
+        ("reisupdate", select(func.count()).select_from(TravelUpdate).where(TravelUpdate.trip_id == trip_id, TravelUpdate.broad_place_id == place_id)),
+        ("verblijf", select(func.count()).select_from(Stay).where(Stay.trip_id == trip_id, Stay.broad_place_id == place_id)),
+        ("plek", select(func.count()).select_from(Place).where(Place.trip_id == trip_id, Place.area_id == place_id)),
+    )
+    return [f"{count} {label}" for label, statement in references if (count := session.scalar(statement) or 0)]
+
+
+@router.delete("/broad/{place_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_broad_place(trip_id: str, place_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+    """Delete an unused owner-authored broad place without harming its users."""
+    trip = owned_trip(session, trip_id, subject)
+    place = session.scalar(
+        select(Place).where(Place.id == place_id, Place.trip_id == trip.id, Place.kind == PlaceKind.BROAD)
+    )
+    if place is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broad place not found")
+    references = _broad_place_references(session, trip.id, place.id)
+    if references:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Deze plaats wordt nog gebruikt door: {', '.join(references)}. Pas of verwijder die eerst.",
+        )
+    session.delete(place)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 def owned_exact_place(session: Session, trip_id: str, subject: str, place_id: str) -> Place:
     owned_trip(session, trip_id, subject)
     place = session.scalar(
@@ -127,6 +163,28 @@ def owned_exact_place(session: Session, trip_id: str, subject: str, place_id: st
     )
     if place is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exact place not found")
+    return place
+
+
+@router.patch("/{place_id}", response_model=ExactPlaceResponse)
+def update_exact_place(
+    trip_id: str, place_id: str, payload: ExactPlaceUpdate, session: SessionDep, subject: SubjectDep
+) -> Place:
+    """Name a spot, move it to another area, or choose whether its address is shown when shared."""
+    place = owned_exact_place(session, trip_id, subject, place_id)
+    changes = payload.model_fields_set
+    if "label" in changes:
+        place.label = payload.label
+    if "area_id" in changes:
+        if payload.area_id is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Every spot needs an area")
+        place.area = selected_broad_place(session, trip_id, payload.area_id)
+    if "share_address" in changes and payload.share_address is not None:
+        place.share_address = payload.share_address
+    if place.label is None and place.visibility != Visibility.PRIVATE:
+        # A shared spot cannot lose its public name.
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Give this spot a public name before sharing it")
+    session.commit()
     return place
 
 

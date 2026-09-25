@@ -9,14 +9,14 @@ afterEach(cleanup);
 
 const home = "Europe/Brussels";
 const place = (locality: string) => ({ locality, display_name: locality }) as Place;
-const city = (label: string) => ({ id: label, label, country_code: "TW", region: null, latitude: null, longitude: null, timezone: "Asia/Taipei" });
+const city = (label: string) => ({ id: label, visibility: "private" as const, label, country_code: "TW", region: null, latitude: null, longitude: null, timezone: "Asia/Taipei" });
 
 function stay(label: string, check_in_date: string, check_out_date: string): Stay {
-  return { id: label, check_in_date, check_out_date, check_in_time: null, check_out_time: null, status: "booked", property_name: label, website_url: null, booking_reference: null, contact_details: null, notes: null, place: null, broad_place: city(label) };
+  return { id: label, check_in_date, check_out_date, check_in_time: null, check_out_time: null, status: "booked", property_name: label, website_url: null, booking_reference: null, contact_details: null, notes: null, place: null, broad_place: city(label), visibility: "private", share_date_precision: "month" };
 }
 
 function leg(from: string, to: string, departs_at: string, arrives_at: string, departure_timezone: string, arrival_timezone: string): TransportLeg {
-  return { id: `${from}-${to}`, kind: "flight", status: "booked", departure_place: place(from), arrival_place: place(to), departs_at, arrives_at, departure_timezone, arrival_timezone, carrier: null, service_reference: null, travel_class: null, booking_reference: null, notes: null, document_asset_ids: [] };
+  return { id: `${from}-${to}`, kind: "flight", status: "booked", departure_place: place(from), arrival_place: place(to), departs_at, arrives_at, departure_timezone, arrival_timezone, carrier: null, service_reference: null, travel_class: null, booking_reference: null, notes: null, document_asset_ids: [], visibility: "private" };
 }
 
 const stays = [stay("Linkou", "2054-11-16", "2054-11-28"), stay("Alishan", "2054-11-29", "2054-11-30")];

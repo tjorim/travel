@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { decodeSubject, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
-  BroadPlace, BroadRoute, BroadStayCard, DocumentAsset, DocumentDerivative, EmergencyInfoEntry, ItineraryEntry, MediaAsset, MediaDerivative,
+  BroadPlace, BroadRoute, DocumentAsset, DocumentDerivative, EmergencyInfoEntry, ItineraryEntry, MediaAsset, MediaDerivative,
   OwnerDocument, Place, ProviderConnectionStatus, PublicProjectionStatus, RecordedTrack, ShareLink, Stay, TransportLeg, Trip, TripTask, TripTaskAlert,
 } from "../tracker-model";
 import { ApiError, ownerRequest, type OwnerRequest } from "./api";
@@ -29,7 +29,6 @@ type TripResourceData = {
   "places/broad": BroadPlace[];
   places: Place[];
   "broad-routes": BroadRoute[];
-  "broad-stay-cards": BroadStayCard[];
   "itinerary-entries": ItineraryEntry[];
   documents: DocumentAsset[];
   media: MediaAsset[];
@@ -43,10 +42,9 @@ const resourceFailure: Record<TripResource, string> = {
   "transport-legs": "Je vervoer kon niet worden geladen.",
   "trip-tasks": "Je taken konden niet worden geladen.",
   "task-alerts": "Je meldingen konden niet worden geladen.",
-  "places/broad": "De brede plaatsen konden niet worden geladen.",
+  "places/broad": "De plaatsen konden niet worden geladen.",
   places: "Je exacte plaatsen konden niet worden geladen.",
-  "broad-routes": "Je brede routes konden niet worden geladen.",
-  "broad-stay-cards": "Je brede verblijfskaarten konden niet worden geladen.",
+  "broad-routes": "Je routes op kaart konden niet worden geladen.",
   "itinerary-entries": "Je dagplanning kon niet worden geladen.",
   documents: "Je documenten konden niet worden geladen.",
   media: "Je media konden niet worden geladen.",

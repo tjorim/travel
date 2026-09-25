@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
 import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
-import { answerConfirmation } from "../test-confirm";
 import type { OwnerDocument, Trip } from "../tracker-model";
 import { DocumentLibraryManager } from "./DocumentLibraryManager";
 
@@ -99,8 +98,9 @@ it("deletes a document after explicit confirmation", async () => {
   renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   await screen.findByText("Insurance policy");
 
-  screen.getByRole("button", { name: "Verwijderen" }).click();
-  await answerConfirmation();
+  fireEvent.click(screen.getByRole("button", { name: "Document Insurance policy bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
 
   await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
   expect(state.calls.some((call) => call.method === "DELETE" && call.url === "/api/library/documents/doc-1")).toBe(true);
@@ -121,12 +121,14 @@ it("lets the owner pin a document for offline access and unpin it again", async 
   await screen.findByRole("button", { name: "Offline bewaren" });
 });
 
-it("lists an uploaded document at once, linked to its trip, and clears the form", async () => {
+it("lists an uploaded document at once, linked to its trip, and closes the dialog", async () => {
   withSession();
   const state = stubFetch([], [{ id: "trip-1", title: "Exampleland 2054" } as unknown as Trip]);
   renderWithOwner(<AuthProvider><DocumentLibraryManager /></AuthProvider>);
   await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
 
+  expect(screen.queryByLabelText("Titel")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
   await screen.findByText("Geef het document een titel.");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Reisverzekering" } });
@@ -140,7 +142,7 @@ it("lists an uploaded document at once, linked to its trip, and clears the form"
   await screen.findByText("Reisverzekering");
   expect(screen.getByText((content) => content.includes("Exampleland 2054"), { selector: "span" })).toBeTruthy();
   expect(screen.getByText("Document toegevoegd aan je bibliotheek.")).toBeTruthy();
-  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("");
+  expect(screen.queryByLabelText("Titel")).toBeNull();
   expect(state.calls.filter((call) => call.method === "POST")).toHaveLength(1);
 });
 

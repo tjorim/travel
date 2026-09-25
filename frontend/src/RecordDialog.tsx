@@ -4,6 +4,7 @@ type RecordDialogProps = {
   open: boolean;
   title: string;
   children: ReactNode;
+  className?: string;
   dirty?: boolean;
   onDismiss: () => void;
   onAfterClose?: () => void;
@@ -12,7 +13,7 @@ type RecordDialogProps = {
 /** A bounded owner-only record editor. Native dialogs provide the focus trap and
  * return focus to the control that opened them; the CSS turns it into a sheet
  * on narrow screens. */
-export function RecordDialog({ open, title, children, dirty = false, onDismiss, onAfterClose }: RecordDialogProps) {
+export function RecordDialog({ open, title, children, className = "", dirty = false, onDismiss, onAfterClose }: RecordDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const scrollPosition = useRef({ x: 0, y: 0 });
@@ -41,7 +42,7 @@ export function RecordDialog({ open, title, children, dirty = false, onDismiss, 
     onDismiss();
   }
 
-  return <dialog ref={dialog} className="record-dialog" aria-labelledby={headingId} onCancel={(event) => { event.preventDefault(); dismiss(); }} onClose={() => { if (open) onDismiss(); onAfterClose?.(); }}>
+  return <dialog ref={dialog} className={`record-dialog ${className}`.trim()} aria-labelledby={headingId} onCancel={(event) => { event.preventDefault(); dismiss(); }} onClose={() => { if (open) onDismiss(); onAfterClose?.(); }}>
     <div className="record-dialog-header">
       <h2 id={headingId}>{title}</h2>
       <button className="secondary compact" type="button" aria-label={`${title} sluiten`} onClick={dismiss}>Sluiten</button>

@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
 import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
-import { answerConfirmation } from "../test-confirm";
 import type { EmergencyInfoEntry } from "../tracker-model";
 import { EmergencyInfoManager } from "./EmergencyInfoManager";
 
@@ -86,8 +85,9 @@ it("deletes an entry after explicit confirmation", async () => {
   renderWithOwner(<AuthProvider><EmergencyInfoManager /></AuthProvider>);
   await screen.findByText("Mom");
 
-  screen.getByRole("button", { name: "Verwijderen" }).click();
-  await answerConfirmation();
+  fireEvent.click(screen.getByRole("button", { name: "Noodinformatie Mom bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
 
   await screen.findByText("Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.");
   expect(state.calls.some((call) => call.method === "DELETE" && call.url === "/api/library/emergency-info/entry-1")).toBe(true);
@@ -113,7 +113,9 @@ it("opens the editor with the saved entry and shows the edited one at once", asy
   stubFetch([entry(), entry({ id: "entry-2", label: "Ambassade", value: "+886 2 0000 0000", notes: "Kantooruren" })]);
   renderWithOwner(<AuthProvider><EmergencyInfoManager /></AuthProvider>);
   await screen.findByText("Ambassade");
-  fireEvent.click(screen.getAllByRole("button", { name: "Bewerken" })[1]);
+  expect(screen.queryByLabelText("Label")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Noodinformatie Ambassade bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect((screen.getByLabelText("Label") as HTMLInputElement).value).toBe("Ambassade");
   expect((screen.getByLabelText("Waarde") as HTMLInputElement).value).toBe("+886 2 0000 0000");
   expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe("Kantooruren");
@@ -122,9 +124,8 @@ it("opens the editor with the saved entry and shows the edited one at once", asy
   await screen.findByText("Ambassade Taipei");
   expect(screen.queryByText("Ambassade")).toBeNull();
   expect(screen.getByText("Noodinformatie opgeslagen.")).toBeTruthy();
-  // The form is back to adding a new entry.
-  expect((screen.getByLabelText("Label") as HTMLInputElement).value).toBe("");
-  expect(screen.getByRole("button", { name: "Toevoegen" })).toBeTruthy();
+  // The dialog closes after saving.
+  expect(screen.queryByLabelText("Label")).toBeNull();
 });
 
 it("adds an entry after validating the required fields, and keeps the input when the server refuses", async () => {
@@ -132,6 +133,7 @@ it("adds an entry after validating the required fields, and keeps the input when
   const state = stubFetch([]);
   renderWithOwner(<AuthProvider><EmergencyInfoManager /></AuthProvider>);
   await screen.findByText("Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.");
+  fireEvent.click(screen.getByRole("button", { name: "Nieuwe invoer" }));
   fireEvent.click(screen.getByRole("button", { name: "Toevoegen" }));
   await screen.findByText("Geef de invoer een label.");
   await screen.findByText("Vul een waarde in.");
@@ -146,5 +148,5 @@ it("adds an entry after validating the required fields, and keeps the input when
 
   fireEvent.click(screen.getByRole("button", { name: "Toevoegen" }));
   await screen.findByText("Huisarts", { selector: "strong" });
-  await waitFor(() => expect((screen.getByLabelText("Label") as HTMLInputElement).value).toBe(""));
+  await waitFor(() => expect(screen.queryByLabelText("Label")).toBeNull());
 });
