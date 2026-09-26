@@ -6,7 +6,13 @@ from fastmcp.utilities.lifespan import combine_lifespans
 from sqlalchemy import text
 
 from .database import SessionLocal
-from .mcp_server import MCP_CAPABILITY_CONTRACT_VERSION, MCP_TOOL_CAPABILITIES, create_mcp_http_app, mcp_http_enabled
+from .mcp_server import (
+    MCP_CAPABILITY_CONTRACT_VERSION,
+    MCP_TOOL_CAPABILITIES,
+    MCP_VISIBLE_TOOLS,
+    create_mcp_http_app,
+    mcp_http_enabled,
+)
 from .routers.areas import router as areas_router
 from .routers.documents import router as documents_router
 from .routers.library import router as library_router
@@ -85,6 +91,9 @@ def mcp_capabilities() -> dict[str, object]:
         ]
         if _mcp_app is not None
         else [],
+        # The tools a client lists; every other tool is found with search_tools
+        # and run through call_tool (#196).
+        "visible_tools": list(MCP_VISIBLE_TOOLS) if _mcp_app is not None else [],
         "resources": [],
         "prompts": [],
     }

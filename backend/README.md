@@ -367,7 +367,23 @@ labels) unless `compact=false`; `list_areas` also takes a `query` to find an
 area by name. Audience changes, capability activation/rotation and
 deletion require `confirm=true`; a raw share capability is returned only by
 activation or rotation, together with its complete visitor `share_url`, and is
-never stored in the MCP audit table. The local
+never stored in the MCP audit table.
+
+Clients list only `whoami`, `list_trips`, `get_trip_overview`,
+`search_tools` and `call_tool`. `search_tools(query)` ranks the full catalogue
+with BM25 over tool names and descriptions (English or Dutch owner vocabulary,
+such as "merge duplicate locations" or "verblijf toevoegen") and returns up to
+five tools, each with its `input_schema`, `effect` and `requires_confirmation`;
+`call_tool(name, arguments)` runs one with the same validation, audit and
+confirmation rules as a direct call, and the audit row names the inner action.
+Search depends on the docstrings, so a new tool's description should name the
+task it serves; the tests check a table of real phrasings and that every tool
+is found by its own name. See
+[`docs/decisions/196-layered-mcp-tool-discovery.md`](../docs/decisions/196-layered-mcp-tool-discovery.md).
+`/api/mcp/capabilities` lists the full catalogue and the listed surface as
+`visible_tools`.
+
+The local
 MCP server is mounted by FastAPI at `/mcp` only when both
 `TRAVEL_MCP_BASE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. Caddy
 routing, production Keycloak configuration and endpoint exposure remain

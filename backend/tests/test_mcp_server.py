@@ -8,8 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
-from fastmcp import Client
+from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.tools.base import Tool
+from fastmcp.utilities.json_schema import dereference_refs
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -123,11 +125,18 @@ def test_mcp_cannot_cross_owner_boundary(backend: TravelMcpBackend, monkeypatch:
         assert rejected.result == "rejected"
 
 
-def test_registered_tools_cover_owner_resource_families(backend: TravelMcpBackend) -> None:
-    async def names() -> set[str]:
-        return {tool.name for tool in await create_mcp_server(TestingSessionLocal).list_tools()}
+def _registered_tools(server: FastMCP) -> dict[str, Tool]:
+    """The full catalogue, including the tools only reachable through search_tools and call_tool."""
 
-    registered = asyncio.run(names())
+    async def catalogue() -> dict[str, Tool]:
+        tools = {name: await server.get_tool(name) for name in MCP_TOOL_CAPABILITIES}
+        return {name: tool for name, tool in tools.items() if tool is not None}
+
+    return asyncio.run(catalogue())
+
+
+def test_registered_tools_cover_owner_resource_families(backend: TravelMcpBackend) -> None:
+    registered = set(_registered_tools(create_mcp_server(TestingSessionLocal)))
     assert {
         "create_trip",
         "save_location",
@@ -439,7 +448,7 @@ def test_capability_manifest_covers_every_registered_tool_with_consistent_annota
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     server = create_mcp_server(TestingSessionLocal)
-    registered = {tool.name: tool for tool in asyncio.run(server.list_tools())}
+    registered = _registered_tools(server)
     monkeypatch.setattr(app_main, "_mcp_app", object())
     monkeypatch.setattr(app_main, "_mcp", SimpleNamespace(version="test"))
 
@@ -451,6 +460,7 @@ def test_capability_manifest_covers_every_registered_tool_with_consistent_annota
     tools = manifest["tools"]
     assert [tool["name"] for tool in tools] == sorted(registered)
     assert set(registered) == set(MCP_TOOL_CAPABILITIES)
+    assert manifest["visible_tools"] == ["whoami", "list_trips", "get_trip_overview", "search_tools", "call_tool"]
     for tool in tools:
         assert set(tool) == {"name", "effect", "requires_confirmation", "access"}
         assert tool["effect"] in {"read", "write"}
@@ -476,6 +486,7 @@ def test_capability_manifest_reports_contract_version_when_mcp_is_disabled(
         "mount_path": "/mcp",
         "version": None,
         "tools": [],
+        "visible_tools": [],
         "resources": [],
         "prompts": [],
     }
@@ -732,3 +743,200 @@ def test_mcp_reads_and_writes_markdown_source_without_rendered_html(backend: Tra
     assert [item["id"] for item in backend.list_trip_tasks(trip["id"])] == [task["id"]]
     assert all(not key.endswith("_html") for key in backend.get_trip(trip["id"]))
     assert schemas.TripTaskCreate.model_json_schema()["properties"]["notes"]["description"].startswith("Markdown")
+
+
+def _audit_rows(*actions: str) -> list[tuple[str, str, str | None, str | None, str]]:
+    query = select(McpAuditEvent).order_by(McpAuditEvent.action)
+    if actions:
+        query = query.where(McpAuditEvent.action.in_(actions))
+    with TestingSessionLocal() as session:
+        return [(e.action, e.resource_type, e.resource_id, e.trip_id, e.result) for e in session.scalars(query)]
+
+
+def test_clients_list_only_the_entry_tools_and_the_search_and_call_proxies(backend: TravelMcpBackend) -> None:
+    async def run() -> set[str]:
+        async with _protocol_client() as client:
+            return {tool.name for tool in await client.list_tools()}
+
+    assert asyncio.run(run()) == {"whoami", "list_trips", "get_trip_overview", "search_tools", "call_tool"}
+
+
+SEARCH_QUERIES = {
+    "merge duplicate locations": {"merge_locations"},
+    "locaties samenvoegen": {"merge_locations"},
+    "delete area": {"delete_area"},
+    "add a hotel stay": {"create_stay"},
+    "verblijf toevoegen": {"create_stay"},
+    "create several visits at once": {"batch_create"},
+    "who can see this record": {"set_visibility"},
+    "zichtbaarheid": {"set_visibility"},
+    "preview what the share link shows": {"preview_share_link", "inspect_share_preview_file"},
+    "publish the trip publicly": {"preview_public_projection", "publish_public_projection"},
+    "import photos from google": {"start_media_import_session"},
+    "reisupdate schrijven": {"create_travel_update"},
+    "emergency numbers": {"list_emergency_info"},
+    "noodnummers": {"list_emergency_info"},
+    "tasks due this week": {"list_trip_tasks", "list_task_alerts"},
+}
+
+
+@pytest.mark.parametrize(("query", "expected"), SEARCH_QUERIES.items())
+def test_search_finds_the_tool_for_a_task_in_english_and_dutch(
+    backend: TravelMcpBackend, query: str, expected: set[str]
+) -> None:
+    async def run() -> list[str]:
+        async with _protocol_client() as client:
+            found = await client.call_tool("search_tools", {"query": query})
+            return [tool["name"] for tool in found.structured_content["result"]]
+
+    names = asyncio.run(run())
+    assert len(names) <= 5
+    assert expected <= set(names)
+
+
+def test_every_hidden_tool_is_found_by_its_own_name(backend: TravelMcpBackend) -> None:
+    async def run() -> dict[str, list[str]]:
+        async with _protocol_client() as client:
+            missed = {}
+            for name in MCP_TOOL_CAPABILITIES:
+                found = await client.call_tool("search_tools", {"query": name.replace("_", " ")})
+                names = [tool["name"] for tool in found.structured_content["result"]]
+                if name not in names and name not in {"whoami", "list_trips", "get_trip_overview"}:
+                    missed[name] = names
+            return missed
+
+    assert asyncio.run(run()) == {}
+
+
+def test_search_results_carry_the_callable_schema_and_capabilities(backend: TravelMcpBackend) -> None:
+    server = create_mcp_server(TestingSessionLocal)
+    registered = _registered_tools(server)
+
+    async def run() -> list[dict[str, object]]:
+        async with Client(server) as client:
+            found = await client.call_tool("search_tools", {"query": "delete share link visit location"})
+            return found.structured_content["result"]
+
+    results = asyncio.run(run())
+    assert results
+    for result in results:
+        name = result["name"]
+        assert set(result) == {"name", "description", "input_schema", "effect", "requires_confirmation"}
+        # The same self-contained schema a direct tools/list would send.
+        assert result["input_schema"] == dereference_refs(registered[name].parameters)
+        assert result["description"] == registered[name].description
+        assert result["effect"] == MCP_TOOL_CAPABILITIES[name]["effect"]
+        assert result["requires_confirmation"] == MCP_TOOL_CAPABILITIES[name]["requires_confirmation"]
+    assert any(result["requires_confirmation"] for result in results)
+
+
+def test_a_write_through_call_tool_is_audited_like_a_direct_call(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Exampleland"))["id"]
+    area = backend.save_area(trip_id, schemas.AreaInput(label="Taipei"))
+    visit_id = backend.create_visit(trip_id, schemas.VisitCreate(area_id=area["id"]))["id"]
+    arguments = {"trip_id": trip_id, "visit_id": visit_id, "payload": {"title": "Temple"}}
+
+    async def run() -> None:
+        async with _protocol_client() as client:
+            await client.call_tool("update_visit", arguments)
+            proxied = await client.call_tool("call_tool", {"name": "update_visit", "arguments": arguments})
+            assert proxied.structured_content["title"] == "Temple"
+
+    asyncio.run(run())
+    direct, proxied = _audit_rows("visit.update")
+    assert direct == proxied == ("visit.update", "visit", visit_id, trip_id, "succeeded")
+
+
+def test_a_rejection_through_call_tool_is_audited_once_under_the_inner_tool(
+    backend: TravelMcpBackend, caplog: pytest.LogCaptureFixture
+) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Exampleland"))["id"]
+    area = backend.save_area(trip_id, schemas.AreaInput(label="Taipei"))
+    visit_id = backend.create_visit(trip_id, schemas.VisitCreate(area_id=area["id"]))["id"]
+
+    async def run() -> tuple[object, object]:
+        async with _protocol_client() as client:
+            invalid = await client.call_tool(
+                "call_tool",
+                {
+                    "name": "update_visit",
+                    "arguments": {"trip_id": trip_id, "visit_id": visit_id, "payload": {"state": "SECRET-STATE"}},
+                },
+                raise_on_error=False,
+            )
+            unconfirmed = await client.call_tool(
+                "call_tool",
+                {"name": "delete_visit", "arguments": {"trip_id": trip_id, "visit_id": visit_id}},
+                raise_on_error=False,
+            )
+            return invalid, unconfirmed
+
+    with caplog.at_level(logging.INFO):
+        invalid, unconfirmed = asyncio.run(run())
+
+    assert invalid.is_error and "payload.state" in invalid.content[0].text
+    assert unconfirmed.is_error and "confirm=true" in unconfirmed.content[0].text
+    assert invalid.content[0].text.count("Reference:") == unconfirmed.content[0].text.count("Reference:") == 1
+    assert _audit_rows("call_tool", "update_visit", "delete_visit", "visit.update", "visit.delete") == [
+        ("update_visit", "tool_invocation", None, trip_id, "rejected"),
+        ("visit.delete", "visit", visit_id, trip_id, "rejected"),
+    ]
+    with TestingSessionLocal() as session:
+        details = [event.details for event in session.scalars(select(McpAuditEvent))]
+    assert "SECRET-STATE" not in json.dumps(details) + caplog.text
+    assert backend.get_visit(trip_id, visit_id)["id"] == visit_id
+
+
+def test_call_tool_names_an_unknown_tool_clearly_and_logs_it(
+    backend: TravelMcpBackend, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def run() -> object:
+        async with _protocol_client() as client:
+            return await client.call_tool("call_tool", {"name": "drop_database", "arguments": {}}, raise_on_error=False)
+
+    with caplog.at_level(logging.WARNING, logger="app.mcp_server"):
+        result = asyncio.run(run())
+
+    message = result.content[0].text
+    assert result.is_error and "Unknown tool: 'drop_database'" in message and "search_tools" in message
+    assert "call_tool named an unknown tool" in caplog.text and "drop_database" in caplog.text
+    assert _audit_rows() == []
+
+
+def test_a_full_owner_session_works_through_search_and_call_tool(backend: TravelMcpBackend) -> None:
+    async def run() -> None:
+        async with _protocol_client() as client:
+
+            async def call(name: str, **arguments: object) -> object:
+                found = await client.call_tool("search_tools", {"query": name.replace("_", " ")})
+                assert name in [tool["name"] for tool in found.structured_content["result"]]
+                return (await client.call_tool("call_tool", {"name": name, "arguments": arguments})).structured_content
+
+            trip_id = (await call("create_trip", payload={"title": "Exampleland"}))["id"]
+            trips = (await client.call_tool("list_trips", {})).structured_content["result"]
+            assert [trip["id"] for trip in trips] == [trip_id]
+            assert (await client.call_tool("get_trip_overview", {"trip_id": trip_id})).structured_content
+
+            keep = await call("save_location", trip_id=trip_id, payload={"display_name": "TPE Airport"})
+            duplicate = await call("save_location", trip_id=trip_id, payload={"display_name": "Taoyuan airport"})
+            visit = await call(
+                "create_visit", trip_id=trip_id, payload={"location": {"existing_location_id": duplicate["id"]}}
+            )
+            await call("update_visit", trip_id=trip_id, visit_id=visit["id"], payload={"title": "Arrival"})
+
+            preview = await call(
+                "merge_locations", trip_id=trip_id, keep_id=keep["id"], duplicate_ids=[duplicate["id"]]
+            )
+            assert preview["applied"] is False
+            merged = await call(
+                "merge_locations", trip_id=trip_id, keep_id=keep["id"], duplicate_ids=[duplicate["id"]], confirm=True
+            )
+            assert merged["applied"] is True
+            assert (await call("get_visit", trip_id=trip_id, visit_id=visit["id"]))["location"]["id"] == keep["id"]
+
+            link = await call("create_share_link", trip_id=trip_id, payload={"label": "Family"}, confirm=True)
+            assert await call("preview_share_link", trip_id=trip_id, link_id=link["id"])
+
+    asyncio.run(run())
+    actions = [row[0] for row in _audit_rows()]
+    assert {"location.merge_preview", "location.merge", "visit.update", "share_link.preview"} <= set(actions)

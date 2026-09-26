@@ -18,7 +18,7 @@ import binascii
 import json
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from io import BytesIO
 from typing import Any, Literal, TypeVar
 from urllib.parse import quote
@@ -33,6 +33,8 @@ from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
 from fastmcp.server.dependencies import get_access_token, get_context
 from fastmcp.server.http import StarletteWithLifespan
 from fastmcp.server.middleware import Middleware, MiddlewareContext
+from fastmcp.server.transforms.search import BM25SearchTransform
+from fastmcp.tools.base import Tool
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
@@ -188,6 +190,14 @@ def _share_url(token: str) -> str:
 
 
 _AUDITED = "_travel_mcp_audited"
+# Set on the tool error ToolFailureMiddleware reports, so the ``call_tool``
+# proxy passes an inner tool's report on instead of auditing it again.
+_REPORTED = "_travel_mcp_reported"
+
+
+def _reported(error: ToolError) -> ToolError:
+    setattr(error, _REPORTED, True)
+    return error
 
 
 def _request_id() -> str | None:
@@ -460,7 +470,7 @@ class TravelMcpBackend:
         )
 
     def batch_create(self, trip_id: str, payload: BatchCreate) -> dict[str, list[dict[str, Any]]]:
-        """Add many visits, stays, routes, reisupdates and tasks to an existing trip in one call. All or nothing: if any record is refused, none is kept and the error names it (for example routes[3]). Returns compact rows with the new ids."""
+        """Create several visits, stays, routes, reisupdates and tasks at once in an existing trip, in one call. All or nothing: if any record is refused, none is kept and the error names it (for example routes[3]). Returns compact rows with the new ids."""
         steps: list[tuple[str, str, Callable[[Session, str, Any], Any], type[BaseModel]]] = [
             ("visits", "visit", lambda s, sub, item: visits.create_visit(trip_id, item, s, sub), schemas.VisitResponse),
             ("stays", "stay", lambda s, sub, item: stays.create_stay(trip_id, item, s, sub), schemas.StayResponse),
@@ -551,7 +561,7 @@ class TravelMcpBackend:
         )
 
     def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
-        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. status (idea, planned or confirmed) is owner-only and never shared: keep planning state there, not in a title or area label. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
+        """Create a visit: an area, or a location in one, with optional days, times, kind and notes. The visit status (idea, planned or confirmed) is owner-only and never shared: keep planning state there, not in a title or area label. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
         return self._call(
             "visit.create",
             "visit",
@@ -586,7 +596,7 @@ class TravelMcpBackend:
         )
 
     def create_travel_update(self, trip_id: str, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
-        """Create a reisupdate: private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text. body and private_notes are Markdown."""
+        """Create a travel update, a new reisupdate (reisupdate schrijven): private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text. body and private_notes are Markdown."""
         return self._call(
             "travel_update.create",
             "travel_update",
@@ -762,7 +772,7 @@ class TravelMcpBackend:
     def merge_locations(
         self, trip_id: str, keep_id: str, duplicate_ids: list[str], confirm: bool = False
     ) -> dict[str, Any]:
-        """Fold duplicate locations into keep_id: every visit, stay, route end and reisupdate at a duplicate moves to keep_id, then the duplicates are deleted, in one transaction. Without confirm=true it only previews the counts per duplicate and warns when a duplicate reaches an audience the kept location does not (the merge keeps keep_id's name, visibility and area). Review that preview, then repeat with confirm=true."""
+        """Merge duplicate locations (locaties samenvoegen) into keep_id: every visit, stay, route end and reisupdate at a duplicate moves to keep_id, then the duplicates are deleted, in one transaction. Without confirm=true it only previews the counts per duplicate and warns when a duplicate reaches an audience the kept location does not (the merge keeps keep_id's name, visibility and area). Review that preview, then repeat with confirm=true."""
         payload = schemas.MergeRequest(keep_id=keep_id, duplicate_ids=duplicate_ids, confirm=confirm)
         return self._call(
             "location.merge" if confirm else "location.merge_preview",
@@ -786,7 +796,7 @@ class TravelMcpBackend:
     def set_visibility(
         self, trip_id: str, kind: schemas.ShareScopeKind, record_id: str, visibility: Visibility, confirm: bool = False
     ) -> dict[str, Any]:
-        """Choose who receives one record: private, everyone, or custom (only audiences that list it)."""
+        """Choose who can see one record (its zichtbaarheid): private, everyone, or custom (only audiences that list it)."""
         kind, visibility = schemas.ShareScopeKind(kind), Visibility(visibility)
         return self._call(
             "visibility.set",
@@ -814,7 +824,7 @@ class TravelMcpBackend:
         )
 
     def preview_public_projection(self, trip_id: str) -> dict[str, Any]:
-        """Render the live public projection for owner review without publishing it."""
+        """Preview what publishing the trip publicly would show: render the live public projection for owner review without publishing it."""
         return self._call(
             "public_projection.preview",
             "public_surface",
@@ -840,7 +850,7 @@ class TravelMcpBackend:
         )
 
     def publish_public_projection(self, trip_id: str, confirm: bool = False) -> dict[str, Any]:
-        """Start public delivery only after an explicit confirmation."""
+        """Publish the trip publicly: start public delivery only after an explicit confirmation."""
         return self._call(
             "public_projection.publish",
             "public_surface",
@@ -1134,7 +1144,7 @@ class TravelMcpBackend:
         )
 
     def list_emergency_info(self) -> list[dict[str, Any]]:
-        """List owner-only emergency information."""
+        """List owner-only emergency information (noodnummers): emergency numbers, contacts and medical notes."""
         return self._call(
             "emergency_info.list",
             "emergency_info",
@@ -1168,7 +1178,7 @@ class TravelMcpBackend:
         )
 
     def create_stay(self, trip_id: str, payload: schemas.StayCreate) -> dict[str, Any]:
-        """Create a private stay with check-in and check-out dates; omit local times until verified. While the accommodation is undecided, give only area_id instead of a location. notes is Markdown; contact_details is plain text whose phone numbers, email and web addresses are linked."""
+        """Add a hotel or other accommodation stay (verblijf toevoegen), private, with check-in and check-out dates; omit local times until verified. While the accommodation is undecided, give only area_id instead of a location. notes is Markdown; contact_details is plain text whose phone numbers, email and web addresses are linked."""
         return self._call(
             "stay.create",
             "stay",
@@ -1203,7 +1213,7 @@ class TravelMcpBackend:
         )
 
     def list_trip_tasks(self, trip_id: str) -> list[dict[str, Any]]:
-        """List owner preparation tasks."""
+        """List owner preparation tasks with their due dates and reminders."""
         return self._call(
             "trip_task.list",
             "trip_task",
@@ -1249,7 +1259,7 @@ class TravelMcpBackend:
         )
 
     def list_task_alerts(self, trip_id: str) -> list[dict[str, Any]]:
-        """List delivered owner-inbox task reminders for a trip."""
+        """List delivered owner-inbox reminders for a trip's tasks that are due."""
         return self._call(
             "task_alert.list",
             "task_alert",
@@ -1584,6 +1594,19 @@ class TravelMcpBackend:
         )
 
 
+# Clients list only these tools plus the two below; every other tool is found
+# with ``search_tools`` and run through ``call_tool`` (layered discovery, #196).
+# Nearly every session starts by finding a trip and reading its overview.
+MCP_ALWAYS_VISIBLE_TOOLS = ("whoami", "list_trips", "get_trip_overview")
+MCP_SEARCH_TOOL = "search_tools"
+MCP_CALL_TOOL = "call_tool"
+MCP_VISIBLE_TOOLS = (*MCP_ALWAYS_VISIBLE_TOOLS, MCP_SEARCH_TOOL, MCP_CALL_TOOL)
+# Each result carries the tool's full input schema and Travel's are large
+# (``batch_create`` alone is ~16k characters), so a search returns fewer
+# results than the siblings' 10.
+MCP_SEARCH_MAX_RESULTS = 5
+
+
 class ToolFailureMiddleware(Middleware):
     """Turn every failure that would surface as a bare protocol error into a correlated tool error.
 
@@ -1593,6 +1616,10 @@ class ToolFailureMiddleware(Middleware):
     This maps them to an ``isError`` result carrying the MCP request id, logs
     the same id, and audits calls that were refused before ``_call`` ran (for
     example invalid arguments). Only names, types and field paths are logged.
+
+    A tool reached through ``call_tool`` passes through this middleware twice:
+    once as itself, where it is audited and reported under its own name, and
+    once as the ``call_tool`` proxy, which hands that report on unchanged.
     """
 
     def __init__(self, backend: TravelMcpBackend) -> None:
@@ -1604,8 +1631,20 @@ class ToolFailureMiddleware(Middleware):
         except (NotFoundError, DisabledError):
             raise
         except Exception as error:
+            if getattr(error, _REPORTED, False):
+                raise
             tool = context.message.name
             request_id = _request_id()
+            if tool == MCP_CALL_TOOL and isinstance(error.__cause__, NotFoundError):
+                # Like an unknown tool called directly, this is not audited.
+                requested = (context.message.arguments or {}).get("name")
+                logger.warning("MCP call_tool named an unknown tool request_id=%s tool=%.80r", request_id, requested)
+                raise _reported(
+                    ToolError(
+                        f"Unknown tool: {requested!r}. Use {MCP_SEARCH_TOOL} to find the tool for a task. "
+                        f"Reference: {request_id}"
+                    )
+                ) from None
             audited = getattr(error, _AUDITED, False) or getattr(error.__cause__, _AUDITED, False)
             if not audited:
                 await anyio.to_thread.run_sync(
@@ -1614,14 +1653,18 @@ class ToolFailureMiddleware(Middleware):
             if isinstance(error, ValidationError):
                 fields = _validation_fields(error)
                 logger.warning("MCP tool %s failed validation request_id=%s fields=%s", tool, request_id, fields)
-                raise ToolError(
-                    f"{tool} failed validation ({fields}); the stored or generated data did not match the API schema. "
-                    f"Reference: {request_id}"
+                raise _reported(
+                    ToolError(
+                        f"{tool} failed validation ({fields}); the stored or generated data did not match the API "
+                        f"schema. Reference: {request_id}"
+                    )
                 ) from None
             if isinstance(error, FastMCPError):
-                raise ToolError(f"{error} Reference: {request_id}") from error
+                raise _reported(ToolError(f"{error} Reference: {request_id}")) from error
             logger.error("MCP tool %s failed request_id=%s error=%s", tool, request_id, type(error).__name__)
-            raise ToolError(f"{tool} hit an unexpected {type(error).__name__}. Reference: {request_id}") from None
+            raise _reported(
+                ToolError(f"{tool} hit an unexpected {type(error).__name__}. Reference: {request_id}")
+            ) from None
 
 
 _TOOL_NAMES = tuple(
@@ -1709,6 +1752,32 @@ def _tool_annotations(name: str) -> ToolAnnotations:
     )
 
 
+def _search_result(tools: Sequence[Tool]) -> list[dict[str, Any]]:
+    """Each found tool with its callable schema and its capability-manifest entry."""
+    return [
+        {
+            "name": tool.name,
+            "description": tool.description,
+            "input_schema": tool.parameters,
+            **MCP_TOOL_CAPABILITIES.get(tool.name, {}),
+        }
+        for tool in tools
+    ]
+
+
+MCP_INSTRUCTIONS = (
+    "Private Travel owner-management tools. Start with list_trips and get_trip_overview; find every other tool by "
+    f"task with {MCP_SEARCH_TOOL} (for example 'merge duplicate locations' or 'share link preview') and run it with "
+    f"{MCP_CALL_TOOL}. Each search result says whether the tool reads or writes and whether it requires "
+    "confirmation: tools that change who can see something, publish, or delete data need confirm=true, so review "
+    "their preview or target first. Long-form text (trip summary, visit summary and notes, reisupdate body and "
+    "private notes, stay, route, task, location and emergency-information notes) is Markdown, including tables; "
+    "task lists in it are display-only and never create trip tasks. A media caption is inline Markdown only (bold, "
+    "italic, links), and a stay's contact_details is plain text whose phone numbers, email and web addresses become "
+    "links."
+)
+
+
 def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
     """Create Travel's MCP server with OIDC verification when configured."""
     auth = None
@@ -1719,8 +1788,17 @@ def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
     server = FastMCP(
         "travel",
         version="0.1.0",
-        instructions="Private Travel owner-management tools. Review previews before confirmed audience, publication, or deletion actions. Long-form text (trip summary, visit summary and notes, reisupdate body and private notes, stay, route, task, location and emergency-information notes) is Markdown, including tables; task lists in it are display-only and never create trip tasks. A media caption is inline Markdown only (bold, italic, links), and a stay's contact_details is plain text whose phone numbers, email and web addresses become links.",
+        instructions=MCP_INSTRUCTIONS,
         auth=auth,
+        transforms=[
+            BM25SearchTransform(
+                max_results=MCP_SEARCH_MAX_RESULTS,
+                always_visible=list(MCP_ALWAYS_VISIBLE_TOOLS),
+                search_tool_name=MCP_SEARCH_TOOL,
+                call_tool_name=MCP_CALL_TOOL,
+                search_result_serializer=_search_result,
+            )
+        ],
     )
     backend = TravelMcpBackend(factory)
     server.add_middleware(ToolFailureMiddleware(backend))

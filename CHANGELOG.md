@@ -84,6 +84,18 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- The MCP server uses layered tool discovery, like Worktime, Champagnefestival
+  and Daynest: clients list only `whoami`, `list_trips`, `get_trip_overview`,
+  `search_tools` and `call_tool` instead of all 94 tools (~35k tokens of
+  schemas loaded into every conversation). `search_tools` ranks the catalogue
+  with BM25 and returns up to five tools with their input schema, `effect` and
+  `requires_confirmation`; `call_tool` runs one with unchanged validation,
+  confirmation and auditing, and an audit row or error names the inner tool
+  once rather than the proxy. An unknown name given to `call_tool` is a clear,
+  logged error pointing at `search_tools`. Tool descriptions were tightened so
+  English and Dutch task phrasings find the right tool, and
+  `/api/mcp/capabilities` adds the listed surface as `visible_tools`.
+  ([#196](https://github.com/tjorim/travel/issues/196))
 - Every request body and MCP tool argument now rejects a field it does not
   define instead of dropping it. A misspelled or guessed field, or one a client
   cached from a newer or older schema, now fails with a 422 or a tool error that
