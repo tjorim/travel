@@ -64,6 +64,11 @@ _IDENTIFYING = (
 )
 
 
+def is_city_level(location: Location) -> bool:
+    """Whether a location names nothing but its area, like an undecided stay's."""
+    return all(getattr(location, field) is None for field in _IDENTIFYING)
+
+
 def area_location(session: Session, trip_id: str, area: Area) -> Location:
     """The one location that means just "in this area", created on first use.
 

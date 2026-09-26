@@ -6,6 +6,20 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Duplicate locations and areas can be merged, and unused areas and locations deleted,
+  over the API and MCP. `POST /api/trips/{id}/locations/merge` and the
+  `merge_locations` tool preview, per duplicate, how many visits, stays, routes
+  and reisupdates would move and which audiences would lose a duplicate the
+  kept location does not reach; with `confirm` they repoint every reference in
+  one transaction, delete the duplicates and record a `location.merge` audit
+  event with the counts. `DELETE /api/trips/{id}/locations/{location_id}` and
+  the `delete_location` tool refuse while anything still uses the location;
+  the `delete_area` tool wraps the existing area delete with the same rule.
+  `POST /api/trips/{id}/areas/merge` and the `merge_areas` tool fold duplicate
+  areas the same way: locations, visits, route ends and reisupdates move to the
+  kept area, recorded as an `area.merge` event. The preview also lists the
+  locations that only name the city, so those duplicates can be merged next.
+  ([#188](https://github.com/tjorim/travel/issues/188))
 - Visits have an owner-only `status`: `idea`, `planned` (the default) or
   `confirmed`. It is never part of a shared visit, so planning state no longer
   needs a "· concept" marker in a title or area label that visitors see. Areas

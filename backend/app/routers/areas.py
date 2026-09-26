@@ -8,11 +8,23 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from timezonefinder import TimezoneFinder
 
+from ..access import receivers, trip_audiences
+from ..audit import record_audit_event
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Area, Location, Route, TravelUpdate, Visit
+from ..models import Area, AuditEventKind, AuditTargetType, Location, Route, TravelUpdate, Visit
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
-from ..schemas import AreaInput, AreaResponse, AreaSuggestion, AreaSuggestRequest, AreaUpdate
+from ..schemas import (
+    AreaInput,
+    AreaMergeDuplicate,
+    AreaMergeResult,
+    AreaResponse,
+    AreaSuggestion,
+    AreaSuggestRequest,
+    AreaUpdate,
+    MergeRequest,
+)
+from .placement import is_city_level
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["areas"])
@@ -153,3 +165,114 @@ def delete_area(trip_id: str, area_id: str, session: SessionDep, subject: Subjec
     session.delete(area)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _area_referencing(session: Session, trip_id: str, area_id: str) -> dict[str, list]:
+    """Every record filed under this area, by kind."""
+
+    def rows(model, *conditions) -> list:
+        return list(session.scalars(select(model).where(model.trip_id == trip_id, *conditions)))
+
+    return {
+        "locations": rows(Location, Location.area_id == area_id),
+        "visits": rows(Visit, Visit.area_id == area_id),
+        "routes": rows(Route, (Route.departure_area_id == area_id) | (Route.arrival_area_id == area_id)),
+        "travel_updates": rows(TravelUpdate, TravelUpdate.area_id == area_id),
+    }
+
+
+def merge_areas(trip_id: str, payload: MergeRequest, session: Session, subject: str) -> AreaMergeResult:
+    """Preview, or with ``confirm`` apply, folding duplicate areas into one kept area.
+
+    Every location, visit, route end and reisupdate filed under a duplicate
+    moves to the kept area in one transaction (stays follow their location),
+    and then the duplicates are deleted. The kept area keeps its own label,
+    point, time zone and visibility. Afterwards its locations sit together, so
+    duplicates among them can be folded with ``merge_locations``."""
+    trip = owned_trip(session, trip_id, subject)
+    keep = owned_area(session, trip.id, payload.keep_id)
+    duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
+    if keep.id in duplicate_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="keep_id cannot also be a duplicate"
+        )
+    duplicates = [owned_area(session, trip.id, duplicate_id) for duplicate_id in duplicate_ids]
+    audiences = trip_audiences(session, trip.id)
+    kept_by = receivers("area", keep, audiences)
+    summaries: list[AreaMergeDuplicate] = []
+    warnings: list[str] = []
+    moves: list[tuple[Area, dict[str, list]]] = []
+    for duplicate in duplicates:
+        found = _area_referencing(session, trip.id, duplicate.id)
+        moves.append((duplicate, found))
+        narrowed = sorted(receivers("area", duplicate, audiences) - kept_by)
+        if narrowed:
+            warnings.append(
+                f"{duplicate.label} reaches {', '.join(narrowed)} but the kept area does not; "
+                "after the merge they no longer see it. Share the kept area first to avoid that."
+            )
+        summaries.append(
+            AreaMergeDuplicate(
+                id=duplicate.id,
+                label=duplicate.label,
+                narrowed_audiences=narrowed,
+                **{kind: len(rows) for kind, rows in found.items()},
+            )
+        )
+    merged_locations = [
+        *session.scalars(select(Location).where(Location.trip_id == trip.id, Location.area_id == keep.id)),
+        *(location for _, found in moves for location in found["locations"]),
+    ]
+    city_level = [location.id for location in merged_locations if is_city_level(location)]
+    if len(city_level) < 2:
+        city_level = []
+    else:
+        warnings.append(
+            f"{len(city_level)} locations in the merged area name only the city; "
+            "fold them into one with merge_locations."
+        )
+    result = AreaMergeResult(
+        keep_id=keep.id,
+        applied=payload.confirm,
+        duplicates=summaries,
+        city_level_location_ids=city_level,
+        warnings=warnings,
+    )
+    if not payload.confirm:
+        return result
+    for duplicate, found in moves:
+        for record in (*found["locations"], *found["visits"]):
+            record.area = keep
+        for update in found["travel_updates"]:
+            update.chosen_area = keep
+        for route in found["routes"]:
+            for end in ("departure", "arrival"):
+                if getattr(route, f"{end}_area_id") == duplicate.id:
+                    setattr(route, f"{end}_area", keep)
+    session.flush()
+    for duplicate, _ in moves:
+        session.delete(duplicate)
+    record_audit_event(
+        session,
+        trip_id=trip.id,
+        actor_subject=subject,
+        kind=AuditEventKind.AREA_MERGE,
+        target_type=AuditTargetType.AREA,
+        target_id=keep.id,
+        details={
+            "merged": [
+                {"id": summary.id, **summary.model_dump(include={"locations", "visits", "routes", "travel_updates"})}
+                for summary in summaries
+            ]
+        },
+    )
+    return result
+
+
+@router.post("/areas/merge", response_model=AreaMergeResult)
+def merge_areas_endpoint(
+    trip_id: str, payload: MergeRequest, session: SessionDep, subject: SubjectDep
+) -> AreaMergeResult:
+    result = merge_areas(trip_id, payload, session, subject)
+    session.commit()
+    return result

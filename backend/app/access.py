@@ -10,7 +10,7 @@ when a record is deleted or stops being ``custom``.
 from collections.abc import Callable
 from typing import Any
 
-from sqlalchemy import event, inspect
+from sqlalchemy import event, inspect, select
 from sqlalchemy.orm import Session
 
 from .live_scopes import remove_from_live_scopes
@@ -18,9 +18,12 @@ from .models import (
     Area,
     DerivativePurpose,
     DerivativeReviewState,
+    LinkState,
     Location,
     MediaDerivative,
+    PublicSurface,
     Route,
+    ShareLink,
     Stay,
     TravelUpdate,
     Trip,
@@ -83,6 +86,33 @@ def is_delivered(kind: str, record: Any, chosen: set[str]) -> bool:
     if sharing_blocker(kind, record) is not None:
         return False
     return record.visibility == Visibility.EVERYONE or (record.visibility == Visibility.CUSTOM and record.id in chosen)
+
+
+def trip_audiences(session: Session, trip_id: str) -> list[tuple[str, dict]]:
+    """Each audience that can still receive this trip's records: its name and live scope."""
+    audiences = []
+    if (surface := session.get(PublicSurface, trip_id)) is not None:
+        audiences.append(("public page", surface.scope))
+    for link in session.scalars(
+        select(ShareLink)
+        .where(ShareLink.trip_id == trip_id, ShareLink.state.in_((LinkState.DRAFT, LinkState.ACTIVE)))
+        .order_by(ShareLink.created_at)
+    ):
+        audiences.append((f"link {link.label!r}", link.scope))
+    return audiences
+
+
+def receivers(kind: str, record: Any, audiences: list[tuple[str, dict]]) -> set[str]:
+    """The names of the audiences this record reaches, by the rule delivery applies."""
+    return {
+        name
+        for name, scope in audiences
+        if is_delivered(
+            kind,
+            record,
+            {item.get("id") for item in scope.get("items", []) if item.get("kind") == kind},
+        )
+    }
 
 
 def set_visibility(trip: Trip, kind: str, record_id: str, visibility: Visibility) -> Any | None:

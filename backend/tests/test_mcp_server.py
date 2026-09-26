@@ -629,3 +629,60 @@ def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_l
     empty = {warning["audience"] for warning in warnings if warning["code"] == "live_audience_receives_nothing"}
     assert empty == {"public", "Family"}
     assert not any(warning["code"] == "planning_marker_visible" for warning in warnings)
+
+
+def test_duplicates_merge_and_unused_areas_and_locations_delete_over_mcp(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Tidy"))["id"]
+    keep = backend.save_location(trip_id, schemas.LocationInput(display_name="TPE Airport", locality="Taoyuan"))
+    duplicate = backend.save_location(trip_id, schemas.LocationInput(display_name="Taoyuan airport"))
+    backend.create_stay(
+        trip_id,
+        schemas.StayCreate(
+            location=schemas.LocationInput(existing_location_id=duplicate["id"]),
+            check_in_date="2054-04-01",
+            check_out_date="2054-04-02",
+        ),
+    )
+    unassigned = duplicate["area_id"]
+
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.delete_location(trip_id, duplicate["id"])
+    with pytest.raises(ValueError, match="1 verblijf"):
+        backend.delete_location(trip_id, duplicate["id"], confirm=True)
+    with pytest.raises(ValueError, match="1 locatie"):
+        backend.delete_area(trip_id, unassigned, confirm=True)
+
+    preview = backend.merge_locations(trip_id, keep["id"], [duplicate["id"]])
+    assert preview["applied"] is False and preview["duplicates"][0]["stays"] == 1
+    assert len(backend.list_locations(trip_id)) == 2
+
+    merged = backend.merge_locations(trip_id, keep["id"], [duplicate["id"]], confirm=True)
+    assert merged["applied"] is True
+    assert [location["id"] for location in backend.list_locations(trip_id)] == [keep["id"]]
+    assert backend.list_stays(trip_id)[0]["location_id"] == keep["id"]
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.delete_area(trip_id, unassigned)
+    assert backend.delete_area(trip_id, unassigned, confirm=True) == {"status": "deleted"}
+
+    with TestingSessionLocal() as session:
+        actions = [event.action for event in session.scalars(select(McpAuditEvent).order_by(McpAuditEvent.occurred_at))]
+    assert "location.merge_preview" in actions and "location.merge" in actions and "area.delete" in actions
+    assert MCP_TOOL_CAPABILITIES["merge_locations"] == {"effect": "write", "requires_confirmation": True}
+
+
+def test_duplicate_areas_merge_over_mcp(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Areas"))["id"]
+    keep = backend.save_area(trip_id, schemas.AreaInput(label="Taipei"))
+    duplicate = backend.save_area(trip_id, schemas.AreaInput(label="Taipei City"))
+    backend.save_location(trip_id, schemas.LocationInput(display_name="Hotel", area_id=duplicate["id"]))
+
+    preview = backend.merge_areas(trip_id, keep["id"], [duplicate["id"]])
+    assert preview["applied"] is False and preview["duplicates"][0]["locations"] == 1
+    assert len(backend.list_areas(trip_id)) == 2
+    with pytest.raises(ValueError, match="keep_id"):
+        backend.merge_areas(trip_id, keep["id"], [keep["id"]], confirm=True)
+
+    assert backend.merge_areas(trip_id, keep["id"], [duplicate["id"]], confirm=True)["applied"] is True
+    assert [area["id"] for area in backend.list_areas(trip_id)] == [keep["id"]]
+    assert backend.list_locations(trip_id)[0]["area_id"] == keep["id"]
+    assert MCP_TOOL_CAPABILITIES["merge_areas"] == {"effect": "write", "requires_confirmation": True}

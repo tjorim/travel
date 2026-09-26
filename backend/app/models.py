@@ -180,11 +180,17 @@ class AuditEventKind(StrEnum):
     SHARE_LINK_REVOKE = "share_link.revoke"
     SHARE_LINK_ROTATE = "share_link.rotate"
     SHARE_LINK_EXPIRE = "share_link.expire"
+    # Merging duplicate locations or areas can narrow what an audience
+    # receives, so it is recorded with the other audience-affecting changes.
+    LOCATION_MERGE = "location.merge"
+    AREA_MERGE = "area.merge"
 
 
 class AuditTargetType(StrEnum):
     PUBLIC_SURFACE = "public_surface"
     SHARE_LINK = "share_link"
+    LOCATION = "location"
+    AREA = "area"
 
 
 def _enum_column(enum_cls: type[StrEnum], name: str):

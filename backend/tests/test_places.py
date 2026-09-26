@@ -1,9 +1,11 @@
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 from test_publication import activate, client_for, create_trip, engine, scope, share
 
 from app.config import Settings
 from app.database import Base
 from app.main import app
+from app.models import TravelUpdate
 from app.places.search import CachedPlaceSearchService
 from app.routers.places import get_place_search_service
 
@@ -458,3 +460,174 @@ def test_an_update_and_a_stay_show_their_location_only_when_that_location_is_sha
     # The location links to its directions through the same marker the places list uses.
     assert shown["location"]["id"] in {entry["id"] for entry in document["navigation"]}
     assert "Beitou Hot Spring, Taipei" not in str(document)
+
+
+def test_duplicate_locations_merge_every_reference_into_the_kept_one() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    keep = owner.post(
+        f"{base}/locations", json={"display_name": "Taipei Main Station", "locality": "Taipei", "country_code": "TW"}
+    ).json()
+    same_area = owner.post(
+        f"{base}/locations",
+        json={"display_name": "Taipei Main Stn", "label": "Station", "locality": "Taipei", "country_code": "TW"},
+    ).json()
+    unassigned = owner.post(f"{base}/locations", json={"display_name": "TPE main station"}).json()
+    areas = {area["label"]: area["id"] for area in owner.get(f"{base}/areas").json()}
+    assert unassigned["area_id"] == areas["Unassigned"] != keep["area_id"] == same_area["area_id"]
+
+    at = {"existing_location_id": same_area["id"]}
+    at_unassigned = {"existing_location_id": unassigned["id"]}
+    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Arrive", "location": at_unassigned}).json()
+    stay = owner.post(
+        f"{base}/stays", json={"location": at, "check_in_date": "2054-04-01", "check_out_date": "2054-04-03"}
+    ).json()
+    route = owner.post(
+        f"{base}/routes", json={"mode": "train", "departure_location": at, "arrival_location": at_unassigned}
+    ).json()
+    update = owner.post(
+        f"{base}/travel-updates",
+        json={"occurred_at": "2054-04-01T10:00:00Z", "title": "Arrived", "body": "Here.", "location": at},
+    ).json()
+    # Only the duplicate is shared with the family link; the kept location is private.
+    family = owner.post(
+        f"{base}/share-links",
+        json={"label": "Family", "scope": scope(share(owner, trip["id"], "location", same_area["id"]))},
+    ).json()
+
+    request = {"keep_id": keep["id"], "duplicate_ids": [same_area["id"], unassigned["id"]]}
+    preview = owner.post(f"{base}/locations/merge", json=request)
+    assert preview.status_code == 200, preview.text
+    body = preview.json()
+    assert body["applied"] is False
+    counts = {
+        item["id"]: (item["visits"], item["stays"], item["routes"], item["travel_updates"])
+        for item in body["duplicates"]
+    }
+    assert counts == {same_area["id"]: (0, 1, 1, 1), unassigned["id"]: (1, 0, 1, 0)}
+    narrowed = {item["id"]: item["narrowed_audiences"] for item in body["duplicates"]}
+    assert narrowed == {same_area["id"]: ["link 'Family'"], unassigned["id"]: []}
+    assert any("Family" in warning for warning in body["warnings"])
+    assert any("area" in warning for warning in body["warnings"])
+    # The preview changed nothing.
+    assert len(owner.get(f"{base}/locations").json()) == 3
+    assert owner.get(f"{base}/stays/{stay['id']}").json()["location"]["id"] == same_area["id"]
+    assert [event["kind"] for event in owner.get(f"{base}/audit-events").json()] == ["share_link.create"]
+
+    # A location in use cannot simply be deleted.
+    refused = owner.delete(f"{base}/locations/{same_area['id']}")
+    assert refused.status_code == 409
+    assert all(part in refused.json()["detail"] for part in ("1 verblijf", "1 route", "1 reisupdate"))
+
+    # Ids from another trip, an unknown owner and keeping a duplicate are refused.
+    other_trip = create_trip(owner, "Other")
+    foreign = owner.post(f"/api/trips/{other_trip['id']}/locations", json={"display_name": "Kyoto Station"}).json()
+    assert owner.post(f"{base}/locations/merge", json={**request, "duplicate_ids": [foreign["id"]]}).status_code == 404
+    assert owner.post(f"{base}/locations/merge", json={**request, "keep_id": foreign["id"]}).status_code == 404
+    assert owner.post(f"{base}/locations/merge", json={**request, "duplicate_ids": [keep["id"]]}).status_code == 422
+    assert client_for("owner-2").post(f"{base}/locations/merge", json=request).status_code == 404
+    owner = client_for("owner-1")
+
+    applied = owner.post(f"{base}/locations/merge", json={**request, "confirm": True})
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["applied"] is True
+    assert [location["id"] for location in owner.get(f"{base}/locations").json()] == [keep["id"]]
+    moved_visit = owner.get(f"{base}/visits/{visit['id']}").json()
+    assert (moved_visit["location"]["id"], moved_visit["area"]["id"]) == (keep["id"], keep["area_id"])
+    assert owner.get(f"{base}/stays/{stay['id']}").json()["location"]["id"] == keep["id"]
+    moved_route = owner.get(f"{base}/routes/{route['id']}").json()
+    assert moved_route["departure_location"]["id"] == moved_route["arrival_location"]["id"] == keep["id"]
+    assert moved_route["arrival_area"]["id"] == keep["area_id"]
+    with Session(engine) as session:
+        assert session.get(TravelUpdate, update["id"]).location_id == keep["id"]
+    # The deleted duplicate leaves the link's scope.
+    assert owner.get(f"{base}/share-links/{family['id']}").json()["scope"]["items"] == []
+    events = [event for event in owner.get(f"{base}/audit-events").json() if event["kind"] == "location.merge"]
+    assert [(event["kind"], event["target_type"], event["target_id"]) for event in events] == [
+        ("location.merge", "location", keep["id"])
+    ]
+    assert {item["id"]: item["stays"] for item in events[0]["details"]["merged"]} == {
+        same_area["id"]: 1,
+        unassigned["id"]: 0,
+    }
+
+    # The emptied "Unassigned" area can now go; the kept location cannot, an unused one can.
+    assert owner.delete(f"{base}/areas/{areas['Unassigned']}").status_code == 204
+    assert owner.delete(f"{base}/locations/{keep['id']}").status_code == 409
+    spare = owner.post(f"{base}/locations", json={"display_name": "Spare", "locality": "Taipei"}).json()
+    assert owner.delete(f"{base}/locations/{spare['id']}").status_code == 204
+    assert owner.delete(f"{base}/locations/{spare['id']}").status_code == 404
+
+
+def test_duplicate_areas_merge_so_their_locations_can_be_merged_too() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    keep = owner.post(f"{base}/areas", json={"label": "Taipei", "timezone": "Asia/Taipei"}).json()
+    duplicate = owner.post(f"{base}/areas", json={"label": "Taipei City"}).json()
+
+    # Each area has an undecided stay, so each holds its own city-level location.
+    kept_stay, moved_stay = (
+        owner.post(
+            f"{base}/stays", json={"area_id": area["id"], "check_in_date": day, "check_out_date": "2054-04-09"}
+        ).json()
+        for area, day in ((keep, "2054-04-01"), (duplicate, "2054-04-05"))
+    )
+    hotel = owner.post(
+        f"{base}/locations", json={"display_name": "Hotel", "label": "Hotel", "area_id": duplicate["id"]}
+    ).json()
+    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Walk", "area_id": duplicate["id"]}).json()
+    route = owner.post(
+        f"{base}/routes", json={"mode": "bus", "departure_area_id": duplicate["id"], "arrival_area_id": keep["id"]}
+    ).json()
+    update = owner.post(
+        f"{base}/travel-updates",
+        json={"occurred_at": "2054-04-05T10:00:00Z", "title": "Here", "body": "Hi.", "area_id": duplicate["id"]},
+    ).json()
+    family = owner.post(
+        f"{base}/share-links",
+        json={"label": "Family", "scope": scope(share(owner, trip["id"], "area", duplicate["id"]))},
+    ).json()
+
+    request = {"keep_id": keep["id"], "duplicate_ids": [duplicate["id"]]}
+    preview = owner.post(f"{base}/areas/merge", json=request)
+    assert preview.status_code == 200, preview.text
+    body = preview.json()
+    assert body["applied"] is False
+    (summary,) = body["duplicates"]
+    assert (summary["locations"], summary["visits"], summary["routes"], summary["travel_updates"]) == (2, 1, 1, 1)
+    assert summary["narrowed_audiences"] == ["link 'Family'"]
+    city_level = {kept_stay["location"]["id"], moved_stay["location"]["id"]}
+    assert set(body["city_level_location_ids"]) == city_level
+    assert hotel["id"] not in body["city_level_location_ids"]
+    assert len(owner.get(f"{base}/areas").json()) == 2
+
+    other_trip = create_trip(owner, "Other")
+    foreign = owner.post(f"/api/trips/{other_trip['id']}/areas", json={"label": "Taipei"}).json()
+    assert owner.post(f"{base}/areas/merge", json={**request, "duplicate_ids": [foreign["id"]]}).status_code == 404
+    assert owner.post(f"{base}/areas/merge", json={**request, "duplicate_ids": [keep["id"]]}).status_code == 422
+    assert client_for("owner-2").post(f"{base}/areas/merge", json=request).status_code == 404
+    owner = client_for("owner-1")
+
+    applied = owner.post(f"{base}/areas/merge", json={**request, "confirm": True})
+    assert applied.status_code == 200, applied.text
+    assert [area["id"] for area in owner.get(f"{base}/areas").json()] == [keep["id"]]
+    assert {location["area_id"] for location in owner.get(f"{base}/locations").json()} == {keep["id"]}
+    assert owner.get(f"{base}/stays/{moved_stay['id']}").json()["area"]["id"] == keep["id"]
+    assert owner.get(f"{base}/visits/{visit['id']}").json()["area"]["id"] == keep["id"]
+    assert owner.get(f"{base}/routes/{route['id']}").json()["departure_area"]["id"] == keep["id"]
+    with Session(engine) as session:
+        assert session.get(TravelUpdate, update["id"]).area_id == keep["id"]
+    assert owner.get(f"{base}/share-links/{family['id']}").json()["scope"]["items"] == []
+    events = [event for event in owner.get(f"{base}/audit-events").json() if event["kind"] == "area.merge"]
+    assert [(event["target_type"], event["target_id"]) for event in events] == [("area", keep["id"])]
+    assert events[0]["details"]["merged"][0]["locations"] == 2
+
+    # Now in one area, the two city-level locations fold into one.
+    folded = owner.post(
+        f"{base}/locations/merge",
+        json={"keep_id": kept_stay["location"]["id"], "duplicate_ids": [moved_stay["location"]["id"]], "confirm": True},
+    )
+    assert folded.status_code == 200, folded.text
+    assert owner.get(f"{base}/stays/{moved_stay['id']}").json()["location"]["id"] == kept_stay["location"]["id"]

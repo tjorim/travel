@@ -2,15 +2,34 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import receivers, trip_audiences
+from ..audit import record_audit_event
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Location, Route, Visibility, Visit
+from ..models import (
+    AuditEventKind,
+    AuditTargetType,
+    Location,
+    Route,
+    Stay,
+    TravelUpdate,
+    Visibility,
+    Visit,
+)
 from ..navigation import location_navigation_url
-from ..schemas import LocationInput, LocationResponse, LocationUpdate, NavigationResponse
+from ..schemas import (
+    LocationInput,
+    LocationMergeDuplicate,
+    LocationMergeResult,
+    LocationResponse,
+    LocationUpdate,
+    MergeRequest,
+    NavigationResponse,
+)
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 
@@ -92,3 +111,132 @@ def owner_navigation(location_id: str, trip_id: str, session: SessionDep, subjec
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location has no navigation target"
         )
     return NavigationResponse(url=url, exact=True)
+
+
+def _referencing(session: Session, trip_id: str, location_id: str) -> dict[str, list]:
+    """Every record that points at this location, by kind."""
+
+    def rows(model, *conditions) -> list:
+        return list(session.scalars(select(model).where(model.trip_id == trip_id, *conditions)))
+
+    return {
+        "visits": rows(Visit, Visit.location_id == location_id),
+        "stays": rows(Stay, Stay.location_id == location_id),
+        "routes": rows(
+            Route, (Route.departure_location_id == location_id) | (Route.arrival_location_id == location_id)
+        ),
+        "travel_updates": rows(TravelUpdate, TravelUpdate.location_id == location_id),
+    }
+
+
+_REFERENCE_NAMES = {
+    "visits": ("bezoek", "bezoeken"),
+    "stays": ("verblijf", "verblijven"),
+    "routes": ("route", "routes"),
+    "travel_updates": ("reisupdate", "reisupdates"),
+}
+
+
+@router.delete("/locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_location(trip_id: str, location_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+    """Delete an unused location; refuse while any visit, stay, route or reisupdate still points at it."""
+    location = owned_location(session, trip_id, subject, location_id)
+    references = [
+        f"{len(found)} {_REFERENCE_NAMES[kind][0] if len(found) == 1 else _REFERENCE_NAMES[kind][1]}"
+        for kind, found in _referencing(session, trip_id, location.id).items()
+        if found
+    ]
+    if references:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Deze locatie wordt nog gebruikt door: {', '.join(references)}. "
+            "Pas of verwijder die eerst, of voeg de locatie samen met een andere.",
+        )
+    session.delete(location)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def merge_locations(trip_id: str, payload: MergeRequest, session: Session, subject: str) -> LocationMergeResult:
+    """Preview, or with ``confirm`` apply, folding duplicates into one kept location.
+
+    Every visit, stay, route end and reisupdate at a duplicate moves to the kept
+    location in one transaction, and then the duplicates are deleted. The kept
+    location keeps its own name, visibility and area; visits and route ends move
+    into that area with it."""
+    keep = owned_location(session, trip_id, subject, payload.keep_id)
+    duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
+    if keep.id in duplicate_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="keep_id cannot also be a duplicate"
+        )
+    duplicates = [owned_location(session, trip_id, subject, duplicate_id) for duplicate_id in duplicate_ids]
+    audiences = trip_audiences(session, trip_id)
+    kept_by = receivers("location", keep, audiences)
+    summaries: list[LocationMergeDuplicate] = []
+    warnings: list[str] = []
+    moves: list[tuple[Location, dict[str, list]]] = []
+    for duplicate in duplicates:
+        found = _referencing(session, trip_id, duplicate.id)
+        moves.append((duplicate, found))
+        narrowed = sorted(receivers("location", duplicate, audiences) - kept_by)
+        name = duplicate.label or duplicate.display_name or duplicate.id
+        if narrowed:
+            warnings.append(
+                f"{name} reaches {', '.join(narrowed)} but the kept location does not; "
+                "after the merge they no longer see it. Share the kept location first to avoid that."
+            )
+        if duplicate.area_id != keep.area_id and (found["visits"] or found["routes"]):
+            warnings.append(f"Visits and routes at {name} move to the kept location's area.")
+        summaries.append(
+            LocationMergeDuplicate(
+                id=duplicate.id,
+                label=duplicate.label,
+                display_name=duplicate.display_name,
+                area_id=duplicate.area_id,
+                narrowed_audiences=narrowed,
+                **{kind: len(rows) for kind, rows in found.items()},
+            )
+        )
+    result = LocationMergeResult(keep_id=keep.id, applied=payload.confirm, duplicates=summaries, warnings=warnings)
+    if not payload.confirm:
+        return result
+    for duplicate, found in moves:
+        for visit in found["visits"]:
+            visit.location = keep
+        for stay in found["stays"]:
+            stay.location = keep
+        for update in found["travel_updates"]:
+            update.location = keep
+        for route in found["routes"]:
+            for end in ("departure", "arrival"):
+                if getattr(route, f"{end}_location_id") == duplicate.id:
+                    setattr(route, f"{end}_location", keep)
+    session.flush()
+    _carry_links(session, keep)
+    for duplicate, _ in moves:
+        session.delete(duplicate)
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind.LOCATION_MERGE,
+        target_type=AuditTargetType.LOCATION,
+        target_id=keep.id,
+        details={
+            "merged": [
+                {"id": summary.id, **summary.model_dump(include={"visits", "stays", "routes", "travel_updates"})}
+                for summary in summaries
+            ]
+        },
+    )
+    return result
+
+
+@router.post("/locations/merge", response_model=LocationMergeResult)
+def merge_locations_endpoint(
+    trip_id: str, payload: MergeRequest, session: SessionDep, subject: SubjectDep
+) -> LocationMergeResult:
+    result = merge_locations(trip_id, payload, session, subject)
+    session.commit()
+    return result

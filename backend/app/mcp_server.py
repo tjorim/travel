@@ -709,6 +709,58 @@ class TravelMcpBackend:
             lambda x: _model(x, schemas.AreaResponse),
         )
 
+    def delete_area(self, trip_id: str, area_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete an unused area after explicit confirmation. Refused while a visit, reisupdate, location or route still uses it: move or merge those first."""
+        return self._call(
+            "area.delete",
+            "area",
+            area_id,
+            trip_id,
+            lambda s, sub: areas.delete_area(trip_id, area_id, s, sub),
+            lambda _: {"status": "deleted"},
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def merge_areas(
+        self, trip_id: str, keep_id: str, duplicate_ids: list[str], confirm: bool = False
+    ) -> dict[str, Any]:
+        """Fold duplicate areas into keep_id: every location, visit, route end and reisupdate filed under a duplicate moves to keep_id (stays follow their location), then the duplicates are deleted, in one transaction. keep_id keeps its label, point, time zone and visibility. Without confirm=true it only previews the counts per duplicate, warns when a duplicate reaches an audience the kept area does not, and lists city_level_location_ids: locations that only name the city and would then be duplicates, to fold with merge_locations afterwards. Review that preview, then repeat with confirm=true."""
+        payload = schemas.MergeRequest(keep_id=keep_id, duplicate_ids=duplicate_ids, confirm=confirm)
+        return self._call(
+            "area.merge" if confirm else "area.merge_preview",
+            "area",
+            keep_id,
+            trip_id,
+            lambda s, sub: areas.merge_areas(trip_id, payload, s, sub),
+        )
+
+    def delete_location(self, trip_id: str, location_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete an unused location after explicit confirmation. Refused, naming what still uses it, while a visit, stay, route or reisupdate points at it; use merge_locations to fold a duplicate into another location instead."""
+        return self._call(
+            "location.delete",
+            "location",
+            location_id,
+            trip_id,
+            lambda s, sub: locations.delete_location(trip_id, location_id, s, sub),
+            lambda _: {"status": "deleted"},
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def merge_locations(
+        self, trip_id: str, keep_id: str, duplicate_ids: list[str], confirm: bool = False
+    ) -> dict[str, Any]:
+        """Fold duplicate locations into keep_id: every visit, stay, route end and reisupdate at a duplicate moves to keep_id, then the duplicates are deleted, in one transaction. Without confirm=true it only previews the counts per duplicate and warns when a duplicate reaches an audience the kept location does not (the merge keeps keep_id's name, visibility and area). Review that preview, then repeat with confirm=true."""
+        payload = schemas.MergeRequest(keep_id=keep_id, duplicate_ids=duplicate_ids, confirm=confirm)
+        return self._call(
+            "location.merge" if confirm else "location.merge_preview",
+            "location",
+            keep_id,
+            trip_id,
+            lambda s, sub: locations.merge_locations(trip_id, payload, s, sub),
+        )
+
     def update_location(self, trip_id: str, location_id: str, payload: schemas.LocationUpdate) -> dict[str, Any]:
         """Give a location its public name (a location cannot be shared without one), or move it to another area; its routes and visits move along."""
         return self._call(
@@ -1590,6 +1642,8 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
             "rotate_share_link",
             "approve_media_derivative",
             "complete_media_import_session",
+            "merge_locations",
+            "merge_areas",
         },
     }
     for name in _TOOL_NAMES

@@ -136,6 +136,59 @@ class LocationUpdate(BaseModel):
     share_address: bool | None = None
 
 
+class MergeRequest(BaseModel):
+    """Fold duplicate locations or areas into ``keep_id``. Without ``confirm`` it only previews."""
+
+    keep_id: str = Field(min_length=1, max_length=32)
+    duplicate_ids: list[str] = Field(min_length=1, max_length=50)
+    confirm: bool = False
+
+
+class LocationMergeDuplicate(BaseModel):
+    """What merging one duplicate moves to the kept location, and what it may hide."""
+
+    id: str
+    label: str | None
+    display_name: str | None
+    area_id: str
+    visits: int
+    stays: int
+    routes: int
+    travel_updates: int
+    # Audiences ("public page" or a link's label) that receive this duplicate
+    # but not the kept location, so the merge would narrow what they see.
+    narrowed_audiences: list[str]
+
+
+class LocationMergeResult(BaseModel):
+    keep_id: str
+    applied: bool
+    duplicates: list[LocationMergeDuplicate]
+    warnings: list[str]
+
+
+class AreaMergeDuplicate(BaseModel):
+    """What merging one duplicate area moves to the kept area, and what it may hide."""
+
+    id: str
+    label: str
+    locations: int
+    visits: int
+    routes: int
+    travel_updates: int
+    narrowed_audiences: list[str]
+
+
+class AreaMergeResult(BaseModel):
+    keep_id: str
+    applied: bool
+    duplicates: list[AreaMergeDuplicate]
+    # Locations in the merged area that only name the city, and so are likely
+    # duplicates of each other: candidates for merge_locations.
+    city_level_location_ids: list[str]
+    warnings: list[str]
+
+
 class LocationResponse(LocationFields):
     id: str
     visibility: Visibility
