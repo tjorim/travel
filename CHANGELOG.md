@@ -4,9 +4,17 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Added
+
+- Google Photos can be connected from Instellingen with OAuth consent and PKCE.
+  Access and refresh tokens persist encrypted in the application database,
+  access tokens refresh during imports, and disconnect revokes Google's token.
+  Providers without complete server credentials remain hidden. The
+  `provider_secrets` table is created by the not-yet-deployed revision 001.
+
 ### Changed
 
-- The media import buttons and the provider settings now follow what the server offers: GoPro Cloud is hidden until `TRAVEL_GOPRO_CLOUD_ENABLED` is set, and a provider the owner has not connected is disabled with a pointer to Instellingen. `GET /provider-tokens` reports `available` for each provider.
+- The media import buttons and provider settings follow `GET /provider-tokens` availability: Google Photos needs server OAuth credentials and an encryption key; GoPro Cloud stays hidden pending its beta OAuth contract. An available but unconnected provider is disabled in imports with a pointer to Instellingen.
 - Made the place vocabulary one set of words and dropped raw GPS tracks. An
   *area* (*gebied*) is a city or region and a *location* (*locatie*) is an
   address-level place, or just a city, filed under exactly one area. They are

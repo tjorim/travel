@@ -595,6 +595,13 @@ def upgrade() -> None:
     )
     op.execute("DROP TABLE public.recorded_tracks")
     op.execute("DROP TYPE public.travel_track_kind")
+    op.create_table(
+        "provider_secrets",
+        sa.Column("subject", sa.String(255), primary_key=True),
+        sa.Column("provider", sa.String(64), primary_key=True),
+        sa.Column("kind", sa.String(32), primary_key=True),
+        sa.Column("ciphertext", sa.Text(), nullable=False),
+    )
 
 
 # A route that can go back to being a transport leg: it has both locations and a schedule.
@@ -667,6 +674,7 @@ CREATE TABLE public.broad_routes (
 
 
 def downgrade() -> None:
+    op.drop_table("provider_secrets")
     op.execute("CREATE TYPE public.travel_track_kind AS ENUM ('gpx', 'point_array')")
     op.execute(
         """\

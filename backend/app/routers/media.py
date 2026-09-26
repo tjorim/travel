@@ -2,11 +2,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
+from ..media import oauth
 from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_visit_candidates
 from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver, provider_available
 from ..media.service import (
@@ -314,6 +316,8 @@ def start_import_session(
     owned_trip(session, trip_id, subject)
     if provider not in IMPORT_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Not an importable provider")
+    if not provider_available(provider):
+        raise HTTPException(status_code=409, detail="Provider connection is not configured")
     try:
         created: CreatedImportSession = create_import_session(
             session, secret_store, resolver, trip_id=trip_id, subject=subject, provider=provider
@@ -370,7 +374,7 @@ def list_provider_connection_status(subject: SubjectDep, secret_store: SecretSto
         ProviderConnectionStatus(
             provider=provider,
             available=provider_available(provider),
-            connected=secret_store.get_token(subject=subject, provider=provider.value) is not None,
+            connected=secret_store.get_credential(subject=subject, provider=provider.value) is not None,
         )
         for provider in IMPORT_PROVIDERS
     ]
@@ -380,11 +384,39 @@ def list_provider_connection_status(subject: SubjectDep, secret_store: SecretSto
 def set_provider_token(
     provider: ImportProvider, payload: ProviderTokenSet, subject: SubjectDep, secret_store: SecretStoreDep
 ) -> Response:
+    if not provider_available(provider):
+        raise HTTPException(status_code=409, detail="Provider connection is not configured")
     secret_store.set_token(subject=subject, provider=provider.value, token=payload.access_token)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @provider_tokens_router.delete("/{provider}", status_code=status.HTTP_204_NO_CONTENT)
 def revoke_provider_token(provider: ImportProvider, subject: SubjectDep, secret_store: SecretStoreDep) -> Response:
-    secret_store.revoke_token(subject=subject, provider=provider.value)
+    try:
+        oauth.revoke(subject, provider.value, secret_store)
+    except ProviderUnavailableError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class OAuthComplete(BaseModel):
+    code: str
+    state: str
+
+
+@provider_tokens_router.post("/google_photos_picker/oauth/start")
+def start_google_oauth(subject: SubjectDep, secret_store: SecretStoreDep) -> dict[str, str]:
+    if not provider_available(ImportProvider.GOOGLE_PHOTOS_PICKER):
+        raise HTTPException(status_code=409, detail="Google Photos connection is not configured")
+    return {"authorization_url": oauth.begin(subject, secret_store)}
+
+
+@provider_tokens_router.post("/google_photos_picker/oauth/complete", status_code=204)
+def complete_google_oauth(payload: OAuthComplete, subject: SubjectDep, secret_store: SecretStoreDep) -> Response:
+    if not provider_available(ImportProvider.GOOGLE_PHOTOS_PICKER):
+        raise HTTPException(status_code=409, detail="Google Photos connection is not configured")
+    try:
+        oauth.complete(subject, secret_store, payload.code, payload.state)
+    except ProviderUnavailableError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return Response(status_code=204)

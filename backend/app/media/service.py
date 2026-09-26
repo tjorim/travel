@@ -40,7 +40,8 @@ from ..models import (
 )
 from ..secrets import SecretStore
 from ..storage import ObjectStorage, sha256_hex
-from .providers import MediaProvider, ProviderError, ProviderUnavailableError
+from .oauth import access_token
+from .providers import MediaProvider, ProviderError
 
 ProviderResolver = Callable[[ImportProvider], MediaProvider]
 
@@ -275,10 +276,8 @@ def create_import_session(
 ) -> CreatedImportSession:
     if provider == ImportProvider.DIRECT_DEVICE:
         raise MediaImportError("Direct device upload does not use an import session")
-    token = secret_store.get_token(subject=subject, provider=provider.value)
+    token = access_token(subject, provider.value, secret_store)
     media_provider = resolver(provider)
-    if token is None:
-        raise ProviderUnavailableError("The owner has not connected this provider")
     provider_session = media_provider.create_session(access_token=token)
     row = ImportSession(
         trip_id=trip_id,
@@ -321,10 +320,8 @@ def complete_import_session(
         import_session.state = ImportSessionState.EXPIRED
         session.commit()
         raise ImportSessionExpiredError("This import session has expired")
-    token = secret_store.get_token(subject=subject, provider=import_session.provider.value)
+    token = access_token(subject, import_session.provider.value, secret_store)
     media_provider = resolver(import_session.provider)
-    if token is None:
-        raise ProviderUnavailableError("The owner has not connected this provider")
 
     status = media_provider.poll_session(access_token=token, provider_session_id=import_session.provider_session_id)
     if not status.ready:
@@ -349,7 +346,9 @@ def complete_import_session(
             continue
 
         try:
-            data = media_provider.fetch_item(access_token=token, item=item)
+            data = media_provider.fetch_item(
+                access_token=access_token(subject, import_session.provider.value, secret_store), item=item
+            )
             if len(data) > settings.media_max_upload_bytes:
                 raise MediaImportError("Imported item exceeds the maximum size")
             stored = _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=item.content_type)

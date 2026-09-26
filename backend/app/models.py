@@ -71,6 +71,15 @@ class ImportProvider(StrEnum):
     GOPRO_CLOUD = "gopro_cloud"
 
 
+class ProviderSecret(Base):
+    __tablename__ = "provider_secrets"
+
+    subject: Mapped[str] = mapped_column(String(255), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(64), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32), primary_key=True)
+    ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class ImportSessionState(StrEnum):
     PENDING = "pending"
     COMPLETED = "completed"

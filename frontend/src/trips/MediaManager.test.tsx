@@ -142,3 +142,11 @@ it("hides a provider the server does not offer and disables one the owner has no
   expect((google as HTMLButtonElement).disabled).toBe(true);
   expect(screen.queryByRole("button", { name: "Kies in GoPro Cloud" })).toBeNull();
 });
+
+it("offers no provider import when OAuth is not configured on the server", async () => {
+  providers = [{ provider: "google_photos_picker", available: false, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  renderMedia();
+  await screen.findByText(/Providerimport is op deze server nog niet beschikbaar/);
+  expect(screen.queryByRole("button", { name: "Kies in Google Photos" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Kies in GoPro Cloud" })).toBeNull();
+});

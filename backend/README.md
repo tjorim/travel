@@ -58,8 +58,9 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/file` | Owner-only, `no-store` derivative file delivery. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions` | Start a Google Photos Picker or GoPro Cloud selection session. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
-| `GET` | `/provider-tokens` | Owner-only non-secret status for each import provider: whether this server offers it (`available`; GoPro Cloud only with `TRAVEL_GOPRO_CLOUD_ENABLED`) and whether the owner has connected it. The PWA hides an unavailable provider and disables an unconnected one. |
-| `PUT`, `DELETE` | `/provider-tokens/{provider}` | Connect or revoke the owner's Google Photos/GoPro Cloud access token (write-only; never read back). |
+| `GET` | `/provider-tokens` | Owner-only non-secret status. Google Photos is available only when OAuth credentials, redirect URI and encryption key are configured; GoPro Cloud remains unavailable pending its beta OAuth contract. |
+| `POST` | `/provider-tokens/google_photos_picker/oauth/start`, `/provider-tokens/google_photos_picker/oauth/complete` | Start Google consent and exchange the returned code, with owner-bound one-time state and PKCE. |
+| `PUT`, `DELETE` | `/provider-tokens/{provider}` | Legacy write-only manual access-token setup, or disconnect. Google OAuth disconnect also revokes its refresh token at Google. |
 
 Trip tasks accept an optional `remind_at` timestamp. `due_date` only sorts
 tasks. A scheduled worker creates owner-only inbox items at
@@ -235,12 +236,11 @@ owner-authenticated delivery route.
   (`POST .../media/imports/google_photos_picker/sessions`) that returns a
   `picker_uri` for the owner to open and select items in Google's own UI,
   then `.../sessions/{id}/complete` copies only what was selected. It
-  requires a connected token (`PUT /provider-tokens/google_photos_picker`);
-  the raw token is held only in the in-process secret store
-  (`app/secrets.py`, a placeholder for a real secret manager) and is never
-  written to the database or returned by any endpoint.
+  requires a Google connection from **Instellingen**. Encrypted access and
+  refresh tokens live in `provider_secrets` and are never returned by an API.
+  Access tokens are refreshed before use, including during long imports.
 - **GoPro Cloud import** uses the identical session/complete flow behind
-  `TRAVEL_GOPRO_CLOUD_ENABLED`; while beta access is unavailable (the
+  GoPro's beta OAuth setup; while that API contract is unavailable (the
   default), starting a session returns `409` and the rest of the product —
   direct upload included — stays fully functional.
 
@@ -289,28 +289,24 @@ infrastructure work, not part of this application-only issue.
 
 ### Connecting the Google Photos Picker provider
 
-There is no owner-facing OAuth consent screen yet — that's tracker UI work
-(`#38`), tracked separately in `#55` for the connect/refresh flow itself.
-Until then, connecting the provider is a manual, one-time-per-token setup:
+In a Google Cloud project, enable the Google Photos Picker API and register a
+web OAuth client with `TRAVEL_GOOGLE_OAUTH_REDIRECT_URI` as an authorized
+redirect URI. Set its client ID and secret in the server environment, plus a
+Fernet key generated with `python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'`.
+Keep that key outside Git and back it up with the database: losing it makes
+existing connections unreadable. The redirect URI must be the public
+`/admin/settings` page, for example `https://travel.example/admin/settings`.
+The owner then selects **Verbinden met Google** in Instellingen. The server
+requests only the Picker scope and offline access, and stores the returned
+refresh token encrypted. Revocation calls Google's token endpoint before
+removing the local credential; if Google cannot confirm it, the connection
+remains visible so the owner can retry. The legacy manual `PUT` remains for
+compatibility, but its access token has no refresh capability.
 
-1. In a Google Cloud project, enable the **Google Photos Picker API** and
-   configure an OAuth 2.0 client (see
-   [Get started with the Picker API](https://developers.google.com/photos/picker/guides/get-started-picker)).
-2. Obtain an OAuth 2.0 access token authorized for the
-   `https://www.googleapis.com/auth/photospicker.mediaitems.readonly` scope
-   — for local development, [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
-   works against a project's own client credentials.
-3. `PUT /api/provider-tokens/google_photos_picker` with
-   `{"access_token": "..."}`.
-
-A plain Google OAuth access token is short-lived (about an hour) and the
-in-process secret store (`app/secrets.py`) does not hold or use a refresh
-token, so a session started after the token expires fails with `409` and
-the owner has to repeat step 3 with a fresh token. GoPro Cloud import needs
-the same per-provider `PUT` once GoPro's beta API access and
-`TRAVEL_GOPRO_CLOUD_ENABLED` are both available — see GoPro's own beta
-developer documentation for how that token is issued, which this project
-does not control.
+GoPro Cloud remains hidden until its beta OAuth/token contract is available;
+`TRAVEL_GOPRO_CLOUD_ENABLED` alone does not expose it.
+Production credential injection and key backup are tracked in
+[tjorim/apps#240](https://github.com/tjorim/apps/issues/240).
 
 ## Configuration and local checks
 
@@ -326,7 +322,10 @@ does not control.
 | `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. Required in production; the code default is development-only. |
 | `TRAVEL_MEDIA_STORAGE_ROOT` | Filesystem root for the local object-storage adapter; production points this at the backed-up VPS media volume, never Git. |
 | `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` | Refuses a direct upload or a single imported item larger than this (default 200 MiB). |
-| `TRAVEL_GOPRO_CLOUD_ENABLED` | Enables the GoPro Cloud import adapter once beta API access is granted; `false` by default, and the product is fully usable without it. |
+| `TRAVEL_GOOGLE_OAUTH_CLIENT_ID`, `TRAVEL_GOOGLE_OAUTH_CLIENT_SECRET` | Google web OAuth credentials for Photos Picker. Both required for availability. |
+| `TRAVEL_GOOGLE_OAUTH_REDIRECT_URI` | Public `/admin/settings` URI registered with Google. Required for availability. |
+| `TRAVEL_PROVIDER_SECRET_KEY` | Fernet key encrypting owner credentials in PostgreSQL. Required for availability; back up securely. |
+| `TRAVEL_GOPRO_CLOUD_ENABLED` | Legacy beta adapter switch; GoPro remains hidden until its OAuth contract is implemented. |
 | `TRAVEL_GOOGLE_PHOTOS_PICKER_API_BASE`, `TRAVEL_GOPRO_CLOUD_API_BASE` | Provider API base URLs; overridable for testing against a sandbox. |
 | `TRAVEL_OSM_PLACE_SEARCH_PROVIDER` | Registered owner-only place-search provider; defaults to `nominatim`. |
 | `TRAVEL_OSM_PLACE_SEARCH_API_BASE`, `TRAVEL_OSM_PLACE_SEARCH_USER_AGENT` | Nominatim-compatible provider URL and required identifying user agent. |

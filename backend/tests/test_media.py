@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.auth import current_subject
+from app.config import settings
 from app.database import Base, get_session
 from app.main import app
+from app.media import oauth
 from app.media.providers import (
     ProviderError,
     ProviderMediaItem,
@@ -22,11 +24,19 @@ from app.media.providers import (
 )
 from app.media.service import delete_media_asset, delete_media_derivative, direct_upload, purge_deleted_media
 from app.models import ImportProvider, ImportSession, MediaAsset, ObjectState, StoredObject
-from app.secrets import InMemorySecretStore, get_secret_store
+from app.secrets import Credential, InMemorySecretStore, get_secret_store
 from app.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+@pytest.fixture(autouse=True)
+def configured_google(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "google_oauth_client_id", "test-client")
+    monkeypatch.setattr(settings, "google_oauth_client_secret", "test-secret")
+    monkeypatch.setattr(settings, "google_oauth_redirect_uri", "http://localhost:5173/admin/settings")
+    monkeypatch.setattr(settings, "provider_secret_key", "test-key")
 
 
 def override_session() -> Generator[Session]:
@@ -369,7 +379,7 @@ def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path)
     assert owner.get("/api/provider-tokens").json()[0] == {"provider": "google_photos_picker", "available": True, "connected": False}
 
 
-def test_gopro_cloud_is_listed_as_available_only_when_its_beta_access_is_switched_on(tmp_path: Path, monkeypatch) -> None:
+def test_provider_availability_requires_oauth_configuration(tmp_path: Path, monkeypatch) -> None:
     from app.config import settings
 
     owner = client_for("owner-1", tmp_path)
@@ -377,8 +387,16 @@ def test_gopro_cloud_is_listed_as_available_only_when_its_beta_access_is_switche
         "google_photos_picker": True,
         "gopro_cloud": False,
     }
-    monkeypatch.setattr(settings, "gopro_cloud_enabled", True)
-    assert {row["provider"]: row["available"] for row in owner.get("/api/provider-tokens").json()}["gopro_cloud"] is True
+    monkeypatch.setattr(settings, "google_oauth_client_secret", None)
+    assert {row["provider"]: row["available"] for row in owner.get("/api/provider-tokens").json()} == {
+        "google_photos_picker": False,
+        "gopro_cloud": False,
+    }
+    assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token"}).status_code == 409
+    assert owner.post("/api/provider-tokens/google_photos_picker/oauth/start").status_code == 409
+    assert owner.post("/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": "state"}).status_code == 409
+    trip = create_trip(owner)
+    assert owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions").status_code == 409
 
 
 # --- Google Photos Picker import: only explicitly selected items ------------------
@@ -433,6 +451,46 @@ def test_google_photos_picker_import_copies_selected_items_into_travel_storage(t
         stored = owner.get(asset["file_url"])
         assert stored.status_code == 200
         assert stored.content in contents.values()
+
+
+def test_google_import_refreshes_between_start_and_complete(tmp_path: Path, monkeypatch) -> None:
+    store = InMemorySecretStore()
+    owner = client_for("owner-1", tmp_path, secret_store=store)
+    trip = create_trip(owner)
+    expired = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+    store.set_credential(subject="owner-1", provider=oauth.GOOGLE, credential=Credential("stale", "refresh", expired))
+    tokens = []
+
+    class TokenCheckingProvider(FakeProvider):
+        def create_session(self, *, access_token: str) -> ProviderSession:
+            tokens.append(access_token)
+            return super().create_session(access_token=access_token)
+
+        def poll_session(self, *, access_token: str, provider_session_id: str) -> ProviderSessionStatus:
+            tokens.append(access_token)
+            return super().poll_session(access_token=access_token, provider_session_id=provider_session_id)
+
+        def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> bytes:
+            tokens.append(access_token)
+            return super().fetch_item(access_token=access_token, item=item)
+
+    items, contents = google_items()
+    use_fake_provider(TokenCheckingProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents))
+    grants = []
+
+    def refreshed(_data):
+        grants.append(True)
+        return {"access_token": f"fresh-{len(grants)}", "expires_in": 3600}
+
+    monkeypatch.setattr(oauth, "_post_token", refreshed)
+    started = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
+    assert started.status_code == 200
+    store.set_credential(subject="owner-1", provider=oauth.GOOGLE, credential=Credential("fresh-1", "refresh", expired))
+    completed = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{started.json()['id']}/complete")
+    assert completed.status_code == 200
+    assert len(completed.json()["imported"]) == 2
+    assert tokens == ["fresh-1", "fresh-2", "fresh-2", "fresh-2"]
+    assert len(grants) == 2
 
 
 def test_imported_exif_capture_time_takes_precedence_over_the_providers_own_metadata(tmp_path: Path) -> None:

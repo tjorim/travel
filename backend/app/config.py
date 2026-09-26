@@ -1,3 +1,4 @@
+from cryptography.fernet import Fernet
 from pydantic import AnyHttpUrl, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,6 +49,11 @@ class Settings(BaseSettings):
     # behind this flag so the product remains fully usable without it; no
     # code path may require it.
     gopro_cloud_enabled: bool = False
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
+    # Fernet key, kept outside Git and shared by every API process.
+    provider_secret_key: str | None = None
+    google_oauth_redirect_uri: str | None = None
     google_photos_picker_api_base: str = "https://photospicker.googleapis.com/v1"
     gopro_cloud_api_base: str = "https://api.gopro.com/cloud/v1"
 
@@ -67,6 +73,8 @@ class Settings(BaseSettings):
     def validate_no_dev_bypass_outside_development(self) -> "Settings":
         if self.dev_auth_bypass_token and self.environment != "development":
             raise ValueError("TRAVEL_DEV_AUTH_BYPASS_TOKEN must not be set outside TRAVEL_ENVIRONMENT=development.")
+        if self.provider_secret_key:
+            Fernet(self.provider_secret_key.encode())
         return self
 
 

@@ -267,9 +267,12 @@ class GoProCloudProvider:
 
 
 def provider_available(name: ImportProvider) -> bool:
-    """Whether this server offers the provider. Google Photos needs no server-side setting: it uses the
-    owner's own token. GoPro Cloud stays off until its beta access is switched on."""
-    return name != ImportProvider.GOPRO_CLOUD or settings.gopro_cloud_enabled
+    """Only configured OAuth providers can appear in owner import controls."""
+    if name == ImportProvider.GOOGLE_PHOTOS_PICKER:
+        return bool(settings.google_oauth_client_id and settings.google_oauth_client_secret
+                    and settings.google_oauth_redirect_uri and settings.provider_secret_key)
+    # GoPro's OAuth contract is still unavailable; the beta switch alone is insufficient.
+    return False
 
 
 def provider_for(name: ImportProvider) -> MediaProvider:
