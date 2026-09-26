@@ -306,9 +306,6 @@ class Trip(Base):
     media_derivatives: Mapped[list["MediaDerivative"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
     )
-    document_derivatives: Mapped[list["DocumentDerivative"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="DocumentDerivative.created_at"
-    )
 
 
 class TravelUpdateMediaAsset(Base):
@@ -873,10 +870,7 @@ class MediaDerivative(Base):
 class DocumentAsset(Base):
     """One owner-only original document.
 
-    The original object, its filename and every piece of derived private data
-    remain behind owner authentication. A shareable file is always represented
-    by a separate :class:`DocumentDerivative`; no code may project this row's
-    ``original_object_id`` to another audience.
+    The original object and its metadata remain behind owner authentication.
     """
 
     __tablename__ = "document_assets"
@@ -894,42 +888,6 @@ class DocumentAsset(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     original_object: Mapped[StoredObject] = relationship(foreign_keys=[original_object_id])
-    derivatives: Mapped[list["DocumentDerivative"]] = relationship(
-        back_populates="document_asset", cascade="all, delete-orphan"
-    )
-
-
-class DocumentDerivative(Base):
-    """An owner-supplied redacted copy plus its durable redaction manifest.
-
-    The API deliberately does not offer a transform-from-original endpoint:
-    redaction is an explicit authoring/review step. ``review_state`` starts
-    pending and is the gate that a later share-scope implementation will use.
-    """
-
-    __tablename__ = "document_derivatives"
-
-    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    document_asset_id: Mapped[str] = mapped_column(
-        ForeignKey("document_assets.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
-    redaction_manifest_object_id: Mapped[str] = mapped_column(
-        ForeignKey("stored_objects.id"), unique=True, nullable=False
-    )
-    review_state: Mapped[DerivativeReviewState] = mapped_column(
-        _enum_column(DerivativeReviewState, "travel_derivative_review_state"), default=DerivativeReviewState.PENDING
-    )
-    visibility: Mapped[Visibility] = _visibility_column()
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    trip: Mapped[Trip] = relationship(back_populates="document_derivatives")
-    document_asset: Mapped[DocumentAsset] = relationship(back_populates="derivatives")
-    object: Mapped[StoredObject] = relationship(foreign_keys=[object_id])
-    redaction_manifest_object: Mapped[StoredObject] = relationship(foreign_keys=[redaction_manifest_object_id])
-
-
 class OwnerStoredObject(Base):
     """Object-storage inventory for one owner-wide (trip-independent) file.
 

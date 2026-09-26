@@ -12,7 +12,7 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 function projection(schema_version = "travel/public-trip@1"): Projection {
   return {
     schema_version, title: "Selected trip", summary: "Shared summary", dates: null, navigation: [],
-    visits: [], places: [], updates: [], stays: [], routes: [], media: [], documents: [],
+    visits: [], places: [], updates: [], stays: [], routes: [], media: [],
   };
 }
 
@@ -104,10 +104,9 @@ it("renders every resource kind using only supplied fields", () => {
   data.routes = [{ id: "leg", mode: "flight", status: "confirmed", carrier: "EVA Air", service_reference: "BR-087", departure: { locality: "Zaventem", country_code: "BE", display_name: "Brussels Airport" }, arrival: { locality: "Taoyuan", country_code: "TW", display_name: "Taoyuan Airport" }, departs_at: "2054-04-01T09:00:00Z", arrives_at: "2054-04-01T23:00:00Z", booking_reference: "Secret booking" }];
   data.routes.push({ id: "route", label: "Shared route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] }, raw_track: "Secret track", mode: "train", departure: { label: "Shared start" }, arrival: { label: "Shared end" } });
   data.media = [{ id: "media", image: { id: "media" }, original_filename: "Secret photo" }];
-  data.documents = [{ id: "document", title: "Shared document", file: { id: "document" }, original_filename: "Secret PDF" }];
   data.navigation = [{ id: "place" }];
   const { container } = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
-  for (const value of ["Shared summary", "First stage", "Area city", "Shared place", "Region", "Shared update", "Shared story", "Maandprecisie", "Shared stay", "Area stay place", "Routes", "Vlucht", "EVA Air", "BR-087", "Zaventem", "Taoyuan", "Bevestigd", "Shared route", "Gedeelde foto’s", "Shared document"]) {
+  for (const value of ["Shared summary", "First stage", "Area city", "Shared place", "Region", "Shared update", "Shared story", "Maandprecisie", "Shared stay", "Area stay place", "Routes", "Vlucht", "EVA Air", "BR-087", "Zaventem", "Taoyuan", "Bevestigd", "Shared route", "Gedeelde foto’s"]) {
     expect(container.textContent).toContain(value);
   }
   for (const value of ["Secret booking", "Brussels Airport", "Taoyuan Airport"]) expect(container.textContent).not.toContain(value);
@@ -117,7 +116,6 @@ it("renders every resource kind using only supplied fields", () => {
   expect(screen.getByRole("button", { name: "Shared route" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Routebeschrijving" }).getAttribute("href")).toBe("/api/public/trips/safe-slug/navigation/place");
   expect(screen.getByRole("img", { name: "Gedeelde afbeelding" }).getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media");
-  expect(screen.getByRole("link", { name: "Document openen" }).getAttribute("href")).toBe("/api/public/trips/safe-slug/files/document");
 });
 
 it("does not invent values for omitted fields and keeps audience links separate", () => {
@@ -125,11 +123,9 @@ it("does not invent values for omitted fields and keeps audience links separate"
   data.summary = null;
   data.places = [{ id: "place-1" }];
   data.media = [{ id: "media" }];
-  data.documents = [{ id: "document" }];
   data.navigation = [{ id: "place-1" }, { id: "location-4" }];
   const { container } = render(<ProjectionView projection={data} audience="share" identifier="capability" />);
   expect(container.querySelector("img")).toBeNull();
-  expect(screen.queryByRole("link", { name: "Document openen" })).toBeNull();
   expect(container.textContent).not.toContain("Reisoverzicht");
   expect(screen.getAllByRole("link", { name: "Routebeschrijving" }).map((link) => link.getAttribute("href"))).toEqual([
     "/api/shared/capability/navigation/place-1", "/api/shared/capability/navigation/location-4",
@@ -237,7 +233,6 @@ it("uses the visitor story renderer for an owner preview and requests only owner
   const data = projection("travel/unlisted-trip@1");
   data.updates = [{ id: "update-1", title: "Shared story", body: "Visitor text", private_body: "Owner secret" }];
   data.places = [{ id: "area-1", label: "Taipei" }];
-  data.documents = [{ id: "document_derivative-2", title: "Shared document", file: { id: "document_derivative-2" } }];
   data.navigation = [{ id: "area-1" }];
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" })));
   vi.stubGlobal("fetch", fetcher);
@@ -245,7 +240,7 @@ it("uses the visitor story renderer for an owner preview and requests only owner
   const session = { accessToken: "owner-token", expiresAt: Date.now() + 60_000 };
   const preview = render(<RenderedPreview projection={data} audience="share" tripId="trip" linkId="draft-link" session={session} />);
   const visitor = render(<ProjectionView projection={data} audience="share" identifier="live-token" />);
-  for (const value of ["Shared story", "Visitor text", "Shared document", "Reisupdates", "Routebeschrijving"]) {
+  for (const value of ["Shared story", "Visitor text", "Reisupdates", "Routebeschrijving"]) {
     expect(preview.container.textContent).toContain(value);
     expect(visitor.container.textContent).toContain(value);
   }

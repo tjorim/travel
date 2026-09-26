@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.auth import current_subject
 from app.database import Base, get_session
 from app.main import app
+from app.models import StoredObject
 from app.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -73,60 +74,6 @@ def test_document_upload_list_and_delete_are_owner_only(tmp_path: Path) -> None:
     owner = client_for("owner-1", tmp_path)
     assert owner.delete(f"/api/trips/{trip['id']}/documents/{document['id']}").status_code == 204
     assert owner.get(f"/api/trips/{trip['id']}/documents").json() == []
-
-
-def test_redacted_derivative_is_new_pending_and_requires_owner_approval(tmp_path: Path) -> None:
-    owner = client_for("owner-1", tmp_path)
-    trip = create_trip(owner)
-    document = upload_document(owner, trip["id"])
-
-    created = owner.post(
-        f"/api/trips/{trip['id']}/documents/{document['id']}/derivatives",
-        files={
-            "file": ("redacted.txt", b"Booking: [redacted]", "text/plain"),
-            "redaction_manifest": ("manifest.json", b'{"redactions":["guest"]}', "application/json"),
-        },
-    )
-    assert created.status_code == 201, created.text
-    derivative = created.json()
-    assert derivative["review_state"] == "pending"
-    assert derivative["file_url"].endswith(f"/derivatives/{derivative['id']}/file")
-    assert owner.get(derivative["file_url"]).content == b"Booking: [redacted]"
-    assert "original_object_id" not in derivative
-    assert "redaction_manifest_object_id" not in derivative
-
-    approved = owner.post(
-        f"/api/trips/{trip['id']}/documents/{document['id']}/derivatives/{derivative['id']}/approve"
-    )
-    assert approved.status_code == 200
-    assert approved.json()["review_state"] == "approved"
-
-    # The storage deduplication layer must never turn the original into a
-    # derivative merely because a client re-uploads the same bytes.
-    original_as_derivative = owner.post(
-        f"/api/trips/{trip['id']}/documents/{document['id']}/derivatives",
-        files={
-            "file": ("not-redacted.txt", b"private booking details", "text/plain"),
-            "redaction_manifest": ("manifest.json", b'{"redactions":[]}', "application/json"),
-        },
-    )
-    assert original_as_derivative.status_code == 422
-
-
-def test_document_derivative_has_no_public_delivery_route(tmp_path: Path) -> None:
-    owner = client_for("owner-1", tmp_path)
-    trip = create_trip(owner)
-    document = upload_document(owner, trip["id"])
-    derivative = owner.post(
-        f"/api/trips/{trip['id']}/documents/{document['id']}/derivatives",
-        files={
-            "file": ("redacted.txt", b"safe copy", "text/plain"),
-            "redaction_manifest": ("manifest.json", b"{}", "application/json"),
-        },
-    ).json()
-
-    # The only delivery URL is owner-authenticated. No public/unlisted
-    # projection route is registered in this delivery phase.
-    other = client_for("owner-2", tmp_path)
-    assert other.get(derivative["file_url"]).status_code == 404
-    assert other.get(f"/api/public/documents/{derivative['id']}").status_code == 404
+    assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
+    with TestingSessionLocal() as session:
+        assert session.query(StoredObject).count() == 0

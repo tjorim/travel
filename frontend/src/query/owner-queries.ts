@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { decodeSubject, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
-  Area, DocumentAsset, DocumentDerivative, EmergencyInfoEntry, Visit, MediaAsset, MediaDerivative,
+  Area, DocumentAsset, EmergencyInfoEntry, Visit, MediaAsset, MediaDerivative,
   OwnerDocument, Location, ProviderConnectionStatus, PublicProjectionStatus, ShareLink, Stay, Route, Trip, TripTask, TripTaskAlert,
 } from "../tracker-model";
 import { ApiError, ownerRequest, type OwnerRequest } from "./api";
@@ -76,13 +76,12 @@ export function useTripResource<R extends TripResource>(tripId: string | null, r
   return useQuery(tripResourceQueryOptions(useOwner(), tripId, resource));
 }
 
-type DerivativeData = { documents: DocumentDerivative[]; media: MediaDerivative[] };
+type DerivativeData = { media: MediaDerivative[] };
 const derivativeFailure: Record<DerivativeParent, string> = {
-  documents: "De afgeleide documenten konden niet worden geladen.",
   media: "De afgeleiden konden niet worden geladen.",
 };
 
-/** The redacted copies of one document or media asset; nothing is read until an asset is chosen. */
+/** The generated copies of one media asset; nothing is read until an asset is chosen. */
 export function derivativesQueryOptions<K extends DerivativeParent>(owner: Owner | null, tripId: string | null, kind: K, assetId: string | null) {
   return {
     queryKey: ownerKeys.derivatives(owner?.subject ?? "", tripId ?? "", kind, assetId ?? ""),

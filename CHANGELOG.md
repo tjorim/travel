@@ -20,6 +20,12 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Documents are always private, whether kept in the owner-wide library or
+  attached to a trip. Removed document derivatives, their share controls and
+  visitor delivery; deleting either document type now removes its stored file.
+  Migration `001_areas_locations_routes` drops the retired twin table, removes old
+  scope selections and queues its files for purge. ([#176](https://github.com/tjorim/travel/issues/176))
+
 - The media import buttons and provider settings follow `GET /provider-tokens` availability: Google Photos needs server OAuth credentials and an encryption key; GoPro Cloud stays hidden pending its beta OAuth contract. An available but unconnected provider is disabled in imports with a pointer to Instellingen.
 - Made the place vocabulary one set of words and dropped raw GPS tracks. An
   *area* (*gebied*) is a city or region and a *location* (*locatie*) is an

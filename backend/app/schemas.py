@@ -635,7 +635,6 @@ class ShareScopeKind(StrEnum):
     STAY = "stay"
     TRAVEL_UPDATE = "travel_update"
     MEDIA_DERIVATIVE = "media_derivative"
-    DOCUMENT_DERIVATIVE = "document_derivative"
 
 
 class ShareScopeTripInput(BaseModel):
@@ -682,7 +681,6 @@ class ProjectionDocument(BaseModel):
     updates: list[dict]
     stays: list[dict]
     media: list[dict]
-    documents: list[dict]
     routes: list[dict]
     navigation: list[dict]
 
@@ -877,18 +875,6 @@ class DocumentAssetResponse(BaseModel):
     original_filename: str | None
     created_at: datetime
     deleted_at: datetime | None
-    file_url: str
-    model_config = ConfigDict(from_attributes=True)
-
-
-class DocumentDerivativeResponse(BaseModel):
-    id: str
-    document_asset_id: str
-    review_state: DerivativeReviewState
-    byte_size: int
-    content_type: str
-    visibility: Visibility
-    created_at: datetime
     file_url: str
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { useRecordDialog } from "../forms/useRecordDialog";
@@ -6,10 +6,9 @@ import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
 import { ownerKeys } from "../query/keys";
-import { tripPath, useDerivatives, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { bytesLabel, type DocumentAsset, type DocumentDerivative, type Trip } from "../tracker-model";
-import { VisibilityControl } from "./visibility";
+import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
 
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
@@ -21,11 +20,8 @@ export function DocumentManager({ trip }: { trip: Trip }) {
   const documents = documentsQuery.data ?? [];
   const dialog = useRecordDialog(documents);
   const { selected, editing } = dialog;
-  const derivativesQuery = useDerivatives(trip.id, "documents", selected?.id ?? null);
-  const derivatives = derivativesQuery.data ?? [];
   const [notice, setNotice] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [redaction, setRedaction] = useState({ file: null as File | null, manifest: null as File | null });
   // Remount the file inputs after a finished upload so the chosen files clear.
   const [inputKey, setInputKey] = useState(0);
 
@@ -40,17 +36,6 @@ export function DocumentManager({ trip }: { trip: Trip }) {
     // A route drops the link to a deleted document on the server.
     invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "documents"), ownerKeys.tripResource(subject, trip.id, "routes")],
   });
-  const addDerivative = useOwnerMutation<{ documentId: string; body: FormData }, DocumentDerivative>({
-    fallback: "De geredigeerde afgeleide kon niet worden opgeslagen.",
-    request: ({ documentId, body }) => ({ path: `${tripPath(trip.id, "documents")}/${documentId}/derivatives`, method: "POST", body }),
-    invalidate: (subject, { documentId }) => [ownerKeys.derivatives(subject, trip.id, "documents", documentId)],
-  });
-  const approve = useOwnerMutation<{ documentId: string; derivative: DocumentDerivative }, DocumentDerivative>({
-    fallback: "De afgeleide kon niet worden goedgekeurd.",
-    request: ({ documentId, derivative }) => ({ path: `${tripPath(trip.id, "documents")}/${documentId}/derivatives/${derivative.id}/approve`, method: "POST" }),
-    invalidate: (subject, { documentId }) => [ownerKeys.derivatives(subject, trip.id, "documents", documentId)],
-  });
-
   const uploadRecord = useRecordForm<UploadValues>({
     defaultValues: blankUpload(),
     fallback: "Het document kon niet worden geüpload.",
@@ -71,7 +56,6 @@ export function DocumentManager({ trip }: { trip: Trip }) {
   function close() {
     dialog.close();
     setFile(null);
-    setRedaction({ file: null, manifest: null });
     setInputKey((current) => current + 1);
     uploadRecord.load(blankUpload());
   }
@@ -108,32 +92,16 @@ export function DocumentManager({ trip }: { trip: Trip }) {
     if (owner) openOwnerFile(owner.session, url, fallback).catch(fail(fallback));
   }
 
-  function submitDerivative(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selected || !redaction.file || !redaction.manifest) { setNotice("Kies een geredigeerd bestand én een redactie-manifest."); return; }
-    const body = new FormData();
-    body.set("file", redaction.file);
-    body.set("redaction_manifest", redaction.manifest);
-    addDerivative.mutateAsync({ documentId: selected.id, body }).then(() => {
-      setRedaction({ file: null, manifest: null });
-      setInputKey((current) => current + 1);
-      setNotice("Geredigeerde afgeleide opgeslagen en wacht op jouw expliciete goedkeuring.");
-    }, fail("De geredigeerde afgeleide kon niet worden opgeslagen."));
-  }
-
-  const readError = documentsQuery.error ?? derivativesQuery.error;
+  const readError = documentsQuery.error;
   const message = notice ?? (readError ? errorMessage(readError, "Je documenten konden niet worden geladen.") : documentsQuery.isPending ? "Laad je private documenten…" : documents.length ? "Documenten en originelen blijven uitsluitend in je private tracker." : "Upload een privédocument wanneer je het wilt bewaren.");
 
-  const derivativeSection = (document: DocumentAsset) => <div className="manager-subsection"><div className="capture-heading"><div><h3>Geredigeerde afgeleiden</h3><p>Voor {document.title}. Upload een nieuw geredigeerd bestand met zijn manifest; het origineel wordt nooit als afgeleide gebruikt.</p></div></div><form className="stack-form" onSubmit={submitDerivative}><label>Geredigeerd bestand<input key={`file-${inputKey}`} required type="file" onChange={(event) => setRedaction((draft) => ({ ...draft, file: event.target.files?.[0] ?? null }))} /></label><label>Redactie-manifest<input key={`manifest-${inputKey}`} required type="file" accept="application/json,.json" onChange={(event) => setRedaction((draft) => ({ ...draft, manifest: event.target.files?.[0] ?? null }))} /></label><button type="submit" disabled={addDerivative.isPending}>Geredigeerde kopie toevoegen</button></form>{derivatives.length > 0 && <div className="saved-records manager-list">{derivatives.map((derivative) => <article className="excerpt-row" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.content_type} · {bytesLabel(derivative.byte_size)}</span>{derivative.review_state === "approved" && <VisibilityControl tripId={trip.id} kind="document_derivative" id={derivative.id} value={derivative.visibility} name={`${document.title} (geredigeerde kopie)`} />}</div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De geredigeerde kopie kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ documentId: document.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Kies nu wie de kopie mag zien."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}</div></article>)}</div>}</div>;
-
-  return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Originelen staan alleen in je private tracker. Een mogelijke gedeelde kopie moet eerst geredigeerd én goedgekeurd zijn.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw document</button></div><p className="help" role="status">{message}</p>
+  return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Documenten blijven altijd privé en worden nooit met bezoekers gedeeld.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw document</button></div><p className="help" role="status">{message}</p>
     {documents.length > 0 && <div className="saved-records manager-list">{documents.map((document) => <article className="excerpt-row stacked" key={document.id}><button className="document-select" type="button" onClick={() => dialog.inspect(document.id)} aria-label={`Document ${document.title} bekijken`}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button></div></article>)}</div>}
     <RecordDialog open={editing || selected !== null} title={editing ? "Document uploaden" : "Document"} dirty={editing && uploadRecord.dirty} onDismiss={close}>
       {!editing && selected && <div className="stack-form">
         <div><h3>{selected.title}</h3><p>{selected.original_filename ?? "Naamloos bestand"} · {bytesLabel(selected.byte_size)}</p></div>
         <div className="button-row"><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
         {dialog.confirmDelete && <DeleteConfirmation title={`Document “${selected.title}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
-        {derivativeSection(selected)}
       </div>}
       {editing && <RecordForm record={uploadRecord} submitLabel="Document uploaden" pendingLabel="Uploaden…">
         <div className="field-row">

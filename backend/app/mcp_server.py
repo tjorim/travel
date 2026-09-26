@@ -78,11 +78,6 @@ class BinaryUpload(BaseModel):
         return UploadFile(filename=self.filename, file=BytesIO(data), headers={"content-type": self.content_type})
 
 
-class DocumentDerivativeUpload(BaseModel):
-    file: BinaryUpload
-    redaction_manifest: BinaryUpload
-
-
 def _model(value: Any, model_type: type[BaseModel] | None = None) -> Any:
     """Serialize only the declared API representation, never ORM internals."""
     if model_type is None:
@@ -446,7 +441,7 @@ class TravelMcpBackend:
 
     def delete_document(self, trip_id: str, document_id: str, confirm: bool = False) -> dict[str, str]:
         """Soft-delete a trip document after explicit confirmation."""
-        return self._call("document.delete", "document_asset", document_id, trip_id, lambda s, sub: documents.remove_document(trip_id, document_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
+        return self._call("document.delete", "document_asset", document_id, trip_id, lambda s, sub: documents.remove_document(trip_id, document_id, s, sub, get_storage()), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     # Owner-wide library -------------------------------------------------
     def list_library_documents(self, linked_trip_id: str | None = None) -> list[dict[str, Any]]:
@@ -542,18 +537,6 @@ class TravelMcpBackend:
         """Read non-secret provider connection status."""
         return self._call("provider_connection.list", "provider_connection", None, None, lambda _s, sub: media.list_provider_connection_status(sub, get_secret_store()), lambda x: _models(x, schemas.ProviderConnectionStatus))
 
-    def list_document_derivatives(self, trip_id: str, document_id: str) -> list[dict[str, Any]]:
-        """List redacted document derivatives and their review state."""
-        return self._call("document_derivative.list", "document_derivative", document_id, trip_id, lambda s, sub: documents.list_derivatives(trip_id, document_id, s, sub), lambda x: _models(x, schemas.DocumentDerivativeResponse))
-
-    def add_document_derivative(self, trip_id: str, document_id: str, payload: DocumentDerivativeUpload) -> dict[str, Any]:
-        """Upload an explicitly redacted derivative and its validated redaction manifest."""
-        return self._call("document_derivative.create", "document_derivative", None, trip_id, lambda s, sub: documents.add_redacted_derivative(trip_id, document_id, s, sub, get_storage(), Response(), payload.file.upload_file(), payload.redaction_manifest.upload_file()), lambda x: _model(x, schemas.DocumentDerivativeResponse))
-
-    def approve_document_derivative(self, trip_id: str, document_id: str, derivative_id: str, confirm: bool = False) -> dict[str, Any]:
-        """Approve a reviewed redacted document derivative after confirmation."""
-        return self._call("document_derivative.approve", "document_derivative", derivative_id, trip_id, lambda s, sub: documents.approve_derivative(trip_id, document_id, derivative_id, s, sub), lambda x: _model(x, schemas.DocumentDerivativeResponse), confirm=confirm, needs_confirmation=True)
-
     def upload_library_document(self, title: str, document_kind: DocumentKind, file: BinaryUpload, linked_trip_id: str | None = None) -> dict[str, Any]:
         """Upload a reusable owner-private library document."""
         return self._call("library_document.upload", "library_document", None, linked_trip_id, lambda s, sub: library.upload_library_document(s, sub, get_storage(), Response(), title, document_kind, file.upload_file(), linked_trip_id), lambda x: _model(x, schemas.OwnerDocumentResponse))
@@ -563,8 +546,8 @@ class TravelMcpBackend:
         return self._call("library_document.update", "library_document", document_id, None, lambda s, sub: library.update_library_document(document_id, payload, s, sub), lambda x: _model(x, schemas.OwnerDocumentResponse))
 
     def delete_library_document(self, document_id: str, confirm: bool = False) -> dict[str, str]:
-        """Soft-delete a library document after explicit confirmation."""
-        return self._call("library_document.delete", "library_document", document_id, None, lambda s, sub: library.remove_library_document(document_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
+        """Delete a library document after explicit confirmation."""
+        return self._call("library_document.delete", "library_document", document_id, None, lambda s, sub: library.remove_library_document(document_id, s, sub, get_storage()), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     def update_emergency_info(self, entry_id: str, payload: schemas.EmergencyInfoEntryUpdate) -> dict[str, Any]:
         """Update a private emergency-information entry."""
@@ -681,7 +664,7 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
     name: {
         "effect": "read" if name.startswith(("get_", "list_", "search_", "reverse_", "preview_", "inspect_", "suggest_", "whoami")) else "write",
         "requires_confirmation": name.startswith(("delete_", "revoke_", "unpublish_", "publish_", "set_"))
-        or name in {"create_share_link", "update_share_link", "activate_share_link", "rotate_share_link", "approve_media_derivative", "approve_document_derivative", "complete_media_import_session"},
+        or name in {"create_share_link", "update_share_link", "activate_share_link", "rotate_share_link", "approve_media_derivative", "complete_media_import_session"},
     }
     for name in _TOOL_NAMES
 }
@@ -701,9 +684,7 @@ _ADDITIVE_WRITE_TOOLS = frozenset(
         "upload_media",
         "upload_document",
         "upload_library_document",
-        "add_document_derivative",
         "approve_media_derivative",
-        "approve_document_derivative",
         "activate_share_link",
         "publish_public_projection",
         "start_media_import_session",

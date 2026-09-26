@@ -155,6 +155,12 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#176](https://github.com/tjorim/travel/issues/176) Kept both library
+      and trip documents owner-only; removed document twins, share choices,
+      visitor fields and MCP derivative tools. Deleting a document now purges
+      its stored original, and migration 001 hands retired twin files to the
+      existing purge job.
+
 - [x] Merged route stages and day-plan steps into *visits* (*bezoeken*): a stop
       at an area or a location with optional days, times, kind and a text for
       visitors, shared like any record, with the time private unless chosen.
@@ -281,7 +287,7 @@ Polarsteps-like features require a fresh product and privacy decision.
 - [x] Completed the tracker PWA content-management phase: owners can now
       manage trips, canonical moments and separately authored excerpts; select
       exact and areas; manage exact stays and stay cards; upload,
-      review and remove private documents and redacted derivatives; arrange
+      review and remove private documents; arrange
       route stages; upload finished GPX/point-array tracks; and author
       routes. The client uses the existing PKCE session, keeps exact
       data and files behind owner-only endpoints, and provides no continuous

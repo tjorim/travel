@@ -18,7 +18,7 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/visits/{visit_id}` | Read, edit, reorder (`position`) or remove a visit. |
 | `POST` | `/trips/{trip_id}/travel-updates` | Add a reisupdate, the one record for something that happened. Its private part (`private_notes`, the `location`, attached `media_asset_ids`) is never shared; its shared part (title, `body`, date, area) reaches visitors only as its `visibility` allows: `private` (the default), `everyone` or `custom`. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/travel-updates/{update_id}` | Edit or remove a reisupdate. Leaving `custom` or deleting it withdraws it from every live scope. |
-| `PUT` | `/trips/{trip_id}/visibility/{kind}/{record_id}` | Choose `private`, `everyone` or `custom` for any shareable record (area or location, stage, route, stay, reisupdate, approved photo or document copy). The reason is returned when a record cannot be shared yet. |
+| `PUT` | `/trips/{trip_id}/visibility/{kind}/{record_id}` | Choose `private`, `everyone` or `custom` for any shareable record (area or location, stage, route, stay, reisupdate, approved photo copy). The reason is returned when a record cannot be shared yet. |
 | `PATCH` | `/trips/{trip_id}/locations/{location_id}` | Give a location its public name and area, and choose whether its address is shared; a location cannot be shared without a public name. |
 | `GET`, `POST` | `/trips/{trip_id}/areas` | List or save areas: cities and regions, private until shared. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/areas/{area_id}` | Edit an area (for example its time zone) or remove one nothing uses. |
@@ -56,6 +56,10 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `DELETE` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}` | Permanently remove a generated derivative and withdraw it from every live share scope. |
 | `POST` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/approve` | Owner review sign-off; only an approved derivative may ever be referenced by a share scope. |
 | `GET` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/file` | Owner-only, `no-store` derivative file delivery. |
+| `POST`, `GET` | `/trips/{trip_id}/documents/uploads`, `/trips/{trip_id}/documents` | Upload and list owner-only trip documents. Documents have no share scope or visitor representation. |
+| `GET`, `DELETE` | `/trips/{trip_id}/documents/{document_id}` | Read or permanently delete a trip document and its stored file. |
+| `GET` | `/trips/{trip_id}/documents/{document_id}/original` | Owner-only, `no-store` original file delivery. |
+| `POST`, `GET`, `DELETE` | `/library/documents...` | Manage owner-wide documents; deletion permanently removes the stored file. These files are never published. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions` | Start a Google Photos Picker or GoPro Cloud selection session. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
 | `GET` | `/provider-tokens` | Owner-only non-secret status. Google Photos is available only when OAuth credentials, redirect URI and encryption key are configured; GoPro Cloud remains unavailable pending its beta OAuth contract. |
@@ -348,7 +352,7 @@ TRAVEL_ENVIRONMENT=development TRAVEL_MCP_DEVELOPMENT_SUBJECT=owner-local \
 ```
 
 The server exposes task-specific tools for all owner resources, including
-private media/document imports and derivatives, previews, publication and
+private media imports and derivatives, owner-only document uploads, previews, publication and
 share-link lifecycle. Audience changes, capability activation/rotation and
 deletion require `confirm=true`; a raw share capability is returned only by
 activation or rotation, together with its complete visitor `share_url`, and is

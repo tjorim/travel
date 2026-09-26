@@ -5,8 +5,8 @@ The `places` table is split into `areas` (formerly `broad` places) and `location
 Every stay has a location and takes its area from it. Transport legs and the
 hand-drawn map routes become one record, a *route* between two areas, with the
 exact locations, schedule, booking details and a drawn line all optional. The
-application no longer stores recorded GPS tracks; the stored bytes of existing
-tracks are handed to the purge job instead of being left behind. Route stages and
+application no longer stores recorded GPS tracks or document twins; their
+stored bytes are handed to the purge job instead of being left behind. Route stages and
 day-plan entries become one record, the *visit*: an area, or a location in one,
 with optional days, times, a kind and a text for visitors.
 
@@ -18,6 +18,7 @@ Create Date: 2026-09-25
 import json
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -362,6 +363,42 @@ def _rewrite_scope_kinds(rewrite) -> None:
                 )
 
 
+def _remove_document_twins() -> None:
+    """Retire uploaded document copies and purge their unreferenced files."""
+    op.execute(
+        "CREATE TEMP TABLE _document_twin_objects AS "
+        "SELECT object_id AS id FROM public.document_derivatives "
+        "UNION SELECT redaction_manifest_object_id FROM public.document_derivatives"
+    )
+    op.drop_table("document_derivatives", schema="public")
+    op.execute(
+        """
+        UPDATE public.stored_objects SET state = 'purge_pending'
+        WHERE id IN (SELECT id FROM _document_twin_objects)
+          AND NOT EXISTS (SELECT 1 FROM public.document_assets WHERE original_object_id = stored_objects.id)
+          AND NOT EXISTS (SELECT 1 FROM public.media_assets WHERE original_object_id = stored_objects.id)
+          AND NOT EXISTS (SELECT 1 FROM public.media_derivatives WHERE object_id = stored_objects.id)
+        """
+    )
+    op.execute("DROP TABLE _document_twin_objects")
+
+
+def _restore_document_twin_table() -> None:
+    """Restore the empty baseline table when revision 001 is rolled back."""
+    op.create_table(
+        "document_derivatives",
+        sa.Column("id", sa.String(32), primary_key=True),
+        sa.Column("trip_id", sa.String(32), sa.ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("document_asset_id", sa.String(32), sa.ForeignKey("document_assets.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("object_id", sa.String(32), sa.ForeignKey("stored_objects.id"), nullable=False, unique=True),
+        sa.Column("redaction_manifest_object_id", sa.String(32), sa.ForeignKey("stored_objects.id"), nullable=False, unique=True),
+        sa.Column("review_state", postgresql.ENUM("pending", "approved", name="travel_derivative_review_state", schema="public", create_type=False), nullable=False),
+        sa.Column("visibility", postgresql.ENUM("private", "everyone", "custom", name="travel_visibility", schema="public", create_type=False), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        schema="public",
+    )
+
+
 def _ensure_unassigned_area_for(trips_sql: str) -> None:
     """A private "Unassigned" area for each trip selected by ``trips_sql``, unless it has one."""
     op.execute(
@@ -575,6 +612,8 @@ def upgrade() -> None:
         result = []
         for item in items:
             kind = item.get("kind")
+            if kind == "document_derivative":
+                continue
             if kind in OLD_ROUTE_KINDS:
                 kind = "route"
             elif kind == "route_stage":
@@ -587,6 +626,7 @@ def upgrade() -> None:
         return result
 
     _rewrite_scope_kinds(to_routes)
+    _remove_document_twins()
 
     # The raw recordings' bytes go to the purge job; the table and its enum go away.
     op.execute(
@@ -674,6 +714,7 @@ CREATE TABLE public.broad_routes (
 
 
 def downgrade() -> None:
+    _restore_document_twin_table()
     op.drop_table("provider_secrets")
     op.execute("CREATE TYPE public.travel_track_kind AS ENUM ('gpx', 'point_array')")
     op.execute(

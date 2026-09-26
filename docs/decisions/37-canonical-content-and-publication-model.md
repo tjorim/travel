@@ -18,7 +18,7 @@ Start with [the domain model](../domain-model.md) for the vocabulary.
   trip has exactly one `owner_subject`: the authenticated OIDC `sub`. There are
   no recipient, collaborator, group, or viewer rows in v1.
 - Location and area representations are distinct records. An area label,
-  generalized line, travel update, media derivative, or redacted document is
+  generalized line, travel update, or media derivative is
   authored/approved output; it is never calculated in a browser from canonical
   private data.
 - Owner, public, and unlisted APIs serialize three separately versioned
@@ -75,8 +75,7 @@ an asynchronous, audited purge after the database transaction.
 | `stored_object` (`travel/stored-object@1`) | `id`, `trip_id`, `bucket`, `object_key`, `sha256`, `byte_size`, `content_type`, `encryption_key_ref`, `state` | Object storage inventory. Keys are application-only; `state` is `staged`, `available`, `quarantined`, or `purge_pending`. Deduplication never crosses owners. |
 | `media_asset` (`travel/media@1`) | `id`, `trip_id`, `original_object_id`, `captured_at`, `location_id` nullable, `media_kind`, `import_id` | Raw EXIF/XMP/IPTC, camera data, people/face tags, captions and provenance are owner-only. `original_object_id` always points to a VPS copy. |
 | `media_derivative` (`travel/media-derivative@1`) | `id`, `trip_id`, `visibility`, `media_asset_id`, `object_id`, `purpose`, `metadata_stripped_at`, `review_state` | `purpose` is `owner_preview` or `share`. A shared derivative is usable only after metadata stripping and owner review; it has approved caption and alt text stored in its projection item, not raw metadata. |
-| `document_asset` (`travel/document@1`) | `id`, `trip_id`, `original_object_id`, `document_kind`, `title` | Original filename, extracted text, OCR, booking data and metadata remain owner-only. |
-| `document_derivative` (`travel/document-derivative@1`) | `id`, `trip_id`, `visibility`, `document_asset_id`, `object_id`, `redaction_manifest_object_id`, `review_state` | A possible shared file is a new, reviewed redacted derivative. No original object can be projected. |
+| `document_asset` (`travel/document@1`) | `id`, `trip_id`, `original_object_id`, `document_kind`, `title` | Original filename, extracted text, OCR, booking data and metadata remain owner-only. Documents are always private, in the owner-wide library or attached to a trip; neither has a visitor representation. |
 | `import_record` (`travel/import@1`) | `id`, `trip_id`, `provider` (`direct_device`, `google_photos_picker`, `gopro_cloud`), `state`, `requested_at`, `completed_at`, `failure_code` | Owner authorization/consent time, provider item reference and transfer checksum are owner-only. Provider access tokens are held in a secret store, never in this table or a browser response. An import completes only once copied and verified in `stored_object`; provider URLs are not retained as file delivery URLs. |
 | `public_surface` (`travel/public-surface@1`) | `trip_id` unique, `slug` unique, `scope_json`, `state` | The stable public URL reservation and its live, owner-selected scope. It has no capability; it is servable only while `state=published`. `scope_json` is validated as `travel/share-scope@1` and is a live field, editable whether or not the surface is currently published — every request renders it against current canonical data, so there is no separate frozen `publication_draft`/`projection_revision` pair to promote. |
 | `share_link` (`travel/share-link@1`) | `id`, `series_id`, `trip_id`, `label`, `token`, `token_verifier`, `scope_json`, `expires_at`, `state`, `activated_at`, `revoked_at` | Owner-only `label` and active URL token; the verifier is a keyed one-way digest used for anonymous delivery. `series_id` joins a replacement to the same owner-visible link history when it is rotated. State is `draft`, `active`, `revoked`, or `expired`. `scope_json` is likewise live: while `draft` or `active`, the owner can widen or narrow it at any time, and an `active` link reflects the change immediately for its existing token. Only `state` — minting, revoking, or rotating the token — is gated. |
@@ -108,8 +107,7 @@ object keys or provider URLs.
     {"kind": "visit", "id": "opaque-id"},
     {"kind": "stay", "id": "opaque-id"},
     {"kind": "route", "id": "opaque-id"},
-    {"kind": "media_derivative", "id": "opaque-id"},
-    {"kind": "document_derivative", "id": "opaque-id"}
+    {"kind": "media_derivative", "id": "opaque-id"}
   ]
 }
 ```
@@ -138,9 +136,9 @@ stored objects can never occur in this schema.
 Both are complete, standalone display documents rendered live on every
 request. They contain `schema_version`, `title`, optional `summary`, approved
 date string(s), an ordered `visits` array, optional `places` (the shared areas and locations together) and
-`routes`, `updates`, `stays`, `media`, and `documents`. Every display item has a
-projection-local `id`, not a canonical ID. `media.image` and `documents.file`
-are delivery references that identify only the approved derivative. The
+`routes`, `updates`, `stays`, and `media`. Every display item has a
+projection-local `id`, not a canonical ID. `media.image` is a delivery
+reference that identifies only the approved derivative. The
 unlisted form may contain a different set of approved items, but has the same
 prohibited-field rules as public. It additionally carries no link label, raw
 token, expiry, or internal link ID.
@@ -216,7 +214,7 @@ effective.
 
 The database stores structured records, relations, hashes, lifecycle/access
 state and object metadata. VPS object storage stores originals,
-redacted or metadata-free derivatives, export artifacts, manifests and bounded
+metadata-free media derivatives, export artifacts, manifests and bounded
 recoverable-deletion copies. The database transaction first records a staged
 object; a checksum-verified upload marks it available; only an available object
 can be attached to a canonical asset or derivative.
@@ -261,7 +259,7 @@ prove that an out-of-scope resource never appears even after being added to
 the trip later, that a scope or content edit to an already-shared item is
 reflected on the very next request, and that unpublish, revocation, expiry,
 and rotation each invalidate the right delivery path immediately. Stays,
-media, documents, and tracks — and their object-store integration and
+media, and tracks — and their object-store integration and
 export/purge workers — remain to be modeled and wired into the same
 `scope_json` mechanism by the issues that introduce them (`#43`, `#38`,
 `#34`). An owner-only audit trail

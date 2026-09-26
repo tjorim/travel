@@ -6,8 +6,6 @@ but keyed by ``owner_subject`` instead of ``trip_id`` so this pipeline never
 touches the trip-scoped media/document pipeline in ``app.media.service``.
 """
 
-from datetime import UTC, datetime
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -31,7 +29,7 @@ def _store_owner_bytes(
     existing = session.scalar(
         select(OwnerStoredObject).where(
             OwnerStoredObject.owner_subject == owner_subject, OwnerStoredObject.sha256 == digest
-        )
+        ).with_for_update()
     )
     if existing is not None and existing.state == ObjectState.AVAILABLE:
         return existing
@@ -97,7 +95,38 @@ def direct_upload(
     return document, True
 
 
-def delete_owner_document(session: Session, *, document: OwnerDocument) -> None:
-    """Soft-delete an owner-wide document original."""
-    document.deleted_at = datetime.now(UTC)
+def purge_owner_objects(session: Session, storage: ObjectStorage, *, object_ids: list[str] | None = None) -> int:
+    """Retry physical removal of unreferenced owner-library objects."""
+    if object_ids is None:
+        object_ids = session.scalars(
+            select(OwnerStoredObject.id).where(OwnerStoredObject.state == ObjectState.PURGE_PENDING)
+        ).all()
+    purged = 0
+    for object_id in object_ids:
+        stored = session.scalar(
+            select(OwnerStoredObject).where(OwnerStoredObject.id == object_id).with_for_update()
+        )
+        if stored is None or stored.state != ObjectState.PURGE_PENDING:
+            session.rollback()
+            continue
+        if session.scalar(select(OwnerDocument.id).where(OwnerDocument.original_object_id == stored.id)) is not None:
+            stored.state = ObjectState.AVAILABLE
+            session.commit()
+            continue
+        storage.delete(stored.object_key)
+        session.delete(stored)
+        session.commit()
+        purged += 1
+    return purged
+
+
+def delete_owner_document(session: Session, storage: ObjectStorage, *, document: OwnerDocument) -> None:
+    """Remove an owner-wide document and purge its stored original."""
+    object_id = document.original_object_id
+    session.delete(document)
+    session.flush()
+    stored = session.get(OwnerStoredObject, object_id)
+    if session.scalar(select(OwnerDocument.id).where(OwnerDocument.original_object_id == object_id)) is None:
+        stored.state = ObjectState.PURGE_PENDING
     session.commit()
+    purge_owner_objects(session, storage, object_ids=[object_id])

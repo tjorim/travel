@@ -8,7 +8,6 @@ from ..access import set_visibility
 from ..auth import current_subject
 from ..database import get_session
 from ..models import (
-    DocumentDerivative,
     Location,
     MediaAsset,
     MediaDerivative,
@@ -50,7 +49,6 @@ def trip_query():
         selectinload(Trip.routes).selectinload(Route.document_links),
         selectinload(Trip.trip_tasks),
         selectinload(Trip.media_derivatives).selectinload(MediaDerivative.media_asset),
-        selectinload(Trip.document_derivatives).selectinload(DocumentDerivative.document_asset),
     )
 
 

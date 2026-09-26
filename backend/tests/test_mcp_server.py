@@ -136,7 +136,6 @@ def test_registered_tools_cover_owner_resource_families(backend: TravelMcpBacken
         "get_route",
         "upload_document",
         "get_document",
-        "add_document_derivative",
         "upload_media",
         "get_media",
         "create_media_derivative",

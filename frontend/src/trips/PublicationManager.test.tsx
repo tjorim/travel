@@ -46,7 +46,7 @@ beforeEach(() => {
   api.on("PUT", /^\/api\/trips\/trip\/public-projection$/, (body) => { status = { ...status, scope: body as ShareScope }; return status; });
   api.on("POST", /^\/api\/trips\/trip\/public-projection\/publish$/, () => { status = { ...status, surface_state: "published" }; return status; });
   api.on("POST", /^\/api\/trips\/trip\/public-projection\/unpublish$/, () => { status = { ...status, surface_state: "unpublished" }; return status; });
-  api.on("POST", /\/preview$/, () => ({ title: "Exampleland", summary: null, dates: null, visits: [], places: [], updates: [], stays: [], media: [], documents: [], routes: [] } as unknown as ProjectionDocument));
+  api.on("POST", /\/preview$/, () => ({ title: "Exampleland", summary: null, dates: null, visits: [], places: [], updates: [], stays: [], media: [], routes: [] } as unknown as ProjectionDocument));
   api.on("POST", /\/share-links\/([^/]+)\/(activate|rotate)$/, (_body, match) => {
     const rows = api.rows("/api/trips/trip/share-links");
     const row = rows.find((item) => item.id === match[1])!;

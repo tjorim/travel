@@ -141,8 +141,8 @@ def update_library_document(
 
 
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_library_document(document_id: str, session: SessionDep, subject: SubjectDep) -> Response:
-    delete_owner_document(session, document=owned_library_document(session, subject, document_id))
+def remove_library_document(document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep) -> Response:
+    delete_owner_document(session, storage, document=owned_library_document(session, subject, document_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

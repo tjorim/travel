@@ -221,8 +221,6 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
                   "width": item.width, "height": item.height, "focal_x": item.focal_x, "focal_y": item.focal_y}
         if item.travel_update_id in context["updates"]:
             values["update"] = context["updates"][item.travel_update_id]
-    elif kind == "document_derivative":
-        values = {"title": item.document_asset.title, "file": {"id": identifier}}
     return {"id": identifier, **values}
 
 
@@ -240,7 +238,7 @@ def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
 
 _DESTINATIONS = {
     "visit": "visits", "area": "places", "location": "places", "stay": "stays", "travel_update": "updates",
-    "media_derivative": "media", "document_derivative": "documents", "route": "routes",
+    "media_derivative": "media", "route": "routes",
 }
 
 
@@ -257,7 +255,7 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "title": trip.title if scope.get("trip", {}).get("title", True) else None,
         "summary": trip.summary if scope.get("trip", {}).get("summary", True) else None,
         "dates": shared_trip_dates(trip, scope),
-        "visits": [], "places": [], "updates": [], "stays": [], "media": [], "documents": [], "routes": [],
+        "visits": [], "places": [], "updates": [], "stays": [], "media": [], "routes": [],
         "navigation": [],
     }
     for kind, destination in _DESTINATIONS.items():
@@ -292,7 +290,7 @@ def scoped_navigation_url(trip: Trip, scope: dict, identifier: str) -> str | Non
 def scoped_file(trip: Trip, scope: dict, identifier: str) -> tuple[str, Any] | None:
     """Resolve a projection-local file marker among the delivered files."""
     records = delivered(trip, scope)
-    for kind in ("media_derivative", "document_derivative"):
+    for kind in ("media_derivative",):
         for item in records[kind]:
             if local_id(kind, item) == identifier:
                 return kind, item.object

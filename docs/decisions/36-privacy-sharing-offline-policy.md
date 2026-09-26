@@ -95,7 +95,7 @@ never gets one, and a record that cannot yet be shared safely (a location withou
 public name, an unapproved copy) is rejected with a
 reason. Leaving `custom`, or deleting a record, removes it from every scope.
 The earlier requirement of a separately authored twin now applies only where the
-shared thing is a different artifact: files (reviewed derivatives). An area, a location, a route and a stay are shared as themselves through a
+shared thing is a different artifact: photos and videos (application-generated, reviewed derivatives). An area, a location, a route and a stay are shared as themselves through a
 fixed allowlist, and the reisupdate is the one story record.
 
 The owner can create multiple named share links for the same trip, each with a
@@ -110,7 +110,7 @@ happen to have similar audiences.
 | Reisupdates | Private notes, timestamp, location and attached originals. | Not included. | Not included. | Title, text, date at the chosen precision and the area. Its own visibility decides who receives it. |
 | Stays | Exact property, address, dates, booking and contact data. | Not included. | Not included. | Only the city or area and the nights at the chosen date precision. The property, location, check-in details, contacts and booking data are never shared. |
 | Routes | Exact locations at either end, schedule, carrier/service reference, booking reference, travel class, notes, linked documents and the drawn line. | Not included. | Not included. | Mode, status, the two areas, the drawn line, the schedule and time zones, carrier and service reference. A location appears on the map only when that location is itself shared, which suits public infrastructure such as airports and stations. Booking reference, class, notes and documents never. Without a drawn line, a straight line joins the two area points, or the two shared locations. |
-| Documents | Original file, preview, extracted text, filename and metadata. | Never an original document. | Never an original document by default. | A deliberately prepared, field-redacted share derivative may be selected as one item; its own URL and metadata are scoped. |
+| Documents | Owner-wide library or trip-specific file, preview, filename and metadata. | Never included. | Never included. | Never shared, including links and metadata. |
 | Media | Original file, import provenance, EXIF/XMP/IPTC, face/person tags and exact capture data. | Not included. | Not included. | An explicitly selected derivative with all metadata stripped and owner-approved visible content, caption and alt text. |
 | Routes | An approximate line the owner drew, with its travel mode. The application takes no raw location data: it has no track upload, timestamps, points, speed or elevation. | Not included. | Not included. | The line, its mode and its date at the chosen precision, when the owner shares it. |
 | Private journal | The private notes of a reisupdate and all its metadata. | Never included. | Never included. | Never. The shared text of a reisupdate is a separate field written for visitors. |

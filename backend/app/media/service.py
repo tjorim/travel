@@ -25,7 +25,6 @@ from ..models import (
     DerivativePurpose,
     DerivativeReviewState,
     DocumentAsset,
-    DocumentDerivative,
     ImportProvider,
     ImportRecord,
     ImportSession,
@@ -519,7 +518,11 @@ def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than:
             stored.state = ObjectState.PURGE_PENDING
     session.commit()
 
-    return _purge_pending_objects(session, storage)
+    purged = _purge_pending_objects(session, storage)
+    # The same scheduled storage purge retries failed owner-library deletions.
+    from ..library.service import purge_owner_objects
+
+    return purged + purge_owner_objects(session, storage)
 
 
 def _purge_pending_objects(session: Session, storage: ObjectStorage, *, object_ids: list[str] | None = None) -> int:
@@ -550,7 +553,5 @@ def _object_is_referenced(session: Session, object_id: str) -> bool:
         (MediaAsset, MediaAsset.original_object_id),
         (MediaDerivative, MediaDerivative.object_id),
         (DocumentAsset, DocumentAsset.original_object_id),
-        (DocumentDerivative, DocumentDerivative.object_id),
-        (DocumentDerivative, DocumentDerivative.redaction_manifest_object_id),
     )
     return any(session.scalar(select(model.id).where(column == object_id)) is not None for model, column in references)

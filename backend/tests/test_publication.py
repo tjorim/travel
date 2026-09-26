@@ -453,12 +453,8 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
         data={"title": "Safe itinerary", "document_kind": "itinerary"},
         files={"file": ("private.txt", b"private", "text/plain")},
     ).json()
-    pending_document = owner.post(
-        f"{trips_path}/documents/{document['id']}/derivatives",
-        files={"file": ("safe.txt", b"safe", "text/plain"), "redaction_manifest": ("redactions.json", b"{}", "application/json")},
-    ).json()
-    assert owner.put(f"{trips_path}/visibility/document_derivative/{pending_document['id']}", json={"visibility": "custom"}).status_code == 422
-    selected_document = owner.post(f"{trips_path}/documents/{document['id']}/derivatives/{pending_document['id']}/approve").json()
+    assert owner.put(f"{trips_path}/visibility/document_derivative/{document['id']}", json={"visibility": "custom"}).status_code == 422
+    assert owner.put(f"{trips_path}/public-projection", json=scope({"kind": "document_derivative", "id": document["id"]})).status_code == 422
 
     selected = scope(
         share(owner, trip["id"], "stay", selected_stay["id"]),
@@ -466,17 +462,14 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
         share(owner, trip["id"], "area", place_id),
         share(owner, trip["id"], "route", selected_route["id"]),
         share(owner, trip["id"], "media_derivative", selected_media["id"]),
-        share(owner, trip["id"], "document_derivative", selected_document["id"]),
     )
     assert owner.put(f"{trips_path}/public-projection", json=selected).status_code == 200
     preview = owner.post(f"{trips_path}/public-projection/preview")
     assert preview.status_code == 200
-    ids = {key: preview.json()[key][0]["id"] for key in ("stays", "visits", "places", "routes", "media", "documents")}
+    ids = {key: preview.json()[key][0]["id"] for key in ("stays", "visits", "places", "routes", "media")}
     preview_file_base = f"{trips_path}/public-projection/preview/files"
-    assert owner.get(f"{preview_file_base}/{ids['documents']}").content == b"safe"
     assert owner.get(f"{preview_file_base}/{ids['media']}").status_code == 200
     assert owner.get(f"{preview_file_base}/document_derivative-unknown").status_code == 404
-    assert client_for("other-owner").get(f"{preview_file_base}/{ids['documents']}").status_code == 404
     owner = client_for("owner-1")
     slug = owner.post(f"{trips_path}/public-projection/publish").json()["slug"]
     projection = TestClient(app).get(f"/api/public/trips/{slug}").json()
@@ -487,7 +480,8 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
     assert [place["label"] for place in projection["places"]] == ["Taipei"]
     assert [route["label"] for route in projection["routes"]] == ["North coast"]
     assert projection["media"][0]["image"] == {"id": ids["media"]}
-    assert projection["documents"] == [{"id": ids["documents"], "title": "Safe itinerary", "file": {"id": ids["documents"]}}]
+    assert "documents" not in projection
+    assert "Safe itinerary" not in str(projection)
     for private in ("Taipei base", "Hidden stay", hidden_route["label"], "Private raw route"):
         assert private not in str(projection)
     assert hidden_stay["id"] not in str(projection)
@@ -495,39 +489,22 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
     assert "document_asset_id" not in str(projection)
 
     media_url = f"/api/public/trips/{slug}/files/{ids['media']}"
-    document_url = f"/api/public/trips/{slug}/files/{ids['documents']}"
     visitor = TestClient(app)
     media_file = visitor.get(media_url)
     assert media_file.status_code == 200
     assert media_file.content == owner.get(selected_media["file_url"]).content
     assert media_file.headers["content-disposition"] == "inline"
     assert media_file.headers["cache-control"] == "no-store"
-    document_file = visitor.get(document_url)
-    assert document_file.status_code == 200
-    assert document_file.content == b"safe"
-    assert document_file.headers["content-disposition"] == "attachment"
     assert visitor.get(f"/api/public/trips/{slug}/files/{ids['stays']}").status_code == 404
 
     link = owner.post(f"{trips_path}/share-links", json={"label": "Visitor", "scope": selected}).json()
-    shared = activate(owner, trip["id"], link["id"])
-    shared_url = f"/api/shared/{shared['token']}/files/{ids['documents']}"
-    share_preview_file = f"{trips_path}/share-links/{link['id']}/preview/files/{ids['documents']}"
-    assert owner.get(share_preview_file).content == b"safe"
-    assert visitor.get(shared_url).content == b"safe"
-    assert visitor.get(shared_url).headers["cache-control"] == "no-store, private"
-
+    activate(owner, trip["id"], link["id"])
     # Taking a record out of every audience stops its file at once.
-    without_files = scope(*(entry for entry in selected["items"] if entry["kind"] not in {"media_derivative", "document_derivative"}))
+    without_files = scope(*(entry for entry in selected["items"] if entry["kind"] not in {"media_derivative"}))
     assert owner.put(f"{trips_path}/public-projection", json=without_files).status_code == 200
     assert visitor.get(media_url).status_code == 404
-    assert visitor.get(document_url).status_code == 404
-    assert owner.get(f"{preview_file_base}/{ids['documents']}").status_code == 404
     assert owner.patch(f"{trips_path}/share-links/{link['id']}", json={"scope": without_files}).status_code == 200
-    assert visitor.get(shared_url).status_code == 404
-    assert owner.get(share_preview_file).status_code == 404
     assert owner.post(f"{trips_path}/share-links/{link['id']}/revoke").status_code == 200
-    assert owner.get(share_preview_file).status_code == 404
-    assert visitor.get(shared_url).status_code == 404
 
 
 # --- Named unlisted share links ------------------------------------------------------

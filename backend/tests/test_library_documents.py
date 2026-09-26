@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.auth import current_subject
 from app.database import Base, get_session
 from app.main import app
+from app.models import OwnerStoredObject
 from app.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -81,6 +82,9 @@ def test_library_document_upload_list_and_delete_are_owner_only(tmp_path: Path) 
     assert owner.delete(f"/api/library/documents/{document['id']}").status_code == 204
     assert owner.get("/api/library/documents").json() == []
     assert owner.get(f"/api/library/documents/{document['id']}").status_code == 404
+    assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
+    with TestingSessionLocal() as session:
+        assert session.query(OwnerStoredObject).count() == 0
 
 
 def test_library_document_can_be_created_and_updated_without_a_dummy_trip(tmp_path: Path) -> None:

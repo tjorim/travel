@@ -14,7 +14,6 @@ export type Projection = {
   updates: ProjectionItem[];
   stays: ProjectionItem[];
   media: ProjectionItem[];
-  documents: ProjectionItem[];
   routes: ProjectionItem[];
   navigation: ProjectionItem[];
 };
@@ -26,7 +25,7 @@ export type PreviewResources = {
   openNavigation: (id: string) => void;
 };
 
-const collections = ["visits", "places", "updates", "stays", "media", "documents", "routes", "navigation"] as const;
+const collections = ["visits", "places", "updates", "stays", "media", "routes", "navigation"] as const;
 const navigableCollections = ["places", "stays"] as const;
 
 export function isProjection(value: unknown, audience: Audience): value is Projection {
@@ -266,7 +265,6 @@ export function ProjectionView({ projection, audience, identifier, previewResour
     <ResourceSection title="Verblijven" items={projection.stays} render={(item) => <article><h3>{text(item, "title") ?? "Verblijf"}</h3>{tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
     <ResourceSection title="Routes" items={projection.routes} render={(item) => <RouteSummary item={item} />} />
     {looseMedia.length > 0 && <section className="card visitor-section"><h2>Galerij</h2><Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" /></section>}
-    <ResourceSection title="Documenten" items={projection.documents} render={(item) => <article><h3>{text(item, "title") ?? "Gedeeld document"}</h3>{hasFileMarker(item, "file") && (previewResources ? <button className="visitor-resource-action" type="button" onClick={() => previewResources.openFile(item.id)}>Document downloaden</button> : <a href={fileUrl(item) ?? undefined} referrerPolicy="no-referrer" rel="noreferrer">Document openen</a>)}</article>} />
     {projection.navigation.some((item) => !displayed.has(item.id)) && <ResourceSection title="Navigatie" items={projection.navigation.filter((item) => !displayed.has(item.id))} render={(item) => <article><h3>Bestemming</h3>{navigationLink(item)}</article>} />}
   </div>;
 }

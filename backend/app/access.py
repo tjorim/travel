@@ -18,7 +18,6 @@ from .models import (
     Area,
     DerivativePurpose,
     DerivativeReviewState,
-    DocumentDerivative,
     Location,
     MediaDerivative,
     Route,
@@ -38,7 +37,6 @@ COLLECTIONS: dict[str, Callable[[Trip], list[Any]]] = {
     "stay": lambda trip: trip.stays,
     "travel_update": lambda trip: trip.travel_updates,
     "media_derivative": lambda trip: trip.media_derivatives,
-    "document_derivative": lambda trip: trip.document_derivatives,
 }
 
 _KIND_OF_MODEL: dict[type, str] = {
@@ -49,7 +47,6 @@ _KIND_OF_MODEL: dict[type, str] = {
     Stay: "stay",
     TravelUpdate: "travel_update",
     MediaDerivative: "media_derivative",
-    DocumentDerivative: "document_derivative",
 }
 
 
@@ -68,10 +65,10 @@ def sharing_blocker(kind: str, record: Any) -> str | None:
         return "Give this location a public name before sharing it"
     if kind == "travel_update" and not record.body.strip():
         return "Write the text for visitors before sharing this update"
-    if kind in {"media_derivative", "document_derivative"}:
+    if kind == "media_derivative":
         if record.review_state != DerivativeReviewState.APPROVED:
             return "Approve this copy before sharing it"
-        asset = record.media_asset if kind == "media_derivative" else record.document_asset
+        asset = record.media_asset
         if asset.deleted_at is not None:
             return "The original has been deleted"
     if kind == "media_derivative" and record.purpose != DerivativePurpose.SHARE:

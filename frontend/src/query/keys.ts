@@ -24,5 +24,5 @@ export type TripResource =
   | "stays" | "trip-tasks" | "task-alerts" | "areas" | "locations" | "routes"
   | "visits" | "documents" | "media" | "public-projection" | "share-links";
 
-export type DerivativeParent = "documents" | "media";
+export type DerivativeParent = "media";
 export type LibraryResource = "documents" | "emergency-info";

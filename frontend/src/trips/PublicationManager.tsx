@@ -23,7 +23,6 @@ const GROUP_TITLES: Record<ShareScopeKind, string> = {
   route: "Routes",
   stay: "Verblijven",
   media_derivative: "Foto’s",
-  document_derivative: "Geredigeerde documenten",
 };
 
 const DATE_PRECISIONS = {
@@ -50,7 +49,7 @@ function dateLabel(value: string | null): string {
 }
 
 function projectionSummary(document: ProjectionDocument): string {
-  const count = document.visits.length + document.places.length + document.updates.length + document.stays.length + document.media.length + document.documents.length + document.routes.length;
+  const count = document.visits.length + document.places.length + document.updates.length + document.stays.length + document.media.length + document.routes.length;
   return `${count} gekozen onderdelen · ${document.title ? "titel" : "geen titel"} · ${document.summary ? "samenvatting" : "geen samenvatting"} · ${document.dates ? "reisdatums" : "geen reisdatums"}`;
 }
 
@@ -130,12 +129,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const staysQuery = useTripResource(trip.id, "stays");
   const locationsQuery = useTripResource(trip.id, "locations");
   const mediaQuery = useTripResource(trip.id, "media");
-  const documentsQuery = useTripResource(trip.id, "documents");
   const media = useMemo(() => mediaQuery.data ?? [], [mediaQuery.data]);
-  const documents = useMemo(() => documentsQuery.data ?? [], [documentsQuery.data]);
   // One derivative read per asset; the combined result keeps a fixed shape however many assets there are.
   const mediaDerivatives = useQueries({ queries: media.map((asset) => derivativesQueryOptions(owner, trip.id, "media", asset.id)), combine: combineDerivatives });
-  const documentDerivatives = useQueries({ queries: documents.map((asset) => derivativesQueryOptions(owner, trip.id, "documents", asset.id)), combine: combineDerivatives });
   const publicStatus = statusQuery.data ?? null;
   const links = useMemo(() => linksQuery.data ?? [], [linksQuery.data]);
   const linkSeries = useMemo<LinkSeries[]>(() => {
@@ -352,11 +348,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       ...(routesQuery.data ?? []).map((item) => ({ kind: "route" as const, id: item.id, label: `${ROUTE_MODE_LABELS[item.mode]}: ${routeTitle(item)}`, detail: "Bezoekers zien de gebieden, het vervoermiddel en de lijn, nooit boekingscode, reisklasse, notities of documenten", visibility: item.visibility })),
       ...(staysQuery.data ?? []).map((item) => ({ kind: "stay" as const, id: item.id, label: stayLabel(item), detail: `Bezoekers zien alleen ${item.area?.label ?? "(nog geen gebied gekozen)"} en de nachten`, visibility: item.visibility })),
       ...media.flatMap((asset, index) => approved(mediaDerivatives.data[index]).filter((item) => item.purpose === "share").map((item) => ({ kind: "media_derivative" as const, id: item.id, label: asset.original_filename ?? "Goedgekeurde foto", detail: "Goedgekeurde foto", visibility: item.visibility, followsUpdate: updateTitles.get(item.travel_update_id ?? "") }))),
-      ...documents.flatMap((asset, index) => approved(documentDerivatives.data[index]).map((item) => ({ kind: "document_derivative" as const, id: item.id, label: asset.title, detail: "Goedgekeurde geredigeerde kopie", visibility: item.visibility }))),
     ];
-  }, [trip, placesQuery.data, locationsQuery.data, routesQuery.data, visitsQuery.data, staysQuery.data, media, documents, mediaDerivatives.data, documentDerivatives.data]);
+  }, [trip, placesQuery.data, locationsQuery.data, routesQuery.data, visitsQuery.data, staysQuery.data, media, mediaDerivatives.data]);
 
-  const readError = [statusQuery, linksQuery, placesQuery, locationsQuery, routesQuery, visitsQuery, staysQuery, mediaQuery, documentsQuery].find((query) => query.isError)?.error ?? mediaDerivatives.error ?? documentDerivatives.error;
+  const readError = [statusQuery, linksQuery, placesQuery, locationsQuery, routesQuery, visitsQuery, staysQuery, mediaQuery].find((query) => query.isError)?.error ?? mediaDerivatives.error;
   const message = notice ?? (readError ? errorMessage(readError, "Je publicaties konden niet worden geladen.") : statusQuery.isPending ? "Laad je publicaties…" : "Kies per onderdeel wie het ziet. Nieuwe onderdelen zijn privé.");
   const isPublished = publicStatus?.surface_state === "published";
 

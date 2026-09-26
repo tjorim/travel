@@ -239,17 +239,6 @@ export type DocumentAsset = {
   file_url: string;
 };
 
-export type DocumentDerivative = {
-  id: string;
-  document_asset_id: string;
-  review_state: "pending" | "approved";
-  byte_size: number;
-  content_type: string;
-  visibility: Visibility;
-  created_at: string;
-  file_url: string;
-};
-
 export type OwnerDocument = {
   id: string;
   document_kind: "booking" | "itinerary" | "receipt" | "other";
@@ -336,7 +325,7 @@ export type ImportCompleteResult = {
 };
 
 /** Every kind of record that can be shared, and so can carry a visibility. */
-export type ShareScopeKind = "area" | "location" | "visit" | "route" | "stay" | "travel_update" | "media_derivative" | "document_derivative";
+export type ShareScopeKind = "area" | "location" | "visit" | "route" | "stay" | "travel_update" | "media_derivative";
 
 /** An audience lists only records whose visibility is custom; which fields show is fixed per kind. */
 export type ShareScopeItem = { kind: ShareScopeKind; id: string };
@@ -377,7 +366,6 @@ export type ProjectionDocument = {
   updates: Record<string, unknown>[];
   stays: Record<string, unknown>[];
   media: Record<string, unknown>[];
-  documents: Record<string, unknown>[];
   routes: Record<string, unknown>[];
   navigation: Record<string, unknown>[];
 };

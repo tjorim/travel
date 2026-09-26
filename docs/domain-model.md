@@ -40,7 +40,7 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   mode (flight, train, bus, ferry, car, bike, walk or other). See below.
 - **Reisupdate**: what happened, with a private part and a shared part. It can
   be linked to a location (private) and to an area (shared).
-- **Photo** and **document**: files, shared only as an approved copy.
+- **Photo** and **video**: files shared only as application-generated approved copies. Documents are always private.
 
 **Giving a place.** Wherever a record points at a place (a visit, each end of a
 route), the owner gives an area, a location, or both. A location settles its
@@ -101,7 +101,7 @@ anything recorded: the application stores no GPS tracks, live or finished.
 - **Private original**: something whose exact content must never leave the
   owner boundary: a stay's property and booking, a location's address, a route's
   booking, a photo original, a document original.
-- **Twin**: a separately authored or reviewed share-safe copy, used only where
+- **Twin**: an application-generated, reviewed share-safe copy, used only where
   the shared thing is a different artifact from the original (see below).
 
 ## What a record shows when it is shared
@@ -118,12 +118,11 @@ outside the allowlist can be selected.
 | Visit | title (else the shared location's name or the area's), the text for visitors, its area, the days at the precision chosen; the times only if the owner also chooses that (and only with full dates) | notes, the exact location (unless shared), the times (unless chosen) |
 | Route | mode, status, its two areas, name, schedule, carrier, service reference, the drawn line | booking reference, class, notes, documents, the exact locations (unless shared) |
 | Photo | an approved, metadata-stripped copy, with caption and alt text | the original and its EXIF |
-| Document | an approved, redacted copy | the original |
+| Document | never shared | the original and all metadata |
 
 ## Where a twin is still needed
 
-Twins are kept for **files**, because the shared thing is a different
-artifact: a photo derivative (stripped, resized) and a redacted document copy.
+Twins are kept only for **photos and videos**, where the application generates a different shareable artifact. Documents are always private, either in the owner-wide library or specific to a trip; neither home is published.
 An area, a location, a route, a stay and a reisupdate are shared as themselves
 through their allowlist, so there is no second record to keep in step. A
 record that cannot be shared safely yet is refused with a reason: a location
