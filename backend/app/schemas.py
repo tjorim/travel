@@ -51,7 +51,16 @@ def require_ordered_dates(start: date | None, end: date | None, message: str) ->
         raise ValueError(message)
 
 
-class LocationFields(BaseModel):
+class InputModel(BaseModel):
+    """A payload a client sends: an unknown field is rejected, never silently dropped.
+
+    A misspelled or guessed field would otherwise succeed without storing anything,
+    so the caller would believe the change was applied."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class LocationFields(InputModel):
     """An owner-only location: address parts, coordinates, viewport and
     navigation/provider IDs. A shared location shows only what its allowlist says."""
 
@@ -127,7 +136,7 @@ def require_identified_location(location: "LocationInput | None") -> "LocationIn
     return location
 
 
-class LocationUpdate(BaseModel):
+class LocationUpdate(InputModel):
     """What an existing location lets the owner change: its public name, its area
     and whether its address is shown when it is shared."""
 
@@ -136,7 +145,7 @@ class LocationUpdate(BaseModel):
     share_address: bool | None = None
 
 
-class MergeRequest(BaseModel):
+class MergeRequest(InputModel):
     """Fold duplicate locations or areas into ``keep_id``. Without ``confirm`` it only previews."""
 
     keep_id: str = Field(min_length=1, max_length=32)
@@ -192,14 +201,15 @@ class AreaMergeResult(BaseModel):
 class LocationResponse(LocationFields):
     id: str
     visibility: Visibility
-    model_config = ConfigDict(from_attributes=True)
+    # A response is read from stored data, not sent by a client.
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
-class PlaceSearchRequest(BaseModel):
+class PlaceSearchRequest(InputModel):
     query: str = Field(min_length=2, max_length=200)
 
 
-class PlaceReverseGeocodeRequest(BaseModel):
+class PlaceReverseGeocodeRequest(InputModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
 
@@ -236,7 +246,7 @@ class NavigationResponse(BaseModel):
     exact: bool
 
 
-class AreaInput(BaseModel):
+class AreaInput(InputModel):
     """A deliberately authored area: label, country/region and an
     optional approved generalized point. Shareable, unlike a location."""
 
@@ -255,7 +265,7 @@ class AreaInput(BaseModel):
         return round(value, 2) if value is not None else None
 
 
-class AreaUpdate(BaseModel):
+class AreaUpdate(InputModel):
     label: str | None = Field(default=None, min_length=1, max_length=120)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
@@ -283,15 +293,14 @@ class AreaSuggestion(BaseModel):
 class AreaResponse(AreaInput):
     id: str
     visibility: Visibility
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
-class TripCreate(BaseModel):
+class TripCreate(InputModel):
     title: str = Field(min_length=1, max_length=160)
     summary: str | None = Field(default=None, max_length=4000)
     starts_on: date | None = None
     ends_on: date | None = None
-    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def end_not_before_start(self):
@@ -299,12 +308,11 @@ class TripCreate(BaseModel):
         return self
 
 
-class TripUpdate(BaseModel):
+class TripUpdate(InputModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     summary: str | None = Field(default=None, max_length=4000)
     starts_on: date | None = None
     ends_on: date | None = None
-    model_config = ConfigDict(extra="forbid")
 
 
 def _require_unique_media_assets(values: list[str] | None) -> list[str] | None:
@@ -313,7 +321,7 @@ def _require_unique_media_assets(values: list[str] | None) -> list[str] | None:
     return values
 
 
-class TravelUpdateCreate(BaseModel):
+class TravelUpdateCreate(InputModel):
     """A reisupdate: what happened, with a private part and a shared part.
 
     Private: ``private_notes``, the exact ``location`` and the attached
@@ -334,7 +342,7 @@ class TravelUpdateCreate(BaseModel):
     _unique_media = field_validator("media_asset_ids")(_require_unique_media_assets)
 
 
-class TravelUpdatePatch(BaseModel):
+class TravelUpdatePatch(InputModel):
     occurred_at: datetime | None = None
     date_precision: DatePrecision | None = None
     title: str | None = Field(default=None, min_length=1, max_length=160)
@@ -363,7 +371,7 @@ class TravelUpdateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class StayCreate(BaseModel):
+class StayCreate(InputModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
     morning, so a stay covers the nights ``check_in_date`` up to, but not
     including, ``check_out_date``. Every stay has a location. While the
@@ -396,7 +404,7 @@ class StayCreate(BaseModel):
         return self
 
 
-class StayUpdate(BaseModel):
+class StayUpdate(InputModel):
     """Change a stay. ``area_id`` alone moves it to that area and, unless its
     location is already there, to the area's city-level location; setting
     ``location`` to null keeps the area but forgets the accommodation."""
@@ -458,7 +466,7 @@ def require_visit_times(
         raise ValueError("The end time must be after the start time")
 
 
-class VisitCreate(BaseModel):
+class VisitCreate(InputModel):
     """A stop: at an area, or at a location in one, and optionally when."""
 
     area_id: str | None = Field(default=None, min_length=1, max_length=32)
@@ -484,7 +492,7 @@ class VisitCreate(BaseModel):
         return self
 
 
-class VisitUpdate(BaseModel):
+class VisitUpdate(InputModel):
     area_id: str | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
     position: int | None = Field(default=None, ge=0)
@@ -521,14 +529,20 @@ class VisitResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class TaskLink(BaseModel):
+class TaskLink(InputModel):
     label: str = Field(min_length=1, max_length=80)
     url: HttpUrl
 
     _https = field_validator("url")(require_https)
 
 
-class TripTaskCreate(BaseModel):
+class StoredTaskLink(TaskLink):
+    """A saved link as a response reads it back: stored data is not rejected for an extra key."""
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class TripTaskCreate(InputModel):
     title: str = Field(min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
     due_date: date | None = None
@@ -536,7 +550,7 @@ class TripTaskCreate(BaseModel):
     links: list[TaskLink] = Field(default_factory=list, max_length=5)
 
 
-class TripTaskUpdate(BaseModel):
+class TripTaskUpdate(InputModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000)
     due_date: date | None = None
@@ -552,7 +566,7 @@ class TripTaskResponse(BaseModel):
     due_date: date | None
     remind_at: datetime | None
     reminded_at: datetime | None
-    links: list[TaskLink]
+    links: list[StoredTaskLink]
     completed_at: datetime | None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
@@ -572,7 +586,7 @@ class TripTaskAlertResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class GeoJsonLineString(BaseModel):
+class GeoJsonLineString(InputModel):
     """A reviewed GeoJSON line, entered by the owner rather than computed
     from a raw recording. Coordinates are longitude, latitude pairs."""
 
@@ -588,6 +602,12 @@ class GeoJsonLineString(BaseModel):
         return values
 
 
+class StoredGeoJsonLineString(GeoJsonLineString):
+    """A saved line as a response reads it back, including one carried over from an older schema."""
+
+    model_config = ConfigDict(extra="ignore")
+
+
 def require_route_ends(model):
     """Each end of a route is an area, given directly or through a location that is filed under one."""
     for end in ("departure", "arrival"):
@@ -596,7 +616,7 @@ def require_route_ends(model):
     return model
 
 
-class RouteCreate(BaseModel):
+class RouteCreate(InputModel):
     """A route between two areas. Everything else is optional: the exact locations,
     the schedule (both times or neither), booking details and a drawn line."""
 
@@ -638,7 +658,7 @@ class RouteCreate(BaseModel):
         return values
 
 
-class RouteUpdate(BaseModel):
+class RouteUpdate(InputModel):
     mode: RouteMode | None = None
     status: RouteStatus | None = None
     label: str | None = Field(default=None, min_length=1, max_length=160)
@@ -687,7 +707,7 @@ class RouteResponse(BaseModel):
     booking_reference: str | None
     notes: str | None
     document_asset_ids: list[str]
-    geometry: GeoJsonLineString | None
+    geometry: StoredGeoJsonLineString | None
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
@@ -765,7 +785,7 @@ class ShareScopeKind(StrEnum):
     MEDIA_DERIVATIVE = "media_derivative"
 
 
-class ShareScopeTripInput(BaseModel):
+class ShareScopeTripInput(InputModel):
     """The small, explicit trip-level portion of a shared view."""
 
     title: bool = True
@@ -773,19 +793,15 @@ class ShareScopeTripInput(BaseModel):
     # Trip dates are absent unless the owner chooses a precision to share.
     dates: DatePrecision | None = None
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class ShareScopeItemInput(BaseModel):
+class ShareScopeItemInput(InputModel):
     """One record, with visibility ``custom``, that this audience includes."""
 
     kind: ShareScopeKind
     id: str = Field(min_length=1, max_length=32)
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class ShareScopeInput(BaseModel):
+class ShareScopeInput(InputModel):
     """The explicit, owner-selected content of a public or unlisted view.
 
     Anything not listed here is absent from the rendered projection, never
@@ -795,8 +811,6 @@ class ShareScopeInput(BaseModel):
     schema_version: Literal["travel/share-scope@1"] = "travel/share-scope@1"
     trip: ShareScopeTripInput = Field(default_factory=ShareScopeTripInput)
     items: list[ShareScopeItemInput] = Field(default_factory=list, max_length=200)
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class ProjectionDocument(BaseModel):
@@ -827,23 +841,23 @@ class PublicProjectionStatusResponse(BaseModel):
     slug: str | None
 
 
-class VisibilityUpdate(BaseModel):
+class VisibilityUpdate(InputModel):
     """Set who receives one record: the same choice for every shareable kind."""
 
     visibility: Visibility
 
 
-class ShareLinkCreate(BaseModel):
+class ShareLinkCreate(InputModel):
     label: str = Field(min_length=1, max_length=120)
     scope: ShareScopeInput = Field(default_factory=ShareScopeInput)
 
 
-class ShareLinkUpdate(BaseModel):
+class ShareLinkUpdate(InputModel):
     label: str | None = Field(default=None, min_length=1, max_length=120)
     scope: ShareScopeInput | None = None
 
 
-class ShareLinkActivateRequest(BaseModel):
+class ShareLinkActivateRequest(InputModel):
     # `null` is an explicit owner choice for a revocable link without natural
     # expiry. Omitted retains the safer 30-day default.
     expires_in_days: int | None = Field(default=30, ge=1, le=90)
@@ -868,7 +882,7 @@ class ShareLinkActivateResponse(ShareLinkResponse):
     pass
 
 
-class AuditReasonInput(BaseModel):
+class AuditReasonInput(InputModel):
     """An optional owner-entered reason attached to a lifecycle-transition
     audit event; never required, since most transitions are self-explanatory."""
 
@@ -943,23 +957,21 @@ class MediaDerivativeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MediaDerivativeCreate(BaseModel):
+class MediaDerivativeCreate(InputModel):
     purpose: DerivativePurpose = DerivativePurpose.SHARE
     max_dimension: int = Field(default=1600, ge=64, le=4000)
     remove_audio: bool = False
 
 
-class MediaDerivativePresentationUpdate(BaseModel):
+class MediaDerivativePresentationUpdate(InputModel):
     travel_update_id: str | None = None
     caption: str | None = Field(default=None, max_length=500)
     alt_text: str | None = Field(default=None, max_length=300)
     focal_x: int | None = Field(default=None, ge=0, le=100)
     focal_y: int | None = Field(default=None, ge=0, le=100)
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class MediaVisitCandidatesRequest(BaseModel):
+class MediaVisitCandidatesRequest(InputModel):
     """Only assets the owner explicitly selected are eligible for review."""
 
     media_asset_ids: list[str] = Field(min_length=1, max_length=100)
@@ -1018,7 +1030,7 @@ class DocumentAssetResponse(BaseModel):
 # --- Owner-wide document library and emergency information --------------------------
 
 
-class OwnerDocumentUpdate(BaseModel):
+class OwnerDocumentUpdate(InputModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     document_kind: DocumentKind | None = None
     linked_trip_id: str | None = Field(default=None)
@@ -1038,14 +1050,14 @@ class OwnerDocumentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class EmergencyInfoEntryCreate(BaseModel):
+class EmergencyInfoEntryCreate(InputModel):
     kind: EmergencyInfoKind
     label: str = Field(min_length=1, max_length=160)
     value: str = Field(min_length=1, max_length=255)
     notes: str | None = Field(default=None, max_length=4000)
 
 
-class EmergencyInfoEntryUpdate(BaseModel):
+class EmergencyInfoEntryUpdate(InputModel):
     kind: EmergencyInfoKind | None = None
     label: str | None = Field(default=None, min_length=1, max_length=160)
     value: str | None = Field(default=None, min_length=1, max_length=255)
@@ -1083,7 +1095,7 @@ class ImportSessionCompleteResponse(BaseModel):
     failed: list[ImportFailureItem]
 
 
-class ProviderTokenSet(BaseModel):
+class ProviderTokenSet(InputModel):
     access_token: str = Field(min_length=1, max_length=4096)
 
 

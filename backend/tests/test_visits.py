@@ -278,3 +278,19 @@ def test_a_visit_without_a_title_goes_by_its_shared_location_or_its_area() -> No
     assert TestClient(app).get(f"/api/public/trips/{slug}").json()["visits"][0]["title"] == "Taipei"
     share(owner, trip["id"], "location", located["location"]["id"], "everyone")
     assert TestClient(app).get(f"/api/public/trips/{slug}").json()["visits"][0]["title"] == "Beitou hot spring"
+
+
+def test_an_unknown_field_is_rejected_rather_than_silently_dropped() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}/visits"
+    visit = owner.post(base, json={"area_id": make_area(owner, trip["id"]), "title": "Temple"}).json()
+
+    response = owner.patch(f"{base}/{visit['id']}", json={"title": "Night market", "state": "idea"})
+    assert response.status_code == 422
+    assert [(error["loc"], error["type"]) for error in response.json()["detail"]] == [
+        (["body", "state"], "extra_forbidden")
+    ]
+    assert owner.get(f"{base}/{visit['id']}").json()["title"] == "Temple"
+    location = {"display_name": "Longshan Temple", "precise_address": "No. 211"}
+    assert owner.post(base, json={"location": location}).status_code == 422

@@ -58,6 +58,14 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Every request body and MCP tool argument now rejects a field it does not
+  define instead of dropping it. A misspelled or guessed field, or one a client
+  cached from a newer or older schema, now fails with a 422 or a tool error that
+  names the field, rather than succeeding without storing anything.
+  Input models share one strict base, and a test walks every REST body and MCP
+  argument to keep it that way. The audit row for a refused MCP call records
+  only the field path and error type, never the rejected value.
+  ([#189](https://github.com/tjorim/travel/issues/189))
 - A stay whose accommodation is not chosen yet takes just an `area_id`; all
   such stays in one area share its city-level location instead of each adding
   a copy, and clearing a stay's location returns it there. Moving a location

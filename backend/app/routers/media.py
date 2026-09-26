@@ -3,7 +3,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -42,6 +41,7 @@ from ..models import (
 from ..schemas import (
     ImportSessionCompleteResponse,
     ImportSessionResponse,
+    InputModel,
     MediaAssetResponse,
     MediaDerivativeCreate,
     MediaDerivativePresentationUpdate,
@@ -516,7 +516,7 @@ def revoke_provider_token(provider: ImportProvider, subject: SubjectDep, secret_
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-class OAuthComplete(BaseModel):
+class OAuthComplete(InputModel):
     code: str
     state: str
 

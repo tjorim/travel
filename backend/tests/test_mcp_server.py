@@ -365,6 +365,38 @@ def test_invalid_arguments_are_audited_without_the_payload(
     assert "SECRET-TITLE" not in json.dumps(events[0].details)
 
 
+def test_an_unknown_field_is_a_rejection_naming_it_and_the_value_is_not_audited(
+    backend: TravelMcpBackend, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def run() -> object:
+        async with _protocol_client() as client:
+            trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Exampleland"}})).structured_content["id"]
+            area = await client.call_tool("save_area", {"trip_id": trip_id, "payload": {"label": "Taipei"}})
+            visit = await client.call_tool(
+                "create_visit", {"trip_id": trip_id, "payload": {"area_id": area.structured_content["id"]}}
+            )
+            return await client.call_tool(
+                "update_visit",
+                {
+                    "trip_id": trip_id,
+                    "visit_id": visit.structured_content["id"],
+                    "payload": {"title": "Temple", "state": "SECRET-STATE"},
+                },
+                raise_on_error=False,
+            )
+
+    with caplog.at_level(logging.INFO):
+        result = asyncio.run(run())
+
+    assert result.is_error
+    assert "payload.state" in result.content[0].text and "Extra inputs are not permitted" in result.content[0].text
+    with TestingSessionLocal() as session:
+        rejected = session.scalars(select(McpAuditEvent).where(McpAuditEvent.result == "rejected")).one()
+    assert (rejected.action, rejected.resource_type) == ("update_visit", "tool_invocation")
+    assert rejected.details["error"] == "Validation failed (payload.state:extra_forbidden)"
+    assert "SECRET-STATE" not in json.dumps(rejected.details) + caplog.text
+
+
 def test_unknown_tools_are_not_audited_and_keep_their_specific_error(backend: TravelMcpBackend) -> None:
     async def run() -> object:
         async with _protocol_client() as client:

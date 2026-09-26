@@ -66,7 +66,7 @@ Result = TypeVar("Result")
 logger = logging.getLogger(__name__)
 
 
-class BinaryUpload(BaseModel):
+class BinaryUpload(schemas.InputModel):
     """A bounded, explicit binary input for an owner-selected local file."""
 
     filename: str = Field(min_length=1, max_length=255)
@@ -154,7 +154,7 @@ def _listed(kind: str, model_type: type[BaseModel], compact: bool) -> Callable[[
     return render
 
 
-class BatchCreate(BaseModel):
+class BatchCreate(schemas.InputModel):
     """Records to add to one trip in a single all-or-nothing call, created in this order.
 
     Each list item takes exactly the payload of its single ``create_*`` tool.
@@ -199,8 +199,10 @@ def _error_summary(error: BaseException) -> str:
     """A short, payload-free description that is safe to log and to persist in the audit trail."""
     if isinstance(error, HTTPException):
         return str(error.detail)[:240]
-    if isinstance(error, ValidationError):
-        return f"Validation failed ({_validation_fields(error)})"[:240]
+    # FastMCP wraps an invalid-argument error, whose message echoes the rejected values.
+    cause = error if isinstance(error, ValidationError) else error.__cause__
+    if isinstance(cause, ValidationError):
+        return f"Validation failed ({_validation_fields(cause)})"[:240]
     return str(error)[:240]
 
 
