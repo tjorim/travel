@@ -130,6 +130,17 @@ def test_other_subject_cannot_read_or_change_a_trip() -> None:
     assert other.patch(f"/api/trips/{trip['id']}", json={"title": "Nope"}).status_code == 404
 
 
+def test_only_the_owner_reads_a_trip_overview() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    overview = owner.get(f"/api/trips/{trip['id']}/overview")
+    assert overview.status_code == 200, overview.text
+    assert overview.json()["counts"]["visits"] == 0
+    assert [audience["kind"] for audience in overview.json()["audiences"]] == ["public"]
+    assert "owner_subject" not in overview.json()
+    assert client_for("owner-2").get(f"/api/trips/{trip['id']}/overview").status_code == 404
+
+
 def test_trip_api_rejects_superseded_publication_fields() -> None:
     owner = client_for("owner-1")
     assert owner.post("/api/trips", json={"title": "Exampleland", "visibility": "public"}).status_code == 422

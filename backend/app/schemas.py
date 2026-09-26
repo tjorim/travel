@@ -305,10 +305,12 @@ class TravelUpdateResponse(BaseModel):
 class StayCreate(BaseModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
     morning, so a stay covers the nights ``check_in_date`` up to, but not
-    including, ``check_out_date``. Every stay needs a location; the property
-    name is optional while the accommodation is still being chosen."""
+    including, ``check_out_date``. Every stay has a location. While the
+    accommodation is still being chosen, give only ``area_id``: the stay then
+    uses that area's shared city-level location instead of a new copy."""
 
-    location: LocationInput
+    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    location: LocationInput | None = None
     check_in_date: date
     check_out_date: date
     check_in_time: time | None = None
@@ -324,8 +326,21 @@ class StayCreate(BaseModel):
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
 
+    @model_validator(mode="after")
+    def says_where(self):
+        if self.location is None and self.area_id is None:
+            raise ValueError("Say where this stay is: an area, or a location")
+        if self.location is not None and self.area_id is not None:
+            raise ValueError("Give an area or a location, not both; a location names its own area")
+        return self
+
 
 class StayUpdate(BaseModel):
+    """Change a stay. ``area_id`` alone moves it to that area and, unless its
+    location is already there, to the area's city-level location; setting
+    ``location`` to null keeps the area but forgets the accommodation."""
+
+    area_id: str | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
     check_in_date: date | None = None
     check_out_date: date | None = None
@@ -622,6 +637,48 @@ class TripResponse(BaseModel):
     ends_on: date | None
     travel_updates: list[TravelUpdateResponse]
     model_config = ConfigDict(from_attributes=True)
+
+
+class OverviewAudience(BaseModel):
+    """What one audience (the public page or a draft/active link) receives right now."""
+
+    kind: Literal["public", "share_link"]
+    id: str | None
+    label: str
+    state: str
+    live: bool
+    shares_title: bool
+    shares_summary: bool
+    dates_precision: DatePrecision | None
+    scope_items: int
+    delivered: dict[str, int]
+    without_map_point: dict[str, int]
+
+
+class OverviewWarning(BaseModel):
+    code: str
+    severity: Literal["warning", "info"]
+    message: str
+    # The audience's label, and a link's id (null for the public page).
+    audience: str | None = None
+    audience_id: str | None = None
+    # The label, title or precision the warning is about.
+    text: str | None = None
+    kind: str | None = None
+    id: str | None = None
+
+
+class TripOverviewResponse(BaseModel):
+    """Owner-only: counts per kind, who receives what, and what to review before sharing."""
+
+    trip_id: str
+    title: str
+    starts_on: date | None
+    ends_on: date | None
+    counts: dict[str, int]
+    visibility: dict[str, dict[str, int]]
+    audiences: list[OverviewAudience]
+    warnings: list[OverviewWarning]
 
 
 class ShareScopeKind(StrEnum):

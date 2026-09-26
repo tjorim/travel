@@ -136,6 +136,8 @@ textarea { min-height: 136px; resize: vertical; }
 .record-confirm { display: grid; gap: 12px; margin-top: 16px; padding: 16px; border: 2px solid #b68110; border-radius: 12px; background: #fff6d9; }
 .record-confirm h3, .record-confirm p { margin: 0; }
 @media (max-width: 620px) { .record-dialog { width: 100%; max-width: none; max-height: calc(100dvh - 12px); margin: 12px 0 0; padding: 18px; border-radius: 16px 16px 0 0; } }
+.sharing-review { display: grid; gap: 6px; margin: 0; padding-left: 20px; color: #315c4e; line-height: 1.5; }
+.sharing-review .review-warning { color: #8a3a1f; }
 .manager-subsection { display: grid; gap: 15px; padding-top: 20px; border-top: 1px solid #d6e0d9; }
 .trip-workspace { display: grid; gap: 18px; }
 .trip-workspace-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }

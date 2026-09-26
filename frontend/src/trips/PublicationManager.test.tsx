@@ -6,7 +6,7 @@ import { fakeApi, type FakeApi } from "../query/fake-api";
 import { ownerKeys } from "../query/keys";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import type { ProjectionDocument, PublicProjectionStatus, ShareLink, ShareScope, Trip } from "../tracker-model";
+import type { OverviewAudience, ProjectionDocument, PublicProjectionStatus, ShareLink, ShareScope, Trip, TripOverview } from "../tracker-model";
 import { PublicationManager } from "./PublicationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -23,11 +23,18 @@ const link = (id: string, label: string, state: ShareLink["state"] = "draft"): S
 
 let api: FakeApi;
 let status: PublicProjectionStatus;
+let overview: TripOverview;
+const audience = (overrides: Partial<OverviewAudience> = {}): OverviewAudience => ({
+  kind: "public", id: null, label: "public", state: "unpublished", live: false, shares_title: true, shares_summary: true,
+  dates_precision: null, scope_items: 0, delivered: { visits: 0, places: 0, stays: 0, routes: 0, updates: 0, media: 0 },
+  without_map_point: { visits: 0, stays: 0, updates: 0 }, ...overrides,
+});
 const SECRET = "secret-token-123";
 
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   status = { trip_id: "trip", slug: "exampleland", surface_state: "unpublished", scope: scope() } as unknown as PublicProjectionStatus;
+  overview = { trip_id: "trip", counts: {}, visibility: {}, audiences: [audience()], warnings: [] };
   api = fakeApi()
     .collection("/api/trips/trip/share-links", [link("l1", "Familie")], { create: (body, count) => link(`l${count + 1}`, String(body.label)) })
     .collection("/api/trips/trip/areas", [{ id: "b1", label: "Taipei", visibility: "custom" }])
@@ -43,6 +50,7 @@ beforeEach(() => {
     .collection("/api/trips/trip/documents", []);
   api.on("PUT", /\/visibility\/[^/]+\/[^/]+$/, (body) => body);
   api.on("GET", /^\/api\/trips\/trip\/public-projection$/, () => status);
+  api.on("GET", /^\/api\/trips\/trip\/overview$/, () => overview);
   api.on("PUT", /^\/api\/trips\/trip\/public-projection$/, (body) => { status = { ...status, scope: body as ShareScope }; return status; });
   api.on("POST", /^\/api\/trips\/trip\/public-projection\/publish$/, () => { status = { ...status, surface_state: "published" }; return status; });
   api.on("POST", /^\/api\/trips\/trip\/public-projection\/unpublish$/, () => { status = { ...status, surface_state: "unpublished" }; return status; });
@@ -241,4 +249,27 @@ it("saves a renamed link and shows the new name in the list", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Link opslaan" }));
   await screen.findByRole("button", { name: /Familie en vrienden/ });
   expect(screen.queryByRole("button", { name: /^Familie ·/ })).toBeNull();
+});
+
+it("shows what each audience receives and words the review warnings in Dutch", async () => {
+  overview = {
+    trip_id: "trip", counts: {}, visibility: {},
+    audiences: [
+      audience({ state: "published", live: true, delivered: { visits: 7, places: 0, stays: 0, routes: 2, updates: 1, media: 0 }, without_map_point: { visits: 7, stays: 0, updates: 1 } }),
+      audience({ kind: "share_link", id: "l1", label: "Familie", state: "active", live: true }),
+    ],
+    warnings: [
+      { code: "trip_dates_shared", severity: "info", message: "", audience: "public", audience_id: null, text: "month", kind: null, id: null },
+      { code: "map_point_withheld", severity: "warning", message: "", audience: "public", audience_id: null, text: "7 visits, 1 reisupdate", kind: null, id: null },
+      { code: "live_audience_receives_nothing", severity: "warning", message: "", audience: "Familie", audience_id: "l1", text: null, kind: null, id: null },
+      { code: "planning_marker_visible", severity: "warning", message: "", audience: "public", audience_id: null, text: "Chiayi · concept", kind: null, id: null },
+    ],
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const review = within(await screen.findByRole("list", { name: "Controle voor het delen" }));
+  expect(review.getByText(/7 bezoeken, 0 verblijven, 2 routes, 1 reisupdates/)).toBeTruthy();
+  expect(review.getByText("De pagina voor iedereen krijgt 7 bezoeken, 1 reisupdate zonder kaartpunt, omdat hun gebied niet gedeeld is of geen punt heeft.")).toBeTruthy();
+  expect(review.getByText(/Link “Familie” is actief maar krijgt geen enkel onderdeel/)).toBeTruthy();
+  expect(review.getByText(/toont “Chiayi · concept”/)).toBeTruthy();
+  expect(review.getByText("De pagina voor iedereen toont de reisdatums (alleen maanden).")).toBeTruthy();
 });

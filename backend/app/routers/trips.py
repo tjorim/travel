@@ -18,11 +18,13 @@ from ..models import (
     Trip,
     Visibility,
 )
+from ..overview import trip_overview
 from ..schemas import (
     TravelUpdateCreate,
     TravelUpdatePatch,
     TravelUpdateResponse,
     TripCreate,
+    TripOverviewResponse,
     TripResponse,
     TripUpdate,
 )
@@ -101,6 +103,12 @@ def create_trip(payload: TripCreate, session: SessionDep, subject: SubjectDep) -
 @router.get("/{trip_id}", response_model=TripResponse)
 def get_trip(trip_id: str, session: SessionDep, subject: SubjectDep) -> Trip:
     return owned_trip(session, trip_id, subject)
+
+
+@router.get("/{trip_id}/overview", response_model=TripOverviewResponse)
+def get_trip_overview(trip_id: str, session: SessionDep, subject: SubjectDep) -> dict:
+    """Counts per kind, what each audience receives, and what to review before sharing."""
+    return trip_overview(session, owned_trip(session, trip_id, subject))
 
 
 @router.patch("/{trip_id}", response_model=TripResponse)

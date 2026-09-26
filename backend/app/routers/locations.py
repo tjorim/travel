@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Location, Visibility
+from ..models import Location, Route, Visibility, Visit
 from ..navigation import location_navigation_url
 from ..schemas import LocationInput, LocationResponse, LocationUpdate, NavigationResponse
 from .placement import location_from_input, selected_area
@@ -42,6 +42,19 @@ def save_location(trip_id: str, payload: LocationInput, session: SessionDep, sub
     return location
 
 
+def _carry_links(session: Session, location: Location) -> None:
+    """Keep every route end and visit at this location in the location's new area.
+
+    A record's area must hold its location, so moving the location moves them
+    with it instead of leaving the owner to detach, move and reattach each one.
+    Stays and reisupdates take their area from the location already."""
+    for end in ("departure", "arrival"):
+        for route in session.scalars(select(Route).where(getattr(Route, f"{end}_location_id") == location.id)):
+            setattr(route, f"{end}_area", location.area)
+    for visit in session.scalars(select(Visit).where(Visit.location_id == location.id)):
+        visit.area = location.area
+
+
 @router.patch("/locations/{location_id}", response_model=LocationResponse)
 def update_location(
     trip_id: str, location_id: str, payload: LocationUpdate, session: SessionDep, subject: SubjectDep
@@ -55,6 +68,7 @@ def update_location(
         if payload.area_id is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Every location needs an area")
         location.area = selected_area(session, trip_id, payload.area_id)
+        _carry_links(session, location)
     if "share_address" in changes and payload.share_address is not None:
         location.share_address = payload.share_address
     if location.label is None and location.visibility != Visibility.PRIVATE:

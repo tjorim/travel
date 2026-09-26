@@ -192,8 +192,41 @@ def test_every_stay_has_a_location_but_the_accommodation_can_still_be_chosen_lat
     assert chosen.json()["website_url"] == "https://lodge.example.test/"
     assert chosen.json()["area"]["id"] == area["id"]
 
-    # A stay can change its location but never lose it.
-    assert owner.patch(f"{base}/{planned.json()['id']}", json={"location": None}).status_code == 422
+    # Clearing the location keeps the stay in its area, at the area's city-level location.
+    cleared = owner.patch(f"{base}/{planned.json()['id']}", json={"location": None})
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["area"]["id"] == area["id"]
+    assert cleared.json()["location"]["id"] == planned.json()["location"]["id"]
+
+
+def test_undecided_stays_in_one_area_share_its_city_level_location() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    tainan = create_area(owner, trip["id"], label="Tainan")
+    chiayi = create_area(owner, trip["id"], label="Chiayi")
+    base = f"/api/trips/{trip['id']}/stays"
+
+    first = owner.post(base, json={"area_id": tainan["id"], "check_in_date": "2054-12-01", "check_out_date": "2054-12-03"})
+    assert first.status_code == 201, first.text
+    assert first.json()["area"]["id"] == tainan["id"]
+    assert first.json()["location"]["locality"] == "Tainan"
+    # A second undecided stay, whether it names the area directly or through a bare location, adds no copy.
+    second = owner.post(base, json={"area_id": tainan["id"], "check_in_date": "2054-12-05", "check_out_date": "2054-12-06"})
+    third = owner.post(base, json={"location": {"area_id": tainan["id"]}, "check_in_date": "2054-12-07", "check_out_date": "2054-12-08"})
+    assert {second.json()["location"]["id"], third.json()["location"]["id"]} == {first.json()["location"]["id"]}
+    locations = owner.get(f"/api/trips/{trip['id']}/locations").json()
+    assert [item["locality"] for item in locations] == ["Tainan"]
+
+    # Both an area and a location, or neither, is refused.
+    assert owner.post(base, json={"area_id": tainan["id"], "location": {"locality": "Tainan"}, "check_in_date": "2054-12-01", "check_out_date": "2054-12-02"}).status_code == 422
+    assert owner.post(base, json={"check_in_date": "2054-12-01", "check_out_date": "2054-12-02"}).status_code == 422
+
+    # Moving a stay to another area moves it to that area's city-level location.
+    moved = owner.patch(f"{base}/{second.json()['id']}", json={"area_id": chiayi["id"]})
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["area"]["id"] == chiayi["id"]
+    assert moved.json()["location"]["locality"] == "Chiayi"
+    assert owner.patch(f"{base}/{second.json()['id']}", json={"area_id": None}).status_code == 422
 
 
 def test_a_stay_covers_at_least_one_night_and_uses_only_this_trips_areas() -> None:

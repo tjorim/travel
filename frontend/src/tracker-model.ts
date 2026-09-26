@@ -343,6 +343,42 @@ export type ShareScope = {
   items: ShareScopeItem[];
 };
 
+/** What one audience (the public page or a draft/active link) receives right now. */
+export type OverviewAudience = {
+  kind: "public" | "share_link";
+  id: string | null;
+  label: string;
+  state: string;
+  live: boolean;
+  shares_title: boolean;
+  shares_summary: boolean;
+  dates_precision: "day" | "month" | "year" | null;
+  scope_items: number;
+  delivered: Record<"visits" | "places" | "stays" | "routes" | "updates" | "media", number>;
+  without_map_point: Record<"visits" | "stays" | "updates", number>;
+};
+
+export type OverviewWarning = {
+  code: "live_audience_receives_nothing" | "trip_dates_shared" | "planning_marker_visible" | "map_point_withheld" | "undated_visit_duplicates_dated";
+  severity: "warning" | "info";
+  /** English, for API and MCP clients; the PWA words each code itself. */
+  message: string;
+  audience: string | null;
+  audience_id: string | null;
+  text: string | null;
+  kind: string | null;
+  id: string | null;
+};
+
+/** Owner-only review of a trip: counts per kind, who receives what, and what to check before sharing. */
+export type TripOverview = {
+  trip_id: string;
+  counts: Record<string, number>;
+  visibility: Record<string, Partial<Record<Visibility, number>>>;
+  audiences: OverviewAudience[];
+  warnings: OverviewWarning[];
+};
+
 export type PublicProjectionStatus = {
   trip_id: string;
   scope: ShareScope;

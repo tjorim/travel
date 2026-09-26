@@ -6,6 +6,19 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- `GET /api/trips/{id}/overview` and the `get_trip_overview` MCP tool check a
+  trip in one read: counts and visibility per kind, what the public page and
+  each draft or active link receive, and warnings for an active audience that
+  receives nothing, shared trip dates, planning words such as "concept" in a
+  label a visitor sees, shared records without a map point because their area
+  is not shared, and undated visits that duplicate a dated one. The Delen
+  screen shows the same review, in Dutch, above the visibility choices.
+  ([#182](https://github.com/tjorim/travel/issues/182))
+- The `batch_create` MCP tool adds many visits, stays, routes, reisupdates and
+  tasks to a trip in one all-or-nothing call. `app.archive_import --trip-id`
+  completes an existing trip with only the records it lacks, and `--dry-run`
+  reports what is present and what would be created.
+  ([#182](https://github.com/tjorim/travel/issues/182))
 - Video derivatives now transcode to a capped H.264/AAC MP4 with telemetry and
   container metadata removed. A separate WebP poster accompanies each video;
   the owner can remove audio, review the copy, retry failures and explicitly
@@ -25,6 +38,16 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- A stay whose accommodation is not chosen yet takes just an `area_id`; all
+  such stays in one area share its city-level location instead of each adding
+  a copy, and clearing a stay's location returns it there. Moving a location
+  to another area now carries the route ends and visits at it along.
+  ([#182](https://github.com/tjorim/travel/issues/182))
+- MCP `list_areas`, `list_locations`, `list_visits`, `list_stays` and
+  `list_routes` return compact rows (ids and labels) by default; pass
+  `compact=false`, or use the `get_*` tool, for the full records.
+  `list_areas` also takes a `query` to find an area by name.
+  ([#182](https://github.com/tjorim/travel/issues/182))
 - Documents are always private, whether kept in the owner-wide library or
   attached to a trip. Removed document derivatives, their share controls and
   visitor delivery; deleting either document type now removes its stored file.

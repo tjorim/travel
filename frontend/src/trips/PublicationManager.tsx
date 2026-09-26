@@ -11,7 +11,7 @@ import { RecordDialog } from "../RecordDialog";
 import { RenderedPreview } from "./RenderedPreview";
 import { VisibilityControl } from "./visibility";
 import type { Projection } from "../ProjectionView";
-import { ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, type ProjectionDocument, type PublicProjectionStatus, type ShareLink, type ShareScope, type ShareScopeKind, type Trip, type Visibility } from "../tracker-model";
+import { ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, type ProjectionDocument, type PublicProjectionStatus, type ShareLink, type ShareScope, type ShareScopeKind, type Trip, type TripOverview, type OverviewAudience, type OverviewWarning, type Visibility } from "../tracker-model";
 
 type CatalogItem = { kind: ShareScopeKind; id: string; label: string; detail: string; visibility: Visibility; /** A photo attached to a reisupdate is shared with it, so it has no choice of its own. */ followsUpdate?: string };
 
@@ -99,6 +99,49 @@ function ScopeEditor({ scope, setScope, name, catalog, hasDates, disabled = fals
 }
 
 /** Every shareable record with the same control as in its own editor; both write one field. */
+const MAP_KINDS: Record<keyof OverviewAudience["without_map_point"], [string, string]> = { visits: ["bezoek", "bezoeken"], stays: ["verblijf", "verblijven"], updates: ["reisupdate", "reisupdates"] };
+
+/** A warning in Dutch; the API's English ``message`` is for API and MCP clients. */
+function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): string {
+  const name = warning.audience_id === null ? "De pagina voor iedereen" : `Link “${warning.audience}”`;
+  switch (warning.code) {
+    case "live_audience_receives_nothing":
+      return `${name} is actief maar krijgt geen enkel onderdeel. Zet onderdelen op “Iedereen”, of kies ze voor dit publiek.`;
+    case "trip_dates_shared":
+      return `${name} toont de reisdatums (${DATE_PRECISIONS[warning.text as keyof typeof DATE_PRECISIONS]?.toLowerCase() ?? warning.text}).`;
+    case "planning_marker_visible":
+      return `${name} toont “${warning.text}”, met een planningswoord erin. Geef het een andere naam; de status hoort bij het onderdeel zelf.`;
+    case "map_point_withheld": {
+      const audience = audiences.find((item) => item.id === warning.audience_id);
+      if (!audience) return warning.message;
+      const counts = (Object.entries(MAP_KINDS) as [keyof typeof MAP_KINDS, [string, string]][])
+        .filter(([kind]) => audience.without_map_point[kind] > 0)
+        .map(([kind, [one, many]]) => `${audience.without_map_point[kind]} ${audience.without_map_point[kind] === 1 ? one : many}`);
+      return `${name} krijgt ${counts.join(", ")} zonder kaartpunt, omdat hun gebied niet gedeeld is of geen punt heeft.`;
+    }
+    case "undated_visit_duplicates_dated":
+      return `Het bezoek “${warning.text}” heeft geen datum, maar zijn gebied heeft al een bezoek met datum. Geef het een datum, voeg het samen of verwijder het.`;
+    default:
+      return warning.message;
+  }
+}
+
+/** What to check before sharing, from the same projection visitors receive. */
+function SharingReview({ overview }: { overview: TripOverview | undefined }) {
+  if (!overview) return null;
+  const warnings = [...overview.warnings].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "warning" ? -1 : 1));
+  return <div className="manager-subsection"><div className="capture-heading"><div><h3>Controle voor het delen</h3><p>Wat elk actief of ontworpen publiek nu krijgt, en wat je best nakijkt.</p></div></div>
+    <ul className="sharing-review" aria-label="Controle voor het delen">
+      {overview.audiences.map((audience) => {
+        const delivered = audience.delivered;
+        return <li key={audience.id ?? "public"}><strong>{audience.kind === "public" ? "Voor iedereen" : audience.label}</strong> · {audience.live ? "actief" : audience.kind === "public" ? "niet gedeeld" : "concept"} · {delivered.visits} bezoeken, {delivered.stays} verblijven, {delivered.routes} routes, {delivered.updates} reisupdates, {delivered.places} plaatsen, {delivered.media} media</li>;
+      })}
+      {warnings.map((warning, index) => <li key={`${warning.code}-${warning.audience_id ?? warning.id ?? ""}-${index}`} className={warning.severity === "warning" ? "review-warning" : undefined}>{reviewText(warning, overview.audiences)}</li>)}
+      {warnings.length === 0 && <li>Niets om na te kijken.</li>}
+    </ul>
+  </div>;
+}
+
 function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: CatalogItem[] }) {
   const groups = groupBy(catalog);
   if (!groups.size) return <p className="help">Er zijn nog geen onderdelen die je kunt delen. Maak bijvoorbeeld een reisupdate, gebied of bezoek.</p>;
@@ -123,6 +166,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const owner = useOwner();
   const statusQuery = useTripResource(trip.id, "public-projection");
   const linksQuery = useTripResource(trip.id, "share-links");
+  const overviewQuery = useTripResource(trip.id, "overview");
   const placesQuery = useTripResource(trip.id, "areas");
   const routesQuery = useTripResource(trip.id, "routes");
   const visitsQuery = useTripResource(trip.id, "visits");
@@ -153,8 +197,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const [reason, setReason] = useState("");
   const path = tripPath(trip.id, "public-projection");
   const linksPath = tripPath(trip.id, "share-links");
-  const refreshStatus = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "public-projection")];
-  const refreshLinks = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "share-links")];
+  const refreshStatus = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "public-projection"), ownerKeys.tripResource(subject, trip.id, "overview")];
+  const refreshLinks = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "share-links"), ownerKeys.tripResource(subject, trip.id, "overview")];
 
   const savePublic = useOwnerMutation<ShareScope, PublicProjectionStatus>({
     fallback: "De publieke scope kon niet worden opgeslagen.",
@@ -359,6 +403,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     <div className="capture-heading"><div><h3 id="publication-manager-title">Delen</h3><p>Elk onderdeel heeft dezelfde keuze: privé, iedereen, of zelf kiezen per publiek. Hier stel je dat in voor alles tegelijk, of per publiek voor wat op “Zelf kiezen” staat.</p></div></div>
     <p className="help" role="status">{message}</p>
     {revealedLink && <RecordDialog open title="Deellink" onDismiss={() => setRevealedLink(null)}><section className="token-reveal" aria-live="assertive"><strong>{revealedLink.label}</strong><p>Wie deze link heeft, kan de actieve verborgen pagina openen. Je kunt hem later opnieuw kopiëren zolang de link actief blijft.</p><code>{revealedLink.url}</code><button type="button" onClick={() => void copyLink().catch(fail("Kopiëren lukte niet."))}>Link kopiëren</button><button className="secondary compact" type="button" onClick={() => setRevealedLink(null)}>Sluiten</button></section></RecordDialog>}
+    <SharingReview overview={overviewQuery.data} />
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Zichtbaarheid per onderdeel</h3><p>Dezelfde keuze als in de editor van elk onderdeel.</p></div></div><VisibilityOverview tripId={trip.id} catalog={catalog} /></div>
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Voor iedereen</h3><p>{isPublished ? "Deze pagina is voor iedereen bereikbaar." : "Deze pagina is nog niet bereikbaar voor bezoekers."}</p></div></div>
       <RecordForm record={publicRecord} submitLabel="Keuze bewaren" pendingLabel="Bewaren…" actions={<>

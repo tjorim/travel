@@ -422,3 +422,102 @@ def test_external_provider_tools_are_open_world() -> None:
     for name in ("search_places", "reverse_geocode_place", "start_media_import_session", "complete_media_import_session"):
         assert _tool_annotations(name).open_world_hint is True, name
     assert _tool_annotations("list_trips").open_world_hint is False
+
+
+def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Compact"))
+    taipei = backend.save_area(trip["id"], schemas.AreaInput(label="Taipei", country_code="TW", latitude=25.03, longitude=121.56))
+    backend.save_area(trip["id"], schemas.AreaInput(label="Tainan · concept", country_code="TW"))
+    backend.create_route(trip["id"], schemas.RouteCreate(
+        mode="flight", departure_location=schemas.LocationInput(display_name="Taoyuan Airport", area_id=taipei["id"]),
+        arrival_area_id=taipei["id"], notes="Seat 12A",
+    ))
+    backend.create_stay(trip["id"], schemas.StayCreate(area_id=taipei["id"], check_in_date="2054-11-17", check_out_date="2054-11-18"))
+
+    (route,) = backend.list_routes(trip["id"])
+    assert route["departure_area"] == {"id": taipei["id"], "label": "Taipei"}
+    assert route["departure_location_id"] and route["arrival_location_id"] is None
+    assert "notes" not in route and "geometry" not in route and route["has_geometry"] is False
+    (stay,) = backend.list_stays(trip["id"])
+    assert stay["area"] == {"id": taipei["id"], "label": "Taipei"} and "contact_details" not in stay
+    assert "viewport_north" not in backend.list_locations(trip["id"])[0]
+    # The full records remain one argument away.
+    assert backend.list_routes(trip["id"], compact=False)[0]["notes"] == "Seat 12A"
+    assert backend.list_stays(trip["id"], compact=False)[0]["location"]["area_id"] == taipei["id"]
+
+    assert [area["label"] for area in backend.list_areas(trip["id"], query="TAIN")] == ["Tainan · concept"]
+    assert backend.list_areas(trip["id"], query="Taipei") == [
+        {"id": taipei["id"], "label": "Taipei", "country_code": "TW", "region": None, "timezone": None, "visibility": "private"}
+    ]
+
+
+def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> None:
+    from app.mcp_server import BatchCreate
+
+    trip = backend.create_trip(schemas.TripCreate(title="Batch"))
+    taipei = backend.save_area(trip["id"], schemas.AreaInput(label="Taipei"))
+    tainan = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan"))
+    batch = BatchCreate(
+        visits=[schemas.VisitCreate(area_id=tainan["id"], title="Old town", starts_on="2054-12-01")],
+        stays=[schemas.StayCreate(area_id=tainan["id"], check_in_date="2054-12-01", check_out_date="2054-12-03")],
+        routes=[schemas.RouteCreate(mode="train", departure_area_id=taipei["id"], arrival_area_id=tainan["id"])] * 2,
+        travel_updates=[schemas.TravelUpdateCreate(occurred_at="2054-12-01T12:00:00Z", title="Arrived", area_id=tainan["id"])],
+        trip_tasks=[schemas.TripTaskCreate(title="Book the hotel")],
+    )
+    created = backend.batch_create(trip["id"], batch)
+    assert {field: len(rows) for field, rows in created.items()} == {
+        "visits": 1, "stays": 1, "routes": 2, "travel_updates": 1, "trip_tasks": 1,
+    }
+    assert created["routes"][0]["arrival_area"]["label"] == "Tainan"
+    assert created["trip_tasks"][0]["title"] == "Book the hotel"
+
+    # One refused record keeps the whole batch out, and the error names it.
+    refused = BatchCreate(
+        visits=[schemas.VisitCreate(area_id=taipei["id"], title="Should not stay")],
+        routes=[schemas.RouteCreate(mode="train", departure_area_id=taipei["id"], arrival_area_id="unknown-area")],
+    )
+    with pytest.raises(ValueError, match=r"routes\[0\].*Nothing was created"):
+        backend.batch_create(trip["id"], refused)
+    assert len(backend.list_visits(trip["id"])) == 1
+    assert len(backend.list_routes(trip["id"])) == 2
+    with TestingSessionLocal() as session:
+        results = [event.result for event in session.scalars(select(McpAuditEvent).where(McpAuditEvent.action == "trip.batch_create"))]
+    assert sorted(results) == ["rejected", "succeeded"]
+
+
+def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_leak(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Overview", starts_on="2054-11-16", ends_on="2054-12-10"))
+    chiayi = backend.save_area(trip["id"], schemas.AreaInput(label="Chiayi City · concept", latitude=23.48, longitude=120.45))
+    dated = backend.create_visit(trip["id"], schemas.VisitCreate(area_id=chiayi["id"], title="Night market", starts_on="2054-12-02"))
+    undated = backend.create_visit(trip["id"], schemas.VisitCreate(area_id=chiayi["id"], title="Old plan"))
+    backend.create_stay(trip["id"], schemas.StayCreate(area_id=chiayi["id"], check_in_date="2054-12-02", check_out_date="2054-12-03"))
+    backend.set_visibility(trip["id"], "visit", dated["id"], "everyone", confirm=True)
+    backend.set_public_projection_scope(trip["id"], schemas.ShareScopeInput(trip={"dates": "month"}), confirm=True)
+    backend.publish_public_projection(trip["id"], confirm=True)
+    link = backend.create_share_link(trip["id"], schemas.ShareLinkCreate(label="Family", scope={"trip": {"title": True}}), confirm=True)
+    backend.update_visit(trip["id"], dated["id"], schemas.VisitUpdate())
+
+    overview = backend.get_trip_overview(trip["id"])
+    assert overview["counts"]["visits"] == 2 and overview["counts"]["visits_undated"] == 1
+    assert overview["counts"]["stays"] == 1 and overview["counts"]["locations"] == 1
+    assert overview["visibility"]["visit"] == {"everyone": 1, "private": 1}
+    public, family = overview["audiences"]
+    assert (public["kind"], public["state"], public["live"], public["dates_precision"]) == ("public", "published", True, "month")
+    assert public["delivered"]["visits"] == 1 and public["without_map_point"]["visits"] == 1
+    assert (family["label"], family["state"], family["live"]) == ("Family", "draft", False)
+
+    codes = {(warning["code"], warning["audience"], warning["severity"]) for warning in overview["warnings"]}
+    assert ("trip_dates_shared", "public", "info") in codes
+    assert ("planning_marker_visible", "public", "warning") in codes  # the area label rides along on the shared visit
+    assert ("map_point_withheld", "public", "warning") in codes
+    assert ("undated_visit_duplicates_dated", None, "info") in codes
+    assert not any(code == "live_audience_receives_nothing" for code, _, _ in codes)
+    assert next(w for w in overview["warnings"] if w["code"] == "undated_visit_duplicates_dated")["id"] == undated["id"]
+
+    # An active link that selects nothing is flagged, not silently empty.
+    backend.activate_share_link(trip["id"], link["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+    backend.set_visibility(trip["id"], "visit", dated["id"], "private", confirm=True)
+    warnings = backend.get_trip_overview(trip["id"])["warnings"]
+    empty = {warning["audience"] for warning in warnings if warning["code"] == "live_audience_receives_nothing"}
+    assert empty == {"public", "Family"}
+    assert not any(warning["code"] == "planning_marker_visible" for warning in warnings)

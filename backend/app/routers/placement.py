@@ -42,6 +42,32 @@ def area_for_location(session: Session, trip_id: str, location: Location) -> Are
     return area
 
 
+# Fields that make a location more than "somewhere in this area".
+_IDENTIFYING = (
+    "osm_element_id", "display_name", "address_line1", "address_line2", "postal_code", "latitude", "longitude",
+    "navigation_provider_place_id", "notes",
+)
+
+
+def area_location(session: Session, trip_id: str, area: Area) -> Location:
+    """The one location that means just "in this area", created on first use.
+
+    A stay whose accommodation is still undecided needs a location, and every
+    such stay in the same city shares this one instead of each adding its own
+    copy of the area's name."""
+    candidates = select(Location).where(
+        Location.trip_id == trip_id, Location.area_id == area.id,
+        *(getattr(Location, field).is_(None) for field in _IDENTIFYING),
+    ).order_by(Location.created_at)
+    for location in session.scalars(candidates):
+        if location.locality is None or location.locality.lower() == area.label.lower():
+            return location
+    location = Location(trip_id=trip_id, area=area, locality=area.label, country_code=area.country_code)
+    session.add(location)
+    session.flush()
+    return location
+
+
 def location_from_input(session: Session, trip_id: str, payload: LocationInput) -> Location:
     """Create a location in its area, or return the location the trip already has."""
     if payload.existing_location_id is not None:

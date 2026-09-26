@@ -5,7 +5,7 @@ import { decodeSubject, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
   Area, DocumentAsset, EmergencyInfoEntry, Visit, MediaAsset, MediaDerivative,
-  OwnerDocument, Location, ProviderConnectionStatus, PublicProjectionStatus, ShareLink, Stay, Route, Trip, TripTask, TripTaskAlert,
+  OwnerDocument, Location, ProviderConnectionStatus, PublicProjectionStatus, ShareLink, Stay, Route, Trip, TripOverview, TripTask, TripTaskAlert,
 } from "../tracker-model";
 import { ApiError, ownerRequest, type OwnerRequest } from "./api";
 import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
@@ -33,6 +33,7 @@ type TripResourceData = {
   media: MediaAsset[];
   "public-projection": PublicProjectionStatus;
   "share-links": ShareLink[];
+  overview: TripOverview;
 };
 
 const resourceFailure: Record<TripResource, string> = {
@@ -47,6 +48,7 @@ const resourceFailure: Record<TripResource, string> = {
   media: "Je media konden niet worden geladen.",
   "public-projection": "De publieke publicatie kon niet worden geladen.",
   "share-links": "De deellinks konden niet worden geladen.",
+  overview: "De controle voor het delen kon niet worden geladen.",
 };
 
 export const tripPath = (tripId: string, resource?: string) => `/api/trips/${encodeURIComponent(tripId)}${resource ? `/${resource}` : ""}`;

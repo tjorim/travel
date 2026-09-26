@@ -345,6 +345,35 @@ def test_a_return_route_reuses_the_airport_instead_of_making_a_copy(tmp_path) ->
     assert foreign.status_code == 422
 
 
+def test_moving_a_location_to_another_area_carries_its_routes_and_visits(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    outbound = create_route(owner, trip["id"])
+    taoyuan = outbound["arrival_location"]
+    homeward = create_route(
+        owner, trip["id"],
+        departure_location={"existing_location_id": taoyuan["id"]},
+        arrival_location={"existing_location_id": outbound["departure_location"]["id"]},
+        departs_at="2054-04-20T09:00:00Z", arrives_at="2054-04-20T23:00:00Z",
+    )
+    visit = owner.post(f"{trips_path}/visits", json={"location": {"existing_location_id": taoyuan["id"]}})
+    assert visit.status_code == 201, visit.text
+    taipei = area_id(owner, trip["id"], "Taipei")
+
+    moved = owner.patch(f"{trips_path}/locations/{taoyuan['id']}", json={"area_id": taipei})
+    assert moved.status_code == 200, moved.text
+    # One update: every link to the airport stays attached and follows it.
+    routes = {route["id"]: route for route in owner.get(f"{trips_path}/routes").json()}
+    assert routes[outbound["id"]]["arrival_area"]["id"] == taipei
+    assert routes[outbound["id"]]["arrival_location"]["id"] == taoyuan["id"]
+    assert routes[homeward["id"]]["departure_area"]["id"] == taipei
+    assert routes[homeward["id"]]["departure_location"]["id"] == taoyuan["id"]
+    assert routes[outbound["id"]]["departure_area"]["label"] == "Zaventem"
+    moved_visit = owner.get(f"{trips_path}/visits/{visit.json()['id']}").json()
+    assert moved_visit["area"]["id"] == taipei and moved_visit["location"]["id"] == taoyuan["id"]
+
+
 def area_id(client: TestClient, trip_id: str, label: str) -> str:
     response = client.post(f"/api/trips/{trip_id}/areas", json={"label": label, "country_code": "TW", "latitude": 25.0, "longitude": 121.5})
     assert response.status_code == 201, response.text

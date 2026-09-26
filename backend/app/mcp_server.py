@@ -89,6 +89,54 @@ def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, An
     return [_model(value, model_type) for value in values]
 
 
+# The fields a compact list row keeps: enough to recognise a record and pass its
+# ids on, without repeating every embedded area and location in full. ``get_*``
+# returns the complete record.
+_COMPACT_FIELDS = {
+    "area": ("id", "label", "country_code", "region", "timezone", "visibility"),
+    "location": ("id", "label", "display_name", "locality", "area_id", "visibility"),
+    "visit": ("id", "position", "title", "kind", "starts_on", "ends_on", "start_time", "end_time", "visibility"),
+    "stay": ("id", "check_in_date", "check_out_date", "status", "property_name", "visibility"),
+    "route": ("id", "mode", "status", "label", "departs_at", "arrives_at", "departure_timezone", "arrival_timezone",
+              "carrier", "service_reference", "travel_class", "visibility"),
+}
+
+
+def _compact(kind: str, row: dict[str, Any]) -> dict[str, Any]:
+    """Reduce one serialized row to ids and labels, naming its area and location by id and label only."""
+    compact = {field: row[field] for field in _COMPACT_FIELDS[kind]}
+    for prefix, area, location in (("", "area", "location"), ("departure_", "departure_area", "departure_location"),
+                                   ("arrival_", "arrival_area", "arrival_location")):
+        if area in row:
+            compact[f"{prefix}area"] = {"id": row[area]["id"], "label": row[area]["label"]}
+        if location in row:
+            place = row[location]
+            compact[f"{prefix}location_id"] = place["id"] if place else None
+    if kind == "route":
+        compact["has_geometry"] = row["geometry"] is not None
+    return compact
+
+
+def _listed(kind: str, model_type: type[BaseModel], compact: bool) -> Callable[[list[Any]], list[dict[str, Any]]]:
+    def render(values: list[Any]) -> list[dict[str, Any]]:
+        rows = _models(values, model_type)
+        return [_compact(kind, row) for row in rows] if compact else rows
+    return render
+
+
+class BatchCreate(BaseModel):
+    """Records to add to one trip in a single all-or-nothing call, created in this order.
+
+    Each list item takes exactly the payload of its single ``create_*`` tool.
+    """
+
+    visits: list[schemas.VisitCreate] = Field(default_factory=list, max_length=100)
+    stays: list[schemas.StayCreate] = Field(default_factory=list, max_length=100)
+    routes: list[schemas.RouteCreate] = Field(default_factory=list, max_length=100)
+    travel_updates: list[schemas.TravelUpdateCreate] = Field(default_factory=list, max_length=100)
+    trip_tasks: list[schemas.TripTaskCreate] = Field(default_factory=list, max_length=100)
+
+
 def _share_url(token: str) -> str:
     """Build the visitor URL that corresponds to an unlisted capability.
 
@@ -259,6 +307,43 @@ class TravelMcpBackend:
         """Read one owned trip."""
         return self._call("trip.get", "trip", trip_id, trip_id, lambda s, sub: trips.get_trip(trip_id, s, sub), lambda x: _model(x, schemas.TripResponse))
 
+    def get_trip_overview(self, trip_id: str) -> dict[str, Any]:
+        """Check a trip in one read: counts per kind (to compare with a source such as an archive file), visibility per kind, what the public page and each draft or active link receive, and warnings to review before sharing (an active audience receiving nothing, shared trip dates, planning words like "concept" in a visible label, records without a map point because their area is not shared, undated visits duplicating dated ones)."""
+        return self._call("trip.overview", "trip", trip_id, trip_id, lambda s, sub: trips.get_trip_overview(trip_id, s, sub), lambda x: _model(x, schemas.TripOverviewResponse))
+
+    def batch_create(self, trip_id: str, payload: BatchCreate) -> dict[str, list[dict[str, Any]]]:
+        """Add many visits, stays, routes, reisupdates and tasks to an existing trip in one call. All or nothing: if any record is refused, none is kept and the error names it (for example routes[3]). Returns compact rows with the new ids."""
+        steps: list[tuple[str, str, Callable[[Session, str, Any], Any], type[BaseModel]]] = [
+            ("visits", "visit", lambda s, sub, item: visits.create_visit(trip_id, item, s, sub), schemas.VisitResponse),
+            ("stays", "stay", lambda s, sub, item: stays.create_stay(trip_id, item, s, sub), schemas.StayResponse),
+            ("routes", "route", lambda s, sub, item: routes.create_route(trip_id, item, s, sub), schemas.RouteResponse),
+            ("travel_updates", "", lambda s, sub, item: trips.create_travel_update(trip_id, item, s, sub), schemas.TravelUpdateResponse),
+            ("trip_tasks", "", lambda s, sub, item: tasks.create_trip_task(trip_id, item, s, sub), schemas.TripTaskResponse),
+        ]
+
+        def operation(session: Session, subject: str) -> dict[str, list[dict[str, Any]]]:
+            # The domain handlers commit each record. Inside a batch a commit
+            # only flushes, so ``_call`` commits everything at the end, or the
+            # closing session rolls all of it back when one record is refused.
+            session.commit = session.flush  # type: ignore[method-assign]
+            created: dict[str, list[dict[str, Any]]] = {}
+            try:
+                for field, kind, create, model_type in steps:
+                    rows = []
+                    for index, item in enumerate(getattr(payload, field)):
+                        try:
+                            row = _model(create(session, subject, item), model_type)
+                        except HTTPException as error:
+                            raise HTTPException(error.status_code, f"{field}[{index}]: {error.detail}. Nothing was created.") from error
+                        rows.append(_compact(kind, row) if kind else {"id": row["id"], "title": row["title"]})
+                    if rows:
+                        created[field] = rows
+            finally:
+                del session.commit  # the class's real commit again
+            return created
+
+        return self._call("trip.batch_create", "trip", trip_id, trip_id, operation, lambda x: x)
+
     def update_trip(self, trip_id: str, payload: schemas.TripUpdate) -> dict[str, Any]:
         """Update an owned trip's private metadata."""
         return self._call("trip.update", "trip", trip_id, trip_id, lambda s, sub: trips.update_trip(trip_id, payload, s, sub), lambda x: _model(x, schemas.TripResponse))
@@ -267,16 +352,16 @@ class TravelMcpBackend:
         """Permanently delete an owned trip after explicit confirmation."""
         return self._call("trip.delete", "trip", trip_id, trip_id, lambda s, sub: trips.delete_trip(trip_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
-    def list_visits(self, trip_id: str) -> list[dict[str, Any]]:
-        """List the trip's visits (stops) in order."""
-        return self._call("visit.list", "visit", None, trip_id, lambda s, sub: visits.list_visits(trip_id, s, sub), lambda x: _models(x, schemas.VisitResponse))
+    def list_visits(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+        """List the trip's visits (stops) in order. Compact rows name the area and location by id; pass compact=false, or use get_visit, for the full records."""
+        return self._call("visit.list", "visit", None, trip_id, lambda s, sub: visits.list_visits(trip_id, s, sub), _listed("visit", schemas.VisitResponse, compact))
 
     def get_visit(self, trip_id: str, visit_id: str) -> dict[str, Any]:
         """Read one visit."""
         return self._call("visit.get", "visit", visit_id, trip_id, lambda s, sub: visits.get_visit(trip_id, visit_id, s, sub), lambda x: _model(x, schemas.VisitResponse))
 
     def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
-        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. Times stay private unless share_time is set."""
+        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight)."""
         return self._call("visit.create", "visit", None, trip_id, lambda s, sub: visits.create_visit(trip_id, payload, s, sub), lambda x: _model(x, schemas.VisitResponse))
 
     def update_visit(self, trip_id: str, visit_id: str, payload: schemas.VisitUpdate) -> dict[str, Any]:
@@ -288,7 +373,7 @@ class TravelMcpBackend:
         return self._call("visit.delete", "visit", visit_id, trip_id, lambda s, sub: visits.delete_visit(trip_id, visit_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     def create_travel_update(self, trip_id: str, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
-        """Create a reisupdate: private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows."""
+        """Create a reisupdate: private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text."""
         return self._call("travel_update.create", "travel_update", None, trip_id, lambda s, sub: trips.create_travel_update(trip_id, payload, s, sub), lambda x: _model(x, schemas.TravelUpdateResponse))
 
     def update_travel_update(self, trip_id: str, update_id: str, payload: schemas.TravelUpdatePatch) -> dict[str, Any]:
@@ -310,17 +395,20 @@ class TravelMcpBackend:
         from .places.search import get_place_search_service
         return self._call("place.reverse", "place_search", None, trip_id, lambda s, sub: places.reverse_geocode_place(trip_id, payload, s, sub, get_place_search_service()), lambda x: _model(x, schemas.PlaceSearchResponse))
 
-    def list_locations(self, trip_id: str) -> list[dict[str, Any]]:
-        """List owner-only locations."""
-        return self._call("location.list", "location", None, trip_id, lambda s, sub: locations.list_locations(trip_id, s, sub), lambda x: _models(x, schemas.LocationResponse))
+    def list_locations(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+        """List owner-only locations. Compact rows keep the ids, names and area id; pass compact=false for addresses, coordinates and provider fields."""
+        return self._call("location.list", "location", None, trip_id, lambda s, sub: locations.list_locations(trip_id, s, sub), _listed("location", schemas.LocationResponse, compact))
 
     def save_location(self, trip_id: str, payload: schemas.LocationInput) -> dict[str, Any]:
         """Save a selected location for this trip."""
         return self._call("location.create", "location", None, trip_id, lambda s, sub: locations.save_location(trip_id, payload, s, sub), lambda x: _model(x, schemas.LocationResponse))
 
-    def list_areas(self, trip_id: str) -> list[dict[str, Any]]:
-        """List areas: the cities and regions you authored."""
-        return self._call("area.list", "area", None, trip_id, lambda s, sub: areas.list_areas(trip_id, s, sub), lambda x: _models(x, schemas.AreaResponse))
+    def list_areas(self, trip_id: str, query: str | None = None, compact: bool = True) -> list[dict[str, Any]]:
+        """List areas: the cities and regions you authored. query keeps only areas whose label contains it (case-insensitive), to find an area id by name. Pass compact=false for coordinates."""
+        def found(values: list[Any]) -> list[Any]:
+            needle = (query or "").strip().casefold()
+            return [area for area in values if needle in area.label.casefold()]
+        return self._call("area.list", "area", None, trip_id, lambda s, sub: found(areas.list_areas(trip_id, s, sub)), _listed("area", schemas.AreaResponse, compact))
 
     def suggest_area(self, trip_id: str, payload: schemas.AreaSuggestRequest) -> dict[str, Any]:
         """Suggest a nearby area or a new generalized area from coordinates; never saves it."""
@@ -337,7 +425,7 @@ class TravelMcpBackend:
         return self._call("area.update", "area", area_id, trip_id, lambda s, sub: areas.update_area(trip_id, area_id, payload, s, sub), lambda x: _model(x, schemas.AreaResponse))
 
     def update_location(self, trip_id: str, location_id: str, payload: schemas.LocationUpdate) -> dict[str, Any]:
-        """Give a location its public name; a location cannot be shared without one."""
+        """Give a location its public name (a location cannot be shared without one), or move it to another area; its routes and visits move along."""
         return self._call("location.update", "location", location_id, trip_id, lambda s, sub: locations.update_location(trip_id, location_id, payload, s, sub), lambda x: _model(x, schemas.LocationResponse))
 
     def set_visibility(self, trip_id: str, kind: schemas.ShareScopeKind, record_id: str, visibility: Visibility, confirm: bool = False) -> dict[str, Any]:
@@ -457,12 +545,12 @@ class TravelMcpBackend:
         return self._call("emergency_info.create", "emergency_info", None, None, lambda s, sub: library.create_emergency_info(payload, s, sub), lambda x: _model(x, schemas.EmergencyInfoEntryResponse))
 
     # Stays and preparation ----------------------
-    def list_stays(self, trip_id: str) -> list[dict[str, Any]]:
-        """List owner-only accommodation records."""
-        return self._call("stay.list", "stay", None, trip_id, lambda s, sub: stays.list_stays(trip_id, s, sub), lambda x: _models(x, schemas.StayResponse))
+    def list_stays(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+        """List owner-only accommodation records. Compact rows name the area and location by id; pass compact=false, or use get_stay, for booking and contact details."""
+        return self._call("stay.list", "stay", None, trip_id, lambda s, sub: stays.list_stays(trip_id, s, sub), _listed("stay", schemas.StayResponse, compact))
 
     def create_stay(self, trip_id: str, payload: schemas.StayCreate) -> dict[str, Any]:
-        """Create a private stay with check-in and check-out dates; omit local times until verified."""
+        """Create a private stay with check-in and check-out dates; omit local times until verified. While the accommodation is undecided, give only area_id instead of a location."""
         return self._call("stay.create", "stay", None, trip_id, lambda s, sub: stays.create_stay(trip_id, payload, s, sub), lambda x: _model(x, schemas.StayResponse))
 
     def update_stay(self, trip_id: str, stay_id: str, payload: schemas.StayUpdate) -> dict[str, Any]:
@@ -498,9 +586,9 @@ class TravelMcpBackend:
         return self._call("task_alert.read", "task_alert", alert_id, trip_id, lambda s, sub: tasks.mark_task_alert_read(trip_id, alert_id, s, sub), lambda x: _model(x, schemas.TripTaskAlertResponse))
 
     # Routes: between two areas, with optional locations, schedule, booking and drawn line ----
-    def list_routes(self, trip_id: str) -> list[dict[str, Any]]:
-        """List routes: how the trip gets from one area to another."""
-        return self._call("route.list", "route", None, trip_id, lambda s, sub: routes.list_routes(trip_id, s, sub), lambda x: _models(x, schemas.RouteResponse))
+    def list_routes(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+        """List routes: how the trip gets from one area to another. Compact rows name the ends by id and label and leave out the line, notes and bookings; pass compact=false, or use get_route, for the full records."""
+        return self._call("route.list", "route", None, trip_id, lambda s, sub: routes.list_routes(trip_id, s, sub), _listed("route", schemas.RouteResponse, compact))
 
     def create_route(self, trip_id: str, payload: schemas.RouteCreate) -> dict[str, Any]:
         """Create a route between two areas with a travel mode (flight, train, bus, ferry, car, bike, walk or other). The exact locations, schedule, booking details and a drawn GeoJSON line are optional."""
@@ -679,6 +767,7 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
 _ADDITIVE_WRITE_TOOLS = frozenset(
     {name for name in _TOOL_NAMES if name.startswith("create_")}
     | {
+        "batch_create",
         "save_location",
         "save_area",
         "upload_media",

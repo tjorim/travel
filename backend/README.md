@@ -14,12 +14,13 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 |---|---|---|
 | `GET`, `POST` | `/trips` | List the caller's trips or create a private trip. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}` | Read, edit, or remove an owned trip. |
+| `GET` | `/trips/{trip_id}/overview` | Owner-only review: counts per kind, visibility per kind, what the public page and each draft or active link receive, and warnings (an active audience receiving nothing, shared trip dates, planning words such as "concept" in a visible label, records without a map point because their area is not shared, undated visits duplicating dated ones). |
 | `GET`, `POST` | `/trips/{trip_id}/visits` | List or add a visit (a stop): an area, or a location in one (`area_id` or `location`), with optional days (`starts_on`, `ends_on`), local times (`start_time`, `end_time`), kind (free or work), private `notes` and a `summary` for visitors. Times stay private unless `share_time` is set, and are then shared only with full dates. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/visits/{visit_id}` | Read, edit, reorder (`position`) or remove a visit. |
 | `POST` | `/trips/{trip_id}/travel-updates` | Add a reisupdate, the one record for something that happened. Its private part (`private_notes`, the `location`, attached `media_asset_ids`) is never shared; its shared part (title, `body`, date, area) reaches visitors only as its `visibility` allows: `private` (the default), `everyone` or `custom`. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/travel-updates/{update_id}` | Edit or remove a reisupdate. Leaving `custom` or deleting it withdraws it from every live scope. |
 | `PUT` | `/trips/{trip_id}/visibility/{kind}/{record_id}` | Choose `private`, `everyone` or `custom` for any shareable record (area or location, stage, route, stay, reisupdate, approved photo copy). The reason is returned when a record cannot be shared yet. |
-| `PATCH` | `/trips/{trip_id}/locations/{location_id}` | Give a location its public name and area, and choose whether its address is shared; a location cannot be shared without a public name. |
+| `PATCH` | `/trips/{trip_id}/locations/{location_id}` | Give a location its public name and area, and choose whether its address is shared; a location cannot be shared without a public name. Moving a location to another area moves the route ends and visits at it along. |
 | `GET`, `POST` | `/trips/{trip_id}/areas` | List or save areas: cities and regions, private until shared. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/areas/{area_id}` | Edit an area (for example its time zone) or remove one nothing uses. |
 | `GET`, `POST` | `/trips/{trip_id}/routes` | List or add a route: how the trip gets from one area to another, by a travel mode (flight, train, bus, ferry, car, bike, walk or other). Only the mode and the two areas (`departure_area_id`, `arrival_area_id`, or an area implied by a `departure_location`/`arrival_location`) are required; exact locations, a schedule, carrier/booking details, attached documents and a drawn GeoJSON `geometry` are optional. The application takes no recorded GPS data. |
@@ -91,9 +92,10 @@ A stay is the set of nights slept at one accommodation: `check_in_date` is
 the first night and `check_out_date` the departure morning, so it covers
 every night from check-in up to, but not including, check-out. Both dates and
 the optional `check_in_time`/`check_out_time` are local to the stay. Every
-stay has a `location` (filed under an area); it can be as little as a
-city or an existing area, while `property_name` stays empty until the
-accommodation is chosen.
+stay has a `location` (filed under an area). While the accommodation is
+still being chosen, send only `area_id`: every such stay in that area shares
+one city-level location instead of each adding a copy, and `property_name`
+stays empty. Setting `location` to `null` later returns a stay to it.
 
 A route's optional schedule is stored as UTC instants plus each end's IANA time
 zone, and comes as a pair: both times or neither. Send `departs_at`/`arrives_at` without an offset together with
@@ -117,7 +119,11 @@ projection then truncates both dates to that precision.
 archive (#40), such as `dist/exampleland-2054/private/app-import.json`, through the
 owner API. The trip and everything in it arrive private and unpublished; a
 failed import deletes the partly created trip, and a second run with the same
-title is refused unless `--allow-duplicate` is passed.
+title is refused unless `--allow-duplicate` is passed. To complete a trip that
+already exists, `--trip-id TRIP_ID` adds only the records it does not have
+yet (matched by area label, visit area/title/day, stay area/check-in, route
+mode/areas, reisupdate title/date and task title); `--dry-run` with it reports
+what is present and what would be created without writing anything.
 
 ```bash
 # Local development API (the token the API runs with as TRAVEL_DEV_AUTH_BYPASS_TOKEN)
@@ -353,7 +359,12 @@ TRAVEL_ENVIRONMENT=development TRAVEL_MCP_DEVELOPMENT_SUBJECT=owner-local \
 
 The server exposes task-specific tools for all owner resources, including
 private media imports and derivatives, owner-only document uploads, previews, publication and
-share-link lifecycle. Audience changes, capability activation/rotation and
+share-link lifecycle. `get_trip_overview` checks a trip in one read (the
+`/overview` route above), `batch_create` adds many visits, stays, routes,
+reisupdates and tasks all-or-nothing, and `list_areas`, `list_locations`,
+`list_visits`, `list_stays` and `list_routes` return compact rows (ids and
+labels) unless `compact=false`; `list_areas` also takes a `query` to find an
+area by name. Audience changes, capability activation/rotation and
 deletion require `confirm=true`; a raw share capability is returned only by
 activation or rotation, together with its complete visitor `share_url`, and is
 never stored in the MCP audit table. The local

@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session, selectinload
 from ..auth import current_subject
 from ..database import get_session
 from ..models import Location, Stay, Trip
-from ..schemas import StayCreate, StayResponse, StayUpdate
-from .placement import location_from_input
+from ..schemas import LocationInput, StayCreate, StayResponse, StayUpdate
+from .placement import area_location, location_from_input, selected_area
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["stays"])
@@ -29,6 +29,19 @@ def owned_stay(trip: Trip, stay_id: str) -> Stay:
     if stay is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found")
     return stay
+
+
+def stay_location(session: Session, trip_id: str, area_id: str | None, location: LocationInput | None) -> Location:
+    """The location a stay points at: the one given, or its area's city-level location.
+
+    A location that names nothing but its area is the same thing as the area,
+    so it too reuses the city-level location rather than adding another."""
+    if location is not None and location.model_fields_set - {"area_id"}:
+        return location_from_input(session, trip_id, location)
+    area_id = location.area_id if location is not None else area_id
+    if area_id is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Say where this stay is")
+    return area_location(session, trip_id, selected_area(session, trip_id, area_id))
 
 
 def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
@@ -50,9 +63,9 @@ def create_stay(trip_id: str, payload: StayCreate, session: SessionDep, subject:
     validate_stay_nights(payload.check_in_date, payload.check_out_date)
     stay = Stay(
         trip=trip,
-        location=location_from_input(session, trip.id, payload.location),
+        location=stay_location(session, trip.id, payload.area_id, payload.location),
         website_url=str(payload.website_url) if payload.website_url is not None else None,
-        **payload.model_dump(exclude={"location", "website_url"}),
+        **payload.model_dump(exclude={"area_id", "location", "website_url"}),
     )
     session.add(stay)
     session.commit()
@@ -68,11 +81,22 @@ def get_stay(trip_id: str, stay_id: str, session: SessionDep, subject: SubjectDe
 def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: SessionDep, subject: SubjectDep) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     stay = owned_stay(trip, stay_id)
-    if "location" in payload.model_fields_set:
-        if payload.location is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A stay needs a location")
-        stay.location = location_from_input(session, trip.id, payload.location)
-    values = payload.model_dump(exclude_unset=True, exclude={"location"})
+    fields = payload.model_fields_set
+    if "location" in fields and payload.location is not None:
+        if payload.area_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Give an area or a location, not both; a location names its own area",
+            )
+        stay.location = stay_location(session, trip.id, None, payload.location)
+    elif "area_id" in fields and payload.area_id is not None:
+        if stay.location.area_id != payload.area_id:
+            stay.location = stay_location(session, trip.id, payload.area_id, None)
+    elif "location" in fields:  # cleared: keep the area, forget the accommodation
+        stay.location = area_location(session, trip.id, stay.location.area)
+    elif "area_id" in fields:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A stay needs an area")
+    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"})
     for required in ("check_in_date", "check_out_date", "status"):
         if required in values and values[required] is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
