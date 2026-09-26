@@ -61,6 +61,7 @@ def test_a_visit_needs_only_a_place() -> None:
     assert visit["area"]["label"] == "Taipei" and visit["location"] is None
     assert visit["title"] is None and visit["starts_on"] is None and visit["start_time"] is None
     assert visit["visibility"] == "private" and visit["share_time"] is False
+    assert visit["status"] == "planned"
     assert owner.get(base).json() == [visit]
     assert owner.get(f"{base}/{visit['id']}").json() == visit
 
@@ -191,6 +192,24 @@ def test_a_shared_visit_shows_its_place_and_days_and_the_time_only_when_chosen()
     assert "start_time" not in delivered()
     owner.patch(f"{base}/visits/{visit['id']}", json={"share_time": True, "share_date_precision": "month"})
     assert "start_time" not in delivered()
+
+
+def test_a_visit_status_is_owner_only_planning_state() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    visit = owner.post(f"{base}/visits", json={"area_id": make_area(owner, trip["id"]), "status": "idea"}).json()
+    assert visit["status"] == "idea"
+    assert owner.post(f"{base}/visits", json={"area_id": visit["area"]["id"], "status": "concept"}).status_code == 422
+    assert owner.patch(f"{base}/visits/{visit['id']}", json={"status": None}).status_code == 422
+    assert owner.patch(f"{base}/visits/{visit['id']}", json={"status": "confirmed"}).json()["status"] == "confirmed"
+    owner.patch(f"{base}/visits/{visit['id']}", json={"status": "idea"})
+
+    share(owner, trip["id"], "visit", visit["id"], "everyone")
+    assert owner.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}).status_code == 200
+    slug = owner.post(f"{base}/public-projection/publish").json()["slug"]
+    shared = TestClient(app).get(f"/api/public/trips/{slug}").json()["visits"][0]
+    assert "status" not in shared and "idea" not in shared.values()
 
 
 def test_a_visit_without_a_title_goes_by_its_shared_location_or_its_area() -> None:

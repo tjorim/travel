@@ -109,7 +109,7 @@ def update_visit(trip_id: str, visit_id: str, payload: VisitUpdate, session: Ses
     visit = owned_visit(trip, visit_id)
     _update_place(session, trip, visit, payload)
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "position"})
-    for required in ("share_time", "share_date_precision"):
+    for required in ("status", "share_time", "share_date_precision"):
         if required in values and values[required] is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
     try:

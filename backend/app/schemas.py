@@ -23,6 +23,7 @@ from .models import (
     SurfaceState,
     Visibility,
     VisitKind,
+    VisitStatus,
 )
 
 COUNTRY_CODE_FIELD = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")
@@ -398,6 +399,7 @@ class VisitCreate(BaseModel):
     position: int | None = Field(default=None, ge=0)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
+    status: VisitStatus = VisitStatus.PLANNED
     starts_on: date | None = None
     ends_on: date | None = None
     start_time: time | None = None
@@ -421,6 +423,7 @@ class VisitUpdate(BaseModel):
     position: int | None = Field(default=None, ge=0)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
+    status: VisitStatus | None = None
     starts_on: date | None = None
     ends_on: date | None = None
     start_time: time | None = None
@@ -438,6 +441,7 @@ class VisitResponse(BaseModel):
     location: LocationResponse | None
     title: str | None
     kind: VisitKind | None
+    status: VisitStatus
     starts_on: date | None
     ends_on: date | None
     start_time: time | None

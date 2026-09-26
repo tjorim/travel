@@ -84,7 +84,7 @@ def _audience(trip: Trip, *, kind: str, audience_id: str | None, label: str, sta
         if match := PLANNING_MARKERS.search(text):
             warn("planning_marker_visible", "warning" if live else "info",
                  f"{name} shows {text!r}, which contains the planning word {match.group(0)!r}. "
-                 "Rename it, or keep its status on the record instead of in the label.", text)
+                 "Rename it, and keep its planning state in a visit, stay or route status instead of in the label.", text)
     withheld = [f"{count} {_MAPPED[key]}{'s' if count != 1 else ''}" for key, count in unmapped.items() if count]
     if withheld:
         warn("map_point_withheld", "warning" if live else "info",

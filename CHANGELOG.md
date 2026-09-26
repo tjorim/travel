@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Visits have an owner-only `status`: `idea`, `planned` (the default) or
+  `confirmed`. It is never part of a shared visit, so planning state no longer
+  needs a "· concept" marker in a title or area label that visitors see. Areas
+  keep no status of their own; an area is as settled as its visits. The visit
+  editor has a Status choice, and the list calls out ideas and confirmed
+  visits. ([#183](https://github.com/tjorim/travel/issues/183))
 - `GET /api/trips/{id}/overview` and the `get_trip_overview` MCP tool check a
   trip in one read: counts and visibility per kind, what the public page and
   each draft or active link receive, and warnings for an active audience that

@@ -176,6 +176,9 @@ export const routeTitle = (route: Pick<Route, "label" | "departure_area" | "arri
 /** What kind of days a visit is: free days, or working ones. */
 export type VisitKind = "free" | "work";
 
+/** How settled a visit is. Owner-only: never shared, so planning state lives here, not in a label. */
+export type VisitStatus = "idea" | "planned" | "confirmed";
+
 /**
  * A stop on the trip: at an area, or at a location in one, and optionally when. The times are local
  * at the visit (the time zone is its area's) and stay private unless `share_time` is set.
@@ -187,6 +190,7 @@ export type Visit = {
   location: Location | null;
   title: string | null;
   kind: VisitKind | null;
+  status: VisitStatus;
   starts_on: string | null;
   ends_on: string | null;
   start_time: string | null;

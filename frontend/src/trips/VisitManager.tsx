@@ -8,11 +8,12 @@ import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { addDays, formatDayRange, locationName, stayCoversNight, stayLabel, visitTitle, type Stay, type Trip, type Visit, type VisitKind } from "../tracker-model";
+import { addDays, formatDayRange, locationName, stayCoversNight, stayLabel, visitTitle, type Stay, type Trip, type Visit, type VisitKind, type VisitStatus } from "../tracker-model";
 import { emptyPlace, hasPlace, PlacePicker, placeFields, placeOfVisit, samePlace, type PlaceValue } from "./PlacePicker";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 
 const KIND_LABELS: Record<VisitKind, string> = { free: "Vrij", work: "Werk" };
+const STATUS_LABELS: Record<VisitStatus, string> = { idea: "Idee", planned: "Gepland", confirmed: "Bevestigd" };
 const PRECISION_LABELS = { day: "Volledige datums", month: "Alleen maanden", year: "Alleen het jaar" } as const;
 
 type TripDates = Pick<Trip, "starts_on" | "ends_on">;
@@ -47,18 +48,18 @@ export function visitWhen(visit: Pick<Visit, "starts_on" | "ends_on" | "start_ti
 const visitPlace = (visit: Pick<Visit, "area" | "location">): string => visit.location ? `${locationName(visit.location)} · ${visit.area.label}` : visit.area.label;
 
 type Values = {
-  place: PlaceValue; title: string; kind: VisitKind | "";
+  place: PlaceValue; title: string; kind: VisitKind | ""; status: VisitStatus;
   startsOn: string; endsOn: string; startTime: string; endTime: string;
   notes: string; summary: string; shareTime: boolean; shareDatePrecision: Visit["share_date_precision"];
 };
 
-const blank = (): Values => ({ place: emptyPlace(), title: "", kind: "", startsOn: "", endsOn: "", startTime: "", endTime: "", notes: "", summary: "", shareTime: false, shareDatePrecision: "month" });
+const blank = (): Values => ({ place: emptyPlace(), title: "", kind: "", status: "planned", startsOn: "", endsOn: "", startTime: "", endTime: "", notes: "", summary: "", shareTime: false, shareDatePrecision: "month" });
 const fromVisit = (visit: Visit): Values => ({
-  place: placeOfVisit(visit), title: visit.title ?? "", kind: visit.kind ?? "",
+  place: placeOfVisit(visit), title: visit.title ?? "", kind: visit.kind ?? "", status: visit.status,
   startsOn: visit.starts_on ?? "", endsOn: visit.ends_on ?? "", startTime: clock(visit.start_time), endTime: clock(visit.end_time),
   notes: visit.notes ?? "", summary: visit.summary ?? "", shareTime: visit.share_time, shareDatePrecision: visit.share_date_precision,
 });
-const serverFields = { title: "title", kind: "kind", starts_on: "startsOn", ends_on: "endsOn", start_time: "startTime", end_time: "endTime", notes: "notes", summary: "summary", share_time: "shareTime", share_date_precision: "shareDatePrecision" };
+const serverFields = { title: "title", kind: "kind", status: "status", starts_on: "startsOn", ends_on: "endsOn", start_time: "startTime", end_time: "endTime", notes: "notes", summary: "summary", share_time: "shareTime", share_date_precision: "shareDatePrecision" };
 
 type FormContext = { fieldApi: { form: { getFieldValue: (name: never) => unknown } } };
 const lastDay = ({ value, fieldApi }: { value: string } & FormContext) => {
@@ -112,6 +113,7 @@ export function VisitManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: 
         payload: {
           title: values.title.trim() || null,
           kind: values.kind || null,
+          status: values.status,
           starts_on: values.startsOn || null,
           ends_on: values.endsOn && values.endsOn !== values.startsOn ? values.endsOn : null,
           start_time: values.startTime || null,
@@ -174,7 +176,8 @@ export function VisitManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: 
   const readError = visitsQuery.error ?? staysQuery.error;
 
   const dayLine = (visit: Visit) => {
-    const tags = visit.kind ? KIND_LABELS[visit.kind] : "";
+    // "Gepland" is the default, so only an idea or a confirmed visit is called out.
+    const tags = [visit.status !== "planned" ? STATUS_LABELS[visit.status] : "", visit.kind ? KIND_LABELS[visit.kind] : ""].filter(Boolean).join(" · ");
     return `${visitWhen(visit)}${tags ? ` · ${tags}` : ""}`;
   };
 
@@ -222,8 +225,10 @@ export function VisitManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: 
         </div>}</record.form.Subscribe>
         <p className="help">Tijden zijn lokaal bij het bezoek, in de tijdzone van het gebied. Bezoekers thuis zien ze erbij omgerekend, als je ze deelt.</p>
         <div className="field-row">
+          <record.form.Field name="status">{(field) => <SelectField field={field} label="Status">{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
           <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort dag" optional><option value="">Geen soort</option>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
         </div>
+        <p className="help">De status is alleen voor jou en wordt nooit gedeeld. Zet “idee” of “concept” dus hier, niet in de titel of de naam van het gebied.</p>
         <record.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional="(optioneel, altijd privé)" maxLength={4000} rows={3} />}</record.form.Field>
         <record.form.Field name="summary">{(field) => <TextAreaField field={field} label="Tekst voor bezoekers" optional maxLength={2000} rows={3} placeholder="Wat mogen bezoekers over dit bezoek lezen?" />}</record.form.Field>
         <div className="field-row">

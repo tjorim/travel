@@ -95,7 +95,7 @@ def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, An
 _COMPACT_FIELDS = {
     "area": ("id", "label", "country_code", "region", "timezone", "visibility"),
     "location": ("id", "label", "display_name", "locality", "area_id", "visibility"),
-    "visit": ("id", "position", "title", "kind", "starts_on", "ends_on", "start_time", "end_time", "visibility"),
+    "visit": ("id", "position", "title", "kind", "status", "starts_on", "ends_on", "start_time", "end_time", "visibility"),
     "stay": ("id", "check_in_date", "check_out_date", "status", "property_name", "visibility"),
     "route": ("id", "mode", "status", "label", "departs_at", "arrives_at", "departure_timezone", "arrival_timezone",
               "carrier", "service_reference", "travel_class", "visibility"),
@@ -361,7 +361,7 @@ class TravelMcpBackend:
         return self._call("visit.get", "visit", visit_id, trip_id, lambda s, sub: visits.get_visit(trip_id, visit_id, s, sub), lambda x: _model(x, schemas.VisitResponse))
 
     def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
-        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight)."""
+        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. status (idea, planned or confirmed) is owner-only and never shared: keep planning state there, not in a title or area label. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight)."""
         return self._call("visit.create", "visit", None, trip_id, lambda s, sub: visits.create_visit(trip_id, payload, s, sub), lambda x: _model(x, schemas.VisitResponse))
 
     def update_visit(self, trip_id: str, visit_id: str, payload: schemas.VisitUpdate) -> dict[str, Any]:

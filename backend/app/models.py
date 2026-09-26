@@ -161,6 +161,18 @@ class VisitKind(StrEnum):
     WORK = "work"
 
 
+class VisitStatus(StrEnum):
+    """How settled a visit is: an idea, planned, or confirmed.
+
+    Owner-only planning state, kept here instead of in a title or area label
+    (which visitors see). It is never shared. Areas carry no status of their
+    own: an area is as settled as the visits in it."""
+
+    IDEA = "idea"
+    PLANNED = "planned"
+    CONFIRMED = "confirmed"
+
+
 class AuditEventKind(StrEnum):
     PUBLIC_PROJECTION_PUBLISH = "public_projection.publish"
     PUBLIC_PROJECTION_UNPUBLISH = "public_projection.unpublish"
@@ -528,8 +540,8 @@ class Visit(Base):
     A visit is at an *area*, or at a *location* in one, and can carry the days it
     spans, a start and end time and a kind (free or working days).
 
-    It has a private part (``notes``, the exact ``location``, and the times unless
-    ``share_time`` is set) and a shared part (``title``, ``summary``, the area, the
+    It has a private part (``notes``, the ``status``, the exact ``location``, and
+    the times unless ``share_time`` is set) and a shared part (``title``, ``summary``, the area, the
     days at ``share_date_precision``), held in separate fields so private text
     can never reach a visitor by changing a switch.
     """
@@ -550,6 +562,10 @@ class Visit(Base):
     # Without a title a visit goes by the name of its location, else of its area.
     title: Mapped[str | None] = mapped_column(String(160), nullable=True)
     kind: Mapped[VisitKind | None] = mapped_column(_enum_column(VisitKind, "travel_visit_kind"), nullable=True)
+    # Owner-only planning state; never part of a shared visit.
+    status: Mapped[VisitStatus] = mapped_column(
+        _enum_column(VisitStatus, "travel_visit_status"), default=VisitStatus.PLANNED, nullable=False
+    )
     starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     # Inclusive last day of a multi-day visit such as "18-20 nov".
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
