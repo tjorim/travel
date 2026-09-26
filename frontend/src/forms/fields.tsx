@@ -2,7 +2,7 @@ import type { AnyFieldApi } from "@tanstack/react-form";
 import { createContext, useContext, useId, type InputHTMLAttributes, type ReactNode, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 type ServerErrors = Record<string, string>;
-const ServerFieldErrors = createContext<ServerErrors>({});
+export const ServerFieldErrors = createContext<ServerErrors>({});
 
 export type RecordFormState = {
   form: { handleSubmit: () => Promise<void> };
@@ -33,7 +33,7 @@ function useFieldErrors(field: AnyFieldApi) {
 
 type Common = { field: AnyFieldApi; label: string; optional?: string | boolean };
 
-const optionalNote = (optional: Common["optional"]) => optional ? <> <span className="optional">{typeof optional === "string" ? optional : "(optioneel)"}</span></> : null;
+export const optionalNote = (optional: Common["optional"]) => optional ? <> <span className="optional">{typeof optional === "string" ? optional : "(optioneel)"}</span></> : null;
 
 export function TextField({ field, label, optional, ...input }: Common & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "name">) {
   const { message, invalid, describedBy } = useFieldErrors(field);

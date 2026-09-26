@@ -150,3 +150,14 @@ it("adds an entry after validating the required fields, and keeps the input when
   await screen.findByText("Huisarts", { selector: "strong" });
   await waitFor(() => expect(screen.queryByLabelText("Label")).toBeNull());
 });
+
+it("shows Markdown notes as one plain line in the list and rendered in the entry", async () => {
+  withSession();
+  stubFetch([entry({ notes: "# Call\n\n**Evenings** only", notes_text: "Call Evenings only", notes_html: "<h4>Call</h4>\n<p><strong>Evenings</strong> only</p>\n" })]);
+  renderWithOwner(<AuthProvider><EmergencyInfoManager /></AuthProvider>);
+  const row = await screen.findByRole("button", { name: "Noodinformatie Mom bekijken" });
+  expect(row.textContent).toContain("· Call Evenings only");
+  expect(row.textContent).not.toContain("**");
+  fireEvent.click(row);
+  expect(document.querySelector(".markdown strong")?.textContent).toBe("Evenings");
+});

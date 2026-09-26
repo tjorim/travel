@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { RecordForm, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
@@ -221,7 +222,7 @@ export function RouteManager({ trip }: { trip: Trip }) {
           </div>
           <record.form.Field name="travelClass">{(input) => <TextField field={input} label="Reisklasse" optional maxLength={80} placeholder="Bijvoorbeeld: Premium Economy" />}</record.form.Field>
           <record.form.Field name="bookingReference">{(input) => <TextField field={input} label="Boekingsreferentie" optional maxLength={255} />}</record.form.Field>
-          <record.form.Field name="notes">{(input) => <TextAreaField field={input} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
+          <record.form.Field name="notes">{(input) => <MarkdownField field={input} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
           {documents.length > 0 && <record.form.Field name="documentAssetIds">{(input) => <fieldset><legend>Gekoppelde documenten <span className="optional">(optioneel)</span></legend>{documents.map((document) => <label className="media-choice" key={document.id}>
             <input type="checkbox" checked={input.state.value.includes(document.id)} onChange={() => input.handleChange(input.state.value.includes(document.id) ? input.state.value.filter((id) => id !== document.id) : [...input.state.value, document.id])} />{document.title}
           </label>)}</fieldset>}</record.form.Field>}

@@ -218,7 +218,7 @@ function Gallery({ items, fileUrl, title = "Galerij" }: { items: ProjectionItem[
   return <section className="visitor-gallery" aria-label={title}><h3>{title}</h3><ul>{items.map((item) => <li key={item.id}><figure>
     {hasFileMarker(item, "image") && (fileUrl(item) ? <img src={fileUrl(item)!} alt={text(item, "alt_text") ?? "Gedeelde afbeelding"} width={positiveSize(item, "width")} height={positiveSize(item, "height")} style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }} loading="lazy" decoding="async" referrerPolicy="no-referrer" /> : <p role="status">Afbeelding laden of niet beschikbaar.</p>)}
     {hasFileMarker(item, "video") && fileUrl(item) && <video controls preload="none" playsInline poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined} aria-label={text(item, "alt_text") ?? "Gedeelde video"} width={positiveSize(item, "width") ?? undefined} height={positiveSize(item, "height") ?? undefined}><source src={fileUrl(item)!} type="video/mp4" /></video>}
-    {text(item, "caption") && <figcaption>{text(item, "caption")}</figcaption>}
+    <Markdown as="figcaption" html={text(item, "caption_html")} text={text(item, "caption")} />
   </figure></li>)}</ul></section>;
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-import { RecordForm, requiredText, TextAreaField, TextField } from "../forms/fields";
+import { RecordForm, requiredText, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordForm } from "../forms/useRecordForm";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
@@ -120,7 +121,7 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
           <record.form.Field name="dueDate">{(field) => <TextField field={field} label="Deadline" optional type="date" />}</record.form.Field>
         </div>
         <record.form.Field name="remindAt">{(field) => <TextField field={field} label="Herinnering" optional type="datetime-local" />}</record.form.Field>
-        <record.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
+        <record.form.Field name="notes">{(field) => <MarkdownField field={field} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
         <record.form.Field name="links" mode="array">{(links) => <fieldset>
           <legend>Links <span className="optional">(optioneel, https)</span></legend>
           {links.state.value.map((_, index) => <div className="field-row" key={index}>

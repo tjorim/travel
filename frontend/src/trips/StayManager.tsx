@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
-import { RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
@@ -123,7 +124,7 @@ export function StayManager({ trip }: { trip: Trip; areas?: Area[] }) {
     })}</div>}
     <RecordDialog open={editingStay || selectedStay !== null} title={editingStay ? (editingStayId ? "Verblijf bewerken" : "Verblijf toevoegen") : "Verblijf"} dirty={editingStay && stayRecord.dirty} onDismiss={closeStay}>
       {!editingStay && selectedStay && <div className="stack-form">
-        <div><h3>{stayLabel(selectedStay)}</h3><p>{selectedStay.location?.address_line1}{selectedStay.location?.locality ? ` · ${selectedStay.location.locality}` : ""}</p><p>{selectedStay.booking_reference ? `Boekingsreferentie: ${selectedStay.booking_reference}` : "Geen boekingsreferentie"}</p><Markdown html={selectedStay.notes_html} text={selectedStay.notes} /></div>
+        <div><h3>{stayLabel(selectedStay)}</h3><p>{selectedStay.location?.address_line1}{selectedStay.location?.locality ? ` · ${selectedStay.location.locality}` : ""}</p><p>{selectedStay.booking_reference ? `Boekingsreferentie: ${selectedStay.booking_reference}` : "Geen boekingsreferentie"}</p>{selectedStay.contact_details && <><p className="markdown-label">Contact</p><Markdown html={selectedStay.contact_details_html} text={selectedStay.contact_details} /></>}<Markdown html={selectedStay.notes_html} text={selectedStay.notes} /></div>
         <VisibilityControl tripId={trip.id} kind="stay" id={selectedStay.id} value={selectedStay.visibility} name={stayLabel(selectedStay)} />
         <div className="button-row"><button type="button" onClick={() => editStay(selectedStay)}>Bewerken</button><button className="danger" type="button" onClick={() => setDeleteTarget(selectedStay)}>Verwijderen</button></div>
       </div>}
@@ -153,8 +154,8 @@ export function StayManager({ trip }: { trip: Trip; areas?: Area[] }) {
           <stayRecord.form.Field name="websiteUrl" validators={{ onBlur: httpsOnly, onSubmit: httpsOnly }}>{(field) => <TextField field={field} label="Website" optional="(optioneel, https)" type="url" maxLength={2048} placeholder="https://" />}</stayRecord.form.Field>
         </div>
         <stayRecord.form.Field name="bookingReference">{(field) => <TextField field={field} label="Boekingsreferentie" optional maxLength={255} />}</stayRecord.form.Field>
-        <stayRecord.form.Field name="contactDetails">{(field) => <TextAreaField field={field} label="Contactgegevens" optional maxLength={2000} rows={3} />}</stayRecord.form.Field>
-        <stayRecord.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional maxLength={4000} rows={3} />}</stayRecord.form.Field>
+        <stayRecord.form.Field name="contactDetails">{(field) => <MarkdownField field={field} format="contact" label="Contactgegevens" optional maxLength={2000} rows={3} />}</stayRecord.form.Field>
+        <stayRecord.form.Field name="notes">{(field) => <MarkdownField field={field} label="Notities" optional maxLength={4000} rows={3} />}</stayRecord.form.Field>
       </RecordForm>}
     </RecordDialog>
     {deleteTarget && <RecordDialog open title="Verwijderen bevestigen" onDismiss={() => setDeleteTarget(null)}><DeleteConfirmation title={`“${stayLabel(deleteTarget)}” verwijderen?`} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDelete} /></RecordDialog>}

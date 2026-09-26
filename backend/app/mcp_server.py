@@ -1145,7 +1145,7 @@ class TravelMcpBackend:
         )
 
     def create_emergency_info(self, payload: schemas.EmergencyInfoEntryCreate) -> dict[str, Any]:
-        """Create a private emergency-information entry."""
+        """Create a private emergency-information entry. notes is Markdown."""
         return self._call(
             "emergency_info.create",
             "emergency_info",
@@ -1168,7 +1168,7 @@ class TravelMcpBackend:
         )
 
     def create_stay(self, trip_id: str, payload: schemas.StayCreate) -> dict[str, Any]:
-        """Create a private stay with check-in and check-out dates; omit local times until verified. While the accommodation is undecided, give only area_id instead of a location."""
+        """Create a private stay with check-in and check-out dates; omit local times until verified. While the accommodation is undecided, give only area_id instead of a location. notes is Markdown; contact_details is plain text whose phone numbers, email and web addresses are linked."""
         return self._call(
             "stay.create",
             "stay",
@@ -1332,7 +1332,7 @@ class TravelMcpBackend:
     def update_media_derivative_presentation(
         self, trip_id: str, media_id: str, derivative_id: str, payload: schemas.MediaDerivativePresentationUpdate
     ) -> dict[str, Any]:
-        """Set approved derivative presentation metadata without changing its bytes."""
+        """Set approved derivative presentation metadata without changing its bytes. caption is inline Markdown only: bold, italic and links."""
         return self._call(
             "media_derivative.presentation",
             "media_derivative",
@@ -1427,7 +1427,7 @@ class TravelMcpBackend:
         )
 
     def update_emergency_info(self, entry_id: str, payload: schemas.EmergencyInfoEntryUpdate) -> dict[str, Any]:
-        """Update a private emergency-information entry."""
+        """Update a private emergency-information entry. notes is Markdown."""
         return self._call(
             "emergency_info.update",
             "emergency_info",
@@ -1719,7 +1719,7 @@ def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
     server = FastMCP(
         "travel",
         version="0.1.0",
-        instructions="Private Travel owner-management tools. Review previews before confirmed audience, publication, or deletion actions. Long-form text (trip summary, visit summary and notes, reisupdate body and private notes, stay, route, task and location notes) is Markdown; task lists in it are display-only and never create trip tasks.",
+        instructions="Private Travel owner-management tools. Review previews before confirmed audience, publication, or deletion actions. Long-form text (trip summary, visit summary and notes, reisupdate body and private notes, stay, route, task, location and emergency-information notes) is Markdown, including tables; task lists in it are display-only and never create trip tasks. A media caption is inline Markdown only (bold, italic, links), and a stay's contact_details is plain text whose phone numbers, email and web addresses become links.",
         auth=auth,
     )
     backend = TravelMcpBackend(factory)

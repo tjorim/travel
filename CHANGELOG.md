@@ -6,6 +6,18 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- The owner app's Markdown fields share one editor: a plain textarea with a
+  snippet toolbar (bold, italic, heading, list, task list, link) and a Preview
+  tab that the server renders through the new owner-only
+  `POST /api/markdown/render`, with the same renderer as the stored fields, so
+  the preview never drifts from what is saved. The remaining fields follow:
+  emergency-information notes are Markdown (with a one-line `notes_text` for
+  the list row), a media caption is inline Markdown only (bold, italic and
+  links, `caption_html` in owner responses and the public and share-link
+  media), and a stay's contact details stay plain text whose phone numbers
+  (`tel:`), email and web addresses become links (`contact_details_html`).
+  Markdown fields also render GFM tables, which scroll sideways within their
+  card on a phone. ([#194](https://github.com/tjorim/travel/issues/194))
 - Long-form text is Markdown: the trip summary, visit summary and notes,
   reisupdate body and private notes, and stay, route, task and location notes.
   Records keep storing the Markdown source; one backend renderer

@@ -338,3 +338,17 @@ it("shows a card's one-line plain-text summary instead of its Markdown", async (
   const card = await screen.findByRole("link", { name: /Journey/ });
   expect(card.querySelector("p")?.textContent).toBe("Exampleland Two weeks");
 });
+
+it("renders a caption's inline Markdown in its figcaption and falls back to its source", () => {
+  const data = projection();
+  data.media = [
+    { id: "media-1", image: { id: "media-1" }, caption: "**Night** market", caption_html: "<strong>Night</strong> market" },
+    { id: "media-2", image: { id: "media-2" }, caption: "*Temple*" },
+  ];
+  const view = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  const [rendered, source] = Array.from(view.container.querySelectorAll("figcaption"));
+  expect(rendered.querySelector("strong")?.textContent).toBe("Night");
+  expect(rendered.querySelector("p, div")).toBeNull();
+  expect(source.textContent).toBe("*Temple*");
+  expect(source.querySelector("em")).toBeNull();
+});

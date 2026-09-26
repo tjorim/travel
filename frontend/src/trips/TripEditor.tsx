@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-import { RecordForm, requiredText, TextAreaField, TextField } from "../forms/fields";
+import { RecordForm, requiredText, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordForm } from "../forms/useRecordForm";
 import { ownerKeys } from "../query/keys";
 import { errorMessage } from "../query/api";
@@ -54,7 +55,7 @@ export function TripEditor({ trip, open, onClose, onSaved, onDeleted, onNotice }
   return <RecordDialog open={open} title={trip ? "Reis bewerken" : "Nieuwe reis"} dirty={open && record.dirty} onDismiss={close}>
     {open && <RecordForm record={record} submitLabel={trip ? "Reis opslaan" : "Reis maken"} pendingLabel={trip ? "Reis opslaan…" : "Reis maken…"} actions={trip && <button className="danger compact" type="button" onClick={() => setConfirmDelete(true)}>Reis verwijderen</button>}>
       <form.Field name="title" validators={{ onChange: requiredText("Geef de reis een titel."), onSubmit: requiredText("Geef de reis een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</form.Field>
-      <form.Field name="summary">{(field) => <TextAreaField field={field} label="Samenvatting" optional maxLength={4000} rows={4} />}</form.Field>
+      <form.Field name="summary">{(field) => <MarkdownField field={field} label="Samenvatting" optional maxLength={4000} rows={4} />}</form.Field>
       <div className="field-row">
         <form.Field name="startsOn">{(field) => <TextField field={field} label="Eerste reisdag" optional type="date" />}</form.Field>
         <form.Field name="endsOn" validators={{ onChangeListenTo: ["startsOn"], onChange: ({ value, fieldApi }) => value && value < fieldApi.form.getFieldValue("startsOn") ? "De laatste reisdag ligt vóór de eerste." : undefined, onSubmit: ({ value, fieldApi }) => value && value < fieldApi.form.getFieldValue("startsOn") ? "De laatste reisdag ligt vóór de eerste." : undefined }}>{(field) => <TextField field={field} label="Laatste reisdag" optional type="date" />}</form.Field>

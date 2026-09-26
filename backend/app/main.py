@@ -11,6 +11,7 @@ from .routers.areas import router as areas_router
 from .routers.documents import router as documents_router
 from .routers.library import router as library_router
 from .routers.locations import router as locations_router
+from .routers.markdown import router as markdown_router
 from .routers.media import provider_tokens_router
 from .routers.media import router as media_router
 from .routers.places import router as places_router
@@ -59,6 +60,7 @@ app.include_router(media_router, prefix="/api")
 app.include_router(places_router, prefix="/api")
 app.include_router(areas_router, prefix="/api")
 app.include_router(locations_router, prefix="/api")
+app.include_router(markdown_router, prefix="/api")
 app.include_router(provider_tokens_router, prefix="/api")
 
 if _mcp_app is not None:

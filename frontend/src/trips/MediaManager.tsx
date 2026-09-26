@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { RecordForm, SelectField, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
@@ -56,7 +57,7 @@ function PresentationForm({ derivative, updates, save }: { derivative: MediaDeri
   return <div className="derivative-presentation">
     <RecordForm record={record} submitLabel="Presentatie opslaan" pendingLabel="Opslaan…">
       <record.form.Field name="travelUpdateId">{(field) => <SelectField field={field} label="Bij reisupdate"><option value="">Losse galerijfoto</option>{updates.map((update) => <option key={update.id} value={update.id}>{update.title}</option>)}</SelectField>}</record.form.Field>
-      <record.form.Field name="caption">{(field) => <TextField field={field} label="Bijschrift" maxLength={500} />}</record.form.Field>
+      <record.form.Field name="caption">{(field) => <MarkdownField field={field} format="inline" label="Bijschrift" maxLength={500} rows={2} />}</record.form.Field>
       <record.form.Field name="altText">{(field) => <TextField field={field} label="Alternatieve tekst" maxLength={300} />}</record.form.Field>
       <div className="field-row">
         <record.form.Field name="focalX" validators={{ onChange: percentage, onSubmit: percentage }}>{(field) => <TextField field={field} label="Focus horizontaal (%)" type="number" min="0" max="100" />}</record.form.Field>

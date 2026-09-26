@@ -134,6 +134,8 @@ export type Stay = {
   website_url: string | null;
   booking_reference: string | null;
   contact_details: string | null;
+  /** Plain text with its phone numbers, email and web addresses linked, as sanitized HTML. */
+  contact_details_html?: string | null;
   notes: string | null;
   notes_html?: string | null;
   /** Every stay has a location; its area comes from it. */
@@ -272,6 +274,9 @@ export type EmergencyInfoEntry = {
   label: string;
   value: string;
   notes: string | null;
+  /** Sanitized HTML of the Markdown `notes`; `notes_text` is its one-line plain-text preview. */
+  notes_html?: string | null;
+  notes_text?: string | null;
   created_at: string;
 };
 
@@ -292,6 +297,8 @@ export type MediaDerivative = {
   height: number | null;
   travel_update_id: string | null;
   caption: string | null;
+  /** Sanitized inline HTML of the caption: bold, italic and links only. */
+  caption_html?: string | null;
   alt_text: string | null;
   focal_x: number | null;
   focal_y: number | null;

@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth-context";
-import { requiredText, TextAreaField, TextField } from "../forms/fields";
+import { requiredText, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
@@ -243,7 +244,7 @@ export function Capture() {
           <form.Field name="occurredAt" listeners={clearSaveState} validators={{ onChange: requiredText("Geef de datum en tijd op."), onSubmit: requiredText("Geef de datum en tijd op.") }}>{(field) => <TextField field={field} label="Datum en tijd" required type="datetime-local" />}</form.Field>
           <form.Field name="title" listeners={clearSaveState} validators={{ onChange: requiredText("Geef de reisupdate een titel."), onSubmit: requiredText("Geef de reisupdate een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} placeholder="Bijvoorbeeld: eerste avond" />}</form.Field>
         </div>
-        <form.Field name="notes" listeners={clearSaveState}>{(field) => <TextAreaField field={field} label="Privénotitie" optional maxLength={10000} rows={6} placeholder="Wat wil je onthouden? Dit deel je nooit." />}</form.Field>
+        <form.Field name="notes" listeners={clearSaveState}>{(field) => <MarkdownField field={field} label="Privénotitie" optional maxLength={10000} rows={6} placeholder="Wat wil je onthouden? Dit deel je nooit." />}</form.Field>
         <fieldset className="location"><legend>Privéfoto’s koppelen</legend><p>Een koppeling is privé. EXIF wordt alleen hieronder als voorstel gebruikt; geen datum of plaats verandert zonder jouw keuze.</p>
           <p className="help" role="status">{mediaState}</p>
           {media.map((asset) => <label className="media-choice" key={asset.id}><input type="checkbox" checked={draft.mediaAssetIds.includes(asset.id)} onChange={() => toggleMedia(asset.id)} />{asset.original_filename ?? "Naamloze foto"}{asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}</label>)}

@@ -12,7 +12,7 @@ from datetime import date, datetime, time
 from typing import Any
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
-from .markdown import markdown_text, render_markdown
+from .markdown import markdown_text, render_inline, render_markdown
 from .models import Area, Location, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
 
@@ -272,6 +272,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         values = {
             **marker,
             "caption": item.caption,
+            "caption_html": render_inline(item.caption),
             "alt_text": item.alt_text,
             "width": item.width,
             "height": item.height,

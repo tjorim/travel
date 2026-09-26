@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 
-import { CheckboxField, RecordForm, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { CheckboxField, RecordForm, SelectField, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
@@ -230,8 +231,8 @@ export function VisitManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: 
           <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort dag" optional><option value="">Geen soort</option>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
         </div>
         <p className="help">De status is alleen voor jou en wordt nooit gedeeld. Zet “idee” of “concept” dus hier, niet in de titel of de naam van het gebied.</p>
-        <record.form.Field name="notes">{(field) => <TextAreaField field={field} label="Notities" optional="(optioneel, altijd privé)" maxLength={4000} rows={3} />}</record.form.Field>
-        <record.form.Field name="summary">{(field) => <TextAreaField field={field} label="Tekst voor bezoekers" optional maxLength={2000} rows={3} placeholder="Wat mogen bezoekers over dit bezoek lezen?" />}</record.form.Field>
+        <record.form.Field name="notes">{(field) => <MarkdownField field={field} label="Notities" optional="(optioneel, altijd privé)" maxLength={4000} rows={3} />}</record.form.Field>
+        <record.form.Field name="summary">{(field) => <MarkdownField field={field} label="Tekst voor bezoekers" optional maxLength={2000} rows={3} placeholder="Wat mogen bezoekers over dit bezoek lezen?" />}</record.form.Field>
         <div className="field-row">
           <record.form.Field name="shareDatePrecision">{(field) => <SelectField field={field} label="Datums voor bezoekers">{Object.entries(PRECISION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
           <record.form.Field name="shareTime">{(field) => <CheckboxField field={field} label={<>Toon de tijd aan bezoekers <small>Alleen bij volledige datums.</small></>} />}</record.form.Field>

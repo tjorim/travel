@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-import { RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
@@ -81,7 +82,7 @@ export function TravelUpdateManager({ trip, areas }: { trip: Trip; areas: Area[]
       </div>}
       {editing && <RecordForm record={record} submitLabel={editingId ? "Reisupdate opslaan" : "Reisupdate maken"} pendingLabel="Opslaan…">
         <record.form.Field name="title" validators={{ onChange: requiredText("Geef de reisupdate een titel."), onSubmit: requiredText("Geef de reisupdate een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</record.form.Field>
-        <record.form.Field name="body" validators={{ onChangeListenTo: ["visibility"], onChange: bodyToShare, onSubmit: bodyToShare }}>{(field) => <TextAreaField field={field} label="Tekst voor bezoekers" optional="(leeg zolang je niets deelt)" maxLength={10000} rows={5} />}</record.form.Field>
+        <record.form.Field name="body" validators={{ onChangeListenTo: ["visibility"], onChange: bodyToShare, onSubmit: bodyToShare }}>{(field) => <MarkdownField field={field} label="Tekst voor bezoekers" optional="(leeg zolang je niets deelt)" maxLength={10000} rows={5} />}</record.form.Field>
         <div className="field-row">
           <record.form.Field name="occurredAt" validators={{ onChange: requiredText("Geef de datum en tijd op."), onSubmit: requiredText("Geef de datum en tijd op.") }}>{(field) => <TextField field={field} label="Datum en tijd" required type="datetime-local" />}</record.form.Field>
           <record.form.Field name="datePrecision">{(field) => <SelectField field={field} label="Datum voor bezoekers"><option value="day">Volledige datum</option><option value="month">Alleen de maand</option><option value="year">Alleen het jaar</option></SelectField>}</record.form.Field>
@@ -94,7 +95,7 @@ export function TravelUpdateManager({ trip, areas }: { trip: Trip; areas: Area[]
           <record.form.Field name="areaId">{(field) => <SelectField field={field} label="Gebied zonder specifieke locatie" optional disabled={Boolean(record.form.getFieldValue("location"))}><option value="">Geen gebied</option>{areas.map((place) => <option key={place.id} value={place.id}>{place.label}</option>)}</SelectField>}</record.form.Field>
           <record.form.Field name="visibility">{(field) => <SelectField field={field} label="Zichtbaarheid">{Object.entries(VISIBILITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
         </div>
-        <record.form.Field name="privateNotes">{(field) => <TextAreaField field={field} label="Privénotitie" optional="(nooit gedeeld)" maxLength={10000} rows={4} />}</record.form.Field>
+        <record.form.Field name="privateNotes">{(field) => <MarkdownField field={field} label="Privénotitie" optional="(nooit gedeeld)" maxLength={10000} rows={4} />}</record.form.Field>
       </RecordForm>}
     </RecordDialog>
   </section>;

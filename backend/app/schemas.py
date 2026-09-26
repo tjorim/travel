@@ -14,7 +14,7 @@ from pydantic import (
     model_validator,
 )
 
-from .markdown import markdown_text, render_markdown
+from .markdown import markdown_text, render_contact, render_inline, render_markdown
 from .models import (
     AuditEventKind,
     AuditTargetType,
@@ -40,8 +40,16 @@ COUNTRY_CODE_FIELD = Field(default=None, min_length=2, max_length=2, pattern=r"^
 
 MARKDOWN = (
     "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), "
-    "blockquotes, inline and fenced code, and rules. Raw HTML and images are not rendered, and a task list "
-    "is display-only: it never creates trip tasks."
+    "blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task "
+    "list is display-only: it never creates trip tasks."
+)
+INLINE_MARKDOWN = (
+    "Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, "
+    "raw HTML and images are not rendered."
+)
+CONTACT = (
+    "Plain text, not Markdown: line breaks are kept, and phone numbers starting with + or 0 (tel), email "
+    "addresses (mailto) and http(s) addresses become links."
 )
 
 
@@ -233,6 +241,21 @@ class LocationResponse(LocationFields):
     @property
     def notes_html(self) -> str | None:
         return _html(self.notes)
+
+
+class MarkdownRenderRequest(InputModel):
+    """Owner-only preview of one field, rendered exactly as the stored field will be."""
+
+    source: str = Field(max_length=10000)
+    format: Literal["markdown", "inline", "contact"] = Field(
+        default="markdown",
+        description="markdown for long-form fields, inline for a media caption, contact for a stay's contact details.",
+    )
+
+
+class MarkdownRenderResponse(BaseModel):
+    html: str | None = Field(description="Sanitized HTML; null without text.")
+    text: str | None = Field(description="The source as one line of plain text; null without text.")
 
 
 class PlaceSearchRequest(InputModel):
@@ -428,7 +451,7 @@ class StayCreate(InputModel):
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
-    contact_details: str | None = Field(default=None, max_length=2000)
+    contact_details: str | None = Field(default=None, max_length=2000, description=CONTACT)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     share_date_precision: DatePrecision = DatePrecision.MONTH
 
@@ -459,7 +482,7 @@ class StayUpdate(InputModel):
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
-    contact_details: str | None = Field(default=None, max_length=2000)
+    contact_details: str | None = Field(default=None, max_length=2000, description=CONTACT)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     share_date_precision: DatePrecision | None = None
 
@@ -489,6 +512,14 @@ class StayResponse(BaseModel):
     @property
     def notes_html(self) -> str | None:
         return _html(self.notes)
+
+    @computed_field(
+        description="Sanitized HTML of `contact_details`, with its phone numbers, email and web addresses "
+        "linked; null without text. Read-only."
+    )
+    @property
+    def contact_details_html(self) -> str | None:
+        return render_contact(self.contact_details, "owner")
 
 
 def require_visit_times(
@@ -1033,6 +1064,11 @@ class MediaDerivativeResponse(BaseModel):
     file_url: str
     model_config = ConfigDict(from_attributes=True)
 
+    @computed_field(description=_html_of("caption") + " Inline elements only.")
+    @property
+    def caption_html(self) -> str | None:
+        return render_inline(self.caption, "owner")
+
 
 class MediaDerivativeCreate(InputModel):
     purpose: DerivativePurpose = DerivativePurpose.SHARE
@@ -1042,7 +1078,7 @@ class MediaDerivativeCreate(InputModel):
 
 class MediaDerivativePresentationUpdate(InputModel):
     travel_update_id: str | None = None
-    caption: str | None = Field(default=None, max_length=500)
+    caption: str | None = Field(default=None, max_length=500, description=INLINE_MARKDOWN)
     alt_text: str | None = Field(default=None, max_length=300)
     focal_x: int | None = Field(default=None, ge=0, le=100)
     focal_y: int | None = Field(default=None, ge=0, le=100)
@@ -1131,14 +1167,14 @@ class EmergencyInfoEntryCreate(InputModel):
     kind: EmergencyInfoKind
     label: str = Field(min_length=1, max_length=160)
     value: str = Field(min_length=1, max_length=255)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
 
 
 class EmergencyInfoEntryUpdate(InputModel):
     kind: EmergencyInfoKind | None = None
     label: str | None = Field(default=None, min_length=1, max_length=160)
     value: str | None = Field(default=None, min_length=1, max_length=255)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
 
 
 class EmergencyInfoEntryResponse(BaseModel):
@@ -1150,6 +1186,16 @@ class EmergencyInfoEntryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field(description=_html_of("notes"))
+    @property
+    def notes_html(self) -> str | None:
+        return _html(self.notes)
+
+    @computed_field(description="The notes as one line of plain text, for the list row. Read-only.")
+    @property
+    def notes_text(self) -> str | None:
+        return markdown_text(self.notes)
 
 
 class ImportSessionResponse(BaseModel):
