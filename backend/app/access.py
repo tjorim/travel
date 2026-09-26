@@ -82,9 +82,7 @@ def is_delivered(kind: str, record: Any, chosen: set[str]) -> bool:
     """Whether an audience whose scope lists ``chosen`` receives this record."""
     if sharing_blocker(kind, record) is not None:
         return False
-    return record.visibility == Visibility.EVERYONE or (
-        record.visibility == Visibility.CUSTOM and record.id in chosen
-    )
+    return record.visibility == Visibility.EVERYONE or (record.visibility == Visibility.CUSTOM and record.id in chosen)
 
 
 def set_visibility(trip: Trip, kind: str, record_id: str, visibility: Visibility) -> Any | None:

@@ -29,7 +29,9 @@ def test_encrypted_store_persists_owner_credentials_and_one_time_state(tmp_path)
     factory = sessionmaker(bind=engine)
     key = Fernet.generate_key().decode()
     first = DatabaseSecretStore(key, factory)
-    first.set_credential(subject="alice", provider=oauth.GOOGLE, credential=Credential("access-secret", "refresh-secret"))
+    first.set_credential(
+        subject="alice", provider=oauth.GOOGLE, credential=Credential("access-secret", "refresh-secret")
+    )
     first.set_pending(subject="alice", provider=oauth.GOOGLE, state="state", verifier="verifier")
     with engine.connect() as conn:
         stored = [row[0] for row in conn.execute(text("SELECT ciphertext FROM provider_secrets"))]
@@ -65,11 +67,30 @@ def test_oauth_start_complete_and_refresh_are_owner_scoped(monkeypatch) -> None:
         assert authorization["access_type"] == ["offline"]
         assert authorization["code_challenge_method"] == ["S256"]
         state = authorization["state"][0]
-        assert client.post("/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": "wrong"}).status_code == 409
-        assert client.post("/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": state}).status_code == 204
-        assert client.post("/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": state}).status_code == 409
+        assert (
+            client.post(
+                "/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": "wrong"}
+            ).status_code
+            == 409
+        )
+        assert (
+            client.post(
+                "/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": state}
+            ).status_code
+            == 204
+        )
+        assert (
+            client.post(
+                "/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": state}
+            ).status_code
+            == 409
+        )
         assert calls[0]["code_verifier"]
-        assert client.get("/api/provider-tokens").json()[0] == {"provider": oauth.GOOGLE, "available": True, "connected": True}
+        assert client.get("/api/provider-tokens").json()[0] == {
+            "provider": oauth.GOOGLE,
+            "available": True,
+            "connected": True,
+        }
         assert "refresh-secret" not in client.get("/api/provider-tokens").text
         assert oauth.access_token("alice", oauth.GOOGLE, store) == "fresh-access"
         assert calls[1]["refresh_token"] == "refresh-secret"

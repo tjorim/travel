@@ -35,7 +35,9 @@ async def _application_lifespan(_: FastAPI) -> AsyncGenerator[None]:
     yield
 
 
-_lifespan = combine_lifespans(_application_lifespan, _mcp_app.lifespan) if _mcp_app is not None else _application_lifespan
+_lifespan = (
+    combine_lifespans(_application_lifespan, _mcp_app.lifespan) if _mcp_app is not None else _application_lifespan
+)
 
 app = FastAPI(
     title="Travel tracker API",
@@ -77,8 +79,7 @@ def mcp_capabilities() -> dict[str, object]:
         "mount_path": "/mcp",
         "version": _mcp.version if _mcp is not None else None,
         "tools": [
-            {"name": name, **capability, "access": {}}
-            for name, capability in sorted(MCP_TOOL_CAPABILITIES.items())
+            {"name": name, **capability, "access": {}} for name, capability in sorted(MCP_TOOL_CAPABILITIES.items())
         ]
         if _mcp_app is not None
         else [],

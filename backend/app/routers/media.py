@@ -102,8 +102,11 @@ def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeri
         content_type=derivative.object.content_type if derivative.object else None,
         byte_size=derivative.object.byte_size if derivative.object else None,
         duration_seconds=derivative.duration_seconds,
-        poster_url=(f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/poster"
-                    if derivative.poster_object_id else None),
+        poster_url=(
+            f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/poster"
+            if derivative.poster_object_id
+            else None
+        ),
         remove_audio=derivative.remove_audio,
         metadata_stripped_at=derivative.metadata_stripped_at,
         width=derivative.width,
@@ -122,14 +125,18 @@ def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeri
 def owned_media_asset(session: Session, trip_id: str, subject: str, media_id: str) -> MediaAsset:
     owned_trip(session, trip_id, subject)
     asset = session.scalar(
-        select(MediaAsset).where(MediaAsset.id == media_id, MediaAsset.trip_id == trip_id, MediaAsset.deleted_at.is_(None))
+        select(MediaAsset).where(
+            MediaAsset.id == media_id, MediaAsset.trip_id == trip_id, MediaAsset.deleted_at.is_(None)
+        )
     )
     if asset is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media not found")
     return asset
 
 
-def owned_derivative(session: Session, trip_id: str, subject: str, media_id: str, derivative_id: str) -> MediaDerivative:
+def owned_derivative(
+    session: Session, trip_id: str, subject: str, media_id: str, derivative_id: str
+) -> MediaDerivative:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     derivative = session.scalar(
         select(MediaDerivative).where(MediaDerivative.id == derivative_id, MediaDerivative.media_asset_id == asset.id)
@@ -165,7 +172,12 @@ def upload_media(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A content type is required")
     try:
         asset, created = direct_upload(
-            session, storage, trip_id=trip_id, filename=file.filename or "upload", content_type=file.content_type, data=data
+            session,
+            storage,
+            trip_id=trip_id,
+            filename=file.filename or "upload",
+            content_type=file.content_type,
+            data=data,
         )
     except MediaImportError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
@@ -201,7 +213,9 @@ def suggest_visit_candidates(
     )
     found_ids = {asset.id for asset in assets}
     if found_ids != set(payload.media_asset_ids):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Selected media must belong to this trip")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Selected media must belong to this trip"
+        )
     candidates, unavailable = build_visit_candidates(assets)
     return MediaVisitCandidatesResponse(
         grouping_window_minutes=int(GROUPING_WINDOW.total_seconds() // 60),
@@ -212,10 +226,15 @@ def suggest_visit_candidates(
                 media_asset_ids=candidate.media_asset_ids,
                 starts_at=candidate.starts_at,
                 ends_at=candidate.ends_at,
-                time_options=[MediaVisitTimeOption(media_asset_id=asset_id, captured_at=captured_at) for asset_id, captured_at in candidate.time_options],
+                time_options=[
+                    MediaVisitTimeOption(media_asset_id=asset_id, captured_at=captured_at)
+                    for asset_id, captured_at in candidate.time_options
+                ],
                 location_options=[
                     MediaVisitLocationOption(
-                        latitude=location.latitude, longitude=location.longitude, media_asset_ids=location.media_asset_ids
+                        latitude=location.latitude,
+                        longitude=location.longitude,
+                        media_asset_ids=location.media_asset_ids,
                     )
                     for location in candidate.location_options
                 ],
@@ -239,13 +258,13 @@ def remove_media(trip_id: str, media_id: str, session: SessionDep, subject: Subj
 
 
 @router.get("/{media_id}/original")
-def get_media_original(trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep) -> StreamingResponse:
+def get_media_original(
+    trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> StreamingResponse:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     original = asset.original_object
     data = storage.get(original.object_key)
-    return StreamingResponse(
-        iter([data]), media_type=original.content_type, headers={"Cache-Control": "no-store"}
-    )
+    return StreamingResponse(iter([data]), media_type=original.content_type, headers={"Cache-Control": "no-store"})
 
 
 # --- Share/preview derivatives: generated only for owner-selected media -----------
@@ -253,14 +272,20 @@ def get_media_original(trip_id: str, media_id: str, session: SessionDep, subject
 
 @router.post("/{media_id}/derivatives", response_model=MediaDerivativeResponse, status_code=status.HTTP_201_CREATED)
 def add_derivative(
-    trip_id: str, media_id: str, payload: MediaDerivativeCreate, session: SessionDep, subject: SubjectDep,
-    storage: StorageDep, background_tasks: BackgroundTasks,
+    trip_id: str,
+    media_id: str,
+    payload: MediaDerivativeCreate,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
+    background_tasks: BackgroundTasks,
 ) -> MediaDerivativeResponse:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     try:
         if asset.media_kind == MediaKind.VIDEO:
-            derivative = queue_video_derivative(session, media_asset=asset, purpose=payload.purpose,
-                                                remove_audio=payload.remove_audio)
+            derivative = queue_video_derivative(
+                session, media_asset=asset, purpose=payload.purpose, remove_audio=payload.remove_audio
+            )
             background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
         else:
             derivative = create_derivative(
@@ -278,11 +303,19 @@ def _process_video_job(bind: object, storage: ObjectStorage, derivative_id: str)
 
 @router.post("/{media_id}/derivatives/{derivative_id}/retry", response_model=MediaDerivativeResponse)
 def retry_derivative(
-    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep,
-    storage: StorageDep, background_tasks: BackgroundTasks,
+    trip_id: str,
+    media_id: str,
+    derivative_id: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
+    background_tasks: BackgroundTasks,
 ) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    if derivative.media_asset.media_kind != MediaKind.VIDEO or derivative.processing_state != DerivativeProcessingState.FAILED:
+    if (
+        derivative.media_asset.media_kind != MediaKind.VIDEO
+        or derivative.processing_state != DerivativeProcessingState.FAILED
+    ):
         raise HTTPException(status_code=409, detail="Only failed videos can be retried")
     derivative.processing_state = DerivativeProcessingState.PROCESSING
     derivative.processing_started_at = datetime.now(UTC)
@@ -292,14 +325,18 @@ def retry_derivative(
 
 
 @router.get("/{media_id}/derivatives", response_model=list[MediaDerivativeResponse])
-def list_derivatives(trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep) -> list[MediaDerivativeResponse]:
+def list_derivatives(
+    trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep
+) -> list[MediaDerivativeResponse]:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     expire_stalled_video_derivatives(session, asset.derivatives)
     return [_derivative_response(derivative, trip_id) for derivative in asset.derivatives]
 
 
 @router.get("/{media_id}/derivatives/{derivative_id}", response_model=MediaDerivativeResponse)
-def get_derivative(trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep) -> MediaDerivativeResponse:
+def get_derivative(
+    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep
+) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     expire_stalled_video_derivatives(session, [derivative])
     return _derivative_response(derivative, trip_id)
@@ -319,8 +356,12 @@ def approve_derivative(
 
 @router.patch("/{media_id}/derivatives/{derivative_id}/presentation", response_model=MediaDerivativeResponse)
 def update_derivative_presentation(
-    trip_id: str, media_id: str, derivative_id: str, payload: MediaDerivativePresentationUpdate,
-    session: SessionDep, subject: SubjectDep,
+    trip_id: str,
+    media_id: str,
+    derivative_id: str,
+    payload: MediaDerivativePresentationUpdate,
+    session: SessionDep,
+    subject: SubjectDep,
 ) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     values = payload.model_dump(exclude_unset=True)
@@ -345,7 +386,12 @@ def remove_derivative(
 
 @router.get("/{media_id}/derivatives/{derivative_id}/file")
 def get_derivative_file(
-    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep,
+    trip_id: str,
+    media_id: str,
+    derivative_id: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
     request: Request,
 ) -> Response:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
@@ -356,7 +402,12 @@ def get_derivative_file(
 
 @router.get("/{media_id}/derivatives/{derivative_id}/poster")
 def get_derivative_poster(
-    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep,
+    trip_id: str,
+    media_id: str,
+    derivative_id: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
     request: Request,
 ) -> Response:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
@@ -432,7 +483,9 @@ def complete_import(
 
 
 @provider_tokens_router.get("", response_model=list[ProviderConnectionStatus])
-def list_provider_connection_status(subject: SubjectDep, secret_store: SecretStoreDep) -> list[ProviderConnectionStatus]:
+def list_provider_connection_status(
+    subject: SubjectDep, secret_store: SecretStoreDep
+) -> list[ProviderConnectionStatus]:
     """Expose connection state without ever returning an access token."""
     return [
         ProviderConnectionStatus(

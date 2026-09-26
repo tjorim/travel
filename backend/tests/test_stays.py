@@ -106,15 +106,18 @@ def test_other_subject_cannot_read_or_change_a_stay() -> None:
     stay = create_stay(owner, trip["id"])
     other = client_for("owner-2")
 
-    assert other.post(
-        f"/api/trips/{trip['id']}/stays",
-        json={
-            "location": {"locality": "Taipei", "country_code": "TW"},
-            "check_in_date": "2054-04-01",
-            "check_out_date": "2054-04-05",
-            "property_name": "No access",
-        },
-    ).status_code == 404
+    assert (
+        other.post(
+            f"/api/trips/{trip['id']}/stays",
+            json={
+                "location": {"locality": "Taipei", "country_code": "TW"},
+                "check_in_date": "2054-04-01",
+                "check_out_date": "2054-04-05",
+                "property_name": "No access",
+            },
+        ).status_code
+        == 404
+    )
     assert other.get(f"/api/trips/{trip['id']}/stays").status_code == 404
     assert other.get(f"/api/trips/{trip['id']}/stays/{stay['id']}").status_code == 404
     assert other.patch(f"/api/trips/{trip['id']}/stays/{stay['id']}", json={"status": "cancelled"}).status_code == 404
@@ -129,9 +132,18 @@ def test_a_shared_stay_shows_only_its_area_and_nights_never_the_accommodation() 
     stay = owner.post(
         f"{trips_path}/stays",
         json={
-            "location": {"display_name": "Somewhere", "address_line1": "1 Xinyi Road", "locality": "Taipei", "country_code": "TW"},
-            "check_in_date": "2054-04-01", "check_out_date": "2054-04-05", "property_name": "Private Hotel Taipei",
-            "booking_reference": "BOOKING-SECRET-123", "contact_details": "host@example.test", "notes": "Ask for the quiet room.",
+            "location": {
+                "display_name": "Somewhere",
+                "address_line1": "1 Xinyi Road",
+                "locality": "Taipei",
+                "country_code": "TW",
+            },
+            "check_in_date": "2054-04-01",
+            "check_out_date": "2054-04-05",
+            "property_name": "Private Hotel Taipei",
+            "booking_reference": "BOOKING-SECRET-123",
+            "contact_details": "host@example.test",
+            "notes": "Ask for the quiet room.",
         },
     ).json()
     assert (stay["visibility"], stay["share_date_precision"], stay["area"]["label"]) == ("private", "month", "Taipei")
@@ -144,10 +156,19 @@ def test_a_shared_stay_shows_only_its_area_and_nights_never_the_accommodation() 
     assert delivered.status_code == 200, delivered.text
     (shared,) = delivered.json()["stays"]
     assert {key: shared[key] for key in ("title", "date_precision", "starts_on", "ends_on")} == {
-        "title": "Taipei", "date_precision": "day", "starts_on": "2054-04-01", "ends_on": "2054-04-05",
+        "title": "Taipei",
+        "date_precision": "day",
+        "starts_on": "2054-04-01",
+        "ends_on": "2054-04-05",
     }
     assert shared["place"]["label"] == "Taipei"
-    for private_value in ("Private Hotel Taipei", "1 Xinyi Road", "BOOKING-SECRET-123", "host@example.test", "quiet room"):
+    for private_value in (
+        "Private Hotel Taipei",
+        "1 Xinyi Road",
+        "BOOKING-SECRET-123",
+        "host@example.test",
+        "quiet room",
+    ):
         assert private_value not in delivered.text
 
     # The precision is the owner's choice for what visitors may see of the dates.
@@ -206,19 +227,37 @@ def test_undecided_stays_in_one_area_share_its_city_level_location() -> None:
     chiayi = create_area(owner, trip["id"], label="Chiayi")
     base = f"/api/trips/{trip['id']}/stays"
 
-    first = owner.post(base, json={"area_id": tainan["id"], "check_in_date": "2054-12-01", "check_out_date": "2054-12-03"})
+    first = owner.post(
+        base, json={"area_id": tainan["id"], "check_in_date": "2054-12-01", "check_out_date": "2054-12-03"}
+    )
     assert first.status_code == 201, first.text
     assert first.json()["area"]["id"] == tainan["id"]
     assert first.json()["location"]["locality"] == "Tainan"
     # A second undecided stay, whether it names the area directly or through a bare location, adds no copy.
-    second = owner.post(base, json={"area_id": tainan["id"], "check_in_date": "2054-12-05", "check_out_date": "2054-12-06"})
-    third = owner.post(base, json={"location": {"area_id": tainan["id"]}, "check_in_date": "2054-12-07", "check_out_date": "2054-12-08"})
+    second = owner.post(
+        base, json={"area_id": tainan["id"], "check_in_date": "2054-12-05", "check_out_date": "2054-12-06"}
+    )
+    third = owner.post(
+        base,
+        json={"location": {"area_id": tainan["id"]}, "check_in_date": "2054-12-07", "check_out_date": "2054-12-08"},
+    )
     assert {second.json()["location"]["id"], third.json()["location"]["id"]} == {first.json()["location"]["id"]}
     locations = owner.get(f"/api/trips/{trip['id']}/locations").json()
     assert [item["locality"] for item in locations] == ["Tainan"]
 
     # Both an area and a location, or neither, is refused.
-    assert owner.post(base, json={"area_id": tainan["id"], "location": {"locality": "Tainan"}, "check_in_date": "2054-12-01", "check_out_date": "2054-12-02"}).status_code == 422
+    assert (
+        owner.post(
+            base,
+            json={
+                "area_id": tainan["id"],
+                "location": {"locality": "Tainan"},
+                "check_in_date": "2054-12-01",
+                "check_out_date": "2054-12-02",
+            },
+        ).status_code
+        == 422
+    )
     assert owner.post(base, json={"check_in_date": "2054-12-01", "check_out_date": "2054-12-02"}).status_code == 422
 
     # Moving a stay to another area moves it to that area's city-level location.
@@ -236,22 +275,40 @@ def test_a_stay_covers_at_least_one_night_and_uses_only_this_trips_areas() -> No
     foreign_area = create_area(owner, other_trip["id"], label="Elsewhere")
     stay_place = {"display_name": "Hotel", "locality": "Taipei"}
 
-    for nights in ({"check_in_date": "2054-04-02", "check_out_date": "2054-04-02"},
-                   {"check_in_date": "2054-04-02", "check_out_date": "2054-04-01"}):
+    for nights in (
+        {"check_in_date": "2054-04-02", "check_out_date": "2054-04-02"},
+        {"check_in_date": "2054-04-02", "check_out_date": "2054-04-01"},
+    ):
         assert owner.post(f"/api/trips/{trip['id']}/stays", json={**nights, "location": stay_place}).status_code == 422
-    assert owner.post(
-        f"/api/trips/{trip['id']}/stays",
-        json={"location": {"area_id": foreign_area["id"]}, "check_in_date": "2054-04-01", "check_out_date": "2054-04-02"},
-    ).status_code == 422
-    assert owner.post(
-        f"/api/trips/{trip['id']}/stays",
-        json={"location": stay_place, "check_in_date": "2054-04-01", "check_out_date": "2054-04-02", "website_url": "http://insecure.test/"},
-    ).status_code == 422
+    assert (
+        owner.post(
+            f"/api/trips/{trip['id']}/stays",
+            json={
+                "location": {"area_id": foreign_area["id"]},
+                "check_in_date": "2054-04-01",
+                "check_out_date": "2054-04-02",
+            },
+        ).status_code
+        == 422
+    )
+    assert (
+        owner.post(
+            f"/api/trips/{trip['id']}/stays",
+            json={
+                "location": stay_place,
+                "check_in_date": "2054-04-01",
+                "check_out_date": "2054-04-02",
+                "website_url": "http://insecure.test/",
+            },
+        ).status_code
+        == 422
+    )
 
     stay = create_stay(owner, trip["id"])
-    assert owner.patch(
-        f"/api/trips/{trip['id']}/stays/{stay['id']}", json={"check_in_date": "2054-04-05"}
-    ).status_code == 422
+    assert (
+        owner.patch(f"/api/trips/{trip['id']}/stays/{stay['id']}", json={"check_in_date": "2054-04-05"}).status_code
+        == 422
+    )
     assert owner.patch(f"/api/trips/{trip['id']}/stays/{stay['id']}", json={"check_in_date": None}).status_code == 422
 
 
@@ -266,8 +323,11 @@ def test_a_stay_takes_its_area_from_its_hotel_and_reuses_it() -> None:
 
     second = owner.post(
         f"{trips_path}/stays",
-        json={"location": {"display_name": "Another hotel", "locality": "taipei", "country_code": "TW"},
-              "check_in_date": "2054-04-05", "check_out_date": "2054-04-07"},
+        json={
+            "location": {"display_name": "Another hotel", "locality": "taipei", "country_code": "TW"},
+            "check_in_date": "2054-04-05",
+            "check_out_date": "2054-04-07",
+        },
     ).json()
     areas = owner.get(f"{trips_path}/areas").json()
     # One "Taipei", however the city is spelled.

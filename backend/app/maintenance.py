@@ -18,7 +18,9 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     commands = parser.add_subparsers(dest="command", required=True)
     purge = commands.add_parser("purge-deleted-media", help="permanently remove expired soft-deleted media")
     purge.add_argument("--retention-days", type=int, required=True, help="soft-delete retention window in days")
-    commands.add_parser("purge-expired-audit-events", help="permanently remove audit events past their retention window")
+    commands.add_parser(
+        "purge-expired-audit-events", help="permanently remove audit events past their retention window"
+    )
     arguments = parser.parse_args(argv)
     if arguments.command == "purge-deleted-media" and arguments.retention_days <= 0:
         parser.error("--retention-days must be greater than zero")

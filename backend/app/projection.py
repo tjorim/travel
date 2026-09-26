@@ -36,8 +36,16 @@ def _share_place(place: Area | None, shared_areas: set[str] | None = None) -> di
         "label": place.label,
         "country_code": place.country_code,
         "region": place.region,
-        "latitude": round(place.latitude, 2) if (shared_areas is None or place.id in shared_areas) and place.latitude is not None and place.longitude is not None else None,
-        "longitude": round(place.longitude, 2) if (shared_areas is None or place.id in shared_areas) and place.latitude is not None and place.longitude is not None else None,
+        "latitude": round(place.latitude, 2)
+        if (shared_areas is None or place.id in shared_areas)
+        and place.latitude is not None
+        and place.longitude is not None
+        else None,
+        "longitude": round(place.longitude, 2)
+        if (shared_areas is None or place.id in shared_areas)
+        and place.latitude is not None
+        and place.longitude is not None
+        else None,
     }
 
 
@@ -59,8 +67,11 @@ def _share_shared_place(place: Area | Location) -> dict[str, Any]:
     }
     if place.share_address:
         address = {
-            "line1": place.address_line1, "line2": place.address_line2, "postal_code": place.postal_code,
-            "locality": place.locality, "admin_area": place.admin_area,
+            "line1": place.address_line1,
+            "line2": place.address_line2,
+            "postal_code": place.postal_code,
+            "locality": place.locality,
+            "admin_area": place.admin_area,
         }
         values["address"] = {key: value for key, value in address.items() if value}
     return values
@@ -116,13 +127,27 @@ def delivered(trip: Trip, scope: dict) -> dict[str, list[Any]]:
     # remains the gate, its own visibility only governs loose gallery photos.
     updates = {update.id for update in result["travel_update"]}
     result["media_derivative"] = [
-        item for item in trip.media_derivatives
+        item
+        for item in trip.media_derivatives
         if sharing_blocker("media_derivative", item) is None
         and (item.travel_update_id in updates or is_delivered("media_derivative", item, chosen["media_derivative"]))
     ]
-    result["visit"].sort(key=lambda item: (item.starts_on is None, item.starts_on or date.min, item.start_time or time.min, item.position))
+    result["visit"].sort(
+        key=lambda item: (
+            item.starts_on is None,
+            item.starts_on or date.min,
+            item.start_time or time.min,
+            item.position,
+        )
+    )
     result["travel_update"].sort(key=lambda item: item.occurred_at)
-    result["route"].sort(key=lambda item: (item.departs_at is None, item.departs_at.replace(tzinfo=None) if item.departs_at else datetime.min, item.created_at.replace(tzinfo=None)))
+    result["route"].sort(
+        key=lambda item: (
+            item.departs_at is None,
+            item.departs_at.replace(tzinfo=None) if item.departs_at else datetime.min,
+            item.created_at.replace(tzinfo=None),
+        )
+    )
     result["stay"].sort(key=lambda item: item.check_in_date)
     return result
 
@@ -163,7 +188,9 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         shared_location = _embedded_location(item.location, context)
         values = {
             "title": item.title or (shared_location or {}).get("label") or item.area.label,
-            "summary": item.summary, "place": _share_place(item.area, context["areas"]), "date_precision": precision,
+            "summary": item.summary,
+            "place": _share_place(item.area, context["areas"]),
+            "date_precision": precision,
         }
         if item.starts_on is not None:
             values["starts_on"] = _safe_date(item.starts_on, precision)
@@ -179,14 +206,20 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
     elif kind == "route":
         locations = context["locations"]
         values = {
-            "mode": item.mode.value, "status": item.status.value, "label": item.label,
-            "departure": _share_place(item.departure_area, context["areas"]), "arrival": _share_place(item.arrival_area, context["areas"]),
-            "carrier": item.carrier, "service_reference": item.service_reference,
+            "mode": item.mode.value,
+            "status": item.status.value,
+            "label": item.label,
+            "departure": _share_place(item.departure_area, context["areas"]),
+            "arrival": _share_place(item.arrival_area, context["areas"]),
+            "carrier": item.carrier,
+            "service_reference": item.service_reference,
         }
         if item.departs_at is not None and item.arrives_at is not None:
             values.update(
-                departs_at=item.departs_at.isoformat(), arrives_at=item.arrives_at.isoformat(),
-                departure_timezone=item.departure_timezone, arrival_timezone=item.arrival_timezone,
+                departs_at=item.departs_at.isoformat(),
+                arrives_at=item.arrives_at.isoformat(),
+                departure_timezone=item.departure_timezone,
+                arrival_timezone=item.arrival_timezone,
             )
         if item.geometry is not None:
             values["geometry"] = item.geometry
@@ -203,25 +236,45 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
     elif kind == "stay":
         precision = item.share_date_precision.value
         values = {
-            "title": item.area.label, "place": _share_place(item.area, context["areas"]), "date_precision": precision,
-            "starts_on": _safe_date(item.check_in_date, precision), "ends_on": _safe_date(item.check_out_date, precision),
+            "title": item.area.label,
+            "place": _share_place(item.area, context["areas"]),
+            "date_precision": precision,
+            "starts_on": _safe_date(item.check_in_date, precision),
+            "ends_on": _safe_date(item.check_out_date, precision),
         }
         if location := _embedded_location(item.location, context):
             values["location"] = location
     elif kind == "travel_update":
-        values = {"title": item.title, "body": item.body, "date_precision": item.date_precision.value,
-                  "story_date": _safe_date(item.occurred_at.date(), item.date_precision.value),
-                  "place": _share_place(item.area, context["areas"])}
+        values = {
+            "title": item.title,
+            "body": item.body,
+            "date_precision": item.date_precision.value,
+            "story_date": _safe_date(item.occurred_at.date(), item.date_precision.value),
+            "place": _share_place(item.area, context["areas"]),
+        }
         if location := _embedded_location(item.location, context):
             values["location"] = location
     elif kind == "media_derivative":
         # The projection-local file marker discloses no object key, original
         # asset, or canonical derivative id.
-        marker = ({"video": {"id": identifier}, "poster": {"id": f"{identifier}-poster"},
-                   "duration_seconds": item.duration_seconds} if item.media_asset.media_kind.value == "video"
-                  else {"image": {"id": identifier}})
-        values = {**marker, "caption": item.caption, "alt_text": item.alt_text,
-                  "width": item.width, "height": item.height, "focal_x": item.focal_x, "focal_y": item.focal_y}
+        marker = (
+            {
+                "video": {"id": identifier},
+                "poster": {"id": f"{identifier}-poster"},
+                "duration_seconds": item.duration_seconds,
+            }
+            if item.media_asset.media_kind.value == "video"
+            else {"image": {"id": identifier}}
+        )
+        values = {
+            **marker,
+            "caption": item.caption,
+            "alt_text": item.alt_text,
+            "width": item.width,
+            "height": item.height,
+            "focal_x": item.focal_x,
+            "focal_y": item.focal_y,
+        }
         if item.travel_update_id in context["updates"]:
             values["update"] = context["updates"][item.travel_update_id]
     return {"id": identifier, **values}
@@ -240,8 +293,13 @@ def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
 
 
 _DESTINATIONS = {
-    "visit": "visits", "area": "places", "location": "places", "stay": "stays", "travel_update": "updates",
-    "media_derivative": "media", "route": "routes",
+    "visit": "visits",
+    "area": "places",
+    "location": "places",
+    "stay": "stays",
+    "travel_update": "updates",
+    "media_derivative": "media",
+    "route": "routes",
 }
 
 
@@ -258,7 +316,12 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "title": trip.title if scope.get("trip", {}).get("title", True) else None,
         "summary": trip.summary if scope.get("trip", {}).get("summary", True) else None,
         "dates": shared_trip_dates(trip, scope),
-        "visits": [], "places": [], "updates": [], "stays": [], "media": [], "routes": [],
+        "visits": [],
+        "places": [],
+        "updates": [],
+        "stays": [],
+        "media": [],
+        "routes": [],
         "navigation": [],
     }
     for kind, destination in _DESTINATIONS.items():

@@ -76,7 +76,10 @@ def _location_options(assets: list[MediaAsset]) -> list[CandidateLocation]:
                 break
         else:
             clusters.append((coordinate, [asset.id]))
-    return [CandidateLocation(latitude=coordinate[0], longitude=coordinate[1], media_asset_ids=ids) for coordinate, ids in clusters]
+    return [
+        CandidateLocation(latitude=coordinate[0], longitude=coordinate[1], media_asset_ids=ids)
+        for coordinate, ids in clusters
+    ]
 
 
 def build_visit_candidates(assets: list[MediaAsset]) -> tuple[list[VisitCandidate], list[str]]:
@@ -89,7 +92,9 @@ def build_visit_candidates(assets: list[MediaAsset]) -> tuple[list[VisitCandidat
     """
     eligible = [asset for asset in assets if asset.captured_at is not None or _gps(asset) is not None]
     unavailable = [asset.id for asset in assets if asset not in eligible]
-    timed = sorted((asset for asset in eligible if asset.captured_at is not None), key=lambda asset: _utc(asset.captured_at))
+    timed = sorted(
+        (asset for asset in eligible if asset.captured_at is not None), key=lambda asset: _utc(asset.captured_at)
+    )
     groups: list[list[MediaAsset]] = []
     current: list[MediaAsset] = []
     start: datetime | None = None

@@ -65,9 +65,7 @@ def owned_library_document(session: Session, subject: str, document_id: str) -> 
 
 def owned_emergency_entry(session: Session, subject: str, entry_id: str) -> EmergencyInfoEntry:
     entry = session.scalar(
-        select(EmergencyInfoEntry).where(
-            EmergencyInfoEntry.id == entry_id, EmergencyInfoEntry.owner_subject == subject
-        )
+        select(EmergencyInfoEntry).where(EmergencyInfoEntry.id == entry_id, EmergencyInfoEntry.owner_subject == subject)
     )
     if entry is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emergency info entry not found")
@@ -111,9 +109,7 @@ def upload_library_document(
 def list_library_documents(
     session: SessionDep, subject: SubjectDep, linked_trip_id: str | None = None
 ) -> list[OwnerDocumentResponse]:
-    query = select(OwnerDocument).where(
-        OwnerDocument.owner_subject == subject, OwnerDocument.deleted_at.is_(None)
-    )
+    query = select(OwnerDocument).where(OwnerDocument.owner_subject == subject, OwnerDocument.deleted_at.is_(None))
     if linked_trip_id is not None:
         query = query.where(OwnerDocument.linked_trip_id == linked_trip_id)
     documents = session.scalars(query.order_by(OwnerDocument.created_at.desc()))
@@ -141,7 +137,9 @@ def update_library_document(
 
 
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_library_document(document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep) -> Response:
+def remove_library_document(
+    document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> Response:
     delete_owner_document(session, storage, document=owned_library_document(session, subject, document_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -152,7 +150,9 @@ def get_library_document_original(
 ) -> StreamingResponse:
     original = owned_library_document(session, subject, document_id).original_object
     return StreamingResponse(
-        iter([storage.get(original.object_key)]), media_type=original.content_type, headers={"Cache-Control": "no-store"}
+        iter([storage.get(original.object_key)]),
+        media_type=original.content_type,
+        headers={"Cache-Control": "no-store"},
     )
 
 

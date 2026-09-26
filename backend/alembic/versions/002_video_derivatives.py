@@ -16,7 +16,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    state = postgresql.ENUM("processing", "failed", "ready", name="travel_derivative_processing_state", create_type=False)
+    state = postgresql.ENUM(
+        "processing", "failed", "ready", name="travel_derivative_processing_state", create_type=False
+    )
     state.create(op.get_bind(), checkfirst=True)
     op.alter_column("media_derivatives", "object_id", existing_type=sa.String(32), nullable=True)
     # Trip-local dedup may reuse the same encoded copy or poster for multiple
@@ -25,9 +27,13 @@ def upgrade() -> None:
     op.add_column("media_derivatives", sa.Column("poster_object_id", sa.String(32), nullable=True))
     op.add_column("media_derivatives", sa.Column("processing_state", state, nullable=False, server_default="ready"))
     op.add_column("media_derivatives", sa.Column("processing_started_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("media_derivatives", sa.Column("remove_audio", sa.Boolean(), nullable=False, server_default=sa.false()))
+    op.add_column(
+        "media_derivatives", sa.Column("remove_audio", sa.Boolean(), nullable=False, server_default=sa.false())
+    )
     op.add_column("media_derivatives", sa.Column("duration_seconds", sa.Float(), nullable=True))
-    op.create_foreign_key("media_derivatives_poster_object_id_fkey", "media_derivatives", "stored_objects", ["poster_object_id"], ["id"])
+    op.create_foreign_key(
+        "media_derivatives_poster_object_id_fkey", "media_derivatives", "stored_objects", ["poster_object_id"], ["id"]
+    )
 
 
 def downgrade() -> None:

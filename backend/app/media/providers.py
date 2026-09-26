@@ -139,9 +139,7 @@ class GooglePhotosPickerProvider:
                                 filename=media_file.get("filename", raw["id"]),
                                 content_type=media_file.get("mimeType", "application/octet-stream"),
                                 captured_at=(
-                                    datetime.fromisoformat(create_time.replace("Z", "+00:00"))
-                                    if create_time
-                                    else None
+                                    datetime.fromisoformat(create_time.replace("Z", "+00:00")) if create_time else None
                                 ),
                             )
                         )
@@ -247,9 +245,7 @@ class GoProCloudProvider:
                     provider_item_id=raw["id"],
                     filename=raw.get("filename", raw["id"]),
                     content_type=raw.get("mimeType", "application/octet-stream"),
-                    captured_at=(
-                        datetime.fromisoformat(create_time.replace("Z", "+00:00")) if create_time else None
-                    ),
+                    captured_at=(datetime.fromisoformat(create_time.replace("Z", "+00:00")) if create_time else None),
                 )
             )
         return items
@@ -269,8 +265,12 @@ class GoProCloudProvider:
 def provider_available(name: ImportProvider) -> bool:
     """Only configured OAuth providers can appear in owner import controls."""
     if name == ImportProvider.GOOGLE_PHOTOS_PICKER:
-        return bool(settings.google_oauth_client_id and settings.google_oauth_client_secret
-                    and settings.google_oauth_redirect_uri and settings.provider_secret_key)
+        return bool(
+            settings.google_oauth_client_id
+            and settings.google_oauth_client_secret
+            and settings.google_oauth_redirect_uri
+            and settings.provider_secret_key
+        )
     # GoPro's OAuth contract is still unavailable; the beta switch alone is insufficient.
     return False
 

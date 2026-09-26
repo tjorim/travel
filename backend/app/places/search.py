@@ -45,11 +45,10 @@ def _address(data: dict) -> dict[str, str | None]:
         "address_line1": line1,
         "address_line2": address.get("neighbourhood") if isinstance(address.get("neighbourhood"), str) else None,
         "locality": next(
-            (address[key] for key in ("city", "town", "village", "municipality") if isinstance(address.get(key), str)), None
+            (address[key] for key in ("city", "town", "village", "municipality") if isinstance(address.get(key), str)),
+            None,
         ),
-        "admin_area": next(
-            (address[key] for key in ("state", "county") if isinstance(address.get(key), str)), None
-        ),
+        "admin_area": next((address[key] for key in ("state", "county") if isinstance(address.get(key), str)), None),
         "postal_code": address.get("postcode") if isinstance(address.get("postcode"), str) else None,
         "country_code": address.get("country_code", "").upper() or None,
     }

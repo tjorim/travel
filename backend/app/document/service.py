@@ -26,9 +26,7 @@ def direct_upload(
     """Store an owner original and create one retry-safe asset record."""
     stored = store_uploaded_object(session, storage, trip_id=trip_id, data=data, content_type=content_type)
     existing = session.scalar(
-        select(DocumentAsset).where(
-            DocumentAsset.trip_id == trip_id, DocumentAsset.original_object_id == stored.id
-        )
+        select(DocumentAsset).where(DocumentAsset.trip_id == trip_id, DocumentAsset.original_object_id == stored.id)
     )
     if existing is not None:
         session.commit()

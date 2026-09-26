@@ -60,14 +60,24 @@ def add_visit(client: TestClient, trip_id: str, position: int, title: str, city:
 def add_update(client: TestClient, trip_id: str, title: str, visibility: str = "custom") -> dict:
     response = client.post(
         f"/api/trips/{trip_id}/travel-updates",
-        json={"occurred_at": "2054-04-04T10:00:00Z", "date_precision": "day", "title": title, "body": f"A safe note about {title}.", "visibility": visibility},
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z",
+            "date_precision": "day",
+            "title": title,
+            "body": f"A safe note about {title}.",
+            "visibility": visibility,
+        },
     )
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def scope(*items: dict, title: bool = True, summary: bool = True) -> dict:
-    return {"schema_version": "travel/share-scope@1", "trip": {"title": title, "summary": summary}, "items": list(items)}
+    return {
+        "schema_version": "travel/share-scope@1",
+        "trip": {"title": title, "summary": summary},
+        "items": list(items),
+    }
 
 
 def item(kind: str, resource_id: str) -> dict:
@@ -97,8 +107,13 @@ def test_map_inputs_use_only_selected_area_points_and_routes() -> None:
     ).json()
     route = owner.post(
         f"/api/trips/{trip['id']}/routes",
-        json={"label": "Selected line", "mode": "other", "departure_area_id": selected["id"], "arrival_area_id": selected["id"],
-              "geometry": {"type": "LineString", "coordinates": [[120.0, 24.0], [121.0, 25.0]]}},
+        json={
+            "label": "Selected line",
+            "mode": "other",
+            "departure_area_id": selected["id"],
+            "arrival_area_id": selected["id"],
+            "geometry": {"type": "LineString", "coordinates": [[120.0, 24.0], [121.0, 25.0]]},
+        },
     ).json()
     selected_scope = scope(
         share(owner, trip["id"], "area", selected["id"]),
@@ -113,16 +128,41 @@ def test_map_inputs_use_only_selected_area_points_and_routes() -> None:
         delivered = TestClient(app).get(path)
         assert delivered.status_code == 200
         document = delivered.json()
-        assert document["places"] == [{
-            "id": document["places"][0]["id"], "label": "Taipei area", "country_code": None, "region": None,
-            "latitude": 25.0, "longitude": 121.0,
-        }]
-        assert document["routes"] == [{
-            "id": document["routes"][0]["id"], "label": "Selected line", "geometry": route["geometry"], "mode": "other",
-            "status": "planned", "carrier": None, "service_reference": None,
-            "departure": {"label": "Taipei area", "country_code": None, "region": None, "latitude": 25.0, "longitude": 121.0},
-            "arrival": {"label": "Taipei area", "country_code": None, "region": None, "latitude": 25.0, "longitude": 121.0},
-        }]
+        assert document["places"] == [
+            {
+                "id": document["places"][0]["id"],
+                "label": "Taipei area",
+                "country_code": None,
+                "region": None,
+                "latitude": 25.0,
+                "longitude": 121.0,
+            }
+        ]
+        assert document["routes"] == [
+            {
+                "id": document["routes"][0]["id"],
+                "label": "Selected line",
+                "geometry": route["geometry"],
+                "mode": "other",
+                "status": "planned",
+                "carrier": None,
+                "service_reference": None,
+                "departure": {
+                    "label": "Taipei area",
+                    "country_code": None,
+                    "region": None,
+                    "latitude": 25.0,
+                    "longitude": 121.0,
+                },
+                "arrival": {
+                    "label": "Taipei area",
+                    "country_code": None,
+                    "region": None,
+                    "latitude": 25.0,
+                    "longitude": 121.0,
+                },
+            }
+        ]
         assert hidden["label"] not in delivered.text
         assert "34.0" not in delivered.text
 
@@ -161,8 +201,11 @@ def test_projection_generalizes_even_a_legacy_area_point() -> None:
 
     area = Area(label="Somewhere", latitude=25.03371, longitude=121.56541)
     assert _share_place(area) == {
-        "label": "Somewhere", "country_code": None, "region": None,
-        "latitude": 25.03, "longitude": 121.57,
+        "label": "Somewhere",
+        "country_code": None,
+        "region": None,
+        "latitude": 25.03,
+        "longitude": 121.57,
     }
 
 
@@ -180,9 +223,10 @@ def test_public_listing_tracks_live_scope_and_publication_without_owner_data() -
     assert visitor.get("/api/public/trips/exampleland-2054").status_code == 404
 
     assert owner.post(f"/api/trips/{unlisted['id']}/share-links", json={"label": "Secret"}).status_code == 201
-    assert owner.put(
-        f"/api/trips/{published['id']}/public-projection", json=scope(title=True, summary=False)
-    ).status_code == 200
+    assert (
+        owner.put(f"/api/trips/{published['id']}/public-projection", json=scope(title=True, summary=False)).status_code
+        == 200
+    )
     slug = owner.post(f"/api/trips/{published['id']}/public-projection/publish").json()["slug"]
     assert visitor.get("/api/public/trips").json() == [
         {"slug": slug, "title": "Public trip", "summary": None, "dates": None}
@@ -205,10 +249,13 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     shown = add_update(owner, trip["id"], "Hotel check-in")
     hidden = add_update(owner, trip["id"], "Factory visit")
 
-    assert owner.put(
-        f"/api/trips/{trip['id']}/public-projection",
-        json=scope(item("travel_update", shown["id"]), summary=False),
-    ).status_code == 200
+    assert (
+        owner.put(
+            f"/api/trips/{trip['id']}/public-projection",
+            json=scope(item("travel_update", shown["id"]), summary=False),
+        ).status_code
+        == 200
+    )
 
     preview = owner.post(f"/api/trips/{trip['id']}/public-projection/preview")
     assert preview.status_code == 200
@@ -252,14 +299,35 @@ def test_live_story_order_stable_fragments_and_scoped_media_association(tmp_path
     early = add_update(owner, trip["id"], "Early")
     hidden = add_update(owner, trip["id"], "Private")
     for excerpt, date in ((late, "2054-05-20"), (early, "2054-04-02"), (hidden, "2054-03-01")):
-        assert owner.patch(f"/api/trips/{trip['id']}/travel-updates/{excerpt['id']}", json={"occurred_at": f"{date}T10:00:00Z"}).status_code == 200
+        assert (
+            owner.patch(
+                f"/api/trips/{trip['id']}/travel-updates/{excerpt['id']}", json={"occurred_at": f"{date}T10:00:00Z"}
+            ).status_code
+            == 200
+        )
     image_data = io.BytesIO()
     Image.new("RGB", (40, 30), (20, 30, 40)).save(image_data, format="JPEG")
-    asset = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}).json()
-    derivative = owner.post(f"/api/trips/{trip['id']}/media/{asset['id']}/derivatives", json={"purpose": "share"}).json()
+    asset = owner.post(
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}
+    ).json()
+    derivative = owner.post(
+        f"/api/trips/{trip['id']}/media/{asset['id']}/derivatives", json={"purpose": "share"}
+    ).json()
     owner.post(f"/api/trips/{trip['id']}/media/{asset['id']}/derivatives/{derivative['id']}/approve")
     presentation_url = f"/api/trips/{trip['id']}/media/{asset['id']}/derivatives/{derivative['id']}/presentation"
-    assert owner.patch(presentation_url, json={"travel_update_id": early["id"], "caption": "Shared caption", "alt_text": "Train", "focal_x": 25, "focal_y": 60}).status_code == 200
+    assert (
+        owner.patch(
+            presentation_url,
+            json={
+                "travel_update_id": early["id"],
+                "caption": "Shared caption",
+                "alt_text": "Train",
+                "focal_x": 25,
+                "focal_y": 60,
+            },
+        ).status_code
+        == 200
+    )
     selected = scope(item("travel_update", late["id"]), item("travel_update", early["id"]))
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
@@ -278,16 +346,31 @@ def test_live_story_order_stable_fragments_and_scoped_media_association(tmp_path
     assert unlisted["updates"] == document["updates"]
     assert unlisted["media"] == document["media"]
     stable_id = document["updates"][0]["id"]
-    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope(item("travel_update", early["id"]))).status_code == 200
+    assert (
+        owner.put(
+            f"/api/trips/{trip['id']}/public-projection", json=scope(item("travel_update", early["id"]))
+        ).status_code
+        == 200
+    )
     narrowed = visitor.get(f"/api/public/trips/{slug}").json()
     assert narrowed["updates"][0]["id"] == stable_id
     assert narrowed["media"][0]["update"] == stable_id
     # Without its update the photo is no longer delivered: its own choice is private.
-    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope(item("travel_update", late["id"]))).status_code == 200
+    assert (
+        owner.put(
+            f"/api/trips/{trip['id']}/public-projection", json=scope(item("travel_update", late["id"]))
+        ).status_code
+        == 200
+    )
     assert visitor.get(f"/api/public/trips/{slug}").json()["media"] == []
     assert visitor.get(f"/api/shared/{token}").json()["media"][0]["update"] == stable_id
 
-    assert owner.patch(f"/api/trips/{trip['id']}/travel-updates/{early['id']}", json={"date_precision": "month"}).status_code == 200
+    assert (
+        owner.patch(
+            f"/api/trips/{trip['id']}/travel-updates/{early['id']}", json={"date_precision": "month"}
+        ).status_code
+        == 200
+    )
     reduced = visitor.get(f"/api/shared/{token}").json()
     assert reduced["updates"][0]["story_date"] == "2054-04"
     assert "2054-04-02" not in str(reduced)
@@ -295,6 +378,7 @@ def test_live_story_order_stable_fragments_and_scoped_media_association(tmp_path
     other = create_trip(owner, "Other")
     foreign = add_update(owner, other["id"], "Foreign")
     assert owner.patch(presentation_url, json={"travel_update_id": foreign["id"]}).status_code == 422
+
 
 def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) -> None:
     """Notes, the location, attached originals and the exact time stay private even when the update is shared."""
@@ -309,24 +393,49 @@ def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) ->
     created = owner.post(
         f"/api/trips/{trip['id']}/travel-updates",
         json={
-            "occurred_at": "2054-04-04T10:37:12Z", "title": "Arrival", "body": "We landed in Taipei.",
-            "private_notes": "Not for sharing.", "media_asset_ids": [asset_id],
-            "location": {"label": "Cafe", "display_name": "Secret cafe, 9 Hidden Lane", "latitude": 25.0331, "longitude": 121.5651},
+            "occurred_at": "2054-04-04T10:37:12Z",
+            "title": "Arrival",
+            "body": "We landed in Taipei.",
+            "private_notes": "Not for sharing.",
+            "media_asset_ids": [asset_id],
+            "location": {
+                "label": "Cafe",
+                "display_name": "Secret cafe, 9 Hidden Lane",
+                "latitude": 25.0331,
+                "longitude": 121.5651,
+            },
         },
     )
     assert created.status_code == 201, created.text
-    assert owner.put(
-        f"/api/trips/{trip['id']}/visibility/travel_update/{created.json()['id']}", json={"visibility": "everyone"}
-    ).status_code == 200
+    assert (
+        owner.put(
+            f"/api/trips/{trip['id']}/visibility/travel_update/{created.json()['id']}", json={"visibility": "everyone"}
+        ).status_code
+        == 200
+    )
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
 
     delivered = TestClient(app).get(f"/api/public/trips/{slug}")
     (update,) = delivered.json()["updates"]
     assert update == {
-        "id": update["id"], "title": "Arrival", "body": "We landed in Taipei.", "date_precision": "day",
-            "story_date": "2054-04-04", "place": {"label": "Unassigned", "country_code": None, "region": None, "latitude": None, "longitude": None},
+        "id": update["id"],
+        "title": "Arrival",
+        "body": "We landed in Taipei.",
+        "date_precision": "day",
+        "story_date": "2054-04-04",
+        "place": {"label": "Unassigned", "country_code": None, "region": None, "latitude": None, "longitude": None},
     }
-    for private in ("Not for sharing", "Secret cafe", "Hidden Lane", "25.0331", "121.5651", asset_id, "10:37", "media_asset_ids", "private_notes"):
+    for private in (
+        "Not for sharing",
+        "Secret cafe",
+        "Hidden Lane",
+        "25.0331",
+        "121.5651",
+        asset_id,
+        "10:37",
+        "media_asset_ids",
+        "private_notes",
+    ):
         assert private not in delivered.text
 
 
@@ -424,27 +533,47 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
     place_id = stage["area"]["id"]
 
     def stay(name: str) -> dict:
-        return owner.post(f"{trips_path}/stays", json={
-            "location": {"area_id": place_id}, "check_in_date": "2054-04-01", "check_out_date": "2054-04-05", "property_name": name,
-        }).json()
+        return owner.post(
+            f"{trips_path}/stays",
+            json={
+                "location": {"area_id": place_id},
+                "check_in_date": "2054-04-01",
+                "check_out_date": "2054-04-05",
+                "property_name": name,
+            },
+        ).json()
 
     selected_stay, hidden_stay = stay("Taipei base"), stay("Hidden stay")
     selected_route = owner.post(
         f"{trips_path}/routes",
-        json={"label": "North coast", "mode": "car", "departure_area_id": place_id, "arrival_area_id": place_id,
-              "geometry": {"type": "LineString", "coordinates": [[121, 25], [121.1, 25.1]]}},
+        json={
+            "label": "North coast",
+            "mode": "car",
+            "departure_area_id": place_id,
+            "arrival_area_id": place_id,
+            "geometry": {"type": "LineString", "coordinates": [[121, 25], [121.1, 25.1]]},
+        },
     ).json()
     hidden_route = owner.post(
         f"{trips_path}/routes",
-        json={"label": "Private raw route", "mode": "car", "departure_area_id": place_id, "arrival_area_id": place_id,
-              "geometry": {"type": "LineString", "coordinates": [[120, 24], [120.1, 24.1]]}},
+        json={
+            "label": "Private raw route",
+            "mode": "car",
+            "departure_area_id": place_id,
+            "arrival_area_id": place_id,
+            "geometry": {"type": "LineString", "coordinates": [[120, 24], [120.1, 24.1]]},
+        },
     ).json()
 
     image_data = io.BytesIO()
     Image.new("RGB", (10, 10), (20, 30, 40)).save(image_data, format="JPEG")
-    media = owner.post(f"{trips_path}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}).json()
+    media = owner.post(
+        f"{trips_path}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}
+    ).json()
     pending_media = owner.post(f"{trips_path}/media/{media['id']}/derivatives", json={"purpose": "share"}).json()
-    unapproved = owner.put(f"{trips_path}/visibility/media_derivative/{pending_media['id']}", json={"visibility": "custom"})
+    unapproved = owner.put(
+        f"{trips_path}/visibility/media_derivative/{pending_media['id']}", json={"visibility": "custom"}
+    )
     assert unapproved.status_code == 422 and "Approve" in unapproved.json()["detail"]
     selected_media = owner.post(f"{trips_path}/media/{media['id']}/derivatives/{pending_media['id']}/approve").json()
 
@@ -453,8 +582,18 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
         data={"title": "Safe itinerary", "document_kind": "itinerary"},
         files={"file": ("private.txt", b"private", "text/plain")},
     ).json()
-    assert owner.put(f"{trips_path}/visibility/document_derivative/{document['id']}", json={"visibility": "custom"}).status_code == 422
-    assert owner.put(f"{trips_path}/public-projection", json=scope({"kind": "document_derivative", "id": document["id"]})).status_code == 422
+    assert (
+        owner.put(
+            f"{trips_path}/visibility/document_derivative/{document['id']}", json={"visibility": "custom"}
+        ).status_code
+        == 422
+    )
+    assert (
+        owner.put(
+            f"{trips_path}/public-projection", json=scope({"kind": "document_derivative", "id": document["id"]})
+        ).status_code
+        == 422
+    )
 
     selected = scope(
         share(owner, trip["id"], "stay", selected_stay["id"]),
@@ -723,9 +862,7 @@ def test_share_link_can_remain_active_until_its_owner_revokes_it() -> None:
     anonymous = TestClient(app)
     assert anonymous.get(f"/api/shared/{token}").status_code == 200
 
-    rotated = owner.post(
-        f"/api/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": None}
-    )
+    rotated = owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": None})
     assert rotated.status_code == 200
     assert rotated.json()["expires_at"] is None
     assert anonymous.get(f"/api/shared/{token}").status_code == 404
@@ -759,7 +896,9 @@ def test_unavailable_capabilities_have_one_visitor_response_contract() -> None:
     assert len({response.text for response in responses}) == 1
     assert len({tuple(response.headers[name] for name in headers) for response in responses}) == 1
     assert tuple(responses[0].headers[name] for name in headers) == (
-        "no-store, private", "noindex, noarchive", "no-referrer"
+        "no-store, private",
+        "noindex, noarchive",
+        "no-referrer",
     )
 
 
@@ -770,9 +909,7 @@ def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
     selected = scope(item("travel_update", excerpt["id"]))
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
-    link = owner.post(
-        f"/api/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}
-    ).json()
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Visitor", "scope": selected}).json()
     token = activate(owner, trip["id"], link["id"])["token"]
     link_preview = owner.post(f"/api/trips/{trip['id']}/share-links/{link['id']}/preview")
 
@@ -822,9 +959,10 @@ def test_preview_navigation_is_owner_authenticated_and_scope_checked_after_withd
 def test_stage_summaries_and_trip_dates_appear_only_when_chosen() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    assert owner.patch(
-        f"/api/trips/{trip['id']}", json={"starts_on": "2054-11-16", "ends_on": "2054-12-06"}
-    ).status_code == 200
+    assert (
+        owner.patch(f"/api/trips/{trip['id']}", json={"starts_on": "2054-11-16", "ends_on": "2054-12-06"}).status_code
+        == 200
+    )
     stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei", summary="City, food and a first weekend.")
 
     # A private stage and unshared dates reach nobody.
@@ -850,12 +988,16 @@ def test_stage_summaries_and_trip_dates_appear_only_when_chosen() -> None:
 def test_trip_dates_are_ordered() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    assert owner.patch(
-        f"/api/trips/{trip['id']}", json={"starts_on": "2054-12-06", "ends_on": "2054-11-16"}
-    ).status_code == 422
-    assert owner.post(
-        "/api/trips", json={"title": "Backwards", "starts_on": "2054-12-06", "ends_on": "2054-11-16"}
-    ).status_code == 422
+    assert (
+        owner.patch(f"/api/trips/{trip['id']}", json={"starts_on": "2054-12-06", "ends_on": "2054-11-16"}).status_code
+        == 422
+    )
+    assert (
+        owner.post(
+            "/api/trips", json={"title": "Backwards", "starts_on": "2054-12-06", "ends_on": "2054-11-16"}
+        ).status_code
+        == 422
+    )
 
 
 def test_an_update_reaches_visitors_according_to_its_own_visibility() -> None:
@@ -868,16 +1010,29 @@ def test_an_update_reaches_visitors_according_to_its_own_visibility() -> None:
     trips_path = f"/api/trips/{trip['id']}"
 
     # A new update is private unless the owner says otherwise.
-    default = owner.post(f"{trips_path}/travel-updates", json={"occurred_at": "2054-04-04T10:00:00Z", "date_precision": "day", "title": "Default", "body": "Text."}).json()
+    default = owner.post(
+        f"{trips_path}/travel-updates",
+        json={"occurred_at": "2054-04-04T10:00:00Z", "date_precision": "day", "title": "Default", "body": "Text."},
+    ).json()
     assert default["visibility"] == "private"
 
     # Only a custom update can be chosen for an audience; the others are decided by their visibility.
     for update in (private, everyone, default):
-        assert owner.put(f"{trips_path}/public-projection", json=scope(item("travel_update", update["id"]))).status_code == 422
-    assert owner.put(f"{trips_path}/public-projection", json=scope({**item("travel_update", chosen["id"]), "fields": ["title"]})).status_code == 422
+        assert (
+            owner.put(f"{trips_path}/public-projection", json=scope(item("travel_update", update["id"]))).status_code
+            == 422
+        )
+    assert (
+        owner.put(
+            f"{trips_path}/public-projection", json=scope({**item("travel_update", chosen["id"]), "fields": ["title"]})
+        ).status_code
+        == 422
+    )
 
     # Public view: every everyone update plus the custom update it selects.
-    assert owner.put(f"{trips_path}/public-projection", json=scope(item("travel_update", chosen["id"]))).status_code == 200
+    assert (
+        owner.put(f"{trips_path}/public-projection", json=scope(item("travel_update", chosen["id"]))).status_code == 200
+    )
     slug = owner.post(f"{trips_path}/public-projection/publish").json()["slug"]
     # A named link that selects nothing still gets the everyone update, and not the public view's custom one.
     link = owner.post(f"{trips_path}/share-links", json={"label": "Nothing chosen", "scope": scope()}).json()
@@ -888,13 +1043,24 @@ def test_an_update_reaches_visitors_according_to_its_own_visibility() -> None:
     unlisted = TestClient(app).get(f"/api/shared/{token}")
     assert [update["title"] for update in unlisted.json()["updates"]] == ["Arrival"]
     for delivered in (public, unlisted):
-        assert "Private diary" not in delivered.text and "Left out" not in delivered.text and "Default" not in delivered.text
+        assert (
+            "Private diary" not in delivered.text
+            and "Left out" not in delivered.text
+            and "Default" not in delivered.text
+        )
 
     # The update's own choice is the source of truth, immediately.
-    assert owner.patch(f"{trips_path}/travel-updates/{everyone['id']}", json={"visibility": "private"}).status_code == 200
-    assert owner.patch(f"{trips_path}/travel-updates/{unchosen['id']}", json={"visibility": "everyone"}).status_code == 200
+    assert (
+        owner.patch(f"{trips_path}/travel-updates/{everyone['id']}", json={"visibility": "private"}).status_code == 200
+    )
+    assert (
+        owner.patch(f"{trips_path}/travel-updates/{unchosen['id']}", json={"visibility": "everyone"}).status_code == 200
+    )
     assert [update["title"] for update in TestClient(app).get(f"/api/shared/{token}").json()["updates"]] == ["Left out"]
-    assert {update["title"] for update in TestClient(app).get(f"/api/public/trips/{slug}").json()["updates"]} == {"Left out", "Family only"}
+    assert {update["title"] for update in TestClient(app).get(f"/api/public/trips/{slug}").json()["updates"]} == {
+        "Left out",
+        "Family only",
+    }
 
 
 def test_leaving_custom_or_deleting_an_update_withdraws_it_from_every_scope() -> None:
@@ -942,7 +1108,9 @@ def test_a_photo_travels_with_its_update_and_only_while_the_update_is_delivered(
     update = add_update(owner, trip["id"], "Arrival", "everyone")
     image_data = io.BytesIO()
     Image.new("RGB", (40, 30), (20, 30, 40)).save(image_data, format="JPEG")
-    media = owner.post(f"{trips_path}/media/uploads", files={"file": ("a.jpg", image_data.getvalue(), "image/jpeg")}).json()
+    media = owner.post(
+        f"{trips_path}/media/uploads", files={"file": ("a.jpg", image_data.getvalue(), "image/jpeg")}
+    ).json()
     derivative = owner.post(f"{trips_path}/media/{media['id']}/derivatives", json={"purpose": "share"}).json()
     derivative_path = f"{trips_path}/media/{media['id']}/derivatives/{derivative['id']}"
     owner.post(f"{derivative_path}/approve")
@@ -969,11 +1137,17 @@ def test_visibility_is_the_same_owner_only_choice_for_every_kind() -> None:
     other = client_for("owner-2")
     assert other.put(path, json={"visibility": "private"}).status_code == 404
     other_trip = create_trip(other, "Other")
-    assert other.put(
-        f"/api/trips/{other_trip['id']}/visibility/visit/{stage['id']}", json={"visibility": "everyone"}
-    ).status_code == 404
+    assert (
+        other.put(
+            f"/api/trips/{other_trip['id']}/visibility/visit/{stage['id']}", json={"visibility": "everyone"}
+        ).status_code
+        == 404
+    )
     owner = client_for("owner-1")
-    assert owner.put(f"/api/trips/{trip['id']}/visibility/visit/unknown", json={"visibility": "everyone"}).status_code == 404
+    assert (
+        owner.put(f"/api/trips/{trip['id']}/visibility/visit/unknown", json={"visibility": "everyone"}).status_code
+        == 404
+    )
     assert owner.put(f"/api/trips/{trip['id']}/visibility/place/x", json={"visibility": "everyone"}).status_code == 422
 
 

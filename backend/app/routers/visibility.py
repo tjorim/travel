@@ -19,7 +19,12 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 @router.put("/visibility/{kind}/{record_id}", response_model=VisibilityUpdate)
 def put_visibility(
-    trip_id: str, kind: ShareScopeKind, record_id: str, payload: VisibilityUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: str,
+    kind: ShareScopeKind,
+    record_id: str,
+    payload: VisibilityUpdate,
+    session: SessionDep,
+    subject: SubjectDep,
 ) -> VisibilityUpdate:
     """Choose private, everyone or custom for one record.
 

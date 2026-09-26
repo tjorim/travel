@@ -53,7 +53,9 @@ def client_for(subject: str, tmp_path: Path, secret_store: InMemorySecretStore |
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[current_subject] = lambda: subject
     app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
-    app.dependency_overrides[get_secret_store] = lambda: (secret_store if secret_store is not None else InMemorySecretStore())
+    app.dependency_overrides[get_secret_store] = lambda: (
+        secret_store if secret_store is not None else InMemorySecretStore()
+    )
     return TestClient(app)
 
 
@@ -102,15 +104,49 @@ def video_with_telemetry(tmp_path: Path) -> bytes:
     telemetry = tmp_path / "telemetry.bin"
     telemetry.write_bytes(b"GPS 12.345,67.890")
     source = tmp_path / "source.mov"
-    subprocess.run([
-        "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
-        "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=10:duration=3",
-        "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
-        "-f", "data", "-i", str(telemetry), "-map", "0:v", "-map", "1:a", "-map", "2:d",
-        "-c:v", "mpeg4", "-c:a", "aac", "-c:d", "copy", "-tag:d", "gpmd",
-        "-metadata", "location=+12.345+067.890/", "-metadata:s:v:0", "comment=GPS 12.345,67.890",
-        "-y", str(source),
-    ], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-nostdin",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc2=size=640x360:rate=10:duration=3",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:duration=3",
+            "-f",
+            "data",
+            "-i",
+            str(telemetry),
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-map",
+            "2:d",
+            "-c:v",
+            "mpeg4",
+            "-c:a",
+            "aac",
+            "-c:d",
+            "copy",
+            "-tag:d",
+            "gpmd",
+            "-metadata",
+            "location=+12.345+067.890/",
+            "-metadata:s:v:0",
+            "comment=GPS 12.345,67.890",
+            "-y",
+            str(source),
+        ],
+        check=True,
+        capture_output=True,
+    )
     return source.read_bytes()
 
 
@@ -124,18 +160,36 @@ def test_video_derivative_strips_telemetry_and_requires_review(tmp_path: Path, m
     client = client_for("owner-1", tmp_path)
     trip = create_trip(client)
     with TestingSessionLocal() as session:
-        asset, _ = direct_upload(session, storage, trip_id=trip["id"], filename="private.mov",
-                                 content_type="video/quicktime", data=video_with_telemetry(tmp_path))
-        derivative = service.queue_video_derivative(session, media_asset=asset, purpose=DerivativePurpose.SHARE,
-                                                    remove_audio=True)
+        asset, _ = direct_upload(
+            session,
+            storage,
+            trip_id=trip["id"],
+            filename="private.mov",
+            content_type="video/quicktime",
+            data=video_with_telemetry(tmp_path),
+        )
+        derivative = service.queue_video_derivative(
+            session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=True
+        )
         derivative_id, asset_id = derivative.id, asset.id
 
     base = f"/api/trips/{trip['id']}"
     assert client.post(f"{base}/media/{asset_id}/derivatives/{derivative_id}/approve").status_code == 409
-    assert client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code == 422
-    assert client.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1",
-        "trip": {"title": True, "summary": False},
-        "items": [{"kind": "media_derivative", "id": derivative_id}]}).status_code == 422
+    assert (
+        client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code
+        == 422
+    )
+    assert (
+        client.put(
+            f"{base}/public-projection",
+            json={
+                "schema_version": "travel/share-scope@1",
+                "trip": {"title": True, "summary": False},
+                "items": [{"kind": "media_derivative", "id": derivative_id}],
+            },
+        ).status_code
+        == 422
+    )
     with TestingSessionLocal() as session:
         service.process_video_derivative(session, storage, derivative_id=derivative_id)
         derivative = session.get(MediaDerivative, derivative_id)
@@ -145,18 +199,34 @@ def test_video_derivative_strips_telemetry_and_requires_review(tmp_path: Path, m
         assert derivative.duration_seconds <= 2.1
         output = tmp_path / "stripped.mp4"
         output.write_bytes(storage.get(derivative.object.object_key))
-        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-show_format",
-                                            "-of", "json", str(output)], check=True, capture_output=True).stdout)
+        probe = json.loads(
+            subprocess.run(
+                ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(output)],
+                check=True,
+                capture_output=True,
+            ).stdout
+        )
         assert [stream["codec_type"] for stream in probe["streams"]] == ["video"]
         assert "location" not in probe["format"].get("tags", {})
         assert "comment" not in probe["streams"][0].get("tags", {})
         assert "12.345" not in output.read_bytes().decode("latin1")
 
-    assert client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code == 422
+    assert (
+        client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code
+        == 422
+    )
     assert client.post(f"{base}/media/{asset_id}/derivatives/{derivative_id}/approve").status_code == 200
-    assert client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code == 200
-    assert client.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1",
-        "trip": {"title": True, "summary": False}, "items": []}).status_code == 200
+    assert (
+        client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code
+        == 200
+    )
+    assert (
+        client.put(
+            f"{base}/public-projection",
+            json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": False}, "items": []},
+        ).status_code
+        == 200
+    )
     slug = client.post(f"{base}/public-projection/publish").json()["slug"]
     projection = client.get(f"/api/public/trips/{slug}").json()
     assert len(projection["media"]) == 1
@@ -187,8 +257,14 @@ def test_video_job_failure_is_retryable_and_audio_can_be_kept(tmp_path: Path, mo
     client = client_for("owner-1", tmp_path)
     trip = create_trip(client)
     with TestingSessionLocal() as session:
-        asset, _ = direct_upload(session, LocalObjectStorage(root=str(tmp_path)), trip_id=trip["id"],
-                                 filename="clip.mov", content_type="video/quicktime", data=video_with_telemetry(tmp_path))
+        asset, _ = direct_upload(
+            session,
+            LocalObjectStorage(root=str(tmp_path)),
+            trip_id=trip["id"],
+            filename="clip.mov",
+            content_type="video/quicktime",
+            data=video_with_telemetry(tmp_path),
+        )
         asset_id = asset.id
     path = f"/api/trips/{trip['id']}/media/{asset_id}/derivatives"
     command = service._media_command
@@ -212,8 +288,11 @@ def test_video_job_failure_is_retryable_and_audio_can_be_kept(tmp_path: Path, mo
 
         row = session.get(MediaDerivative, derivative_id)
         output.write_bytes(LocalObjectStorage(root=str(tmp_path)).get(row.object.object_key))
-    probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(output)],
-                                      check=True, capture_output=True).stdout)
+    probe = json.loads(
+        subprocess.run(
+            ["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(output)], check=True, capture_output=True
+        ).stdout
+    )
     assert {stream["codec_type"] for stream in probe["streams"]} == {"video", "audio"}
 
 
@@ -224,12 +303,21 @@ def test_stalled_video_job_becomes_retryable(tmp_path: Path) -> None:
     client = client_for("owner-1", tmp_path)
     trip = create_trip(client)
     with TestingSessionLocal() as session:
-        asset, _ = direct_upload(session, LocalObjectStorage(root=str(tmp_path)), trip_id=trip["id"],
-                                 filename="clip.mov", content_type="video/quicktime", data=video_with_telemetry(tmp_path))
-        derivative = service.queue_video_derivative(session, media_asset=asset, purpose=DerivativePurpose.SHARE,
-                                                    remove_audio=False)
+        asset, _ = direct_upload(
+            session,
+            LocalObjectStorage(root=str(tmp_path)),
+            trip_id=trip["id"],
+            filename="clip.mov",
+            content_type="video/quicktime",
+            data=video_with_telemetry(tmp_path),
+        )
+        derivative = service.queue_video_derivative(
+            session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=False
+        )
         derivative_id, asset_id = derivative.id, asset.id
-        derivative.processing_started_at = datetime.now(UTC) - timedelta(seconds=service.VIDEO_STALLED_AFTER_SECONDS + 1)
+        derivative.processing_started_at = datetime.now(UTC) - timedelta(
+            seconds=service.VIDEO_STALLED_AFTER_SECONDS + 1
+        )
         session.commit()
     path = f"/api/trips/{trip['id']}/media/{asset_id}/derivatives"
     assert client.get(path).json()[0]["processing_state"] == "failed"
@@ -276,7 +364,7 @@ class FakeProvider:
 
 
 def use_fake_provider(fake: FakeProvider) -> None:
-    app.dependency_overrides[get_provider_resolver] = lambda: (lambda provider: fake)
+    app.dependency_overrides[get_provider_resolver] = lambda: lambda provider: fake
 
 
 # --- Direct device upload: the durable fallback ------------------------------------
@@ -287,9 +375,7 @@ def test_direct_upload_creates_a_media_asset_served_from_storage_not_a_temp_url(
     trip = create_trip(owner)
     data = jpeg_bytes()
 
-    response = owner.post(
-        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("holiday.jpg", data, "image/jpeg")}
-    )
+    response = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("holiday.jpg", data, "image/jpeg")})
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["content_type"] == "image/jpeg"
@@ -314,9 +400,7 @@ def test_direct_upload_extracts_exif_for_the_owner_while_the_original_keeps_it_e
     trip = create_trip(owner)
     data = jpeg_bytes(with_gps=True, captured_at="2054:04:01 08:30:00")
 
-    response = owner.post(
-        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("sunrise.jpg", data, "image/jpeg")}
-    )
+    response = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("sunrise.jpg", data, "image/jpeg")})
     assert response.status_code == 201, response.text
     body = response.json()
 
@@ -383,15 +467,25 @@ def test_owner_can_review_selected_media_as_visits_without_creating_updates_or_p
 
     first = owner.post(
         f"/api/trips/{trip['id']}/media/uploads",
-        files={"file": ("first.jpg", jpeg_bytes((1, 2, 3), with_gps=True, captured_at="2054:04:01 08:00:00"), "image/jpeg")},
+        files={
+            "file": ("first.jpg", jpeg_bytes((1, 2, 3), with_gps=True, captured_at="2054:04:01 08:00:00"), "image/jpeg")
+        },
     ).json()
     second = owner.post(
         f"/api/trips/{trip['id']}/media/uploads",
-        files={"file": ("second.jpg", jpeg_bytes((4, 5, 6), with_gps=True, captured_at="2054:04:01 09:00:00"), "image/jpeg")},
+        files={
+            "file": (
+                "second.jpg",
+                jpeg_bytes((4, 5, 6), with_gps=True, captured_at="2054:04:01 09:00:00"),
+                "image/jpeg",
+            )
+        },
     ).json()
     later = owner.post(
         f"/api/trips/{trip['id']}/media/uploads",
-        files={"file": ("later.jpg", jpeg_bytes((7, 8, 9), with_gps=True, captured_at="2054:04:01 10:01:00"), "image/jpeg")},
+        files={
+            "file": ("later.jpg", jpeg_bytes((7, 8, 9), with_gps=True, captured_at="2054:04:01 10:01:00"), "image/jpeg")
+        },
     ).json()
     unavailable = owner.post(
         f"/api/trips/{trip['id']}/media/uploads",
@@ -430,9 +524,12 @@ def test_owner_can_review_selected_media_as_visits_without_creating_updates_or_p
     assert owner.get(f"/api/trips/{trip['id']}/locations").json() == []
 
     other = client_for("owner-2", tmp_path)
-    assert other.post(
-        f"/api/trips/{trip['id']}/media/visit-candidates", json={"media_asset_ids": [first["id"]]}
-    ).status_code == 404
+    assert (
+        other.post(
+            f"/api/trips/{trip['id']}/media/visit-candidates", json={"media_asset_ids": [first["id"]]}
+        ).status_code
+        == 404
+    )
 
 
 # --- Share derivatives: stripped and resized, gated on owner review ---------------
@@ -464,9 +561,7 @@ def test_share_derivative_strips_exif_and_starts_pending_owner_review(tmp_path: 
     assert stripped_image.format == "WEBP"
     assert not stripped_image.getexif()  # no Make/Model/GPS tag survives
 
-    approved = owner.post(
-        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
-    )
+    approved = owner.post(f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve")
     assert approved.status_code == 200
     assert approved.json()["review_state"] == "approved"
 
@@ -480,13 +575,17 @@ def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path
     derivative = owner.post(
         f"/api/trips/{trip['id']}/media/{media['id']}/derivatives", json={"purpose": "share"}
     ).json()
-    assert owner.post(
-        f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve"
-    ).status_code == 200
+    assert (
+        owner.post(f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}/approve").status_code
+        == 200
+    )
 
-    assert owner.put(
-        f"/api/trips/{trip['id']}/visibility/media_derivative/{derivative['id']}", json={"visibility": "custom"}
-    ).status_code == 200
+    assert (
+        owner.put(
+            f"/api/trips/{trip['id']}/visibility/media_derivative/{derivative['id']}", json={"visibility": "custom"}
+        ).status_code
+        == 200
+    )
     scope = {
         "schema_version": "travel/share-scope@1",
         "trip": {"title": True, "summary": True},
@@ -507,7 +606,10 @@ def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path
 def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path) -> None:
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
-    assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "never-return-this"}).status_code == 204
+    assert (
+        owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "never-return-this"}).status_code
+        == 204
+    )
 
     statuses = owner.get("/api/provider-tokens")
     assert statuses.status_code == 200
@@ -517,7 +619,11 @@ def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path)
     ]
     assert "never-return-this" not in statuses.text
     assert owner.delete("/api/provider-tokens/google_photos_picker").status_code == 204
-    assert owner.get("/api/provider-tokens").json()[0] == {"provider": "google_photos_picker", "available": True, "connected": False}
+    assert owner.get("/api/provider-tokens").json()[0] == {
+        "provider": "google_photos_picker",
+        "available": True,
+        "connected": False,
+    }
 
 
 def test_provider_availability_requires_oauth_configuration(tmp_path: Path, monkeypatch) -> None:
@@ -535,7 +641,12 @@ def test_provider_availability_requires_oauth_configuration(tmp_path: Path, monk
     }
     assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token"}).status_code == 409
     assert owner.post("/api/provider-tokens/google_photos_picker/oauth/start").status_code == 409
-    assert owner.post("/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": "state"}).status_code == 409
+    assert (
+        owner.post(
+            "/api/provider-tokens/google_photos_picker/oauth/complete", json={"code": "code", "state": "state"}
+        ).status_code
+        == 409
+    )
     trip = create_trip(owner)
     assert owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions").status_code == 409
 
@@ -546,10 +657,16 @@ def test_provider_availability_requires_oauth_configuration(tmp_path: Path, monk
 def google_items() -> tuple[list[ProviderMediaItem], dict[str, bytes]]:
     items = [
         ProviderMediaItem(
-            provider_item_id="g-item-1", filename="sunrise.jpg", content_type="image/jpeg", captured_at=datetime(2054, 4, 1, tzinfo=UTC)
+            provider_item_id="g-item-1",
+            filename="sunrise.jpg",
+            content_type="image/jpeg",
+            captured_at=datetime(2054, 4, 1, tzinfo=UTC),
         ),
         ProviderMediaItem(
-            provider_item_id="g-item-2", filename="lake.jpg", content_type="image/jpeg", captured_at=datetime(2054, 4, 2, tzinfo=UTC)
+            provider_item_id="g-item-2",
+            filename="lake.jpg",
+            content_type="image/jpeg",
+            captured_at=datetime(2054, 4, 2, tzinfo=UTC),
         ),
     ]
     contents = {"g-item-1": jpeg_bytes((10, 20, 30)), "g-item-2": jpeg_bytes((40, 50, 60))}
@@ -561,7 +678,10 @@ def test_google_photos_picker_import_copies_selected_items_into_travel_storage(t
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
 
-    assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "owner-google-token"}).status_code == 204
+    assert (
+        owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "owner-google-token"}).status_code
+        == 204
+    )
 
     items, contents = google_items()
     fake = FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents)
@@ -627,7 +747,9 @@ def test_google_import_refreshes_between_start_and_complete(tmp_path: Path, monk
     started = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions")
     assert started.status_code == 200
     store.set_credential(subject="owner-1", provider=oauth.GOOGLE, credential=Credential("fresh-1", "refresh", expired))
-    completed = owner.post(f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{started.json()['id']}/complete")
+    completed = owner.post(
+        f"/api/trips/{trip['id']}/media/imports/google_photos_picker/sessions/{started.json()['id']}/complete"
+    )
     assert completed.status_code == 200
     assert len(completed.json()["imported"]) == 2
     assert tokens == ["fresh-1", "fresh-2", "fresh-2", "fresh-2"]
@@ -644,7 +766,10 @@ def test_imported_exif_capture_time_takes_precedence_over_the_providers_own_meta
     # camera's own EXIF DateTimeOriginal says 2054-04-01: the actual capture
     # instant from the file itself should win.
     item = ProviderMediaItem(
-        provider_item_id="g-item-1", filename="sunrise.jpg", content_type="image/jpeg", captured_at=datetime(2054, 4, 2, tzinfo=UTC)
+        provider_item_id="g-item-1",
+        filename="sunrise.jpg",
+        content_type="image/jpeg",
+        captured_at=datetime(2054, 4, 2, tzinfo=UTC),
     )
     contents = {"g-item-1": jpeg_bytes(captured_at="2054:04:01 08:30:00")}
     use_fake_provider(FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, [item], contents))
@@ -761,9 +886,7 @@ def test_gopro_cloud_import_is_unavailable_without_beta_access_while_direct_uplo
     response = owner.post(f"/api/trips/{trip['id']}/media/imports/gopro_cloud/sessions")
     assert response.status_code == 409
 
-    upload = owner.post(
-        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")}
-    )
+    upload = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("a.jpg", jpeg_bytes(), "image/jpeg")})
     assert upload.status_code == 201
 
 
@@ -779,7 +902,9 @@ def test_purge_deleted_media_keeps_a_recent_deletion_within_the_recovery_window(
         trip = Trip(owner_subject="owner-1", title="Exampleland")
         session.add(trip)
         session.commit()
-        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
+        )
         delete_media_asset(session, media_asset=asset)
 
         purged = purge_deleted_media(session, storage, older_than=timedelta(days=30))
@@ -799,7 +924,9 @@ def test_purge_deleted_media_reclaims_original_and_derivative_objects_after_the_
         trip = Trip(owner_subject="owner-1", title="Exampleland")
         session.add(trip)
         session.commit()
-        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
+        )
         derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
         original_key = asset.original_object.object_key
         derivative_key = derivative.object.object_key
@@ -823,7 +950,9 @@ def test_purge_deleted_media_retries_after_storage_failure_without_dangling_refe
         trip = Trip(owner_subject="owner-1", title="Exampleland")
         session.add(trip)
         session.commit()
-        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
+        )
         derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
         object_keys = {asset.original_object.object_key, derivative.object.object_key}
         delete_media_asset(session, media_asset=asset)
@@ -864,10 +993,18 @@ def test_purge_deleted_media_keeps_a_shared_document_object(tmp_path: Path) -> N
         session.add(trip)
         session.commit()
         data = jpeg_bytes()
-        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=data)
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=data
+        )
         document, _ = upload_document(
-            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg",
-            data=data, document_kind=DocumentKind.OTHER, title="Receipt",
+            session,
+            storage,
+            trip_id=trip.id,
+            filename="a.jpg",
+            content_type="image/jpeg",
+            data=data,
+            document_kind=DocumentKind.OTHER,
+            title="Receipt",
         )
         key = asset.original_object.object_key
         assert document.original_object_id == asset.original_object_id
@@ -886,7 +1023,9 @@ def test_purge_deleted_media_retries_when_commit_fails_after_file_deletion(tmp_p
         trip = Trip(owner_subject="owner-1", title="Exampleland")
         session.add(trip)
         session.commit()
-        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
+        )
         object_id = asset.original_object_id
         key = asset.original_object.object_key
         delete_media_asset(session, media_asset=asset)
@@ -923,7 +1062,9 @@ def test_derivative_deletion_failure_leaves_retryable_object(tmp_path: Path) -> 
         trip = Trip(owner_subject="owner-1", title="Exampleland")
         session.add(trip)
         session.commit()
-        asset, _ = direct_upload(session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes())
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
+        )
         derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
         derivative_id = derivative.id
         object_id = derivative.object_id

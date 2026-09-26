@@ -12,7 +12,10 @@ def remove_from_live_scopes(session: Session, *, trip_id: str, kind: str, item_i
     Called when the item is deleted or can no longer be chosen, so no live
     scope keeps pointing at something that is gone or has become private.
     """
-    holders = [session.get(PublicSurface, trip_id), *session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id))]
+    holders = [
+        session.get(PublicSurface, trip_id),
+        *session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id)),
+    ]
     for holder in holders:
         if holder is None:
             continue

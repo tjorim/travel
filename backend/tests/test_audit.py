@@ -56,9 +56,7 @@ def test_public_projection_publish_and_unpublish_are_audited_with_an_owner_reaso
     trip = create_trip(owner)
     owner.put(f"/api/trips/{trip['id']}/public-projection", json={"items": []})
     owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
-    owner.post(
-        f"/api/trips/{trip['id']}/public-projection/unpublish", json={"reason": "Trip is over"}
-    )
+    owner.post(f"/api/trips/{trip['id']}/public-projection/unpublish", json={"reason": "Trip is over"})
 
     events = audit_events(owner, trip["id"])
     kinds = [event["kind"] for event in events]
@@ -77,12 +75,13 @@ def test_share_link_lifecycle_transitions_are_each_audited() -> None:
 
     created = owner.post(
         f"/api/trips/{trip['id']}/share-links",
-        json={"label": "Family", "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}},
+        json={
+            "label": "Family",
+            "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+        },
     )
     link_id = created.json()["id"]
-    activated = owner.post(
-        f"/api/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 30}
-    )
+    activated = owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 30})
     token = activated.json()["token"]
 
     rotated = owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/rotate", json={"expires_in_days": 30})
@@ -118,12 +117,13 @@ def test_a_naturally_expiring_share_link_is_audited_as_a_system_action() -> None
     trip = create_trip(owner)
     created = owner.post(
         f"/api/trips/{trip['id']}/share-links",
-        json={"label": "Family", "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}},
+        json={
+            "label": "Family",
+            "scope": {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+        },
     )
     link_id = created.json()["id"]
-    activated = owner.post(
-        f"/api/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 1}
-    )
+    activated = owner.post(f"/api/trips/{trip['id']}/share-links/{link_id}/activate", json={"expires_in_days": 1})
     token = activated.json()["token"]
 
     with TestingSessionLocal() as session:

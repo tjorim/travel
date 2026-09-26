@@ -117,7 +117,9 @@ def update_trip(trip_id: str, payload: TripUpdate, session: SessionDep, subject:
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(trip, field, value)
     if trip.starts_on is not None and trip.ends_on is not None and trip.ends_on < trip.starts_on:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="The trip cannot end before it starts")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="The trip cannot end before it starts"
+        )
     session.commit()
     return owned_trip(session, trip_id, subject)
 
@@ -132,7 +134,11 @@ def delete_trip(trip_id: str, session: SessionDep, subject: SubjectDep) -> Respo
 def _loaded(session: Session, update_id: str) -> TravelUpdate:
     return session.scalar(
         select(TravelUpdate)
-        .options(selectinload(TravelUpdate.chosen_area), selectinload(TravelUpdate.location), selectinload(TravelUpdate.media_links))
+        .options(
+            selectinload(TravelUpdate.chosen_area),
+            selectinload(TravelUpdate.location),
+            selectinload(TravelUpdate.media_links),
+        )
         .where(TravelUpdate.id == update_id)
     )  # type: ignore[return-value]
 
@@ -150,7 +156,9 @@ def create_travel_update(
         )
     update = TravelUpdate(
         trip=trip,
-        area_id=selected_area(session, trip.id, payload.area_id).id if location is None and payload.area_id is not None else None,
+        area_id=selected_area(session, trip.id, payload.area_id).id
+        if location is None and payload.area_id is not None
+        else None,
         location=location,
         media_links=media_links_from_ids(session, trip.id, payload.media_asset_ids),
         occurred_at=payload.occurred_at,
@@ -202,9 +210,7 @@ def update_travel_update(
         update.area_id = selected_area(session, trip.id, payload.area_id).id if payload.area_id is not None else None
     if "media_asset_ids" in payload.model_fields_set:
         update.media_links = media_links_from_ids(session, trip.id, payload.media_asset_ids or [])
-    values = payload.model_dump(
-        exclude_unset=True, exclude={"area_id", "location", "media_asset_ids", "visibility"}
-    )
+    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "media_asset_ids", "visibility"})
     for field, value in values.items():
         if value is None and field in {"occurred_at", "date_precision", "title", "body"}:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{field} is required")
@@ -213,7 +219,10 @@ def update_travel_update(
         _choose_visibility(trip, update, payload.visibility)
     elif update.visibility != Visibility.PRIVATE and not update.body.strip():
         # An update cannot keep reaching visitors once its text is emptied.
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Write the text for visitors before sharing this update")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Write the text for visitors before sharing this update",
+        )
     session.commit()
     return _loaded(session, update.id)
 

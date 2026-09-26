@@ -87,18 +87,22 @@ def delete_trip_task(trip_id: str, task_id: str, session: SessionDep, subject: S
 @router.get("/task-alerts", response_model=list[TripTaskAlertResponse])
 def list_task_alerts(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[TripTaskAlert]:
     trip = owned_trip(session, trip_id, subject)
-    return list(session.scalars(
-        select(TripTaskAlert).join(TripTask, TripTask.id == TripTaskAlert.task_id)
-        .where(TripTask.trip_id == trip.id, TripTaskAlert.owner_subject == subject)
-        .order_by(TripTaskAlert.created_at.desc())
-    ))
+    return list(
+        session.scalars(
+            select(TripTaskAlert)
+            .join(TripTask, TripTask.id == TripTaskAlert.task_id)
+            .where(TripTask.trip_id == trip.id, TripTaskAlert.owner_subject == subject)
+            .order_by(TripTaskAlert.created_at.desc())
+        )
+    )
 
 
 @router.patch("/task-alerts/{alert_id}/read", response_model=TripTaskAlertResponse)
 def mark_task_alert_read(trip_id: str, alert_id: str, session: SessionDep, subject: SubjectDep) -> TripTaskAlert:
     trip = owned_trip(session, trip_id, subject)
     alert = session.scalar(
-        select(TripTaskAlert).join(TripTask, TripTask.id == TripTaskAlert.task_id)
+        select(TripTaskAlert)
+        .join(TripTask, TripTask.id == TripTaskAlert.task_id)
         .where(TripTask.trip_id == trip.id, TripTaskAlert.owner_subject == subject, TripTaskAlert.id == alert_id)
     )
     if alert is None:

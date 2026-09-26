@@ -44,19 +44,27 @@ def suggest_area(
     if candidates:
         distance, closest = min(candidates, key=lambda candidate: candidate[0])
         if distance <= AREA_SUGGESTION_RADIUS_KM:
-            return AreaSuggestion(existing_area_id=closest.id, area=AreaInput.model_validate(closest, from_attributes=True))
+            return AreaSuggestion(
+                existing_area_id=closest.id, area=AreaInput.model_validate(closest, from_attributes=True)
+            )
     try:
         result = service.reverse(payload.latitude, payload.longitude).results
     except PlaceSearchError as error:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
     place = result[0] if result else None
-    label = (payload.city or (place.locality or place.admin_area if place else None) or "Nieuw gebied").strip() or "Nieuw gebied"
-    return AreaSuggestion(area=AreaInput(
-        label=label[:120], country_code=place.country_code if place else None,
-        region=place.admin_area if place else None,
-        latitude=payload.latitude, longitude=payload.longitude,
-        timezone=_timezone_finder.timezone_at(lat=payload.latitude, lng=payload.longitude),
-    ))
+    label = (
+        payload.city or (place.locality or place.admin_area if place else None) or "Nieuw gebied"
+    ).strip() or "Nieuw gebied"
+    return AreaSuggestion(
+        area=AreaInput(
+            label=label[:120],
+            country_code=place.country_code if place else None,
+            region=place.admin_area if place else None,
+            latitude=payload.latitude,
+            longitude=payload.longitude,
+            timezone=_timezone_finder.timezone_at(lat=payload.latitude, lng=payload.longitude),
+        )
+    )
 
 
 @router.post("/areas/suggest", response_model=AreaSuggestion)
@@ -102,7 +110,9 @@ def update_area(trip_id: str, area_id: str, payload: AreaUpdate, session: Sessio
     for field, value in values.items():
         setattr(area, field, value)
     if (area.latitude is None) != (area.longitude is None):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Supply both coordinates or neither")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Supply both coordinates or neither"
+        )
     if area.latitude is not None and area.longitude is not None:
         area.latitude = round(area.latitude, 2)
         area.longitude = round(area.longitude, 2)
@@ -116,6 +126,7 @@ def _area_references(session: Session, trip_id: str, area_id: str) -> list[str]:
     An area is deliberately reusable. Deleting it must never silently remove a
     route stop, or detach a story, a location or a route from its context.
     """
+
     def count(model, *conditions) -> int:
         return session.scalar(select(func.count()).select_from(model).where(model.trip_id == trip_id, *conditions)) or 0
 

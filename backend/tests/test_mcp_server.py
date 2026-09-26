@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 import logging
 from datetime import UTC, datetime
@@ -6,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from fastapi.testclient import TestClient
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 from sqlalchemy import create_engine, event, select
@@ -20,6 +22,7 @@ from app.mcp_server import (
     MCP_TOOL_CAPABILITIES,
     ToolFailureMiddleware,
     TravelMcpBackend,
+    _unauthorized_reason,
     create_mcp_http_app,
     create_mcp_server,
     mcp_http_enabled,
@@ -75,17 +78,22 @@ def test_delete_trip_retains_success_and_rejection_audits(backend: TravelMcpBack
 
     with TestingSessionLocal() as session:
         assert session.get(Trip, trip_id) is None
-        events = list(session.scalars(
-            select(McpAuditEvent).where(McpAuditEvent.action == "trip.delete")
-            .order_by(McpAuditEvent.occurred_at, McpAuditEvent.id)
-        ))
+        events = list(
+            session.scalars(
+                select(McpAuditEvent)
+                .where(McpAuditEvent.action == "trip.delete")
+                .order_by(McpAuditEvent.occurred_at, McpAuditEvent.id)
+            )
+        )
         assert sorted((event.result, event.trip_id) for event in events) == [
-            ("rejected", trip_id), ("succeeded", trip_id),
+            ("rejected", trip_id),
+            ("succeeded", trip_id),
         ]
 
 
 def test_committed_delete_is_reported_successful_if_audit_write_fails(
-    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch,
+    backend: TravelMcpBackend,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     trip_id = backend.create_trip(schemas.TripCreate(title="Disposable"))["id"]
 
@@ -163,9 +171,13 @@ def test_fastmcp_invokes_a_typed_tool_against_the_real_owner_handler(backend: Tr
 
 def test_mcp_can_schedule_and_read_a_task_alert(backend: TravelMcpBackend) -> None:
     trip_id = backend.create_trip(schemas.TripCreate(title="Exampleland 2054"))["id"]
-    task = backend.create_trip_task(trip_id, schemas.TripTaskCreate(
-        title="Check train tickets", remind_at=datetime(2054, 11, 1, 8, tzinfo=UTC),
-    ))
+    task = backend.create_trip_task(
+        trip_id,
+        schemas.TripTaskCreate(
+            title="Check train tickets",
+            remind_at=datetime(2054, 11, 1, 8, tzinfo=UTC),
+        ),
+    )
     with TestingSessionLocal() as session:
         assert process_due_task_alerts(session, datetime(2054, 11, 1, 9, tzinfo=UTC)) == 1
     alerts = backend.list_task_alerts(trip_id)
@@ -175,7 +187,8 @@ def test_mcp_can_schedule_and_read_a_task_alert(backend: TravelMcpBackend) -> No
 
 
 def test_mcp_share_activation_and_rotation_return_complete_visitor_urls(
-    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch,
+    backend: TravelMcpBackend,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "public_app_url", "https://travel.example.test/")
     trip = backend.create_trip(schemas.TripCreate(title="Shareable"))
@@ -203,7 +216,43 @@ def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: 
     assert http_app is not None
 
 
-def test_travel_update_tools_use_the_owner_handlers_and_require_confirmation_to_delete(backend: TravelMcpBackend) -> None:
+def test_http_mcp_logs_why_a_request_was_refused_without_the_token(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(settings, "mcp_base_url", "https://mcp.example.test/mcp")
+    monkeypatch.setattr(settings, "oidc_issuer_url", "https://identity.example.test/realms/travel")
+    _, http_app = create_mcp_http_app(TestingSessionLocal)
+    client = TestClient(http_app)
+    with caplog.at_level(logging.WARNING, logger="app.mcp_server"):
+        assert client.post("/", json={}).status_code == 401
+        assert client.post("/", json={}, headers={"Authorization": "Basic SECRET-CREDENTIAL"}).status_code == 401
+    assert "MCP POST / rejected with 401: no Authorization header" in caplog.text
+    assert "rejected with 401: Authorization header is not a Bearer token" in caplog.text
+    assert "SECRET-CREDENTIAL" not in caplog.text
+
+
+def test_unauthorized_reason_names_unverified_claims_but_never_the_token() -> None:
+    def segment(value: dict[str, object]) -> str:
+        return base64.urlsafe_b64encode(json.dumps(value).encode()).decode().rstrip("=")
+
+    token = ".".join(
+        [
+            segment({"alg": "RS256", "kid": "key-1"}),
+            segment({"iss": "https://identity.example.test/realms/travel", "aud": "travel", "azp": "claude", "exp": 1}),
+            "SECRET-SIGNATURE",
+        ]
+    )
+    reason = _unauthorized_reason(f"Bearer {token}")
+    assert "kid='key-1'" in reason and "azp='claude'" in reason and "aud='travel'" in reason
+    assert "expires_in=-" in reason
+    assert token not in reason and "SECRET-SIGNATURE" not in reason
+    assert _unauthorized_reason("Bearer not-a-jwt") == "bearer token is not a JWT (1 segments)"
+    assert _unauthorized_reason("Bearer a.%%%.c") == "bearer token has an undecodable JWT header or payload"
+
+
+def test_travel_update_tools_use_the_owner_handlers_and_require_confirmation_to_delete(
+    backend: TravelMcpBackend,
+) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Updates"))
     created = backend.create_travel_update(
         trip["id"], schemas.TravelUpdateCreate(occurred_at="2054-04-04T10:00:00Z", title="Arrival", body="We landed.")
@@ -225,7 +274,9 @@ def test_set_visibility_tool_needs_confirmation_and_uses_the_owner_rules(backend
     with pytest.raises(ValueError, match="public name"):
         backend.set_visibility(trip["id"], "location", location["id"], "everyone", confirm=True)
     backend.update_location(trip["id"], location["id"], schemas.LocationUpdate(label="Riverside lookout"))
-    assert backend.set_visibility(trip["id"], "location", location["id"], "everyone", confirm=True) == {"visibility": "everyone"}
+    assert backend.set_visibility(trip["id"], "location", location["id"], "everyone", confirm=True) == {
+        "visibility": "everyone"
+    }
     assert backend.list_locations(trip["id"])[0]["visibility"] == "everyone"
 
 
@@ -239,16 +290,30 @@ def test_parallel_list_calls_all_succeed_and_are_each_audited(
     file_engine = create_engine(f"sqlite:///{tmp_path / 'mcp.db'}", connect_args={"timeout": 30})
     Base.metadata.create_all(file_engine)
     factory = sessionmaker(bind=file_engine, autocommit=False, autoflush=False)
-    tools = ["list_locations", "list_areas", "list_documents", "list_media", "list_share_links",
-             "list_stays", "list_routes", "list_trip_tasks", "list_visits"]
+    tools = [
+        "list_locations",
+        "list_areas",
+        "list_documents",
+        "list_media",
+        "list_share_links",
+        "list_stays",
+        "list_routes",
+        "list_trip_tasks",
+        "list_visits",
+    ]
 
     async def run() -> list[object]:
         async with _protocol_client(factory) as client:
-            trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Parallel"}})).structured_content["id"]
-            return await asyncio.gather(*(
-                client.call_tool(tools[index % len(tools)], {"trip_id": trip_id}, raise_on_error=False)
-                for index in range(45)
-            ), return_exceptions=True)
+            trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Parallel"}})).structured_content[
+                "id"
+            ]
+            return await asyncio.gather(
+                *(
+                    client.call_tool(tools[index % len(tools)], {"trip_id": trip_id}, raise_on_error=False)
+                    for index in range(45)
+                ),
+                return_exceptions=True,
+            )
 
     results = asyncio.run(run())
     assert [result for result in results if isinstance(result, Exception) or result.is_error] == []
@@ -419,20 +484,34 @@ def test_preview_file_inspection_tools_are_read_only() -> None:
 def test_external_provider_tools_are_open_world() -> None:
     from app.mcp_server import _tool_annotations
 
-    for name in ("search_places", "reverse_geocode_place", "start_media_import_session", "complete_media_import_session"):
+    for name in (
+        "search_places",
+        "reverse_geocode_place",
+        "start_media_import_session",
+        "complete_media_import_session",
+    ):
         assert _tool_annotations(name).open_world_hint is True, name
     assert _tool_annotations("list_trips").open_world_hint is False
 
 
 def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backend: TravelMcpBackend) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Compact"))
-    taipei = backend.save_area(trip["id"], schemas.AreaInput(label="Taipei", country_code="TW", latitude=25.03, longitude=121.56))
+    taipei = backend.save_area(
+        trip["id"], schemas.AreaInput(label="Taipei", country_code="TW", latitude=25.03, longitude=121.56)
+    )
     backend.save_area(trip["id"], schemas.AreaInput(label="Tainan · concept", country_code="TW"))
-    backend.create_route(trip["id"], schemas.RouteCreate(
-        mode="flight", departure_location=schemas.LocationInput(display_name="Taoyuan Airport", area_id=taipei["id"]),
-        arrival_area_id=taipei["id"], notes="Seat 12A",
-    ))
-    backend.create_stay(trip["id"], schemas.StayCreate(area_id=taipei["id"], check_in_date="2054-11-17", check_out_date="2054-11-18"))
+    backend.create_route(
+        trip["id"],
+        schemas.RouteCreate(
+            mode="flight",
+            departure_location=schemas.LocationInput(display_name="Taoyuan Airport", area_id=taipei["id"]),
+            arrival_area_id=taipei["id"],
+            notes="Seat 12A",
+        ),
+    )
+    backend.create_stay(
+        trip["id"], schemas.StayCreate(area_id=taipei["id"], check_in_date="2054-11-17", check_out_date="2054-11-18")
+    )
 
     (route,) = backend.list_routes(trip["id"])
     assert route["departure_area"] == {"id": taipei["id"], "label": "Taipei"}
@@ -447,7 +526,14 @@ def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backen
 
     assert [area["label"] for area in backend.list_areas(trip["id"], query="TAIN")] == ["Tainan · concept"]
     assert backend.list_areas(trip["id"], query="Taipei") == [
-        {"id": taipei["id"], "label": "Taipei", "country_code": "TW", "region": None, "timezone": None, "visibility": "private"}
+        {
+            "id": taipei["id"],
+            "label": "Taipei",
+            "country_code": "TW",
+            "region": None,
+            "timezone": None,
+            "visibility": "private",
+        }
     ]
 
 
@@ -461,12 +547,18 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
         visits=[schemas.VisitCreate(area_id=tainan["id"], title="Old town", starts_on="2054-12-01")],
         stays=[schemas.StayCreate(area_id=tainan["id"], check_in_date="2054-12-01", check_out_date="2054-12-03")],
         routes=[schemas.RouteCreate(mode="train", departure_area_id=taipei["id"], arrival_area_id=tainan["id"])] * 2,
-        travel_updates=[schemas.TravelUpdateCreate(occurred_at="2054-12-01T12:00:00Z", title="Arrived", area_id=tainan["id"])],
+        travel_updates=[
+            schemas.TravelUpdateCreate(occurred_at="2054-12-01T12:00:00Z", title="Arrived", area_id=tainan["id"])
+        ],
         trip_tasks=[schemas.TripTaskCreate(title="Book the hotel")],
     )
     created = backend.batch_create(trip["id"], batch)
     assert {field: len(rows) for field, rows in created.items()} == {
-        "visits": 1, "stays": 1, "routes": 2, "travel_updates": 1, "trip_tasks": 1,
+        "visits": 1,
+        "stays": 1,
+        "routes": 2,
+        "travel_updates": 1,
+        "trip_tasks": 1,
     }
     assert created["routes"][0]["arrival_area"]["label"] == "Tainan"
     assert created["trip_tasks"][0]["title"] == "Book the hotel"
@@ -481,20 +573,31 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
     assert len(backend.list_visits(trip["id"])) == 1
     assert len(backend.list_routes(trip["id"])) == 2
     with TestingSessionLocal() as session:
-        results = [event.result for event in session.scalars(select(McpAuditEvent).where(McpAuditEvent.action == "trip.batch_create"))]
+        results = [
+            event.result
+            for event in session.scalars(select(McpAuditEvent).where(McpAuditEvent.action == "trip.batch_create"))
+        ]
     assert sorted(results) == ["rejected", "succeeded"]
 
 
 def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_leak(backend: TravelMcpBackend) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Overview", starts_on="2054-11-16", ends_on="2054-12-10"))
-    chiayi = backend.save_area(trip["id"], schemas.AreaInput(label="Chiayi City · concept", latitude=23.48, longitude=120.45))
-    dated = backend.create_visit(trip["id"], schemas.VisitCreate(area_id=chiayi["id"], title="Night market", starts_on="2054-12-02"))
+    chiayi = backend.save_area(
+        trip["id"], schemas.AreaInput(label="Chiayi City · concept", latitude=23.48, longitude=120.45)
+    )
+    dated = backend.create_visit(
+        trip["id"], schemas.VisitCreate(area_id=chiayi["id"], title="Night market", starts_on="2054-12-02")
+    )
     undated = backend.create_visit(trip["id"], schemas.VisitCreate(area_id=chiayi["id"], title="Old plan"))
-    backend.create_stay(trip["id"], schemas.StayCreate(area_id=chiayi["id"], check_in_date="2054-12-02", check_out_date="2054-12-03"))
+    backend.create_stay(
+        trip["id"], schemas.StayCreate(area_id=chiayi["id"], check_in_date="2054-12-02", check_out_date="2054-12-03")
+    )
     backend.set_visibility(trip["id"], "visit", dated["id"], "everyone", confirm=True)
     backend.set_public_projection_scope(trip["id"], schemas.ShareScopeInput(trip={"dates": "month"}), confirm=True)
     backend.publish_public_projection(trip["id"], confirm=True)
-    link = backend.create_share_link(trip["id"], schemas.ShareLinkCreate(label="Family", scope={"trip": {"title": True}}), confirm=True)
+    link = backend.create_share_link(
+        trip["id"], schemas.ShareLinkCreate(label="Family", scope={"trip": {"title": True}}), confirm=True
+    )
     backend.update_visit(trip["id"], dated["id"], schemas.VisitUpdate())
 
     overview = backend.get_trip_overview(trip["id"])
@@ -502,7 +605,12 @@ def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_l
     assert overview["counts"]["stays"] == 1 and overview["counts"]["locations"] == 1
     assert overview["visibility"]["visit"] == {"everyone": 1, "private": 1}
     public, family = overview["audiences"]
-    assert (public["kind"], public["state"], public["live"], public["dates_precision"]) == ("public", "published", True, "month")
+    assert (public["kind"], public["state"], public["live"], public["dates_precision"]) == (
+        "public",
+        "published",
+        True,
+        "month",
+    )
     assert public["delivered"]["visits"] == 1 and public["without_map_point"]["visits"] == 1
     assert (family["label"], family["state"], family["live"]) == ("Family", "draft", False)
 

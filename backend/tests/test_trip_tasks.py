@@ -163,9 +163,7 @@ def test_other_subject_cannot_read_or_change_a_trip_task(tmp_path) -> None:
     assert other.post(f"/api/trips/{trip['id']}/trip-tasks", json=task_payload()).status_code == 404
     assert other.get(f"/api/trips/{trip['id']}/trip-tasks").status_code == 404
     assert other.get(f"/api/trips/{trip['id']}/trip-tasks/{task['id']}").status_code == 404
-    assert other.patch(
-        f"/api/trips/{trip['id']}/trip-tasks/{task['id']}", json={"completed": True}
-    ).status_code == 404
+    assert other.patch(f"/api/trips/{trip['id']}/trip-tasks/{task['id']}", json={"completed": True}).status_code == 404
     assert other.delete(f"/api/trips/{trip['id']}/trip-tasks/{task['id']}").status_code == 404
 
 
@@ -205,8 +203,11 @@ def test_a_task_can_carry_https_reference_links(tmp_path) -> None:
     endpoint = f"/api/trips/{trip['id']}/trip-tasks"
     task = owner.post(
         endpoint,
-        json={"title": "HSR-tickets", "due_date": "2054-11-01",
-              "links": [{"label": "Exampleland HSR", "url": "https://en.thsrc.com.tw/"}]},
+        json={
+            "title": "HSR-tickets",
+            "due_date": "2054-11-01",
+            "links": [{"label": "Exampleland HSR", "url": "https://en.thsrc.com.tw/"}],
+        },
     )
     assert task.status_code == 201, task.text
     assert task.json()["links"] == [{"label": "Exampleland HSR", "url": "https://en.thsrc.com.tw/"}]
@@ -216,9 +217,15 @@ def test_a_task_can_carry_https_reference_links(tmp_path) -> None:
     assert cleared.status_code == 200, cleared.text
     assert cleared.json()["links"] == []
 
-    assert owner.post(
-        endpoint, json={"title": "Unsafe", "links": [{"label": "Plain", "url": "http://example.test/"}]}
-    ).status_code == 422
-    assert owner.post(
-        endpoint, json={"title": "Script", "links": [{"label": "x", "url": "javascript:alert(1)"}]}
-    ).status_code == 422
+    assert (
+        owner.post(
+            endpoint, json={"title": "Unsafe", "links": [{"label": "Plain", "url": "http://example.test/"}]}
+        ).status_code
+        == 422
+    )
+    assert (
+        owner.post(
+            endpoint, json={"title": "Script", "links": [{"label": "x", "url": "javascript:alert(1)"}]}
+        ).status_code
+        == 422
+    )

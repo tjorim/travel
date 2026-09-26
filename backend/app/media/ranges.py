@@ -36,8 +36,9 @@ def media_response(storage: ObjectStorage, stored: StoredObject, request: Reques
     size = handle.seek(0, os.SEEK_END)
     requested = request.headers.get("range") if content_type == "video/mp4" else None
     if not requested:
-        return StreamingResponse(_chunks(handle, 0, size), media_type=content_type,
-                                 headers={**common, "Content-Length": str(size)})
+        return StreamingResponse(
+            _chunks(handle, 0, size), media_type=content_type, headers={**common, "Content-Length": str(size)}
+        )
     match = re.fullmatch(r"bytes=(\d*)-(\d*)", requested)
     unsatisfiable = HTTPException(status_code=416, headers={**common, "Content-Range": f"bytes */{size}"})
     if not match or not size or not any(match.groups()):
@@ -52,5 +53,9 @@ def media_response(storage: ObjectStorage, stored: StoredObject, request: Reques
         handle.close()
         raise unsatisfiable
     length = end - start + 1
-    return StreamingResponse(_chunks(handle, start, length), status_code=206, media_type=content_type,
-                             headers={**common, "Content-Range": f"bytes {start}-{end}/{size}", "Content-Length": str(length)})
+    return StreamingResponse(
+        _chunks(handle, start, length),
+        status_code=206,
+        media_type=content_type,
+        headers={**common, "Content-Range": f"bytes {start}-{end}/{size}", "Content-Length": str(length)},
+    )

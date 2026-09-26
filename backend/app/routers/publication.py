@@ -173,7 +173,9 @@ def unpublish_public_projection(
 
 
 @router.get("/public-projection", response_model=PublicProjectionStatusResponse)
-def get_public_projection_status(trip_id: str, session: SessionDep, subject: SubjectDep) -> PublicProjectionStatusResponse:
+def get_public_projection_status(
+    trip_id: str, session: SessionDep, subject: SubjectDep
+) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
     return _public_status(_get_or_create_surface(session, trip_id))
 
@@ -227,9 +229,7 @@ def create_share_link(trip_id: str, payload: ShareLinkCreate, session: SessionDe
 def list_audit_events(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[AuditEvent]:
     owned_trip(session, trip_id, subject)
     return list(
-        session.scalars(
-            select(AuditEvent).where(AuditEvent.trip_id == trip_id).order_by(AuditEvent.occurred_at.desc())
-        )
+        session.scalars(select(AuditEvent).where(AuditEvent.trip_id == trip_id).order_by(AuditEvent.occurred_at.desc()))
     )
 
 
@@ -252,9 +252,7 @@ def update_share_link(
 ) -> ShareLink:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state not in EDITABLE_LINK_STATES:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="A revoked or expired link cannot be edited"
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A revoked or expired link cannot be edited")
     if payload.label is not None:
         link.label = payload.label
     if payload.scope is not None:
@@ -275,7 +273,12 @@ def preview_share_link(
 
 @router.get("/share-links/{link_id}/preview/files/{local_id}")
 def preview_share_file(
-    trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep,
+    trip_id: str,
+    link_id: str,
+    local_id: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
     request: Request,
 ) -> Response:
     trip = owned_trip(session, trip_id, subject)
@@ -284,7 +287,9 @@ def preview_share_file(
 
 
 @router.get("/share-links/{link_id}/preview/navigation/{local_id}")
-def preview_share_navigation(trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep) -> dict:
+def preview_share_navigation(
+    trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep
+) -> dict:
     trip = owned_trip(session, trip_id, subject)
     link = owned_link(session, trip_id, subject, link_id)
     return _preview_navigation(trip, link.scope, local_id)
@@ -293,7 +298,9 @@ def preview_share_navigation(trip_id: str, link_id: str, local_id: str, session:
 def _preview_navigation(trip: Trip, scope: dict, local_id: str) -> JSONResponse:
     target = scoped_navigation_url(trip, scope, local_id)
     if target is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS
+        )
     return JSONResponse({"url": target}, headers=UNLISTED_HEADERS)
 
 
@@ -458,13 +465,19 @@ def get_public_navigation(slug: str, local_id: str, session: SessionDep) -> Redi
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
 
 
-def _file_response(trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict, request: Request) -> Response:
+def _file_response(
+    trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict, request: Request
+) -> Response:
     resolved = scoped_file(trip, scope, local_id)
     if resolved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
     kind, object_row = resolved
     media_type = object_row.content_type
-    disposition = "inline" if kind == "media_derivative" and media_type in {"image/jpeg", "image/png", "image/webp", "video/mp4"} else "attachment"
+    disposition = (
+        "inline"
+        if kind == "media_derivative" and media_type in {"image/jpeg", "image/png", "image/webp", "video/mp4"}
+        else "attachment"
+    )
     return media_response(storage, object_row, request, {**headers, "Content-Disposition": disposition})
 
 
@@ -486,9 +499,7 @@ def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict
     # path builds its own response and does not carry over `response.headers`
     # mutations, and a not-found/expired/revoked link must be just as
     # uncacheable and unindexable as a valid one.
-    not_found = HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS
-    )
+    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
@@ -535,7 +546,9 @@ def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> Red
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     target = scoped_navigation_url(trip, link.scope, local_id) if trip is not None else None
     if target is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS
+        )
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)
 
 

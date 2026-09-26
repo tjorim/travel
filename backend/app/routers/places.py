@@ -33,7 +33,11 @@ def search_places(
 
 @router.post("/places/reverse", response_model=PlaceSearchResponse)
 def reverse_geocode_place(
-    trip_id: str, payload: PlaceReverseGeocodeRequest, session: SessionDep, subject: SubjectDep, service: SearchServiceDep
+    trip_id: str,
+    payload: PlaceReverseGeocodeRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    service: SearchServiceDep,
 ) -> PlaceSearchResponse:
     # The caller explicitly requests this lookup.  It only returns a candidate;
     # it never turns EXIF/device coordinates into a canonical place by itself.

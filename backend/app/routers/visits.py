@@ -68,7 +68,10 @@ def create_visit(trip_id: str, payload: VisitCreate, session: SessionDep, subjec
     area, location = resolve_place(session, trip.id, payload.area_id, payload.location)
     end = len(trip.visits)
     visit = Visit(
-        trip=trip, area=area, location=location, position=end,
+        trip=trip,
+        area=area,
+        location=location,
+        position=end,
         **payload.model_dump(exclude={"area_id", "location", "position"}),
     )
     session.add(visit)
@@ -114,8 +117,10 @@ def update_visit(trip_id: str, visit_id: str, payload: VisitUpdate, session: Ses
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
     try:
         require_visit_times(
-            values.get("starts_on", visit.starts_on), values.get("ends_on", visit.ends_on),
-            values.get("start_time", visit.start_time), values.get("end_time", visit.end_time),
+            values.get("starts_on", visit.starts_on),
+            values.get("ends_on", visit.ends_on),
+            values.get("start_time", visit.start_time),
+            values.get("end_time", visit.end_time),
         )
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error

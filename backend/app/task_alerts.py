@@ -26,11 +26,13 @@ def process_due_task_alerts(session: Session, now: datetime | None = None) -> in
         raise ValueError("now must include a timezone")
     count = 0
     tasks = session.scalars(
-        select(TripTask).where(
+        select(TripTask)
+        .where(
             TripTask.completed_at.is_(None),
             TripTask.remind_at.is_not(None),
             TripTask.reminded_at.is_(None),
-        ).with_for_update(skip_locked=True)
+        )
+        .with_for_update(skip_locked=True)
     ).all()
     for task in tasks:
         owner = session.scalar(select(Trip.owner_subject).where(Trip.id == task.trip_id))
@@ -38,15 +40,23 @@ def process_due_task_alerts(session: Session, now: datetime | None = None) -> in
             continue
         reminder = task.remind_at if task.remind_at.tzinfo else task.remind_at.replace(tzinfo=UTC)
         if reminder <= now:
-            existing = session.scalar(select(TripTaskAlert.id).where(
-                TripTaskAlert.task_id == task.id, TripTaskAlert.kind == "reminder",
-                TripTaskAlert.scheduled_for == reminder,
-            ))
+            existing = session.scalar(
+                select(TripTaskAlert.id).where(
+                    TripTaskAlert.task_id == task.id,
+                    TripTaskAlert.kind == "reminder",
+                    TripTaskAlert.scheduled_for == reminder,
+                )
+            )
             if existing is None:
-                session.add(TripTaskAlert(
-                    task_id=task.id, owner_subject=owner, kind="reminder",
-                    title=task.title, scheduled_for=reminder,
-                ))
+                session.add(
+                    TripTaskAlert(
+                        task_id=task.id,
+                        owner_subject=owner,
+                        kind="reminder",
+                        title=task.title,
+                        scheduled_for=reminder,
+                    )
+                )
                 count += 1
             task.reminded_at = now
     session.commit()
@@ -69,7 +79,8 @@ def _smtp_send(recipient: str, subject: str, body: str) -> None:
 
 
 def deliver_pending_alert_emails(
-    session: Session, send: Callable[[str, str, str], None] = _smtp_send,
+    session: Session,
+    send: Callable[[str, str, str], None] = _smtp_send,
     now: datetime | None = None,
 ) -> int:
     """Deliver inbox reminders to configured owner addresses with bounded retries.
@@ -83,10 +94,17 @@ def deliver_pending_alert_emails(
     delivered = 0
     seen: set[str] = set()
     while True:
-        alert = session.scalar(select(TripTaskAlert).where(
-            TripTaskAlert.email_sent_at.is_(None), TripTaskAlert.email_attempts < 5,
-            TripTaskAlert.id.not_in(seen),
-        ).order_by(TripTaskAlert.created_at, TripTaskAlert.id).limit(1).with_for_update(skip_locked=True))
+        alert = session.scalar(
+            select(TripTaskAlert)
+            .where(
+                TripTaskAlert.email_sent_at.is_(None),
+                TripTaskAlert.email_attempts < 5,
+                TripTaskAlert.id.not_in(seen),
+            )
+            .order_by(TripTaskAlert.created_at, TripTaskAlert.id)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
         if alert is None:
             break
         seen.add(alert.id)

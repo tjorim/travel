@@ -94,14 +94,14 @@ def list_documents(trip_id: str, session: SessionDep, subject: SubjectDep) -> li
 
 
 @router.get("/{document_id}", response_model=DocumentAssetResponse)
-def get_document(
-    trip_id: str, document_id: str, session: SessionDep, subject: SubjectDep
-) -> DocumentAssetResponse:
+def get_document(trip_id: str, document_id: str, session: SessionDep, subject: SubjectDep) -> DocumentAssetResponse:
     return _asset_response(owned_document_asset(session, trip_id, subject, document_id), trip_id)
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_document(trip_id: str, document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep) -> Response:
+def remove_document(
+    trip_id: str, document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> Response:
     delete_document_asset(session, storage, document_asset=owned_document_asset(session, trip_id, subject, document_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -112,5 +112,7 @@ def get_document_original(
 ) -> StreamingResponse:
     original = owned_document_asset(session, trip_id, subject, document_id).original_object
     return StreamingResponse(
-        iter([storage.get(original.object_key)]), media_type=original.content_type, headers={"Cache-Control": "no-store"}
+        iter([storage.get(original.object_key)]),
+        media_type=original.content_type,
+        headers={"Cache-Control": "no-store"},
     )

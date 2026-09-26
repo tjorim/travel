@@ -11,7 +11,9 @@ from ..schemas import LocationInput
 def selected_area(session: Session, trip_id: str, area_id: str) -> Area:
     area = session.scalar(select(Area).where(Area.id == area_id, Area.trip_id == trip_id))
     if area is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Area is unavailable for this trip")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Area is unavailable for this trip"
+        )
     return area
 
 
@@ -32,10 +34,16 @@ def area_for_location(session: Session, trip_id: str, location: Location) -> Are
         if not area.country_code or not location.country_code or area.country_code == location.country_code:
             return area
     area = Area(
-        trip_id=trip_id, label=name[:120], country_code=location.country_code,
+        trip_id=trip_id,
+        label=name[:120],
+        country_code=location.country_code,
         region=location.admin_area if location.locality and not fallback else None,
-        latitude=round(location.latitude, 2) if not fallback and location.latitude is not None and location.longitude is not None else None,
-        longitude=round(location.longitude, 2) if not fallback and location.latitude is not None and location.longitude is not None else None,
+        latitude=round(location.latitude, 2)
+        if not fallback and location.latitude is not None and location.longitude is not None
+        else None,
+        longitude=round(location.longitude, 2)
+        if not fallback and location.latitude is not None and location.longitude is not None
+        else None,
     )
     session.add(area)
     session.flush()
@@ -44,8 +52,15 @@ def area_for_location(session: Session, trip_id: str, location: Location) -> Are
 
 # Fields that make a location more than "somewhere in this area".
 _IDENTIFYING = (
-    "osm_element_id", "display_name", "address_line1", "address_line2", "postal_code", "latitude", "longitude",
-    "navigation_provider_place_id", "notes",
+    "osm_element_id",
+    "display_name",
+    "address_line1",
+    "address_line2",
+    "postal_code",
+    "latitude",
+    "longitude",
+    "navigation_provider_place_id",
+    "notes",
 )
 
 
@@ -55,10 +70,15 @@ def area_location(session: Session, trip_id: str, area: Area) -> Location:
     A stay whose accommodation is still undecided needs a location, and every
     such stay in the same city shares this one instead of each adding its own
     copy of the area's name."""
-    candidates = select(Location).where(
-        Location.trip_id == trip_id, Location.area_id == area.id,
-        *(getattr(Location, field).is_(None) for field in _IDENTIFYING),
-    ).order_by(Location.created_at)
+    candidates = (
+        select(Location)
+        .where(
+            Location.trip_id == trip_id,
+            Location.area_id == area.id,
+            *(getattr(Location, field).is_(None) for field in _IDENTIFYING),
+        )
+        .order_by(Location.created_at)
+    )
     for location in session.scalars(candidates):
         if location.locality is None or location.locality.lower() == area.label.lower():
             return location
@@ -75,7 +95,9 @@ def location_from_input(session: Session, trip_id: str, payload: LocationInput) 
             select(Location).where(Location.id == payload.existing_location_id, Location.trip_id == trip_id)
         )
         if existing is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location not found on this trip")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location not found on this trip"
+            )
         return existing
     location = Location(trip_id=trip_id, **payload.model_dump(exclude={"existing_location_id", "area_id", "new_area"}))
     if payload.new_area is not None:
@@ -100,7 +122,9 @@ def resolve_place(
     as well must be that one. Used by routes (each end) and by visits."""
     if location is None:
         if area_id is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="An area or a location is required")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="An area or a location is required"
+            )
         return selected_area(session, trip_id, area_id), None
     found = location_from_input(session, trip_id, location)
     if area_id is not None and found.area_id != area_id:

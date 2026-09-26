@@ -150,9 +150,7 @@ def test_arrival_must_be_after_departure(tmp_path) -> None:
     assert response.status_code == 422
 
     route = create_route(owner, trip["id"])
-    edited = owner.patch(
-        f"/api/trips/{trip['id']}/routes/{route['id']}", json={"departs_at": "2054-04-02T09:00:00Z"}
-    )
+    edited = owner.patch(f"/api/trips/{trip['id']}/routes/{route['id']}", json={"departs_at": "2054-04-02T09:00:00Z"})
     assert edited.status_code == 422
 
 
@@ -161,9 +159,7 @@ def test_legs_are_listed_in_chronological_order_regardless_of_creation_order(tmp
     trip = create_trip(owner)
 
     # Create the return route before the outbound route.
-    return_route = create_route(
-        owner, trip["id"], departs_at="2054-04-10T09:00:00Z", arrives_at="2054-04-11T02:00:00Z"
-    )
+    return_route = create_route(owner, trip["id"], departs_at="2054-04-10T09:00:00Z", arrives_at="2054-04-11T02:00:00Z")
     outbound_route = create_route(
         owner, trip["id"], departs_at="2054-04-01T09:00:00Z", arrives_at="2054-04-01T23:00:00Z"
     )
@@ -203,9 +199,7 @@ def test_other_subject_cannot_read_or_change_a_route(tmp_path) -> None:
     assert other.post(f"/api/trips/{trip['id']}/routes", json=route_payload()).status_code == 404
     assert other.get(f"/api/trips/{trip['id']}/routes").status_code == 404
     assert other.get(f"/api/trips/{trip['id']}/routes/{route['id']}").status_code == 404
-    assert other.patch(
-        f"/api/trips/{trip['id']}/routes/{route['id']}", json={"status": "cancelled"}
-    ).status_code == 404
+    assert other.patch(f"/api/trips/{trip['id']}/routes/{route['id']}", json={"status": "cancelled"}).status_code == 404
     assert other.delete(f"/api/trips/{trip['id']}/routes/{route['id']}").status_code == 404
 
 
@@ -215,23 +209,43 @@ def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_v
     route = create_route(
         owner,
         trip["id"],
-        departure_location={"label": "Brussels Airport", "display_name": "Brussels Airport, Leopoldlaan, Zaventem", "locality": "Zaventem", "country_code": "BE", "latitude": 50.9, "longitude": 4.48},
-        arrival_location={"label": "Taoyuan Airport", "display_name": "Taoyuan Airport, Dayuan", "locality": "Taoyuan", "country_code": "TW", "latitude": 25.08, "longitude": 121.23},
+        departure_location={
+            "label": "Brussels Airport",
+            "display_name": "Brussels Airport, Leopoldlaan, Zaventem",
+            "locality": "Zaventem",
+            "country_code": "BE",
+            "latitude": 50.9,
+            "longitude": 4.48,
+        },
+        arrival_location={
+            "label": "Taoyuan Airport",
+            "display_name": "Taoyuan Airport, Dayuan",
+            "locality": "Taoyuan",
+            "country_code": "TW",
+            "latitude": 25.08,
+            "longitude": 121.23,
+        },
     )
 
     trips_path = f"/api/trips/{trip['id']}"
     scoped = owner.put(
         f"{trips_path}/public-projection",
-        json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True},
-              "items": [share(owner, trip["id"], "route", route["id"])]},
+        json={
+            "schema_version": "travel/share-scope@1",
+            "trip": {"title": True, "summary": True},
+            "items": [share(owner, trip["id"], "route", route["id"])],
+        },
     )
     assert scoped.status_code == 200, scoped.text
 
     # Booking data is not a choice at all: a scope item names no fields.
     rejected = owner.put(
         f"{trips_path}/public-projection",
-        json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True},
-              "items": [{"kind": "route", "id": route["id"], "fields": ["booking_reference"]}]},
+        json={
+            "schema_version": "travel/share-scope@1",
+            "trip": {"title": True, "summary": True},
+            "items": [{"kind": "route", "id": route["id"], "fields": ["booking_reference"]}],
+        },
     )
     assert rejected.status_code == 422, rejected.text
 
@@ -240,7 +254,9 @@ def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_v
 
     link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": scoped.json()["scope"]})
     assert link.status_code == 201, link.text
-    active = owner.post(f"/api/trips/{trip['id']}/share-links/{link.json()['id']}/activate", json={"expires_in_days": 30})
+    active = owner.post(
+        f"/api/trips/{trip['id']}/share-links/{link.json()['id']}/activate", json={"expires_in_days": 30}
+    )
     assert active.status_code == 200, active.text
 
     for delivered in (
@@ -252,8 +268,20 @@ def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_v
         assert len(summary) == 1
         assert summary[0]["mode"] == "flight"
         assert summary[0]["status"] == "confirmed"
-        assert summary[0]["departure"] == {"label": "Zaventem", "country_code": "BE", "region": None, "latitude": None, "longitude": None}
-        assert summary[0]["arrival"] == {"label": "Taoyuan", "country_code": "TW", "region": None, "latitude": None, "longitude": None}
+        assert summary[0]["departure"] == {
+            "label": "Zaventem",
+            "country_code": "BE",
+            "region": None,
+            "latitude": None,
+            "longitude": None,
+        }
+        assert summary[0]["arrival"] == {
+            "label": "Taoyuan",
+            "country_code": "TW",
+            "region": None,
+            "latitude": None,
+            "longitude": None,
+        }
         assert summary[0]["carrier"] == "EVA Air"
         assert summary[0]["service_reference"] == "BR-087"
         # Exact location endpoints appear on the map only when the location itself is shared.
@@ -270,8 +298,20 @@ def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_v
         share(owner, trip["id"], "location", route[endpoint]["id"], "everyone")
     (with_map,) = TestClient(app).get(f"/api/public/trips/{result.json()['slug']}").json()["routes"]
     assert with_map["map"] == {
-        "departure": {"label": "Brussels Airport", "country_code": "BE", "latitude": 50.9, "longitude": 4.48, "kind": "airport"},
-        "arrival": {"label": "Taoyuan Airport", "country_code": "TW", "latitude": 25.08, "longitude": 121.23, "kind": "airport"},
+        "departure": {
+            "label": "Brussels Airport",
+            "country_code": "BE",
+            "latitude": 50.9,
+            "longitude": 4.48,
+            "kind": "airport",
+        },
+        "arrival": {
+            "label": "Taoyuan Airport",
+            "country_code": "TW",
+            "latitude": 25.08,
+            "longitude": 121.23,
+            "kind": "airport",
+        },
     }
 
 
@@ -295,9 +335,7 @@ def test_endpoint_time_zones_turn_local_wall_clock_times_into_exact_instants(tmp
     assert route["arrival_timezone"] == "Asia/Taipei"
     assert route["travel_class"] == "Premium Economy"
 
-    moved = owner.patch(
-        f"/api/trips/{trip['id']}/routes/{route['id']}", json={"arrives_at": "2054-11-17T07:25:00"}
-    )
+    moved = owner.patch(f"/api/trips/{trip['id']}/routes/{route['id']}", json={"arrives_at": "2054-11-17T07:25:00"})
     assert moved.status_code == 200, moved.text
     assert moved.json()["arrives_at"].startswith("2054-11-16T23:25:00")
 
@@ -322,9 +360,12 @@ def test_a_return_route_reuses_the_airport_instead_of_making_a_copy(tmp_path) ->
 
     # The way home starts where the way out ended and ends where it began.
     homeward = create_route(
-        owner, trip["id"],
-        departure_location={"existing_location_id": taoyuan["id"]}, arrival_location={"existing_location_id": airport["id"]},
-        departs_at="2054-04-20T09:00:00Z", arrives_at="2054-04-20T23:00:00Z",
+        owner,
+        trip["id"],
+        departure_location={"existing_location_id": taoyuan["id"]},
+        arrival_location={"existing_location_id": airport["id"]},
+        departs_at="2054-04-20T09:00:00Z",
+        arrives_at="2054-04-20T23:00:00Z",
     )
     assert homeward["departure_location"]["id"] == taoyuan["id"] and homeward["arrival_location"]["id"] == airport["id"]
     assert homeward["departure_area"]["label"] == "Taoyuan"
@@ -335,7 +376,10 @@ def test_a_return_route_reuses_the_airport_instead_of_making_a_copy(tmp_path) ->
     assert areas == {"Zaventem", "Taoyuan"}
 
     # A reused place stands alone, and must belong to this trip.
-    mixed = owner.post(f"{trips_path}/routes", json=route_payload(departure_location={"existing_location_id": airport["id"], "locality": "X"}))
+    mixed = owner.post(
+        f"{trips_path}/routes",
+        json=route_payload(departure_location={"existing_location_id": airport["id"], "locality": "X"}),
+    )
     assert mixed.status_code == 422
     other_trip = create_trip(owner, "Other")
     foreign = owner.post(
@@ -352,10 +396,12 @@ def test_moving_a_location_to_another_area_carries_its_routes_and_visits(tmp_pat
     outbound = create_route(owner, trip["id"])
     taoyuan = outbound["arrival_location"]
     homeward = create_route(
-        owner, trip["id"],
+        owner,
+        trip["id"],
         departure_location={"existing_location_id": taoyuan["id"]},
         arrival_location={"existing_location_id": outbound["departure_location"]["id"]},
-        departs_at="2054-04-20T09:00:00Z", arrives_at="2054-04-20T23:00:00Z",
+        departs_at="2054-04-20T09:00:00Z",
+        arrives_at="2054-04-20T23:00:00Z",
     )
     visit = owner.post(f"{trips_path}/visits", json={"location": {"existing_location_id": taoyuan["id"]}})
     assert visit.status_code == 201, visit.text
@@ -375,7 +421,9 @@ def test_moving_a_location_to_another_area_carries_its_routes_and_visits(tmp_pat
 
 
 def area_id(client: TestClient, trip_id: str, label: str) -> str:
-    response = client.post(f"/api/trips/{trip_id}/areas", json={"label": label, "country_code": "TW", "latitude": 25.0, "longitude": 121.5})
+    response = client.post(
+        f"/api/trips/{trip_id}/areas", json={"label": label, "country_code": "TW", "latitude": 25.0, "longitude": 121.5}
+    )
     assert response.status_code == 201, response.text
     return response.json()["id"]
 
@@ -400,10 +448,18 @@ def test_a_route_needs_only_two_areas_and_a_mode(tmp_path) -> None:
     # A mode and both ends are required; an unknown mode or a foreign area is refused.
     assert owner.post(base, json={"departure_area_id": taipei, "arrival_area_id": tainan}).status_code == 422
     assert owner.post(base, json={"mode": "train", "departure_area_id": taipei}).status_code == 422
-    assert owner.post(base, json={"mode": "hoverboard", "departure_area_id": taipei, "arrival_area_id": tainan}).status_code == 422
+    assert (
+        owner.post(
+            base, json={"mode": "hoverboard", "departure_area_id": taipei, "arrival_area_id": tainan}
+        ).status_code
+        == 422
+    )
     other_trip = create_trip(owner, "Elsewhere")
     foreign = area_id(owner, other_trip["id"], "Osaka")
-    assert owner.post(base, json={"mode": "train", "departure_area_id": taipei, "arrival_area_id": foreign}).status_code == 422
+    assert (
+        owner.post(base, json={"mode": "train", "departure_area_id": taipei, "arrival_area_id": foreign}).status_code
+        == 422
+    )
 
 
 def test_a_location_settles_the_area_of_a_route_end(tmp_path) -> None:
@@ -412,20 +468,29 @@ def test_a_location_settles_the_area_of_a_route_end(tmp_path) -> None:
     taipei, tainan = area_id(owner, trip["id"], "Taipei"), area_id(owner, trip["id"], "Tainan")
     base = f"/api/trips/{trip['id']}/routes"
 
-    created = owner.post(base, json={
-        "mode": "train", "departure_location": {"display_name": "Taipei Main Station", "area_id": taipei},
-        "arrival_area_id": tainan,
-    })
+    created = owner.post(
+        base,
+        json={
+            "mode": "train",
+            "departure_location": {"display_name": "Taipei Main Station", "area_id": taipei},
+            "arrival_area_id": tainan,
+        },
+    )
     assert created.status_code == 201, created.text
     route = created.json()
     assert route["departure_area"]["id"] == taipei
     assert route["departure_location"]["display_name"] == "Taipei Main Station"
 
     # An area given next to a location must be the location's own.
-    mismatch = owner.post(base, json={
-        "mode": "train", "departure_location": {"display_name": "Somewhere", "area_id": taipei},
-        "departure_area_id": tainan, "arrival_area_id": tainan,
-    })
+    mismatch = owner.post(
+        base,
+        json={
+            "mode": "train",
+            "departure_location": {"display_name": "Somewhere", "area_id": taipei},
+            "departure_area_id": tainan,
+            "arrival_area_id": tainan,
+        },
+    )
     assert mismatch.status_code == 422
 
     # Changing only the area drops a location that is no longer in it; the same area keeps it.
@@ -444,19 +509,34 @@ def test_a_route_can_carry_a_drawn_line_that_can_be_redrawn_and_removed(tmp_path
     taipei, tainan = area_id(owner, trip["id"], "Taipei"), area_id(owner, trip["id"], "Tainan")
     base = f"/api/trips/{trip['id']}/routes"
 
-    route = owner.post(base, json={
-        "mode": "bike", "label": "Down the west coast", "departure_area_id": taipei, "arrival_area_id": tainan, "geometry": LINE,
-    }).json()
+    route = owner.post(
+        base,
+        json={
+            "mode": "bike",
+            "label": "Down the west coast",
+            "departure_area_id": taipei,
+            "arrival_area_id": tainan,
+            "geometry": LINE,
+        },
+    ).json()
     assert route["geometry"] == LINE and route["label"] == "Down the west coast" and route["mode"] == "bike"
 
     redrawn = {"type": "LineString", "coordinates": [[121.0, 25.0], [120.0, 23.0]]}
     changed = owner.patch(f"{base}/{route['id']}", json={"geometry": redrawn, "mode": "train"})
     assert changed.json()["geometry"] == redrawn and changed.json()["mode"] == "train"
     assert owner.patch(f"{base}/{route['id']}", json={"geometry": None}).json()["geometry"] is None
-    assert owner.post(base, json={
-        "mode": "bike", "departure_area_id": taipei, "arrival_area_id": tainan,
-        "geometry": {"type": "LineString", "coordinates": [[121.0, 25.0]]},
-    }).status_code == 422
+    assert (
+        owner.post(
+            base,
+            json={
+                "mode": "bike",
+                "departure_area_id": taipei,
+                "arrival_area_id": tainan,
+                "geometry": {"type": "LineString", "coordinates": [[121.0, 25.0]]},
+            },
+        ).status_code
+        == 422
+    )
 
 
 def test_the_schedule_is_optional_but_comes_as_a_pair(tmp_path) -> None:
@@ -467,7 +547,9 @@ def test_the_schedule_is_optional_but_comes_as_a_pair(tmp_path) -> None:
     ends = {"mode": "train", "departure_area_id": taipei, "arrival_area_id": tainan}
 
     assert owner.post(base, json={**ends, "departs_at": "2054-04-01T09:00:00Z"}).status_code == 422
-    route = owner.post(base, json={**ends, "departs_at": "2054-04-01T09:00:00Z", "arrives_at": "2054-04-01T11:00:00Z"}).json()
+    route = owner.post(
+        base, json={**ends, "departs_at": "2054-04-01T09:00:00Z", "arrives_at": "2054-04-01T11:00:00Z"}
+    ).json()
     assert route["departs_at"] == "2054-04-01T09:00:00Z"
     assert owner.patch(f"{base}/{route['id']}", json={"arrives_at": None}).status_code == 422
     cleared = owner.patch(f"{base}/{route['id']}", json={"departs_at": None, "arrives_at": None})
@@ -475,7 +557,10 @@ def test_the_schedule_is_optional_but_comes_as_a_pair(tmp_path) -> None:
 
     # Routes without a schedule sort after the scheduled ones.
     owner.post(base, json={**ends, "label": "Unscheduled"})
-    scheduled = owner.post(base, json={**ends, "label": "Scheduled", "departs_at": "2054-05-01T09:00:00Z", "arrives_at": "2054-05-01T10:00:00Z"}).json()
+    scheduled = owner.post(
+        base,
+        json={**ends, "label": "Scheduled", "departs_at": "2054-05-01T09:00:00Z", "arrives_at": "2054-05-01T10:00:00Z"},
+    ).json()
     labels = [item["label"] for item in owner.get(base).json()]
     assert labels.index("Scheduled") < labels.index("Unscheduled")
     assert scheduled["label"] == "Scheduled"
@@ -485,16 +570,28 @@ def test_a_shared_route_shows_areas_a_line_and_no_stations_or_bookings(tmp_path)
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
     taipei, tainan = area_id(owner, trip["id"], "Taipei"), area_id(owner, trip["id"], "Tainan")
-    route = owner.post(f"/api/trips/{trip['id']}/routes", json={
-        "mode": "train", "label": "By high-speed rail", "departure_area_id": taipei, "arrival_area_id": tainan, "geometry": LINE,
-        "departure_location": {"display_name": "Taipei Main Station", "area_id": taipei},
-        "booking_reference": "SECRET-BOOKING", "notes": "Seat 12A",
-    }).json()
+    route = owner.post(
+        f"/api/trips/{trip['id']}/routes",
+        json={
+            "mode": "train",
+            "label": "By high-speed rail",
+            "departure_area_id": taipei,
+            "arrival_area_id": tainan,
+            "geometry": LINE,
+            "departure_location": {"display_name": "Taipei Main Station", "area_id": taipei},
+            "booking_reference": "SECRET-BOOKING",
+            "notes": "Seat 12A",
+        },
+    ).json()
     trips_path = f"/api/trips/{trip['id']}"
-    scoped = owner.put(f"{trips_path}/public-projection", json={
-        "schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True},
-        "items": [share(owner, trip["id"], "route", route["id"])],
-    })
+    scoped = owner.put(
+        f"{trips_path}/public-projection",
+        json={
+            "schema_version": "travel/share-scope@1",
+            "trip": {"title": True, "summary": True},
+            "items": [share(owner, trip["id"], "route", route["id"])],
+        },
+    )
     assert scoped.status_code == 200, scoped.text
     slug = owner.post(f"{trips_path}/public-projection/publish").json()["slug"]
 
@@ -520,7 +617,10 @@ def test_an_area_that_a_route_runs_between_cannot_be_deleted(tmp_path) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
     taipei, tainan = area_id(owner, trip["id"], "Taipei"), area_id(owner, trip["id"], "Tainan")
-    route = owner.post(f"/api/trips/{trip['id']}/routes", json={"mode": "train", "departure_area_id": taipei, "arrival_area_id": tainan}).json()
+    route = owner.post(
+        f"/api/trips/{trip['id']}/routes",
+        json={"mode": "train", "departure_area_id": taipei, "arrival_area_id": tainan},
+    ).json()
 
     refused = owner.delete(f"/api/trips/{trip['id']}/areas/{tainan}")
     assert refused.status_code == 409 and "1 route" in refused.json()["detail"]

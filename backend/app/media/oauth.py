@@ -19,7 +19,12 @@ REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 
 
 def configured() -> bool:
-    return bool(settings.google_oauth_client_id and settings.google_oauth_client_secret and settings.google_oauth_redirect_uri and settings.provider_secret_key)
+    return bool(
+        settings.google_oauth_client_id
+        and settings.google_oauth_client_secret
+        and settings.google_oauth_redirect_uri
+        and settings.provider_secret_key
+    )
 
 
 def begin(subject: str, store: SecretStore) -> str:
@@ -29,17 +34,19 @@ def begin(subject: str, store: SecretStore) -> str:
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
     store.set_pending(subject=subject, provider=GOOGLE, state=state, verifier=verifier)
-    query = urlencode({
-        "client_id": settings.google_oauth_client_id,
-        "redirect_uri": settings.google_oauth_redirect_uri,
-        "response_type": "code",
-        "scope": SCOPE,
-        "access_type": "offline",
-        "prompt": "consent",
-        "state": state,
-        "code_challenge": challenge,
-        "code_challenge_method": "S256",
-    })
+    query = urlencode(
+        {
+            "client_id": settings.google_oauth_client_id,
+            "redirect_uri": settings.google_oauth_redirect_uri,
+            "response_type": "code",
+            "scope": SCOPE,
+            "access_type": "offline",
+            "prompt": "consent",
+            "state": state,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+        }
+    )
     return f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
 
 
@@ -67,14 +74,16 @@ def complete(subject: str, store: SecretStore, code: str, state: str) -> None:
     verifier = store.pop_pending(subject=subject, provider=GOOGLE, state=state)
     if not verifier:
         raise ProviderUnavailableError("Authorization expired or did not match this owner")
-    body = _post_token({
-        "client_id": settings.google_oauth_client_id or "",
-        "client_secret": settings.google_oauth_client_secret or "",
-        "redirect_uri": settings.google_oauth_redirect_uri or "",
-        "grant_type": "authorization_code",
-        "code": code,
-        "code_verifier": verifier,
-    })
+    body = _post_token(
+        {
+            "client_id": settings.google_oauth_client_id or "",
+            "client_secret": settings.google_oauth_client_secret or "",
+            "redirect_uri": settings.google_oauth_redirect_uri or "",
+            "grant_type": "authorization_code",
+            "code": code,
+            "code_verifier": verifier,
+        }
+    )
     store.set_credential(subject=subject, provider=GOOGLE, credential=_credential(body))
 
 
@@ -86,12 +95,14 @@ def access_token(subject: str, provider: str, store: SecretStore) -> str:
         return credential.access_token
     if provider != GOOGLE or not credential.refresh_token or not configured():
         raise ProviderUnavailableError("Provider connection expired; reconnect in Settings")
-    body = _post_token({
-        "client_id": settings.google_oauth_client_id or "",
-        "client_secret": settings.google_oauth_client_secret or "",
-        "grant_type": "refresh_token",
-        "refresh_token": credential.refresh_token,
-    })
+    body = _post_token(
+        {
+            "client_id": settings.google_oauth_client_id or "",
+            "client_secret": settings.google_oauth_client_secret or "",
+            "grant_type": "refresh_token",
+            "refresh_token": credential.refresh_token,
+        }
+    )
     fresh = _credential(body, credential.refresh_token)
     store.set_credential(subject=subject, provider=provider, credential=fresh)
     return fresh.access_token

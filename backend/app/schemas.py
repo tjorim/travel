@@ -115,7 +115,14 @@ def require_identified_location(location: "LocationInput | None") -> "LocationIn
     if location is None or location.existing_location_id is not None:
         return location
     located = location.latitude is not None and location.longitude is not None
-    if not (located or location.display_name or location.address_line1 or location.locality or location.admin_area or location.area_id):
+    if not (
+        located
+        or location.display_name
+        or location.address_line1
+        or location.locality
+        or location.admin_area
+        or location.area_id
+    ):
         raise ValueError("Say where this stay is: choose a saved location, or fill in an address, a city or an area")
     return location
 
@@ -378,7 +385,9 @@ class StayResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-def require_visit_times(starts_on: date | None, ends_on: date | None, start_time: time | None, end_time: time | None) -> None:
+def require_visit_times(
+    starts_on: date | None, ends_on: date | None, start_time: time | None, end_time: time | None
+) -> None:
     """A visit's last day follows its first, and its times sit on a day, start before they end."""
     if ends_on is not None and starts_on is None:
         raise ValueError("A last day needs a first day")
@@ -387,7 +396,12 @@ def require_visit_times(starts_on: date | None, ends_on: date | None, start_time
         raise ValueError("A time needs a day")
     if end_time is not None and start_time is None:
         raise ValueError("An end time needs a start time")
-    if start_time is not None and end_time is not None and (ends_on is None or ends_on == starts_on) and end_time <= start_time:
+    if (
+        start_time is not None
+        and end_time is not None
+        and (ends_on is None or ends_on == starts_on)
+        and end_time <= start_time
+    ):
         raise ValueError("The end time must be after the start time")
 
 

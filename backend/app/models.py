@@ -125,7 +125,6 @@ class StayStatus(StrEnum):
 class RouteMode(StrEnum):
     """How a route is travelled."""
 
-
     FLIGHT = "flight"
     TRAIN = "train"
     BUS = "bus"
@@ -319,7 +318,9 @@ class Trip(Base):
         back_populates="trip", cascade="all, delete-orphan", order_by="TripTask.created_at"
     )
     routes: Mapped[list["Route"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by=lambda: (Route.departs_at.is_(None), Route.departs_at, Route.created_at)
+        back_populates="trip",
+        cascade="all, delete-orphan",
+        order_by=lambda: (Route.departs_at.is_(None), Route.departs_at, Route.created_at),
     )
     media_derivatives: Mapped[list["MediaDerivative"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
@@ -549,7 +550,9 @@ class Visit(Base):
     __tablename__ = "visits"
     __table_args__ = (
         UniqueConstraint("trip_id", "position", name="uq_visit_position"),
-        CheckConstraint("ends_on IS NULL OR (starts_on IS NOT NULL AND ends_on >= starts_on)", name="ck_visit_last_day"),
+        CheckConstraint(
+            "ends_on IS NULL OR (starts_on IS NOT NULL AND ends_on >= starts_on)", name="ck_visit_last_day"
+        ),
         CheckConstraint("start_time IS NULL OR starts_on IS NOT NULL", name="ck_visit_time_needs_a_day"),
         CheckConstraint("end_time IS NULL OR start_time IS NOT NULL", name="ck_visit_end_time_needs_a_start"),
     )
@@ -831,9 +834,7 @@ class MediaAsset(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    original_object_id: Mapped[str] = mapped_column(
-        ForeignKey("stored_objects.id"), unique=True, nullable=False
-    )
+    original_object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
     media_kind: Mapped[MediaKind] = mapped_column(_enum_column(MediaKind, "travel_media_kind"))
     captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     import_id: Mapped[str | None] = mapped_column(ForeignKey("import_records.id"), nullable=True)
@@ -870,7 +871,8 @@ class MediaDerivative(Base):
     poster_object_id: Mapped[str | None] = mapped_column(ForeignKey("stored_objects.id"), nullable=True)
     processing_state: Mapped[DerivativeProcessingState] = mapped_column(
         _enum_column(DerivativeProcessingState, "travel_derivative_processing_state"),
-        default=DerivativeProcessingState.READY, nullable=False,
+        default=DerivativeProcessingState.READY,
+        nullable=False,
     )
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remove_audio: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -882,7 +884,9 @@ class MediaDerivative(Base):
     )
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    travel_update_id: Mapped[str | None] = mapped_column(ForeignKey("travel_updates.id", ondelete="SET NULL"), nullable=True)
+    travel_update_id: Mapped[str | None] = mapped_column(
+        ForeignKey("travel_updates.id", ondelete="SET NULL"), nullable=True
+    )
     caption: Mapped[str | None] = mapped_column(String(500), nullable=True)
     alt_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
     focal_x: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -919,6 +923,8 @@ class DocumentAsset(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     original_object: Mapped[StoredObject] = relationship(foreign_keys=[original_object_id])
+
+
 class OwnerStoredObject(Base):
     """Object-storage inventory for one owner-wide (trip-independent) file.
 
@@ -962,9 +968,7 @@ class OwnerDocument(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    original_object_id: Mapped[str] = mapped_column(
-        ForeignKey("owner_stored_objects.id"), unique=True, nullable=False
-    )
+    original_object_id: Mapped[str] = mapped_column(ForeignKey("owner_stored_objects.id"), unique=True, nullable=False)
     document_kind: Mapped[DocumentKind] = mapped_column(_enum_column(DocumentKind, "travel_document_kind"))
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     owner_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)

@@ -99,23 +99,40 @@ def test_days_and_times_are_optional_but_consistent() -> None:
     taipei = make_area(owner, trip["id"])
     base = f"/api/trips/{trip['id']}/visits"
 
-    timed = owner.post(base, json={
-        "area_id": taipei, "title": "Night market", "starts_on": "2054-11-21", "start_time": "18:30", "end_time": "21:00", "kind": "free",
-    })
+    timed = owner.post(
+        base,
+        json={
+            "area_id": taipei,
+            "title": "Night market",
+            "starts_on": "2054-11-21",
+            "start_time": "18:30",
+            "end_time": "21:00",
+            "kind": "free",
+        },
+    )
     assert timed.status_code == 201, timed.text
     assert timed.json()["start_time"] == "18:30:00" and timed.json()["kind"] == "free"
 
     for bad in (
-        {"ends_on": "2054-11-22"},                                   # a last day needs a first day
-        {"starts_on": "2054-11-22", "ends_on": "2054-11-21"},        # the last day cannot precede the first
-        {"start_time": "10:00"},                                     # a time needs a day
-        {"starts_on": "2054-11-21", "end_time": "10:00"},            # an end time needs a start time
+        {"ends_on": "2054-11-22"},  # a last day needs a first day
+        {"starts_on": "2054-11-22", "ends_on": "2054-11-21"},  # the last day cannot precede the first
+        {"start_time": "10:00"},  # a time needs a day
+        {"starts_on": "2054-11-21", "end_time": "10:00"},  # an end time needs a start time
         {"starts_on": "2054-11-21", "start_time": "10:00", "end_time": "09:00"},  # it must end after it starts
     ):
         assert owner.post(base, json={"area_id": taipei, **bad}).status_code == 422, bad
 
     # A multi-day visit may end at an earlier time of day; an edit is checked against what is stored.
-    multi = owner.post(base, json={"area_id": taipei, "starts_on": "2054-11-21", "ends_on": "2054-11-23", "start_time": "18:00", "end_time": "10:00"})
+    multi = owner.post(
+        base,
+        json={
+            "area_id": taipei,
+            "starts_on": "2054-11-21",
+            "ends_on": "2054-11-23",
+            "start_time": "18:00",
+            "end_time": "10:00",
+        },
+    )
     assert multi.status_code == 201, multi.text
     visit = timed.json()
     assert owner.patch(f"{base}/{visit['id']}", json={"end_time": "18:00"}).status_code == 422
@@ -129,7 +146,10 @@ def test_visits_can_be_reordered_and_the_order_is_compacted() -> None:
     trip = create_trip(owner)
     base = f"/api/trips/{trip['id']}/visits"
     areas = [make_area(owner, trip["id"], label) for label in ("Taipei", "Tainan", "Kaohsiung")]
-    visits = [owner.post(base, json={"area_id": area, "title": title}).json() for area, title in zip(areas, ("A", "B", "C"), strict=True)]
+    visits = [
+        owner.post(base, json={"area_id": area, "title": title}).json()
+        for area, title in zip(areas, ("A", "B", "C"), strict=True)
+    ]
     assert [visit["position"] for visit in visits] == [0, 1, 2]
 
     assert owner.patch(f"{base}/{visits[2]['id']}", json={"position": 0}).status_code == 200
@@ -159,13 +179,28 @@ def test_a_shared_visit_shows_its_place_and_days_and_the_time_only_when_chosen()
     taipei = make_area(owner, trip["id"])
     assert owner.patch(f"/api/trips/{trip['id']}/areas/{taipei}", json={"timezone": "Asia/Taipei"}).status_code == 200
     base = f"/api/trips/{trip['id']}"
-    visit = owner.post(f"{base}/visits", json={
-        "area_id": taipei, "title": "Night market", "summary": "Street food.", "notes": "SECRET NOTE",
-        "starts_on": "2054-11-21", "ends_on": "2054-11-22", "start_time": "18:30", "end_time": "21:00",
-        "location": {"display_name": "Shilin, 101 Secret Street", "area_id": taipei},
-    }).json()
+    visit = owner.post(
+        f"{base}/visits",
+        json={
+            "area_id": taipei,
+            "title": "Night market",
+            "summary": "Street food.",
+            "notes": "SECRET NOTE",
+            "starts_on": "2054-11-21",
+            "ends_on": "2054-11-22",
+            "start_time": "18:30",
+            "end_time": "21:00",
+            "location": {"display_name": "Shilin, 101 Secret Street", "area_id": taipei},
+        },
+    ).json()
     share(owner, trip["id"], "visit", visit["id"], "everyone")
-    assert owner.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}).status_code == 200
+    assert (
+        owner.put(
+            f"{base}/public-projection",
+            json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+        ).status_code
+        == 200
+    )
     slug = owner.post(f"{base}/public-projection/publish").json()["slug"]
 
     def delivered() -> dict:
@@ -206,7 +241,13 @@ def test_a_visit_status_is_owner_only_planning_state() -> None:
     owner.patch(f"{base}/visits/{visit['id']}", json={"status": "idea"})
 
     share(owner, trip["id"], "visit", visit["id"], "everyone")
-    assert owner.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}).status_code == 200
+    assert (
+        owner.put(
+            f"{base}/public-projection",
+            json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+        ).status_code
+        == 200
+    )
     slug = owner.post(f"{base}/public-projection/publish").json()["slug"]
     shared = TestClient(app).get(f"/api/public/trips/{slug}").json()["visits"][0]
     assert "status" not in shared and "idea" not in shared.values()
@@ -219,11 +260,20 @@ def test_a_visit_without_a_title_goes_by_its_shared_location_or_its_area() -> No
     base = f"/api/trips/{trip['id']}"
     plain = owner.post(f"{base}/visits", json={"area_id": taipei}).json()
     share(owner, trip["id"], "visit", plain["id"], "everyone")
-    assert owner.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}).status_code == 200
+    assert (
+        owner.put(
+            f"{base}/public-projection",
+            json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+        ).status_code
+        == 200
+    )
     slug = owner.post(f"{base}/public-projection/publish").json()["slug"]
     assert TestClient(app).get(f"/api/public/trips/{slug}").json()["visits"][0]["title"] == "Taipei"
 
-    located = owner.patch(f"{base}/visits/{plain['id']}", json={"location": {"display_name": "Hot spring, 1 Road", "label": "Beitou hot spring", "area_id": taipei}}).json()
+    located = owner.patch(
+        f"{base}/visits/{plain['id']}",
+        json={"location": {"display_name": "Hot spring, 1 Road", "label": "Beitou hot spring", "area_id": taipei}},
+    ).json()
     # An unshared location is not named to visitors.
     assert TestClient(app).get(f"/api/public/trips/{slug}").json()["visits"][0]["title"] == "Taipei"
     share(owner, trip["id"], "location", located["location"]["id"], "everyone")

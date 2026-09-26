@@ -114,16 +114,25 @@ class DatabaseSecretStore:
         self._delete(subject, provider, "pending")
 
     def set_pending(self, *, subject: str, provider: str, state: str, verifier: str) -> None:
-        self._write(subject, provider, "pending", {"state": state, "verifier": verifier, "created": datetime.now(UTC).isoformat()})
+        self._write(
+            subject,
+            provider,
+            "pending",
+            {"state": state, "verifier": verifier, "created": datetime.now(UTC).isoformat()},
+        )
 
     def pop_pending(self, *, subject: str, provider: str, state: str) -> str | None:
         # Lock and consume in one transaction so two callbacks cannot use one code verifier.
         with self._session_factory() as session:
-            row = session.scalar(select(ProviderSecret).where(
-                ProviderSecret.subject == subject,
-                ProviderSecret.provider == provider,
-                ProviderSecret.kind == "pending",
-            ).with_for_update())
+            row = session.scalar(
+                select(ProviderSecret)
+                .where(
+                    ProviderSecret.subject == subject,
+                    ProviderSecret.provider == provider,
+                    ProviderSecret.kind == "pending",
+                )
+                .with_for_update()
+            )
             if row is None:
                 return None
             value = json.loads(self._fernet.decrypt(row.ciphertext.encode()))

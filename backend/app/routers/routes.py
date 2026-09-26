@@ -129,8 +129,14 @@ def create_route(trip_id: str, payload: RouteCreate, session: SessionDep, subjec
         geometry=payload.geometry.model_dump() if payload.geometry is not None else None,
         **payload.model_dump(
             exclude={
-                "departure_area_id", "arrival_area_id", "departure_location", "arrival_location",
-                "document_asset_ids", "departs_at", "arrives_at", "geometry",
+                "departure_area_id",
+                "arrival_area_id",
+                "departure_location",
+                "arrival_location",
+                "document_asset_ids",
+                "departs_at",
+                "arrives_at",
+                "geometry",
             }
         ),
     )
@@ -167,9 +173,7 @@ def _update_end(session: Session, trip: Trip, route: Route, payload: RouteUpdate
 
 
 @router.patch("/routes/{route_id}", response_model=RouteResponse)
-def update_route(
-    trip_id: str, route_id: str, payload: RouteUpdate, session: SessionDep, subject: SubjectDep
-) -> Route:
+def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: SessionDep, subject: SubjectDep) -> Route:
     trip = owned_trip(session, trip_id, subject)
     route = owned_route(trip, route_id)
     _update_end(session, trip, route, payload, "departure")
@@ -179,8 +183,12 @@ def update_route(
     values = payload.model_dump(
         exclude_unset=True,
         exclude={
-            "departure_area_id", "arrival_area_id", "departure_location", "arrival_location",
-            "document_asset_ids", "geometry",
+            "departure_area_id",
+            "arrival_area_id",
+            "departure_location",
+            "arrival_location",
+            "document_asset_ids",
+            "geometry",
         },
     )
     if "geometry" in payload.model_fields_set:

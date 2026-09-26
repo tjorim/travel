@@ -66,14 +66,19 @@ def update_location(
         location.label = payload.label
     if "area_id" in changes:
         if payload.area_id is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Every location needs an area")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Every location needs an area"
+            )
         location.area = selected_area(session, trip_id, payload.area_id)
         _carry_links(session, location)
     if "share_address" in changes and payload.share_address is not None:
         location.share_address = payload.share_address
     if location.label is None and location.visibility != Visibility.PRIVATE:
         # A shared location cannot lose its public name.
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Give this location a public name before sharing it")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Give this location a public name before sharing it",
+        )
     session.commit()
     return location
 
@@ -83,5 +88,7 @@ def owner_navigation(location_id: str, trip_id: str, session: SessionDep, subjec
     location = owned_location(session, trip_id, subject, location_id)
     url = location_navigation_url(location)
     if url is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location has no navigation target")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location has no navigation target"
+        )
     return NavigationResponse(url=url, exact=True)

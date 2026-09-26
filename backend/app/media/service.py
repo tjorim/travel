@@ -158,7 +158,9 @@ def _merge_exif(raw_metadata: dict, exif: dict) -> tuple[dict, datetime | None]:
     return raw_metadata, exif.get("captured_at")
 
 
-def _store_bytes(session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes, content_type: str) -> StoredObject:
+def _store_bytes(
+    session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes, content_type: str
+) -> StoredObject:
     digest = sha256_hex(data)
     # Serialize reuse of a pending object with the purge's final deletion.
     existing = session.scalar(
@@ -333,7 +335,9 @@ def complete_import_session(
     if not status.ready:
         return ImportOutcome(ready=False, imported=[], failed=[])
 
-    items = media_provider.list_selected_items(access_token=token, provider_session_id=import_session.provider_session_id)
+    items = media_provider.list_selected_items(
+        access_token=token, provider_session_id=import_session.provider_session_id
+    )
     imported: list[MediaAsset] = []
     failed: list[tuple[str, str]] = []
 
@@ -461,8 +465,11 @@ def queue_video_derivative(
     if media_asset.original_object.byte_size > VIDEO_MAX_INPUT_BYTES:
         raise MediaImportError("Video exceeds the derivative input limit")
     derivative = MediaDerivative(
-        trip_id=media_asset.trip_id, media_asset_id=media_asset.id, purpose=purpose,
-        processing_state=DerivativeProcessingState.PROCESSING, remove_audio=remove_audio,
+        trip_id=media_asset.trip_id,
+        media_asset_id=media_asset.id,
+        purpose=purpose,
+        processing_state=DerivativeProcessingState.PROCESSING,
+        remove_audio=remove_audio,
         processing_started_at=datetime.now(UTC),
         review_state=DerivativeReviewState.PENDING,
     )
@@ -472,9 +479,15 @@ def queue_video_derivative(
 
 
 def _media_command(arguments: list[str]) -> subprocess.CompletedProcess[bytes]:
-    limits = [str(value) for value in (VIDEO_CPU_SECONDS, VIDEO_MAX_OUTPUT_BYTES, VIDEO_MAX_MEMORY_BYTES, VIDEO_NICENESS)]
-    return subprocess.run([sys.executable, "-c", _LIMITED_EXEC, *limits, *arguments], check=True, capture_output=True,
-                          timeout=VIDEO_PROCESS_TIMEOUT_SECONDS)
+    limits = [
+        str(value) for value in (VIDEO_CPU_SECONDS, VIDEO_MAX_OUTPUT_BYTES, VIDEO_MAX_MEMORY_BYTES, VIDEO_NICENESS)
+    ]
+    return subprocess.run(
+        [sys.executable, "-c", _LIMITED_EXEC, *limits, *arguments],
+        check=True,
+        capture_output=True,
+        timeout=VIDEO_PROCESS_TIMEOUT_SECONDS,
+    )
 
 
 def _copy_bounded(storage: ObjectStorage, key: str, target: Path) -> None:
@@ -504,37 +517,112 @@ def process_video_derivative(session: Session, storage: ObjectStorage, *, deriva
             _copy_bounded(storage, asset.original_object.object_key, source)
             scale = f"scale=w='min({VIDEO_MAX_DIMENSION},iw)':h='min({VIDEO_MAX_DIMENSION},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
             threads = ["-threads", str(VIDEO_THREADS)]
-            command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", *threads, "-i", str(source),
-                       *threads, "-filter_threads", "1",
-                       "-map", "0:v:0", "-map_metadata", "-1", "-map_metadata:s", "-1",
-                       "-map_chapters", "-1", "-dn", "-sn"]
+            command = [
+                "ffmpeg",
+                "-nostdin",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                *threads,
+                "-i",
+                str(source),
+                *threads,
+                "-filter_threads",
+                "1",
+                "-map",
+                "0:v:0",
+                "-map_metadata",
+                "-1",
+                "-map_metadata:s",
+                "-1",
+                "-map_chapters",
+                "-1",
+                "-dn",
+                "-sn",
+            ]
             if derivative.remove_audio:
                 command += ["-an"]
             else:
                 command += ["-map", "0:a:0?", "-c:a", "aac", "-b:a", "128k"]
-            command += ["-vf", scale, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
-                        "-b:v", "1800k", "-maxrate", "2000k", "-bufsize", "4000k", "-t", str(VIDEO_MAX_DURATION_SECONDS),
-                        "-movflags", "+faststart", "-y", str(output)]
+            command += [
+                "-vf",
+                scale,
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "veryfast",
+                "-b:v",
+                "1800k",
+                "-maxrate",
+                "2000k",
+                "-bufsize",
+                "4000k",
+                "-t",
+                str(VIDEO_MAX_DURATION_SECONDS),
+                "-movflags",
+                "+faststart",
+                "-y",
+                str(output),
+            ]
             _media_command(command)
-            _media_command(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", *threads, "-i", str(output),
-                            "-map", "0:v:0", "-frames:v", "1", "-vf", scale, "-an", "-sn", "-dn",
-                            "-map_metadata", "-1", "-map_metadata:s", "-1", "-y", str(poster)])
-            probe = json.loads(_media_command(["ffprobe", "-v", "error", "-show_streams", "-show_format",
-                                               "-of", "json", str(output)]).stdout)
+            _media_command(
+                [
+                    "ffmpeg",
+                    "-nostdin",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    *threads,
+                    "-i",
+                    str(output),
+                    "-map",
+                    "0:v:0",
+                    "-frames:v",
+                    "1",
+                    "-vf",
+                    scale,
+                    "-an",
+                    "-sn",
+                    "-dn",
+                    "-map_metadata",
+                    "-1",
+                    "-map_metadata:s",
+                    "-1",
+                    "-y",
+                    str(poster),
+                ]
+            )
+            probe = json.loads(
+                _media_command(
+                    ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(output)]
+                ).stdout
+            )
             streams = probe["streams"]
-            if any(stream["codec_type"] not in ({"video"} if derivative.remove_audio else {"video", "audio"}) for stream in streams):
+            if any(
+                stream["codec_type"] not in ({"video"} if derivative.remove_audio else {"video", "audio"})
+                for stream in streams
+            ):
                 raise MediaImportError("Unexpected video stream")
             video = next(stream for stream in streams if stream["codec_type"] == "video")
             duration = float(probe["format"]["duration"])
-            if max(video["width"], video["height"]) > VIDEO_MAX_DIMENSION or duration > VIDEO_MAX_DURATION_SECONDS + 0.1:
+            if (
+                max(video["width"], video["height"]) > VIDEO_MAX_DIMENSION
+                or duration > VIDEO_MAX_DURATION_SECONDS + 0.1
+            ):
                 raise MediaImportError("Video transform exceeded limits")
             video_bytes, poster_bytes = output.read_bytes(), poster.read_bytes()
         session.expire_all()
         derivative = session.get(MediaDerivative, derivative_id)
         if derivative is None or derivative.processing_state != DerivativeProcessingState.PROCESSING:
             return
-        stored = _store_bytes(session, storage, trip_id=derivative.trip_id, data=video_bytes, content_type=VIDEO_CONTENT_TYPE)
-        still = _store_bytes(session, storage, trip_id=derivative.trip_id, data=poster_bytes, content_type=DERIVATIVE_CONTENT_TYPE)
+        stored = _store_bytes(
+            session, storage, trip_id=derivative.trip_id, data=video_bytes, content_type=VIDEO_CONTENT_TYPE
+        )
+        still = _store_bytes(
+            session, storage, trip_id=derivative.trip_id, data=poster_bytes, content_type=DERIVATIVE_CONTENT_TYPE
+        )
         derivative.object_id = stored.id
         derivative.poster_object_id = still.id
         derivative.width, derivative.height = video["width"], video["height"]
@@ -542,7 +630,15 @@ def process_video_derivative(session: Session, storage: ObjectStorage, *, deriva
         derivative.metadata_stripped_at = datetime.now(UTC)
         derivative.processing_state = DerivativeProcessingState.READY
         session.commit()
-    except (MediaImportError, OSError, ValueError, KeyError, StopIteration, subprocess.SubprocessError, SQLAlchemyError):
+    except (
+        MediaImportError,
+        OSError,
+        ValueError,
+        KeyError,
+        StopIteration,
+        subprocess.SubprocessError,
+        SQLAlchemyError,
+    ):
         session.rollback()
         derivative = session.get(MediaDerivative, derivative_id)
         if derivative is not None:
@@ -552,8 +648,13 @@ def process_video_derivative(session: Session, storage: ObjectStorage, *, deriva
 
 def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDerivative]) -> None:
     cutoff = datetime.now(UTC) - timedelta(seconds=VIDEO_STALLED_AFTER_SECONDS)
-    stale = [item for item in derivatives if item.processing_state == DerivativeProcessingState.PROCESSING
-             and item.processing_started_at is not None and _aware_utc(item.processing_started_at) < cutoff]
+    stale = [
+        item
+        for item in derivatives
+        if item.processing_state == DerivativeProcessingState.PROCESSING
+        and item.processing_started_at is not None
+        and _aware_utc(item.processing_started_at) < cutoff
+    ]
     if stale:
         for item in stale:
             item.processing_state = DerivativeProcessingState.FAILED
@@ -592,7 +693,9 @@ def create_derivative(
         width, height = oriented.size
     stripped = buffer.getvalue()
 
-    stored = _store_bytes(session, storage, trip_id=media_asset.trip_id, data=stripped, content_type=DERIVATIVE_CONTENT_TYPE)
+    stored = _store_bytes(
+        session, storage, trip_id=media_asset.trip_id, data=stripped, content_type=DERIVATIVE_CONTENT_TYPE
+    )
     derivative = MediaDerivative(
         trip_id=media_asset.trip_id,
         media_asset_id=media_asset.id,
@@ -648,8 +751,12 @@ def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than:
     object_ids: set[str] = set()
     for asset in expired_assets:
         object_ids.add(asset.original_object_id)
-        object_ids.update(value for derivative in asset.derivatives
-                          for value in (derivative.object_id, derivative.poster_object_id) if value)
+        object_ids.update(
+            value
+            for derivative in asset.derivatives
+            for value in (derivative.object_id, derivative.poster_object_id)
+            if value
+        )
         for derivative in list(asset.derivatives):
             session.delete(derivative)
         session.delete(asset)
@@ -670,7 +777,9 @@ def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than:
 def _purge_pending_objects(session: Session, storage: ObjectStorage, *, object_ids: list[str] | None = None) -> int:
     purged = 0
     if object_ids is None:
-        object_ids = session.scalars(select(StoredObject.id).where(StoredObject.state == ObjectState.PURGE_PENDING)).all()
+        object_ids = session.scalars(
+            select(StoredObject.id).where(StoredObject.state == ObjectState.PURGE_PENDING)
+        ).all()
     for object_id in object_ids:
         # A failed file deletion or commit leaves this unreferenced row for a
         # later run; the lock prevents an upload from reusing it meanwhile.

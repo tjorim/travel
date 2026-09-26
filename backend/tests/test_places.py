@@ -83,7 +83,10 @@ def test_owner_searches_and_saves_a_durable_osm_reference_without_persisting_que
     assert place["display_name"] == "Secret Hotel, Taipei, Exampleland"
     # The exact target exists only on the owner route, not a public projection.
     navigation = owner.get(f"/api/trips/{trip['id']}/locations/{place['id']}/navigation")
-    assert navigation.json() == {"url": "https://www.google.com/maps/dir/?api=1&destination=25.0330000%2C121.5650000", "exact": True}
+    assert navigation.json() == {
+        "url": "https://www.google.com/maps/dir/?api=1&destination=25.0330000%2C121.5650000",
+        "exact": True,
+    }
 
 
 def test_area_suggestion_is_owner_only_and_requires_explicit_selection() -> None:
@@ -101,17 +104,26 @@ def test_area_suggestion_is_owner_only_and_requires_explicit_selection() -> None
     assert new.json()["area"]["timezone"] == "Asia/Taipei"
     assert owner.get(f"{base}/areas").json() == []
 
-    created = owner.post(f"{base}/locations", json={
-        "display_name": "Station", "latitude": 25.033, "longitude": 121.565,
-        "locality": "Taipei", "new_area": new.json()["area"],
-    })
+    created = owner.post(
+        f"{base}/locations",
+        json={
+            "display_name": "Station",
+            "latitude": 25.033,
+            "longitude": 121.565,
+            "locality": "Taipei",
+            "new_area": new.json()["area"],
+        },
+    )
     assert created.status_code == 201, created.text
     area = owner.get(f"{base}/areas").json()[0]
     assert area["latitude"] == 25.03 and area["longitude"] == 121.56
     near = owner.post(f"{base}/areas/suggest", json={"latitude": 25.033, "longitude": 121.565})
     assert near.json()["existing_area_id"] == area["id"]
     assert provider.reverse_calls == 1
-    assert client_for("owner-2").post(f"{base}/areas/suggest", json={"latitude": 25.033, "longitude": 121.565}).status_code == 404
+    assert (
+        client_for("owner-2").post(f"{base}/areas/suggest", json={"latitude": 25.033, "longitude": 121.565}).status_code
+        == 404
+    )
 
 
 def test_area_points_are_generalized_on_create_update_and_city_derivation() -> None:
@@ -125,7 +137,10 @@ def test_area_points_are_generalized_on_create_update_and_city_derivation() -> N
     assert (updated.json()["latitude"], updated.json()["longitude"]) == (25.04, 121.56)
     derived = owner.post(f"{base}/locations", json={"locality": "Tainan", "latitude": 22.99911, "longitude": 120.21237})
     assert derived.status_code == 201
-    assert [(area["latitude"], area["longitude"]) for area in owner.get(f"{base}/areas").json()] == [(25.04, 121.56), (23.0, 120.21)]
+    assert [(area["latitude"], area["longitude"]) for area in owner.get(f"{base}/areas").json()] == [
+        (25.04, 121.56),
+        (23.0, 120.21),
+    ]
     no_city = owner.post(f"{base}/locations", json={"latitude": 21.12345, "longitude": 120.12345})
     assert no_city.status_code == 201
     assert owner.get(f"{base}/areas").json()[-1]["label"] == "Unassigned"
@@ -160,9 +175,12 @@ def test_owner_can_delete_an_unused_area_and_its_direct_share_selection() -> Non
     owner = client_for("owner-1")
     trip = create_trip(owner)
     place = owner.post(f"/api/trips/{trip['id']}/areas", json={"label": "Taipei"}).json()
-    assert owner.put(
-        f"/api/trips/{trip['id']}/public-projection", json=scope(share(owner, trip["id"], "area", place["id"]))
-    ).status_code == 200
+    assert (
+        owner.put(
+            f"/api/trips/{trip['id']}/public-projection", json=scope(share(owner, trip["id"], "area", place["id"]))
+        ).status_code
+        == 200
+    )
 
     deleted = owner.delete(f"/api/trips/{trip['id']}/areas/{place['id']}")
     assert deleted.status_code == 204
@@ -189,9 +207,16 @@ def test_a_shared_location_needs_a_public_name_and_never_discloses_its_address()
     location = owner.post(
         f"{trips_path}/locations",
         json={
-            "osm_element_type": "node", "osm_element_id": "7", "display_name": "Beitou Hot Spring, 12 Guangming Road, Taipei",
-            "address_line1": "12 Guangming Road", "postal_code": "112", "notes": "Booked for 3pm",
-            "latitude": 25.137, "longitude": 121.507, "locality": "Taipei", "country_code": "TW",
+            "osm_element_type": "node",
+            "osm_element_id": "7",
+            "display_name": "Beitou Hot Spring, 12 Guangming Road, Taipei",
+            "address_line1": "12 Guangming Road",
+            "postal_code": "112",
+            "notes": "Booked for 3pm",
+            "latitude": 25.137,
+            "longitude": 121.507,
+            "locality": "Taipei",
+            "country_code": "TW",
         },
     ).json()
     assert location["visibility"] == "private"
@@ -200,18 +225,30 @@ def test_a_shared_location_needs_a_public_name_and_never_discloses_its_address()
     rejected = owner.put(f"{trips_path}/visibility/location/{location['id']}", json={"visibility": "everyone"})
     assert rejected.status_code == 422
     assert "public name" in rejected.json()["detail"]
-    assert owner.patch(f"{trips_path}/locations/{location['id']}", json={"label": "Beitou hot spring"}).json()["label"] == "Beitou hot spring"
-    assert owner.put(f"{trips_path}/visibility/location/{location['id']}", json={"visibility": "everyone"}).status_code == 200
+    assert (
+        owner.patch(f"{trips_path}/locations/{location['id']}", json={"label": "Beitou hot spring"}).json()["label"]
+        == "Beitou hot spring"
+    )
+    assert (
+        owner.put(f"{trips_path}/visibility/location/{location['id']}", json={"visibility": "everyone"}).status_code
+        == 200
+    )
     # A shared location cannot lose its name.
     assert owner.patch(f"{trips_path}/locations/{location['id']}", json={"label": None}).status_code == 422
 
     slug = owner.post(f"{trips_path}/public-projection/publish").json()["slug"]
     anonymous = TestClient(app)
     delivered = anonymous.get(f"/api/public/trips/{slug}")
-    assert delivered.json()["places"] == [{
-        "id": delivered.json()["places"][0]["id"], "label": "Beitou hot spring", "country_code": "TW",
-        "region": "Taipei", "latitude": 25.137, "longitude": 121.507,
-    }]
+    assert delivered.json()["places"] == [
+        {
+            "id": delivered.json()["places"][0]["id"],
+            "label": "Beitou hot spring",
+            "country_code": "TW",
+            "region": "Taipei",
+            "latitude": 25.137,
+            "longitude": 121.507,
+        }
+    ]
     for private in ("12 Guangming", "112", "Booked for 3pm", "osm_element", "Hot Spring, 12"):
         assert private not in delivered.text
     marker = delivered.json()["navigation"][0]["id"]
@@ -230,7 +267,9 @@ def test_a_shared_area_offers_a_city_level_navigation_target() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     trips_path = f"/api/trips/{trip['id']}"
-    area = owner.post(f"{trips_path}/areas", json={"label": "Taipei", "country_code": "TW", "latitude": 25.0, "longitude": 121.5}).json()
+    area = owner.post(
+        f"{trips_path}/areas", json={"label": "Taipei", "country_code": "TW", "latitude": 25.0, "longitude": 121.5}
+    ).json()
     share(owner, trip["id"], "area", area["id"], "everyone")
     slug = owner.post(f"{trips_path}/public-projection/publish").json()["slug"]
     anonymous = TestClient(app)
@@ -246,7 +285,13 @@ def test_a_custom_location_reaches_only_the_link_that_lists_it() -> None:
     trips_path = f"/api/trips/{trip['id']}"
     location = owner.post(
         f"{trips_path}/locations",
-        json={"osm_element_type": "node", "osm_element_id": "7", "label": "Lookout", "latitude": 25.033, "longitude": 121.565},
+        json={
+            "osm_element_type": "node",
+            "osm_element_id": "7",
+            "label": "Lookout",
+            "latitude": 25.033,
+            "longitude": 121.565,
+        },
     ).json()
     listed = owner.post(f"{trips_path}/share-links", json={"label": "Family", "scope": scope()}).json()
     other = owner.post(f"{trips_path}/share-links", json={"label": "Friends", "scope": scope()}).json()
@@ -263,7 +308,10 @@ def test_a_custom_location_reaches_only_the_link_that_lists_it() -> None:
     assert allowed.status_code == 302
     assert "destination=25.0330000%2C121.5650000" in allowed.headers["location"]
     assert allowed.headers["cache-control"] == "no-store, private"
-    assert anonymous.get(f"/api/shared/{other_token}/navigation/{places[0]['id']}", follow_redirects=False).status_code == 404
+    assert (
+        anonymous.get(f"/api/shared/{other_token}/navigation/{places[0]['id']}", follow_redirects=False).status_code
+        == 404
+    )
 
 
 def test_an_area_can_carry_and_change_its_time_zone() -> None:
@@ -283,7 +331,10 @@ def test_an_area_can_carry_and_change_its_time_zone() -> None:
 
     # The zone helps the owner's views only; a shared projection never carries it.
     owner = client_for("owner-1")
-    selected = {"schema_version": "travel/share-scope@1", "items": [share(owner, trip["id"], "area", created.json()["id"])]}
+    selected = {
+        "schema_version": "travel/share-scope@1",
+        "items": [share(owner, trip["id"], "area", created.json()["id"])],
+    }
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
     preview = owner.post(f"/api/trips/{trip['id']}/public-projection/preview")
     assert "Europe/Brussels" not in preview.text
@@ -293,9 +344,15 @@ def test_an_area_holds_its_locations_and_cannot_be_deleted_while_it_does() -> No
     owner = client_for("owner-1")
     trip = create_trip(owner)
     trips_path = f"/api/trips/{trip['id']}"
-    first = owner.post(f"{trips_path}/locations", json={"display_name": "Hotel", "locality": "Taipei", "country_code": "TW"}).json()
-    second = owner.post(f"{trips_path}/locations", json={"display_name": "Station", "locality": "Taipei", "country_code": "TW"}).json()
-    elsewhere = owner.post(f"{trips_path}/locations", json={"display_name": "Tea house", "locality": "Alishan", "country_code": "TW"}).json()
+    first = owner.post(
+        f"{trips_path}/locations", json={"display_name": "Hotel", "locality": "Taipei", "country_code": "TW"}
+    ).json()
+    second = owner.post(
+        f"{trips_path}/locations", json={"display_name": "Station", "locality": "Taipei", "country_code": "TW"}
+    ).json()
+    elsewhere = owner.post(
+        f"{trips_path}/locations", json={"display_name": "Tea house", "locality": "Alishan", "country_code": "TW"}
+    ).json()
     nowhere = owner.post(f"{trips_path}/locations", json={"display_name": "Roadside"}).json()
 
     assert first["area_id"] == second["area_id"] != elsewhere["area_id"] != nowhere["area_id"]
@@ -322,10 +379,17 @@ def test_a_location_shows_its_address_only_when_the_owner_also_chooses_that() ->
     hotel = owner.post(
         f"{trips_path}/locations",
         json={
-            "label": "Hotel Riverside", "display_name": "Hotel Riverside, 12 Guangming Road, Taipei, 112",
-            "address_line1": "12 Guangming Road", "postal_code": "112", "locality": "Taipei", "country_code": "TW",
-            "latitude": 25.0331, "longitude": 121.5651, "notes": "Room 402, ask for Mei.",
-            "osm_element_type": "node", "osm_element_id": "99",
+            "label": "Hotel Riverside",
+            "display_name": "Hotel Riverside, 12 Guangming Road, Taipei, 112",
+            "address_line1": "12 Guangming Road",
+            "postal_code": "112",
+            "locality": "Taipei",
+            "country_code": "TW",
+            "latitude": 25.0331,
+            "longitude": 121.5651,
+            "notes": "Room 402, ask for Mei.",
+            "osm_element_type": "node",
+            "osm_element_id": "99",
         },
     ).json()
     assert hotel["share_address"] is False
@@ -338,7 +402,10 @@ def test_a_location_shows_its_address_only_when_the_owner_also_chooses_that() ->
     assert "address" not in location and location["label"] == "Hotel Riverside"
     assert "12 Guangming" not in without.text
 
-    assert owner.patch(f"{trips_path}/locations/{hotel['id']}", json={"share_address": True}).json()["share_address"] is True
+    assert (
+        owner.patch(f"{trips_path}/locations/{hotel['id']}", json={"share_address": True}).json()["share_address"]
+        is True
+    )
     with_address = anonymous.get(f"/api/public/trips/{slug}")
     (location,) = with_address.json()["places"]
     assert location["address"] == {"line1": "12 Guangming Road", "postal_code": "112", "locality": "Taipei"}
@@ -357,12 +424,23 @@ def test_an_update_and_a_stay_show_their_location_only_when_that_location_is_sha
     trips_path = f"/api/trips/{trip['id']}"
     spring = owner.post(
         f"{trips_path}/locations",
-        json={"label": "Warme bron van Beitou", "display_name": "Beitou Hot Spring, Taipei", "locality": "Taipei", "country_code": "TW", "latitude": 25.137, "longitude": 121.507},
+        json={
+            "label": "Warme bron van Beitou",
+            "display_name": "Beitou Hot Spring, Taipei",
+            "locality": "Taipei",
+            "country_code": "TW",
+            "latitude": 25.137,
+            "longitude": 121.507,
+        },
     ).json()
     update = owner.post(
         f"{trips_path}/travel-updates",
-        json={"occurred_at": "2054-04-04T10:00:00Z", "title": "Soaking", "body": "A lovely bath.",
-              "location": {"existing_location_id": spring["id"]}},
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z",
+            "title": "Soaking",
+            "body": "A lovely bath.",
+            "location": {"existing_location_id": spring["id"]},
+        },
     ).json()
     assert update["area"]["label"] == "Taipei" and update["area_id"] is None
     share(owner, trip["id"], "travel_update", update["id"], "everyone")

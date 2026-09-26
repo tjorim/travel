@@ -31,8 +31,20 @@ depends_on = None
 COLUMN_RENAMES = (
     ("route_stages", "broad_place_id", "area_id", "route_stages_broad_place_id_fkey", "route_stages_area_id_fkey"),
     ("stays", "exact_place_id", "location_id", "stays_exact_place_id_fkey", "stays_location_id_fkey"),
-    ("travel_updates", "broad_place_id", "area_id", "moment_excerpts_broad_place_id_fkey", "travel_updates_area_id_fkey"),
-    ("travel_updates", "exact_place_id", "location_id", "fk_travel_updates_exact_place_id", "fk_travel_updates_location_id"),
+    (
+        "travel_updates",
+        "broad_place_id",
+        "area_id",
+        "moment_excerpts_broad_place_id_fkey",
+        "travel_updates_area_id_fkey",
+    ),
+    (
+        "travel_updates",
+        "exact_place_id",
+        "location_id",
+        "fk_travel_updates_exact_place_id",
+        "fk_travel_updates_location_id",
+    ),
 )
 
 # Share-scope item kinds that all become "route".
@@ -65,7 +77,9 @@ def _give_every_stay_a_location() -> None:
 
     A stay with neither gets one in a private "Unassigned" area for its trip, which
     the owner can rename. Then the stay's own area goes: it comes from its location."""
-    _ensure_unassigned_area("SELECT DISTINCT trip_id FROM public.stays WHERE location_id IS NULL AND broad_place_id IS NULL")
+    _ensure_unassigned_area(
+        "SELECT DISTINCT trip_id FROM public.stays WHERE location_id IS NULL AND broad_place_id IS NULL"
+    )
     op.execute(
         f"""
         CREATE TEMPORARY TABLE _stay_locations ON COMMIT DROP AS
@@ -82,9 +96,7 @@ def _give_every_stay_a_location() -> None:
         FROM _stay_locations m JOIN public.places a ON a.id = m.area_id
         """
     )
-    op.execute(
-        "UPDATE public.stays SET location_id = m.place_id FROM _stay_locations m WHERE stays.id = m.stay_id"
-    )
+    op.execute("UPDATE public.stays SET location_id = m.place_id FROM _stay_locations m WHERE stays.id = m.stay_id")
     op.execute("ALTER TABLE public.stays DROP COLUMN broad_place_id")
     op.execute("ALTER TABLE public.stays ALTER COLUMN location_id SET NOT NULL")
 
@@ -132,7 +144,9 @@ def _merge_legs_and_drawn_routes() -> None:
             f"FOREIGN KEY ({end}_area_id) REFERENCES public.places(id)"
         )
     op.execute("ALTER TABLE public.routes DROP CONSTRAINT ck_transport_leg_arrival_after_departure")
-    op.execute("ALTER TABLE public.routes ADD CONSTRAINT ck_route_arrival_after_departure CHECK (arrives_at > departs_at)")
+    op.execute(
+        "ALTER TABLE public.routes ADD CONSTRAINT ck_route_arrival_after_departure CHECK (arrives_at > departs_at)"
+    )
     op.execute(
         "ALTER TABLE public.routes ADD CONSTRAINT ck_route_times_paired CHECK ((departs_at IS NULL) = (arrives_at IS NULL))"
     )
@@ -247,7 +261,9 @@ CREATE TABLE public.locations (
     )
     op.execute("CREATE INDEX ix_locations_trip_id ON public.locations USING btree (trip_id)")
     op.execute("CREATE INDEX ix_locations_area_id ON public.locations USING btree (area_id)")
-    op.execute("CREATE INDEX ix_locations_osm_element ON public.locations USING btree (osm_element_type, osm_element_id)")
+    op.execute(
+        "CREATE INDEX ix_locations_osm_element ON public.locations USING btree (osm_element_type, osm_element_id)"
+    )
     op.execute(
         f"INSERT INTO public.locations ({LOCATION_COLUMNS}) SELECT {LOCATION_COLUMNS} FROM public.places WHERE kind = 'location'"
     )
@@ -389,11 +405,35 @@ def _restore_document_twin_table() -> None:
         "document_derivatives",
         sa.Column("id", sa.String(32), primary_key=True),
         sa.Column("trip_id", sa.String(32), sa.ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("document_asset_id", sa.String(32), sa.ForeignKey("document_assets.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "document_asset_id",
+            sa.String(32),
+            sa.ForeignKey("document_assets.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("object_id", sa.String(32), sa.ForeignKey("stored_objects.id"), nullable=False, unique=True),
-        sa.Column("redaction_manifest_object_id", sa.String(32), sa.ForeignKey("stored_objects.id"), nullable=False, unique=True),
-        sa.Column("review_state", postgresql.ENUM("pending", "approved", name="travel_derivative_review_state", schema="public", create_type=False), nullable=False),
-        sa.Column("visibility", postgresql.ENUM("private", "everyone", "custom", name="travel_visibility", schema="public", create_type=False), nullable=False),
+        sa.Column(
+            "redaction_manifest_object_id",
+            sa.String(32),
+            sa.ForeignKey("stored_objects.id"),
+            nullable=False,
+            unique=True,
+        ),
+        sa.Column(
+            "review_state",
+            postgresql.ENUM(
+                "pending", "approved", name="travel_derivative_review_state", schema="public", create_type=False
+            ),
+            nullable=False,
+        ),
+        sa.Column(
+            "visibility",
+            postgresql.ENUM(
+                "private", "everyone", "custom", name="travel_visibility", schema="public", create_type=False
+            ),
+            nullable=False,
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         schema="public",
     )
@@ -680,7 +720,9 @@ CREATE TABLE public.broad_routes (
 
     op.execute("ALTER TABLE public.routes DROP CONSTRAINT ck_route_times_paired")
     op.execute("ALTER TABLE public.routes DROP CONSTRAINT ck_route_arrival_after_departure")
-    op.execute("ALTER TABLE public.routes ADD CONSTRAINT ck_transport_leg_arrival_after_departure CHECK (arrives_at > departs_at)")
+    op.execute(
+        "ALTER TABLE public.routes ADD CONSTRAINT ck_transport_leg_arrival_after_departure CHECK (arrives_at > departs_at)"
+    )
     op.execute("ALTER TABLE public.routes ALTER COLUMN departs_at SET NOT NULL")
     op.execute("ALTER TABLE public.routes ALTER COLUMN arrives_at SET NOT NULL")
     for end in ("departure", "arrival"):

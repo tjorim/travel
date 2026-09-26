@@ -27,9 +27,9 @@ def _store_owner_bytes(
 
     digest = sha256_hex(data)
     existing = session.scalar(
-        select(OwnerStoredObject).where(
-            OwnerStoredObject.owner_subject == owner_subject, OwnerStoredObject.sha256 == digest
-        ).with_for_update()
+        select(OwnerStoredObject)
+        .where(OwnerStoredObject.owner_subject == owner_subject, OwnerStoredObject.sha256 == digest)
+        .with_for_update()
     )
     if existing is not None and existing.state == ObjectState.AVAILABLE:
         return existing
@@ -103,9 +103,7 @@ def purge_owner_objects(session: Session, storage: ObjectStorage, *, object_ids:
         ).all()
     purged = 0
     for object_id in object_ids:
-        stored = session.scalar(
-            select(OwnerStoredObject).where(OwnerStoredObject.id == object_id).with_for_update()
-        )
+        stored = session.scalar(select(OwnerStoredObject).where(OwnerStoredObject.id == object_id).with_for_update())
         if stored is None or stored.state != ObjectState.PURGE_PENDING:
             session.rollback()
             continue
