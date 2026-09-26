@@ -6,9 +6,9 @@ import { useAuth } from "../auth-context";
 import { EmptyState } from "../tracker-routes";
 import { errorMessage } from "../query/api";
 import { tripResourceQueryOptions, useMarkAlertRead, useOwner, useTripsQuery } from "../query/owner-queries";
-import { addDays, daysBetween, formatDay, stayCoversNight, type Stay, type TransportLeg, type Trip, type TripTask, type TripTaskAlert } from "../tracker-model";
+import { addDays, daysBetween, formatDay, stayCoversNight, type Stay, type Route, type Trip, type TripTask, type TripTaskAlert } from "../tracker-model";
 
-type TripSnapshot = { stays: Stay[]; legs: TransportLeg[]; tasks: TripTask[]; alerts: TripTaskAlert[] };
+type TripSnapshot = { stays: Stay[]; routes: Route[]; tasks: TripTask[]; alerts: TripTaskAlert[] };
 
 function today(): string {
   const parts = new Intl.DateTimeFormat("en", { year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
@@ -33,8 +33,8 @@ function nextAction(trip: Trip, snapshot: TripSnapshot): string {
     if (missing) return `${missing} ${missing === 1 ? "nacht heeft" : "nachten hebben"} nog geen verblijf`;
   }
 
-  const unbookedLeg = snapshot.legs.find((leg) => leg.status !== "cancelled" && leg.status !== "booked" && leg.status !== "confirmed");
-  if (unbookedLeg) return "Vervoer moet nog geboekt of bevestigd worden";
+  const unbookedRoute = snapshot.routes.find((route) => route.status !== "cancelled" && route.status !== "booked" && route.status !== "confirmed");
+  if (unbookedRoute) return "Vervoer moet nog geboekt of bevestigd worden";
   if (!trip.travel_updates.length) return "Leg een eerste reisupdate vast";
   return "Open je reisoverzicht";
 }
@@ -50,7 +50,7 @@ export function OwnerHome() {
   const tripsQuery = useTripsQuery();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const resourceQueries = useQueries({
-    queries: trips.flatMap((trip) => (["stays", "transport-legs", "trip-tasks", "task-alerts"] as const).map((resource) => tripResourceQueryOptions(owner, trip.id, resource))),
+    queries: trips.flatMap((trip) => (["stays", "routes", "trip-tasks", "task-alerts"] as const).map((resource) => tripResourceQueryOptions(owner, trip.id, resource))),
   });
   const markAlertRead = useMarkAlertRead();
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,8 +65,8 @@ export function OwnerHome() {
 
   // Each trip owns four consecutive queries, in the order requested above.
   const snapshots = useMemo(() => Object.fromEntries(trips.map((trip, index): [string, TripSnapshot] => {
-    const [stays, legs, tasks, alerts] = resourceQueries.slice(index * 4, index * 4 + 4).map((query) => query.data ?? []);
-    return [trip.id, { stays: stays as Stay[], legs: legs as TransportLeg[], tasks: tasks as TripTask[], alerts: alerts as TripTaskAlert[] }];
+    const [stays, routes, tasks, alerts] = resourceQueries.slice(index * 4, index * 4 + 4).map((query) => query.data ?? []);
+    return [trip.id, { stays: stays as Stay[], routes: routes as Route[], tasks: tasks as TripTask[], alerts: alerts as TripTaskAlert[] }];
   })), [trips, resourceQueries]);
   const partial = resourceQueries.some((query) => query.isError);
 
@@ -89,9 +89,9 @@ export function OwnerHome() {
   return <main className="owner-home" aria-labelledby="owner-home-title">
     <header className="capture-heading"><div><p className="eyebrow">Private reiswerkruimte</p><h1 id="owner-home-title">Waar wil je verder?</h1><p className="lede">Je reizen, aandachtspunten en herinneringen op één rustige plek.</p></div><div className="button-row"><a className="secondary action-link" href="/">Publieke reizen bekijken</a><NavLink className="action-link" to="/trips?new=1">Nieuwe reis</NavLink></div></header>
     {!online && <p className="connection offline" role="status">Je bent offline. De getoonde gegevens kunnen verouderd zijn.</p>}
-    {unreadAlerts.length > 0 && <section className="card owner-inbox" aria-labelledby="inbox-title"><h2 id="inbox-title">Inbox</h2><p>{unreadAlerts.length} {unreadAlerts.length === 1 ? "nieuwe herinnering" : "nieuwe herinneringen"}</p><div className="saved-moments">{unreadAlerts.map((alert) => <article className="excerpt-row" key={alert.id}><div><strong>{alert.title}</strong><span>{alert.trip.title} · gepland voor {new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(alert.scheduled_for))}</span></div><button className="secondary compact" type="button" onClick={() => markAlertRead.mutateAsync({ tripId: alert.trip.id, alertId: alert.id }).catch((error: unknown) => setNotice(errorMessage(error, "De melding kon niet worden bijgewerkt.")))}>Gelezen</button></article>)}</div></section>}
-    <section aria-labelledby="trip-list-title"><div className="section-heading"><h2 id="trip-list-title">Nu en binnenkort</h2><NavLink to="/trips">Alle reizen beheren</NavLink></div>{visibleTrips.length ? <div className="owner-trip-cards">{visibleTrips.map((trip) => { const snapshot = snapshots[trip.id] ?? { stays: [], legs: [], tasks: [], alerts: [] }; const status = tripState(trip, day); return <article className="card owner-trip-card" key={trip.id}><p className="eyebrow">{status === "active" ? "Nu op reis" : status === "upcoming" ? "Binnenkort" : "Nog plannen"}</p><h3>{trip.title}</h3>{trip.starts_on ? <p>{formatDay(trip.starts_on, { day: "numeric", month: "long", year: "numeric" })}{trip.ends_on ? ` — ${formatDay(trip.ends_on, { day: "numeric", month: "long", year: "numeric" })}` : ""}</p> : <p>Kies reisdata wanneer je klaar bent om te plannen.</p>}<p className="next-action"><strong>Volgende stap</strong>{nextAction(trip, snapshot)}</p><NavLink className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>Open reis</NavLink></article>; })}</div> : <section className="card"><h3>{trips.length ? "Geen actieve of komende reizen" : "Begin met je eerste reis"}</h3><p>{trips.length ? "Eerdere reizen blijven beschikbaar via beheren." : message}</p><NavLink className="action-link" to="/trips?new=1">Nieuwe reis</NavLink></section>}</section>
-    {recentUpdates.length > 0 && <section className="card owner-activity" aria-labelledby="activity-title"><h2 id="activity-title">Recent vastgelegd</h2><div className="saved-moments">{recentUpdates.map((update) => <NavLink className="activity-row" key={update.id} to={`/trips/${encodeURIComponent(update.trip.id)}`}><strong>{update.title}</strong><span>{update.trip.title} · {new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(update.occurred_at))}</span></NavLink>)}</div></section>}
+    {unreadAlerts.length > 0 && <section className="card owner-inbox" aria-labelledby="inbox-title"><h2 id="inbox-title">Inbox</h2><p>{unreadAlerts.length} {unreadAlerts.length === 1 ? "nieuwe herinnering" : "nieuwe herinneringen"}</p><div className="saved-records">{unreadAlerts.map((alert) => <article className="excerpt-row" key={alert.id}><div><strong>{alert.title}</strong><span>{alert.trip.title} · gepland voor {new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(alert.scheduled_for))}</span></div><button className="secondary compact" type="button" onClick={() => markAlertRead.mutateAsync({ tripId: alert.trip.id, alertId: alert.id }).catch((error: unknown) => setNotice(errorMessage(error, "De melding kon niet worden bijgewerkt.")))}>Gelezen</button></article>)}</div></section>}
+    <section aria-labelledby="trip-list-title"><div className="section-heading"><h2 id="trip-list-title">Nu en binnenkort</h2><NavLink to="/trips">Alle reizen beheren</NavLink></div>{visibleTrips.length ? <div className="owner-trip-cards">{visibleTrips.map((trip) => { const snapshot = snapshots[trip.id] ?? { stays: [], routes: [], tasks: [], alerts: [] }; const status = tripState(trip, day); return <article className="card owner-trip-card" key={trip.id}><p className="eyebrow">{status === "active" ? "Nu op reis" : status === "upcoming" ? "Binnenkort" : "Nog plannen"}</p><h3>{trip.title}</h3>{trip.starts_on ? <p>{formatDay(trip.starts_on, { day: "numeric", month: "long", year: "numeric" })}{trip.ends_on ? ` — ${formatDay(trip.ends_on, { day: "numeric", month: "long", year: "numeric" })}` : ""}</p> : <p>Kies reisdata wanneer je klaar bent om te plannen.</p>}<p className="next-action"><strong>Volgende stap</strong>{nextAction(trip, snapshot)}</p><NavLink className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>Open reis</NavLink></article>; })}</div> : <section className="card"><h3>{trips.length ? "Geen actieve of komende reizen" : "Begin met je eerste reis"}</h3><p>{trips.length ? "Eerdere reizen blijven beschikbaar via beheren." : message}</p><NavLink className="action-link" to="/trips?new=1">Nieuwe reis</NavLink></section>}</section>
+    {recentUpdates.length > 0 && <section className="card owner-activity" aria-labelledby="activity-title"><h2 id="activity-title">Recent vastgelegd</h2><div className="saved-records">{recentUpdates.map((update) => <NavLink className="activity-row" key={update.id} to={`/trips/${encodeURIComponent(update.trip.id)}`}><strong>{update.title}</strong><span>{update.trip.title} · {new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(update.occurred_at))}</span></NavLink>)}</div></section>}
     {message && <p className="help" role="status">{message}</p>}
   </main>;
 }

@@ -2,7 +2,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { isProjection, projectionMapLines, projectionMapPoints, ProjectionView, type Projection } from "./ProjectionView";
+import { isProjection, projectionMapLines, projectionMapPoints, ProjectionView, visitTimes, type Projection } from "./ProjectionView";
+import { timeForViewer } from "./tracker-model";
 import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
 
@@ -11,46 +12,41 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 function projection(schema_version = "travel/public-trip@1"): Projection {
   return {
     schema_version, title: "Selected trip", summary: "Shared summary", dates: null, navigation: [],
-    route_stages: [], places: [], updates: [], stays: [], route: [], transport: [], media: [], documents: [],
+    visits: [], places: [], updates: [], stays: [], routes: [], media: [], documents: [],
   };
 }
 
 it("derives tile-facing map bounds only from scoped route geometry", () => {
   const data = projection("travel/unlisted-trip@1");
-  data.places = [{ id: "selected-place", label: "Broad city", latitude: 25, longitude: 121 }, { id: "incomplete", latitude: 25 }];
-  data.route_stages = [{ id: "selected-stage", place: { label: "Broad stage", latitude: 26, longitude: 122 } }];
-  data.route = [{ id: "selected", label: "Selected route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] } }, { id: "unselected", label: "No shared geometry" }];
-  expect(projectionMapLines(data)).toEqual([{ id: "selected", label: "Selected route", coordinates: [[1, 2], [3, 4]] }]);
-  expect(projectionMapPoints(data)).toEqual([{ id: "selected-place", label: "Broad city", coordinates: [121, 25] }, { id: "selected-stage", label: "Broad stage", coordinates: [122, 26] }]);
+  data.places = [{ id: "selected-place", label: "Area city", latitude: 25, longitude: 121 }, { id: "incomplete", latitude: 25 }];
+  data.visits = [{ id: "selected-visit", place: { label: "Area stage", latitude: 26, longitude: 122 } }];
+  data.routes = [{ id: "selected", label: "Selected route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] } }, { id: "unselected", label: "No shared geometry" }];
+  expect(projectionMapLines(data)).toEqual([{ id: "selected", label: "Selected route", coordinates: [[1, 2], [3, 4]], transport: "other" }]);
+  expect(projectionMapPoints(data)).toEqual([{ id: "selected-place", label: "Area city", coordinates: [121, 25] }, { id: "selected-visit", label: "Area stage", coordinates: [122, 26] }]);
 });
 
-it("uses a selected broad route for a train journey, otherwise draws only a general line between shared broad points", () => {
+it("draws a drawn line as is, otherwise a straight line between the two areas of the route", () => {
   const data = projection("travel/unlisted-trip@1");
-  data.places = [
-    { id: "brussels", label: "Brussels", latitude: 50.85, longitude: 4.35 },
-    { id: "amsterdam", label: "Amsterdam", latitude: 52.37, longitude: 4.9 },
-  ];
-  data.transport = [{ id: "leg", kind: "train", status: "planned", carrier: "Eurostar", service_reference: "ES 9167", departure: { locality: "Brussels" }, arrival: { locality: "Amsterdam" } }];
+  const departure = { label: "Brussels", latitude: 50.85, longitude: 4.35 }, arrival = { label: "Amsterdam", latitude: 52.37, longitude: 4.9 };
+  data.routes = [{ id: "leg", mode: "train", status: "planned", carrier: "Eurostar", service_reference: "ES 9167", departure, arrival }];
   expect(projectionMapLines(data)).toEqual([{
-    id: "transport-leg", label: "Eurostar · ES 9167", coordinates: [[4.35, 50.85], [4.9, 52.37]], transport: "rail", from: "Brussels", to: "Amsterdam",
+    id: "route-leg", label: "Eurostar · ES 9167", coordinates: [[4.35, 50.85], [4.9, 52.37]], transport: "train", from: "Brussels", to: "Amsterdam",
   }]);
 
-  // An owner-selected broad route is authoritative even when its generalized
-  // endpoints differ from the city points, so it never gains a duplicate
-  // guessed line beside it.
-  data.route = [{ id: "rail-track", label: "Eurostar route", geometry: { type: "LineString", coordinates: [[4.1, 50.7], [4.6, 51.5], [5.1, 52.5]] } }];
+  // The owner's drawn line wins, without a second straight line beside it.
+  data.routes = [{ id: "rail-track", label: "Eurostar route", mode: "train", departure, arrival, geometry: { type: "LineString", coordinates: [[4.1, 50.7], [4.6, 51.5], [5.1, 52.5]] } }];
   expect(projectionMapLines(data)).toEqual([{
-    id: "rail-track", label: "Eurostar route", coordinates: [[4.1, 50.7], [4.6, 51.5], [5.1, 52.5]],
+    id: "rail-track", label: "Eurostar route", coordinates: [[4.1, 50.7], [4.6, 51.5], [5.1, 52.5]], transport: "train",
   }]);
 
-  data.route = [];
-  data.places = [];
+  // An end without a point cannot be drawn, and a cancelled route is not drawn at all.
+  data.routes = [{ id: "loose", mode: "train", departure: { label: "Brussels" }, arrival }, { id: "cancelled", mode: "train", status: "cancelled", departure, arrival }];
   expect(projectionMapLines(data)).toEqual([]);
 });
 
 it("shows explicitly shared transport endpoints as map points and uses them for a generalized line", () => {
   const data = projection("travel/unlisted-trip@1");
-  data.transport = [{ id: "flight", kind: "flight", status: "confirmed", carrier: "EVA Air", service_reference: "BR 75", map: {
+  data.routes = [{ id: "flight", mode: "flight", status: "confirmed", carrier: "EVA Air", service_reference: "BR 75", departure: { label: "Amsterdam" }, arrival: { label: "Taipei" }, map: {
     departure: { label: "Amsterdam Schiphol", latitude: 52.31, longitude: 4.76, kind: "airport" },
     arrival: { label: "Taoyuan Airport", latitude: 25.0797, longitude: 121.2328, kind: "airport" },
   } }];
@@ -59,7 +55,7 @@ it("shows explicitly shared transport endpoints as map points and uses them for 
     { id: "transport-flight-arrival", label: "Taoyuan Airport", coordinates: [121.2328, 25.0797], kind: "airport" },
   ]);
   expect(projectionMapLines(data)).toEqual([{
-    id: "transport-flight", label: "EVA Air · BR 75", coordinates: [[4.76, 52.31], [121.2328, 25.0797]], transport: "flight", from: "Amsterdam Schiphol", to: "Taoyuan Airport",
+    id: "route-flight", label: "EVA Air · BR 75", coordinates: [[4.76, 52.31], [121.2328, 25.0797]], transport: "flight", from: "Amsterdam Schiphol", to: "Taoyuan Airport",
   }]);
 });
 
@@ -101,17 +97,17 @@ it("does not treat former archive paths as visitor trips", () => {
 
 it("renders every resource kind using only supplied fields", () => {
   const data = projection();
-  data.route_stages = [{ id: "stage", label: "First stage", place: { label: "Broad city" }, private_address: "Hidden street" }];
+  data.visits = [{ id: "visit", title: "First stage", place: { label: "Area city" }, private_address: "Hidden street" }];
   data.places = [{ id: "place", label: "Shared place", region: "Region", latitude: 5, owner_note: "Secret place note" }];
   data.updates = [{ id: "update-shared", title: "Shared update", body: "Shared story", date_precision: "month", private_body: "Secret story" }];
-  data.stays = [{ id: "stay", title: "Shared stay", place: { label: "Broad stay place" }, date_precision: "month", starts_on: "2054-11", ends_on: "2054-11", booking_reference: "Secret booking" }];
-  data.transport = [{ id: "leg", kind: "flight", status: "confirmed", carrier: "EVA Air", service_reference: "BR-087", departure: { locality: "Zaventem", country_code: "BE", display_name: "Brussels Airport" }, arrival: { locality: "Taoyuan", country_code: "TW", display_name: "Taoyuan Airport" }, departs_at: "2054-04-01T09:00:00Z", arrives_at: "2054-04-01T23:00:00Z", booking_reference: "Secret booking" }];
-  data.route = [{ id: "route", label: "Shared route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] }, raw_track: "Secret track" }];
+  data.stays = [{ id: "stay", title: "Shared stay", place: { label: "Area stay place" }, date_precision: "month", starts_on: "2054-11", ends_on: "2054-11", booking_reference: "Secret booking" }];
+  data.routes = [{ id: "leg", mode: "flight", status: "confirmed", carrier: "EVA Air", service_reference: "BR-087", departure: { locality: "Zaventem", country_code: "BE", display_name: "Brussels Airport" }, arrival: { locality: "Taoyuan", country_code: "TW", display_name: "Taoyuan Airport" }, departs_at: "2054-04-01T09:00:00Z", arrives_at: "2054-04-01T23:00:00Z", booking_reference: "Secret booking" }];
+  data.routes.push({ id: "route", label: "Shared route", geometry: { type: "LineString", coordinates: [[1, 2], [3, 4]] }, raw_track: "Secret track", mode: "train", departure: { label: "Shared start" }, arrival: { label: "Shared end" } });
   data.media = [{ id: "media", image: { id: "media" }, original_filename: "Secret photo" }];
   data.documents = [{ id: "document", title: "Shared document", file: { id: "document" }, original_filename: "Secret PDF" }];
   data.navigation = [{ id: "place" }];
   const { container } = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
-  for (const value of ["Shared summary", "First stage", "Broad city", "Shared place", "Region", "Shared update", "Shared story", "Maandprecisie", "Shared stay", "Broad stay place", "Vervoer", "EVA Air", "BR-087", "Zaventem", "Taoyuan", "Bevestigd", "Shared route", "Gedeelde foto’s", "Shared document"]) {
+  for (const value of ["Shared summary", "First stage", "Area city", "Shared place", "Region", "Shared update", "Shared story", "Maandprecisie", "Shared stay", "Area stay place", "Routes", "Vlucht", "EVA Air", "BR-087", "Zaventem", "Taoyuan", "Bevestigd", "Shared route", "Gedeelde foto’s", "Shared document"]) {
     expect(container.textContent).toContain(value);
   }
   for (const value of ["Secret booking", "Brussels Airport", "Taoyuan Airport"]) expect(container.textContent).not.toContain(value);
@@ -127,16 +123,16 @@ it("renders every resource kind using only supplied fields", () => {
 it("does not invent values for omitted fields and keeps audience links separate", () => {
   const data = projection("travel/unlisted-trip@1");
   data.summary = null;
-  data.route_stages = [{ id: "stage" }];
+  data.places = [{ id: "place-1" }];
   data.media = [{ id: "media" }];
   data.documents = [{ id: "document" }];
-  data.navigation = [{ id: "stage" }, { id: "exact_place-4" }];
+  data.navigation = [{ id: "place-1" }, { id: "location-4" }];
   const { container } = render(<ProjectionView projection={data} audience="share" identifier="capability" />);
   expect(container.querySelector("img")).toBeNull();
   expect(screen.queryByRole("link", { name: "Document openen" })).toBeNull();
   expect(container.textContent).not.toContain("Reisoverzicht");
   expect(screen.getAllByRole("link", { name: "Routebeschrijving" }).map((link) => link.getAttribute("href"))).toEqual([
-    "/api/shared/capability/navigation/stage", "/api/shared/capability/navigation/exact_place-4",
+    "/api/shared/capability/navigation/place-1", "/api/shared/capability/navigation/location-4",
   ]);
   expect(isProjection(data, "public")).toBe(false);
   expect(isProjection(data, "share")).toBe(true);
@@ -202,7 +198,7 @@ it("automatically saves a successfully visited hidden trip on this browser's hom
 it("renders dated updates in projection order with direct links and scoped photo galleries", () => {
   const data = projection("travel/unlisted-trip@1");
   data.updates = [
-    { id: "update-later", title: "Later", story_date: "2054-05", date_precision: "month", place: { label: "Broad coast" } },
+    { id: "update-later", title: "Later", story_date: "2054-05", date_precision: "month", place: { label: "Area coast" } },
     { id: "update-first", title: "First", story_date: "2054-04-02", date_precision: "day", body: "Shared text" },
   ];
   data.media = [
@@ -212,7 +208,7 @@ it("renders dated updates in projection order with direct links and scoped photo
   const { container } = render(<ProjectionView projection={data} audience="share" identifier="token" />);
   expect(screen.getByRole("navigation", { name: "Updates in dit verhaal" }).querySelectorAll("a")[1]?.getAttribute("href")).toBe("#update-first");
   expect(container.querySelectorAll(".visitor-timeline > li")[1]?.id).toBe("update-first");
-  expect(screen.getByText("Broad coast")).toBeTruthy();
+  expect(screen.getByText("Area coast")).toBeTruthy();
   expect(screen.getByText("2 april 2054")).toBeTruthy();
   expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("src")).toBe("/api/shared/token/files/media-1");
   expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("style")).toContain("25% 60%");
@@ -240,9 +236,9 @@ it("keeps story-only, image-only, and empty projections readable", () => {
 it("uses the visitor story renderer for an owner preview and requests only owner scoped resources", async () => {
   const data = projection("travel/unlisted-trip@1");
   data.updates = [{ id: "update-1", title: "Shared story", body: "Visitor text", private_body: "Owner secret" }];
-  data.places = [{ id: "broad_place-1", label: "Taipei" }];
+  data.places = [{ id: "area-1", label: "Taipei" }];
   data.documents = [{ id: "document_derivative-2", title: "Shared document", file: { id: "document_derivative-2" } }];
-  data.navigation = [{ id: "broad_place-1" }];
+  data.navigation = [{ id: "area-1" }];
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" })));
   vi.stubGlobal("fetch", fetcher);
   vi.spyOn(window, "open").mockImplementation(() => null);
@@ -256,7 +252,7 @@ it("uses the visitor story renderer for an owner preview and requests only owner
   expect(preview.container.textContent).not.toContain("Owner secret");
   fireEvent.click(preview.container.querySelector(".visitor-resource-action")!);
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/trips/trip/share-links/draft-link/preview/navigation/broad_place-1");
+  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/trips/trip/share-links/draft-link/preview/navigation/area-1");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ credentials: "omit", cache: "no-store", headers: { Authorization: "Bearer owner-token" } });
 });
 
@@ -272,10 +268,10 @@ it("renders the same scoped gallery in preview without requesting a visitor file
   expect(preview.container.innerHTML).not.toContain("/api/public/trips/");
 });
 
-it("shows shared trip dates and stage summaries only from the projection", () => {
+it("shows shared trip dates and visit summaries only from the projection", () => {
   const data = projection();
   data.dates = { id: "dates", starts_on: "2054-11", ends_on: "2054-12", date_precision: "month" };
-  data.route_stages = [{ id: "route_stage-3", label: "Taipei", summary: "Stad, eten en een eerste weekend." }];
+  data.visits = [{ id: "visit-3", title: "Taipei", summary: "Stad, eten en een eerste weekend." }];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   expect(screen.getByText("november 2054 – december 2054")).toBeTruthy();
   expect(screen.getByText("Stad, eten en een eerste weekend.")).toBeTruthy();
@@ -283,9 +279,28 @@ it("shows shared trip dates and stage summaries only from the projection", () =>
   expect(isProjection({ ...data, updates: undefined }, "public")).toBe(false);
 });
 
-it("numbers shared stages from one, as visitors count them", () => {
+it("shows a visit with its days, its place and a time only when it was shared", () => {
   const data = projection();
-  data.route_stages = [{ id: "route_stage-1", label: "Taipei", position: 0 }];
+  data.visits = [
+    { id: "visit-1", title: "Nachtmarkt", place: { label: "Taipei" }, date_precision: "day", starts_on: "2054-11-21", ends_on: "2054-11-22", start_time: "18:30", end_time: "21:00", timezone: "Asia/Taipei" },
+    { id: "visit-2", title: "Warme bron", place: { label: "Beitou" }, date_precision: "day", starts_on: "2054-11-23", ends_on: null },
+  ];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
-  expect(screen.getByText("Halte 1")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Bezoeken" })).toBeTruthy();
+  expect(screen.getByText(/18:30–21:00 \(Taipei\)/)).toBeTruthy();
+  expect(screen.getByText("Taipei")).toBeTruthy();
+  expect(screen.queryByText(/Hidden/)).toBeNull();
+  // Without a shared time nothing is invented.
+  expect(screen.getByText("Warme bron").closest("article")?.textContent).not.toMatch(/\d\d:\d\d/);
+});
+
+it("reads a visit time in the viewer's own zone, with the day when it moves", () => {
+  // 18:30 in Taipei (UTC+8) is 11:30 in Amsterdam (UTC+1) in November, and 02:00 in Taipei is 19:00 the day before.
+  expect(timeForViewer("2054-11-21", "18:30", "Asia/Taipei", "Europe/Amsterdam")).toEqual({ time: "11:30", days: 0 });
+  expect(timeForViewer("2054-11-21", "02:00", "Asia/Taipei", "Europe/Amsterdam")).toEqual({ time: "19:00", days: -1 });
+  expect(timeForViewer("2054-11-21", "18:30", "Asia/Taipei", "Asia/Taipei")).toBeNull();
+  expect(timeForViewer("2054-11-21", "18:30", "Not/AZone", "Europe/Amsterdam")).toBeNull();
+  expect(visitTimes({ id: "v", start_time: "18:30", end_time: "21:00", starts_on: "2054-11-21", timezone: "Asia/Taipei" })).toMatch(/^18:30–21:00 \(Taipei\)( · bij jou \d\d:\d\d–\d\d:\d\d)?/);
+  expect(visitTimes({ id: "v", start_time: "18:30" })).toBe("18:30");
+  expect(visitTimes({ id: "v" })).toBeNull();
 });

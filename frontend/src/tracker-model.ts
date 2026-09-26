@@ -1,14 +1,14 @@
 /** Who receives a record: nobody, every visitor, or only the audiences that list it in Delen. */
 export type Visibility = "private" | "everyone" | "custom";
 
-export type Place = {
+export type Location = {
   id: string;
   visibility: Visibility;
-  /** The public name of a spot the owner shares; its display name usually contains the address. */
+  /** The public name of a location the owner shares; its display name usually contains the address. */
   label: string | null;
-  /** The area this spot belongs to, derived from its city when it was created. */
-  area_id: string | null;
-  /** Show the address too when the spot is shared. Off unless the owner chooses it. */
+  /** The area this location belongs to, derived from its city when it was created. */
+  area_id: string;
+  /** Show the address too when the location is shared. Off unless the owner chooses it. */
   share_address: boolean;
   display_name: string | null;
   osm_element_type: "node" | "way" | "relation" | null;
@@ -30,12 +30,12 @@ export type Place = {
   notes: string | null;
 };
 
-/** A spot to create, or with `existing_place_id` a spot the trip already has (sent on its own). */
-export type ExactPlaceInput = Partial<Omit<Place, "id" | "visibility" | "area_id" | "share_address">> & { existing_place_id?: string };
+/** A location to create, or with `existing_location_id` a location the trip already has (sent on its own). */
+export type LocationInput = Partial<Omit<Location, "id" | "visibility" | "area_id" | "share_address">> & { existing_location_id?: string };
 
-/** What the owner calls a spot: the first part of its name, never a full address line. */
-export const spotName = (place: Partial<Pick<Place, "display_name" | "locality" | "label">>): string => place.label || place.display_name?.split(",")[0]?.trim() || place.locality || "Plek zonder naam";
-export type PlaceSearchResult = ExactPlaceInput;
+/** What the owner calls a location: the first part of its name, never a full address line. */
+export const locationName = (place: Partial<Pick<Location, "display_name" | "locality" | "label">>): string => place.label || place.display_name?.split(",")[0]?.trim() || place.locality || "Locatie zonder naam";
+export type PlaceSearchResult = LocationInput;
 
 export type MediaAsset = {
   id: string;
@@ -57,7 +57,7 @@ export type PlaceSearchResponse = {
   results: PlaceSearchResult[];
 };
 
-export type BroadPlace = {
+export type Area = {
   id: string;
   visibility: Visibility;
   label: string;
@@ -68,37 +68,17 @@ export type BroadPlace = {
   timezone: string | null;
 };
 
-export type RouteStage = {
-  id: string;
-  position: number;
-  label: string | null;
-  summary: string | null;
-  place: BroadPlace;
-  visibility: Visibility;
-};
+/** How a route is travelled. */
+export type RouteMode = "flight" | "train" | "bus" | "ferry" | "car" | "bike" | "walk" | "other";
 
-export type RecordedTrack = {
-  id: string;
-  started_at: string;
-  ended_at: string;
-  kind: "gpx" | "point_array";
-  byte_size: number;
-  content_type: string;
-  source_file_url: string;
-};
-
-export type BroadRoute = {
-  id: string;
-  visibility: Visibility;
-  label: string;
-  geometry: { type: "LineString"; coordinates: [number, number][] };
-  date_precision: "day" | "month" | "year";
+export const ROUTE_MODE_LABELS: Record<RouteMode, string> = {
+  flight: "Vlucht", train: "Trein", bus: "Bus", ferry: "Veerboot", car: "Auto", bike: "Fiets", walk: "Te voet", other: "Anders",
 };
 
 /**
  * A reisupdate: what happened, with a private part and a shared part. The private part — `private_notes`,
- * the exact `place` and the attached originals — is never shared. The title, the `body` written for
- * visitors, the date at `date_precision` and the broad place are shared only as `visibility` allows.
+ * the `location` and the attached originals — is never shared. The title, the `body` written for
+ * visitors, the date at `date_precision` and the area are shared only as `visibility` allows.
  */
 export type TravelUpdate = {
   id: string;
@@ -107,10 +87,10 @@ export type TravelUpdate = {
   title: string;
   body: string;
   private_notes: string | null;
-  broad_place_id: string | null;
-  /** The area of its spot, or the direct area of a spot-less update. */
-  area?: BroadPlace | null;
-  place: Place | null;
+  area_id: string | null;
+  /** The area of its location, or the direct area of a location-less update. */
+  area?: Area | null;
+  location: Location | null;
   media_asset_ids: string[];
   visibility: Visibility;
 };
@@ -121,7 +101,6 @@ export type Trip = {
   summary: string | null;
   starts_on: string | null;
   ends_on: string | null;
-  route_stages: RouteStage[];
   travel_updates: TravelUpdate[];
 };
 
@@ -132,7 +111,7 @@ export type UpdateDraft = {
   title: string;
   /** Private notes: what the owner wants to remember. The text for visitors is written later. */
   notes: string;
-  place: ExactPlaceInput | null;
+  location: LocationInput | null;
   mediaAssetIds: string[];
 };
 
@@ -150,26 +129,29 @@ export type Stay = {
   booking_reference: string | null;
   contact_details: string | null;
   notes: string | null;
-  place: Place | null;
-  broad_place: BroadPlace | null;
-  /** The area of its hotel spot (legacy planned stays can retain an area). */
-  area?: BroadPlace | null;
+  /** Every stay has a location; its area comes from it. */
+  location: Location;
+  area: Area;
   visibility: Visibility;
   /** How exactly visitors see the nights of a shared stay. */
   share_date_precision: "day" | "month" | "year";
 };
 
-export type TransportLeg = {
+/**
+ * How the trip gets from one area to another. Only the two areas are required; the exact
+ * locations, the schedule, the booking details and a drawn line are optional.
+ */
+export type Route = {
   id: string;
-  kind: "flight" | "train" | "bus" | "ferry" | "car" | "other";
+  mode: RouteMode;
   status: "planned" | "booked" | "confirmed" | "cancelled";
-  departure_place: Place;
-  arrival_place: Place;
-  /** Areas are derived from the endpoint spots, not copied city text. */
-  departure_area?: BroadPlace | null;
-  arrival_area?: BroadPlace | null;
-  departs_at: string;
-  arrives_at: string;
+  label: string | null;
+  departure_area: Area;
+  arrival_area: Area;
+  departure_location: Location | null;
+  arrival_location: Location | null;
+  departs_at: string | null;
+  arrives_at: string | null;
   departure_timezone: string | null;
   arrival_timezone: string | null;
   carrier: string | null;
@@ -178,25 +160,44 @@ export type TransportLeg = {
   booking_reference: string | null;
   notes: string | null;
   document_asset_ids: string[];
+  geometry: { type: "LineString"; coordinates: [number, number][] } | null;
   visibility: Visibility;
 };
 
-export type ItineraryLinkKind = "stay" | "transport_leg" | "route_stage" | "place" | "document" | "travel_update";
+/** A route whose schedule is known. */
+export type TimedRoute = Route & { departs_at: string; arrives_at: string };
+export const timedRoutes = (routes: Route[]): TimedRoute[] => routes.filter((route): route is TimedRoute => route.departs_at !== null && route.arrives_at !== null);
 
-export type ItineraryEntryKind = "travel" | "free" | "work";
+/** What a route is called: its label, else where it goes. */
+export const routeTitle = (route: Pick<Route, "label" | "departure_area" | "arrival_area">): string => route.label ?? `${route.departure_area.label} → ${route.arrival_area.label}`;
 
-export type ItineraryEntry = {
+/** What kind of days a visit is: free days, or working ones. */
+export type VisitKind = "free" | "work";
+
+/**
+ * A stop on the trip: at an area, or at a location in one, and optionally when. The times are local
+ * at the visit (the time zone is its area's) and stay private unless `share_time` is set.
+ */
+export type Visit = {
   id: string;
-  day_date: string | null;
-  end_date: string | null;
-  kind: ItineraryEntryKind | null;
-  tentative: boolean;
   position: number;
-  title: string;
+  area: Area;
+  location: Location | null;
+  title: string | null;
+  kind: VisitKind | null;
+  starts_on: string | null;
+  ends_on: string | null;
+  start_time: string | null;
+  end_time: string | null;
   notes: string | null;
-  linked_kind: ItineraryLinkKind | null;
-  linked_id: string | null;
+  summary: string | null;
+  visibility: Visibility;
+  share_time: boolean;
+  share_date_precision: "day" | "month" | "year";
 };
+
+/** What a visit is called: its title, else its location, else its area. */
+export const visitTitle = (visit: Pick<Visit, "title" | "area" | "location">): string => visit.title ?? (visit.location ? locationName(visit.location) : visit.area.label);
 
 export type TripTask = {
   id: string;
@@ -313,6 +314,8 @@ export type VisitCandidateIntent = {
 
 export type ProviderConnectionStatus = {
   provider: "google_photos_picker" | "gopro_cloud";
+  /** Whether the server offers it at all; an unavailable provider is not shown. */
+  available: boolean;
   connected: boolean;
 };
 
@@ -331,7 +334,7 @@ export type ImportCompleteResult = {
 };
 
 /** Every kind of record that can be shared, and so can carry a visibility. */
-export type ShareScopeKind = "place" | "route_stage" | "broad_route" | "stay" | "transport_leg" | "travel_update" | "media_derivative" | "document_derivative";
+export type ShareScopeKind = "area" | "location" | "visit" | "route" | "stay" | "travel_update" | "media_derivative" | "document_derivative";
 
 /** An audience lists only records whose visibility is custom; which fields show is fixed per kind. */
 export type ShareScopeItem = { kind: ShareScopeKind; id: string };
@@ -367,18 +370,17 @@ export type ProjectionDocument = {
   title: string | null;
   summary: string | null;
   dates: Record<string, unknown> | null;
-  route_stages: Record<string, unknown>[];
+  visits: Record<string, unknown>[];
   places: Record<string, unknown>[];
   updates: Record<string, unknown>[];
   stays: Record<string, unknown>[];
   media: Record<string, unknown>[];
   documents: Record<string, unknown>[];
-  route: Record<string, unknown>[];
-  transport: Record<string, unknown>[];
+  routes: Record<string, unknown>[];
   navigation: Record<string, unknown>[];
 };
 
-const draftKey = "travel-tracker-moment-draft-v1";
+const draftKey = "travel-tracker-update-draft-v1";
 
 const dayMs = 86_400_000;
 
@@ -405,7 +407,7 @@ export function formatDayRange(first: string, last: string | null): string {
 }
 
 export function stayLabel(stay: Stay): string {
-  return stay.property_name ?? `Nog te kiezen${stay.broad_place ? ` in ${stay.broad_place.label}` : ""}`;
+  return stay.property_name ?? `Nog te kiezen in ${stay.area.label}`;
 }
 
 export function browserTimeZone(): string {
@@ -433,6 +435,28 @@ export function localDate(instant: string, timeZone: string | null): string {
   return wallClock(instant, timeZone).slice(0, 10);
 }
 
+/**
+ * A local time at a visit, as a viewer elsewhere would read it: `null` when the viewer's clock says
+ * the same, else their time and how many days off their date is (-1, 0 or 1).
+ */
+export function timeForViewer(date: string, time: string, zone: string, viewerZone = browserTimeZone()): { time: string; days: number } | null {
+  try {
+    const guess = Date.parse(`${date}T${time.slice(0, 5)}:00Z`);
+    if (Number.isNaN(guess)) return null;
+    // The zone's offset depends on the instant itself, so settle it in two steps (daylight saving).
+    let instant = guess - utcOffsetMinutes(new Date(guess).toISOString(), zone) * 60_000;
+    instant = guess - utcOffsetMinutes(new Date(instant).toISOString(), zone) * 60_000;
+    const there = wallClock(new Date(instant).toISOString(), viewerZone);
+    if (there.slice(0, 16) === `${date}T${time.slice(0, 5)}`) return null;
+    return { time: there.slice(11, 16), days: daysBetween(date, there.slice(0, 10)) };
+  } catch {
+    return null;
+  }
+}
+
+/** The city part of an IANA zone name: "Asia/Taipei" reads as "Taipei". */
+export const zoneName = (zone: string): string => zone.split("/").pop()?.replaceAll("_", " ") ?? zone;
+
 /** Minutes a zone is ahead of UTC at an instant, daylight saving included. */
 export function utcOffsetMinutes(instant: string, timeZone: string | null): number {
   const minute = Math.floor(Date.parse(instant) / 60_000) * 60_000;
@@ -448,8 +472,7 @@ export function offsetLabel(minutes: number): string {
 
 export type Whereabouts = { kind: "travel" | "stay" | "between" | "home"; zone: string | null; label: string };
 
-const placeName = (place: Place) => place.locality ?? place.display_name ?? "?";
-const stayZone = (stay: Stay) => stay.broad_place?.timezone ?? null;
+const stayZone = (stay: Stay) => stay.area.timezone ?? null;
 
 /** The night an owner is in at an instant, local to a zone: before noon the
  * previous evening's stay still applies (check-out is in the morning). */
@@ -461,25 +484,25 @@ function effectiveNight(instant: string, zone: string): string {
 /** Where the plan puts the owner at ``instant``: at home outside the trip
  * (first departure or check-in to last arrival or check-out), otherwise
  * travelling, at a stay, or between stays in the last known zone. */
-export function whereabouts(instant: string, stays: Stay[], legs: TransportLeg[], homeZone: string): Whereabouts {
+export function whereabouts(instant: string, stays: Stay[], routes: Route[], homeZone: string): Whereabouts {
   const now = Date.parse(instant);
-  const active = legs.filter((leg) => leg.status !== "cancelled");
+  const active = timedRoutes(routes).filter((route) => route.status !== "cancelled");
   const zoned = stays.filter((stay) => stay.status !== "cancelled" && stayZone(stay));
   const midday = (isoDate: string) => Date.parse(`${isoDate}T12:00:00Z`);
   const bounds = [
-    ...active.flatMap((leg) => [Date.parse(leg.departs_at), Date.parse(leg.arrives_at)]),
+    ...active.flatMap((route) => [Date.parse(route.departs_at), Date.parse(route.arrives_at)]),
     ...zoned.flatMap((stay) => [midday(stay.check_in_date), midday(stay.check_out_date)]),
   ];
   const home: Whereabouts = { kind: "home", zone: homeZone, label: "thuis" };
   if (!bounds.length || now < Math.min(...bounds) || now >= Math.max(...bounds)) return home;
-  const leg = active.find((candidate) => Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at));
-  if (leg) return { kind: "travel", zone: leg.arrival_timezone, label: `onderweg naar ${placeName(leg.arrival_place)}` };
+  const route = active.find((candidate) => Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at));
+  if (route) return { kind: "travel", zone: route.arrival_timezone, label: `onderweg naar ${route.arrival_area.label}` };
   const current = zoned.find((stay) => stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)));
-  if (current) return { kind: "stay", zone: stayZone(current), label: current.broad_place?.label ?? stayLabel(current) };
+  if (current) return { kind: "stay", zone: stayZone(current), label: current.area.label };
   const last = [
-    ...active.filter((candidate) => Date.parse(candidate.arrives_at) <= now).map((candidate) => ({ at: Date.parse(candidate.arrives_at), zone: candidate.arrival_timezone, label: placeName(candidate.arrival_place) })),
+    ...active.filter((candidate) => Date.parse(candidate.arrives_at) <= now).map((candidate) => ({ at: Date.parse(candidate.arrives_at), zone: candidate.arrival_timezone, label: candidate.arrival_area.label })),
     // A stay that already began counts as recent up to its check-out.
-    ...zoned.filter((stay) => midday(stay.check_in_date) <= now).map((stay) => ({ at: Math.min(now, midday(stay.check_out_date)), zone: stayZone(stay), label: stay.broad_place?.label ?? stayLabel(stay) })),
+    ...zoned.filter((stay) => midday(stay.check_in_date) <= now).map((stay) => ({ at: Math.min(now, midday(stay.check_out_date)), zone: stayZone(stay), label: stay.area.label })),
   ].sort((left, right) => right.at - left.at)[0];
   return last ? { kind: "between", zone: last.zone, label: `tussen verblijven, laatst in ${last.label}` } : home;
 }
@@ -490,20 +513,16 @@ export function localDateTime(value = new Date()): string {
 }
 
 export function emptyDraft(tripId = ""): UpdateDraft {
-  return { tripId, updateId: null, occurredAt: localDateTime(), title: "", notes: "", place: null, mediaAssetIds: [] };
+  return { tripId, updateId: null, occurredAt: localDateTime(), title: "", notes: "", location: null, mediaAssetIds: [] };
 }
 
 export function readDraft(): UpdateDraft | null {
   try {
     const value = localStorage.getItem(draftKey);
     if (!value) return null;
-    // A draft saved before moments became reisupdates used `momentId` and `story`; its ids are still valid.
-    const draft = JSON.parse(value) as Partial<UpdateDraft> & { momentId?: unknown; story?: unknown };
-    const notes = draft.notes ?? draft.story;
-    if (typeof draft.tripId !== "string" || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof notes !== "string") return null;
-    const { momentId, story: _story, ...current } = draft;
-    const updateId = typeof draft.updateId === "string" ? draft.updateId : typeof momentId === "string" ? momentId : null;
-    return { ...emptyDraft(draft.tripId), ...current, notes, updateId };
+    const draft = JSON.parse(value) as Partial<UpdateDraft>;
+    if (typeof draft.tripId !== "string" || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof draft.notes !== "string") return null;
+    return { ...emptyDraft(draft.tripId), ...draft, updateId: typeof draft.updateId === "string" ? draft.updateId : null };
   } catch {
     return null;
   }

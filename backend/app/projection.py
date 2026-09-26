@@ -8,11 +8,12 @@ column cannot make it past these explicit renderers by accident.
 """
 
 import hashlib
+from datetime import date, datetime, time
 from typing import Any
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
-from .models import Place, PlaceKind, Trip, Visibility
-from .navigation import broad_navigation_url, google_maps_url
+from .models import Area, Location, Trip, Visibility
+from .navigation import area_navigation_url, google_maps_url
 
 
 class ScopeError(ValueError):
@@ -27,7 +28,7 @@ def _safe_date(value: Any, precision: str) -> str | None:
     return value.isoformat()[: _PRECISION_LENGTH[precision]] if value else None
 
 
-def _share_place(place: Place | None) -> dict[str, Any] | None:
+def _share_place(place: Area | None) -> dict[str, Any] | None:
     """Embed only an area's deliberately authored safe fields."""
     if place is None:
         return None
@@ -40,14 +41,14 @@ def _share_place(place: Place | None) -> dict[str, Any] | None:
     }
 
 
-def _share_shared_place(place: Place) -> dict[str, Any]:
-    """A shared place: an area's label and region, or a spot's public name.
+def _share_shared_place(place: Area | Location) -> dict[str, Any]:
+    """A shared area (its label and region) or location (its public name).
 
-    A spot shows its owner-chosen public name, city, country and point. Its
+    A location shows its owner-chosen public name, city, country and point. Its
     address is added only when the owner chose to share it. Its notes, provider
     ids and display name (which usually contains the address) are never shown.
     """
-    if place.kind == PlaceKind.BROAD:
+    if isinstance(place, Area):
         return _share_place(place) or {}
     values: dict[str, Any] = {
         "label": place.label,
@@ -65,21 +66,15 @@ def _share_shared_place(place: Place) -> dict[str, Any]:
     return values
 
 
-def _embedded_spot(spot: Place | None, context: dict[str, Any]) -> dict[str, Any] | None:
-    """The exact place of an update or stay, only when this audience receives that spot."""
-    if spot is None or spot.id not in context["places"]:
+def _embedded_location(location: Location | None, context: dict[str, Any]) -> dict[str, Any] | None:
+    """The location of an update or stay, only when this audience receives that location."""
+    if location is None or location.id not in context["locations"]:
         return None
-    return {"id": local_id("place", spot), **_share_shared_place(spot)}
+    return {"id": local_id("location", location), **_share_shared_place(location)}
 
 
-def _share_transport_endpoint(place: Place) -> dict[str, Any]:
-    """Show a leg's endpoint as its area, never copied spot city text."""
-    return _share_place(place.area) or {"label": "Unassigned", "country_code": place.country_code, "region": None,
-                                         "latitude": None, "longitude": None}
-
-
-def _share_transport_map_point(place: Place | None, transport_kind: str) -> dict[str, Any] | None:
-    """A transport endpoint on the map, only when that place is itself shared."""
+def _share_route_map_point(place: Location | None, mode: str) -> dict[str, Any] | None:
+    """A route end on the map, only when that location is itself shared."""
     if place is None or place.latitude is None or place.longitude is None:
         return None
     return {
@@ -87,7 +82,7 @@ def _share_transport_map_point(place: Place | None, transport_kind: str) -> dict
         "country_code": place.country_code,
         "latitude": place.latitude,
         "longitude": place.longitude,
-        "kind": "airport" if transport_kind == "flight" else "place",
+        "kind": "airport" if mode == "flight" else "place",
     }
 
 
@@ -125,9 +120,9 @@ def delivered(trip: Trip, scope: dict) -> dict[str, list[Any]]:
         if sharing_blocker("media_derivative", item) is None
         and (item.travel_update_id in updates or is_delivered("media_derivative", item, chosen["media_derivative"]))
     ]
-    result["route_stage"].sort(key=lambda item: item.position)
+    result["visit"].sort(key=lambda item: (item.starts_on is None, item.starts_on or date.min, item.start_time or time.min, item.position))
     result["travel_update"].sort(key=lambda item: item.occurred_at)
-    result["transport_leg"].sort(key=lambda item: item.departs_at)
+    result["route"].sort(key=lambda item: (item.departs_at is None, item.departs_at.replace(tzinfo=None) if item.departs_at else datetime.min, item.created_at.replace(tzinfo=None)))
     result["stay"].sort(key=lambda item: item.check_in_date)
     return result
 
@@ -161,26 +156,64 @@ def validate_scope(trip: Trip, scope: dict) -> None:
 def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> dict[str, Any]:
     """Render one record with its fixed, contract-approved fields."""
     values: dict[str, Any]
-    if kind == "place":
+    if kind in {"area", "location"}:
         values = _share_shared_place(item)
-    elif kind == "route_stage":
-        values = {"position": item.position, "label": item.label, "summary": item.summary, "place": _share_place(item.place)}
-    elif kind == "broad_route":
-        values = {"label": item.label, "geometry": item.geometry, "date_precision": item.date_precision.value}
+    elif kind == "visit":
+        precision = item.share_date_precision.value
+        shared_location = _embedded_location(item.location, context)
+        values = {
+            "title": item.title or (shared_location or {}).get("label") or item.area.label,
+            "summary": item.summary, "place": _share_place(item.area), "date_precision": precision,
+        }
+        if item.starts_on is not None:
+            values["starts_on"] = _safe_date(item.starts_on, precision)
+            values["ends_on"] = _safe_date(item.ends_on, precision) if item.ends_on is not None else None
+            # A time is private unless the owner also chose to show it, and only means something on a full date.
+            if item.share_time and precision == "day" and item.start_time is not None:
+                values["start_time"] = item.start_time.strftime("%H:%M")
+                values["end_time"] = item.end_time.strftime("%H:%M") if item.end_time is not None else None
+                # The times are local at the visit, so a viewer far away can read them in their own time.
+                values["timezone"] = item.area.timezone
+        if shared_location:
+            values["location"] = shared_location
+    elif kind == "route":
+        locations = context["locations"]
+        values = {
+            "mode": item.mode.value, "status": item.status.value, "label": item.label,
+            "departure": _share_place(item.departure_area), "arrival": _share_place(item.arrival_area),
+            "carrier": item.carrier, "service_reference": item.service_reference,
+        }
+        if item.departs_at is not None and item.arrives_at is not None:
+            values.update(
+                departs_at=item.departs_at.isoformat(), arrives_at=item.arrives_at.isoformat(),
+                departure_timezone=item.departure_timezone, arrival_timezone=item.arrival_timezone,
+            )
+        if item.geometry is not None:
+            values["geometry"] = item.geometry
+        points = {
+            "departure": _share_route_map_point(
+                item.departure_location if item.departure_location_id in locations else None, item.mode.value
+            ),
+            "arrival": _share_route_map_point(
+                item.arrival_location if item.arrival_location_id in locations else None, item.mode.value
+            ),
+        }
+        if any(points.values()):
+            values["map"] = points
     elif kind == "stay":
         precision = item.share_date_precision.value
         values = {
             "title": item.area.label, "place": _share_place(item.area), "date_precision": precision,
             "starts_on": _safe_date(item.check_in_date, precision), "ends_on": _safe_date(item.check_out_date, precision),
         }
-        if spot := _embedded_spot(item.place, context):
-            values["spot"] = spot
+        if location := _embedded_location(item.location, context):
+            values["location"] = location
     elif kind == "travel_update":
         values = {"title": item.title, "body": item.body, "date_precision": item.date_precision.value,
                   "story_date": _safe_date(item.occurred_at.date(), item.date_precision.value),
                   "place": _share_place(item.area)}
-        if spot := _embedded_spot(item.place, context):
-            values["spot"] = spot
+        if location := _embedded_location(item.location, context):
+            values["location"] = location
     elif kind == "media_derivative":
         # The projection-local file marker discloses no object key, original
         # asset, or canonical derivative id.
@@ -190,22 +223,6 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             values["update"] = context["updates"][item.travel_update_id]
     elif kind == "document_derivative":
         values = {"title": item.document_asset.title, "file": {"id": identifier}}
-    else:  # transport_leg
-        places = context["places"]
-        values = {
-            "kind": item.kind.value, "status": item.status.value,
-            "departure": _share_transport_endpoint(item.departure_place),
-            "arrival": _share_transport_endpoint(item.arrival_place),
-            "departs_at": item.departs_at.isoformat(), "arrives_at": item.arrives_at.isoformat(),
-            "departure_timezone": item.departure_timezone, "arrival_timezone": item.arrival_timezone,
-            "carrier": item.carrier, "service_reference": item.service_reference,
-        }
-        points = {
-            "departure": _share_transport_map_point(item.departure_place if item.departure_place_id in places else None, item.kind.value),
-            "arrival": _share_transport_map_point(item.arrival_place if item.arrival_place_id in places else None, item.kind.value),
-        }
-        if any(points.values()):
-            values["map"] = points
     return {"id": identifier, **values}
 
 
@@ -222,9 +239,8 @@ def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
 
 
 _DESTINATIONS = {
-    "route_stage": "route_stages", "place": "places", "stay": "stays", "travel_update": "updates",
-    "media_derivative": "media", "document_derivative": "documents", "broad_route": "route",
-    "transport_leg": "transport",
+    "visit": "visits", "area": "places", "location": "places", "stay": "stays", "travel_update": "updates",
+    "media_derivative": "media", "document_derivative": "documents", "route": "routes",
 }
 
 
@@ -233,30 +249,30 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
     records = delivered(trip, scope)
     context = {
         "updates": {item.id: local_id("travel_update", item) for item in records["travel_update"]},
-        "places": {item.id for item in records["place"]},
+        "locations": {item.id for item in records["location"]},
     }
     projection: dict[str, Any] = {
         "schema_version": schema_version,
         "title": trip.title if scope.get("trip", {}).get("title", True) else None,
         "summary": trip.summary if scope.get("trip", {}).get("summary", True) else None,
         "dates": shared_trip_dates(trip, scope),
-        "route_stages": [], "places": [], "updates": [], "stays": [], "media": [], "documents": [], "route": [],
-        "transport": [], "navigation": [],
+        "visits": [], "places": [], "updates": [], "stays": [], "media": [], "documents": [], "routes": [],
+        "navigation": [],
     }
     for kind, destination in _DESTINATIONS.items():
         for item in records[kind]:
             identifier = local_id(kind, item)
             projection[destination].append(_render(kind, item, identifier, context))
             # A shared place is also a destination someone may navigate to.
-            if kind == "place" and _navigation_target(item) is not None:
+            if kind in {"area", "location"} and _navigation_target(item) is not None:
                 projection["navigation"].append({"id": identifier})
     return projection
 
 
-def _navigation_target(place: Place) -> str | None:
-    """Where a shared place sends someone: a spot's point, or an area's name."""
-    if place.kind == PlaceKind.BROAD:
-        return broad_navigation_url(place)
+def _navigation_target(place: Area | Location) -> str | None:
+    """Where a shared place sends someone: a location's point, or an area's name."""
+    if isinstance(place, Area):
+        return area_navigation_url(place)
     if place.latitude is not None and place.longitude is not None:
         return google_maps_url(f"{place.latitude:.7f},{place.longitude:.7f}")
     return None
@@ -264,9 +280,11 @@ def _navigation_target(place: Place) -> str | None:
 
 def scoped_navigation_url(trip: Trip, scope: dict, identifier: str) -> str | None:
     """Resolve a projection-local navigation marker among the delivered places."""
-    for place in delivered(trip, scope)["place"]:
-        if local_id("place", place) == identifier:
-            return _navigation_target(place)
+    records = delivered(trip, scope)
+    for kind in ("area", "location"):
+        for place in records[kind]:
+            if local_id(kind, place) == identifier:
+                return _navigation_target(place)
     return None
 
 

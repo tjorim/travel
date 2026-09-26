@@ -2,14 +2,14 @@
 
 from urllib.parse import urlencode
 
-from .models import Place
+from .models import Area, Location
 
 
 def google_maps_url(destination: str) -> str:
     return f"https://www.google.com/maps/dir/?{urlencode({'api': '1', 'destination': destination})}"
 
 
-def exact_navigation_url(place: Place) -> str | None:
+def location_navigation_url(place: Location) -> str | None:
     """Build an exact target only for an owner or an explicit capability."""
     if place.latitude is not None and place.longitude is not None:
         return google_maps_url(f"{place.latitude:.7f},{place.longitude:.7f}")
@@ -19,8 +19,8 @@ def exact_navigation_url(place: Place) -> str | None:
     return google_maps_url(destination) if destination else None
 
 
-def broad_navigation_url(place: Place) -> str:
-    """Never use a broad place's optional generalized point for navigation.
+def area_navigation_url(place: Area) -> str:
+    """Never use an area's optional generalized point for navigation.
 
     A city-level textual target is intentionally less precise and avoids
     promoting a map-display coordinate into an external navigation destination.

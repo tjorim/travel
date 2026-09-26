@@ -14,10 +14,10 @@ vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 vi.mock("./RenderedPreview", () => ({ RenderedPreview: () => <p>Weergegeven preview</p> }));
 
 const scope = (items: ShareScope["items"] = []): ShareScope => ({ schema_version: "travel/share-scope@1", trip: { title: true, summary: true, dates: null }, items });
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, route_stages: [], travel_updates: [
-  { id: "u1", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Privé dagboek", body: "Geheim", private_notes: null, broad_place_id: null, place: null, media_asset_ids: [], visibility: "private" },
-  { id: "u2", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Aankomst", body: "Geland", private_notes: null, broad_place_id: null, place: null, media_asset_ids: [], visibility: "everyone" },
-  { id: "u3", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Stad ↔ natuur", body: "Bos", private_notes: null, broad_place_id: null, place: null, media_asset_ids: [], visibility: "custom" },
+const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [
+  { id: "u1", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Privé dagboek", body: "Geheim", private_notes: null, area_id: null, location: null, media_asset_ids: [], visibility: "private" },
+  { id: "u2", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Aankomst", body: "Geland", private_notes: null, area_id: null, location: null, media_asset_ids: [], visibility: "everyone" },
+  { id: "u3", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Stad ↔ natuur", body: "Bos", private_notes: null, area_id: null, location: null, media_asset_ids: [], visibility: "custom" },
 ] };
 const link = (id: string, label: string, state: ShareLink["state"] = "draft"): ShareLink => ({ id, series_id: id, label, state, token: null, expires_at: null, scope: scope() } as ShareLink);
 
@@ -30,14 +30,14 @@ beforeEach(() => {
   status = { trip_id: "trip", slug: "exampleland", surface_state: "unpublished", scope: scope() } as unknown as PublicProjectionStatus;
   api = fakeApi()
     .collection("/api/trips/trip/share-links", [link("l1", "Familie")], { create: (body, count) => link(`l${count + 1}`, String(body.label)) })
-    .collection("/api/trips/trip/places/broad", [{ id: "b1", label: "Taipei", visibility: "custom" }])
-    .collection("/api/trips/trip/places", [
+    .collection("/api/trips/trip/areas", [{ id: "b1", label: "Taipei", visibility: "custom" }])
+    .collection("/api/trips/trip/locations", [
       { id: "e1", label: "Warme bron van Beitou", display_name: "Beitou Hot Spring, 12 Guangming Road", visibility: "custom" },
       { id: "e2", label: null, display_name: "Hotel, 1 Main Street", visibility: "private" },
     ])
-    .collection("/api/trips/trip/broad-routes", [])
+    .collection("/api/trips/trip/visits", [{ id: "v1", title: "Noordkust", area: { label: "Taipei" }, location: null, visibility: "custom" }])
     .collection("/api/trips/trip/stays", [])
-    .collection("/api/trips/trip/transport-legs", [{ id: "leg1", kind: "flight", departure_place: { locality: "Zaventem", country_code: "BE" }, arrival_place: { locality: "Taoyuan", country_code: "TW" }, visibility: "custom" }])
+    .collection("/api/trips/trip/routes", [{ id: "leg1", mode: "flight", label: null, departure_area: { label: "Zaventem", country_code: "BE" }, arrival_area: { label: "Taoyuan", country_code: "TW" }, visibility: "custom" }])
     .collection("/api/trips/trip/media", [{ id: "p1", original_filename: "kust.jpg" }])
     .collection("/api/trips/trip/media/p1/derivatives", [{ id: "x1", review_state: "approved", purpose: "share", visibility: "custom", travel_update_id: null }, { id: "x2", review_state: "pending", purpose: "share", visibility: "private", travel_update_id: null }])
     .collection("/api/trips/trip/documents", []);
@@ -46,7 +46,7 @@ beforeEach(() => {
   api.on("PUT", /^\/api\/trips\/trip\/public-projection$/, (body) => { status = { ...status, scope: body as ShareScope }; return status; });
   api.on("POST", /^\/api\/trips\/trip\/public-projection\/publish$/, () => { status = { ...status, surface_state: "published" }; return status; });
   api.on("POST", /^\/api\/trips\/trip\/public-projection\/unpublish$/, () => { status = { ...status, surface_state: "unpublished" }; return status; });
-  api.on("POST", /\/preview$/, () => ({ title: "Exampleland", summary: null, dates: null, route_stages: [], places: [], updates: [], stays: [], media: [], documents: [], route: [], transport: [] } as unknown as ProjectionDocument));
+  api.on("POST", /\/preview$/, () => ({ title: "Exampleland", summary: null, dates: null, visits: [], places: [], updates: [], stays: [], media: [], documents: [], routes: [] } as unknown as ProjectionDocument));
   api.on("POST", /\/share-links\/([^/]+)\/(activate|rotate)$/, (_body, match) => {
     const rows = api.rows("/api/trips/trip/share-links");
     const row = rows.find((item) => item.id === match[1])!;
@@ -68,12 +68,12 @@ it("offers only records set to custom, and only reviewed copies, for an audience
   renderWithOwner(<PublicationManager trip={trip} />);
   await publicScope().findByText("Stad ↔ natuur");
   await waitFor(() => expect(publicScope().getByText("kust.jpg")).toBeTruthy());
-  // The pending copy, the private and everyone updates and the unnamed private spot are not choices here.
+  // The pending copy, the private and everyone updates and the unnamed private location are not choices here.
   expect(publicScope().getAllByText("Goedgekeurde foto")).toHaveLength(1);
   expect(publicScope().queryByText("Privé dagboek")).toBeNull();
   expect(publicScope().queryByText("Aankomst")).toBeNull();
   expect(publicScope().queryByText(/Hotel, 1 Main/)).toBeNull();
-  // A named spot is offered under its public name, never its display name.
+  // A named location is offered under its public name, never its display name.
   expect(publicScope().getByText("Warme bron van Beitou")).toBeTruthy();
   expect(screen.queryByText(/12 Guangming Road/)).toBeNull();
 });
@@ -96,16 +96,16 @@ it("sets who sees a record from Delen with the same control as its own editor", 
   await waitFor(() => expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u2")).toEqual({ visibility: "private" }));
 });
 
-it("offers a redacted transport summary, without the owner-only booking fields", async () => {
+it("offers a redacted route summary, without the owner-only booking fields", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  const transport = within((await publicScope().findByText("Vervoer")).closest("details")!);
-  expect(transport.getByText("Vlucht: Zaventem · BE → Taoyuan · TW")).toBeTruthy();
-  expect(transport.getByText(/zonder boekingscode, reisklasse, notities of documenten/i)).toBeTruthy();
+  const transport = within((await publicScope().findByText("Routes")).closest("details")!);
+  expect(transport.getByText("Vlucht: Zaventem → Taoyuan")).toBeTruthy();
+  expect(transport.getByText(/nooit boekingscode, reisklasse, notities of documenten/i)).toBeTruthy();
   fireEvent.click(transport.getByRole("button", { name: "Alles kiezen" }));
   fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
   await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
   // No fields to pick: the scope names the record only.
-  expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!.items).toEqual([{ kind: "transport_leg", id: "leg1" }]);
+  expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!.items).toEqual([{ kind: "route", id: "leg1" }]);
 });
 
 it("groups records into collapsed sections with a count, and chooses or clears a whole section", async () => {
@@ -119,8 +119,9 @@ it("groups records into collapsed sections with a count, and chooses or clears a
   expect((updates.getByLabelText(/Stad ↔ natuur/) as HTMLInputElement).checked).toBe(true);
   fireEvent.click(updates.getByRole("button", { name: "Niets kiezen" }));
   expect(updates.getByText("0 van 1 gekozen")).toBeTruthy();
-  // The other sections are untouched: a city and a named spot are both places.
-  expect((await group("Plaatsen")).getByText("0 van 2 gekozen")).toBeTruthy();
+  // The other sections are untouched.
+  expect((await group("Gebieden")).getByText("0 van 1 gekozen")).toBeTruthy();
+  expect((await group("Locaties")).getByText("0 van 1 gekozen")).toBeTruthy();
 });
 
 it("shows no link editor until a link is started or chosen, and says so when there are no links", async () => {

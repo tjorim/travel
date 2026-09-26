@@ -1,8 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..access import set_visibility
@@ -10,24 +9,17 @@ from ..auth import current_subject
 from ..database import get_session
 from ..models import (
     DocumentDerivative,
+    Location,
     MediaAsset,
     MediaDerivative,
-    Place,
-    PlaceKind,
-    RouteStage,
+    Route,
     Stay,
-    TransportLeg,
     TravelUpdate,
     TravelUpdateMediaAsset,
     Trip,
     Visibility,
 )
 from ..schemas import (
-    BroadPlaceInput,
-    ExactPlaceInput,
-    RouteStageCreate,
-    RouteStageResponse,
-    RouteStageUpdate,
     TravelUpdateCreate,
     TravelUpdatePatch,
     TravelUpdateResponse,
@@ -35,6 +27,7 @@ from ..schemas import (
     TripResponse,
     TripUpdate,
 )
+from .placement import location_from_input, selected_area
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -44,94 +37,21 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 def trip_query():
     return select(Trip).options(
-        selectinload(Trip.route_stages).selectinload(RouteStage.place),
-        selectinload(Trip.places),
-        selectinload(Trip.travel_updates).selectinload(TravelUpdate.broad_place),
-        selectinload(Trip.travel_updates).selectinload(TravelUpdate.place).selectinload(Place.area),
+        selectinload(Trip.areas),
+        selectinload(Trip.locations),
+        selectinload(Trip.travel_updates).selectinload(TravelUpdate.chosen_area),
+        selectinload(Trip.travel_updates).selectinload(TravelUpdate.location).selectinload(Location.area),
         selectinload(Trip.travel_updates).selectinload(TravelUpdate.media_links),
-        selectinload(Trip.stays).selectinload(Stay.place).selectinload(Place.area),
-        selectinload(Trip.stays).selectinload(Stay.broad_place),
-        selectinload(Trip.broad_routes),
-        selectinload(Trip.transport_legs).selectinload(TransportLeg.departure_place).selectinload(Place.area),
-        selectinload(Trip.transport_legs).selectinload(TransportLeg.arrival_place).selectinload(Place.area),
-        selectinload(Trip.transport_legs).selectinload(TransportLeg.document_links),
-        selectinload(Trip.itinerary_entries),
+        selectinload(Trip.stays).selectinload(Stay.location).selectinload(Location.area),
+        selectinload(Trip.routes).selectinload(Route.departure_area),
+        selectinload(Trip.routes).selectinload(Route.arrival_area),
+        selectinload(Trip.routes).selectinload(Route.departure_location).selectinload(Location.area),
+        selectinload(Trip.routes).selectinload(Route.arrival_location).selectinload(Location.area),
+        selectinload(Trip.routes).selectinload(Route.document_links),
         selectinload(Trip.trip_tasks),
         selectinload(Trip.media_derivatives).selectinload(MediaDerivative.media_asset),
         selectinload(Trip.document_derivatives).selectinload(DocumentDerivative.document_asset),
     )
-
-
-def broad_place_from_input(session: Session, trip_id: str, payload: BroadPlaceInput) -> Place:
-    place = Place(trip_id=trip_id, kind=PlaceKind.BROAD, **payload.model_dump())
-    session.add(place)
-    session.flush()
-    return place
-
-
-def selected_broad_place(session: Session, trip_id: str, place_id: str) -> Place:
-    place = session.scalar(
-        select(Place).where(Place.id == place_id, Place.trip_id == trip_id, Place.kind == PlaceKind.BROAD)
-    )
-    if place is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Broad place is unavailable for this trip")
-    return place
-
-
-def broad_place_for_stage(session: Session, trip_id: str, payload: RouteStageCreate | RouteStageUpdate) -> Place:
-    if payload.broad_place_id is not None:
-        return selected_broad_place(session, trip_id, payload.broad_place_id)
-    if payload.place is not None:
-        return broad_place_from_input(session, trip_id, payload.place)
-    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A broad place is required")
-
-
-def area_for_spot(session: Session, trip_id: str, spot: Place) -> Place:
-    """The area a new spot belongs to, found or made from the spot's own city.
-
-    An existing area with the same name (and a compatible country) is reused, so
-    every hotel and airport in Taipei ends up in one "Taipei". A spot without
-    city data is still filed, temporarily, under one private "Unassigned"
-    area for its trip. This preserves the one non-negotiable relationship:
-    every spot has an area, while making those incomplete records easy to find
-    and rename in the owner UI."""
-    name = (spot.locality or spot.admin_area or "").strip()
-    fallback = not name
-    if fallback:
-        name = "Unassigned"
-    for area in session.scalars(
-        select(Place).where(Place.trip_id == trip_id, Place.kind == PlaceKind.BROAD, func.lower(Place.label) == name.lower())
-    ):
-        if not area.country_code or not spot.country_code or area.country_code == spot.country_code:
-            return area
-    area = Place(
-        trip_id=trip_id, kind=PlaceKind.BROAD, label=name[:120], country_code=spot.country_code,
-        region=spot.admin_area if spot.locality and not fallback else None,
-    )
-    session.add(area)
-    session.flush()
-    return area
-
-
-def exact_place_from_input(session: Session, trip_id: str, payload: ExactPlaceInput) -> Place:
-    """Create a spot in its area, or return the spot the trip already has."""
-    if payload.existing_place_id is not None:
-        existing = session.scalar(
-            select(Place).where(
-                Place.id == payload.existing_place_id, Place.trip_id == trip_id, Place.kind == PlaceKind.EXACT
-            )
-        )
-        if existing is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Place not found on this trip")
-        return existing
-    place = Place(trip_id=trip_id, kind=PlaceKind.EXACT, **payload.model_dump(exclude={"existing_place_id", "area_id"}))
-    if payload.area_id is not None:
-        place.area = selected_broad_place(session, trip_id, payload.area_id)
-    else:
-        place.area = area_for_spot(session, trip_id, place)
-    session.add(place)
-    session.flush()
-    return place
 
 
 def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[str]) -> list[TravelUpdateMediaAsset]:
@@ -165,14 +85,6 @@ def owned_trip(session: Session, trip_id: str, subject: str) -> Trip:
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     return trip
-
-
-def commit_or_conflict(session: Session) -> None:
-    try:
-        session.commit()
-    except IntegrityError as error:
-        session.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Conflicting route-stage position") from error
 
 
 @router.get("", response_model=list[TripResponse])
@@ -211,89 +123,10 @@ def delete_trip(trip_id: str, session: SessionDep, subject: SubjectDep) -> Respo
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/{trip_id}/route-stages", response_model=RouteStageResponse, status_code=status.HTTP_201_CREATED)
-def create_route_stage(trip_id: str, payload: RouteStageCreate, session: SessionDep, subject: SubjectDep) -> RouteStage:
-    trip = owned_trip(session, trip_id, subject)
-    stage = RouteStage(
-        trip=trip,
-        place=broad_place_for_stage(session, trip.id, payload),
-        position=payload.position,
-        label=payload.label,
-        summary=payload.summary,
-    )
-    session.add(stage)
-    commit_or_conflict(session)
-    return session.scalar(select(RouteStage).options(selectinload(RouteStage.place)).where(RouteStage.id == stage.id))  # type: ignore[return-value]
-
-
-def owned_stage(trip: Trip, stage_id: str) -> RouteStage:
-    stage = next((item for item in trip.route_stages if item.id == stage_id), None)
-    if stage is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route stage not found")
-    return stage
-
-
-@router.patch("/{trip_id}/route-stages/{stage_id}", response_model=RouteStageResponse)
-def update_route_stage(
-    trip_id: str, stage_id: str, payload: RouteStageUpdate, session: SessionDep, subject: SubjectDep
-) -> RouteStage:
-    trip = owned_trip(session, trip_id, subject)
-    stage = owned_stage(trip, stage_id)
-    if payload.place is not None or payload.broad_place_id is not None:
-        stage.place = broad_place_for_stage(session, trip.id, payload)
-    if payload.position is not None and payload.position != stage.position:
-        ordered = sorted(trip.route_stages, key=lambda item: item.position)
-        ordered.remove(stage)
-        ordered.insert(min(payload.position, len(ordered)), stage)
-        # The unique trip/position constraint makes an ordinary swap fail.
-        # Move every row out of its current range before compacting it again.
-        offset = max((item.position for item in trip.route_stages), default=0) + len(ordered) + 1
-        for item in trip.route_stages:
-            item.position += offset
-        session.flush()
-        for position, item in enumerate(ordered):
-            item.position = position
-    for field, value in payload.model_dump(exclude_unset=True, exclude={"place", "broad_place_id", "position"}).items():
-        setattr(stage, field, value)
-    commit_or_conflict(session)
-    return session.scalar(select(RouteStage).options(selectinload(RouteStage.place)).where(RouteStage.id == stage.id))  # type: ignore[return-value]
-
-
-@router.delete("/{trip_id}/route-stages/{stage_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_route_stage(trip_id: str, stage_id: str, session: SessionDep, subject: SubjectDep) -> Response:
-    trip = owned_trip(session, trip_id, subject)
-    session.delete(owned_stage(trip, stage_id))
-    session.flush()
-    remaining = list(
-        session.scalars(select(RouteStage).where(RouteStage.trip_id == trip.id).order_by(RouteStage.position))
-    )
-    # Compact positions after a removal so the next add can use the end of
-    # the visible ordered list without colliding with a stale gap.
-    offset = max((item.position for item in remaining), default=0) + len(remaining) + 1
-    for item in remaining:
-        item.position += offset
-    session.flush()
-    for position, item in enumerate(remaining):
-        item.position = position
-    session.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-def resolve_broad_place_id(session: Session, trip: Trip, broad_place_id: str | None) -> str | None:
-    if broad_place_id is None:
-        return None
-    place = session.scalar(
-        select(Place).where(Place.id == broad_place_id, Place.trip_id == trip.id, Place.kind == PlaceKind.BROAD)
-    )
-    if place is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Broad place not found on this trip")
-    return place.id
-
-
 def _loaded(session: Session, update_id: str) -> TravelUpdate:
     return session.scalar(
         select(TravelUpdate)
-        .options(selectinload(TravelUpdate.broad_place), selectinload(TravelUpdate.place), selectinload(TravelUpdate.media_links))
+        .options(selectinload(TravelUpdate.chosen_area), selectinload(TravelUpdate.location), selectinload(TravelUpdate.media_links))
         .where(TravelUpdate.id == update_id)
     )  # type: ignore[return-value]
 
@@ -303,16 +136,16 @@ def create_travel_update(
     trip_id: str, payload: TravelUpdateCreate, session: SessionDep, subject: SubjectDep
 ) -> TravelUpdate:
     trip = owned_trip(session, trip_id, subject)
-    spot = exact_place_from_input(session, trip.id, payload.place) if payload.place else None
-    if spot is not None and payload.broad_place_id is not None:
+    location = location_from_input(session, trip.id, payload.location) if payload.location else None
+    if location is not None and payload.area_id is not None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="An update with a spot gets its area from that spot",
+            detail="An update with a location gets its area from that location",
         )
     update = TravelUpdate(
         trip=trip,
-        broad_place_id=resolve_broad_place_id(session, trip, payload.broad_place_id) if spot is None else None,
-        place=spot,
+        area_id=selected_area(session, trip.id, payload.area_id).id if location is None and payload.area_id is not None else None,
+        location=location,
         media_links=media_links_from_ids(session, trip.id, payload.media_asset_ids),
         occurred_at=payload.occurred_at,
         date_precision=payload.date_precision,
@@ -348,23 +181,23 @@ def update_travel_update(
 ) -> TravelUpdate:
     trip = owned_trip(session, trip_id, subject)
     update = owned_update(trip, update_id)
-    # A present null is intentional: the owner may remove a place or notes
+    # A present null is intentional: the owner may remove a location or notes
     # while editing. Pydantic otherwise represents omitted and null alike.
-    if "place" in payload.model_fields_set:
-        update.place = exact_place_from_input(session, trip.id, payload.place) if payload.place else None
-    if update.place is not None:
-        if "broad_place_id" in payload.model_fields_set and payload.broad_place_id is not None:
+    if "location" in payload.model_fields_set:
+        update.location = location_from_input(session, trip.id, payload.location) if payload.location else None
+    if update.location is not None:
+        if "area_id" in payload.model_fields_set and payload.area_id is not None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="An update with a spot gets its area from that spot",
+                detail="An update with a location gets its area from that location",
             )
-        update.broad_place_id = None
-    elif "broad_place_id" in payload.model_fields_set:
-        update.broad_place_id = resolve_broad_place_id(session, trip, payload.broad_place_id)
+        update.area_id = None
+    elif "area_id" in payload.model_fields_set:
+        update.area_id = selected_area(session, trip.id, payload.area_id).id if payload.area_id is not None else None
     if "media_asset_ids" in payload.model_fields_set:
         update.media_links = media_links_from_ids(session, trip.id, payload.media_asset_ids or [])
     values = payload.model_dump(
-        exclude_unset=True, exclude={"broad_place_id", "place", "media_asset_ids", "visibility"}
+        exclude_unset=True, exclude={"area_id", "location", "media_asset_ids", "visibility"}
     )
     for field, value in values.items():
         if value is None and field in {"occurred_at", "date_precision", "title", "body"}:
@@ -385,3 +218,15 @@ def delete_travel_update(trip_id: str, update_id: str, session: SessionDep, subj
     session.delete(owned_update(trip, update_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{trip_id}/offline-map", status_code=status.HTTP_204_NO_CONTENT)
+def revalidate_offline_map(trip_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+    """Owner-only revalidation target for an explicitly pinned map snapshot.
+
+    The snapshot itself is assembled in the client from the already owner-scoped
+    routes, areas and locations endpoints. This small endpoint deliberately has no public
+    counterpart and no cacheable response.
+    """
+    owned_trip(session, trip_id, subject)
+    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})

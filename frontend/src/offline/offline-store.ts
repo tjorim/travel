@@ -7,7 +7,7 @@ const SUBJECT_INDEX = "by_subject";
 export const OFFLINE_SCHEMA_VERSION = "travel/offline-copy@1";
 export const OFFLINE_LEASE_MS = 7 * 24 * 60 * 60 * 1000;
 
-export type OfflineResourceKind = "library_document" | "trip_document" | "emergency_info" | "media_asset" | "map_route_data" | "itinerary_entry";
+export type OfflineResourceKind = "library_document" | "trip_document" | "emergency_info" | "media_asset" | "route_data" | "visit";
 
 export type OfflineCopyRecord = {
   id: string;

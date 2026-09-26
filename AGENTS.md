@@ -68,7 +68,7 @@ Use two-space indentation in TypeScript, CSS and JSON, and match the
 surrounding code. Keep Python to the Ruff configuration in
 `backend/pyproject.toml`.
 
-Operational data (stays, transport, day plan, tasks, documents) stays
+Operational data (stays, routes, visits, tasks, documents) stays
 owner-only; visitor views receive only fields an owner scope explicitly
 selects. Complete `docs/publication-safety-check.md` before publishing. Do not
 commit passwords, PINs, recovery codes, or payment-card details.

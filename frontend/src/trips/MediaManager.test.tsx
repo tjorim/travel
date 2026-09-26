@@ -14,19 +14,22 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
-  id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, route_stages: [],
-  travel_updates: [{ id: "e1", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Eerste avond", body: "…", private_notes: null, broad_place_id: null, place: null, media_asset_ids: ["p2"], visibility: "private" }],
+  id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null,
+  travel_updates: [{ id: "e1", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Eerste avond", body: "…", private_notes: null, area_id: null, location: null, media_asset_ids: ["p2"], visibility: "private" }],
 };
 const photo = (id: string, name: string): MediaAsset => ({ id, media_kind: "photo", original_filename: name, byte_size: 2048, content_type: "image/jpeg", captured_at: null, gps: null, file_url: `/api/trips/trip/media/${id}/original` } as MediaAsset);
 const derivative = (id: string, state: "pending" | "approved", extra: Partial<MediaDerivative> = {}): MediaDerivative => ({ id, media_asset_id: "p1", purpose: "share", review_state: state, metadata_stripped_at: null, width: 800, height: 600, travel_update_id: null, caption: null, alt_text: null, focal_x: null, focal_y: null, visibility: "private", created_at: "2054-01-01T00:00:00Z", file_url: `/files/${id}`, ...extra });
 
 let api: FakeApi;
+let providers: { provider: string; available: boolean; connected: boolean }[];
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi()
     .collection("/api/trips/trip/media", [photo("p1", "kust.jpg"), photo("p2", "markt.jpg")])
     .collection("/api/trips/trip/media/p1/derivatives", [derivative("x1", "pending", { caption: "Kust" })])
     .collection("/api/trips/trip/media/p2/derivatives", []);
+  providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: true, connected: true }];
+  api.on("GET", /^\/api\/provider-tokens$/, () => providers);
 });
 afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); await resetOfflineDb(); });
 
@@ -118,7 +121,7 @@ it("reviews possible visits without storing them, and attaches media to an exist
 
   fireEvent.change(screen.getByLabelText("Koppel aan"), { target: { value: "e1" } });
   fireEvent.click(screen.getByRole("button", { name: "Aan reisupdate koppelen" }));
-  await screen.findByText("Private media gekoppeld aan “Eerste avond”. Er is geen plaats of deelbare inhoud gemaakt.");
+  await screen.findByText("Private media gekoppeld aan “Eerste avond”. Er is geen locatie of deelbare inhoud gemaakt.");
   expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e1")).toEqual({ media_asset_ids: ["p2", "p1"] });
 });
 
@@ -130,4 +133,12 @@ it("starts an import and reports a selection that is not ready yet", async () =>
   await screen.findByText("GoPro Cloud-selectie");
   fireEvent.click(screen.getByRole("button", { name: "Selectie importeren" }));
   await screen.findByText("Je selectie is nog niet klaar bij de provider. Probeer opnieuw wanneer je klaar bent.");
+});
+
+it("hides a provider the server does not offer and disables one the owner has not connected", async () => {
+  providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  renderMedia();
+  const google = await screen.findByRole("button", { name: "Kies in Google Photos" });
+  expect((google as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.queryByRole("button", { name: "Kies in GoPro Cloud" })).toBeNull();
 });

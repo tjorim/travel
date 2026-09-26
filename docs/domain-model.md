@@ -5,6 +5,76 @@ detailed contracts are in
 [the publication model](decisions/37-canonical-content-and-publication-model.md)
 and [the privacy policy](decisions/36-privacy-sharing-offline-policy.md).
 
+## The records
+
+Everything in a trip is one of these. The Dutch word is what the owner sees.
+
+- **Area** (*gebied*): a city or region, with a label, country and an optional
+  rounded point and time zone. Never an address. Sharing an area never shares
+  the locations in it.
+- **Location** (*locatie*): a hotel, station, monument or just a city, with an
+  address and coordinates when known. It always belongs to exactly one area,
+  and stays private until the owner gives it a public name and chooses who
+  sees it. A new location goes into the area the owner picks, else into the
+  area of its city (made when it does not exist yet), else into a private
+  "Unassigned" area.
+- **Visit** (*bezoek*): a stop of the trip: an area, or a location in one, and
+  optionally when: days, a start and end time (local at the visit, in the time
+  zone of its area) and a kind (free or work). Getting somewhere is a route, not
+  a visit. The day-by-day agenda is a read-only view over stays, routes and
+  visits, not a record.
+- **Stay** (*verblijf*): the nights slept at one accommodation. Every stay has
+  a location and takes its area from it, so it needs no area of its own.
+- **Route** (*route*): how the trip gets from one area to another, by a travel
+  mode (flight, train, bus, ferry, car, bike, walk or other). See below.
+- **Reisupdate**: what happened, with a private part and a shared part. It can
+  be linked to a location (private) and to an area (shared).
+- **Photo** and **document**: files, shared only as an approved copy.
+
+**Giving a place.** Wherever a record points at a place (a visit, each end of a
+route), the owner gives an area, a location, or both. A location settles its
+area, so giving only the location is enough; an area given with a location must
+be that location's own. The stored record always has an area.
+
+There is no record called "place". The word is only used for the search that
+suggests a location (*locaties zoeken*, which suggests and never saves) and
+for the one merged list of shared areas and locations in what a visitor
+receives. In Dutch, *plaats* means a town, so it is not used for a location.
+
+### How they relate
+
+```
+Area ◄── Location            a location is filed under exactly one area
+  ▲          ▲
+  │          │
+  ├──────────┼── Stay        location (required); area comes from it
+  ├── Visit                  an area or a location; the area is always set
+  ├── Reisupdate             area (shared) and location (private), both optional
+  └── Route                  each end is an area or a location; both areas are
+                             always set, the locations are optional
+```
+
+### The route
+
+A route always runs between two **areas**, which is all a visitor ever sees of
+its ends. The owner may name either end by a location instead, and the area
+follows from it. The rest is optional and stays with the owner:
+
+| Part | Required | Shown to visitors |
+|---|---|---|
+| Mode and status | yes | yes |
+| Each end: an area, or a location (which settles the area) | yes | its area only |
+| Name | no | yes (else "from → to") |
+| Exact locations at either end (a station, an airport) | no | only if that location is itself shared |
+| Schedule with time zones (both times or neither) | no | yes |
+| Carrier and service number | no | yes |
+| Booking reference, class, notes, documents | no | never |
+| A hand-drawn approximate line with movable points | no | yes |
+
+Without a drawn line the maps draw a straight one between the two areas (or
+between the two locations when those are shared). A route is not derived from
+anything recorded: the application stores no GPS tracks, live or finished.
+
 ## Words
 
 - **Visibility**: a record's own choice of who receives it: `private` (the
@@ -18,8 +88,8 @@ and [the privacy policy](decisions/36-privacy-sharing-offline-policy.md).
   includes, plus the trip title, summary and date precision. It never names
   fields.
 - **Private original**: something whose exact content must never leave the
-  owner boundary: a stay's property and booking, a spot's address, a raw GPS
-  track, a photo original, a document original.
+  owner boundary: a stay's property and booking, a location's address, a route's
+  booking, a photo original, a document original.
 - **Twin**: a separately authored or reviewed share-safe copy, used only where
   the shared thing is a different artifact from the original (see below).
 
@@ -30,33 +100,33 @@ outside the allowlist can be selected.
 
 | Record | Shared as | Never shared |
 |---|---|---|
-| Reisupdate | title, the text written for visitors, the date at its precision, its area | private notes, exact place, attached originals, exact time |
-| Place, an *area* (city, region) | label, region, country, generalized point | timezone, notes |
-| Place, a *spot* (a monument, a hot spring) | its public name, city, country, point, and directions | address, postal code, notes, provider ids, display name |
-| Stay | its area and its nights, at the date precision chosen for it | property, exact place, booking, contact, notes |
-| Route stage | label, summary, order, its area | |
-| Transport leg | kind, status, carrier, service reference, city and country, schedule | booking reference, class, notes, documents; an endpoint appears on the map only when that place is itself shared |
-| Broad route | label, reviewed line, date precision | the raw track behind it |
+| Area | label, region, country, generalized point | time zone |
+| Location | its public name, city, country, point, and directions; its address only if the owner also chooses that | address (unless chosen), postal code, notes, provider ids, display name |
+| Reisupdate | title, the text written for visitors, the date at its precision, its area | private notes, location, attached originals, exact time |
+| Stay | its area and its nights, at the date precision chosen for it | property, location, booking, contact, notes |
+| Visit | title (else the shared location's name or the area's), the text for visitors, its area, the days at the precision chosen; the times only if the owner also chooses that (and only with full dates) | notes, the exact location (unless shared), the times (unless chosen) |
+| Route | mode, status, its two areas, name, schedule, carrier, service reference, the drawn line | booking reference, class, notes, documents, the exact locations (unless shared) |
 | Photo | an approved, metadata-stripped copy, with caption and alt text | the original and its EXIF |
 | Document | an approved, redacted copy | the original |
 
 ## Where a twin is still needed
 
-Twins are kept for **files and routes**, because the shared thing is a
-different artifact: a photo derivative (stripped, resized), a redacted document
-copy and a reviewed broad route. A place, a stay and a reisupdate are shared as
-themselves through their allowlist, so there is no second record to keep in
-step. A record that cannot be shared safely yet is refused with a reason: a spot
-without a public name, a stay without an area, an update without text for
-visitors, a copy that is not approved.
+Twins are kept for **files**, because the shared thing is a different
+artifact: a photo derivative (stripped, resized) and a redacted document copy.
+An area, a location, a route, a stay and a reisupdate are shared as themselves
+through their allowlist, so there is no second record to keep in step. A
+record that cannot be shared safely yet is refused with a reason: a location
+without a public name, an update without text for visitors, a copy that is not
+approved.
 
 ## The reisupdate
 
-The one record for something that happened. It has a private part (notes, exact
-place, attached photo originals) and a shared part (title, text for visitors,
-date, area), held in separate fields so private text can never reach a visitor
-by changing a switch. A quick capture creates a private update with only notes;
-the owner writes the text for visitors later and then chooses who sees it.
+The one record for something that happened. It has a private part (notes,
+location, attached photo originals) and a shared part (title, text for
+visitors, date, area), held in separate fields so private text can never reach
+a visitor by changing a switch. A quick capture creates a private update with
+only notes; the owner writes the text for visitors later and then chooses who
+sees it.
 
 A photo attached to a reisupdate travels with it (its approval is still the
 gate); a loose gallery photo follows its own visibility.
@@ -69,9 +139,11 @@ gate); a loose gallery photo follows its own visibility.
 - `everyone` reaches every audience and cannot be narrowed for one link.
 - *Delen* and each record's own editor set the same field, so they never
   disagree.
+- An area cannot be deleted while a visit, reisupdate, location or route still
+  uses it.
 
 ## Known gaps
 
 - The `everyone` choice cannot be narrowed for one link.
-- Nothing yet turns an exact place the owner already has into a named spot
-  automatically; the owner names it in *Plekken delen*.
+- Nothing yet turns a location the owner already has into a named location
+  automatically; the owner names it in *Locaties*.

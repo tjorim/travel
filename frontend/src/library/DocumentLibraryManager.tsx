@@ -102,7 +102,7 @@ export function DocumentLibraryManager() {
   return <section className="card manager" aria-labelledby="library-documents-title">
     <div className="capture-heading"><div><h3 id="library-documents-title">Documenten</h3><p>Herbruikbare essentials zoals een verzekeringspolis of identiteitskopie, los van één specifieke reis.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw document</button></div>
     <p className="help" role="status">{message}</p>
-    {documents.length > 0 && <div className="saved-moments manager-list">{documents.map((document) => <article className="excerpt-row stacked" key={document.id}>
+    {documents.length > 0 && <div className="saved-records manager-list">{documents.map((document) => <article className="excerpt-row stacked" key={document.id}>
       <button className="document-select" type="button" onClick={() => dialog.inspect(document.id)} aria-label={`Document ${document.title} bekijken`}><strong>{document.title}</strong><span>{summary(document)}</span></button>
       <div className="button-row">
         <button className="secondary compact" type="button" onClick={() => { if (owner) openOwnerFile(owner.session, document.file_url, "Het private origineel kon niet worden geopend.").catch(fail("Het private origineel kon niet worden geopend.")); }}>Bekijken</button>

@@ -11,17 +11,17 @@ import { RecordDialog } from "../RecordDialog";
 import { RenderedPreview } from "./RenderedPreview";
 import { VisibilityControl } from "./visibility";
 import type { Projection } from "../ProjectionView";
-import { stayLabel, type ProjectionDocument, type PublicProjectionStatus, type ShareLink, type ShareScope, type ShareScopeKind, type Trip, type Visibility } from "../tracker-model";
+import { ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, type ProjectionDocument, type PublicProjectionStatus, type ShareLink, type ShareScope, type ShareScopeKind, type Trip, type Visibility } from "../tracker-model";
 
 type CatalogItem = { kind: ShareScopeKind; id: string; label: string; detail: string; visibility: Visibility; /** A photo attached to a reisupdate is shared with it, so it has no choice of its own. */ followsUpdate?: string };
 
 const GROUP_TITLES: Record<ShareScopeKind, string> = {
   travel_update: "Reisupdates",
-  route_stage: "Haltes",
-  place: "Plaatsen",
-  broad_route: "Routes op kaart",
+  visit: "Bezoeken",
+  area: "Gebieden",
+  location: "Locaties",
+  route: "Routes",
   stay: "Verblijven",
-  transport_leg: "Vervoer",
   media_derivative: "Foto’s",
   document_derivative: "Geredigeerde documenten",
 };
@@ -50,7 +50,7 @@ function dateLabel(value: string | null): string {
 }
 
 function projectionSummary(document: ProjectionDocument): string {
-  const count = document.route_stages.length + document.places.length + document.updates.length + document.stays.length + document.media.length + document.documents.length + document.route.length + document.transport.length;
+  const count = document.visits.length + document.places.length + document.updates.length + document.stays.length + document.media.length + document.documents.length + document.routes.length;
   return `${count} gekozen onderdelen · ${document.title ? "titel" : "geen titel"} · ${document.summary ? "samenvatting" : "geen samenvatting"} · ${document.dates ? "reisdatums" : "geen reisdatums"}`;
 }
 
@@ -102,7 +102,7 @@ function ScopeEditor({ scope, setScope, name, catalog, hasDates, disabled = fals
 /** Every shareable record with the same control as in its own editor; both write one field. */
 function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: CatalogItem[] }) {
   const groups = groupBy(catalog);
-  if (!groups.size) return <p className="help">Er zijn nog geen onderdelen die je kunt delen. Maak bijvoorbeeld een reisupdate, plaats of halte.</p>;
+  if (!groups.size) return <p className="help">Er zijn nog geen onderdelen die je kunt delen. Maak bijvoorbeeld een reisupdate, gebied of bezoek.</p>;
   return <div className="scope-groups">{[...groups].map(([kind, items]) => <details className="scope-group" key={kind}>
     <summary><strong>{GROUP_TITLES[kind]}</strong><span>{items.filter((item) => item.visibility !== "private" || item.followsUpdate).length} van {items.length} gedeeld</span></summary>
     <div className="scope-group-body scope-items">{items.map((item) => <article className="scope-item" key={item.id}><div><strong>{item.label}</strong><small>{item.detail}</small></div><VisibilityControl tripId={tripId} kind={item.kind} id={item.id} value={item.visibility} name={item.label} followsUpdate={item.followsUpdate} /></article>)}</div>
@@ -124,16 +124,15 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const owner = useOwner();
   const statusQuery = useTripResource(trip.id, "public-projection");
   const linksQuery = useTripResource(trip.id, "share-links");
-  const placesQuery = useTripResource(trip.id, "places/broad");
-  const routesQuery = useTripResource(trip.id, "broad-routes");
+  const placesQuery = useTripResource(trip.id, "areas");
+  const routesQuery = useTripResource(trip.id, "routes");
+  const visitsQuery = useTripResource(trip.id, "visits");
   const staysQuery = useTripResource(trip.id, "stays");
-  const exactPlacesQuery = useTripResource(trip.id, "places");
-  const transportQuery = useTripResource(trip.id, "transport-legs");
+  const locationsQuery = useTripResource(trip.id, "locations");
   const mediaQuery = useTripResource(trip.id, "media");
   const documentsQuery = useTripResource(trip.id, "documents");
   const media = useMemo(() => mediaQuery.data ?? [], [mediaQuery.data]);
   const documents = useMemo(() => documentsQuery.data ?? [], [documentsQuery.data]);
-  const transport = useMemo(() => transportQuery.data ?? [], [transportQuery.data]);
   // One derivative read per asset; the combined result keeps a fixed shape however many assets there are.
   const mediaDerivatives = useQueries({ queries: media.map((asset) => derivativesQueryOptions(owner, trip.id, "media", asset.id)), combine: combineDerivatives });
   const documentDerivatives = useQueries({ queries: documents.map((asset) => derivativesQueryOptions(owner, trip.id, "documents", asset.id)), combine: combineDerivatives });
@@ -343,24 +342,21 @@ export function PublicationManager({ trip }: { trip: Trip }) {
 
   const catalog = useMemo<CatalogItem[]>(() => {
     const approved = <T extends { review_state: string }>(items: T[] | undefined) => (items ?? []).filter((item) => item.review_state === "approved");
-    const endpoint = (area: { label?: string | null; country_code?: string | null } | null | undefined, fallback: { locality?: string | null; country_code?: string | null }) => area?.label ?? ([fallback.locality, fallback.country_code].filter(Boolean).join(" · ") || "Onbekende plaats");
-    const transportKind: Record<string, string> = { flight: "Vlucht", train: "Trein", bus: "Bus", ferry: "Veerboot", car: "Auto", other: "Vervoer" };
     const updateTitles = new Map(trip.travel_updates.map((update) => [update.id, update.title]));
     return [
       ...trip.travel_updates.map((item) => ({ kind: "travel_update" as const, id: item.id, label: item.title, detail: "Reisupdate", visibility: item.visibility })),
-      ...trip.route_stages.map((item) => ({ kind: "route_stage" as const, id: item.id, label: item.label ?? item.place.label, detail: "Halte", visibility: item.visibility })),
-      ...(placesQuery.data ?? []).map((item) => ({ kind: "place" as const, id: item.id, label: item.label, detail: "Stad of gebied", visibility: item.visibility })),
-      // Only spots the owner has named or shared: most exact places are hotels and endpoints that stay private.
-      ...(exactPlacesQuery.data ?? []).filter((item) => item.label || item.visibility !== "private").map((item) => ({ kind: "place" as const, id: item.id, label: item.label ?? "Plek zonder publieke naam", detail: "Plek — alleen naam, stad en ligging", visibility: item.visibility })),
-      ...(routesQuery.data ?? []).map((item) => ({ kind: "broad_route" as const, id: item.id, label: item.label, detail: "Route op kaart", visibility: item.visibility })),
+      ...(visitsQuery.data ?? []).map((item) => ({ kind: "visit" as const, id: item.id, label: visitTitle(item), detail: "Bezoek: de plek, de tekst voor bezoekers en de datum; de tijd alleen als je die deelt", visibility: item.visibility })),
+      ...(placesQuery.data ?? []).map((item) => ({ kind: "area" as const, id: item.id, label: item.label, detail: "Gebied", visibility: item.visibility })),
+      // Only locations the owner has named or shared: most locations are hotels and endpoints that stay private.
+      ...(locationsQuery.data ?? []).filter((item) => item.label || item.visibility !== "private").map((item) => ({ kind: "location" as const, id: item.id, label: item.label ?? "Locatie zonder publieke naam", detail: "Locatie: alleen naam, gebied en ligging", visibility: item.visibility })),
+      ...(routesQuery.data ?? []).map((item) => ({ kind: "route" as const, id: item.id, label: `${ROUTE_MODE_LABELS[item.mode]}: ${routeTitle(item)}`, detail: "Bezoekers zien de gebieden, het vervoermiddel en de lijn, nooit boekingscode, reisklasse, notities of documenten", visibility: item.visibility })),
       ...(staysQuery.data ?? []).map((item) => ({ kind: "stay" as const, id: item.id, label: stayLabel(item), detail: `Bezoekers zien alleen ${item.area?.label ?? "(nog geen gebied gekozen)"} en de nachten`, visibility: item.visibility })),
-      ...transport.map((item) => ({ kind: "transport_leg" as const, id: item.id, label: `${transportKind[item.kind]}: ${endpoint(item.departure_area, item.departure_place)} → ${endpoint(item.arrival_area, item.arrival_place)}`, detail: "Vervoerssamenvatting zonder boekingscode, reisklasse, notities of documenten", visibility: item.visibility })),
       ...media.flatMap((asset, index) => approved(mediaDerivatives.data[index]).filter((item) => item.purpose === "share").map((item) => ({ kind: "media_derivative" as const, id: item.id, label: asset.original_filename ?? "Goedgekeurde foto", detail: "Goedgekeurde foto", visibility: item.visibility, followsUpdate: updateTitles.get(item.travel_update_id ?? "") }))),
       ...documents.flatMap((asset, index) => approved(documentDerivatives.data[index]).map((item) => ({ kind: "document_derivative" as const, id: item.id, label: asset.title, detail: "Goedgekeurde geredigeerde kopie", visibility: item.visibility }))),
     ];
-  }, [trip, placesQuery.data, exactPlacesQuery.data, routesQuery.data, staysQuery.data, transport, media, documents, mediaDerivatives.data, documentDerivatives.data]);
+  }, [trip, placesQuery.data, locationsQuery.data, routesQuery.data, visitsQuery.data, staysQuery.data, media, documents, mediaDerivatives.data, documentDerivatives.data]);
 
-  const readError = [statusQuery, linksQuery, placesQuery, exactPlacesQuery, routesQuery, staysQuery, transportQuery, mediaQuery, documentsQuery].find((query) => query.isError)?.error ?? mediaDerivatives.error ?? documentDerivatives.error;
+  const readError = [statusQuery, linksQuery, placesQuery, locationsQuery, routesQuery, visitsQuery, staysQuery, mediaQuery, documentsQuery].find((query) => query.isError)?.error ?? mediaDerivatives.error ?? documentDerivatives.error;
   const message = notice ?? (readError ? errorMessage(readError, "Je publicaties konden niet worden geladen.") : statusQuery.isPending ? "Laad je publicaties…" : "Kies per onderdeel wie het ziet. Nieuwe onderdelen zijn privé.");
   const isPublished = publicStatus?.surface_state === "published";
 

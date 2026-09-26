@@ -94,11 +94,6 @@ class DerivativeReviewState(StrEnum):
     APPROVED = "approved"
 
 
-class PlaceKind(StrEnum):
-    EXACT = "exact"
-    BROAD = "broad"
-
-
 class DatePrecision(StrEnum):
     DAY = "day"
     MONTH = "month"
@@ -112,21 +107,21 @@ class StayStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
-class TrackKind(StrEnum):
-    GPX = "gpx"
-    POINT_ARRAY = "point_array"
+class RouteMode(StrEnum):
+    """How a route is travelled."""
 
 
-class TransportLegKind(StrEnum):
     FLIGHT = "flight"
     TRAIN = "train"
     BUS = "bus"
     FERRY = "ferry"
     CAR = "car"
+    BIKE = "bike"
+    WALK = "walk"
     OTHER = "other"
 
 
-class TransportLegStatus(StrEnum):
+class RouteStatus(StrEnum):
     PLANNED = "planned"
     BOOKED = "booked"
     CONFIRMED = "confirmed"
@@ -144,19 +139,11 @@ class Visibility(StrEnum):
     CUSTOM = "custom"
 
 
-class ItineraryEntryKind(StrEnum):
-    TRAVEL = "travel"
+class VisitKind(StrEnum):
+    """What kind of days a visit is: free days, or working ones."""
+
     FREE = "free"
     WORK = "work"
-
-
-class ItineraryLinkKind(StrEnum):
-    STAY = "stay"
-    TRANSPORT_LEG = "transport_leg"
-    ROUTE_STAGE = "route_stage"
-    PLACE = "place"
-    DOCUMENT = "document"
-    TRAVEL_UPDATE = "travel_update"
 
 
 class AuditEventKind(StrEnum):
@@ -183,68 +170,65 @@ def _visibility_column():
     return mapped_column(_enum_column(Visibility, "travel_visibility"), default=Visibility.PRIVATE, nullable=False)
 
 
-class Place(Base):
-    """A place is a *spot* or an *area*, and an area holds spots.
+class Area(Base):
+    """A city or region: where things are, without saying exactly where.
 
-    A spot is an `exact` row (address parts, coordinates, viewport,
-    navigation/provider IDs, notes) that belongs to an area through
-    ``area_id``; an area is a `broad` row (label, country/region, optional
-    generalized point). Either can be shared by its ``visibility``, but only
-    through a fixed allowlist, and sharing an area never shares its spots: an
-    area gives its label, region, country and point; a spot gives its public
-    ``label``, city, country and point, and its address only when the owner has
-    also chosen ``share_address``. Notes, provider ids and the display name
-    (which usually contains the address) are never shared, and a spot cannot be
-    shared without a ``label``. `RouteStage` only ever references an area; a
-    `TravelUpdate` references an area as its shared place and a spot as its
-    private one -- enforced by the router, since a single FK-target table can't
-    itself express the per-column kind split."""
+    An area holds a label, country and region, an optional rounded point and an
+    optional IANA time zone (for example ``Asia/Taipei``), which lets the
+    owner's views place stays and live local time. Sharing an area shows its
+    label, region, country and point, never its time zone, and never shares the
+    locations filed under it."""
 
-    __tablename__ = "places"
+    __tablename__ = "areas"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    visibility: Mapped[Visibility] = _visibility_column()
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class Location(Base):
+    """A hotel, station or monument, with an address and coordinates, or just a city.
+
+    A location always belongs to one ``area``. It can be shared by its
+    ``visibility``, but only through a fixed allowlist: its public ``label``,
+    city, country and point, and its address only when the owner has also
+    chosen ``share_address``. Notes, provider ids and the display name (which
+    usually contains the address) are never shared, and a location cannot be
+    shared without a ``label``."""
+
+    __tablename__ = "locations"
     __table_args__ = (
+        Index("ix_locations_osm_element", "osm_element_type", "osm_element_id"),
         CheckConstraint(
-            "(kind = 'broad' AND area_id IS NULL) OR (kind = 'exact' AND area_id IS NOT NULL)",
-            name="ck_places_spot_has_area",
-        ),
-        Index("ix_places_osm_element", "osm_element_type", "osm_element_id"),
-        CheckConstraint(
-            "(osm_element_type IS NULL) = (osm_element_id IS NULL)", name="ck_places_osm_reference_pair"
+            "(osm_element_type IS NULL) = (osm_element_id IS NULL)", name="ck_locations_osm_reference_pair"
         ),
         CheckConstraint(
             "osm_element_type IS NULL OR osm_element_type IN ('node', 'way', 'relation')",
-            name="ck_places_osm_element_type",
+            name="ck_locations_osm_element_type",
         ),
     )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    kind: Mapped[PlaceKind] = mapped_column(_enum_column(PlaceKind, "travel_place_kind"))
+    # Derived from the location's city when it is created, and changeable.
+    area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False, index=True)
     visibility: Mapped[Visibility] = _visibility_column()
-    # The area a spot belongs to: derived from the spot's city when it is
-    # created and changeable. Empty for areas.  The database check added in
-    # 0030 makes this required for exact places.
-    area_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
-    # Whether a shared spot also shows its address, for example a hotel family
-    # may need to contact. A separate choice from sharing the spot at all.
-    share_address: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
-    # A broad place's name, or the public name of an exact place the owner
-    # chooses to share (its display name usually contains the address).
+    # The name a shared location goes by: owner-only until the location is shared,
+    # and required for that, because the display name usually contains the address.
     label: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    region: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    # IANA zone of a broad city or area (for example ``Asia/Taipei``). It
-    # lets the owner's views place stays and live local time; it is never
-    # part of a shared projection.
-    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
-
-    # Exact address country, or broad country -- shared by both kinds.
-    country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
-
-    # Exact coordinates, or broad's optional approved generalized point.
-    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
-    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
-
-    # Exact-only fields.
+    # Whether a shared location also shows its address, for example a hotel family
+    # may need to contact. A separate choice from sharing the location at all.
+    share_address: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # An OSM element is durable as the (type, id) pair.  In particular,
     # Nominatim's result-local ``place_id`` is intentionally not stored.
     osm_element_type: Mapped[str | None] = mapped_column(String(12), nullable=True)
@@ -255,6 +239,9 @@ class Place(Base):
     locality: Mapped[str | None] = mapped_column(String(120), nullable=True)
     admin_area: Mapped[str | None] = mapped_column(String(120), nullable=True)
     postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     viewport_north: Mapped[float | None] = mapped_column(Float, nullable=True)
     viewport_south: Mapped[float | None] = mapped_column(Float, nullable=True)
     viewport_east: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -262,13 +249,12 @@ class Place(Base):
     navigation_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
     navigation_provider_place_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    area: Mapped["Place | None"] = relationship(remote_side="Place.id", foreign_keys=[area_id])
+    area: Mapped[Area] = relationship(foreign_keys=[area_id])
 
 
 class Trip(Base):
@@ -287,11 +273,14 @@ class Trip(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    route_stages: Mapped[list["RouteStage"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="RouteStage.position"
+    visits: Mapped[list["Visit"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="Visit.position"
     )
-    places: Mapped[list["Place"]] = relationship(
-        foreign_keys="Place.trip_id", cascade="all, delete-orphan", order_by="Place.created_at"
+    areas: Mapped[list["Area"]] = relationship(
+        foreign_keys="Area.trip_id", cascade="all, delete-orphan", order_by="Area.created_at"
+    )
+    locations: Mapped[list["Location"]] = relationship(
+        foreign_keys="Location.trip_id", cascade="all, delete-orphan", order_by="Location.created_at"
     )
     travel_updates: Mapped[list["TravelUpdate"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="TravelUpdate.occurred_at"
@@ -299,20 +288,11 @@ class Trip(Base):
     stays: Mapped[list["Stay"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="Stay.check_in_date"
     )
-    recorded_tracks: Mapped[list["RecordedTrack"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="RecordedTrack.started_at"
-    )
-    transport_legs: Mapped[list["TransportLeg"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="TransportLeg.departs_at"
-    )
-    itinerary_entries: Mapped[list["ItineraryEntry"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="ItineraryEntry.position"
-    )
     trip_tasks: Mapped[list["TripTask"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="TripTask.created_at"
     )
-    broad_routes: Mapped[list["BroadRoute"]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="BroadRoute.created_at"
+    routes: Mapped[list["Route"]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by=lambda: (Route.departs_at.is_(None), Route.departs_at, Route.created_at)
     )
     media_derivatives: Mapped[list["MediaDerivative"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
@@ -320,22 +300,6 @@ class Trip(Base):
     document_derivatives: Mapped[list["DocumentDerivative"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="DocumentDerivative.created_at"
     )
-
-
-class RouteStage(Base):
-    __tablename__ = "route_stages"
-    __table_args__ = (UniqueConstraint("trip_id", "position", name="uq_route_stage_position"),)
-
-    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    broad_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
-    position: Mapped[int] = mapped_column(Integer, nullable=False)
-    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    visibility: Mapped[Visibility] = _visibility_column()
-
-    trip: Mapped[Trip] = relationship(back_populates="route_stages")
-    place: Mapped[Place] = relationship(foreign_keys=[broad_place_id])
 
 
 class TravelUpdateMediaAsset(Base):
@@ -364,21 +328,21 @@ class TravelUpdate(Base):
     It has a private part and a shared part, kept in separate columns so that
     private text can never reach a visitor by changing a switch.
 
-    Private, always: ``private_notes``, the exact ``place`` (a spot), the
+    Private, always: ``private_notes``, the exact ``location``, the
     attached originals (``media_links``) and the precise ``occurred_at`` time.
 
     Shared, once ``visibility`` allows it: ``title``, ``body`` (written for
     visitors and empty until the owner writes it), the date at
-    ``date_precision``, and the ``broad_place`` (an area). ``broad_place_id``
-    always references an area, never a spot."""
+    ``date_precision``, and the ``chosen_area``. ``area_id``
+    always references an area, never a location."""
 
     __tablename__ = "travel_updates"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     share_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    broad_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
-    exact_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+    area_id: Mapped[str | None] = mapped_column(ForeignKey("areas.id"), nullable=True)
+    location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
     title: Mapped[str] = mapped_column(String(160), nullable=False)
@@ -391,8 +355,8 @@ class TravelUpdate(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="travel_updates")
-    broad_place: Mapped[Place | None] = relationship(foreign_keys=[broad_place_id])
-    place: Mapped[Place | None] = relationship(foreign_keys=[exact_place_id])
+    chosen_area: Mapped[Area | None] = relationship(foreign_keys=[area_id])
+    location: Mapped[Location | None] = relationship(foreign_keys=[location_id])
     media_links: Mapped[list[TravelUpdateMediaAsset]] = relationship(
         back_populates="travel_update", cascade="all, delete-orphan", order_by="TravelUpdateMediaAsset.created_at"
     )
@@ -402,9 +366,9 @@ class TravelUpdate(Base):
         return [link.media_asset_id for link in self.media_links]
 
     @property
-    def area(self) -> Place | None:
-        """The update's area: its spot wins; spot-less updates name one directly."""
-        return (self.place.area if self.place is not None else None) or self.broad_place
+    def area(self) -> Area | None:
+        """The update's area: its location wins; location-less updates name one directly."""
+        return (self.location.area if self.location is not None else None) or self.chosen_area
 
 
 class Stay(Base):
@@ -415,19 +379,16 @@ class Stay(Base):
     ``check_in_date <= d < check_out_date``. Both are local calendar dates
     at the accommodation, as are the optional check-in/check-out times.
 
-    A stay may be planned before the accommodation is chosen: the
-    ``broad_place`` (city or area) and nights are then known while the
-    property name and exact place stay empty. Its exact place, property and
-    booking/contact details are never shareable; sharing a stay shows only its
-    city or area and its nights."""
+    Every stay has a ``location`` (filed under an area). Its
+    location, property and booking/contact details are never shareable; sharing
+    a stay shows only its area and its nights."""
 
     __tablename__ = "stays"
     __table_args__ = (CheckConstraint("check_out_date > check_in_date", name="ck_stay_check_out_after_check_in"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    exact_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
-    broad_place_id: Mapped[str | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     check_in_date: Mapped[date] = mapped_column(Date, nullable=False)
     check_out_date: Mapped[date] = mapped_column(Date, nullable=False)
     check_in_time: Mapped[time | None] = mapped_column(Time, nullable=True)
@@ -441,7 +402,7 @@ class Stay(Base):
     contact_details: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # A shared stay is only its city or area and its nights, at this precision;
-    # never the property, exact place or booking details.
+    # never the property, location or booking details.
     visibility: Mapped[Visibility] = _visibility_column()
     share_date_precision: Mapped[DatePrecision] = mapped_column(
         _enum_column(DatePrecision, "travel_date_precision"), default=DatePrecision.MONTH, nullable=False
@@ -452,40 +413,53 @@ class Stay(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="stays")
-    place: Mapped[Place | None] = relationship(foreign_keys=[exact_place_id])
-    broad_place: Mapped[Place | None] = relationship(foreign_keys=[broad_place_id])
+    location: Mapped[Location] = relationship(foreign_keys=[location_id])
 
     @property
-    def area(self) -> Place | None:
-        """The stay's area comes from its hotel; broad_place is legacy planning data."""
-        return (self.place.area if self.place is not None else None) or self.broad_place
+    def area(self) -> Area:
+        """The stay's area is the area of its location."""
+        return self.location.area
 
 
-class TransportLeg(Base):
-    """An owner-managed booked leg between two exact places.
+class Route(Base):
+    """How the traveller gets from one area to another, at any level of detail.
 
-    A shared leg discloses only a redacted following summary: kind/status,
-    city/country endpoints, schedule, carrier and service reference. Its
-    endpoints appear on a map only when the endpoint place is itself shared.
-    Booking references, travel class, notes, documents and exact endpoint
-    details always remain owner-only.
+    A route always runs between two *areas*; that is all a visitor ever sees of
+    its ends. Everything else is optional and owner-side: the exact departure and
+    arrival ``locations`` (a station, an airport), the schedule with each end's
+    time zone, carrier, service number, class, booking reference, notes and
+    attached documents, and a hand-drawn ``geometry`` line. Without a line the
+    maps draw a straight one between the two areas.
+
+    A shared route discloses only its mode and status, its two areas, its
+    schedule, carrier and service reference, and the line. Booking references,
+    travel class, notes, documents and the exact locations stay owner-only; a
+    location appears on a map only when that location is itself shared. The
+    application holds no recorded location data a route could be derived from.
     """
 
-    __tablename__ = "transport_legs"
-    __table_args__ = (CheckConstraint("arrives_at > departs_at", name="ck_transport_leg_arrival_after_departure"),)
+    __tablename__ = "routes"
+    __table_args__ = (
+        CheckConstraint("(departs_at IS NULL) = (arrives_at IS NULL)", name="ck_route_times_paired"),
+        CheckConstraint("arrives_at > departs_at", name="ck_route_arrival_after_departure"),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    kind: Mapped[TransportLegKind] = mapped_column(_enum_column(TransportLegKind, "travel_transport_leg_kind"))
-    status: Mapped[TransportLegStatus] = mapped_column(
-        _enum_column(TransportLegStatus, "travel_transport_leg_status"), default=TransportLegStatus.PLANNED
+    mode: Mapped[RouteMode] = mapped_column(_enum_column(RouteMode, "travel_route_mode"), default=RouteMode.OTHER)
+    status: Mapped[RouteStatus] = mapped_column(
+        _enum_column(RouteStatus, "travel_route_status"), default=RouteStatus.PLANNED
     )
-    departure_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
-    arrival_place_id: Mapped[str] = mapped_column(ForeignKey("places.id"), nullable=False)
-    departs_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    arrives_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    # IANA zones of each endpoint. When set, the owner enters and reads the
-    # local wall-clock time there; the instants above stay in UTC.
+    # A name for the route; without one it is shown as "<from> → <to>".
+    label: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    departure_area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False)
+    arrival_area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False)
+    departure_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
+    arrival_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
+    departs_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    arrives_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # IANA zones of each end. When set, the owner enters and reads the local
+    # wall-clock time there; the instants above stay in UTC.
     departure_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     arrival_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     carrier: Mapped[str | None] = mapped_column(String(160), nullable=True)
@@ -493,36 +467,30 @@ class TransportLeg(Base):
     travel_class: Mapped[str | None] = mapped_column(String(80), nullable=True)
     booking_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # An owner-drawn, approximate GeoJSON line; optional.
+    geometry: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     visibility: Mapped[Visibility] = _visibility_column()
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    trip: Mapped[Trip] = relationship(back_populates="transport_legs")
-    departure_place: Mapped[Place] = relationship(foreign_keys=[departure_place_id])
-    arrival_place: Mapped[Place] = relationship(foreign_keys=[arrival_place_id])
-    document_links: Mapped[list["TransportLegDocumentAsset"]] = relationship(
-        back_populates="transport_leg", cascade="all, delete-orphan", order_by="TransportLegDocumentAsset.created_at"
+    trip: Mapped[Trip] = relationship(back_populates="routes")
+    departure_area: Mapped[Area] = relationship(foreign_keys=[departure_area_id])
+    arrival_area: Mapped[Area] = relationship(foreign_keys=[arrival_area_id])
+    departure_location: Mapped[Location | None] = relationship(foreign_keys=[departure_location_id])
+    arrival_location: Mapped[Location | None] = relationship(foreign_keys=[arrival_location_id])
+    document_links: Mapped[list["RouteDocumentAsset"]] = relationship(
+        back_populates="route", cascade="all, delete-orphan", order_by="RouteDocumentAsset.created_at"
     )
 
     @property
     def document_asset_ids(self) -> list[str]:
         return [link.document_asset_id for link in self.document_links]
 
-    @property
-    def departure_area(self) -> Place | None:
-        """The area read for this leg's departure, never copied city text."""
-        return self.departure_place.area
 
-    @property
-    def arrival_area(self) -> Place | None:
-        """The area read for this leg's arrival, never copied city text."""
-        return self.arrival_place.area
-
-
-class TransportLegDocumentAsset(Base):
-    """An owner-only, explicit attachment of a document to a transport leg.
+class RouteDocumentAsset(Base):
+    """An owner-only, explicit attachment of a document to a route.
 
     Deliberately separate from a share derivative, exactly like
     :class:`TravelUpdateMediaAsset`: attaching a document gives the owner a
@@ -530,63 +498,75 @@ class TransportLegDocumentAsset(Base):
     projection.
     """
 
-    __tablename__ = "transport_leg_document_assets"
+    __tablename__ = "route_document_assets"
 
-    transport_leg_id: Mapped[str] = mapped_column(
-        ForeignKey("transport_legs.id", ondelete="CASCADE"), primary_key=True
-    )
+    route_id: Mapped[str] = mapped_column(ForeignKey("routes.id", ondelete="CASCADE"), primary_key=True)
     document_asset_id: Mapped[str] = mapped_column(
         ForeignKey("document_assets.id", ondelete="CASCADE"), primary_key=True, index=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    transport_leg: Mapped[TransportLeg] = relationship(back_populates="document_links")
+    route: Mapped[Route] = relationship(back_populates="document_links")
     document_asset: Mapped["DocumentAsset"] = relationship()
 
 
-class ItineraryEntry(Base):
-    """An owner-only, manually ordered day-plan entry.
+class Visit(Base):
+    """A stop on the trip: somewhere the traveller is, or goes, and when.
 
-    ``linked_kind``/``linked_id`` is a soft reference resolved by the router
-    against the trip's own resources -- never a database foreign key, since
-    the target table varies by kind. This mirrors how a share-scope item
-    already references a resource by kind and id. An entry never copies a
-    linked resource's fields; it only points at one, so the underlying
-    stay/leg/etc. remains the single source of truth.
+    A visit is at an *area*, or at a *location* in one, and can carry the days it
+    spans, a start and end time and a kind (free or working days).
+
+    It has a private part (``notes``, the exact ``location``, and the times unless
+    ``share_time`` is set) and a shared part (``title``, ``summary``, the area, the
+    days at ``share_date_precision``), held in separate fields so private text
+    can never reach a visitor by changing a switch.
     """
 
-    __tablename__ = "itinerary_entries"
-    __table_args__ = (UniqueConstraint("trip_id", "position", name="uq_itinerary_entry_position"),)
+    __tablename__ = "visits"
+    __table_args__ = (
+        UniqueConstraint("trip_id", "position", name="uq_visit_position"),
+        CheckConstraint("ends_on IS NULL OR (starts_on IS NOT NULL AND ends_on >= starts_on)", name="ck_visit_last_day"),
+        CheckConstraint("start_time IS NULL OR starts_on IS NOT NULL", name="ck_visit_time_needs_a_day"),
+        CheckConstraint("end_time IS NULL OR start_time IS NOT NULL", name="ck_visit_end_time_needs_a_start"),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
-    day_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # Inclusive last day of a multi-day entry such as "18-20 nov".
-    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    kind: Mapped[ItineraryEntryKind | None] = mapped_column(
-        _enum_column(ItineraryEntryKind, "travel_itinerary_entry_kind"), nullable=True
-    )
-    tentative: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False, index=True)
+    location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
+    # Without a title a visit goes by the name of its location, else of its area.
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    kind: Mapped[VisitKind | None] = mapped_column(_enum_column(VisitKind, "travel_visit_kind"), nullable=True)
+    starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Inclusive last day of a multi-day visit such as "18-20 nov".
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Local wall-clock times at the visit; the time zone is the area's.
+    start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    linked_kind: Mapped[ItineraryLinkKind | None] = mapped_column(
-        _enum_column(ItineraryLinkKind, "travel_itinerary_link_kind"), nullable=True
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    visibility: Mapped[Visibility] = _visibility_column()
+    # Whether a shared visit also shows its times. A separate choice from sharing the visit at all.
+    share_time: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    share_date_precision: Mapped[DatePrecision] = mapped_column(
+        _enum_column(DatePrecision, "travel_date_precision"), default=DatePrecision.MONTH, nullable=False
     )
-    linked_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    trip: Mapped[Trip] = relationship(back_populates="itinerary_entries")
+    trip: Mapped[Trip] = relationship(back_populates="visits")
+    area: Mapped[Area] = relationship(foreign_keys=[area_id])
+    location: Mapped[Location | None] = relationship(foreign_keys=[location_id])
 
 
 class TripTask(Base):
     """An owner-only lightweight booking/preparation task.
 
     Deliberately has no ordering or linked-resource fields -- it's a
-    checklist, not the day plan. ``completed_at`` is set by the router, never
+    checklist, not the agenda. ``completed_at`` is set by the router, never
     accepted directly from a client payload, so an owner can't backdate a
     completion.
     """
@@ -629,54 +609,6 @@ class TripTaskAlert(Base):
     email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     email_last_error: Mapped[str | None] = mapped_column(String(120), nullable=True)
-
-
-class RecordedTrack(Base):
-    """A finished, owner-uploaded raw GPS recording.
-
-    The track's source object contains the precise points, timestamps and
-    optional speed/elevation values. It is intentionally unrelated to a
-    :class:`BroadRoute`: a shareable route is an independent, owner-authored
-    resource and is never generated from these raw bytes at read time.
-    """
-
-    __tablename__ = "recorded_tracks"
-    __table_args__ = (CheckConstraint("ended_at > started_at", name="ck_track_end_after_start"),)
-
-    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    source_object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    kind: Mapped[TrackKind] = mapped_column(_enum_column(TrackKind, "travel_track_kind"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    trip: Mapped[Trip] = relationship(back_populates="recorded_tracks")
-    source_object: Mapped["StoredObject"] = relationship(foreign_keys=[source_object_id])
-
-
-class BroadRoute(Base):
-    """An owner-reviewed generalized geometry safe for a later projection.
-
-    It deliberately has no raw-track foreign key. That makes the review and
-    generalization step explicit, and removes any path for public rendering
-    to infer a line from precise recording data.
-    """
-
-    __tablename__ = "broad_routes"
-
-    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    label: Mapped[str] = mapped_column(String(160), nullable=False)
-    geometry: Mapped[dict] = mapped_column(JSON, nullable=False)
-    date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
-    visibility: Mapped[Visibility] = _visibility_column()
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-
-    trip: Mapped[Trip] = relationship(back_populates="broad_routes")
 
 
 class PublicSurface(Base):
@@ -996,7 +928,7 @@ class OwnerStoredObject(Base):
     ``owner_subject`` instead of ``trip_id``, since the owner-wide document
     library is deliberately not attached to any trip. Kept as a separate
     table rather than making ``StoredObject.trip_id`` nullable, so the
-    trip-scoped media/track/document pipeline is untouched.
+    trip-scoped media/document pipeline is untouched.
     """
 
     __tablename__ = "owner_stored_objects"
@@ -1022,8 +954,7 @@ class OwnerDocument(Base):
     """One owner-wide document original: a reusable policy, identity copy or
     other travel essential that is not tied to a specific trip.
 
-    ``linked_trip_id`` is an optional, real foreign key (unlike
-    :class:`ItineraryEntry`'s polymorphic soft reference) because a document
+    ``linked_trip_id`` is an optional, real foreign key because a document
     here can only ever link to a trip. Deleting the linked trip clears the
     link rather than the document (``ondelete="SET NULL"``); the document
     itself is owner-wide and outlives any one trip.
@@ -1057,7 +988,7 @@ class EmergencyInfoEntry(Base):
     number, or a concise medical/assistance note.
 
     Deliberately trip-independent and file-free, so it is hard-deleted like
-    :class:`TripTask`/:class:`ItineraryEntry` rather than soft-deleted like
+    :class:`TripTask`/:class:`Visit` rather than soft-deleted like
     the file-backed resources.
     """
 

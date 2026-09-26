@@ -4,9 +4,10 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { configuredMapStyleUrl, loadMapStyle } from "./map-style";
+import type { RouteMode } from "./tracker-model";
 
 export type MapPoint = { id: string; label: string; coordinates: [number, number]; kind?: "mountain" | "stay" | "airport" | "place"; detail?: string; dates?: string };
-export type MapLine = { id: string; label: string; coordinates: [number, number][]; exact?: boolean; transport?: "flight" | "rail" | "road" | "mountain"; from?: string; to?: string };
+export type MapLine = { id: string; label: string; coordinates: [number, number][]; transport?: RouteMode; from?: string; to?: string };
 export type MapPerspective = { center: [number, number]; zoom: number; pitch: number; bearing: number; label?: string; exaggeration?: number };
 
 const terrainUrl = "https://tiles.mapterhorn.com/tilejson.json";
@@ -55,20 +56,23 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
       created.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
       created.on("load", () => {
         if (!instance || disposed) return;
-        const routeData: FeatureCollection<LineString> = { type: "FeatureCollection", features: lines.map((line) => ({ type: "Feature", properties: { id: line.id, exact: Boolean(line.exact), transport: line.transport ?? "road" }, geometry: { type: "LineString", coordinates: line.coordinates } })) };
+        const routeData: FeatureCollection<LineString> = { type: "FeatureCollection", features: lines.map((line) => ({ type: "Feature", properties: { id: line.id, transport: line.transport ?? "other" }, geometry: { type: "LineString", coordinates: line.coordinates } })) };
         const pointData: FeatureCollection<Point> = { type: "FeatureCollection", features: points.map((point) => ({ type: "Feature", properties: { id: point.id, kind: point.kind ?? "place" }, geometry: { type: "Point", coordinates: point.coordinates } })) };
         instance.addSource("routes", { type: "geojson", data: routeData });
         instance.addSource("stops", { type: "geojson", data: pointData });
-        const routeStyles = {
+        const routeStyles: Record<RouteMode, { color: string; width: number; dash?: number[] }> = {
           flight: { color: "#ff7a59", width: 3, dash: [2, 2] },
-          rail: { color: "#63b3ff", width: 4, dash: [2, 1.4] },
-          road: { color: "#e37749", width: 4 },
-          mountain: { color: "#0f7760", width: 4, dash: [1.5, 1.2] },
+          train: { color: "#63b3ff", width: 4, dash: [2, 1.4] },
+          bus: { color: "#d4a017", width: 4 },
+          car: { color: "#e37749", width: 4 },
+          ferry: { color: "#3aa6b9", width: 4, dash: [3, 1.5] },
+          bike: { color: "#0f7760", width: 4, dash: [1.5, 1.2] },
+          walk: { color: "#7a8f3a", width: 3, dash: [0.6, 1.6] },
+          other: { color: "#9aa5b1", width: 3 },
         };
         for (const [transport, routeStyle] of Object.entries(routeStyles)) {
-          instance.addLayer({ id: `route-${transport}`, type: "line", source: "routes", filter: ["all", ["==", ["get", "transport"], transport], ["!=", ["get", "exact"], true]], paint: { "line-color": routeStyle.color, "line-width": routeStyle.width, ...("dash" in routeStyle ? { "line-dasharray": routeStyle.dash } : {}) }, layout: { "line-cap": "round", "line-join": "round" } });
+          instance.addLayer({ id: `route-${transport}`, type: "line", source: "routes", filter: ["==", ["get", "transport"], transport], paint: { "line-color": routeStyle.color, "line-width": routeStyle.width, ...(routeStyle.dash ? { "line-dasharray": routeStyle.dash } : {}) }, layout: { "line-cap": "round", "line-join": "round" } });
         }
-        instance.addLayer({ id: "route-exact", type: "line", source: "routes", filter: ["==", ["get", "exact"], true], paint: { "line-color": "#a63b32", "line-width": 4 }, layout: { "line-cap": "round", "line-join": "round" } });
         instance.addLayer({ id: "stop-halo", type: "circle", source: "stops", paint: { "circle-radius": 12, "circle-color": "#63b3ff", "circle-opacity": 0.22 } });
         instance.addLayer({ id: "stops", type: "circle", source: "stops", paint: { "circle-color": ["match", ["get", "kind"], "mountain", "#6ee7c7", "stay", "#63b3ff", "airport", "#ffd166", "#ff7a59"], "circle-radius": 7, "circle-stroke-color": "#19342d", "circle-stroke-width": 2 } });
         instance.addLayer({ id: "selected-stop", type: "circle", source: "stops", filter: ["==", ["get", "id"], ""], paint: { "circle-radius": 15, "circle-color": "#ffd166", "circle-opacity": 0.32, "circle-stroke-width": 2, "circle-stroke-color": "#ffd166" } });
@@ -90,7 +94,7 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     if (ready && map.current?.getLayer("selected-stop")) map.current.setFilter("selected-stop", ["==", ["get", "id"], selectedPoint?.id ?? ""]);
   }, [ready, selectedPoint]);
 
-  // An outside request (such as a day-plan entry) selects a stop by id; the
+  // An outside request (such as an agenda entry) selects a stop by id; the
   // request counter lets the same stop be chosen again.
   useEffect(() => {
     const point = focus ? points.find((candidate) => candidate.id === focus.id) : undefined;
@@ -150,13 +154,13 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
   if (!hasGeometry) return <section className="card trip-map"><h3>Kaart</h3><p>Voor deze reis zijn nog geen kaartcoördinaten beschikbaar.</p></section>;
   return <section className="card trip-map" aria-label="Reiskaart">
     <h3>Kaart</h3>
-    <div className="trip-map-canvas-wrap"><div ref={canvas} className="trip-map-canvas" role="img" aria-label="Kaart met haltes en routes" />{error && !ready && <p className="trip-map-fallback">Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de halteknoppen.</p>}<div className="trip-map-attribution">{attribution}{terrain && <> · <a href="https://mapterhorn.com/attribution" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Mapterhorn</a></>}{satellite && <> · <a href="https://www.esri.com/" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community</>}</div></div>
+    <div className="trip-map-canvas-wrap"><div ref={canvas} className="trip-map-canvas" role="img" aria-label="Kaart met punten en routes" />{error && !ready && <p className="trip-map-fallback">Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de puntknoppen.</p>}<div className="trip-map-attribution">{attribution}{terrain && <> · <a href="https://mapterhorn.com/attribution" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Mapterhorn</a></>}{satellite && <> · <a href="https://www.esri.com/" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community</>}</div></div>
     {error && <p role="status" className="help">{error}</p>}
     <div className="button-row"><button className={`secondary compact map-layer-toggle ${terrain ? "active" : ""}`} type="button" aria-pressed={terrain} disabled={!ready} onClick={toggleTerrain}>{perspective?.label ?? "3D-terrein"}{terrain && " · aan"}</button><button className={`secondary compact map-layer-toggle ${satellite ? "active" : ""}`} type="button" aria-pressed={satellite} disabled={!ready} onClick={toggleSatellite}>Satelliet{satellite && " · aan"}</button></div>
     {satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
     <p className="trip-map-privacy">Kaarttegels tonen de bekeken regio aan OpenFreeMap. 3D-terrein vraagt na inschakeling hoogtegegevens op bij Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri.</p>
     {(selectedPoint || selectedLine) && <p aria-live="polite"><strong>Geselecteerd:</strong> {selectedPoint?.label ?? selectedLine?.label}{selectedPoint?.detail && <> · {selectedPoint.detail}</>}{selectedPoint?.dates && <> · {selectedPoint.dates}</>}</p>}
-    {points.length > 0 && <div className="trip-map-stops"><h4>Haltes</h4><ol>{points.map((point) => <li key={point.id}><button className="secondary compact" type="button" aria-pressed={selected === point.id} onClick={() => selectPoint(point)}>{point.label}</button></li>)}</ol></div>}
+    {points.length > 0 && <div className="trip-map-stops"><h4>Punten op de kaart</h4><ol>{points.map((point) => <li key={point.id}><button className="secondary compact" type="button" aria-pressed={selected === point.id} onClick={() => selectPoint(point)}>{point.label}</button></li>)}</ol></div>}
     {lines.length > 0 && <div className="trip-map-words"><h4>Route in woorden</h4><ol>{lines.map((line) => <li key={line.id}><button className="secondary compact" type="button" aria-pressed={selected === line.id} onClick={() => selectLine(line)}>{line.from && line.to ? `${line.from} → ${line.to} · ` : ""}{line.label}</button></li>)}</ol></div>}
   </section>;
 }

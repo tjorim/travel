@@ -125,7 +125,7 @@ it("clears every pinned copy on this device after confirmation", async () => {
   screen.getByRole("button", { name: "Alles wissen" }).click();
   await answerConfirmation("Alles wissen");
   await screen.findByText("Alle offline kopieën op dit toestel zijn verwijderd.");
-  await screen.findByText("Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of planningsstap om het hier te laten verschijnen.");
+  await screen.findByText("Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of bezoek om het hier te laten verschijnen.");
   expect(screen.queryByText("Insurance policy")).toBeNull();
   expect(screen.queryByText("Mom")).toBeNull();
 });

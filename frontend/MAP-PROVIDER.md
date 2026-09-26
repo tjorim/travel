@@ -17,13 +17,13 @@ Foundation's standard raster tile server.
 ## Map inputs by audience
 
 - **Public and unlisted maps** are built only from the delivered projection:
-  selected broad-route geometry and selected broad-place coordinates. They make
+  selected route geometry and selected area coordinates. They make
   no request of their own to the Travel API, so map bounds, stops and tile
-  requests cannot be derived from owner-only geometry. A broad place shared
+  requests cannot be derived from owner-only geometry. An area shared
   without its coordinate fields appears only in the text sections.
-- **The owner map** fetches owner-authenticated exact places, broad routes and
-  finished GPX/JSON track source files. Tracks are parsed in browser memory; no
-  coordinates are persisted and there is no track-geometry endpoint.
+- **The owner map** fetches owner-authenticated locations and routes. The
+  application takes no recorded location data, so there is no track upload or
+  track-geometry endpoint.
 
 Tile requests disclose the viewed map region to OpenFreeMap (and its CDN). The
 public and unlisted HTML documents use a `no-referrer` policy, and map requests

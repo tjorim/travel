@@ -7,20 +7,21 @@ from sqlalchemy import text
 
 from .database import SessionLocal
 from .mcp_server import MCP_CAPABILITY_CONTRACT_VERSION, MCP_TOOL_CAPABILITIES, create_mcp_http_app, mcp_http_enabled
+from .routers.areas import router as areas_router
 from .routers.documents import router as documents_router
-from .routers.itinerary import router as itinerary_router
 from .routers.library import router as library_router
+from .routers.locations import router as locations_router
 from .routers.media import provider_tokens_router
 from .routers.media import router as media_router
 from .routers.places import router as places_router
 from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
+from .routers.routes import router as routes_router
 from .routers.stays import router as stays_router
 from .routers.tasks import router as tasks_router
-from .routers.tracks import router as tracks_router
-from .routers.transport import router as transport_router
 from .routers.trips import router as trips_router
 from .routers.visibility import router as visibility_router
+from .routers.visits import router as visits_router
 
 if mcp_http_enabled():
     _mcp, _mcp_app = create_mcp_http_app()
@@ -44,17 +45,18 @@ app = FastAPI(
 )
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")
+app.include_router(visits_router, prefix="/api")
 app.include_router(publication_router, prefix="/api")
 app.include_router(publication_delivery_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
-app.include_router(tracks_router, prefix="/api")
-app.include_router(transport_router, prefix="/api")
-app.include_router(itinerary_router, prefix="/api")
+app.include_router(routes_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(library_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
 app.include_router(places_router, prefix="/api")
+app.include_router(areas_router, prefix="/api")
+app.include_router(locations_router, prefix="/api")
 app.include_router(provider_tokens_router, prefix="/api")
 
 if _mcp_app is not None:

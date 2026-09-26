@@ -48,10 +48,10 @@ def create_trip(client: TestClient, title: str = "Exampleland 2054") -> dict:
     return response.json()
 
 
-def add_route_stage(client: TestClient, trip_id: str, position: int, label: str, city: str) -> dict:
+def add_visit(client: TestClient, trip_id: str, position: int, title: str, city: str, **fields) -> dict:
+    area = client.post(f"/api/trips/{trip_id}/areas", json={"label": city, "country_code": "TW"}).json()
     response = client.post(
-        f"/api/trips/{trip_id}/route-stages",
-        json={"position": position, "label": label, "place": {"label": city, "country_code": "TW"}},
+        f"/api/trips/{trip_id}/visits", json={"position": position, "title": title, "area_id": area["id"], **fields}
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -84,24 +84,25 @@ def share(client: TestClient, trip_id: str, kind: str, record_id: str, visibilit
 # --- Public follower view -----------------------------------------------------------
 
 
-def test_map_inputs_use_only_selected_broad_points_and_routes() -> None:
+def test_map_inputs_use_only_selected_area_points_and_routes() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     selected = owner.post(
-        f"/api/trips/{trip['id']}/places/broad",
+        f"/api/trips/{trip['id']}/areas",
         json={"label": "Taipei area", "latitude": 25.0, "longitude": 121.0},
     ).json()
     hidden = owner.post(
-        f"/api/trips/{trip['id']}/places/broad",
+        f"/api/trips/{trip['id']}/areas",
         json={"label": "Hidden area", "latitude": 12.0, "longitude": 34.0},
     ).json()
     route = owner.post(
-        f"/api/trips/{trip['id']}/broad-routes",
-        json={"label": "Selected line", "date_precision": "month", "geometry": {"type": "LineString", "coordinates": [[120.0, 24.0], [121.0, 25.0]]}},
+        f"/api/trips/{trip['id']}/routes",
+        json={"label": "Selected line", "mode": "other", "departure_area_id": selected["id"], "arrival_area_id": selected["id"],
+              "geometry": {"type": "LineString", "coordinates": [[120.0, 24.0], [121.0, 25.0]]}},
     ).json()
     selected_scope = scope(
-        share(owner, trip["id"], "place", selected["id"]),
-        share(owner, trip["id"], "broad_route", route["id"]),
+        share(owner, trip["id"], "area", selected["id"]),
+        share(owner, trip["id"], "route", route["id"]),
     )
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected_scope).status_code == 200
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
@@ -116,8 +117,11 @@ def test_map_inputs_use_only_selected_broad_points_and_routes() -> None:
             "id": document["places"][0]["id"], "label": "Taipei area", "country_code": None, "region": None,
             "latitude": 25.0, "longitude": 121.0,
         }]
-        assert document["route"] == [{
-            "id": document["route"][0]["id"], "label": "Selected line", "geometry": route["geometry"], "date_precision": "month",
+        assert document["routes"] == [{
+            "id": document["routes"][0]["id"], "label": "Selected line", "geometry": route["geometry"], "mode": "other",
+            "status": "planned", "carrier": None, "service_reference": None,
+            "departure": {"label": "Taipei area", "country_code": None, "region": None, "latitude": 25.0, "longitude": 121.0},
+            "arrival": {"label": "Taipei area", "country_code": None, "region": None, "latitude": 25.0, "longitude": 121.0},
         }]
         assert hidden["label"] not in delivered.text
         assert "34.0" not in delivered.text
@@ -128,22 +132,15 @@ def test_map_inputs_never_include_owner_only_geometry_or_unselected_coordinates(
     app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
     trip = create_trip(owner)
     exact = owner.post(
-        f"/api/trips/{trip['id']}/places",
+        f"/api/trips/{trip['id']}/locations",
         json={"display_name": "Private hotel", "latitude": 23.4567, "longitude": 120.9876},
     )
     assert exact.status_code == 201, exact.text
-    track = owner.post(
-        f"/api/trips/{trip['id']}/recorded-tracks/uploads",
-        data={"started_at": "2054-04-04T10:00:00Z", "ended_at": "2054-04-04T10:15:00Z", "kind": "point_array"},
-        files={"file": ("walk.json", b'[{"latitude": 22.1111, "longitude": 119.2222, "time": "2054-04-04T10:00:00Z"},'
-               b'{"latitude": 22.3333, "longitude": 119.4444, "time": "2054-04-04T10:15:00Z"}]', "application/json")},
-    )
-    assert track.status_code == 201, track.text
     label_only = owner.post(
-        f"/api/trips/{trip['id']}/places/broad",
+        f"/api/trips/{trip['id']}/areas",
         json={"label": "Label-only area"},
     ).json()
-    shared = scope(share(owner, trip["id"], "place", label_only["id"]))
+    shared = scope(share(owner, trip["id"], "area", label_only["id"]))
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=shared).status_code == 200
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
     link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Map", "scope": shared}).json()
@@ -153,8 +150,8 @@ def test_map_inputs_never_include_owner_only_geometry_or_unselected_coordinates(
         delivered = TestClient(app).get(path)
         assert delivered.status_code == 200
         assert [place["label"] for place in delivered.json()["places"]] == ["Label-only area"]
-        assert delivered.json()["route"] == []
-        for secret in ("Private hotel", "23.4567", "120.9876", "22.1111", "119.2222", "22.3333", "119.4444"):
+        assert delivered.json()["routes"] == []
+        for secret in ("Private hotel", "23.4567", "120.9876"):
             assert secret not in delivered.text
 
 
@@ -214,7 +211,7 @@ def test_public_projection_exposes_only_selected_items_and_reflects_later_edits_
     assert published.status_code == 200
     slug = published.json()["slug"]
 
-    # A later edit to the (still owner-only) hidden moment must never appear:
+    # A later edit to the (still owner-only) hidden update must never appear:
     # the *scope* is frozen, so an out-of-scope item can never surface.
     anonymous = TestClient(app)
     document = anonymous.get(f"/api/public/trips/{slug}")
@@ -257,8 +254,8 @@ def test_live_story_order_stable_fragments_and_scoped_media_association(tmp_path
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
     visitor = TestClient(app)
     document = visitor.get(f"/api/public/trips/{slug}").json()
-    assert [moment["title"] for moment in document["updates"]] == ["Early", "Late"]
-    assert [moment["story_date"] for moment in document["updates"]] == ["2054-04-02", "2054-05-20"]
+    assert [update["title"] for update in document["updates"]] == ["Early", "Late"]
+    assert [update["story_date"] for update in document["updates"]] == ["2054-04-02", "2054-05-20"]
     # The photo is attached to "Early", so it travels with that update; nothing else selects it.
     assert document["media"][0]["update"] == document["updates"][0]["id"]
     assert document["media"][0]["caption"] == "Shared caption"
@@ -289,7 +286,7 @@ def test_live_story_order_stable_fragments_and_scoped_media_association(tmp_path
     assert owner.patch(presentation_url, json={"travel_update_id": foreign["id"]}).status_code == 422
 
 def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) -> None:
-    """Notes, the exact place, attached originals and the exact time stay private even when the update is shared."""
+    """Notes, the location, attached originals and the exact time stay private even when the update is shared."""
     owner = client_for("owner-1")
     app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
     trip = create_trip(owner)
@@ -303,7 +300,7 @@ def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) ->
         json={
             "occurred_at": "2054-04-04T10:37:12Z", "title": "Arrival", "body": "We landed in Taipei.",
             "private_notes": "Not for sharing.", "media_asset_ids": [asset_id],
-            "place": {"label": "Cafe", "display_name": "Secret cafe, 9 Hidden Lane", "latitude": 25.0331, "longitude": 121.5651},
+            "location": {"label": "Cafe", "display_name": "Secret cafe, 9 Hidden Lane", "latitude": 25.0331, "longitude": 121.5651},
         },
     )
     assert created.status_code == 201, created.text
@@ -379,11 +376,11 @@ def test_scope_rejects_a_resource_from_another_trip() -> None:
     owner = client_for("owner-1")
     trip_a = create_trip(owner, "Trip A")
     trip_b = create_trip(owner, "Trip B")
-    foreign_moment = add_update(owner, trip_b["id"], "Not yours")
+    foreign_update = add_update(owner, trip_b["id"], "Not yours")
 
     response = owner.put(
         f"/api/trips/{trip_a['id']}/public-projection",
-        json=scope(item("travel_update", foreign_moment["id"])),
+        json=scope(item("travel_update", foreign_update["id"])),
     )
     assert response.status_code == 422
 
@@ -391,19 +388,19 @@ def test_scope_rejects_a_resource_from_another_trip() -> None:
 def test_scope_rejects_retired_kinds_field_choices_and_records_that_are_not_custom() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    stage = add_route_stage(owner, trip["id"], 0, "Taipei", "Taipei")
+    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
     path = f"/api/trips/{trip['id']}/public-projection"
 
     # The old twin kinds no longer exist.
-    assert owner.put(path, json=scope(item("broad_stay_card", "x"))).status_code == 422
-    assert owner.put(path, json=scope(item("exact_place", "x"))).status_code == 422
+    assert owner.put(path, json=scope(item("stay_card", "x"))).status_code == 422
+    assert owner.put(path, json=scope(item("location", "x"))).status_code == 422
     # A scope names records, never fields.
-    with_fields = {"kind": "route_stage", "id": stage["id"], "fields": ["place", "owner_notes"]}
+    with_fields = {"kind": "visit", "id": stage["id"], "fields": ["place", "owner_notes"]}
     assert owner.put(path, json=scope(with_fields)).status_code == 422
     # A record must be custom before an audience can list it.
-    assert owner.put(path, json=scope(item("route_stage", stage["id"]))).status_code == 422
-    share(owner, trip["id"], "route_stage", stage["id"])
-    assert owner.put(path, json=scope(item("route_stage", stage["id"]))).status_code == 200
+    assert owner.put(path, json=scope(item("visit", stage["id"]))).status_code == 422
+    share(owner, trip["id"], "visit", stage["id"])
+    assert owner.put(path, json=scope(item("visit", stage["id"]))).status_code == 200
 
 
 def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_files(tmp_path: Path) -> None:
@@ -412,22 +409,24 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
     app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
     trip = create_trip(owner)
     trips_path = f"/api/trips/{trip['id']}"
-    stage = add_route_stage(owner, trip["id"], 0, "Taipei", "Taipei")
-    place_id = stage["place"]["id"]
+    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
+    place_id = stage["area"]["id"]
 
     def stay(name: str) -> dict:
         return owner.post(f"{trips_path}/stays", json={
-            "broad_place_id": place_id, "check_in_date": "2054-04-01", "check_out_date": "2054-04-05", "property_name": name,
+            "location": {"area_id": place_id}, "check_in_date": "2054-04-01", "check_out_date": "2054-04-05", "property_name": name,
         }).json()
 
     selected_stay, hidden_stay = stay("Taipei base"), stay("Hidden stay")
     selected_route = owner.post(
-        f"{trips_path}/broad-routes",
-        json={"label": "North coast", "date_precision": "day", "geometry": {"type": "LineString", "coordinates": [[121, 25], [121.1, 25.1]]}},
+        f"{trips_path}/routes",
+        json={"label": "North coast", "mode": "car", "departure_area_id": place_id, "arrival_area_id": place_id,
+              "geometry": {"type": "LineString", "coordinates": [[121, 25], [121.1, 25.1]]}},
     ).json()
     hidden_route = owner.post(
-        f"{trips_path}/broad-routes",
-        json={"label": "Private raw route", "date_precision": "day", "geometry": {"type": "LineString", "coordinates": [[120, 24], [120.1, 24.1]]}},
+        f"{trips_path}/routes",
+        json={"label": "Private raw route", "mode": "car", "departure_area_id": place_id, "arrival_area_id": place_id,
+              "geometry": {"type": "LineString", "coordinates": [[120, 24], [120.1, 24.1]]}},
     ).json()
 
     image_data = io.BytesIO()
@@ -452,16 +451,16 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
 
     selected = scope(
         share(owner, trip["id"], "stay", selected_stay["id"]),
-        share(owner, trip["id"], "route_stage", stage["id"]),
-        share(owner, trip["id"], "place", place_id),
-        share(owner, trip["id"], "broad_route", selected_route["id"]),
+        share(owner, trip["id"], "visit", stage["id"]),
+        share(owner, trip["id"], "area", place_id),
+        share(owner, trip["id"], "route", selected_route["id"]),
         share(owner, trip["id"], "media_derivative", selected_media["id"]),
         share(owner, trip["id"], "document_derivative", selected_document["id"]),
     )
     assert owner.put(f"{trips_path}/public-projection", json=selected).status_code == 200
     preview = owner.post(f"{trips_path}/public-projection/preview")
     assert preview.status_code == 200
-    ids = {key: preview.json()[key][0]["id"] for key in ("stays", "route_stages", "places", "route", "media", "documents")}
+    ids = {key: preview.json()[key][0]["id"] for key in ("stays", "visits", "places", "routes", "media", "documents")}
     preview_file_base = f"{trips_path}/public-projection/preview/files"
     assert owner.get(f"{preview_file_base}/{ids['documents']}").content == b"safe"
     assert owner.get(f"{preview_file_base}/{ids['media']}").status_code == 200
@@ -473,9 +472,9 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
 
     assert projection == {**preview.json()}
     assert [stay["title"] for stay in projection["stays"]] == ["Taipei"]
-    assert projection["route_stages"][0]["label"] == "Taipei"
+    assert projection["visits"][0]["title"] == "Taipei"
     assert [place["label"] for place in projection["places"]] == ["Taipei"]
-    assert [route["label"] for route in projection["route"]] == ["North coast"]
+    assert [route["label"] for route in projection["routes"]] == ["North coast"]
     assert projection["media"][0]["image"] == {"id": ids["media"]}
     assert projection["documents"] == [{"id": ids["documents"], "title": "Safe itinerary", "file": {"id": ids["documents"]}}]
     for private in ("Taipei base", "Hidden stay", hidden_route["label"], "Private raw route"):
@@ -560,8 +559,8 @@ def test_share_link_lifecycle_keeps_its_owner_url_and_serves_only_its_scope() ->
     assert delivered.headers["x-robots-tag"] == "noindex, noarchive"
     assert delivered.headers["referrer-policy"] == "no-referrer"
 
-    # Only the scope (which moments) is frozen at activation; a wording fix
-    # to an already-in-scope moment reaches the link immediately.
+    # Only the scope (which updates) is frozen at activation; a wording fix
+    # to an already-in-scope update reaches the link immediately.
     owner.patch(f"/api/trips/{trip['id']}/travel-updates/{hotel['id']}", json={"title": "Hotel (updated)"})
     refreshed = anonymous.get(f"/api/shared/{token}")
     assert refreshed.json()["updates"][0]["title"] == "Hotel (updated)"
@@ -798,7 +797,7 @@ def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
         assert response.status_code == 200
         document = response.json()
         assert document["schema_version"] == version
-        assert [moment["title"] for moment in document["updates"]] == ["Visible excerpt"]
+        assert [update["title"] for update in document["updates"]] == ["Visible excerpt"]
         assert not {"owner_subject", "scope", "token", "link_id", "trip_id"} & document.keys()
         assert response.headers["cache-control"].startswith("no-store")
         if version == "travel/unlisted-trip@1":
@@ -813,8 +812,8 @@ def test_anonymous_delivery_routes_return_only_projection_documents() -> None:
 def test_preview_navigation_is_owner_authenticated_and_scope_checked_after_withdrawal() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    area = owner.post(f"/api/trips/{trip['id']}/places/broad", json={"label": "Taipei", "country_code": "TW"}).json()
-    selected = scope(share(owner, trip["id"], "place", area["id"]))
+    area = owner.post(f"/api/trips/{trip['id']}/areas", json={"label": "Taipei", "country_code": "TW"}).json()
+    selected = scope(share(owner, trip["id"], "area", area["id"]))
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
     marker = owner.post(f"/api/trips/{trip['id']}/public-projection/preview").json()["navigation"][0]["id"]
     public_path = f"/api/trips/{trip['id']}/public-projection/preview/navigation/{marker}"
@@ -838,28 +837,24 @@ def test_stage_summaries_and_trip_dates_appear_only_when_chosen() -> None:
     assert owner.patch(
         f"/api/trips/{trip['id']}", json={"starts_on": "2054-11-16", "ends_on": "2054-12-06"}
     ).status_code == 200
-    stage = owner.post(
-        f"/api/trips/{trip['id']}/route-stages",
-        json={"position": 0, "label": "Taipei", "summary": "City, food and a first weekend.",
-              "place": {"label": "Taipei", "country_code": "TW"}},
-    ).json()
+    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei", summary="City, food and a first weekend.")
 
     # A private stage and unshared dates reach nobody.
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
     document = TestClient(app).get(f"/api/public/trips/{slug}").json()
-    assert document["dates"] is None and document["route_stages"] == []
+    assert document["dates"] is None and document["visits"] == []
     assert "highlights" not in document
     assert "First weekend" not in str(document) and "2054-11" not in str(document)
 
     # Sharing the stage needs no scope entry; the dates are a separate, trip-level choice.
-    share(owner, trip["id"], "route_stage", stage["id"], "everyone")
+    share(owner, trip["id"], "visit", stage["id"], "everyone")
     selected = scope()
     selected["trip"]["dates"] = "month"
     assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=selected).status_code == 200
     delivered = TestClient(app).get(f"/api/public/trips/{slug}")
     document = delivered.json()
     assert document["dates"] == {"starts_on": "2054-11", "ends_on": "2054-12", "date_precision": "month"}
-    assert document["route_stages"][0]["summary"] == "City, food and a first weekend."
+    assert document["visits"][0]["summary"] == "City, food and a first weekend."
     assert "2054-11-16" not in delivered.text
     assert TestClient(app).get("/api/public/trips").json()[0]["dates"] == document["dates"]
 
@@ -977,9 +972,9 @@ def test_a_photo_travels_with_its_update_and_only_while_the_update_is_delivered(
 def test_visibility_is_the_same_owner_only_choice_for_every_kind() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    stage = add_route_stage(owner, trip["id"], 0, "Taipei", "Taipei")
+    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
     assert stage["visibility"] == "private"
-    path = f"/api/trips/{trip['id']}/visibility/route_stage/{stage['id']}"
+    path = f"/api/trips/{trip['id']}/visibility/visit/{stage['id']}"
 
     assert owner.put(path, json={"visibility": "everyone"}).json() == {"visibility": "everyone"}
     assert owner.put(path, json={"visibility": "sometimes"}).status_code == 422
@@ -987,30 +982,30 @@ def test_visibility_is_the_same_owner_only_choice_for_every_kind() -> None:
     assert other.put(path, json={"visibility": "private"}).status_code == 404
     other_trip = create_trip(other, "Other")
     assert other.put(
-        f"/api/trips/{other_trip['id']}/visibility/route_stage/{stage['id']}", json={"visibility": "everyone"}
+        f"/api/trips/{other_trip['id']}/visibility/visit/{stage['id']}", json={"visibility": "everyone"}
     ).status_code == 404
     owner = client_for("owner-1")
-    assert owner.put(f"/api/trips/{trip['id']}/visibility/route_stage/unknown", json={"visibility": "everyone"}).status_code == 404
-    assert owner.put(f"/api/trips/{trip['id']}/visibility/exact_place/x", json={"visibility": "everyone"}).status_code == 422
+    assert owner.put(f"/api/trips/{trip['id']}/visibility/visit/unknown", json={"visibility": "everyone"}).status_code == 404
+    assert owner.put(f"/api/trips/{trip['id']}/visibility/place/x", json={"visibility": "everyone"}).status_code == 422
 
 
 def test_leaving_custom_withdraws_any_kind_from_every_live_scope() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     trips_path = f"/api/trips/{trip['id']}"
-    stage = add_route_stage(owner, trip["id"], 0, "Taipei", "Taipei")
-    selected = scope(share(owner, trip["id"], "route_stage", stage["id"]))
+    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
+    selected = scope(share(owner, trip["id"], "visit", stage["id"]))
     owner.put(f"{trips_path}/public-projection", json=selected)
     link = owner.post(f"{trips_path}/share-links", json={"label": "Family", "scope": selected}).json()
-    assert owner.post(f"{trips_path}/public-projection/preview").json()["route_stages"][0]["label"] == "Taipei"
+    assert owner.post(f"{trips_path}/public-projection/preview").json()["visits"][0]["title"] == "Taipei"
 
-    share(owner, trip["id"], "route_stage", stage["id"], "everyone")
+    share(owner, trip["id"], "visit", stage["id"], "everyone")
     assert owner.get(f"{trips_path}/public-projection").json()["scope"]["items"] == []
     assert owner.get(f"{trips_path}/share-links/{link['id']}").json()["scope"]["items"] == []
-    assert owner.post(f"{trips_path}/public-projection/preview").json()["route_stages"][0]["label"] == "Taipei"
+    assert owner.post(f"{trips_path}/public-projection/preview").json()["visits"][0]["title"] == "Taipei"
 
-    share(owner, trip["id"], "route_stage", stage["id"], "private")
-    assert owner.post(f"{trips_path}/public-projection/preview").json()["route_stages"] == []
+    share(owner, trip["id"], "visit", stage["id"], "private")
+    assert owner.post(f"{trips_path}/public-projection/preview").json()["visits"] == []
     # Choosing custom again does not restore an old listing.
-    share(owner, trip["id"], "route_stage", stage["id"])
-    assert owner.post(f"{trips_path}/public-projection/preview").json()["route_stages"] == []
+    share(owner, trip["id"], "visit", stage["id"])
+    assert owner.post(f"{trips_path}/public-projection/preview").json()["visits"] == []

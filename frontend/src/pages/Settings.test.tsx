@@ -11,10 +11,10 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 let api: FakeApi;
-let providers: { provider: string; connected: boolean }[];
+let providers: { provider: string; available: boolean; connected: boolean }[];
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  providers = [{ provider: "google_photos_picker", connected: false }, { provider: "gopro_cloud", connected: true }];
+  providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: true, connected: true }];
   api = fakeApi();
   api.on("GET", /^\/api\/provider-tokens$/, () => providers);
   api.on("PUT", /^\/api\/provider-tokens\/([^/]+)$/, (_body, match) => { providers = providers.map((item) => item.provider === match[1] ? { ...item, connected: true } : item); return undefined; });
@@ -72,4 +72,11 @@ it("keeps a connected provider when the server refuses to disconnect it", async 
   await answerConfirmation("Loskoppelen");
   await screen.findByText("Loskoppelen mislukt.");
   expect(screen.getByRole("button", { name: "Loskoppelen" })).toBeTruthy();
+});
+
+it("does not list a provider the server does not offer", async () => {
+  providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  renderWithOwner(<Settings />);
+  await screen.findByText("Google Photos");
+  expect(screen.queryByText("GoPro Cloud")).toBeNull();
 });

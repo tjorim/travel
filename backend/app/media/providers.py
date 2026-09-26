@@ -266,6 +266,12 @@ class GoProCloudProvider:
             raise ProviderError(f"Could not download GoPro Cloud item {item.provider_item_id}: {error}") from error
 
 
+def provider_available(name: ImportProvider) -> bool:
+    """Whether this server offers the provider. Google Photos needs no server-side setting: it uses the
+    owner's own token. GoPro Cloud stays off until its beta access is switched on."""
+    return name != ImportProvider.GOPRO_CLOUD or settings.gopro_cloud_enabled
+
+
 def provider_for(name: ImportProvider) -> MediaProvider:
     if name == ImportProvider.GOOGLE_PHOTOS_PICKER:
         return GooglePhotosPickerProvider()

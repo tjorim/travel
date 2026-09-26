@@ -12,23 +12,22 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("../trips/DocumentManager", () => ({ DocumentManager: () => null }));
-vi.mock("../trips/ItineraryPlanManager", () => ({ ItineraryPlanManager: ({ onShowOnMap }: { onShowOnMap?: (id: string) => void }) => <button type="button" onClick={() => onShowOnMap?.("p1")}>Toon op kaart</button> }));
-vi.mock("../trips/BroadPlaceManager", () => ({ BroadPlaceManager: () => null }));
-vi.mock("../trips/ExactPlaceManager", () => ({ ExactPlaceManager: () => null }));
-vi.mock("../trips/AreaView", () => ({ AreaView: () => null }));
+vi.mock("../trips/VisitManager", () => ({ VisitManager: ({ onShowOnMap }: { onShowOnMap?: (id: string) => void }) => <button type="button" onClick={() => onShowOnMap?.("p1")}>Toon op kaart</button> }));
+vi.mock("../trips/AreaManager", () => ({ AreaManager: () => null }));
+vi.mock("../trips/LocationManager", () => ({ LocationManager: () => null }));
 vi.mock("../trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
 vi.mock("../trips/MediaManager", () => ({ MediaManager: () => null }));
 vi.mock("../trips/OwnerTripMap", () => ({ OwnerTripMap: ({ focus }: { focus?: { id: string } | null }) => <p>Kaartfocus {focus?.id ?? "geen"}</p> }));
 vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
 vi.mock("../trips/StayManager", () => ({ StayManager: () => null }));
-vi.mock("../trips/TrackManager", () => ({ TrackManager: () => null }));
-vi.mock("../trips/TransportLegManager", () => ({ TransportLegManager: () => null }));
+vi.mock("../trips/RouteManager", () => ({ RouteManager: () => null }));
+vi.mock("../trips/AgendaView", () => ({ AgendaView: () => null }));
 vi.mock("../trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
 vi.mock("../library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 vi.mock("../trips/TripOverview", () => ({ TripOverview: () => null }));
 
-const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({ id, title, summary: null, starts_on: null, ends_on: null, route_stages: [], travel_updates: [], ...extra });
+const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({ id, title, summary: null, starts_on: null, ends_on: null, travel_updates: [], ...extra });
 let trips: Trip[];
 let requests: string[];
 const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
@@ -46,7 +45,7 @@ beforeEach(() => {
     const match = /^\/api\/trips\/([^/]+)$/.exec(url);
     if (match && method === "PATCH") { trips = trips.map((item) => item.id === match[1] ? { ...item, title: String(body.title), summary: (body.summary as string | null) ?? null } : item); return json(trips.find((item) => item.id === match[1])); }
     if (match && method === "DELETE") { trips = trips.filter((item) => item.id !== match[1]); return Promise.resolve(new Response(null, { status: 204 })); }
-    if (url.endsWith("/places/broad")) return json([]);
+    if (url.endsWith("/areas")) return json([]);
     throw new Error(`unexpected request ${method} ${url}`);
   }));
 });

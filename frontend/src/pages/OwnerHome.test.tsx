@@ -12,7 +12,7 @@ vi.mock("../auth-context", () => ({ useAuth: () => ({ session: auth.session }) }
 function json(value: unknown) { return new Response(JSON.stringify(value), { status: 200, headers: { "Content-Type": "application/json" } }); }
 
 function trip(id: string, title: string, startsOn: string | null, endsOn: string | null) {
-  return { id, title, summary: null, starts_on: startsOn, ends_on: endsOn, route_stages: [], travel_updates: [] };
+  return { id, title, summary: null, starts_on: startsOn, ends_on: endsOn, travel_updates: [] };
 }
 
 beforeEach(() => {
@@ -30,7 +30,7 @@ it("shows active and planning-first trips with unread alerts", async () => {
     if (url === "/api/trips") return Promise.resolve(json(trips));
     if (url.includes("task-alerts")) return Promise.resolve(json(url.includes("active") ? [{ id: "alert", task_id: "task", kind: "reminder", title: "Check in", scheduled_for: now.toISOString(), created_at: now.toISOString(), read_at: null, email_sent_at: null, email_attempts: 0, email_last_error: null }] : []));
     if (url.includes("trip-tasks")) return Promise.resolve(json([]));
-    if (url.includes("stays") || url.includes("transport-legs")) return Promise.resolve(json([]));
+    if (url.includes("stays") || url.includes("routes")) return Promise.resolve(json([]));
     throw new Error(`unexpected request ${url}`);
   }));
 

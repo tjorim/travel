@@ -276,7 +276,7 @@ def test_owner_can_review_selected_media_as_visits_without_creating_updates_or_p
     # a reisupdate, place, shareable item, or persistent candidate row.
     trip_after_review = owner.get(f"/api/trips/{trip['id']}").json()
     assert trip_after_review["travel_updates"] == []
-    assert owner.get(f"/api/trips/{trip['id']}/places").json() == []
+    assert owner.get(f"/api/trips/{trip['id']}/locations").json() == []
 
     other = client_for("owner-2", tmp_path)
     assert other.post(
@@ -361,12 +361,24 @@ def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path)
     statuses = owner.get("/api/provider-tokens")
     assert statuses.status_code == 200
     assert statuses.json() == [
-        {"provider": "google_photos_picker", "connected": True},
-        {"provider": "gopro_cloud", "connected": False},
+        {"provider": "google_photos_picker", "available": True, "connected": True},
+        {"provider": "gopro_cloud", "available": False, "connected": False},
     ]
     assert "never-return-this" not in statuses.text
     assert owner.delete("/api/provider-tokens/google_photos_picker").status_code == 204
-    assert owner.get("/api/provider-tokens").json()[0] == {"provider": "google_photos_picker", "connected": False}
+    assert owner.get("/api/provider-tokens").json()[0] == {"provider": "google_photos_picker", "available": True, "connected": False}
+
+
+def test_gopro_cloud_is_listed_as_available_only_when_its_beta_access_is_switched_on(tmp_path: Path, monkeypatch) -> None:
+    from app.config import settings
+
+    owner = client_for("owner-1", tmp_path)
+    assert {row["provider"]: row["available"] for row in owner.get("/api/provider-tokens").json()} == {
+        "google_photos_picker": True,
+        "gopro_cloud": False,
+    }
+    monkeypatch.setattr(settings, "gopro_cloud_enabled", True)
+    assert {row["provider"]: row["available"] for row in owner.get("/api/provider-tokens").json()}["gopro_cloud"] is True
 
 
 # --- Google Photos Picker import: only explicitly selected items ------------------

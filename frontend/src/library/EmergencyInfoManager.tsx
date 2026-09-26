@@ -85,7 +85,7 @@ export function EmergencyInfoManager() {
   return <section className="card manager" aria-labelledby="emergency-info-title">
     <div className="capture-heading"><div><h3 id="emergency-info-title">Noodinformatie</h3><p>Contacten, relevante nummers en beknopte medische of hulpverlenersnotities, los van één specifieke reis.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe invoer</button></div>
     <p className="help" role="status">{message}</p>
-    {entries.length > 0 && <div className="saved-moments manager-list">{entries.map((entry) => <article className="excerpt-row stacked" key={entry.id}>
+    {entries.length > 0 && <div className="saved-records manager-list">{entries.map((entry) => <article className="excerpt-row stacked" key={entry.id}>
       <button className="document-select" type="button" onClick={() => dialog.inspect(entry.id)} aria-label={`Noodinformatie ${entry.label} bekijken`}><strong>{entry.label}</strong><span>{KIND_LABELS[entry.kind]} · {entry.value}{entry.notes ? ` · ${entry.notes}` : ""}</span></button>
       <div className="button-row">
         <button className="secondary compact" type="button" onClick={() => void togglePin(entry).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("emergency_info", entry.id) ? "Offline verwijderen" : "Offline bewaren"}</button>

@@ -26,12 +26,12 @@ cannot be published while its visibility is `private`.
 
 ## Data and location boundary
 
-The MVP stores a trip title, route stages, chronological moments, broad place
+The MVP stores a trip title, route stages, chronological moments, area
 labels, deliberately selected photo references, and publication metadata.
 Place records contain only a display label and optional ISO country code. They
 do not collect GPS coordinates, accommodation addresses, live location,
 booking data, documents, or emergency contacts. Maps therefore represent
-selected broad route stages, not a trace of the traveller.
+selected route stages, not a trace of the traveller.
 
 Photo binary upload, processing, and hosting are not part of this API. A
 moment can reference an explicitly selected HTTPS photo URL; clients must not
@@ -47,7 +47,7 @@ reviewable export/import plan.
 
 ## Initial user flow
 
-After sign-in, an owner creates a private trip, adds broad route stages and
+After sign-in, an owner creates a private trip, adds route stages and
 moments, and previews it privately. Publishing requires an explicit change to
 `unlisted` or `public` plus a `published` state. Removing publication returns
 the trip to `draft`; the opaque published ID is retained so a later deliberate

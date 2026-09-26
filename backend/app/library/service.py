@@ -3,7 +3,7 @@
 Deliberately a separate, trip-independent inventory: :class:`OwnerStoredObject`
 mirrors :class:`~app.models.StoredObject`'s dedup/checksum/opaque-key rules,
 but keyed by ``owner_subject`` instead of ``trip_id`` so this pipeline never
-touches the trip-scoped media/track/document pipeline in ``app.media.service``.
+touches the trip-scoped media/document pipeline in ``app.media.service``.
 """
 
 from datetime import UTC, datetime

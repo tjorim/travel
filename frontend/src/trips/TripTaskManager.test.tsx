@@ -3,14 +3,14 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { Stay, TransportLeg, Trip, TripTask, TripTaskAlert } from "../tracker-model";
+import type { Stay, Route, Trip, TripTask, TripTaskAlert } from "../tracker-model";
 import { TripOverview } from "./TripOverview";
 import { TripTaskManager } from "./TripTaskManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: "2054-11-16", ends_on: null, route_stages: [], travel_updates: [] };
+const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: "2054-11-16", ends_on: null, travel_updates: [] };
 const task = (id: string, title: string, extra: Partial<TripTask> = {}): TripTask => ({ id, title, notes: null, due_date: null, remind_at: null, reminded_at: null, links: [], completed_at: null, created_at: "2054-09-01T00:00:00Z", ...extra });
 
 type Api = { tasks: TripTask[]; alerts: TripTaskAlert[]; failNext: { status: number; body: unknown } | null; requests: string[] };
@@ -27,7 +27,7 @@ beforeEach(() => {
     if (method !== "GET" && api.failNext) { const failure = api.failNext; api.failNext = null; return json(failure.body, failure.status); }
     const body = init.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
     if (url.endsWith("/stays")) return json([] as Stay[]);
-    if (url.endsWith("/transport-legs")) return json([] as TransportLeg[]);
+    if (url.endsWith("/routes")) return json([] as Route[]);
     if (url.endsWith("/task-alerts")) return json(api.alerts);
     if (url.endsWith("/trip-tasks") && method === "GET") return json(api.tasks);
     if (url.endsWith("/trip-tasks") && method === "POST") { const created = task(`new-${api.tasks.length}`, String(body.title), { notes: (body.notes as string | null) ?? null }); api.tasks = [...api.tasks, created]; return json(created, 201); }

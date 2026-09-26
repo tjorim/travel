@@ -55,14 +55,14 @@ def test_owner_can_create_edit_and_delete_a_travel_update_with_a_private_part() 
             "occurred_at": "2054-04-04T10:00:00Z",
             "title": "Arrival",
             "private_notes": "The first private note.",
-            "place": {"locality": "Taipei", "country_code": "TW"},
+            "location": {"locality": "Taipei", "country_code": "TW"},
         },
     )
     assert update.status_code == 201, update.text
     created = update.json()
-    # A quick capture: private, with notes and an exact place, and no text for visitors yet.
+    # A quick capture: private, with notes and a location, and no text for visitors yet.
     assert (created["visibility"], created["body"], created["private_notes"]) == ("private", "", "The first private note.")
-    assert created["place"]["locality"] == "Taipei" and created["place"]["visibility"] == "private"
+    assert created["location"]["locality"] == "Taipei" and created["location"]["visibility"] == "private"
     update_id = created["id"]
     assert client.get(f"/api/trips/{trip['id']}").json()["travel_updates"][0]["id"] == update_id
 
@@ -70,9 +70,9 @@ def test_owner_can_create_edit_and_delete_a_travel_update_with_a_private_part() 
     assert changed.status_code == 200
     assert changed.json()["title"] == "Arrival in Taipei"
 
-    without_place = client.patch(f"{path}/{update_id}", json={"place": None})
+    without_place = client.patch(f"{path}/{update_id}", json={"location": None})
     assert without_place.status_code == 200
-    assert without_place.json()["place"] is None
+    assert without_place.json()["location"] is None
     # A required part cannot be cleared; the private notes can.
     assert client.patch(f"{path}/{update_id}", json={"title": None}).status_code == 422
     assert client.patch(f"{path}/{update_id}", json={"private_notes": None}).json()["private_notes"] is None
@@ -143,73 +143,12 @@ def test_crud_requires_authentication_by_default() -> None:
     assert response.status_code == 401
 
 
-def test_owner_can_manage_broad_route_stages() -> None:
-    client = client_for("owner-1")
-    trip = create_trip(client)
-    stage = client.post(
-        f"/api/trips/{trip['id']}/route-stages",
-        json={"position": 0, "label": "First stop", "place": {"label": "Taipei", "country_code": "TW"}},
-    )
-    assert stage.status_code == 201, stage.text
-    assert stage.json()["place"] == {
-        "id": stage.json()["place"]["id"],
-        "kind": "broad",
-        "label": "Taipei",
-        "country_code": "TW",
-        "region": None,
-        "latitude": None,
-        "longitude": None,
-        "timezone": None,
-        "visibility": "private",
-    }
-
-
-def test_owner_can_select_reorder_and_remove_broad_route_stages() -> None:
-    client = client_for("owner-1")
-    trip = create_trip(client)
-    broad_places = [
-        client.post(
-            f"/api/trips/{trip['id']}/places/broad",
-            json={"label": label, "country_code": "TW"},
-        ).json()
-        for label in ("Taipei", "Tainan", "Kaohsiung")
-    ]
-    stages = [
-        client.post(
-            f"/api/trips/{trip['id']}/route-stages",
-            json={"position": index, "broad_place_id": place["id"]},
-        ).json()
-        for index, place in enumerate(broad_places)
-    ]
-
-    moved = client.patch(
-        f"/api/trips/{trip['id']}/route-stages/{stages[2]['id']}", json={"position": 0}
-    )
-    assert moved.status_code == 200, moved.text
-    ordered = client.get(f"/api/trips/{trip['id']}").json()["route_stages"]
-    assert [(item["position"], item["place"]["label"]) for item in ordered] == [
-        (0, "Kaohsiung"), (1, "Taipei"), (2, "Tainan")
-    ]
-
-    assert client.delete(f"/api/trips/{trip['id']}/route-stages/{stages[0]['id']}").status_code == 204
-    after_remove = client.get(f"/api/trips/{trip['id']}").json()["route_stages"]
-    assert [item["position"] for item in after_remove] == [0, 1]
-    added = client.post(
-        f"/api/trips/{trip['id']}/route-stages",
-        json={"position": 2, "broad_place_id": broad_places[0]["id"], "label": "Finale"},
-    )
-    assert added.status_code == 201, added.text
-    assert added.json()["place"]["id"] == broad_places[0]["id"]
-
-
 def test_owner_can_write_the_shared_part_of_an_update_and_then_share_it() -> None:
     client = client_for("owner-1")
     trip = create_trip(client)
-    stage = client.post(
-        f"/api/trips/{trip['id']}/route-stages",
-        json={"position": 0, "label": "First stop", "place": {"label": "Taipei", "country_code": "TW"}},
-    )
-    broad_place_id = stage.json()["place"]["id"]
+    area_id = client.post(
+        f"/api/trips/{trip['id']}/areas", json={"label": "Taipei", "country_code": "TW"}
+    ).json()["id"]
     path = f"/api/trips/{trip['id']}/travel-updates"
     update = client.post(
         path, json={"occurred_at": "2054-04-04T10:00:00Z", "title": "Arrival", "private_notes": "Kept private."},
@@ -221,7 +160,7 @@ def test_owner_can_write_the_shared_part_of_an_update_and_then_share_it() -> Non
 
     written = client.patch(
         f"{path}/{update['id']}",
-        json={"broad_place_id": broad_place_id, "title": "Arrival in Taipei", "body": "A public-safe retelling.", "visibility": "everyone"},
+        json={"area_id": area_id, "title": "Arrival in Taipei", "body": "A public-safe retelling.", "visibility": "everyone"},
     )
     assert written.status_code == 200, written.text
     assert (written.json()["visibility"], written.json()["private_notes"]) == ("everyone", "Kept private.")
@@ -250,7 +189,7 @@ def test_other_subject_cannot_read_or_change_a_travel_update() -> None:
     assert other.delete(f"/api/trips/{trip['id']}/travel-updates/{excerpt_id}").status_code == 404
 
 
-def test_travel_update_rejects_an_exact_place_or_a_broad_place_from_another_trip() -> None:
+def test_travel_update_rejects_a_location_or_an_area_from_another_trip() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     private_update = owner.post(
@@ -259,26 +198,24 @@ def test_travel_update_rejects_an_exact_place_or_a_broad_place_from_another_trip
             "occurred_at": "2054-04-04T10:00:00Z",
             "title": "Arrival",
             "private_notes": "Note.",
-            "place": {"locality": "Taipei", "country_code": "TW"},
+            "location": {"locality": "Taipei", "country_code": "TW"},
         },
     )
-    exact_place_id = private_update.json()["place"]["id"]
+    location_id = private_update.json()["location"]["id"]
 
     rejected_kind = owner.post(
         f"/api/trips/{trip['id']}/travel-updates",
-        json={"occurred_at": "2054-04-04T10:00:00Z", "broad_place_id": exact_place_id, "date_precision": "day", "title": "T", "body": "B"},
+        json={"occurred_at": "2054-04-04T10:00:00Z", "area_id": location_id, "date_precision": "day", "title": "T", "body": "B"},
     )
     assert rejected_kind.status_code == 422
 
     other_trip = create_trip(owner)
-    other_stage = owner.post(
-        f"/api/trips/{other_trip['id']}/route-stages",
-        json={"position": 0, "label": "Elsewhere", "place": {"label": "Osaka", "country_code": "JP"}},
-    )
-    foreign_broad_place_id = other_stage.json()["place"]["id"]
+    foreign_area_id = owner.post(
+        f"/api/trips/{other_trip['id']}/areas", json={"label": "Osaka", "country_code": "JP"}
+    ).json()["id"]
 
     rejected_trip = owner.post(
         f"/api/trips/{trip['id']}/travel-updates",
-        json={"occurred_at": "2054-04-04T10:00:00Z", "broad_place_id": foreign_broad_place_id, "date_precision": "day", "title": "T", "body": "B"},
+        json={"occurred_at": "2054-04-04T10:00:00Z", "area_id": foreign_area_id, "date_precision": "day", "title": "T", "body": "B"},
     )
     assert rejected_trip.status_code == 422

@@ -40,19 +40,20 @@ from sqlalchemy.orm import Session, sessionmaker
 from . import schemas
 from .config import settings
 from .database import SessionLocal
-from .models import DocumentKind, ImportProvider, McpAuditEvent, TrackKind, Visibility
+from .models import DocumentKind, ImportProvider, McpAuditEvent, Visibility
 from .routers import (
+    areas,
     documents,
-    itinerary,
     library,
+    locations,
     media,
     places,
     publication,
+    routes,
     stays,
     tasks,
-    tracks,
-    transport,
     trips,
+    visits,
 )
 from .routers import visibility as visibility_routes
 from .secrets import get_secret_store
@@ -250,7 +251,7 @@ class TravelMcpBackend:
                                               .order_by(McpAuditEvent.occurred_at.desc()).limit(limit))),
             lambda rows: [_model(row) for row in rows])
 
-    # Trips, route stages and travel updates ------------------------
+    # Trips and travel updates ------------------------
     def list_trips(self) -> list[dict[str, Any]]:
         """List the caller's private trips and their owner-only editing context."""
         return self._call("trip.list", "trip", None, None, lambda s, sub: trips.list_trips(s, sub), lambda x: _models(x, schemas.TripResponse))
@@ -271,20 +272,28 @@ class TravelMcpBackend:
         """Permanently delete an owned trip after explicit confirmation."""
         return self._call("trip.delete", "trip", trip_id, trip_id, lambda s, sub: trips.delete_trip(trip_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
-    def create_route_stage(self, trip_id: str, payload: schemas.RouteStageCreate) -> dict[str, Any]:
-        """Add a reviewed broad route stage."""
-        return self._call("route_stage.create", "route_stage", None, trip_id, lambda s, sub: trips.create_route_stage(trip_id, payload, s, sub), lambda x: _model(x, schemas.RouteStageResponse))
+    def list_visits(self, trip_id: str) -> list[dict[str, Any]]:
+        """List the trip's visits (stops) in order."""
+        return self._call("visit.list", "visit", None, trip_id, lambda s, sub: visits.list_visits(trip_id, s, sub), lambda x: _models(x, schemas.VisitResponse))
 
-    def update_route_stage(self, trip_id: str, stage_id: str, payload: schemas.RouteStageUpdate) -> dict[str, Any]:
-        """Edit one broad route stage."""
-        return self._call("route_stage.update", "route_stage", stage_id, trip_id, lambda s, sub: trips.update_route_stage(trip_id, stage_id, payload, s, sub), lambda x: _model(x, schemas.RouteStageResponse))
+    def get_visit(self, trip_id: str, visit_id: str) -> dict[str, Any]:
+        """Read one visit."""
+        return self._call("visit.get", "visit", visit_id, trip_id, lambda s, sub: visits.get_visit(trip_id, visit_id, s, sub), lambda x: _model(x, schemas.VisitResponse))
 
-    def delete_route_stage(self, trip_id: str, stage_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a route stage after explicit confirmation."""
-        return self._call("route_stage.delete", "route_stage", stage_id, trip_id, lambda s, sub: trips.delete_route_stage(trip_id, stage_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
+    def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
+        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. Times stay private unless share_time is set."""
+        return self._call("visit.create", "visit", None, trip_id, lambda s, sub: visits.create_visit(trip_id, payload, s, sub), lambda x: _model(x, schemas.VisitResponse))
+
+    def update_visit(self, trip_id: str, visit_id: str, payload: schemas.VisitUpdate) -> dict[str, Any]:
+        """Edit or reorder a visit."""
+        return self._call("visit.update", "visit", visit_id, trip_id, lambda s, sub: visits.update_visit(trip_id, visit_id, payload, s, sub), lambda x: _model(x, schemas.VisitResponse))
+
+    def delete_visit(self, trip_id: str, visit_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete a visit after explicit confirmation."""
+        return self._call("visit.delete", "visit", visit_id, trip_id, lambda s, sub: visits.delete_visit(trip_id, visit_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     def create_travel_update(self, trip_id: str, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
-        """Create a reisupdate: private notes, exact place and attached media stay private; the title, text, date and area are shared only as its visibility allows."""
+        """Create a reisupdate: private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows."""
         return self._call("travel_update.create", "travel_update", None, trip_id, lambda s, sub: trips.create_travel_update(trip_id, payload, s, sub), lambda x: _model(x, schemas.TravelUpdateResponse))
 
     def update_travel_update(self, trip_id: str, update_id: str, payload: schemas.TravelUpdatePatch) -> dict[str, Any]:
@@ -295,7 +304,7 @@ class TravelMcpBackend:
         """Delete a reisupdate after explicit confirmation."""
         return self._call("travel_update.delete", "travel_update", update_id, trip_id, lambda s, sub: trips.delete_travel_update(trip_id, update_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
-    # Exact and broad places --------------------------------------------
+    # Areas and locations ---------------------------------------------------
     def search_places(self, trip_id: str, payload: schemas.PlaceSearchRequest) -> dict[str, Any]:
         """Explicitly search the configured owner-only place provider; this never saves a place."""
         from .places.search import get_place_search_service
@@ -306,29 +315,29 @@ class TravelMcpBackend:
         from .places.search import get_place_search_service
         return self._call("place.reverse", "place_search", None, trip_id, lambda s, sub: places.reverse_geocode_place(trip_id, payload, s, sub, get_place_search_service()), lambda x: _model(x, schemas.PlaceSearchResponse))
 
-    def list_exact_places(self, trip_id: str) -> list[dict[str, Any]]:
-        """List owner-only exact places."""
-        return self._call("exact_place.list", "exact_place", None, trip_id, lambda s, sub: places.list_exact_places(trip_id, s, sub), lambda x: _models(x, schemas.ExactPlaceResponse))
+    def list_locations(self, trip_id: str) -> list[dict[str, Any]]:
+        """List owner-only locations."""
+        return self._call("location.list", "location", None, trip_id, lambda s, sub: locations.list_locations(trip_id, s, sub), lambda x: _models(x, schemas.LocationResponse))
 
-    def save_exact_place(self, trip_id: str, payload: schemas.ExactPlaceInput) -> dict[str, Any]:
-        """Save a selected exact place for this trip."""
-        return self._call("exact_place.create", "exact_place", None, trip_id, lambda s, sub: places.save_exact_place(trip_id, payload, s, sub), lambda x: _model(x, schemas.ExactPlaceResponse))
+    def save_location(self, trip_id: str, payload: schemas.LocationInput) -> dict[str, Any]:
+        """Save a selected location for this trip."""
+        return self._call("location.create", "location", None, trip_id, lambda s, sub: locations.save_location(trip_id, payload, s, sub), lambda x: _model(x, schemas.LocationResponse))
 
-    def list_broad_places(self, trip_id: str) -> list[dict[str, Any]]:
-        """List intentionally authored broad places only."""
-        return self._call("broad_place.list", "broad_place", None, trip_id, lambda s, sub: places.list_broad_places(trip_id, s, sub), lambda x: _models(x, schemas.BroadPlaceResponse))
+    def list_areas(self, trip_id: str) -> list[dict[str, Any]]:
+        """List areas: the cities and regions you authored."""
+        return self._call("area.list", "area", None, trip_id, lambda s, sub: areas.list_areas(trip_id, s, sub), lambda x: _models(x, schemas.AreaResponse))
 
-    def save_broad_place(self, trip_id: str, payload: schemas.BroadPlaceInput) -> dict[str, Any]:
-        """Save a broad place without making it public."""
-        return self._call("broad_place.create", "broad_place", None, trip_id, lambda s, sub: places.save_broad_place(trip_id, payload, s, sub), lambda x: _model(x, schemas.BroadPlaceResponse))
+    def save_area(self, trip_id: str, payload: schemas.AreaInput) -> dict[str, Any]:
+        """Save an area without making it public."""
+        return self._call("area.create", "area", None, trip_id, lambda s, sub: areas.save_area(trip_id, payload, s, sub), lambda x: _model(x, schemas.AreaResponse))
 
-    def update_broad_place(self, trip_id: str, place_id: str, payload: schemas.BroadPlaceUpdate) -> dict[str, Any]:
-        """Edit a broad place, for example to set its IANA time zone."""
-        return self._call("broad_place.update", "broad_place", place_id, trip_id, lambda s, sub: places.update_broad_place(trip_id, place_id, payload, s, sub), lambda x: _model(x, schemas.BroadPlaceResponse))
+    def update_area(self, trip_id: str, area_id: str, payload: schemas.AreaUpdate) -> dict[str, Any]:
+        """Edit an area, for example to set its IANA time zone."""
+        return self._call("area.update", "area", area_id, trip_id, lambda s, sub: areas.update_area(trip_id, area_id, payload, s, sub), lambda x: _model(x, schemas.AreaResponse))
 
-    def update_exact_place(self, trip_id: str, place_id: str, payload: schemas.ExactPlaceUpdate) -> dict[str, Any]:
-        """Give an exact place its public name; a spot cannot be shared without one."""
-        return self._call("exact_place.update", "exact_place", place_id, trip_id, lambda s, sub: places.update_exact_place(trip_id, place_id, payload, s, sub), lambda x: _model(x, schemas.ExactPlaceResponse))
+    def update_location(self, trip_id: str, location_id: str, payload: schemas.LocationUpdate) -> dict[str, Any]:
+        """Give a location its public name; a location cannot be shared without one."""
+        return self._call("location.update", "location", location_id, trip_id, lambda s, sub: locations.update_location(trip_id, location_id, payload, s, sub), lambda x: _model(x, schemas.LocationResponse))
 
     def set_visibility(self, trip_id: str, kind: schemas.ShareScopeKind, record_id: str, visibility: Visibility, confirm: bool = False) -> dict[str, Any]:
         """Choose who receives one record: private, everyone, or custom (only audiences that list it)."""
@@ -446,9 +455,9 @@ class TravelMcpBackend:
         """Create a private emergency-information entry."""
         return self._call("emergency_info.create", "emergency_info", None, None, lambda s, sub: library.create_emergency_info(payload, s, sub), lambda x: _model(x, schemas.EmergencyInfoEntryResponse))
 
-    # Stays, transport, itinerary, and preparation ----------------------
+    # Stays and preparation ----------------------
     def list_stays(self, trip_id: str) -> list[dict[str, Any]]:
-        """List exact, owner-only accommodation records."""
+        """List owner-only accommodation records."""
         return self._call("stay.list", "stay", None, trip_id, lambda s, sub: stays.list_stays(trip_id, s, sub), lambda x: _models(x, schemas.StayResponse))
 
     def create_stay(self, trip_id: str, payload: schemas.StayCreate) -> dict[str, Any]:
@@ -462,38 +471,6 @@ class TravelMcpBackend:
     def delete_stay(self, trip_id: str, stay_id: str, confirm: bool = False) -> dict[str, str]:
         """Delete an accommodation record after explicit confirmation."""
         return self._call("stay.delete", "stay", stay_id, trip_id, lambda s, sub: stays.delete_stay(trip_id, stay_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
-
-    def list_transport_legs(self, trip_id: str) -> list[dict[str, Any]]:
-        """List owner-only transport itinerary records."""
-        return self._call("transport_leg.list", "transport_leg", None, trip_id, lambda s, sub: transport.list_transport_legs(trip_id, s, sub), lambda x: _models(x, schemas.TransportLegResponse))
-
-    def create_transport_leg(self, trip_id: str, payload: schemas.TransportLegCreate) -> dict[str, Any]:
-        """Create a transport leg with validated exact places and document links."""
-        return self._call("transport_leg.create", "transport_leg", None, trip_id, lambda s, sub: transport.create_transport_leg(trip_id, payload, s, sub), lambda x: _model(x, schemas.TransportLegResponse))
-
-    def update_transport_leg(self, trip_id: str, leg_id: str, payload: schemas.TransportLegUpdate) -> dict[str, Any]:
-        """Update an owner-only transport leg."""
-        return self._call("transport_leg.update", "transport_leg", leg_id, trip_id, lambda s, sub: transport.update_transport_leg(trip_id, leg_id, payload, s, sub), lambda x: _model(x, schemas.TransportLegResponse))
-
-    def delete_transport_leg(self, trip_id: str, leg_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a transport leg after explicit confirmation."""
-        return self._call("transport_leg.delete", "transport_leg", leg_id, trip_id, lambda s, sub: transport.delete_transport_leg(trip_id, leg_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
-
-    def list_itinerary_entries(self, trip_id: str) -> list[dict[str, Any]]:
-        """List ordered owner day-plan entries."""
-        return self._call("itinerary_entry.list", "itinerary_entry", None, trip_id, lambda s, sub: itinerary.list_itinerary_entries(trip_id, s, sub), lambda x: _models(x, schemas.ItineraryEntryResponse))
-
-    def create_itinerary_entry(self, trip_id: str, payload: schemas.ItineraryEntryCreate) -> dict[str, Any]:
-        """Create a validated owner day-plan entry."""
-        return self._call("itinerary_entry.create", "itinerary_entry", None, trip_id, lambda s, sub: itinerary.create_itinerary_entry(trip_id, payload, s, sub), lambda x: _model(x, schemas.ItineraryEntryResponse))
-
-    def update_itinerary_entry(self, trip_id: str, entry_id: str, payload: schemas.ItineraryEntryUpdate) -> dict[str, Any]:
-        """Update or reorder an owner day-plan entry."""
-        return self._call("itinerary_entry.update", "itinerary_entry", entry_id, trip_id, lambda s, sub: itinerary.update_itinerary_entry(trip_id, entry_id, payload, s, sub), lambda x: _model(x, schemas.ItineraryEntryResponse))
-
-    def delete_itinerary_entry(self, trip_id: str, entry_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a day-plan entry after explicit confirmation."""
-        return self._call("itinerary_entry.delete", "itinerary_entry", entry_id, trip_id, lambda s, sub: itinerary.delete_itinerary_entry(trip_id, entry_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     def list_trip_tasks(self, trip_id: str) -> list[dict[str, Any]]:
         """List owner preparation tasks."""
@@ -518,31 +495,23 @@ class TravelMcpBackend:
     def mark_task_alert_read(self, trip_id: str, alert_id: str) -> dict[str, Any]:
         """Mark one owner-inbox task alert as read."""
         return self._call("task_alert.read", "task_alert", alert_id, trip_id, lambda s, sub: tasks.mark_task_alert_read(trip_id, alert_id, s, sub), lambda x: _model(x, schemas.TripTaskAlertResponse))
-    # Finished private tracks and broad reviewed routes ------------------
-    def upload_finished_track(self, trip_id: str, started_at: str, ended_at: str, kind: TrackKind, file: BinaryUpload) -> dict[str, Any]:
-        """Upload one complete recorded track; live point streaming is not supported."""
-        from datetime import datetime
-        return self._call("recorded_track.upload", "recorded_track", None, trip_id, lambda s, sub: tracks.upload_finished_track(trip_id, s, sub, get_storage(), Response(), datetime.fromisoformat(started_at.replace("Z", "+00:00")), datetime.fromisoformat(ended_at.replace("Z", "+00:00")), kind, file.upload_file()), lambda x: _model(x, schemas.RecordedTrackResponse))
 
-    def list_recorded_tracks(self, trip_id: str) -> list[dict[str, Any]]:
-        """List completed private recordings, never live location data."""
-        return self._call("recorded_track.list", "recorded_track", None, trip_id, lambda s, sub: tracks.list_recorded_tracks(trip_id, s, sub), lambda x: _models(x, schemas.RecordedTrackResponse))
+    # Routes: between two areas, with optional locations, schedule, booking and drawn line ----
+    def list_routes(self, trip_id: str) -> list[dict[str, Any]]:
+        """List routes: how the trip gets from one area to another."""
+        return self._call("route.list", "route", None, trip_id, lambda s, sub: routes.list_routes(trip_id, s, sub), lambda x: _models(x, schemas.RouteResponse))
 
-    def list_broad_routes(self, trip_id: str) -> list[dict[str, Any]]:
-        """List separately authored broad GeoJSON routes."""
-        return self._call("broad_route.list", "broad_route", None, trip_id, lambda s, sub: tracks.list_broad_routes(trip_id, s, sub), lambda x: _models(x, schemas.BroadRouteResponse))
+    def create_route(self, trip_id: str, payload: schemas.RouteCreate) -> dict[str, Any]:
+        """Create a route between two areas with a travel mode (flight, train, bus, ferry, car, bike, walk or other). The exact locations, schedule, booking details and a drawn GeoJSON line are optional."""
+        return self._call("route.create", "route", None, trip_id, lambda s, sub: routes.create_route(trip_id, payload, s, sub), lambda x: _model(x, schemas.RouteResponse))
 
-    def create_broad_route(self, trip_id: str, payload: schemas.BroadRouteCreate) -> dict[str, Any]:
-        """Create a reviewed broad route; it is never derived from raw tracks."""
-        return self._call("broad_route.create", "broad_route", None, trip_id, lambda s, sub: tracks.create_broad_route(trip_id, payload, s, sub), lambda x: _model(x, schemas.BroadRouteResponse))
+    def update_route(self, trip_id: str, route_id: str, payload: schemas.RouteUpdate) -> dict[str, Any]:
+        """Update a route."""
+        return self._call("route.update", "route", route_id, trip_id, lambda s, sub: routes.update_route(trip_id, route_id, payload, s, sub), lambda x: _model(x, schemas.RouteResponse))
 
-    def update_broad_route(self, trip_id: str, route_id: str, payload: schemas.BroadRouteUpdate) -> dict[str, Any]:
-        """Update an authored broad route."""
-        return self._call("broad_route.update", "broad_route", route_id, trip_id, lambda s, sub: tracks.update_broad_route(trip_id, route_id, payload, s, sub), lambda x: _model(x, schemas.BroadRouteResponse))
-
-    def delete_broad_route(self, trip_id: str, route_id: str, confirm: bool = False) -> dict[str, str]:
-        """Delete a broad route after explicit confirmation."""
-        return self._call("broad_route.delete", "broad_route", route_id, trip_id, lambda s, sub: tracks.delete_broad_route(trip_id, route_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
+    def delete_route(self, trip_id: str, route_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete a route after explicit confirmation."""
+        return self._call("route.delete", "route", route_id, trip_id, lambda s, sub: routes.delete_route(trip_id, route_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     # Remaining derivative, import, and owner-library lifecycle tools ----
     def list_media_derivatives(self, trip_id: str, media_id: str) -> list[dict[str, Any]]:
@@ -600,33 +569,21 @@ class TravelMcpBackend:
         return self._call("emergency_info.delete", "emergency_info", entry_id, None, lambda s, sub: library.delete_emergency_info(entry_id, s, sub), lambda _: {"status": "deleted"}, confirm=confirm, needs_confirmation=True)
 
     # Focused owner reads and delivery diagnostics -----------------------
-    def get_exact_place_navigation(self, trip_id: str, place_id: str) -> dict[str, Any]:
-        """Resolve an owned exact place to its authorized navigation URL."""
-        return self._call("exact_place.navigation", "exact_place", place_id, trip_id, lambda s, sub: places.owner_navigation(place_id, trip_id, s, sub), lambda x: _model(x, schemas.NavigationResponse))
+    def get_location_navigation(self, trip_id: str, location_id: str) -> dict[str, Any]:
+        """Resolve an owned location to its authorized navigation URL."""
+        return self._call("location.navigation", "location", location_id, trip_id, lambda s, sub: locations.owner_navigation(location_id, trip_id, s, sub), lambda x: _model(x, schemas.NavigationResponse))
 
     def get_stay(self, trip_id: str, stay_id: str) -> dict[str, Any]:
-        """Read one owner-only exact accommodation record."""
+        """Read one owner-only accommodation record."""
         return self._call("stay.get", "stay", stay_id, trip_id, lambda s, sub: stays.get_stay(trip_id, stay_id, s, sub), lambda x: _model(x, schemas.StayResponse))
-
-    def get_transport_leg(self, trip_id: str, leg_id: str) -> dict[str, Any]:
-        """Read one owner-only transport itinerary record."""
-        return self._call("transport_leg.get", "transport_leg", leg_id, trip_id, lambda s, sub: transport.get_transport_leg(trip_id, leg_id, s, sub), lambda x: _model(x, schemas.TransportLegResponse))
-
-    def get_itinerary_entry(self, trip_id: str, entry_id: str) -> dict[str, Any]:
-        """Read one ordered owner day-plan entry."""
-        return self._call("itinerary_entry.get", "itinerary_entry", entry_id, trip_id, lambda s, sub: itinerary.get_itinerary_entry(trip_id, entry_id, s, sub), lambda x: _model(x, schemas.ItineraryEntryResponse))
 
     def get_trip_task(self, trip_id: str, task_id: str) -> dict[str, Any]:
         """Read one owner preparation task."""
         return self._call("trip_task.get", "trip_task", task_id, trip_id, lambda s, sub: tasks.get_trip_task(trip_id, task_id, s, sub), lambda x: _model(x, schemas.TripTaskResponse))
 
-    def get_recorded_track(self, trip_id: str, track_id: str) -> dict[str, Any]:
-        """Read metadata and the owner-authorized delivery URL for one finished track."""
-        return self._call("recorded_track.get", "recorded_track", track_id, trip_id, lambda s, sub: tracks.get_recorded_track(trip_id, track_id, s, sub), lambda x: _model(x, schemas.RecordedTrackResponse))
-
-    def get_broad_route(self, trip_id: str, route_id: str) -> dict[str, Any]:
-        """Read one authored broad route."""
-        return self._call("broad_route.get", "broad_route", route_id, trip_id, lambda s, sub: tracks.get_broad_route(trip_id, route_id, s, sub), lambda x: _model(x, schemas.BroadRouteResponse))
+    def get_route(self, trip_id: str, route_id: str) -> dict[str, Any]:
+        """Read one route."""
+        return self._call("route.get", "route", route_id, trip_id, lambda s, sub: routes.get_route(trip_id, route_id, s, sub), lambda x: _model(x, schemas.RouteResponse))
 
     def get_media(self, trip_id: str, media_id: str) -> dict[str, Any]:
         """Read metadata and the owner-authorized delivery URL for one media asset."""
@@ -733,12 +690,11 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
 _ADDITIVE_WRITE_TOOLS = frozenset(
     {name for name in _TOOL_NAMES if name.startswith("create_")}
     | {
-        "save_exact_place",
-        "save_broad_place",
+        "save_location",
+        "save_area",
         "upload_media",
         "upload_document",
         "upload_library_document",
-        "upload_finished_track",
         "add_document_derivative",
         "approve_media_derivative",
         "approve_document_derivative",

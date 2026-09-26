@@ -15,39 +15,38 @@ from sqlalchemy.orm import Session
 
 from .live_scopes import remove_from_live_scopes
 from .models import (
-    BroadRoute,
+    Area,
     DerivativePurpose,
     DerivativeReviewState,
     DocumentDerivative,
+    Location,
     MediaDerivative,
-    Place,
-    PlaceKind,
-    RouteStage,
+    Route,
     Stay,
-    TransportLeg,
     TravelUpdate,
     Trip,
     Visibility,
+    Visit,
 )
 
 # Scope kind -> where a trip keeps that kind of record.
 COLLECTIONS: dict[str, Callable[[Trip], list[Any]]] = {
-    "place": lambda trip: trip.places,
-    "route_stage": lambda trip: trip.route_stages,
-    "broad_route": lambda trip: trip.broad_routes,
+    "area": lambda trip: trip.areas,
+    "location": lambda trip: trip.locations,
+    "visit": lambda trip: trip.visits,
+    "route": lambda trip: trip.routes,
     "stay": lambda trip: trip.stays,
-    "transport_leg": lambda trip: trip.transport_legs,
     "travel_update": lambda trip: trip.travel_updates,
     "media_derivative": lambda trip: trip.media_derivatives,
     "document_derivative": lambda trip: trip.document_derivatives,
 }
 
 _KIND_OF_MODEL: dict[type, str] = {
-    Place: "place",
-    RouteStage: "route_stage",
-    BroadRoute: "broad_route",
+    Area: "area",
+    Location: "location",
+    Visit: "visit",
+    Route: "route",
     Stay: "stay",
-    TransportLeg: "transport_leg",
     TravelUpdate: "travel_update",
     MediaDerivative: "media_derivative",
     DocumentDerivative: "document_derivative",
@@ -65,12 +64,10 @@ def sharing_blocker(kind: str, record: Any) -> str | None:
     This gate applies both when the owner chooses a visibility and again at
     delivery, so a record that stops qualifying is never served.
     """
-    if kind == "place" and record.kind == PlaceKind.EXACT and not record.label:
-        return "Give this spot a public name before sharing it"
+    if kind == "location" and not record.label:
+        return "Give this location a public name before sharing it"
     if kind == "travel_update" and not record.body.strip():
         return "Write the text for visitors before sharing this update"
-    if kind == "stay" and record.area is None:
-        return "Choose the city or area of this stay before sharing it"
     if kind in {"media_derivative", "document_derivative"}:
         if record.review_state != DerivativeReviewState.APPROVED:
             return "Approve this copy before sharing it"

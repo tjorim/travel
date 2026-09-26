@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_subject
 from ..database import get_session
 from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_visit_candidates
-from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver
+from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver, provider_available
 from ..media.service import (
     CreatedImportSession,
     ImportOutcome,
@@ -367,7 +367,11 @@ def complete_import(
 def list_provider_connection_status(subject: SubjectDep, secret_store: SecretStoreDep) -> list[ProviderConnectionStatus]:
     """Expose connection state without ever returning an access token."""
     return [
-        ProviderConnectionStatus(provider=provider, connected=secret_store.get_token(subject=subject, provider=provider.value) is not None)
+        ProviderConnectionStatus(
+            provider=provider,
+            available=provider_available(provider),
+            connected=secret_store.get_token(subject=subject, provider=provider.value) is not None,
+        )
         for provider in IMPORT_PROVIDERS
     ]
 

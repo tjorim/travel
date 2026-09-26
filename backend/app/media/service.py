@@ -35,7 +35,6 @@ from ..models import (
     MediaDerivative,
     MediaKind,
     ObjectState,
-    RecordedTrack,
     StoredObject,
     opaque_id,
 )
@@ -192,7 +191,7 @@ def store_uploaded_object(
     """Store one bounded owner-uploaded object through the shared durable
     copy-and-verify path.
 
-    This is intentionally not media-specific: finished track uploads use the
+    This is intentionally not media-specific: document uploads use the
     same trip-local checksum, opaque key, storage read-back verification and
     ``StoredObject`` inventory as media. Callers attach their own canonical
     resource only after this function returns an available object.
@@ -549,7 +548,6 @@ def _purge_pending_objects(session: Session, storage: ObjectStorage, *, object_i
 def _object_is_referenced(session: Session, object_id: str) -> bool:
     """Include every trip-scoped resource that can share stored bytes."""
     references = (
-        (RecordedTrack, RecordedTrack.source_object_id),
         (MediaAsset, MediaAsset.original_object_id),
         (MediaDerivative, MediaDerivative.object_id),
         (DocumentAsset, DocumentAsset.original_object_id),

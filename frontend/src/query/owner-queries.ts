@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { decodeSubject, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
-  BroadPlace, BroadRoute, DocumentAsset, DocumentDerivative, EmergencyInfoEntry, ItineraryEntry, MediaAsset, MediaDerivative,
-  OwnerDocument, Place, ProviderConnectionStatus, PublicProjectionStatus, RecordedTrack, ShareLink, Stay, TransportLeg, Trip, TripTask, TripTaskAlert,
+  Area, DocumentAsset, DocumentDerivative, EmergencyInfoEntry, Visit, MediaAsset, MediaDerivative,
+  OwnerDocument, Location, ProviderConnectionStatus, PublicProjectionStatus, ShareLink, Stay, Route, Trip, TripTask, TripTaskAlert,
 } from "../tracker-model";
 import { ApiError, ownerRequest, type OwnerRequest } from "./api";
 import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
@@ -23,32 +23,28 @@ export function useOwner(): Owner | null {
 
 type TripResourceData = {
   stays: Stay[];
-  "transport-legs": TransportLeg[];
   "trip-tasks": TripTask[];
   "task-alerts": TripTaskAlert[];
-  "places/broad": BroadPlace[];
-  places: Place[];
-  "broad-routes": BroadRoute[];
-  "itinerary-entries": ItineraryEntry[];
+  areas: Area[];
+  locations: Location[];
+  routes: Route[];
+  visits: Visit[];
   documents: DocumentAsset[];
   media: MediaAsset[];
-  "recorded-tracks": RecordedTrack[];
   "public-projection": PublicProjectionStatus;
   "share-links": ShareLink[];
 };
 
 const resourceFailure: Record<TripResource, string> = {
   stays: "Je verblijven konden niet worden geladen.",
-  "transport-legs": "Je vervoer kon niet worden geladen.",
   "trip-tasks": "Je taken konden niet worden geladen.",
   "task-alerts": "Je meldingen konden niet worden geladen.",
-  "places/broad": "De plaatsen konden niet worden geladen.",
-  places: "Je exacte plaatsen konden niet worden geladen.",
-  "broad-routes": "Je routes op kaart konden niet worden geladen.",
-  "itinerary-entries": "Je dagplanning kon niet worden geladen.",
+  areas: "Je gebieden konden niet worden geladen.",
+  locations: "Je locaties konden niet worden geladen.",
+  "routes": "Je routes konden niet worden geladen.",
+  visits: "Je bezoeken konden niet worden geladen.",
   documents: "Je documenten konden niet worden geladen.",
   media: "Je media konden niet worden geladen.",
-  "recorded-tracks": "Je afgewerkte tracks konden niet worden geladen.",
   "public-projection": "De publieke publicatie kon niet worden geladen.",
   "share-links": "De deellinks konden niet worden geladen.",
 };

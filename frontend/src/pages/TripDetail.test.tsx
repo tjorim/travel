@@ -11,12 +11,12 @@ import { TripDetail } from "./TripDetail";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: "Drie weken", starts_on: "2054-11-16", ends_on: "2054-12-06", route_stages: [], travel_updates: [{ id: "m1", occurred_at: "2054-11-17T10:00:00Z", date_precision: "day", title: "Eerste avond", body: "", private_notes: "Nachtmarkt", broad_place_id: null, place: null, media_asset_ids: [], visibility: "private" }] };
+const trip: Trip = { id: "trip", title: "Exampleland", summary: "Drie weken", starts_on: "2054-11-16", ends_on: "2054-12-06", travel_updates: [{ id: "m1", occurred_at: "2054-11-17T10:00:00Z", date_precision: "day", title: "Eerste avond", body: "", private_notes: "Nachtmarkt", area_id: null, location: null, media_asset_ids: [], visibility: "private" }] };
 const path = (resource: string) => `/api/trips/trip/${resource}`;
 
 let api: FakeApi;
 function seed(overrides: Record<string, unknown[]> = {}) {
-  const collections: Record<string, unknown[]> = { places: [], "places/broad": [], "broad-routes": [], stays: [], "transport-legs": [], "itinerary-entries": [], "trip-tasks": [], documents: [], media: [], "recorded-tracks": [], ...overrides };
+  const collections: Record<string, unknown[]> = { locations: [], areas: [], routes: [], stays: [], visits: [], "trip-tasks": [], documents: [], media: [], ...overrides };
   api = fakeApi();
   api.collection("/api/trips", [trip as never]);
   for (const [resource, rows] of Object.entries(collections)) api.collection(path(resource), rows as never[]);
@@ -27,7 +27,7 @@ beforeEach(() => { auth.session = { accessToken: testToken() }; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); restoreObjectUrls(); });
 
 it("shows the whole private trip once every read has arrived", async () => {
-  seed({ stays: [{ id: "s1", check_in_date: "2054-11-16", check_out_date: "2054-11-18", status: "booked", property_name: "Hotel Royal", place: null, broad_place: null, booking_reference: "ABC" }], "trip-tasks": [{ id: "t1", title: "Visum regelen", due_date: null, completed_at: null, notes: null, links: [] }] });
+  seed({ stays: [{ id: "s1", check_in_date: "2054-11-16", check_out_date: "2054-11-18", status: "booked", property_name: "Hotel Royal", location: {}, area: { label: "Taipei" }, booking_reference: "ABC" }], "trip-tasks": [{ id: "t1", title: "Visum regelen", due_date: null, completed_at: null, notes: null, links: [] }] });
   renderDetail();
   await screen.findByRole("heading", { name: "Exampleland" });
   expect(screen.getByText("Eerste avond")).toBeTruthy();

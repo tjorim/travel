@@ -28,11 +28,11 @@ old static trip is unavailable at launch.
 ## Data and access boundary
 
 Public routes contain the story of a trip: intentionally selected photos,
-moments, broad route stages, cities and places.
+reisupdates, visits, routes, areas and locations.
 
 The app is private by default. The account owner is the only person who can
 sign in, create or edit data. There are no viewer accounts or sharing groups.
-For each private-by-default trip, the owner can select its broad public follower
+For each private-by-default trip, the owner can select its public follower
 view and/or create custom revocable high-entropy unlisted links with deliberately
 selected scopes. A custom link can show more or different detail than the
 public view. An unlisted link is a forwardable capability rather than proof of
@@ -41,14 +41,14 @@ must not send data to a client merely to hide it in the UI.
 
 Exact coordinates, addresses, booking references, documents, unredacted media
 metadata, precise schedules and private journal entries are sensitive by
-default. A shared city, broad route or selected place must be a separate,
-redacted representation rather than a client-side mask of an exact record.
+default. A shared area, route or selected location is delivered through a fixed
+allowlist, never a client-side mask of an exact record.
 
-Exact location capture, stays, media uploads and device-scoped offline copies
+Locations with an address, stays, media uploads and device-scoped offline copies
 are in scope. They remain owner-only until shared deliberately. The product
-does not include continuous or live GPS tracking: location capture is a
-deliberate user action, and no exact or near-real-time location is published
-automatically.
+stores no recorded GPS data, live or finished: how the owner travels is an
+approximate route drawn by hand, with a travel mode, and no exact or
+near-real-time location is published automatically.
 
 All canonical files live on the backed-up VPS in application-controlled object
 storage; the database holds their metadata and access policy. Media may enter
@@ -104,16 +104,16 @@ It uses test content only; production content begins with the fresh launch.
   rest. End-to-end encryption is not a v1 requirement.
 - Link scopes and server-enforced redaction protect items and sensitive fields;
   a client never receives hidden locations, links, files or metadata.
-- Exact locations, deliberately recorded private tracks, exact stays,
-  automatic owner-only media uploads and selected offline copies are included.
-  Continuous/live GPS tracking is excluded.
+- Locations, exact stays, automatic owner-only media uploads and selected offline
+  copies are included. Recorded GPS tracks, continuous and live, are excluded;
+  routes are drawn by hand.
 - Google Photos Picker import is included; GoPro Cloud import is included when
   beta access is granted, with direct device upload as the enduring fallback.
 - MCP management tools are implemented and verified locally against the same
   application service layer; they are not exposed through the production VPS
   until the v2 cutover.
 - The owner can select private OSM places and launch authorized Google Maps
-  navigation; other viewers receive only their intended broad representation.
+  navigation; other viewers receive only their intended, general representation.
 
 v1 exit condition: the owner can manage a test trip entirely in the app,
 including itinerary, shared essentials, offline selections and rendered
@@ -155,6 +155,24 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] Merged route stages and day-plan steps into *visits* (*bezoeken*): a stop
+      at an area or a location with optional days, times, kind and a text for
+      visitors, shared like any record, with the time private unless chosen.
+      The day plan became a read-only agenda; routes and visits share one
+      grouped area/location picker.
+
+- [x] Unified the place vocabulary and dropped raw GPS tracks. A *gebied*
+      (area) is a city or region and a *locatie* (location) is an address-level
+      place, or just a city, filed under one area, in separate tables, in the API, database, MCP
+      tools, PWA and docs; the words "broad", "exact" and "spot" are gone.
+      Every stay has a location and takes its area from it; reisupdates can
+      still link to an area. The GPX/point-array track upload and its record
+      are removed. Transport legs and drawn map routes became one *route*
+      between two areas with a travel mode; locations, schedule, booking
+      details and a drawn line (with movable points) are optional, and the
+      maps style each line by mode. The Gebieden section absorbed the separate
+      area overview, leaving Gebieden, Locaties and Bezoeken.
+
 - [x] [#140](https://github.com/tjorim/travel/issues/140) Closed the remaining
       static-archive parity gaps: stays as nights per city/area (also while
       still choosing), time-zone-aware transport legs, a richer day plan with
@@ -183,9 +201,8 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 - [x] [#119](https://github.com/tjorim/travel/issues/119) Added scoped
       MapLibre maps to the React owner, public and unlisted views. Visitor
-      maps are built only from the delivered projection's selected broad
-      points and routes; the owner map adds exact places and finished tracks
-      parsed in browser memory, with optional Mapterhorn terrain and Esri
+      maps are built only from the delivered projection's selected area
+      points and routes; the owner map adds locations, with optional Mapterhorn terrain and Esri
       imagery. Keyboard stop selection, route-in-words and WebGL/tile failure
       fallbacks are included.
 
@@ -201,7 +218,7 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 - [x] [#120](https://github.com/tjorim/travel/issues/120) Added live
       chronological visitor stories with stable moment links, authored dates at
-      the selected precision, broad places, and responsive galleries of
+      the selected precision, areas, and responsive galleries of
       explicitly shared media derivatives, plus owner controls for captions,
       alt text, focal position and moment association.
 
@@ -227,16 +244,16 @@ Polarsteps-like features require a fresh product and privacy decision.
 - [x] [#122](https://github.com/tjorim/travel/issues/122) Built an owner day
       plan and booking task list for each trip: manually ordered itinerary
       entries that can link to an existing stay, transport leg, route stage,
-      exact place, document or moment, plus a lightweight task list with due
+      location, document or moment, plus a lightweight task list with due
       dates and a complete/incomplete state. Both are owner-only, with no
       share-scope kind of their own.
 
 - [x] [#121](https://github.com/tjorim/travel/issues/121) Added owner-managed
-      flight and transport itinerary records: departure/arrival exact places,
+      flight and transport itinerary records: departure/arrival locations,
       times, carrier/service reference, booking status, notes and optional
       linked documents, with owner API and React manager coverage. A leg has
       no share-scope kind of its own; a follower representation stays a
-      separately authored route stage or broad route, never copied from it.
+      separately authored route stage or route, never copied from it.
 
 - [x] [#73](https://github.com/tjorim/travel/issues/73) Built the Travel
       application delivery contract and live, server-filtered public/unlisted
@@ -250,12 +267,12 @@ Polarsteps-like features require a fresh product and privacy decision.
       static archive SVG route maps with one MapLibre renderer and separate
       public/private GeoJSON files. The maps use geographic basemaps, visible
       provider attribution, keyboard-operable stops and textual fallbacks;
-      public route data remains broad under #36's privacy contract.
+      public route data remains approximate under #36's privacy contract.
 
 - [x] [#38](https://github.com/tjorim/travel/issues/38) Evolved the tracker
       API and PWA into the private Travel content app through its seven
-      ordered phases: canonical places and excerpts, stays and broad stay
-      cards, recorded tracks and broad routes, documents, generic share
+      ordered phases: canonical places and excerpts, stays and stay
+      cards, recorded tracks and routes, documents, generic share
       scopes, content-management UI, and publication/media-management UI.
       Owner-only mutation, redacted public and unlisted responses, explicit
       location capture, privacy-safe sharing derivatives, media imports and
@@ -263,10 +280,10 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 - [x] Completed the tracker PWA content-management phase: owners can now
       manage trips, canonical moments and separately authored excerpts; select
-      exact and broad places; manage exact stays and broad stay cards; upload,
+      exact and areas; manage exact stays and stay cards; upload,
       review and remove private documents and redacted derivatives; arrange
-      broad route stages; upload finished GPX/point-array tracks; and author
-      broad routes. The client uses the existing PKCE session, keeps exact
+      route stages; upload finished GPX/point-array tracks; and author
+      routes. The client uses the existing PKCE session, keeps exact
       data and files behind owner-only endpoints, and provides no continuous
       location-capture control. ([#61](https://github.com/tjorim/travel/issues/61),
       [#94](https://github.com/tjorim/travel/issues/94),
@@ -274,40 +291,40 @@ Polarsteps-like features require a fresh product and privacy decision.
       [#96](https://github.com/tjorim/travel/issues/96))
 
 - [x] Added configurable, attributed, owner-only OSM place search with a
-      bounded in-memory confidential-query cache; exact places now retain the
+      bounded in-memory confidential-query cache; locations now retain the
       durable OSM element type/ID pair and an owner-selected display snapshot,
       never Nominatim's transient `place_id`. Explicit owner-only reverse
       geocoding returns the same selectable result without creating a place,
       so the later EXIF suggestion flow uses this path. Google Maps destinations are
       generated only after owner or public/unlisted scope resolution. Exact
-      destinations require an explicit `exact_place` navigation capability;
+      destinations require an explicit `location` navigation capability;
       other selected navigation markers resolve only to city-level targets.
       ([#39](https://github.com/tjorim/travel/issues/39))
 
 - [x] Added private `travel/recorded-track@1` records and separately authored
-      `travel/broad-route@1` records to the tracker API. A finished GPX or
+      `travel/route@1` records to the tracker API. A finished GPX or
       point-array track is uploaded in one bounded owner action with required
       start/end times, then copied through the checksum-verified
       `StoredObject` pipeline; no partial, streaming, or live-tracking route
-      exists. Its raw points and timestamps remain owner-only. A broad route
+      exists. Its raw points and timestamps remain owner-only. A route
       instead stores the owner's reviewed GeoJSON line and date precision,
       with no raw-track link or request-time derivation path. Owner-only and
       public-surface regression tests enforce both boundaries. Third of #38's
       seven delivery phases. ([#58](https://github.com/tjorim/travel/issues/58))
 
 - [x] Added owner-managed `travel/stay@1` records and separately authored
-      `travel/broad-stay-card@1` records to the tracker API. Stays retain an
-      exact place, booked arrival/departure dates, optional verified times, property, booking/contact
-      details and notes behind the owner boundary; a broad stay card has only
-      an owner-selected broad place, title and date precision, with no link
+      `travel/stay-card@1` records to the tracker API. Stays retain an
+      location, booked arrival/departure dates, optional verified times, property, booking/contact
+      details and notes behind the owner boundary; a stay card has only
+      an owner-selected area, title and date precision, with no link
       back to a stay. Owner CRUD, cross-owner 404s, and projection no-leak
       tests enforce that a card cannot disclose stay data. Second of #38's
       seven delivery phases. ([#57](https://github.com/tjorim/travel/issues/57))
 
 - [x] Split the tracker API's flat MVP `Place` into the canonical
-      `travel/place@1` `exact`/`broad` model and added the standalone
-      `moment_excerpt` resource: a route stage always references a `broad`
-      place, a moment always references an `exact` place, and an owner can
+      `travel/place@1` `location`/`area` model and added the standalone
+      `moment_excerpt` resource: a route stage always references an `area`
+      place, a moment always references a `location`, and an owner can
       create, edit and delete a moment excerpt independent of its source
       moment's lifecycle. First of #38's seven delivery phases.
       ([#56](https://github.com/tjorim/travel/issues/56))
@@ -358,7 +375,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       ([#42](https://github.com/tjorim/travel/issues/42))
 
 - [x] Defined the versioned canonical Travel content model: owner-scoped
-      resources and object storage, separately authored broad/derived share
+      resources and object storage, separately authored, derived share
       representations, immutable public and unlisted projections, capability
       lifecycle and import records. The later fresh-launch decision removes
       the legacy migration design. ([#37](https://github.com/tjorim/travel/issues/37))
@@ -373,7 +390,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       ([#10](https://github.com/tjorim/travel/issues/10))
 
 - [x] Defined the privacy-first tracker MVP: one owner, private-by-default
-      trips, explicit publication, broad place labels only, and no automatic
+      trips, explicit publication, area labels only, and no automatic
       archive migration. ([#20](https://github.com/tjorim/travel/issues/20))
 
 - [x] Added the FastAPI tracker API with authenticated owner CRUD, deliberately
@@ -388,7 +405,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       audience, and an owner-only subject boundary.
       ([apps#216](https://github.com/tjorim/apps/issues/216))
 
-- [x] Added mobile moment capture with local drafts, deliberate broad-place
+- [x] Added mobile moment capture with local drafts, deliberate area
       controls, an explicit one-shot location action, and clear sharing state.
       ([#23](https://github.com/tjorim/travel/issues/23))
 

@@ -54,7 +54,7 @@ def audit_events(client: TestClient, trip_id: str) -> list[dict]:
 def test_public_projection_publish_and_unpublish_are_audited_with_an_owner_reason() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    owner.put(f"/api/trips/{trip['id']}/public-projection", json={"route_stage_ids": [], "moment_ids": []})
+    owner.put(f"/api/trips/{trip['id']}/public-projection", json={"items": []})
     owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     owner.post(
         f"/api/trips/{trip['id']}/public-projection/unpublish", json={"reason": "Trip is over"}

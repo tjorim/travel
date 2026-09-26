@@ -122,20 +122,18 @@ def test_registered_tools_cover_owner_resource_families(backend: TravelMcpBacken
     registered = asyncio.run(names())
     assert {
         "create_trip",
-        "save_exact_place",
-        "save_broad_place",
-        "create_route_stage",
+        "save_location",
+        "save_area",
+        "create_visit",
         "create_travel_update",
         "create_stay",
         "get_stay",
         "update_travel_update",
         "delete_travel_update",
         "set_visibility",
-        "update_exact_place",
-        "upload_finished_track",
-        "get_recorded_track",
-        "create_broad_route",
-        "get_broad_route",
+        "update_location",
+        "create_route",
+        "get_route",
         "upload_document",
         "get_document",
         "add_document_derivative",
@@ -221,15 +219,15 @@ def test_travel_update_tools_use_the_owner_handlers_and_require_confirmation_to_
 
 def test_set_visibility_tool_needs_confirmation_and_uses_the_owner_rules(backend: TravelMcpBackend) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Sharing"))
-    spot = backend.save_exact_place(trip["id"], schemas.ExactPlaceInput(display_name="Hotel, 1 Main Street"))
+    location = backend.save_location(trip["id"], schemas.LocationInput(display_name="Hotel, 1 Main Street"))
     with pytest.raises(ValueError, match="confirm=true"):
-        backend.set_visibility(trip["id"], "place", spot["id"], "everyone")
-    # A spot cannot be shared without a public name, whoever asks.
+        backend.set_visibility(trip["id"], "location", location["id"], "everyone")
+    # A location cannot be shared without a public name, whoever asks.
     with pytest.raises(ValueError, match="public name"):
-        backend.set_visibility(trip["id"], "place", spot["id"], "everyone", confirm=True)
-    backend.update_exact_place(trip["id"], spot["id"], schemas.ExactPlaceUpdate(label="Riverside lookout"))
-    assert backend.set_visibility(trip["id"], "place", spot["id"], "everyone", confirm=True) == {"visibility": "everyone"}
-    assert backend.list_exact_places(trip["id"])[0]["visibility"] == "everyone"
+        backend.set_visibility(trip["id"], "location", location["id"], "everyone", confirm=True)
+    backend.update_location(trip["id"], location["id"], schemas.LocationUpdate(label="Riverside lookout"))
+    assert backend.set_visibility(trip["id"], "location", location["id"], "everyone", confirm=True) == {"visibility": "everyone"}
+    assert backend.list_locations(trip["id"])[0]["visibility"] == "everyone"
 
 
 def _protocol_client(factory: sessionmaker = TestingSessionLocal) -> Client:
@@ -242,8 +240,8 @@ def test_parallel_list_calls_all_succeed_and_are_each_audited(
     file_engine = create_engine(f"sqlite:///{tmp_path / 'mcp.db'}", connect_args={"timeout": 30})
     Base.metadata.create_all(file_engine)
     factory = sessionmaker(bind=file_engine, autocommit=False, autoflush=False)
-    tools = ["list_exact_places", "list_broad_places", "list_documents", "list_media", "list_share_links",
-             "list_stays", "list_transport_legs", "list_trip_tasks", "list_itinerary_entries"]
+    tools = ["list_locations", "list_areas", "list_documents", "list_media", "list_share_links",
+             "list_stays", "list_routes", "list_trip_tasks", "list_visits"]
 
     async def run() -> list[object]:
         async with _protocol_client(factory) as client:
@@ -403,7 +401,7 @@ def test_write_tool_destructive_hints_reflect_overwrites() -> None:
     assert _tool_annotations("rotate_share_link").destructive_hint is True
     # Additive state advances stay non-destructive.
     assert _tool_annotations("activate_share_link").destructive_hint is False
-    assert _tool_annotations("save_exact_place").destructive_hint is False
+    assert _tool_annotations("save_location").destructive_hint is False
     # Reads are never destructive, and no write tool is advertised as idempotent.
     assert _tool_annotations("get_trip").destructive_hint is False
     assert all(_tool_annotations(n).idempotent_hint is False for n in write_tools)

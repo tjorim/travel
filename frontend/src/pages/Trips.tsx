@@ -3,20 +3,18 @@ import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router
 
 import { useAuth } from "../auth-context";
 import { EmptyState } from "../tracker-routes";
-import { ExactPlaceManager } from "../trips/ExactPlaceManager";
-import { AreaView } from "../trips/AreaView";
+import { LocationManager } from "../trips/LocationManager";
 import { DocumentManager } from "../trips/DocumentManager";
 import { LinkedLibraryDocuments } from "../library/LinkedLibraryDocuments";
-import { ItineraryPlanManager } from "../trips/ItineraryPlanManager";
-import { BroadPlaceManager } from "../trips/BroadPlaceManager";
+import { VisitManager } from "../trips/VisitManager";
+import { AgendaView } from "../trips/AgendaView";
+import { AreaManager } from "../trips/AreaManager";
 import { TravelUpdateManager } from "../trips/TravelUpdateManager";
 import { MediaManager } from "../trips/MediaManager";
 import { OwnerTripMap } from "../trips/OwnerTripMap";
 import { PublicationManager } from "../trips/PublicationManager";
-import { RouteStageManager } from "../trips/RouteStageManager";
 import { StayManager } from "../trips/StayManager";
-import { TrackManager } from "../trips/TrackManager";
-import { TransportLegManager } from "../trips/TransportLegManager";
+import { RouteManager } from "../trips/RouteManager";
 import { TripEditor } from "../trips/TripEditor";
 import { TripOverview } from "../trips/TripOverview";
 import { TripTaskManager } from "../trips/TripTaskManager";
@@ -42,7 +40,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const mapFocus = useMemo(() => focusedPoint ? { id: focusedPoint, request: 1 } : null, [focusedPoint]);
   useEffect(() => {
     if (!focusedPoint) return;
-    // The map mounts a moment after the overview, so wait for it before scrolling.
+    // The map mounts a little after the overview, so wait for it before scrolling.
     let attempts = 0;
     const timer = window.setInterval(() => {
       const map = document.querySelector(".trip-workspace .trip-map");
@@ -56,7 +54,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   // The list page only lists; a trip is worked on in its own workspace.
   const selectedTrip = workspace ? trips.find((trip) => trip.id === workspace.tripId) ?? null : null;
   const selectedId = selectedTrip?.id ?? null;
-  const broadPlaces = useTripResource(selectedId, "places/broad").data ?? [];
+  const areas = useTripResource(selectedId, "areas").data ?? [];
   // A page we were sent here from (a deleted trip) can leave a message behind.
   const arrivalNotice = (location.state as { notice?: string } | null)?.notice;
   const message = notice ?? arrivalNotice ?? (!session ? "Meld aan om je private reizen te laden."
@@ -103,10 +101,9 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <NavLink key={section} to={sectionUrl(section)} end={section === "overview"} aria-current={currentSection === section ? "page" : undefined}>{label}</NavLink>)}
     </nav>
     <p className="help" role="status">{message}</p>
-    {currentSection === "plan" && <><BroadPlaceManager trip={selectedTrip} /><ExactPlaceManager trip={selectedTrip} /><AreaView trip={selectedTrip} areas={broadPlaces} /></>}
-    {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} broadPlaces={broadPlaces} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-moments">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="moment-summary" key={update.id}><strong>{update.title}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(update.occurred_at))}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
-    {currentSection === "plan" && <><RouteStageManager trip={selectedTrip} broadPlaces={broadPlaces} /><StayManager trip={selectedTrip} broadPlaces={broadPlaces} /><TransportLegManager trip={selectedTrip} /><ItineraryPlanManager trip={selectedTrip} onShowOnMap={showOnMap} /><TripTaskManager trip={selectedTrip} /></>}
-    {currentSection === "story" && <><TrackManager trip={selectedTrip} /><TravelUpdateManager trip={selectedTrip} broadPlaces={broadPlaces} /></>}
+    {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(update.occurred_at))}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
+    {currentSection === "plan" && <><AreaManager trip={selectedTrip} /><LocationManager trip={selectedTrip} /><VisitManager trip={selectedTrip} onShowOnMap={showOnMap} /><StayManager trip={selectedTrip} areas={areas} /><RouteManager trip={selectedTrip} /><AgendaView trip={selectedTrip} /><TripTaskManager trip={selectedTrip} /></>}
+    {currentSection === "story" && <TravelUpdateManager trip={selectedTrip} areas={areas} />}
     {currentSection === "media" && <><DocumentManager trip={selectedTrip} /><LinkedLibraryDocuments tripId={selectedTrip.id} /><MediaManager trip={selectedTrip} /></>}
     {currentSection === "sharing" && <PublicationManager trip={selectedTrip} />}
   </section>;

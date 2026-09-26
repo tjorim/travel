@@ -17,7 +17,7 @@ Start with [the domain model](../domain-model.md) for the vocabulary.
 - Every canonical row belongs directly or transitively to one `trip`, and that
   trip has exactly one `owner_subject`: the authenticated OIDC `sub`. There are
   no recipient, collaborator, group, or viewer rows in v1.
-- Exact and broad representations are distinct records. A broad label,
+- Location and area representations are distinct records. An area label,
   generalized line, travel update, media derivative, or redacted document is
   authored/approved output; it is never calculated in a browser from canonical
   private data.
@@ -66,15 +66,14 @@ an asynchronous, audited purge after the database transaction.
 | Resource / schema | Required typed fields and relationships | Private payload and constraints |
 |---|---|---|
 | `trip` (`travel/trip@1`) | `id`, `owner_subject`, `title`, `summary`, `start_on`, `end_on` | A trip is canonical owner-only data. It has no visibility, publication state or public identifier; the separate public surface reserves the public URL only when needed. |
-| `place` (`travel/place@1`) | `id`, `trip_id`, `kind` (`exact` spot or `broad` area), `visibility` | Exact places hold address parts, coordinates, viewport, navigation/provider IDs and optional notes. Broad places hold only deliberately chosen label, country/region and optional approved generalized point or geometry. A broad place may reference its exact source for owner traceability, but no shared response includes that reference. |
-| `recorded_track` (`travel/recorded-track@1`) | `id`, `trip_id`, `source_object_id`, `started_at`, `ended_at`, `kind` | The source object contains raw points/times/speed/elevation. A separately authored `broad_route` is needed to share a line or stages; rounding a raw track at request time is forbidden. |
-| `broad_route` (`travel/broad-route@1`) | `id`, `trip_id`, `visibility`, `label`, `geometry`, `date_precision` | Stores an owner-reviewed generalized route line and/or ordered broad-place references. It may be selected by a projection; raw track IDs and point timestamps stay owner-only. |
-| `stay` (`travel/stay@1`) | `id`, `trip_id`, `visibility`, `check_in_date`, `check_out_date`, `status`, optional `exact_place_id` and `broad_place_id` | The nights slept at one accommodation (check-in date up to the check-out morning, local to the stay). Holds the optional property name, local check-in/out times, website, booking/contact references and notes; property and exact place stay empty until chosen. A shareable stay card is a separate `broad_stay_card`, never a selection of this row. |
-| `transport_leg` (`travel/transport-leg@1`) | `id`, `trip_id`, `visibility`, kind/status, exact endpoint IDs, schedule, endpoint time zones, carrier/service reference | A projection may select only kind/status, carrier/service reference, city/country endpoint context, scheduled instants and endpoint time zones. Booking reference, travel class, notes, linked documents and exact endpoint data never leave the owner boundary. |
-| `route_stage` (`travel/route-stage@1`) | `id`, `trip_id`, `visibility`, `position`, `broad_place_id`, `arrives_on`, `departs_on` | Ordered unique `(trip_id, position)`; optional owner-only transport/note data. It always points to a broad, not exact, place so the chosen shared stage is explicit. |
-| `travel_update` (`travel/travel-update@1`, a *reisupdate*) | `id`, `trip_id`, `occurred_at`, `date_precision`, `title`, `body`, `private_notes` nullable, `broad_place_id` nullable, `exact_place_id` nullable, `visibility` | The one record for something that happened, replacing the earlier separate private moment (amended 2026-09-25). It has a private part that is never shared: `private_notes`, the exact `exact_place_id` spot, the attached originals (`travel_update_media_asset`) and the precise time. Its shared part is `title`, `body` (written for visitors, empty until written, and required before it can be shared), the date at `date_precision`, and the `broad_place_id` area. `visibility` is the source of truth for who receives it: `private` (the default), `everyone` or `custom`. A receiving view always gets the whole shared part; there is no per-scope field choice. |
+| `area` (`travel/area@1`) | `id`, `trip_id`, `visibility`, `label`, `region`, `country_code`, optional `latitude`/`longitude` and `timezone` | A city or region. Only deliberately chosen label, country/region and an optional approved generalized point are ever shared; the time zone is owner-only. Sharing an area never shares its locations. |
+| `location` (`travel/location@1`) | `id`, `trip_id`, `area_id` (required), `visibility`, optional public `label`, `share_address` | Holds address parts, coordinates, viewport, navigation/provider IDs and optional notes, all owner-only. A shared location shows its public name, city, country and point, and its address only when `share_address` is chosen; it cannot be shared without a public name. |
+| `route` (`travel/route@1`) | `id`, `trip_id`, `visibility`, `mode`, `status`, `label`, `departure_area_id`, `arrival_area_id` (always set, likewise taken from a location when only that is given), optional `departure_location_id` and `arrival_location_id`, optional schedule and end time zones, carrier/service reference, travel class, booking reference, notes, linked documents and an optional drawn `geometry` | How the trip gets from one area to another, at any level of detail; it replaces the earlier separate transport leg and drawn map route. A projection may select only mode/status, label, the two areas, scheduled instants and end time zones, carrier/service reference and the drawn line. Booking reference, travel class, notes, linked documents and the exact locations never leave the owner boundary; a location reaches a map only when that location is itself shared. The application takes no raw location data. |
+| `stay` (`travel/stay@1`) | `id`, `trip_id`, `visibility`, `check_in_date`, `check_out_date`, `status`, `location_id` | The nights slept at one accommodation (check-in date up to the check-out morning, local to the stay). Holds the optional property name, local check-in/out times, website, booking/contact references and notes. Every stay has a location, which can be as little as a city or an existing area; its area comes from that location. The property name stays empty until the accommodation is chosen. A stay is shared as itself, showing only its area and nights at the chosen precision. |
+| `visit` (`travel/visit@1`) | `id`, `trip_id`, `visibility`, `position`, `area_id` (always set: given, or taken from the location when only that is given), optional `location_id`, optional `title`, `kind`, `starts_on`/`ends_on`, `start_time`/`end_time`, `notes`, `summary`, `share_time`, `share_date_precision` | A stop of the trip. Times are local at the visit; when shared they carry the area's time zone. Private: `notes`, the exact location unless shared, and the times unless `share_time` is chosen (and then only with day precision). Shared: the title (else the shared location's name, else the area's), `summary`, the area, and the days at `share_date_precision`. |
+| `travel_update` (`travel/travel-update@1`, a *reisupdate*) | `id`, `trip_id`, `occurred_at`, `date_precision`, `title`, `body`, `private_notes` nullable, `area_id` nullable, `location_id` nullable, `visibility` | The one record for something that happened, replacing the earlier separate private moment (amended 2026-09-25). It has a private part that is never shared: `private_notes`, the exact `location_id` location, the attached originals (`travel_update_media_asset`) and the precise time. Its shared part is `title`, `body` (written for visitors, empty until written, and required before it can be shared), the date at `date_precision`, and the `area_id` area. `visibility` is the source of truth for who receives it: `private` (the default), `everyone` or `custom`. A receiving view always gets the whole shared part; there is no per-scope field choice. |
 | `stored_object` (`travel/stored-object@1`) | `id`, `trip_id`, `bucket`, `object_key`, `sha256`, `byte_size`, `content_type`, `encryption_key_ref`, `state` | Object storage inventory. Keys are application-only; `state` is `staged`, `available`, `quarantined`, or `purge_pending`. Deduplication never crosses owners. |
-| `media_asset` (`travel/media@1`) | `id`, `trip_id`, `original_object_id`, `captured_at`, `exact_place_id` nullable, `media_kind`, `import_id` | Raw EXIF/XMP/IPTC, camera data, people/face tags, captions and provenance are owner-only. `original_object_id` always points to a VPS copy. |
+| `media_asset` (`travel/media@1`) | `id`, `trip_id`, `original_object_id`, `captured_at`, `location_id` nullable, `media_kind`, `import_id` | Raw EXIF/XMP/IPTC, camera data, people/face tags, captions and provenance are owner-only. `original_object_id` always points to a VPS copy. |
 | `media_derivative` (`travel/media-derivative@1`) | `id`, `trip_id`, `visibility`, `media_asset_id`, `object_id`, `purpose`, `metadata_stripped_at`, `review_state` | `purpose` is `owner_preview` or `share`. A shared derivative is usable only after metadata stripping and owner review; it has approved caption and alt text stored in its projection item, not raw metadata. |
 | `document_asset` (`travel/document@1`) | `id`, `trip_id`, `original_object_id`, `document_kind`, `title` | Original filename, extracted text, OCR, booking data and metadata remain owner-only. |
 | `document_derivative` (`travel/document-derivative@1`) | `id`, `trip_id`, `visibility`, `document_asset_id`, `object_id`, `redaction_manifest_object_id`, `review_state` | A possible shared file is a new, reviewed redacted derivative. No original object can be projected. |
@@ -104,11 +103,11 @@ object keys or provider URLs.
   "trip": {"title": true, "summary": true, "dates": "month"},
   "items": [
     {"kind": "travel_update", "id": "opaque-id"},
-    {"kind": "place", "id": "opaque-id"},
-    {"kind": "route_stage", "id": "opaque-id"},
+    {"kind": "area", "id": "opaque-id"},
+    {"kind": "location", "id": "opaque-id"},
+    {"kind": "visit", "id": "opaque-id"},
     {"kind": "stay", "id": "opaque-id"},
-    {"kind": "transport_leg", "id": "opaque-id"},
-    {"kind": "broad_route", "id": "opaque-id"},
+    {"kind": "route", "id": "opaque-id"},
     {"kind": "media_derivative", "id": "opaque-id"},
     {"kind": "document_derivative", "id": "opaque-id"}
   ]
@@ -120,17 +119,17 @@ is decided by the record's own `visibility` (amended 2026-09-25, see the
 [domain model](../domain-model.md)): `everyone` records reach every public and
 unlisted view without being listed, `private` records reach none, and a scope
 can list only a record set to `custom`. Every write is validated: the record
-must belong to this trip, be `custom`, and be shareable (a spot has a public
+must belong to this trip, be `custom`, and be shareable (a location has a public
 name, a stay has an area, a copy is approved). Leaving `custom`, or deleting the
 record, removes it from every live scope. Delivery ignores a stale entry rather
 than failing.
 
 What each kind shows is a fixed allowlist, not a request to expose canonical
-columns: a place shows its label, region, country and point (a spot only its
-public name, city, country and point); a stay its area and its nights at the
-chosen precision; a transport leg its summary, with endpoint points only for
-endpoint places that are themselves shared; a reisupdate its title, text, date
-and broad place. A photo attached to a reisupdate is delivered with it. Raw
+columns: an area shows its label, region, country and point, and a location only its
+public name, city, country and point; a stay its area and its nights at the
+chosen precision; a route its mode, areas, schedule and line, with location points only for
+locations that are themselves shared; a reisupdate its title, text, date
+and area. A photo attached to a reisupdate is delivered with it. Raw
 tracks, private journal text, media originals, document originals, imports and
 stored objects can never occur in this schema.
 
@@ -138,8 +137,8 @@ stored objects can never occur in this schema.
 
 Both are complete, standalone display documents rendered live on every
 request. They contain `schema_version`, `title`, optional `summary`, approved
-date string(s), an ordered `route_stages` array, optional broad `places` and
-`route`, `updates`, `stays`, `transport`, `media`, and `documents`. Every display item has a
+date string(s), an ordered `visits` array, optional `places` (the shared areas and locations together) and
+`routes`, `updates`, `stays`, `media`, and `documents`. Every display item has a
 projection-local `id`, not a canonical ID. `media.image` and `documents.file`
 are delivery references that identify only the approved derivative. The
 unlisted form may contain a different set of approved items, but has the same
@@ -180,7 +179,7 @@ next request, with no republish step.
    immediately returns 404. It does not change canonical data or named share
    links.
 
-The public view is a live API response (delivered for trips/route stages/reisupdates
+The public view is a live API response (delivered for trips/visits/reisupdates
 in [#42](https://github.com/tjorim/travel/issues/42)). The fresh-launch
 route boundary is defined by [#101](101-legacy-route-transition.md).
 
@@ -216,7 +215,7 @@ effective.
 ## Storage, transfer, and deletion boundary
 
 The database stores structured records, relations, hashes, lifecycle/access
-state and object metadata. VPS object storage stores originals, raw tracks,
+state and object metadata. VPS object storage stores originals,
 redacted or metadata-free derivatives, export artifacts, manifests and bounded
 recoverable-deletion copies. The database transaction first records a staged
 object; a checksum-verified upload marks it available; only an available object
@@ -253,7 +252,7 @@ Any later work on old `dist/` content belongs to
 
 ## Implementation gates
 
-Publication/share-link delivery for trips, route stages, and reisupdates was
+Publication/share-link delivery for trips, visits, and reisupdates was
 implemented in [#42](https://github.com/tjorim/travel/issues/42): Alembic
 migrations, owner/public/unlisted response models, scope validation, and
 capability delivery, with tests for each state transition. Because v1 renders

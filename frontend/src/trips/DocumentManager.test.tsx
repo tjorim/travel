@@ -11,7 +11,7 @@ import { DocumentManager } from "./DocumentManager";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, route_stages: [], travel_updates: [] };
+const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
 const asset = (id: string, title: string): DocumentAsset => ({ id, title, document_kind: "booking", byte_size: 512, content_type: "application/pdf", original_filename: `${id}.pdf`, created_at: "2054-01-01T00:00:00Z", file_url: `/api/trips/trip/documents/${id}/original` } as DocumentAsset);
 const derivative = (id: string, state: "pending" | "approved"): DocumentDerivative => ({ id, review_state: state, content_type: "application/pdf", byte_size: 100, file_url: `/files/${id}` } as DocumentDerivative);
 

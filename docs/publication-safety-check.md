@@ -14,27 +14,27 @@ enforces the scope; this check is about choosing it deliberately.
       without being ticked, so read each one as a stranger would. "Privé"
       records reach nobody.
 - [ ] Check that no shared text (titles, summaries, stage summaries, the text
-      written for visitors in a reisupdate, public spot names, captions,
-      broad-route labels) contains an exact
+      written for visitors in a reisupdate, public location names, captions,
+      route labels) contains an exact
       accommodation, home or meeting address, a booking or confirmation code,
       a ticket document, a travel-party name or contact detail, or a live or
-      near-real-time location. A selected transport summary may show a
-      carrier, flight/service number, city/country endpoints, schedule and
-      status, but never an endpoint address, booking code, travel class, notes
-      or document.
+      near-real-time location. A selected route may show its
+      mode, its two areas, a carrier, flight/service number, schedule, status
+      and drawn line, but never a location's address, a booking code, travel
+      class, notes or document.
 - [ ] Choose trip dates only at the precision you intend to share (year,
-      month or day), and prefer broad places and deliberately drawn routes.
+      month or day), and prefer areas and deliberately drawn routes.
 - [ ] A reisupdate shares only its title, the text written for visitors, its
       date and its area; never its private notes. Read the text as a stranger
       would, and remember the date precision applies.
-- [ ] A shared spot (a monument, a hot spring) shows its public name, city and
+- [ ] A shared location (a monument, a hot spring) shows its public name, city and
       point. Do not share a place that is a home, a hotel or a meeting point.
 - [ ] A shared stay shows only its area and its nights at the precision you
       chose, never the property. Check that the area is not too specific.
-- [ ] If a transport leg should appear on the map, share its reviewed broad
-      route, or the endpoint places themselves (for instance an airport)
-      under their public names. Without those, the leg stays a text summary
-      rather than gaining a line from its private endpoints.
+- [ ] A route appears on the map with your drawn line, or as a straight line
+      between its two areas. Its stations or airports show only when you share
+      those locations under their public names; check the line does not pass
+      close to a home or meeting point.
 - [ ] For every selected image, check the visible content and caption; only
       approved, metadata-stripped share derivatives can be selected.
 - [ ] For a named link, choose the shortest sensible lifetime and send the

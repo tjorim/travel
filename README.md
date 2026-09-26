@@ -84,7 +84,7 @@ mistake.
 ## Application backend
 
 `backend/` contains the FastAPI service for the Travel application. The API
-stores only owner-scoped trip data: exact and broad places, route stages,
+stores only owner-scoped trip data: areas and locations, visits,
 moments and travel updates, and owner-authorized media uploads/imports copied into
 application-controlled object storage (with owner-only EXIF GPS surfaced when
 present). It does not perform continuous or automatic location tracking.

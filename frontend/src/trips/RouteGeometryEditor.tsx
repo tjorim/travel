@@ -159,7 +159,7 @@ export function RouteGeometryEditor({ coordinates, onChange, suggestions = [], m
       <button className="secondary compact" type="button" disabled={!editorCoordinates.length} onClick={() => commit(editorCoordinates.slice(0, -1))}>Laatste punt verwijderen</button>
       <button className="secondary compact" type="button" disabled={!editorCoordinates.length} onClick={() => commit([])}>Punten wissen</button>
     </div>
-    {suggestions.length > 0 && <div className="route-geometry-suggestions"><span>Gebruik een halte:</span>{suggestions.map((suggestion) => <button className="secondary compact" type="button" key={suggestion.label} onClick={() => addSuggestion(suggestion)}>Voeg {suggestion.label} toe</button>)}</div>}</>}
+    {suggestions.length > 0 && <div className="route-geometry-suggestions"><span>Gebruik een gebied:</span>{suggestions.map((suggestion) => <button className="secondary compact" type="button" key={suggestion.label} onClick={() => addSuggestion(suggestion)}>Voeg {suggestion.label} toe</button>)}</div>}</>}
     <p className="help" aria-live="polite">{editorCoordinates.length === 0 ? "Nog geen punten. Zoom naar de regio en klik het eerste algemene punt." : preview ? `${editorCoordinates.length} algemene punten in deze route.` : `${editorCoordinates.length} ${editorCoordinates.length === 1 ? "punt" : "punten"} · minstens twee punten zijn nodig.`}</p>
     {!preview && editorCoordinates.length > 0 && <ol className="route-geometry-points" aria-label="Routepunten">{editorCoordinates.map(([longitude, latitude], index) => <li key={`${longitude}-${latitude}-${index}`}>Punt {index + 1}: {latitude.toFixed(3)}, {longitude.toFixed(3)}</li>)}</ol>}
   </section>;

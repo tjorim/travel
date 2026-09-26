@@ -46,7 +46,7 @@ export function Settings() {
   const confirmation = useConfirmation();
   const { session } = useAuth();
   const providersQuery = useProviderConnections();
-  const providers = providersQuery.data ?? [];
+  const providers = (providersQuery.data ?? []).filter((item) => item.available);
   const [notice, setNotice] = useState<string | null>(null);
   const revoke = useOwnerMutation<Provider>({
     fallback: "De provider kon niet worden losgekoppeld.",
@@ -69,7 +69,7 @@ export function Settings() {
   return <section className="card manager" aria-labelledby="settings-title">
     <div><p className="eyebrow">Private accountinstellingen</p><h2 id="settings-title">Instellingen</h2><p>Providerverbindingen horen hier thuis. De toekomstige OAuth-koppeling uit #55 bouwt voort op deze statusweergave.</p></div>
     <p className="help" role="status">{message}</p>
-    <div className="saved-moments manager-list">{providers.map((provider) => <article className="provider-row" key={provider.provider}><div><strong>{labels[provider.provider]}</strong><span>{provider.connected ? "Verbonden voor private import" : "Niet verbonden"}</span></div><div className="provider-actions"><span className={`provider-status ${provider.connected ? "connected" : "disconnected"}`}>{provider.connected ? "Verbonden" : "Niet verbonden"}</span>{provider.connected ? <button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>Loskoppelen</button> : <ConnectForm provider={provider.provider} onConnected={(connected) => setNotice(`${labels[connected]} is verbonden voor private imports. Het token is niet terug te lezen of lokaal bewaard.`)} />}</div></article>)}</div>
+    <div className="saved-records manager-list">{providers.map((provider) => <article className="provider-row" key={provider.provider}><div><strong>{labels[provider.provider]}</strong><span>{provider.connected ? "Verbonden voor private import" : "Niet verbonden"}</span></div><div className="provider-actions"><span className={`provider-status ${provider.connected ? "connected" : "disconnected"}`}>{provider.connected ? "Verbonden" : "Niet verbonden"}</span>{provider.connected ? <button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>Loskoppelen</button> : <ConnectForm provider={provider.provider} onConnected={(connected) => setNotice(`${labels[connected]} is verbonden voor private imports. Het token is niet terug te lezen of lokaal bewaard.`)} />}</div></article>)}</div>
     {confirmation.dialog}
   </section>;
 }

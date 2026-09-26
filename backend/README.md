@@ -14,24 +14,24 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 |---|---|---|
 | `GET`, `POST` | `/trips` | List the caller's trips or create a private trip. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}` | Read, edit, or remove an owned trip. |
-| `POST` | `/trips/{trip_id}/route-stages` | Add a broad route stage. |
-| `PATCH`, `DELETE` | `/trips/{trip_id}/route-stages/{stage_id}` | Edit or remove a route stage. |
-| `POST` | `/trips/{trip_id}/travel-updates` | Add a reisupdate, the one record for something that happened. Its private part (`private_notes`, the exact `place`, attached `media_asset_ids`) is never shared; its shared part (title, `body`, date, area) reaches visitors only as its `visibility` allows: `private` (the default), `everyone` or `custom`. |
+| `GET`, `POST` | `/trips/{trip_id}/visits` | List or add a visit (a stop): an area, or a location in one (`area_id` or `location`), with optional days (`starts_on`, `ends_on`), local times (`start_time`, `end_time`), kind (free or work), private `notes` and a `summary` for visitors. Times stay private unless `share_time` is set, and are then shared only with full dates. |
+| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/visits/{visit_id}` | Read, edit, reorder (`position`) or remove a visit. |
+| `POST` | `/trips/{trip_id}/travel-updates` | Add a reisupdate, the one record for something that happened. Its private part (`private_notes`, the `location`, attached `media_asset_ids`) is never shared; its shared part (title, `body`, date, area) reaches visitors only as its `visibility` allows: `private` (the default), `everyone` or `custom`. |
 | `PATCH`, `DELETE` | `/trips/{trip_id}/travel-updates/{update_id}` | Edit or remove a reisupdate. Leaving `custom` or deleting it withdraws it from every live scope. |
-| `PUT` | `/trips/{trip_id}/visibility/{kind}/{record_id}` | Choose `private`, `everyone` or `custom` for any shareable record (place, stage, route, stay, transport leg, reisupdate, approved photo or document copy). The reason is returned when a record cannot be shared yet. |
-| `PATCH` | `/trips/{trip_id}/places/{place_id}` | Give an exact place its public name; a spot cannot be shared without one. |
+| `PUT` | `/trips/{trip_id}/visibility/{kind}/{record_id}` | Choose `private`, `everyone` or `custom` for any shareable record (area or location, stage, route, stay, reisupdate, approved photo or document copy). The reason is returned when a record cannot be shared yet. |
+| `PATCH` | `/trips/{trip_id}/locations/{location_id}` | Give a location its public name and area, and choose whether its address is shared; a location cannot be shared without a public name. |
+| `GET`, `POST` | `/trips/{trip_id}/areas` | List or save areas: cities and regions, private until shared. |
+| `PATCH`, `DELETE` | `/trips/{trip_id}/areas/{area_id}` | Edit an area (for example its time zone) or remove one nothing uses. |
+| `GET`, `POST` | `/trips/{trip_id}/routes` | List or add a route: how the trip gets from one area to another, by a travel mode (flight, train, bus, ferry, car, bike, walk or other). Only the mode and the two areas (`departure_area_id`, `arrival_area_id`, or an area implied by a `departure_location`/`arrival_location`) are required; exact locations, a schedule, carrier/booking details, attached documents and a drawn GeoJSON `geometry` are optional. The application takes no recorded GPS data. |
+| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/routes/{route_id}` | Read, edit or remove a route. |
 | `GET`, `POST` | `/trips/{trip_id}/stays` | List or add an owner-only stay: its nights, city/area and, once chosen, the accommodation. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/stays/{stay_id}` | Read, edit or remove a stay. |
-| `GET`, `POST` | `/trips/{trip_id}/transport-legs` | List or add an owner-only flight or other booked leg. |
-| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/transport-legs/{leg_id}` | Read, edit or remove a transport leg. |
-| `GET`, `POST` | `/trips/{trip_id}/itinerary-entries` | List or add an owner-only day-plan entry. |
-| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/itinerary-entries/{entry_id}` | Read, edit, reorder or remove a day-plan entry. |
 | `GET`, `POST` | `/trips/{trip_id}/trip-tasks` | List or add an owner-only booking/preparation task with optional HTTPS links. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/trip-tasks/{task_id}` | Read, complete/reopen, edit or remove a task. |
 | `POST` | `/trips/{trip_id}/places/search` | Owner-only OSM search; returns attribution and a selected-result snapshot. |
 | `POST` | `/trips/{trip_id}/places/reverse` | Owner-only, explicit coordinate-to-place suggestion; never writes a place. |
-| `GET`, `POST` | `/trips/{trip_id}/places` | List or save owner-only exact places. |
-| `GET` | `/trips/{trip_id}/places/{place_id}/navigation` | Generate an owner-authorized exact Google Maps destination. |
+| `GET`, `POST` | `/trips/{trip_id}/locations` | List or save owner-only locations. |
+| `GET` | `/trips/{trip_id}/locations/{location_id}/navigation` | Generate an owner-authorized exact Google Maps destination for a location. |
 | `PUT` | `/trips/{trip_id}/public-projection` | Replace the trip's public scope; live immediately if already published. |
 | `POST` | `/trips/{trip_id}/public-projection/preview` | Render the current scope for owner review (`no-store`), no gate. |
 | `POST` | `/trips/{trip_id}/public-projection/publish` | Start serving the trip publicly at its current scope. |
@@ -58,7 +58,7 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/file` | Owner-only, `no-store` derivative file delivery. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions` | Start a Google Photos Picker or GoPro Cloud selection session. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
-| `GET` | `/provider-tokens` | Owner-only non-secret connection status for each import provider. |
+| `GET` | `/provider-tokens` | Owner-only non-secret status for each import provider: whether this server offers it (`available`; GoPro Cloud only with `TRAVEL_GOPRO_CLOUD_ENABLED`) and whether the owner has connected it. The PWA hides an unavailable provider and disables an unconnected one. |
 | `PUT`, `DELETE` | `/provider-tokens/{provider}` | Connect or revoke the owner's Google Photos/GoPro Cloud access token (write-only; never read back). |
 
 Trip tasks accept an optional `remind_at` timestamp. `due_date` only sorts
@@ -85,19 +85,20 @@ reminder never claims that tickets are available or makes a booking.
 A stay is the set of nights slept at one accommodation: `check_in_date` is
 the first night and `check_out_date` the departure morning, so it covers
 every night from check-in up to, but not including, check-out. Both dates and
-the optional `check_in_time`/`check_out_time` are local to the stay. A stay
-can be planned for a city or area (`broad_place_id`) before the property is
-chosen; `property_name` and the exact `place` are then empty.
+the optional `check_in_time`/`check_out_time` are local to the stay. Every
+stay has a `location` (filed under an area); it can be as little as a
+city or an existing area, while `property_name` stays empty until the
+accommodation is chosen.
 
-A transport leg stores UTC instants plus each endpoint's IANA time zone.
-Send `departs_at`/`arrives_at` without an offset together with
+A route's optional schedule is stored as UTC instants plus each end's IANA time
+zone, and comes as a pair: both times or neither. Send `departs_at`/`arrives_at` without an offset together with
 `departure_timezone`/`arrival_timezone` to enter local wall-clock times such
 as "AMS 10:40 → TPE 06:25 the next day"; a time with an explicit offset is
 used as-is. Responses always carry the UTC offset.
 
-A broad place (city or area) can carry an IANA `timezone`; edit it with
-`PATCH /trips/{trip_id}/places/broad/{place_id}`. Stays inherit it through
-their `broad_place`, so the owner PWA can tell where the plan puts the owner
+An area (city or region) can carry an IANA `timezone`; edit it with
+`PATCH /trips/{trip_id}/areas/{area_id}`. Stays inherit it through
+their location's area, so the owner PWA can tell where the plan puts the owner
 at any moment and show the live local time there, daylight saving included.
 The zone is owner-only and never part of a shared projection.
 
@@ -173,7 +174,7 @@ OpenStreetMap
 attribution, a durable OSM `(element type, element ID)` reference, and the
 owner-selected display snapshot; Nominatim's result-local `place_id` is never
 stored as an application identifier. Saving the selected result creates an
-owner-only exact place, including its address, coordinates and viewport. A
+owner-only location, including its address, coordinates and viewport. A
 reverse lookup is only a suggestion: it does not create or attach a place. It
 is intended for an owner-confirmed media-EXIF suggestion flow (#52), never for
 automatic capture or canonical writes.
@@ -183,7 +184,7 @@ These attachments are private editing context, distinct from share
 derivatives: they cannot be put in a public or unlisted scope. An owner
 may use an attached photo's capture time as a date suggestion or send its GPS
 to the explicit reverse endpoint, then choose a returned place before saving
-the reisupdate. Neither action creates or changes a reisupdate or exact place
+the reisupdate. Neither action creates or changes a reisupdate or location
 on its own.
 
 `POST /trips/{trip_id}/media/visit-candidates` adds a separate review step
@@ -208,9 +209,9 @@ by that provider's acceptable-use and retention terms.
 
 An owner can receive an exact Google Maps destination from the owner route.
 Public and unlisted projections instead contain only opaque, projection-local
-`navigation` markers. A broad-place marker redirects to a textual city-level
-target. An exact-place marker exists only when a scope item explicitly grants
-`{"kind":"exact_place", "id":"…", "fields":["navigation"]}`; its
+`navigation` markers. An area marker redirects to a textual city-level
+target. A location marker exists only when a scope item explicitly grants
+`{"kind":"location", "id":"…", "fields":["navigation"]}`; its
 OSM ID, address, coordinates, viewport, display snapshot and Google URL never
 appear in the projection. The server resolves that marker and emits the Google
 redirect only after checking the public surface or unlisted capability. A

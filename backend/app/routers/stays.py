@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import Place, PlaceKind, Stay, Trip
+from ..models import Location, Stay, Trip
 from ..schemas import StayCreate, StayResponse, StayUpdate
-from .trips import exact_place_from_input, owned_trip
+from .placement import location_from_input
+from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["stays"])
 
@@ -20,7 +21,7 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 
 def _stay_query():
-    return select(Stay).options(selectinload(Stay.place).selectinload(Place.area), selectinload(Stay.broad_place))
+    return select(Stay).options(selectinload(Stay.location).selectinload(Location.area))
 
 
 def owned_stay(trip: Trip, stay_id: str) -> Stay:
@@ -28,15 +29,6 @@ def owned_stay(trip: Trip, stay_id: str) -> Stay:
     if stay is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found")
     return stay
-
-
-def resolve_broad_place_id(session: Session, trip: Trip, broad_place_id: str) -> str:
-    place = session.scalar(
-        select(Place).where(Place.id == broad_place_id, Place.trip_id == trip.id, Place.kind == PlaceKind.BROAD)
-    )
-    if place is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Broad place not found on this trip")
-    return place.id
 
 
 def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
@@ -56,20 +48,11 @@ def list_stays(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[S
 def create_stay(trip_id: str, payload: StayCreate, session: SessionDep, subject: SubjectDep) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     validate_stay_nights(payload.check_in_date, payload.check_out_date)
-    spot = exact_place_from_input(session, trip.id, payload.place) if payload.place is not None else None
-    if spot is not None and payload.broad_place_id is not None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="A stay with a hotel gets its area from that spot",
-        )
     stay = Stay(
         trip=trip,
-        place=spot,
-        broad_place_id=(
-            resolve_broad_place_id(session, trip, payload.broad_place_id) if spot is None and payload.broad_place_id is not None else None
-        ),
+        location=location_from_input(session, trip.id, payload.location),
         website_url=str(payload.website_url) if payload.website_url is not None else None,
-        **payload.model_dump(exclude={"place", "broad_place_id", "website_url"}),
+        **payload.model_dump(exclude={"location", "website_url"}),
     )
     session.add(stay)
     session.commit()
@@ -85,21 +68,11 @@ def get_stay(trip_id: str, stay_id: str, session: SessionDep, subject: SubjectDe
 def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: SessionDep, subject: SubjectDep) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     stay = owned_stay(trip, stay_id)
-    if "place" in payload.model_fields_set:
-        # Clearing the exact place returns the stay to "still choosing".
-        stay.place = exact_place_from_input(session, trip.id, payload.place) if payload.place is not None else None
-    if stay.place is not None:
-        if "broad_place_id" in payload.model_fields_set and payload.broad_place_id is not None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="A stay with a hotel gets its area from that spot",
-            )
-        stay.broad_place_id = None
-    elif "broad_place_id" in payload.model_fields_set:
-        stay.broad_place_id = (
-            resolve_broad_place_id(session, trip, payload.broad_place_id) if payload.broad_place_id is not None else None
-        )
-    values = payload.model_dump(exclude_unset=True, exclude={"place", "broad_place_id"})
+    if "location" in payload.model_fields_set:
+        if payload.location is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A stay needs a location")
+        stay.location = location_from_input(session, trip.id, payload.location)
+    values = payload.model_dump(exclude_unset=True, exclude={"location"})
     for required in ("check_in_date", "check_out_date", "status"):
         if required in values and values[required] is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")

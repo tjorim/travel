@@ -6,6 +6,45 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- The media import buttons and the provider settings now follow what the server offers: GoPro Cloud is hidden until `TRAVEL_GOPRO_CLOUD_ENABLED` is set, and a provider the owner has not connected is disabled with a pointer to Instellingen. `GET /provider-tokens` reports `available` for each provider.
+- Made the place vocabulary one set of words and dropped raw GPS tracks. An
+  *area* (*gebied*) is a city or region and a *location* (*locatie*) is an
+  address-level place, or just a city, filed under exactly one area. They are
+  separate tables, endpoints (`/areas`, `/locations`), share kinds (`area`,
+  `location`) and MCP tools, so every reference points at the right kind by
+  construction. Every stay has a location and takes its area from it;
+  reisupdates can link to an area (shared) and a location (private). The
+  Gebieden section lists what belongs to each area. The application stores no
+  recorded location data: there is no track upload, and photo coordinates stay
+  private metadata.
+- Made getting somewhere one record, the *route*: a travel mode (flight, train,
+  bus, ferry, car, bike, walk or other) between two areas. Only the mode and the
+  two areas are required; the exact locations, a schedule with time zones,
+  carrier and service number, booking details, documents and a hand-drawn line
+  (with movable points) are optional. Visitors see a route's areas, mode,
+  schedule, carrier and line, never its stations or booking; the maps draw the
+  line, or a straight one between the two areas, in a style per mode. The
+  endpoints are `/routes`, the share kind is `route` and the projection has one
+  `routes` list.
+- Made a stop of the trip one record, the *visit* (*bezoek*): an area, or a
+  location in one, with optional days, a start and end time (local at the visit,
+  in the time zone of its area), a kind (free or work), private notes and a text
+  for visitors. A visit is shared like everything else: its dates follow the
+  chosen precision, and its time is private unless the owner ticks "Toon de tijd
+  aan bezoekers" (and then only with full dates, with the area's time zone).
+  The API is `/visits`, the share kind `visit`, and the projection has one
+  `visits` list. The day plan is a read-only agenda over stays, routes and
+  visits. Routes and visits pick their places with one grouped picker (areas
+  with their locations nested), so a location and its area are one choice.
+- Added migration `001_areas_locations_routes` on top of `000_baseline`. It
+  splits `places` into `areas` and `locations`, gives every stay a location,
+  merges transport legs and drawn routes into `routes`, turns route stages and
+  day-plan entries into `visits` (an entry lands in the area of what it
+  linked to, else in an "Unassigned" area; the "travel" kind and tentative
+  flag are dropped), rewrites stored share scopes, hands the bytes of stored
+  tracks to the purge job and renames the leftover `moment_*` constraints. It
+  downgrades too, with routes that have no earlier form dropped. The archive
+  import file has `areas`, `visits`, `routes` and stays with a `location`.
 - Squashed the original 30 Alembic revisions into `000_baseline`, a
   baseline of the schema already deployed. Fresh PostgreSQL databases build
   directly from it; existing databases at the former `0030_spots_require_areas`

@@ -91,12 +91,11 @@ public view and every hidden link) or `custom` (reaches only the audiences whose
 scope lists it). A scope lists records, never fields; what a record shows is
 fixed per kind and can never include a field prohibited by this policy. Only
 records that are themselves share-safe carry a visibility: a private original
-never gets one, and a record that cannot yet be shared safely (a spot without a
-public name, a stay without an area, an unapproved copy) is rejected with a
+never gets one, and a record that cannot yet be shared safely (a location without a
+public name, an unapproved copy) is rejected with a
 reason. Leaving `custom`, or deleting a record, removes it from every scope.
 The earlier requirement of a separately authored twin now applies only where the
-shared thing is a different artifact: files (reviewed derivatives) and routes
-(reviewed broad lines). A place and a stay are shared as themselves through a
+shared thing is a different artifact: files (reviewed derivatives). An area, a location, a route and a stay are shared as themselves through a
 fixed allowlist, and the reisupdate is the one story record.
 
 The owner can create multiple named share links for the same trip, each with a
@@ -106,16 +105,16 @@ happen to have similar audiences.
 
 | Resource | Owner default | Public default | Unlisted default | Allowed shared representation |
 |---|---|---|---|---|
-| Trip and route stages | Full canonical trip. | Not included. | Not included. | Selected title, summary, dates at the chosen precision, and broad route/city stages. |
-| Places and maps | Exact place, address, coordinates, viewport and provider identifiers. | Not included. | Not included. | A shared area shows its label, region, country and generalized point. A shared spot shows only its owner-chosen public name, city, country and point; never its address, notes, provider identifiers or display name. |
-| Reisupdates | Private notes, timestamp, exact place and attached originals. | Not included. | Not included. | Title, text, date at the chosen precision and the broad place. Its own visibility decides who receives it. |
-| Stays | Exact property, address, dates, booking and contact data. | Not included. | Not included. | Only the city or area and the nights at the chosen date precision. The property, exact place, check-in details, contacts and booking data are never shared. |
-| Transport legs | Exact endpoints, schedule, carrier/service reference, booking reference, travel class, notes and linked documents. | Not included. | Not included. | A summary of kind, status, carrier/service reference, city/country endpoints and scheduled times/time zones. An endpoint appears on the map only when that place is itself shared, which suits public infrastructure such as airports and stations. Booking reference, class, notes and documents never. A shared broad route is authoritative on the map; only without one is a general line drawn between shared city points. |
+| Trip and visits | Full canonical trip. | Not included. | Not included. | Selected title, summary, dates at the chosen precision, and visits (the area, the days at the chosen precision, the text for visitors; the time only when the owner chose to show it). Notes never. |
+| Areas, locations and maps | Exact location, address, coordinates, viewport and provider identifiers. | Not included. | Not included. | A shared area shows its label, region, country and generalized point. A shared location shows only its owner-chosen public name, city, country and point; never its address, notes, provider identifiers or display name. |
+| Reisupdates | Private notes, timestamp, location and attached originals. | Not included. | Not included. | Title, text, date at the chosen precision and the area. Its own visibility decides who receives it. |
+| Stays | Exact property, address, dates, booking and contact data. | Not included. | Not included. | Only the city or area and the nights at the chosen date precision. The property, location, check-in details, contacts and booking data are never shared. |
+| Routes | Exact locations at either end, schedule, carrier/service reference, booking reference, travel class, notes, linked documents and the drawn line. | Not included. | Not included. | Mode, status, the two areas, the drawn line, the schedule and time zones, carrier and service reference. A location appears on the map only when that location is itself shared, which suits public infrastructure such as airports and stations. Booking reference, class, notes and documents never. Without a drawn line, a straight line joins the two area points, or the two shared locations. |
 | Documents | Original file, preview, extracted text, filename and metadata. | Never an original document. | Never an original document by default. | A deliberately prepared, field-redacted share derivative may be selected as one item; its own URL and metadata are scoped. |
 | Media | Original file, import provenance, EXIF/XMP/IPTC, face/person tags and exact capture data. | Not included. | Not included. | An explicitly selected derivative with all metadata stripped and owner-approved visible content, caption and alt text. |
-| Recorded tracks | Raw/private track, timestamps, points, speed and elevation data. | Not included. | Not included. | A distinct generalized, deliberately bounded route line or broad stages; never raw points or timestamps. |
+| Routes | An approximate line the owner drew, with its travel mode. The application takes no raw location data: it has no track upload, timestamps, points, speed or elevation. | Not included. | Not included. | The line, its mode and its date at the chosen precision, when the owner shares it. |
 | Private journal | The private notes of a reisupdate and all its metadata. | Never included. | Never included. | Never. The shared text of a reisupdate is a separate field written for visitors. |
-| Navigation and external-map links | Exact destination, route, provider URL and map viewport. | Not included. | Not included. | A shared place offers directions: to a shared spot's point, or a city/region link for an area. Never an address. |
+| Navigation and external-map links | Exact destination, route, provider URL and map viewport. | Not included. | Not included. | A shared place offers directions: to a shared location's point, or a city/region link for an area. Never an address. |
 
 An owner can revise or remove a projection without changing the canonical
 record. Sharing an item never changes its default or makes later items shared.
@@ -123,7 +122,7 @@ No projection may contain an owner subject, internal database ID, booking or
 confirmation code, precise address, travel-party contact detail, emergency
 information, raw document/media metadata, exact location, or live/near-real-
 time position. A flight or other service reference is permitted only in the
-selected transport summary described above; it is not a booking credential.
+selected route summary described above; it is not a booking credential.
 
 ## Server authorization and projection contract
 
@@ -152,7 +151,7 @@ static pathname or browser-side redaction.
 
 Map rendering receives only the audience projection. It must not calculate a
 viewport, geocoding request, navigation target, tile request parameter or
-fallback link from owner geometry. A broad place is stored/rendered as its own
+fallback link from owner geometry. An area is stored/rendered as its own
 approved representation rather than a rounded canonical coordinate.
 
 Both owner and visitor maps may offer optional terrain and satellite layers.
@@ -160,13 +159,11 @@ Those layer requests use only the same audience-scoped viewport and geometry
 already used for the base map; enabling them cannot obtain or infer owner-only
 location data.
 
-An audience map reuses selected broad routes as the authoritative reviewed map
-representation; it must not guess which leg one belongs to, or draw an
-additional line beside it. Only when the scope has no broad route may it draw a
-straight, clearly generalized line between two already selected broad map
-points whose labels match the selected city/country endpoint context. It must
-not create that line from a leg's exact endpoint coordinates or a private
-recorded track.
+An audience map draws each selected route as its owner-drawn line. A route
+without one gets a straight, clearly generalized line between its two area
+points, or between its two locations when those are themselves shared. It
+never draws a line from a location's exact coordinates that is not shared, and
+it never guesses which record a line belongs to.
 
 ## Public and custom-link publication
 
@@ -317,7 +314,7 @@ Issues implementing this policy must test at least these boundaries:
 - A public or unlisted payload cannot reveal restricted fields through nested
   objects, IDs, map/viewports, metadata, signed URLs, errors, counts or cache.
 - A link containing one selected hotel/city item cannot read any other stay,
-  exact place, factory location, document, media original or navigation link.
+  location, factory location, document, media original or navigation link.
 - Revocation invalidates application sessions, signed URLs and application
   cache entries, while the UI honestly describes downloaded-copy limits.
 - Offline copies are opt-in, device/account scoped, encrypted where supported,

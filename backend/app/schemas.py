@@ -15,17 +15,14 @@ from .models import (
     EmergencyInfoKind,
     ImportProvider,
     ImportSessionState,
-    ItineraryEntryKind,
-    ItineraryLinkKind,
     LinkState,
     MediaKind,
-    PlaceKind,
+    RouteMode,
+    RouteStatus,
     StayStatus,
     SurfaceState,
-    TrackKind,
-    TransportLegKind,
-    TransportLegStatus,
     Visibility,
+    VisitKind,
 )
 
 COUNTRY_CODE_FIELD = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")
@@ -53,9 +50,9 @@ def require_ordered_dates(start: date | None, end: date | None, message: str) ->
         raise ValueError(message)
 
 
-class ExactPlaceFields(BaseModel):
-    """An owner-only spot: address parts, coordinates, viewport and
-    navigation/provider IDs. A shared spot shows only what its allowlist says."""
+class LocationFields(BaseModel):
+    """An owner-only location: address parts, coordinates, viewport and
+    navigation/provider IDs. A shared location shows only what its allowlist says."""
 
     osm_element_type: Literal["node", "way", "relation"] | None = None
     osm_element_id: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[0-9]+$")
@@ -77,12 +74,12 @@ class ExactPlaceFields(BaseModel):
     navigation_provider: str | None = Field(default=None, max_length=40)
     navigation_provider_place_id: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=2000)
-    # The name a shared spot goes by. Owner-only until the place is shared,
+    # The name a shared location goes by. Owner-only until the place is shared,
     # and required for that: the display name usually contains the address.
     label: str | None = Field(default=None, min_length=1, max_length=120)
-    # The area the spot belongs to. Left out, it is derived from the spot's city.
+    # The area the location belongs to. Left out, it is derived from the location's city.
     area_id: str | None = Field(default=None, min_length=1, max_length=32)
-    # Show the address too when the spot is shared. Off unless the owner chooses it.
+    # Show the address too when the location is shared. Off unless the owner chooses it.
     share_address: bool = False
 
     @field_validator("osm_element_id")
@@ -94,23 +91,33 @@ class ExactPlaceFields(BaseModel):
         return value
 
 
-class ExactPlaceInput(ExactPlaceFields):
-    """A spot to create, or, with ``existing_place_id``, a spot the trip already has.
+class LocationInput(LocationFields):
+    """A location to create, or, with ``existing_location_id``, a location the trip already has.
 
-    Reusing a spot keeps one "Brussels Airport" for the outbound and the return
-    leg. It replaces creating a copy, so nothing else may be supplied with it."""
+    Reusing a location keeps one "Brussels Airport" for the outbound and the return
+    route. It replaces creating a copy, so nothing else may be supplied with it."""
 
-    existing_place_id: str | None = Field(default=None, min_length=1, max_length=32)
+    existing_location_id: str | None = Field(default=None, min_length=1, max_length=32)
 
     @model_validator(mode="after")
     def reuse_supplies_nothing_else(self):
-        if self.existing_place_id is not None and self.model_fields_set - {"existing_place_id"}:
-            raise ValueError("Supply an existing place on its own, without other place fields")
+        if self.existing_location_id is not None and self.model_fields_set - {"existing_location_id"}:
+            raise ValueError("Supply an existing location on its own, without other location fields")
         return self
 
 
-class ExactPlaceUpdate(BaseModel):
-    """What an existing spot lets the owner change: its public name, its area
+def require_identified_location(location: "LocationInput | None") -> "LocationInput | None":
+    """A stay's location must say where it is: a saved location, a name or address, a city or an area."""
+    if location is None or location.existing_location_id is not None:
+        return location
+    located = location.latitude is not None and location.longitude is not None
+    if not (located or location.display_name or location.address_line1 or location.locality or location.admin_area or location.area_id):
+        raise ValueError("Say where this stay is: choose a saved location, or fill in an address, a city or an area")
+    return location
+
+
+class LocationUpdate(BaseModel):
+    """What an existing location lets the owner change: its public name, its area
     and whether its address is shown when it is shared."""
 
     label: str | None = Field(default=None, min_length=1, max_length=120)
@@ -118,9 +125,8 @@ class ExactPlaceUpdate(BaseModel):
     share_address: bool | None = None
 
 
-class ExactPlaceResponse(ExactPlaceFields):
+class LocationResponse(LocationFields):
     id: str
-    kind: Literal[PlaceKind.EXACT] = PlaceKind.EXACT
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
@@ -166,9 +172,9 @@ class NavigationResponse(BaseModel):
     exact: bool
 
 
-class BroadPlaceInput(BaseModel):
-    """A deliberately authored broad place: label, country/region and an
-    optional approved generalized point. Shareable, unlike an exact place."""
+class AreaInput(BaseModel):
+    """A deliberately authored area: label, country/region and an
+    optional approved generalized point. Shareable, unlike a location."""
 
     label: str = Field(min_length=1, max_length=120)
     country_code: str | None = COUNTRY_CODE_FIELD
@@ -180,7 +186,7 @@ class BroadPlaceInput(BaseModel):
     _timezone = field_validator("timezone")(require_timezone)
 
 
-class BroadPlaceUpdate(BaseModel):
+class AreaUpdate(BaseModel):
     label: str | None = Field(default=None, min_length=1, max_length=120)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
@@ -191,9 +197,8 @@ class BroadPlaceUpdate(BaseModel):
     _timezone = field_validator("timezone")(require_timezone)
 
 
-class BroadPlaceResponse(BroadPlaceInput):
+class AreaResponse(AreaInput):
     id: str
-    kind: Literal[PlaceKind.BROAD] = PlaceKind.BROAD
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
@@ -219,46 +224,6 @@ class TripUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class RouteStageCreate(BaseModel):
-    # A caller can deliberately author a new broad place with the stage, or
-    # select a previously authored one. Exact places are never accepted here.
-    place: BroadPlaceInput | None = None
-    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
-    position: int = Field(ge=0)
-    label: str | None = Field(default=None, max_length=120)
-    summary: str | None = Field(default=None, max_length=2000)
-
-    @model_validator(mode="after")
-    def require_one_broad_place(self):
-        if (self.place is None) == (self.broad_place_id is None):
-            raise ValueError("Supply exactly one of place or broad_place_id")
-        return self
-
-
-class RouteStageUpdate(BaseModel):
-    place: BroadPlaceInput | None = None
-    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
-    position: int | None = Field(default=None, ge=0)
-    label: str | None = Field(default=None, max_length=120)
-    summary: str | None = Field(default=None, max_length=2000)
-
-    @model_validator(mode="after")
-    def do_not_mix_broad_place_inputs(self):
-        if self.place is not None and self.broad_place_id is not None:
-            raise ValueError("Supply place or broad_place_id, not both")
-        return self
-
-
-class RouteStageResponse(BaseModel):
-    id: str
-    position: int
-    label: str | None
-    summary: str | None
-    place: BroadPlaceResponse
-    visibility: Visibility
-    model_config = ConfigDict(from_attributes=True)
-
-
 def _require_unique_media_assets(values: list[str] | None) -> list[str] | None:
     if values is not None and len(values) != len(set(values)):
         raise ValueError("A media asset can only be attached once")
@@ -268,18 +233,18 @@ def _require_unique_media_assets(values: list[str] | None) -> list[str] | None:
 class TravelUpdateCreate(BaseModel):
     """A reisupdate: what happened, with a private part and a shared part.
 
-    Private: ``private_notes``, the exact ``place`` and the attached
+    Private: ``private_notes``, the exact ``location`` and the attached
     ``media_asset_ids``. Shared once ``visibility`` allows it: ``title``,
     ``body`` (empty until written for visitors), the date at ``date_precision``
-    and the ``broad_place_id`` (an area)."""
+    and the ``area_id`` (an area)."""
 
     occurred_at: datetime
     date_precision: DatePrecision = DatePrecision.DAY
     title: str = Field(min_length=1, max_length=160)
     body: str = Field(default="", max_length=10000)
     private_notes: str | None = Field(default=None, max_length=10000)
-    broad_place_id: str | None = None
-    place: ExactPlaceInput | None = None
+    area_id: str | None = None
+    location: LocationInput | None = None
     media_asset_ids: list[str] = Field(default_factory=list, max_length=12)
     visibility: Visibility = Visibility.PRIVATE
 
@@ -292,8 +257,8 @@ class TravelUpdatePatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
     body: str | None = Field(default=None, max_length=10000)
     private_notes: str | None = Field(default=None, max_length=10000)
-    broad_place_id: str | None = None
-    place: ExactPlaceInput | None = None
+    area_id: str | None = None
+    location: LocationInput | None = None
     media_asset_ids: list[str] | None = Field(default=None, max_length=12)
     visibility: Visibility | None = None
 
@@ -307,9 +272,9 @@ class TravelUpdateResponse(BaseModel):
     title: str
     body: str
     private_notes: str | None
-    broad_place_id: str | None
-    area: BroadPlaceResponse | None
-    place: ExactPlaceResponse | None
+    area_id: str | None
+    area: AreaResponse | None
+    location: LocationResponse | None
     media_asset_ids: list[str]
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
@@ -318,11 +283,10 @@ class TravelUpdateResponse(BaseModel):
 class StayCreate(BaseModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
     morning, so a stay covers the nights ``check_in_date`` up to, but not
-    including, ``check_out_date``. The property and exact place are optional
-    while the accommodation is still being chosen."""
+    including, ``check_out_date``. Every stay needs a location; the property
+    name is optional while the accommodation is still being chosen."""
 
-    place: ExactPlaceInput | None = None
-    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
+    location: LocationInput
     check_in_date: date
     check_out_date: date
     check_in_time: time | None = None
@@ -336,11 +300,11 @@ class StayCreate(BaseModel):
     share_date_precision: DatePrecision = DatePrecision.MONTH
 
     _https = field_validator("website_url")(require_https)
+    _located = field_validator("location")(require_identified_location)
 
 
 class StayUpdate(BaseModel):
-    place: ExactPlaceInput | None = None
-    broad_place_id: str | None = Field(default=None, min_length=1, max_length=32)
+    location: LocationInput | None = None
     check_in_date: date | None = None
     check_out_date: date | None = None
     check_in_time: time | None = None
@@ -354,6 +318,7 @@ class StayUpdate(BaseModel):
     share_date_precision: DatePrecision | None = None
 
     _https = field_validator("website_url")(require_https)
+    _located = field_validator("location")(require_identified_location)
 
 
 class StayResponse(BaseModel):
@@ -368,149 +333,83 @@ class StayResponse(BaseModel):
     booking_reference: str | None
     contact_details: str | None
     notes: str | None
-    place: ExactPlaceResponse | None
-    broad_place: BroadPlaceResponse | None
-    area: BroadPlaceResponse | None
+    location: LocationResponse
+    area: AreaResponse
     visibility: Visibility
     share_date_precision: DatePrecision
     model_config = ConfigDict(from_attributes=True)
 
 
-class TransportLegCreate(BaseModel):
-    kind: TransportLegKind
-    status: TransportLegStatus = TransportLegStatus.PLANNED
-    departure_place: ExactPlaceInput
-    arrival_place: ExactPlaceInput
-    # With an endpoint time zone, a datetime without an offset is the local
-    # wall-clock time there. Without one it must carry an explicit offset.
-    departs_at: datetime
-    arrives_at: datetime
-    departure_timezone: str | None = Field(default=None, max_length=64)
-    arrival_timezone: str | None = Field(default=None, max_length=64)
-    carrier: str | None = Field(default=None, max_length=160)
-    service_reference: str | None = Field(default=None, max_length=40)
-    travel_class: str | None = Field(default=None, max_length=80)
-    booking_reference: str | None = Field(default=None, max_length=255)
-    notes: str | None = Field(default=None, max_length=4000)
-    document_asset_ids: list[str] = Field(default_factory=list, max_length=12)
-
-    _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
-
-    @field_validator("document_asset_ids")
-    @classmethod
-    def require_unique_documents(cls, values: list[str]) -> list[str]:
-        if len(values) != len(set(values)):
-            raise ValueError("A document can only be attached once")
-        return values
+def require_visit_times(starts_on: date | None, ends_on: date | None, start_time: time | None, end_time: time | None) -> None:
+    """A visit's last day follows its first, and its times sit on a day, start before they end."""
+    if ends_on is not None and starts_on is None:
+        raise ValueError("A last day needs a first day")
+    require_ordered_dates(starts_on, ends_on, "The last day cannot precede the first day")
+    if start_time is not None and starts_on is None:
+        raise ValueError("A time needs a day")
+    if end_time is not None and start_time is None:
+        raise ValueError("An end time needs a start time")
+    if start_time is not None and end_time is not None and (ends_on is None or ends_on == starts_on) and end_time <= start_time:
+        raise ValueError("The end time must be after the start time")
 
 
-class TransportLegUpdate(BaseModel):
-    kind: TransportLegKind | None = None
-    status: TransportLegStatus | None = None
-    departure_place: ExactPlaceInput | None = None
-    arrival_place: ExactPlaceInput | None = None
-    departs_at: datetime | None = None
-    arrives_at: datetime | None = None
-    departure_timezone: str | None = Field(default=None, max_length=64)
-    arrival_timezone: str | None = Field(default=None, max_length=64)
-    carrier: str | None = Field(default=None, max_length=160)
-    service_reference: str | None = Field(default=None, max_length=40)
-    travel_class: str | None = Field(default=None, max_length=80)
-    booking_reference: str | None = Field(default=None, max_length=255)
-    notes: str | None = Field(default=None, max_length=4000)
-    document_asset_ids: list[str] | None = Field(default=None, max_length=12)
+class VisitCreate(BaseModel):
+    """A stop: at an area, or at a location in one, and optionally when."""
 
-    _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
-
-    @field_validator("document_asset_ids")
-    @classmethod
-    def require_unique_documents(cls, values: list[str] | None) -> list[str] | None:
-        if values is not None and len(values) != len(set(values)):
-            raise ValueError("A document can only be attached once")
-        return values
-
-
-class TransportLegResponse(BaseModel):
-    id: str
-    kind: TransportLegKind
-    status: TransportLegStatus
-    departure_place: ExactPlaceResponse
-    arrival_place: ExactPlaceResponse
-    departure_area: BroadPlaceResponse | None
-    arrival_area: BroadPlaceResponse | None
-    departs_at: datetime
-    arrives_at: datetime
-    departure_timezone: str | None
-    arrival_timezone: str | None
-    carrier: str | None
-    service_reference: str | None
-    travel_class: str | None
-    booking_reference: str | None
-    notes: str | None
-    document_asset_ids: list[str]
-    visibility: Visibility
-    model_config = ConfigDict(from_attributes=True)
-
-    @field_validator("departs_at", "arrives_at")
-    @classmethod
-    def mark_utc(cls, value: datetime) -> datetime:
-        # SQLite returns stored UTC instants without an offset; a client must
-        # never read them as its own local time.
-        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-
-
-class ItineraryEntryCreate(BaseModel):
-    day_date: date | None = None
-    end_date: date | None = None
-    kind: ItineraryEntryKind | None = None
-    tentative: bool = False
-    position: int = Field(ge=0)
-    title: str = Field(min_length=1, max_length=160)
-    notes: str | None = Field(default=None, max_length=4000)
-    linked_kind: ItineraryLinkKind | None = None
-    linked_id: str | None = Field(default=None, min_length=1, max_length=32)
-
-    @model_validator(mode="after")
-    def link_kind_and_id_are_paired(self):
-        if (self.linked_kind is None) != (self.linked_id is None):
-            raise ValueError("Supply both linked_kind and linked_id, or neither")
-        if self.end_date is not None and self.day_date is None:
-            raise ValueError("A last day needs a first day")
-        require_ordered_dates(self.day_date, self.end_date, "The last day cannot precede the first day")
-        return self
-
-
-class ItineraryEntryUpdate(BaseModel):
-    day_date: date | None = None
-    end_date: date | None = None
-    kind: ItineraryEntryKind | None = None
-    tentative: bool | None = None
+    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    location: LocationInput | None = None
     position: int | None = Field(default=None, ge=0)
     title: str | None = Field(default=None, min_length=1, max_length=160)
+    kind: VisitKind | None = None
+    starts_on: date | None = None
+    ends_on: date | None = None
+    start_time: time | None = None
+    end_time: time | None = None
     notes: str | None = Field(default=None, max_length=4000)
-    linked_kind: ItineraryLinkKind | None = None
-    linked_id: str | None = Field(default=None, min_length=1, max_length=32)
+    summary: str | None = Field(default=None, max_length=2000)
+    share_time: bool = False
+    share_date_precision: DatePrecision = DatePrecision.MONTH
 
     @model_validator(mode="after")
-    def link_kind_and_id_are_paired(self):
-        if ("linked_kind" in self.model_fields_set or "linked_id" in self.model_fields_set) and (
-            self.linked_kind is None
-        ) != (self.linked_id is None):
-            raise ValueError("Supply both linked_kind and linked_id, or neither")
+    def valid_visit(self):
+        if self.area_id is None and self.location is None:
+            raise ValueError("Say where: an area or a location")
+        require_visit_times(self.starts_on, self.ends_on, self.start_time, self.end_time)
         return self
 
 
-class ItineraryEntryResponse(BaseModel):
+class VisitUpdate(BaseModel):
+    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    location: LocationInput | None = None
+    position: int | None = Field(default=None, ge=0)
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    kind: VisitKind | None = None
+    starts_on: date | None = None
+    ends_on: date | None = None
+    start_time: time | None = None
+    end_time: time | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+    summary: str | None = Field(default=None, max_length=2000)
+    share_time: bool | None = None
+    share_date_precision: DatePrecision | None = None
+
+
+class VisitResponse(BaseModel):
     id: str
-    day_date: date | None
-    end_date: date | None
-    kind: ItineraryEntryKind | None
-    tentative: bool
     position: int
-    title: str
+    area: AreaResponse
+    location: LocationResponse | None
+    title: str | None
+    kind: VisitKind | None
+    starts_on: date | None
+    ends_on: date | None
+    start_time: time | None
+    end_time: time | None
     notes: str | None
-    linked_kind: ItineraryLinkKind | None
-    linked_id: str | None
+    summary: str | None
+    visibility: Visibility
+    share_time: bool
+    share_date_precision: DatePrecision
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -581,39 +480,115 @@ class GeoJsonLineString(BaseModel):
         return values
 
 
-class BroadRouteCreate(BaseModel):
-    label: str = Field(min_length=1, max_length=160)
-    geometry: GeoJsonLineString
-    date_precision: DatePrecision
+def require_route_ends(model):
+    """Each end of a route is an area, given directly or through a location that is filed under one."""
+    for end in ("departure", "arrival"):
+        if getattr(model, f"{end}_area_id") is None and getattr(model, f"{end}_location") is None:
+            raise ValueError(f"Say where the route {'starts' if end == 'departure' else 'ends'}: an area or a location")
+    return model
 
 
-class BroadRouteUpdate(BaseModel):
+class RouteCreate(BaseModel):
+    """A route between two areas. Everything else is optional: the exact locations,
+    the schedule (both times or neither), booking details and a drawn line."""
+
+    mode: RouteMode
+    status: RouteStatus = RouteStatus.PLANNED
     label: str | None = Field(default=None, min_length=1, max_length=160)
+    departure_area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    departure_location: LocationInput | None = None
+    arrival_location: LocationInput | None = None
+    # With an end's time zone, a datetime without an offset is the local
+    # wall-clock time there. Without one it must carry an explicit offset.
+    departs_at: datetime | None = None
+    arrives_at: datetime | None = None
+    departure_timezone: str | None = Field(default=None, max_length=64)
+    arrival_timezone: str | None = Field(default=None, max_length=64)
+    carrier: str | None = Field(default=None, max_length=160)
+    service_reference: str | None = Field(default=None, max_length=40)
+    travel_class: str | None = Field(default=None, max_length=80)
+    booking_reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=4000)
+    document_asset_ids: list[str] = Field(default_factory=list, max_length=12)
     geometry: GeoJsonLineString | None = None
-    date_precision: DatePrecision | None = None
+
+    _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
+    _ends = model_validator(mode="after")(require_route_ends)
+
+    @model_validator(mode="after")
+    def times_come_as_a_pair(self):
+        if (self.departs_at is None) != (self.arrives_at is None):
+            raise ValueError("Give both the departure and the arrival time, or neither")
+        return self
+
+    @field_validator("document_asset_ids")
+    @classmethod
+    def require_unique_documents(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("A document can only be attached once")
+        return values
 
 
-class BroadRouteResponse(BaseModel):
+class RouteUpdate(BaseModel):
+    mode: RouteMode | None = None
+    status: RouteStatus | None = None
+    label: str | None = Field(default=None, min_length=1, max_length=160)
+    departure_area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    departure_location: LocationInput | None = None
+    arrival_location: LocationInput | None = None
+    departs_at: datetime | None = None
+    arrives_at: datetime | None = None
+    departure_timezone: str | None = Field(default=None, max_length=64)
+    arrival_timezone: str | None = Field(default=None, max_length=64)
+    carrier: str | None = Field(default=None, max_length=160)
+    service_reference: str | None = Field(default=None, max_length=40)
+    travel_class: str | None = Field(default=None, max_length=80)
+    booking_reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=4000)
+    document_asset_ids: list[str] | None = Field(default=None, max_length=12)
+    geometry: GeoJsonLineString | None = None
+
+    _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
+
+    @field_validator("document_asset_ids")
+    @classmethod
+    def require_unique_documents(cls, values: list[str] | None) -> list[str] | None:
+        if values is not None and len(values) != len(set(values)):
+            raise ValueError("A document can only be attached once")
+        return values
+
+
+class RouteResponse(BaseModel):
     id: str
-    label: str
-    geometry: GeoJsonLineString
-    date_precision: DatePrecision
+    mode: RouteMode
+    status: RouteStatus
+    label: str | None
+    departure_area: AreaResponse
+    arrival_area: AreaResponse
+    departure_location: LocationResponse | None
+    arrival_location: LocationResponse | None
+    departs_at: datetime | None
+    arrives_at: datetime | None
+    departure_timezone: str | None
+    arrival_timezone: str | None
+    carrier: str | None
+    service_reference: str | None
+    travel_class: str | None
+    booking_reference: str | None
+    notes: str | None
+    document_asset_ids: list[str]
+    geometry: GeoJsonLineString | None
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
-
-class RecordedTrackResponse(BaseModel):
-    """Owner-only metadata and an authenticated route to raw track bytes."""
-
-    id: str
-    source_object_id: str
-    started_at: datetime
-    ended_at: datetime
-    kind: TrackKind
-    byte_size: int
-    content_type: str
-    source_file_url: str
-    model_config = ConfigDict(from_attributes=True)
+    @field_validator("departs_at", "arrives_at")
+    @classmethod
+    def mark_utc(cls, value: datetime | None) -> datetime | None:
+        # SQLite returns stored UTC instants without an offset; a client must
+        # never read them as its own local time.
+        return value if value is None or value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 class TripResponse(BaseModel):
@@ -623,7 +598,6 @@ class TripResponse(BaseModel):
     summary: str | None
     starts_on: date | None
     ends_on: date | None
-    route_stages: list[RouteStageResponse]
     travel_updates: list[TravelUpdateResponse]
     model_config = ConfigDict(from_attributes=True)
 
@@ -632,11 +606,11 @@ class ShareScopeKind(StrEnum):
     """Every kind of record that can be shared. A scope lists only records
     whose visibility is ``custom``; it never says which fields to show."""
 
-    PLACE = "place"
-    ROUTE_STAGE = "route_stage"
-    BROAD_ROUTE = "broad_route"
+    AREA = "area"
+    LOCATION = "location"
+    VISIT = "visit"
+    ROUTE = "route"
     STAY = "stay"
-    TRANSPORT_LEG = "transport_leg"
     TRAVEL_UPDATE = "travel_update"
     MEDIA_DERIVATIVE = "media_derivative"
     DOCUMENT_DERIVATIVE = "document_derivative"
@@ -681,14 +655,13 @@ class ProjectionDocument(BaseModel):
     title: str | None
     summary: str | None
     dates: dict | None
-    route_stages: list[dict]
+    visits: list[dict]
     places: list[dict]
     updates: list[dict]
     stays: list[dict]
     media: list[dict]
     documents: list[dict]
-    route: list[dict]
-    transport: list[dict]
+    routes: list[dict]
     navigation: list[dict]
 
 
@@ -974,4 +947,7 @@ class ProviderConnectionStatus(BaseModel):
     """A deliberately non-secret view of an owner's provider connection."""
 
     provider: ImportProvider
+    # Whether this server offers the provider at all (GoPro Cloud needs beta access switched on).
+    # An unavailable provider is not shown; an available one still needs the owner's token.
+    available: bool
     connected: bool
