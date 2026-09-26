@@ -16,13 +16,13 @@ export function RenderedPreview({ projection, audience, tripId, linkId, session 
     const urls: string[] = [];
     setImages({});
     for (const item of projection.media) {
-      if (!item.image || typeof item.image !== "object" || (item.image as { id?: unknown }).id !== item.id) continue;
-      void ownerFile(session, `${base}/files/${encodeURIComponent(item.id)}`, "Afbeelding niet beschikbaar.", { cache: "no-store", credentials: "omit", signal: controller.signal }).then((blob) => {
+      const ids = [item.image, item.video, item.poster].flatMap((marker) => marker && typeof marker === "object" && typeof (marker as { id?: unknown }).id === "string" ? [(marker as { id: string }).id] : []);
+      for (const id of ids) void ownerFile(session, `${base}/files/${encodeURIComponent(id)}`, "Media niet beschikbaar.", { cache: "no-store", credentials: "omit", signal: controller.signal }).then((blob) => {
         const url = URL.createObjectURL(blob);
         if (controller.signal.aborted) { URL.revokeObjectURL(url); return; }
         urls.push(url);
-        setImages((current) => ({ ...current, [item.id]: url }));
-      }).catch(() => { if (!controller.signal.aborted) setError("Een afbeelding kon niet worden geladen."); });
+        setImages((current) => ({ ...current, [id]: url }));
+      }).catch(() => { if (!controller.signal.aborted) setError("Een medium kon niet worden geladen."); });
     }
     return () => { controller.abort(); urls.forEach((url) => URL.revokeObjectURL(url)); };
   }, [base, projection, session]);

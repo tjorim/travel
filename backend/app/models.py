@@ -103,6 +103,12 @@ class DerivativeReviewState(StrEnum):
     APPROVED = "approved"
 
 
+class DerivativeProcessingState(StrEnum):
+    PROCESSING = "processing"
+    FAILED = "failed"
+    READY = "ready"
+
+
 class DatePrecision(StrEnum):
     DAY = "day"
     MONTH = "month"
@@ -844,7 +850,15 @@ class MediaDerivative(Base):
     media_asset_id: Mapped[str] = mapped_column(
         ForeignKey("media_assets.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
+    object_id: Mapped[str | None] = mapped_column(ForeignKey("stored_objects.id"), nullable=True)
+    poster_object_id: Mapped[str | None] = mapped_column(ForeignKey("stored_objects.id"), nullable=True)
+    processing_state: Mapped[DerivativeProcessingState] = mapped_column(
+        _enum_column(DerivativeProcessingState, "travel_derivative_processing_state"),
+        default=DerivativeProcessingState.READY, nullable=False,
+    )
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    remove_audio: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     purpose: Mapped[DerivativePurpose] = mapped_column(_enum_column(DerivativePurpose, "travel_derivative_purpose"))
     metadata_stripped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     review_state: Mapped[DerivativeReviewState] = mapped_column(
@@ -864,7 +878,8 @@ class MediaDerivative(Base):
 
     trip: Mapped[Trip] = relationship(back_populates="media_derivatives")
     media_asset: Mapped[MediaAsset] = relationship(back_populates="derivatives")
-    object: Mapped[StoredObject] = relationship(foreign_keys=[object_id])
+    object: Mapped[StoredObject | None] = relationship(foreign_keys=[object_id])
+    poster_object: Mapped[StoredObject | None] = relationship(foreign_keys=[poster_object_id])
 
 
 class DocumentAsset(Base):

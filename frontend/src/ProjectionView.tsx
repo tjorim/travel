@@ -122,7 +122,7 @@ function focus(item: ProjectionItem, field: "focal_x" | "focal_y"): number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : 50;
 }
 
-function hasFileMarker(item: ProjectionItem, field: "image" | "file"): boolean {
+function hasFileMarker(item: ProjectionItem, field: "image" | "video" | "file"): boolean {
   const marker = item[field];
   return !!marker && typeof marker === "object" && !Array.isArray(marker) && (marker as { id?: unknown }).id === item.id;
 }
@@ -211,6 +211,7 @@ function Gallery({ items, fileUrl, title = "Galerij" }: { items: ProjectionItem[
   if (!items.length) return null;
   return <section className="visitor-gallery" aria-label={title}><h3>{title}</h3><ul>{items.map((item) => <li key={item.id}><figure>
     {hasFileMarker(item, "image") && (fileUrl(item) ? <img src={fileUrl(item)!} alt={text(item, "alt_text") ?? "Gedeelde afbeelding"} width={positiveSize(item, "width")} height={positiveSize(item, "height")} style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }} loading="lazy" decoding="async" referrerPolicy="no-referrer" /> : <p role="status">Afbeelding laden of niet beschikbaar.</p>)}
+    {hasFileMarker(item, "video") && fileUrl(item) && <video controls preload="none" playsInline poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined} aria-label={text(item, "alt_text") ?? "Gedeelde video"} width={positiveSize(item, "width") ?? undefined} height={positiveSize(item, "height") ?? undefined}><source src={fileUrl(item)!} type="video/mp4" /></video>}
     {text(item, "caption") && <figcaption>{text(item, "caption")}</figcaption>}
   </figure></li>)}</ul></section>;
 }
@@ -222,7 +223,7 @@ function Updates({ updates, media, fileUrl }: { updates: ProjectionItem[]; media
     <ol className="visitor-timeline">{updates.map((item) => <li key={item.id} id={item.id} tabIndex={-1}><article>
       <div className="visitor-update-meta">{storyDate(item) ? <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time> : precision(item) ? <span>{precision(item)}</span> : null}{place(item.place) && <span>{place(item.place)}</span>}</div>
       <h3>{text(item, "title") ?? "Update"}</h3>{text(item, "body") && <p>{text(item, "body")}</p>}
-      <Gallery items={media.filter((image) => image.update === item.id)} fileUrl={fileUrl} title="Foto’s bij deze update" />
+      <Gallery items={media.filter((image) => image.update === item.id)} fileUrl={fileUrl} title="Media bij deze update" />
     </article></li>)}</ol>
   </section>;
 }

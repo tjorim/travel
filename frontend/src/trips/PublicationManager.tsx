@@ -22,7 +22,7 @@ const GROUP_TITLES: Record<ShareScopeKind, string> = {
   location: "Locaties",
   route: "Routes",
   stay: "Verblijven",
-  media_derivative: "Foto’s",
+  media_derivative: "Foto’s en video’s",
 };
 
 const DATE_PRECISIONS = {
@@ -347,7 +347,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       ...(locationsQuery.data ?? []).filter((item) => item.label || item.visibility !== "private").map((item) => ({ kind: "location" as const, id: item.id, label: item.label ?? "Locatie zonder publieke naam", detail: "Locatie: alleen naam, gebied en ligging", visibility: item.visibility })),
       ...(routesQuery.data ?? []).map((item) => ({ kind: "route" as const, id: item.id, label: `${ROUTE_MODE_LABELS[item.mode]}: ${routeTitle(item)}`, detail: "Bezoekers zien de gebieden, het vervoermiddel en de lijn, nooit boekingscode, reisklasse, notities of documenten", visibility: item.visibility })),
       ...(staysQuery.data ?? []).map((item) => ({ kind: "stay" as const, id: item.id, label: stayLabel(item), detail: `Bezoekers zien alleen ${item.area?.label ?? "(nog geen gebied gekozen)"} en de nachten`, visibility: item.visibility })),
-      ...media.flatMap((asset, index) => approved(mediaDerivatives.data[index]).filter((item) => item.purpose === "share").map((item) => ({ kind: "media_derivative" as const, id: item.id, label: asset.original_filename ?? "Goedgekeurde foto", detail: "Goedgekeurde foto", visibility: item.visibility, followsUpdate: updateTitles.get(item.travel_update_id ?? "") }))),
+      ...media.flatMap((asset, index) => approved(mediaDerivatives.data[index]).filter((item) => item.purpose === "share").map((item) => ({ kind: "media_derivative" as const, id: item.id, label: asset.original_filename ?? "Goedgekeurd medium", detail: asset.media_kind === "video" ? "Goedgekeurde video" : "Goedgekeurde foto", visibility: item.visibility, followsUpdate: updateTitles.get(item.travel_update_id ?? "") }))),
     ];
   }, [trip, placesQuery.data, locationsQuery.data, routesQuery.data, visitsQuery.data, staysQuery.data, media, mediaDerivatives.data]);
 

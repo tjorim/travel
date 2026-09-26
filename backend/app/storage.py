@@ -9,7 +9,7 @@ a filesystem adapter for local/test environments; production points
 import hashlib
 import os
 from pathlib import Path
-from typing import Protocol
+from typing import BinaryIO, Protocol
 
 from .config import settings
 
@@ -22,6 +22,8 @@ class ObjectStorage(Protocol):
     def put(self, key: str, data: bytes) -> None: ...
 
     def get(self, key: str) -> bytes: ...
+
+    def open(self, key: str) -> BinaryIO: ...
 
     def delete(self, key: str) -> None: ...
 
@@ -54,6 +56,9 @@ class LocalObjectStorage:
 
     def get(self, key: str) -> bytes:
         return self._path_for(key).read_bytes()
+
+    def open(self, key: str) -> BinaryIO:
+        return self._path_for(key).open("rb")
 
     def delete(self, key: str) -> None:
         self._path_for(key).unlink(missing_ok=True)

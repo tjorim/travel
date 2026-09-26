@@ -6,10 +6,14 @@ WORKDIR /app
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
+FROM docker.io/mwader/static-ffmpeg:8.0.1@sha256:9a4bf2b7915ef1c4d725a176159438146b68485cc613bf6662e2786c661cd16d AS ffmpeg
+
 FROM python:3.14-slim
 
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
+COPY --from=ffmpeg /ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg /ffprobe /usr/local/bin/ffprobe
 COPY backend/app ./app
 COPY backend/alembic.ini ./alembic.ini
 COPY backend/alembic ./alembic

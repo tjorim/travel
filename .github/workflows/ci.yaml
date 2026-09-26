@@ -67,6 +67,16 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - name: Install dependencies
         run: uv sync --all-groups --frozen
+      - name: Install pinned ffmpeg and ffprobe
+        run: |
+          image=docker.io/mwader/static-ffmpeg:8.0.1@sha256:9a4bf2b7915ef1c4d725a176159438146b68485cc613bf6662e2786c661cd16d
+          docker pull "$image"
+          container=$(docker create "$image")
+          docker cp "$container:/ffmpeg" /tmp/travel-ffmpeg
+          docker cp "$container:/ffprobe" /tmp/travel-ffprobe
+          docker rm "$container"
+          sudo install -m 0755 /tmp/travel-ffmpeg /usr/local/bin/ffmpeg
+          sudo install -m 0755 /tmp/travel-ffprobe /usr/local/bin/ffprobe
       - name: Lint
         run: uv run ruff check .
       - name: Test

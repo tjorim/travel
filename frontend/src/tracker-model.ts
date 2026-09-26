@@ -267,6 +267,13 @@ export type MediaDerivative = {
   media_asset_id: string;
   purpose: "owner_preview" | "share" | "static_export";
   review_state: "pending" | "approved";
+  processing_state?: "processing" | "failed" | "ready";
+  media_kind?: "photo" | "video";
+  content_type?: string | null;
+  byte_size?: number | null;
+  duration_seconds?: number | null;
+  poster_url?: string | null;
+  remove_audio?: boolean;
   metadata_stripped_at: string | null;
   width: number | null;
   height: number | null;

@@ -217,7 +217,10 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
     elif kind == "media_derivative":
         # The projection-local file marker discloses no object key, original
         # asset, or canonical derivative id.
-        values = {"image": {"id": identifier}, "caption": item.caption, "alt_text": item.alt_text,
+        marker = ({"video": {"id": identifier}, "poster": {"id": f"{identifier}-poster"},
+                   "duration_seconds": item.duration_seconds} if item.media_asset.media_kind.value == "video"
+                  else {"image": {"id": identifier}})
+        values = {**marker, "caption": item.caption, "alt_text": item.alt_text,
                   "width": item.width, "height": item.height, "focal_x": item.focal_x, "focal_y": item.focal_y}
         if item.travel_update_id in context["updates"]:
             values["update"] = context["updates"][item.travel_update_id]
@@ -294,4 +297,6 @@ def scoped_file(trip: Trip, scope: dict, identifier: str) -> tuple[str, Any] | N
         for item in records[kind]:
             if local_id(kind, item) == identifier:
                 return kind, item.object
+            if local_id(kind, item) + "-poster" == identifier and item.poster_object is not None:
+                return kind, item.poster_object
     return None

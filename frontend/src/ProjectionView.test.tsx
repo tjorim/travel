@@ -16,6 +16,20 @@ function projection(schema_version = "travel/public-trip@1"): Projection {
   };
 }
 
+it("renders shared video with a poster, controls and no eager download", () => {
+  const data = projection();
+  data.media = [{ id: "media-video", video: { id: "media-video" }, poster: { id: "media-video-poster" },
+    alt_text: "Coastline", caption: "At the shore", width: 640, height: 360 }];
+  const view = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  const video = view.container.querySelector("video")!;
+  expect(video.getAttribute("controls")).not.toBeNull();
+  expect(video.getAttribute("preload")).toBe("none");
+  expect(video.hasAttribute("autoplay")).toBe(false);
+  expect(video.getAttribute("poster")).toBe("/api/public/trips/safe-slug/files/media-video-poster");
+  expect(video.querySelector("source")?.getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media-video");
+  expect(view.container.textContent).toContain("At the shore");
+});
+
 it("derives tile-facing map bounds only from scoped route geometry", () => {
   const data = projection("travel/unlisted-trip@1");
   data.places = [{ id: "selected-place", label: "Area city", latitude: 25, longitude: 121 }, { id: "incomplete", latitude: 25 }];

@@ -1,4 +1,6 @@
 import io
+import json
+import subprocess
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -94,6 +96,145 @@ def jpeg_bytes(
     else:
         image.save(buffer, format="JPEG")
     return buffer.getvalue()
+
+
+def video_with_telemetry(tmp_path: Path) -> bytes:
+    telemetry = tmp_path / "telemetry.bin"
+    telemetry.write_bytes(b"GPS 12.345,67.890")
+    source = tmp_path / "source.mov"
+    subprocess.run([
+        "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+        "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=10:duration=3",
+        "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
+        "-f", "data", "-i", str(telemetry), "-map", "0:v", "-map", "1:a", "-map", "2:d",
+        "-c:v", "mpeg4", "-c:a", "aac", "-c:d", "copy", "-tag:d", "gpmd",
+        "-metadata", "location=+12.345+067.890/", "-metadata:s:v:0", "comment=GPS 12.345,67.890",
+        "-y", str(source),
+    ], check=True, capture_output=True)
+    return source.read_bytes()
+
+
+def test_video_derivative_strips_telemetry_and_requires_review(tmp_path: Path, monkeypatch) -> None:
+    from app.media import service
+    from app.models import DerivativeProcessingState, DerivativePurpose, MediaDerivative
+
+    monkeypatch.setattr(service, "VIDEO_MAX_DIMENSION", 320)
+    monkeypatch.setattr(service, "VIDEO_MAX_DURATION_SECONDS", 2)
+    storage = LocalObjectStorage(root=str(tmp_path))
+    client = client_for("owner-1", tmp_path)
+    trip = create_trip(client)
+    with TestingSessionLocal() as session:
+        asset, _ = direct_upload(session, storage, trip_id=trip["id"], filename="private.mov",
+                                 content_type="video/quicktime", data=video_with_telemetry(tmp_path))
+        derivative = service.queue_video_derivative(session, media_asset=asset, purpose=DerivativePurpose.SHARE,
+                                                    remove_audio=True)
+        derivative_id, asset_id = derivative.id, asset.id
+
+    base = f"/api/trips/{trip['id']}"
+    assert client.post(f"{base}/media/{asset_id}/derivatives/{derivative_id}/approve").status_code == 409
+    assert client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code == 422
+    assert client.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1",
+        "trip": {"title": True, "summary": False},
+        "items": [{"kind": "media_derivative", "id": derivative_id}]}).status_code == 422
+    with TestingSessionLocal() as session:
+        service.process_video_derivative(session, storage, derivative_id=derivative_id)
+        derivative = session.get(MediaDerivative, derivative_id)
+        assert derivative.processing_state == DerivativeProcessingState.READY
+        assert derivative.poster_object.content_type == "image/webp"
+        assert derivative.width == 320 and derivative.height == 180
+        assert derivative.duration_seconds <= 2.1
+        output = tmp_path / "stripped.mp4"
+        output.write_bytes(storage.get(derivative.object.object_key))
+        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-show_format",
+                                            "-of", "json", str(output)], check=True, capture_output=True).stdout)
+        assert [stream["codec_type"] for stream in probe["streams"]] == ["video"]
+        assert "location" not in probe["format"].get("tags", {})
+        assert "comment" not in probe["streams"][0].get("tags", {})
+        assert "12.345" not in output.read_bytes().decode("latin1")
+
+    assert client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code == 422
+    assert client.post(f"{base}/media/{asset_id}/derivatives/{derivative_id}/approve").status_code == 200
+    assert client.put(f"{base}/visibility/media_derivative/{derivative_id}", json={"visibility": "everyone"}).status_code == 200
+    assert client.put(f"{base}/public-projection", json={"schema_version": "travel/share-scope@1",
+        "trip": {"title": True, "summary": False}, "items": []}).status_code == 200
+    slug = client.post(f"{base}/public-projection/publish").json()["slug"]
+    projection = client.get(f"/api/public/trips/{slug}").json()
+    assert len(projection["media"]) == 1
+    item = projection["media"][0]
+    assert "video" in item and "poster" in item and "image" not in item
+    assert "private.mov" not in json.dumps(projection) and "12.345" not in json.dumps(projection)
+    video = client.get(f"/api/public/trips/{slug}/files/{item['id']}", headers={"Range": "bytes=0-99"})
+    assert video.status_code == 206 and len(video.content) == 100
+    assert video.headers["content-type"].startswith("video/mp4")
+    whole = client.get(f"/api/public/trips/{slug}/files/{item['id']}")
+    size = len(whole.content)
+    assert whole.status_code == 200 and whole.headers["content-length"] == str(size)
+    assert video.content == whole.content[:100]
+    assert video.headers["content-range"] == f"bytes 0-99/{size}"
+    tail = client.get(f"/api/public/trips/{slug}/files/{item['id']}", headers={"Range": "bytes=-50"})
+    assert tail.status_code == 206 and tail.content == whole.content[-50:]
+    rest = client.get(f"/api/public/trips/{slug}/files/{item['id']}", headers={"Range": "bytes=100-"})
+    assert rest.status_code == 206 and rest.content == whole.content[100:]
+    beyond = client.get(f"/api/public/trips/{slug}/files/{item['id']}", headers={"Range": f"bytes={size}-"})
+    assert beyond.status_code == 416 and beyond.headers["content-range"] == f"bytes */{size}"
+    poster = client.get(f"/api/public/trips/{slug}/files/{item['id']}-poster")
+    assert poster.status_code == 200 and poster.headers["content-type"].startswith("image/webp")
+
+
+def test_video_job_failure_is_retryable_and_audio_can_be_kept(tmp_path: Path, monkeypatch) -> None:
+    from app.media import service
+
+    client = client_for("owner-1", tmp_path)
+    trip = create_trip(client)
+    with TestingSessionLocal() as session:
+        asset, _ = direct_upload(session, LocalObjectStorage(root=str(tmp_path)), trip_id=trip["id"],
+                                 filename="clip.mov", content_type="video/quicktime", data=video_with_telemetry(tmp_path))
+        asset_id = asset.id
+    path = f"/api/trips/{trip['id']}/media/{asset_id}/derivatives"
+    command = service._media_command
+
+    def fail(_arguments: list[str]):
+        raise subprocess.CalledProcessError(1, "ffmpeg")
+
+    monkeypatch.setattr(service, "_media_command", fail)
+    queued = client.post(path, json={"purpose": "share", "remove_audio": False})
+    assert queued.status_code == 201 and queued.json()["processing_state"] == "processing"
+    derivative_id = queued.json()["id"]
+    assert client.get(path).json()[0]["processing_state"] == "failed"
+    assert client.post(f"{path}/{derivative_id}/approve").status_code == 409
+    monkeypatch.setattr(service, "_media_command", command)
+    assert client.post(f"{path}/{derivative_id}/retry").status_code == 200
+    ready = client.get(f"{path}/{derivative_id}").json()
+    assert ready["processing_state"] == "ready" and ready["content_type"] == "video/mp4"
+    output = tmp_path / "retained-audio.mp4"
+    with TestingSessionLocal() as session:
+        from app.models import MediaDerivative
+
+        row = session.get(MediaDerivative, derivative_id)
+        output.write_bytes(LocalObjectStorage(root=str(tmp_path)).get(row.object.object_key))
+    probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(output)],
+                                      check=True, capture_output=True).stdout)
+    assert {stream["codec_type"] for stream in probe["streams"]} == {"video", "audio"}
+
+
+def test_stalled_video_job_becomes_retryable(tmp_path: Path) -> None:
+    from app.media import service
+    from app.models import DerivativePurpose, MediaDerivative
+
+    client = client_for("owner-1", tmp_path)
+    trip = create_trip(client)
+    with TestingSessionLocal() as session:
+        asset, _ = direct_upload(session, LocalObjectStorage(root=str(tmp_path)), trip_id=trip["id"],
+                                 filename="clip.mov", content_type="video/quicktime", data=video_with_telemetry(tmp_path))
+        derivative = service.queue_video_derivative(session, media_asset=asset, purpose=DerivativePurpose.SHARE,
+                                                    remove_audio=False)
+        derivative_id, asset_id = derivative.id, asset.id
+        derivative.processing_started_at = datetime.now(UTC) - timedelta(seconds=service.VIDEO_STALLED_AFTER_SECONDS + 1)
+        session.commit()
+    path = f"/api/trips/{trip['id']}/media/{asset_id}/derivatives"
+    assert client.get(path).json()[0]["processing_state"] == "failed"
+    with TestingSessionLocal() as session:
+        assert session.get(MediaDerivative, derivative_id).object_id is None
 
 
 # --- Fake providers: no test ever makes a real network call -----------------------

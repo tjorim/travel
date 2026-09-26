@@ -66,6 +66,8 @@ def sharing_blocker(kind: str, record: Any) -> str | None:
     if kind == "travel_update" and not record.body.strip():
         return "Write the text for visitors before sharing this update"
     if kind == "media_derivative":
+        if record.processing_state.value != "ready" or record.object_id is None:
+            return "Wait for this copy to finish processing"
         if record.review_state != DerivativeReviewState.APPROVED:
             return "Approve this copy before sharing it"
         asset = record.media_asset

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { RecordForm, SelectField, TextField } from "../forms/fields";
@@ -29,8 +29,8 @@ const providerLabel = {
   gopro_cloud: "GoPro Cloud",
 } as const;
 
-type DerivativeValues = { purpose: MediaDerivative["purpose"]; maxDimension: string };
-const blankDerivative = (): DerivativeValues => ({ purpose: "share", maxDimension: "1600" });
+type DerivativeValues = { purpose: MediaDerivative["purpose"]; maxDimension: string; removeAudio: boolean };
+const blankDerivative = (): DerivativeValues => ({ purpose: "share", maxDimension: "1600", removeAudio: false });
 const dimensionInRange = ({ value }: { value: string }) => {
   const size = Number(value);
   return value.trim() && Number.isInteger(size) && size >= 64 && size <= 4000 ? undefined : "Kies een maximale zijde tussen 64 en 4000 px.";
@@ -108,14 +108,19 @@ export function MediaManager({ trip }: { trip: Trip }) {
     // The server also drops the deleted asset from the reisupdates that used it.
     invalidate: (subject) => [...refreshMedia(subject), ownerKeys.trips(subject)],
   });
-  const requestDerivative = useOwnerMutation<{ assetId: string; purpose: MediaDerivative["purpose"]; maxDimension: number }, MediaDerivative>({
+  const requestDerivative = useOwnerMutation<{ assetId: string; purpose: MediaDerivative["purpose"]; maxDimension: number; removeAudio: boolean }, MediaDerivative>({
     fallback: "De afgeleide kon niet worden gemaakt.",
-    request: ({ assetId, purpose, maxDimension }) => ({ path: `${mediaPath}/${assetId}/derivatives`, method: "POST", body: { purpose, max_dimension: maxDimension } }),
+    request: ({ assetId, purpose, maxDimension, removeAudio }) => ({ path: `${mediaPath}/${assetId}/derivatives`, method: "POST", body: { purpose, max_dimension: maxDimension, ...(selected?.media_kind === "video" ? { remove_audio: removeAudio } : {}) } }),
     invalidate: refreshDerivatives,
   });
   const approve = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>({
     fallback: "De afgeleide kon niet worden goedgekeurd.",
     request: ({ assetId, derivative }) => ({ path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/approve`, method: "POST" }),
+    invalidate: refreshDerivatives,
+  });
+  const retry = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>({
+    fallback: "De video kon niet opnieuw worden verwerkt.",
+    request: ({ assetId, derivative }) => ({ path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/retry`, method: "POST" }),
     invalidate: refreshDerivatives,
   });
   const presentation = useOwnerMutation<{ assetId: string; derivative: MediaDerivative; values: Record<string, unknown> }, MediaDerivative>({
@@ -160,9 +165,15 @@ export function MediaManager({ trip }: { trip: Trip }) {
     defaultValues: blankDerivative(),
     fallback: "De afgeleide kon niet worden gemaakt.",
     serverFields: { purpose: "purpose", max_dimension: "maxDimension" },
-    submit: async (values) => { if (selected) await requestDerivative.mutateAsync({ assetId: selected.id, purpose: values.purpose, maxDimension: Number(values.maxDimension) }); },
-    onSuccess: () => setNotice("Metadata-vrije afgeleide gemaakt. Controleer hem en keur hem daarna expliciet goed."),
+    submit: async (values) => { if (selected) await requestDerivative.mutateAsync({ assetId: selected.id, purpose: values.purpose, maxDimension: Number(values.maxDimension), removeAudio: values.removeAudio }); },
+    onSuccess: () => setNotice("Afgeleide gestart. Controleer de kopie en keur hem daarna expliciet goed."),
   });
+
+  useEffect(() => {
+    if (!derivatives.some((item) => item.processing_state === "processing")) return;
+    const timer = window.setInterval(() => { void derivativesQuery.refetch(); }, 3000);
+    return () => window.clearInterval(timer);
+  }, [derivatives, derivativesQuery]);
 
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
   const timestamp = (value: string) => new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
@@ -218,13 +229,30 @@ export function MediaManager({ trip }: { trip: Trip }) {
     if (owner) openOwnerFile(owner.session, url, fallback).catch(fail(fallback));
   }
 
+  async function toggleDerivativeOffline(derivative: MediaDerivative) {
+    if (!owner || !selected) return;
+    if (offline.isPinned("media_derivative", derivative.id)) {
+      await offline.removeByResource("media_derivative", derivative.id);
+      setNotice("De afgeleide is offline verwijderd.");
+      return;
+    }
+    const blob = await ownerFile(owner.session, derivative.file_url, "De afgeleide kon niet offline worden bewaard.", { cache: "no-store" });
+    await offline.pin({
+      resourceKind: "media_derivative", resourceId: derivative.id,
+      metadataUrl: `${mediaPath}/${selected.id}/derivatives/${derivative.id}`,
+      title: selected.original_filename ?? "Afgeleide media", contentType: blob.type,
+      bytes: await blob.arrayBuffer(),
+    });
+    setNotice("De afgeleide is offline bewaard op dit toestel.");
+  }
+
   function eraseDerivative(derivative: MediaDerivative) {
     if (!selected) return;
     confirmation.ask({ title: "Deze afgeleide verwijderen?", description: "Hij wordt direct uit eventuele deelscopes gehaald.", onConfirm: () => performEraseDerivative(selected, derivative) });
   }
 
   function performEraseDerivative(asset: MediaAsset, derivative: MediaDerivative) {
-    removeDerivative.mutateAsync({ assetId: asset.id, derivative }).then(() => setNotice("Afgeleide verwijderd en uit eventuele deelscopes gehaald."), fail("De afgeleide kon niet worden verwijderd."));
+    removeDerivative.mutateAsync({ assetId: asset.id, derivative }).then(async () => { await offline.removeByResource("media_derivative", derivative.id); setNotice("Afgeleide verwijderd en uit eventuele deelscopes gehaald."); }, fail("De afgeleide kon niet worden verwijderd."));
   }
 
   function startProvider(provider: ImportSession["provider"]) {
@@ -314,14 +342,15 @@ export function MediaManager({ trip }: { trip: Trip }) {
     </div>
     {assets.length > 0 && <div className="saved-records manager-list">{assets.map((asset) => <article className={`excerpt-row ${asset.id === selected?.id ? "selected-item" : ""}`} key={asset.id}><button className="document-select" type="button" onClick={() => setSelectedId(asset.id)}><strong>{asset.original_filename ?? "Naamloos medium"}</strong><span>{asset.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(asset.byte_size)}{asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}</span></button><div className="button-row"><label className="scope-choice"><input type="checkbox" checked={reviewSelection.includes(asset.id)} onChange={() => toggleReviewSelection(asset.id)} />Bezoeken beoordelen</label><button className="secondary compact" type="button" onClick={() => open(asset.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void toggleOffline(asset).catch(fail("Het private medium kon niet offline worden bewaard."))}>{offline.isPinned("media_asset", asset.id) ? "Offline verwijderen" : "Offline bewaren"}</button><button className="danger compact" type="button" onClick={() => erase(asset)}>Verwijderen</button></div></article>)}</div>}
     {assets.length > 0 && <div className="manager-subsection"><div className="capture-heading"><div><h3>Mogelijke bezoeken beoordelen</h3><p>Kies hierboven private media. Kandidaten gebruiken een venster van twee uur en houden GPS-punten die meer dan {candidateReview?.gps_agreement_metres ?? 500} meter verschillen als afzonderlijke keuzes. Ze worden nooit automatisch opgeslagen.</p></div></div><button type="button" onClick={review}>Geselecteerde media beoordelen</button>{candidateReview?.unavailable_media_asset_ids.length ? <p className="help">{candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of GPS-metadata en is niet gegokt in een kandidaat.</p> : null}{candidateReview?.candidates.map((candidate) => <article className="scope-item" key={candidate.id}><strong>{candidateAssetNames(candidate)}</strong><span>{candidate.starts_at ? `${timestamp(candidate.starts_at)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${new Intl.DateTimeFormat("nl-BE", { timeStyle: "short" }).format(new Date(candidate.ends_at))}` : ""}` : "Geen opnametijd beschikbaar"}</span>{candidate.time_options.length > 1 && <label>Gebruik opnametijd<select value={candidateTimes[candidate.id] ?? ""} onChange={(event) => setCandidateTimes((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies zelf een tijd</option>{candidate.time_options.map((option) => <option key={option.media_asset_id} value={option.captured_at}>{timestamp(option.captured_at)}</option>)}</select></label>}{candidate.location_options.length > 1 && <label>GPS-keuze<select value={candidateLocations[candidate.id] ?? ""} onChange={(event) => setCandidateLocations((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Locatie negeren</option>{candidate.location_options.map((option, index) => <option key={option.media_asset_ids.join("-")} value={index}>Locatie uit {option.media_asset_ids.length} medium/media</option>)}</select></label>}{candidate.location_options.length === 0 && <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>}{candidate.location_options.length > 1 && <p className="help">De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.</p>}{candidate.location_options.length > 0 && <button className="secondary compact" type="button" onClick={() => suggestCandidateArea(candidate)}>Gebied en bezoek voorstellen</button>}{candidateAreas[candidate.id] && <p className="help">{candidateAreas[candidate.id].existing_area_id ? `Bestaand gebied: ${candidateAreas[candidate.id].area.label}` : `Nieuw gebied mogelijk: ${candidateAreas[candidate.id].area.label} (${candidateAreas[candidate.id].area.timezone ?? "tijdzone onbekend"})`}. {visits.filter((visit) => visit.area.id === candidateAreas[candidate.id].existing_area_id && candidate.starts_at && visit.starts_on && candidate.starts_at.slice(0, 10) >= visit.starts_on && candidate.starts_at.slice(0, 10) <= (visit.ends_on ?? visit.starts_on)).map((visit) => visitTitle(visit)).join(", ") || "Nieuw bezoek mogelijk"}. Dit voorstel is niet opgeslagen.</p>}<div className="button-row"><button type="button" onClick={() => startCandidateUpdate(candidate)}>Als nieuwe reisupdate openen</button>{trip.travel_updates.length > 0 && <><label className="scope-choice">Koppel aan<select value={candidateAttachments[candidate.id] ?? ""} onChange={(event) => setCandidateAttachments((current) => ({ ...current, [candidate.id]: event.target.value }))}><option value="">Kies bestaande reisupdate</option>{trip.travel_updates.map((update) => <option value={update.id} key={update.id}>{update.title}</option>)}</select></label><button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>Aan reisupdate koppelen</button></>}</div></article>)}</div>}
-    {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Afgeleiden</h3><p>Voor {selected.original_filename ?? "dit medium"}. {selected.media_kind === "video" ? "Video-afgeleiden zijn nog niet beschikbaar." : "Een nieuwe kopie start altijd als ‘wacht op goedkeuring’."}</p></div></div>
-      {selected.media_kind === "photo" && <RecordForm record={derivativeRecord} submitLabel="Metadata-vrije afgeleide maken" pendingLabel="Afgeleide maken…">
+    {selected && <div className="manager-subsection"><div className="capture-heading"><div><h3>Afgeleiden</h3><p>Voor {selected.original_filename ?? "dit medium"}. Een nieuwe kopie vereist altijd expliciete goedkeuring.</p></div></div>
+      <RecordForm record={derivativeRecord} submitLabel={selected.media_kind === "video" ? "Veilige videokopie maken" : "Metadata-vrije afgeleide maken"} pendingLabel="Afgeleide maken…">
         <div className="field-row">
           <derivativeRecord.form.Field name="purpose">{(field) => <SelectField field={field} label="Doel"><option value="share">Delen</option><option value="static_export">Statisch archief</option><option value="owner_preview">Private voorvertoning</option></SelectField>}</derivativeRecord.form.Field>
-          <derivativeRecord.form.Field name="maxDimension" validators={{ onChange: dimensionInRange, onSubmit: dimensionInRange }}>{(field) => <TextField field={field} label="Maximale zijde (px)" required min={64} max={4000} type="number" />}</derivativeRecord.form.Field>
+          {selected.media_kind === "photo" && <derivativeRecord.form.Field name="maxDimension" validators={{ onChange: dimensionInRange, onSubmit: dimensionInRange }}>{(field) => <TextField field={field} label="Maximale zijde (px)" required min={64} max={4000} type="number" />}</derivativeRecord.form.Field>}
+          {selected.media_kind === "video" && <derivativeRecord.form.Field name="removeAudio">{(field) => <label className="scope-choice"><input type="checkbox" checked={field.state.value} onChange={(event) => field.handleChange(event.target.checked)} />Geluid verwijderen</label>}</derivativeRecord.form.Field>}
         </div>
-      </RecordForm>}
-      {derivatives.length > 0 && <div className="saved-records manager-list">{derivatives.map((derivative) => <article className="scope-item" key={derivative.id}><div><strong>{derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.purpose.replace("_", " ")} · {derivative.width && derivative.height ? `${derivative.width} × ${derivative.height}` : "afmetingen onbekend"}</span>{derivative.review_state === "approved" && derivative.purpose === "share" && <VisibilityControl tripId={trip.id} kind="media_derivative" id={derivative.id} value={derivative.visibility} name={`afgeleide van ${selected.original_filename ?? "foto"}`} followsUpdate={trip.travel_updates.find((update) => update.id === derivative.travel_update_id)?.title} />}</div><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De private afgeleide kon niet worden geopend.")}>Bekijken</button>{derivative.review_state === "pending" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ assetId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Kies nu wie hem mag zien."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}<button className="danger compact" type="button" onClick={() => eraseDerivative(derivative)}>Verwijderen</button></div>{derivative.purpose === "share" && <PresentationForm key={derivative.id} derivative={derivative} updates={trip.travel_updates} save={async (values) => { await presentation.mutateAsync({ assetId: selected.id, derivative, values }); setNotice("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar."); }} />}</article>)}</div>}
+      </RecordForm>
+      {derivatives.length > 0 && <div className="saved-records manager-list">{derivatives.map((derivative) => <article className="scope-item" key={derivative.id}><div><strong>{derivative.processing_state === "processing" ? "Video wordt verwerkt…" : derivative.processing_state === "failed" ? "Verwerking mislukt" : derivative.review_state === "approved" ? "Goedgekeurde afgeleide" : "Wacht op goedkeuring"}</strong><span>{derivative.purpose.replace("_", " ")} · {derivative.width && derivative.height ? `${derivative.width} × ${derivative.height}` : "afmetingen onbekend"}{derivative.media_kind === "video" && ` · ${derivative.duration_seconds?.toFixed(1) ?? "?"} s · ${derivative.remove_audio ? "zonder geluid" : "met geluid"}`}</span>{derivative.review_state === "approved" && derivative.processing_state !== "failed" && derivative.purpose === "share" && <VisibilityControl tripId={trip.id} kind="media_derivative" id={derivative.id} value={derivative.visibility} name={`afgeleide van ${selected.original_filename ?? "foto"}`} followsUpdate={trip.travel_updates.find((update) => update.id === derivative.travel_update_id)?.title} />}</div><div className="button-row">{derivative.processing_state !== "processing" && derivative.processing_state !== "failed" && <button className="secondary compact" type="button" onClick={() => open(derivative.file_url, "De private afgeleide kon niet worden geopend.")}>{derivative.media_kind === "video" ? "Video en geluid controleren" : "Bekijken"}</button>}{derivative.processing_state !== "processing" && derivative.processing_state !== "failed" && <button className="secondary compact" type="button" onClick={() => void toggleDerivativeOffline(derivative).catch(fail("De afgeleide kon niet offline worden bewaard."))}>{offline.isPinned("media_derivative", derivative.id) ? "Offline verwijderen" : `Offline bewaren (${bytesLabel(derivative.byte_size ?? 0)})`}</button>}{derivative.processing_state === "failed" && <button className="secondary compact" type="button" onClick={() => retry.mutateAsync({ assetId: selected.id, derivative }).catch(fail("De video kon niet opnieuw worden verwerkt."))}>Opnieuw proberen</button>}{derivative.review_state === "pending" && derivative.processing_state !== "processing" && derivative.processing_state !== "failed" && <button className="compact" type="button" onClick={() => approve.mutateAsync({ assetId: selected.id, derivative }).then(() => setNotice("Afgeleide expliciet goedgekeurd. Kies nu wie hem mag zien."), fail("De afgeleide kon niet worden goedgekeurd."))}>Expliciet goedkeuren</button>}<button className="danger compact" type="button" onClick={() => eraseDerivative(derivative)}>Verwijderen</button></div>{derivative.purpose === "share" && derivative.processing_state !== "processing" && <PresentationForm key={derivative.id} derivative={derivative} updates={trip.travel_updates} save={async (values) => { await presentation.mutateAsync({ assetId: selected.id, derivative, values }); setNotice("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar."); }} />}</article>)}</div>}
     </div>}
     {confirmation.dialog}
   </section>;

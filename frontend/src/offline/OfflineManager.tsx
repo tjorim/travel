@@ -10,6 +10,7 @@ const KIND_LABELS: Record<OfflineResourceKind, string> = {
   trip_document: "Reisdocument",
   emergency_info: "Noodinformatie",
   media_asset: "Privémedia",
+  media_derivative: "Afgeleide media",
   route_data: "Kaart- en routegegevens",
   visit: "Bezoek",
 };

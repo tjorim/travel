@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from ..audit import SYSTEM_ACTOR, record_audit_event, scope_fingerprint
 from ..auth import current_subject
 from ..capability import generate_token, verifier_for
 from ..database import get_session
+from ..media.ranges import media_response
 from ..models import (
     AuditEvent,
     AuditEventKind,
@@ -114,11 +115,11 @@ def preview_public_projection(trip_id: str, session: SessionDep, subject: Subjec
 
 @router.get("/public-projection/preview/files/{local_id}")
 def preview_public_file(
-    trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
-) -> StreamingResponse:
+    trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep, request: Request
+) -> Response:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
-    return _file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS)
+    return _file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.get("/public-projection/preview/navigation/{local_id}")
@@ -274,11 +275,12 @@ def preview_share_link(
 
 @router.get("/share-links/{link_id}/preview/files/{local_id}")
 def preview_share_file(
-    trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
-) -> StreamingResponse:
+    trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep,
+    request: Request,
+) -> Response:
     trip = owned_trip(session, trip_id, subject)
     link = owned_link(session, trip_id, subject, link_id)
-    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS)
+    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.get("/share-links/{link_id}/preview/navigation/{local_id}")
@@ -456,21 +458,18 @@ def get_public_navigation(slug: str, local_id: str, session: SessionDep) -> Redi
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
 
 
-def _file_response(trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict) -> StreamingResponse:
+def _file_response(trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict, request: Request) -> Response:
     resolved = scoped_file(trip, scope, local_id)
     if resolved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
     kind, object_row = resolved
     media_type = object_row.content_type
-    disposition = "inline" if kind == "media_derivative" and media_type in {"image/jpeg", "image/png", "image/webp"} else "attachment"
-    return StreamingResponse(
-        iter([storage.get(object_row.object_key)]), media_type=media_type,
-        headers={**headers, "Content-Disposition": disposition, "X-Content-Type-Options": "nosniff"},
-    )
+    disposition = "inline" if kind == "media_derivative" and media_type in {"image/jpeg", "image/png", "image/webp", "video/mp4"} else "attachment"
+    return media_response(storage, object_row, request, {**headers, "Content-Disposition": disposition})
 
 
 @delivery_router.get("/public/trips/{slug}/files/{local_id}")
-def get_public_file(slug: str, local_id: str, session: SessionDep, storage: StorageDep) -> StreamingResponse:
+def get_public_file(slug: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
     headers = {"Cache-Control": "no-store"}
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
@@ -478,7 +477,7 @@ def get_public_file(slug: str, local_id: str, session: SessionDep, storage: Stor
     trip = session.scalar(trip_query().where(Trip.id == surface.trip_id))
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
-    return _file_response(trip, surface.scope, local_id, storage, headers)
+    return _file_response(trip, surface.scope, local_id, storage, headers, request)
 
 
 @delivery_router.get("/shared/{token}", response_model=ProjectionDocument)
@@ -541,7 +540,7 @@ def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> Red
 
 
 @delivery_router.get("/shared/{token}/files/{local_id}")
-def get_shared_file(token: str, local_id: str, session: SessionDep, storage: StorageDep) -> StreamingResponse:
+def get_shared_file(token: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
     not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
@@ -551,4 +550,4 @@ def get_shared_file(token: str, local_id: str, session: SessionDep, storage: Sto
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     if trip is None:
         raise not_found
-    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS)
+    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)

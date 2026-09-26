@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Video derivatives now transcode to a capped H.264/AAC MP4 with telemetry and
+  container metadata removed. A separate WebP poster accompanies each video;
+  the owner can remove audio, review the copy, retry failures and explicitly
+  approve it before sharing. Visitor playback supports byte ranges, and
+  offline pinning shows the copy size. ([#177](https://github.com/tjorim/travel/issues/177))
 - Areas now have generalized dots seeded from a location's coordinates, and
   owner-only coordinate suggestions find a nearby area or propose a new one
   with a time zone. The owner map can show a hollow derived dot from private

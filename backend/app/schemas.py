@@ -794,6 +794,13 @@ class MediaDerivativeResponse(BaseModel):
     media_asset_id: str
     purpose: DerivativePurpose
     review_state: DerivativeReviewState
+    processing_state: str = "ready"
+    media_kind: MediaKind = MediaKind.PHOTO
+    content_type: str | None = None
+    byte_size: int | None = None
+    duration_seconds: float | None = None
+    poster_url: str | None = None
+    remove_audio: bool = False
     metadata_stripped_at: datetime | None
     width: int | None
     height: int | None
@@ -811,6 +818,7 @@ class MediaDerivativeResponse(BaseModel):
 class MediaDerivativeCreate(BaseModel):
     purpose: DerivativePurpose = DerivativePurpose.SHARE
     max_dimension: int = Field(default=1600, ge=64, le=4000)
+    remove_audio: bool = False
 
 
 class MediaDerivativePresentationUpdate(BaseModel):

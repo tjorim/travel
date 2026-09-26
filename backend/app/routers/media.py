@@ -1,16 +1,18 @@
+from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from ..auth import current_subject
 from ..database import get_session
 from ..media import oauth
 from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_visit_candidates
 from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver, provider_available
+from ..media.ranges import media_response
 from ..media.service import (
     CreatedImportSession,
     ImportOutcome,
@@ -23,13 +25,18 @@ from ..media.service import (
     delete_media_asset,
     delete_media_derivative,
     direct_upload,
+    expire_stalled_video_derivatives,
+    process_video_derivative,
+    queue_video_derivative,
 )
 from ..models import (
+    DerivativeProcessingState,
     DerivativeReviewState,
     ImportProvider,
     ImportSession,
     MediaAsset,
     MediaDerivative,
+    MediaKind,
     TravelUpdate,
 )
 from ..schemas import (
@@ -90,6 +97,14 @@ def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeri
         media_asset_id=derivative.media_asset_id,
         purpose=derivative.purpose,
         review_state=derivative.review_state,
+        processing_state=derivative.processing_state.value,
+        media_kind=derivative.media_asset.media_kind,
+        content_type=derivative.object.content_type if derivative.object else None,
+        byte_size=derivative.object.byte_size if derivative.object else None,
+        duration_seconds=derivative.duration_seconds,
+        poster_url=(f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/poster"
+                    if derivative.poster_object_id else None),
+        remove_audio=derivative.remove_audio,
         metadata_stripped_at=derivative.metadata_stripped_at,
         width=derivative.width,
         height=derivative.height,
@@ -238,22 +253,56 @@ def get_media_original(trip_id: str, media_id: str, session: SessionDep, subject
 
 @router.post("/{media_id}/derivatives", response_model=MediaDerivativeResponse, status_code=status.HTTP_201_CREATED)
 def add_derivative(
-    trip_id: str, media_id: str, payload: MediaDerivativeCreate, session: SessionDep, subject: SubjectDep, storage: StorageDep
+    trip_id: str, media_id: str, payload: MediaDerivativeCreate, session: SessionDep, subject: SubjectDep,
+    storage: StorageDep, background_tasks: BackgroundTasks,
 ) -> MediaDerivativeResponse:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     try:
-        derivative = create_derivative(
-            session, storage, media_asset=asset, purpose=payload.purpose, max_dimension=payload.max_dimension
-        )
+        if asset.media_kind == MediaKind.VIDEO:
+            derivative = queue_video_derivative(session, media_asset=asset, purpose=payload.purpose,
+                                                remove_audio=payload.remove_audio)
+            background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
+        else:
+            derivative = create_derivative(
+                session, storage, media_asset=asset, purpose=payload.purpose, max_dimension=payload.max_dimension
+            )
     except MediaImportError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+    return _derivative_response(derivative, trip_id)
+
+
+def _process_video_job(bind: object, storage: ObjectStorage, derivative_id: str) -> None:
+    with sessionmaker(bind=bind, autocommit=False, autoflush=False)() as job_session:
+        process_video_derivative(job_session, storage, derivative_id=derivative_id)
+
+
+@router.post("/{media_id}/derivatives/{derivative_id}/retry", response_model=MediaDerivativeResponse)
+def retry_derivative(
+    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep,
+    storage: StorageDep, background_tasks: BackgroundTasks,
+) -> MediaDerivativeResponse:
+    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
+    if derivative.media_asset.media_kind != MediaKind.VIDEO or derivative.processing_state != DerivativeProcessingState.FAILED:
+        raise HTTPException(status_code=409, detail="Only failed videos can be retried")
+    derivative.processing_state = DerivativeProcessingState.PROCESSING
+    derivative.processing_started_at = datetime.now(UTC)
+    session.commit()
+    background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
     return _derivative_response(derivative, trip_id)
 
 
 @router.get("/{media_id}/derivatives", response_model=list[MediaDerivativeResponse])
 def list_derivatives(trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep) -> list[MediaDerivativeResponse]:
     asset = owned_media_asset(session, trip_id, subject, media_id)
+    expire_stalled_video_derivatives(session, asset.derivatives)
     return [_derivative_response(derivative, trip_id) for derivative in asset.derivatives]
+
+
+@router.get("/{media_id}/derivatives/{derivative_id}", response_model=MediaDerivativeResponse)
+def get_derivative(trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep) -> MediaDerivativeResponse:
+    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
+    expire_stalled_video_derivatives(session, [derivative])
+    return _derivative_response(derivative, trip_id)
 
 
 @router.post("/{media_id}/derivatives/{derivative_id}/approve", response_model=MediaDerivativeResponse)
@@ -261,6 +310,8 @@ def approve_derivative(
     trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep
 ) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
+    if derivative.processing_state != DerivativeProcessingState.READY or derivative.object_id is None:
+        raise HTTPException(status_code=409, detail="Derivative is not ready for review")
     derivative.review_state = DerivativeReviewState.APPROVED
     session.commit()
     return _derivative_response(derivative, trip_id)
@@ -294,11 +345,24 @@ def remove_derivative(
 
 @router.get("/{media_id}/derivatives/{derivative_id}/file")
 def get_derivative_file(
-    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
-) -> StreamingResponse:
+    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep,
+    request: Request,
+) -> Response:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    data = storage.get(derivative.object.object_key)
-    return StreamingResponse(iter([data]), media_type=derivative.object.content_type, headers={"Cache-Control": "no-store"})
+    if derivative.object is None:
+        raise HTTPException(status_code=404, detail="Derivative is not ready")
+    return media_response(storage, derivative.object, request, {"Cache-Control": "no-store"})
+
+
+@router.get("/{media_id}/derivatives/{derivative_id}/poster")
+def get_derivative_poster(
+    trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep,
+    request: Request,
+) -> Response:
+    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
+    if derivative.poster_object is None:
+        raise HTTPException(status_code=404, detail="Poster is not ready")
+    return media_response(storage, derivative.poster_object, request, {"Cache-Control": "no-store"})
 
 
 # --- Provider-mediated imports: owner-explicit selection only ---------------------
