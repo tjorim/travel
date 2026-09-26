@@ -277,3 +277,21 @@ nav a[aria-current="page"] { color: #0f493b; }
   .owner-shell { width: min(1240px, calc(100% - 64px)); }
   .owner-shell .trip-map-canvas-wrap { height: clamp(420px, 48vw, 620px); }
 }
+/* Markdown fields, rendered and sanitized by the server (see Markdown.tsx). */
+.markdown { overflow-wrap: anywhere; line-height: 1.6; }
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown p, .card .markdown p { margin: 0 0 .7em; }
+.markdown h4, .markdown h5, .markdown h6 { margin: 1em 0 .4em; font-size: 1rem; }
+.markdown h6 { color: #4d665e; }
+.markdown ul, .markdown ol { margin: 0 0 .7em; padding-left: 1.4em; }
+.markdown ul.contains-task-list { padding-left: 0; list-style: none; }
+.markdown .task-list-item-checkbox { margin: 0 .45em 0 0; vertical-align: middle; }
+.markdown blockquote { margin: 0 0 .7em; padding-left: 12px; border-left: 3px solid #cbd7ce; color: #4d665e; }
+.markdown code { padding: 1px 4px; border-radius: 4px; background: #eef5ef; font-size: .9em; }
+.markdown pre { overflow-x: auto; margin: 0 0 .7em; padding: 10px 12px; border-radius: 9px; background: #eef5ef; }
+.markdown pre code { padding: 0; background: none; }
+.markdown hr { border: 0; border-top: 1px solid #cbd7ce; }
+.markdown a { color: #0f493b; text-underline-offset: 3px; }
+.markdown-source { white-space: pre-line; }
+.markdown-label { margin: 8px 0 2px; color: #31705d; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }

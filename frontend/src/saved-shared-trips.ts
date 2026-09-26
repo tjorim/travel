@@ -46,7 +46,8 @@ export function rememberSharedTrip(token: string, projection: Projection): void 
   const current: SavedSharedTrip = {
     token,
     title: projection.title,
-    summary: projection.summary,
+    // A card shows a one-line preview, not the rendered Markdown.
+    summary: projection.summary_text ?? projection.summary,
     lastVisitedAt: new Date().toISOString(),
   };
   writeSavedSharedTrips([current, ...readSavedSharedTrips().filter((trip) => trip.token !== token)]);

@@ -6,6 +6,7 @@ import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
+import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { localDateTime, locationName, type Area, type LocationInput, type PlaceSearchResult, type TravelUpdate, type Trip, type Visibility } from "../tracker-model";
 import { VISIBILITY_LABELS, VisibilityControl, visibilityLabel } from "./visibility";
@@ -72,8 +73,8 @@ export function TravelUpdateManager({ trip, areas }: { trip: Trip; areas: Area[]
     </article>)}</div>}
     <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Reisupdate bewerken" : "Reisupdate maken") : "Reisupdate"} dirty={editing && record.dirty} onDismiss={close}>
       {!editing && selected && <div className="stack-form">
-        <div><h3>{selected.title}</h3>{selected.body ? <p>{selected.body}</p> : <p className="help">Nog geen tekst voor bezoekers.</p>}</div>
-        <div><h4>Alleen voor jou</h4>{selected.private_notes ? <p>{selected.private_notes}</p> : <p className="help">Geen privénotitie.</p>}<p className="help">{[selected.location ? `Locatie: ${selected.location.display_name ?? selected.location.locality ?? "naamloos"}` : null, `${selected.media_asset_ids.length} gekoppelde ${selected.media_asset_ids.length === 1 ? "foto" : "foto’s"}`].filter(Boolean).join(" · ")}</p></div>
+        <div><h3>{selected.title}</h3>{selected.body ? <Markdown html={selected.body_html} text={selected.body} /> : <p className="help">Nog geen tekst voor bezoekers.</p>}</div>
+        <div><h4>Alleen voor jou</h4>{selected.private_notes ? <Markdown html={selected.private_notes_html} text={selected.private_notes} /> : <p className="help">Geen privénotitie.</p>}<p className="help">{[selected.location ? `Locatie: ${selected.location.display_name ?? selected.location.locality ?? "naamloos"}` : null, `${selected.media_asset_ids.length} gekoppelde ${selected.media_asset_ids.length === 1 ? "foto" : "foto’s"}`].filter(Boolean).join(" · ")}</p></div>
         <VisibilityControl tripId={trip.id} kind="travel_update" id={selected.id} value={selected.visibility} name={selected.title} />
         <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
         {dialog.confirmDelete && <DeleteConfirmation title={`Reisupdate “${selected.title}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}

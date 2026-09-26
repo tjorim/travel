@@ -718,3 +718,17 @@ def test_duplicate_areas_merge_over_mcp(backend: TravelMcpBackend) -> None:
     assert [area["id"] for area in backend.list_areas(trip_id)] == [keep["id"]]
     assert backend.list_locations(trip_id)[0]["area_id"] == keep["id"]
     assert MCP_TOOL_CAPABILITIES["merge_areas"] == {"effect": "write", "requires_confirmation": True}
+
+
+def test_mcp_reads_and_writes_markdown_source_without_rendered_html(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Exampleland 2054", summary="**Two** weeks"))
+    assert trip["summary"] == "**Two** weeks"
+    assert "summary_html" not in trip
+    task = backend.create_trip_task(
+        trip["id"], schemas.TripTaskCreate(title="Pack", notes="- [ ] socks\n- [ ] adapter")
+    )
+    assert "notes_html" not in task
+    # A Markdown task list is display-only: it never creates trip tasks.
+    assert [item["id"] for item in backend.list_trip_tasks(trip["id"])] == [task["id"]]
+    assert all(not key.endswith("_html") for key in backend.get_trip(trip["id"]))
+    assert schemas.TripTaskCreate.model_json_schema()["properties"]["notes"]["description"].startswith("Markdown")

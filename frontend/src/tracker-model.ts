@@ -28,6 +28,7 @@ export type Location = {
   navigation_provider: string | null;
   navigation_provider_place_id: string | null;
   notes: string | null;
+  notes_html?: string | null;
 };
 
 /** A location to create, or with `existing_location_id` a location the trip already has (sent on its own). */
@@ -88,7 +89,9 @@ export type TravelUpdate = {
   date_precision: "day" | "month" | "year";
   title: string;
   body: string;
+  body_html?: string | null;
   private_notes: string | null;
+  private_notes_html?: string | null;
   area_id: string | null;
   /** The area of its location, or the direct area of a location-less update. */
   area?: Area | null;
@@ -101,6 +104,7 @@ export type Trip = {
   id: string;
   title: string;
   summary: string | null;
+  summary_html?: string | null;
   starts_on: string | null;
   ends_on: string | null;
   travel_updates: TravelUpdate[];
@@ -131,6 +135,7 @@ export type Stay = {
   booking_reference: string | null;
   contact_details: string | null;
   notes: string | null;
+  notes_html?: string | null;
   /** Every stay has a location; its area comes from it. */
   location: Location;
   area: Area;
@@ -161,6 +166,7 @@ export type Route = {
   travel_class: string | null;
   booking_reference: string | null;
   notes: string | null;
+  notes_html?: string | null;
   document_asset_ids: string[];
   geometry: { type: "LineString"; coordinates: [number, number][] } | null;
   visibility: Visibility;
@@ -196,7 +202,9 @@ export type Visit = {
   start_time: string | null;
   end_time: string | null;
   notes: string | null;
+  notes_html?: string | null;
   summary: string | null;
+  summary_html?: string | null;
   visibility: Visibility;
   share_time: boolean;
   share_date_precision: "day" | "month" | "year";
@@ -209,6 +217,7 @@ export type TripTask = {
   id: string;
   title: string;
   notes: string | null;
+  notes_html?: string | null;
   due_date: string | null;
   remind_at: string | null;
   reminded_at: string | null;

@@ -9,7 +9,8 @@ type LoadState =
   | { kind: "unavailable" }
   | { kind: "error" };
 
-type PublicTripCard = { slug: string; title: string | null; summary: string | null; dates?: ProjectionItem | null };
+/** `summary` is Markdown; a card shows its one-line plain-text `summary_text` instead. */
+type PublicTripCard = { slug: string; title: string | null; summary: string | null; summary_text?: string | null; dates?: ProjectionItem | null };
 type IndexState = { kind: "loading" } | { kind: "ready"; trips: PublicTripCard[] } | { kind: "error" };
 
 function isPublicTripCards(value: unknown): value is PublicTripCard[] {
@@ -17,6 +18,7 @@ function isPublicTripCards(value: unknown): value is PublicTripCard[] {
     && typeof card.slug === "string" && card.slug.length > 0
     && (card.title === null || typeof card.title === "string")
     && (card.summary === null || typeof card.summary === "string")
+    && (card.summary_text == null || typeof card.summary_text === "string")
     && (card.dates == null || (typeof card.dates === "object" && !Array.isArray(card.dates))));
 }
 
@@ -58,7 +60,7 @@ function TripIndex() {
       {state.kind === "loading" && <div className="card" role="status"><h2>Reizen laden</h2><p>Een ogenblik geduld.</p></div>}
       {state.kind === "error" && <div className="card" role="alert"><h2>Reizen kunnen niet worden geladen</h2><p>Probeer het opnieuw wanneer de verbinding werkt.</p><button type="button" onClick={() => setAttempt((current) => current + 1)}>Opnieuw proberen</button></div>}
       {state.kind === "ready" && state.trips.length === 0 && <div className="card" role="status"><h2>Nog geen publieke reizen</h2><p>Kom later terug om nieuwe reizen te ontdekken.</p></div>}
-      {state.kind === "ready" && state.trips.length > 0 && <ul className="trip-cards">{state.trips.map((trip) => <li key={trip.slug}><Link className="trip-card card" to={`/trips/${encodeURIComponent(trip.slug)}`}><span className="eyebrow">{tripDates(trip.dates) ?? "Publieke reis"}</span><h2>{trip.title ?? "Gepubliceerde reis"}</h2>{trip.summary && <p>{trip.summary}</p>}<span className="trip-card-link">Bekijk reis <span aria-hidden="true">→</span></span></Link></li>)}</ul>}
+      {state.kind === "ready" && state.trips.length > 0 && <ul className="trip-cards">{state.trips.map((trip) => <li key={trip.slug}><Link className="trip-card card" to={`/trips/${encodeURIComponent(trip.slug)}`}><span className="eyebrow">{tripDates(trip.dates) ?? "Publieke reis"}</span><h2>{trip.title ?? "Gepubliceerde reis"}</h2>{(trip.summary_text ?? trip.summary) && <p>{trip.summary_text ?? trip.summary}</p>}<span className="trip-card-link">Bekijk reis <span aria-hidden="true">→</span></span></Link></li>)}</ul>}
     </section>
     {savedTrips.length > 0 && <section aria-label="Op dit apparaat bewaarde verborgen reizen"><h2>Eerder bekeken verborgen reizen</h2><p className="lede">Alleen in deze browser bewaard. Wie dit apparaat gebruikt, kan deze links openen.</p><ul className="trip-cards">{savedTrips.map((trip) => <li key={trip.token} className="saved-trip"><Link className="trip-card card" to={`/share/${encodeURIComponent(trip.token)}`}><span className="eyebrow">Verborgen reis</span><h2>{trip.title ?? "Gedeelde reis"}</h2>{trip.summary && <p>{trip.summary}</p>}<span className="trip-card-link">Bekijk reis <span aria-hidden="true">→</span></span></Link><button className="secondary compact" type="button" onClick={() => forget(trip.token)}>Verwijderen van dit apparaat</button></li>)}</ul></section>}
     <OwnerLink />

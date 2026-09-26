@@ -81,11 +81,20 @@ class BinaryUpload(schemas.InputModel):
         return UploadFile(filename=self.filename, file=BytesIO(data), headers={"content-type": self.content_type})
 
 
+def _without_html(value: Any) -> Any:
+    """Drop the rendered ``*_html`` fields: an MCP client reads and writes the Markdown source."""
+    if isinstance(value, dict):
+        return {key: _without_html(item) for key, item in value.items() if not key.endswith("_html")}
+    if isinstance(value, list):
+        return [_without_html(item) for item in value]
+    return value
+
+
 def _model(value: Any, model_type: type[BaseModel] | None = None) -> Any:
     """Serialize only the declared API representation, never ORM internals."""
     if model_type is None:
         return jsonable_encoder(value)
-    return model_type.model_validate(value).model_dump(mode="json")
+    return _without_html(model_type.model_validate(value).model_dump(mode="json"))
 
 
 def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, Any]]:
@@ -542,7 +551,7 @@ class TravelMcpBackend:
         )
 
     def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
-        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. status (idea, planned or confirmed) is owner-only and never shared: keep planning state there, not in a title or area label. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight)."""
+        """Add a visit: an area, or a location in one, with optional days, times, kind and notes. status (idea, planned or confirmed) is owner-only and never shared: keep planning state there, not in a title or area label. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
         return self._call(
             "visit.create",
             "visit",
@@ -577,7 +586,7 @@ class TravelMcpBackend:
         )
 
     def create_travel_update(self, trip_id: str, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
-        """Create a reisupdate: private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text."""
+        """Create a reisupdate: private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text. body and private_notes are Markdown."""
         return self._call(
             "travel_update.create",
             "travel_update",
@@ -1710,7 +1719,7 @@ def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
     server = FastMCP(
         "travel",
         version="0.1.0",
-        instructions="Private Travel owner-management tools. Review previews before confirmed audience, publication, or deletion actions.",
+        instructions="Private Travel owner-management tools. Review previews before confirmed audience, publication, or deletion actions. Long-form text (trip summary, visit summary and notes, reisupdate body and private notes, stay, route, task and location notes) is Markdown; task lists in it are display-only and never create trip tasks.",
         auth=auth,
     )
     backend = TravelMcpBackend(factory)

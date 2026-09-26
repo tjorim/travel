@@ -1,4 +1,5 @@
 import { useEffect, useMemo, type ReactNode } from "react";
+import { Markdown } from "./Markdown";
 import { TripMap, type MapLine, type MapPoint } from "./TripMap";
 import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
 
@@ -7,7 +8,10 @@ export type ProjectionItem = { id: string; [field: string]: unknown };
 export type Projection = {
   schema_version: string;
   title: string | null;
+  /** Markdown source; `summary_html` is its sanitized rendering and `summary_text` a one-line preview. */
   summary: string | null;
+  summary_html?: string | null;
+  summary_text?: string | null;
   dates: ProjectionItem | null;
   visits: ProjectionItem[];
   places: ProjectionItem[];
@@ -34,6 +38,8 @@ export function isProjection(value: unknown, audience: Audience): value is Proje
   return document.schema_version === (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1")
     && (document.title === null || typeof document.title === "string")
     && (document.summary === null || typeof document.summary === "string")
+    && (document.summary_html == null || typeof document.summary_html === "string")
+    && (document.summary_text == null || typeof document.summary_text === "string")
     && (document.dates === null || (!!document.dates && typeof document.dates === "object" && !Array.isArray(document.dates)))
     && collections.every((key) => Array.isArray(document[key]) && (document[key] as unknown[]).every(
       (item) => item !== null && typeof item === "object" && !Array.isArray(item) && typeof (item as ProjectionItem).id === "string",
@@ -222,7 +228,7 @@ function Updates({ updates, media, fileUrl }: { updates: ProjectionItem[]; media
     <nav aria-label="Updates in dit verhaal"><ol>{updates.map((item) => <li key={item.id}><a href={`#${item.id}`}>{text(item, "title") ?? storyDate(item) ?? "Update"}</a></li>)}</ol></nav>
     <ol className="visitor-timeline">{updates.map((item) => <li key={item.id} id={item.id} tabIndex={-1}><article>
       <div className="visitor-update-meta">{storyDate(item) ? <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time> : precision(item) ? <span>{precision(item)}</span> : null}{place(item.place) && <span>{place(item.place)}</span>}</div>
-      <h3>{text(item, "title") ?? "Update"}</h3>{text(item, "body") && <p>{text(item, "body")}</p>}
+      <h3>{text(item, "title") ?? "Update"}</h3><Markdown html={text(item, "body_html")} text={text(item, "body")} />
       <Gallery items={media.filter((image) => image.update === item.id)} fileUrl={fileUrl} title="Media bij deze update" />
     </article></li>)}</ol>
   </section>;
@@ -257,10 +263,10 @@ export function ProjectionView({ projection, audience, identifier, previewResour
   if (empty && !projection.summary && !dates) return <section className="card" role="status"><h2>Nog geen gedeelde inhoud</h2><p>Voor deze reis is nog geen inhoud geselecteerd.</p></section>;
 
   return <div className="visitor-content">
-    {(projection.summary || dates) && <section className="card"><h2>Reisoverzicht</h2>{dates && <p className="eyebrow">{dates}</p>}{projection.summary && <p>{projection.summary}</p>}</section>}
+    {(projection.summary || dates) && <section className="card"><h2>Reisoverzicht</h2>{dates && <p className="eyebrow">{dates}</p>}<Markdown html={projection.summary_html} text={projection.summary} /></section>}
     {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
     {empty && <section className="card" role="status"><h2>Nog geen gedeeld verhaal of foto’s</h2><p>Er zijn nog geen reisupdates of foto’s gedeeld.</p></section>}
-    <ResourceSection title="Bezoeken" items={projection.visits} render={(item) => <article><h3>{text(item, "title") ?? "Bezoek"}</h3>{tripDates(item) && <p>{tripDates(item)}</p>}{visitTimes(item) && <p>{visitTimes(item)}</p>}{text(item, "summary") && <p>{text(item, "summary")}</p>}{place(item.place) && <p>{place(item.place)}</p>}</article>} />
+    <ResourceSection title="Bezoeken" items={projection.visits} render={(item) => <article><h3>{text(item, "title") ?? "Bezoek"}</h3>{tripDates(item) && <p>{tripDates(item)}</p>}{visitTimes(item) && <p>{visitTimes(item)}</p>}<Markdown html={text(item, "summary_html")} text={text(item, "summary")} />{place(item.place) && <p>{place(item.place)}</p>}</article>} />
     <ResourceSection title="Gebieden en locaties" items={projection.places} render={(item) => <article><h3>{text(item, "label") ?? "Locatie"}</h3>{[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>}{navigationLink(item)}</article>} />
     <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
     <ResourceSection title="Verblijven" items={projection.stays} render={(item) => <article><h3>{text(item, "title") ?? "Verblijf"}</h3>{tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />

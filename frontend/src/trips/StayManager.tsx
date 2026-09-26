@@ -6,6 +6,7 @@ import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { addDays, daysBetween, formatDay, stayLabel, type Area, type LocationInput, type PlaceSearchResult, type Stay, type Trip } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
@@ -122,7 +123,7 @@ export function StayManager({ trip }: { trip: Trip; areas?: Area[] }) {
     })}</div>}
     <RecordDialog open={editingStay || selectedStay !== null} title={editingStay ? (editingStayId ? "Verblijf bewerken" : "Verblijf toevoegen") : "Verblijf"} dirty={editingStay && stayRecord.dirty} onDismiss={closeStay}>
       {!editingStay && selectedStay && <div className="stack-form">
-        <div><h3>{stayLabel(selectedStay)}</h3><p>{selectedStay.location?.address_line1}{selectedStay.location?.locality ? ` · ${selectedStay.location.locality}` : ""}</p><p>{selectedStay.booking_reference ? `Boekingsreferentie: ${selectedStay.booking_reference}` : "Geen boekingsreferentie"}</p></div>
+        <div><h3>{stayLabel(selectedStay)}</h3><p>{selectedStay.location?.address_line1}{selectedStay.location?.locality ? ` · ${selectedStay.location.locality}` : ""}</p><p>{selectedStay.booking_reference ? `Boekingsreferentie: ${selectedStay.booking_reference}` : "Geen boekingsreferentie"}</p><Markdown html={selectedStay.notes_html} text={selectedStay.notes} /></div>
         <VisibilityControl tripId={trip.id} kind="stay" id={selectedStay.id} value={selectedStay.visibility} name={stayLabel(selectedStay)} />
         <div className="button-row"><button type="button" onClick={() => editStay(selectedStay)}>Bewerken</button><button className="danger" type="button" onClick={() => setDeleteTarget(selectedStay)}>Verwijderen</button></div>
       </div>}

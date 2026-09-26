@@ -3,8 +3,18 @@ from enum import StrEnum
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
+from .markdown import markdown_text, render_markdown
 from .models import (
     AuditEventKind,
     AuditTargetType,
@@ -27,6 +37,21 @@ from .models import (
 )
 
 COUNTRY_CODE_FIELD = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")
+
+MARKDOWN = (
+    "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), "
+    "blockquotes, inline and fenced code, and rules. Raw HTML and images are not rendered, and a task list "
+    "is display-only: it never creates trip tasks."
+)
+
+
+def _html(source: str | None) -> str | None:
+    """The owner app's sanitized HTML for one Markdown field (see ``app.markdown``)."""
+    return render_markdown(source, "owner")
+
+
+def _html_of(field: str) -> str:
+    return f"Sanitized HTML rendered from the Markdown `{field}`; null without text. Read-only."
 
 
 def require_https(value: HttpUrl | None) -> HttpUrl | None:
@@ -83,7 +108,7 @@ class LocationFields(InputModel):
     viewport_west: float | None = Field(default=None, ge=-180, le=180)
     navigation_provider: str | None = Field(default=None, max_length=40)
     navigation_provider_place_id: str | None = Field(default=None, max_length=255)
-    notes: str | None = Field(default=None, max_length=2000)
+    notes: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     # The name a shared location goes by. Owner-only until the place is shared,
     # and required for that: the display name usually contains the address.
     label: str | None = Field(default=None, min_length=1, max_length=120)
@@ -204,6 +229,11 @@ class LocationResponse(LocationFields):
     # A response is read from stored data, not sent by a client.
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 
+    @computed_field(description=_html_of("notes"))
+    @property
+    def notes_html(self) -> str | None:
+        return _html(self.notes)
+
 
 class PlaceSearchRequest(InputModel):
     query: str = Field(min_length=2, max_length=200)
@@ -298,7 +328,7 @@ class AreaResponse(AreaInput):
 
 class TripCreate(InputModel):
     title: str = Field(min_length=1, max_length=160)
-    summary: str | None = Field(default=None, max_length=4000)
+    summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     starts_on: date | None = None
     ends_on: date | None = None
 
@@ -310,7 +340,7 @@ class TripCreate(InputModel):
 
 class TripUpdate(InputModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
-    summary: str | None = Field(default=None, max_length=4000)
+    summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     starts_on: date | None = None
     ends_on: date | None = None
 
@@ -332,8 +362,8 @@ class TravelUpdateCreate(InputModel):
     occurred_at: datetime
     date_precision: DatePrecision = DatePrecision.DAY
     title: str = Field(min_length=1, max_length=160)
-    body: str = Field(default="", max_length=10000)
-    private_notes: str | None = Field(default=None, max_length=10000)
+    body: str = Field(default="", max_length=10000, description=MARKDOWN)
+    private_notes: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
     area_id: str | None = None
     location: LocationInput | None = None
     media_asset_ids: list[str] = Field(default_factory=list, max_length=12)
@@ -346,8 +376,8 @@ class TravelUpdatePatch(InputModel):
     occurred_at: datetime | None = None
     date_precision: DatePrecision | None = None
     title: str | None = Field(default=None, min_length=1, max_length=160)
-    body: str | None = Field(default=None, max_length=10000)
-    private_notes: str | None = Field(default=None, max_length=10000)
+    body: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
+    private_notes: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
     area_id: str | None = None
     location: LocationInput | None = None
     media_asset_ids: list[str] | None = Field(default=None, max_length=12)
@@ -370,6 +400,16 @@ class TravelUpdateResponse(BaseModel):
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
+    @computed_field(description=_html_of("body"))
+    @property
+    def body_html(self) -> str | None:
+        return _html(self.body)
+
+    @computed_field(description=_html_of("private_notes"))
+    @property
+    def private_notes_html(self) -> str | None:
+        return _html(self.private_notes)
+
 
 class StayCreate(InputModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
@@ -389,7 +429,7 @@ class StayCreate(InputModel):
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     share_date_precision: DatePrecision = DatePrecision.MONTH
 
     _https = field_validator("website_url")(require_https)
@@ -420,7 +460,7 @@ class StayUpdate(InputModel):
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     share_date_precision: DatePrecision | None = None
 
     _https = field_validator("website_url")(require_https)
@@ -444,6 +484,11 @@ class StayResponse(BaseModel):
     visibility: Visibility
     share_date_precision: DatePrecision
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field(description=_html_of("notes"))
+    @property
+    def notes_html(self) -> str | None:
+        return _html(self.notes)
 
 
 def require_visit_times(
@@ -479,8 +524,8 @@ class VisitCreate(InputModel):
     ends_on: date | None = None
     start_time: time | None = None
     end_time: time | None = None
-    notes: str | None = Field(default=None, max_length=4000)
-    summary: str | None = Field(default=None, max_length=2000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
+    summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     share_time: bool = False
     share_date_precision: DatePrecision = DatePrecision.MONTH
 
@@ -503,8 +548,8 @@ class VisitUpdate(InputModel):
     ends_on: date | None = None
     start_time: time | None = None
     end_time: time | None = None
-    notes: str | None = Field(default=None, max_length=4000)
-    summary: str | None = Field(default=None, max_length=2000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
+    summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     share_time: bool | None = None
     share_date_precision: DatePrecision | None = None
 
@@ -528,6 +573,16 @@ class VisitResponse(BaseModel):
     share_date_precision: DatePrecision
     model_config = ConfigDict(from_attributes=True)
 
+    @computed_field(description=_html_of("notes"))
+    @property
+    def notes_html(self) -> str | None:
+        return _html(self.notes)
+
+    @computed_field(description=_html_of("summary"))
+    @property
+    def summary_html(self) -> str | None:
+        return _html(self.summary)
+
 
 class TaskLink(InputModel):
     label: str = Field(min_length=1, max_length=80)
@@ -544,7 +599,7 @@ class StoredTaskLink(TaskLink):
 
 class TripTaskCreate(InputModel):
     title: str = Field(min_length=1, max_length=160)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     due_date: date | None = None
     remind_at: AwareDatetime | None = None
     links: list[TaskLink] = Field(default_factory=list, max_length=5)
@@ -552,7 +607,7 @@ class TripTaskCreate(InputModel):
 
 class TripTaskUpdate(InputModel):
     title: str | None = Field(default=None, min_length=1, max_length=160)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     due_date: date | None = None
     remind_at: AwareDatetime | None = None
     links: list[TaskLink] | None = Field(default=None, max_length=5)
@@ -570,6 +625,11 @@ class TripTaskResponse(BaseModel):
     completed_at: datetime | None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field(description=_html_of("notes"))
+    @property
+    def notes_html(self) -> str | None:
+        return _html(self.notes)
 
 
 class TripTaskAlertResponse(BaseModel):
@@ -637,7 +697,7 @@ class RouteCreate(InputModel):
     service_reference: str | None = Field(default=None, max_length=40)
     travel_class: str | None = Field(default=None, max_length=80)
     booking_reference: str | None = Field(default=None, max_length=255)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     document_asset_ids: list[str] = Field(default_factory=list, max_length=12)
     geometry: GeoJsonLineString | None = None
 
@@ -674,7 +734,7 @@ class RouteUpdate(InputModel):
     service_reference: str | None = Field(default=None, max_length=40)
     travel_class: str | None = Field(default=None, max_length=80)
     booking_reference: str | None = Field(default=None, max_length=255)
-    notes: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     document_asset_ids: list[str] | None = Field(default=None, max_length=12)
     geometry: GeoJsonLineString | None = None
 
@@ -711,6 +771,11 @@ class RouteResponse(BaseModel):
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True)
 
+    @computed_field(description=_html_of("notes"))
+    @property
+    def notes_html(self) -> str | None:
+        return _html(self.notes)
+
     @field_validator("departs_at", "arrives_at")
     @classmethod
     def mark_utc(cls, value: datetime | None) -> datetime | None:
@@ -728,6 +793,11 @@ class TripResponse(BaseModel):
     ends_on: date | None
     travel_updates: list[TravelUpdateResponse]
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field(description=_html_of("summary"))
+    @property
+    def summary_html(self) -> str | None:
+        return _html(self.summary)
 
 
 class OverviewAudience(BaseModel):
@@ -816,7 +886,9 @@ class ShareScopeInput(InputModel):
 class ProjectionDocument(BaseModel):
     schema_version: str
     title: str | None
-    summary: str | None
+    summary: str | None = Field(description=MARKDOWN)
+    summary_html: str | None = Field(default=None, description=_html_of("summary") + " Links are nofollow.")
+    summary_text: str | None = Field(default=None, description="The summary as one line of plain text, for previews.")
     dates: dict | None
     visits: list[dict]
     places: list[dict]
@@ -830,8 +902,13 @@ class ProjectionDocument(BaseModel):
 class PublicTripCard(BaseModel):
     slug: str
     title: str | None
-    summary: str | None
+    summary: str | None = Field(description=MARKDOWN)
     dates: dict | None
+
+    @computed_field(description="The summary as one line of plain text: a card shows it instead of rendering it.")
+    @property
+    def summary_text(self) -> str | None:
+        return markdown_text(self.summary)
 
 
 class PublicProjectionStatusResponse(BaseModel):

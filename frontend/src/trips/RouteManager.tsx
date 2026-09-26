@@ -6,6 +6,7 @@ import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { ROUTE_MODE_LABELS, browserTimeZone, daysBetween, localDate, routeTitle, timeZoneOptions, wallClock, type Route, type RouteMode, type TimedRoute, type Trip } from "../tracker-model";
 import { VisibilityControl, visibilityLabel } from "./visibility";
@@ -187,7 +188,7 @@ export function RouteManager({ trip }: { trip: Trip }) {
     <p className="help" role="status">{readError ? errorMessage(readError, "Je routes konden niet worden geladen.") : routesQuery.isPending ? "Laad je routes…" : message}</p>
     <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Route bewerken" : "Route toevoegen") : "Route"} dirty={editing && record.dirty} onDismiss={close}>
       {!editing && selected && <div className="stack-form">
-        <div><h3>{routeTitle(selected)}</h3><p>{[ROUTE_MODE_LABELS[selected.mode], STATUS_LABELS[selected.status], times(selected)].filter(Boolean).join(" · ")}</p><p>{selected.booking_reference ? `Boekingsreferentie: ${selected.booking_reference}` : "Geen boekingsreferentie"}</p></div>
+        <div><h3>{routeTitle(selected)}</h3><p>{[ROUTE_MODE_LABELS[selected.mode], STATUS_LABELS[selected.status], times(selected)].filter(Boolean).join(" · ")}</p><p>{selected.booking_reference ? `Boekingsreferentie: ${selected.booking_reference}` : "Geen boekingsreferentie"}</p><Markdown html={selected.notes_html} text={selected.notes} /></div>
         {selected.geometry && <RouteGeometryEditor coordinates={selected.geometry.coordinates} onChange={() => undefined} mode="preview" />}
         <VisibilityControl tripId={trip.id} kind="route" id={selected.id} value={selected.visibility} name={routeTitle(selected)} />
         <p className="help">Bezoekers zien de gebieden, het vervoermiddel en de lijn. Nooit je boekingscode, klasse, notities of documenten, en een station alleen als je die locatie zelf deelt.</p>

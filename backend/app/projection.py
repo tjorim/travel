@@ -12,6 +12,7 @@ from datetime import date, datetime, time
 from typing import Any
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
+from .markdown import markdown_text, render_markdown
 from .models import Area, Location, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
 
@@ -189,6 +190,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         values = {
             "title": item.title or (shared_location or {}).get("label") or item.area.label,
             "summary": item.summary,
+            "summary_html": render_markdown(item.summary),
             "place": _share_place(item.area, context["areas"]),
             "date_precision": precision,
         }
@@ -248,6 +250,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         values = {
             "title": item.title,
             "body": item.body,
+            "body_html": render_markdown(item.body),
             "date_precision": item.date_precision.value,
             "story_date": _safe_date(item.occurred_at.date(), item.date_precision.value),
             "place": _share_place(item.area, context["areas"]),
@@ -311,10 +314,15 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "locations": {item.id for item in records["location"]},
         "areas": {item.id for item in records["area"]},
     }
+    # Markdown fields carry their source, sanitized HTML for display, and, for
+    # the trip summary shown on cards, a one-line plain-text preview.
+    summary = trip.summary if scope.get("trip", {}).get("summary", True) else None
     projection: dict[str, Any] = {
         "schema_version": schema_version,
         "title": trip.title if scope.get("trip", {}).get("title", True) else None,
-        "summary": trip.summary if scope.get("trip", {}).get("summary", True) else None,
+        "summary": summary,
+        "summary_html": render_markdown(summary),
+        "summary_text": markdown_text(summary),
         "dates": shared_trip_dates(trip, scope),
         "visits": [],
         "places": [],

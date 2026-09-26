@@ -6,6 +6,20 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Long-form text is Markdown: the trip summary, visit summary and notes,
+  reisupdate body and private notes, and stay, route, task and location notes.
+  Records keep storing the Markdown source; one backend renderer
+  (`app/markdown.py`, `markdown-it-py` with raw HTML and images off, sanitized
+  by `nh3`) supplies read-only `*_html` fields next to each source in owner
+  responses and in the public page and share-link projections, so the PWA and
+  visitor views inject the same sanitized HTML and carry no parser of their
+  own. Headings render three levels down (`#` is `h4`), links allow only
+  `http`, `https` and `mailto`, open in a new tab and are `nofollow` on visitor
+  views, and task lists render as disabled checkboxes that never create trip
+  tasks. Public trip cards and saved shared trips show a one-line plain-text
+  `summary_text` instead. OpenAPI and MCP field descriptions mark these fields
+  as Markdown; MCP tools return the source without the rendered HTML.
+  ([#192](https://github.com/tjorim/travel/issues/192))
 - Duplicate locations and areas can be merged, and unused areas and locations deleted,
   over the API and MCP. `POST /api/trips/{id}/locations/merge` and the
   `merge_locations` tool preview, per duplicate, how many visits, stays, routes

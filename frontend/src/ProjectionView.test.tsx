@@ -313,3 +313,28 @@ it("reads a visit time in the viewer's own zone, with the day when it moves", ()
   expect(visitTimes({ id: "v", start_time: "18:30" })).toBe("18:30");
   expect(visitTimes({ id: "v" })).toBeNull();
 });
+
+it("shows the server's sanitized Markdown and falls back to plain source text", () => {
+  const data = projection();
+  data.summary = "**Two** weeks";
+  data.summary_html = "<p><strong>Two</strong> weeks</p>\n";
+  data.visits = [{ id: "visit-1", title: "Taipei", summary: "- [x] tea", summary_html: '<ul class="contains-task-list"><li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" type="checkbox" disabled="disabled"> tea</li></ul>' }];
+  data.updates = [{ id: "update-1", title: "Arrival", body: "*Landed*" }];
+  const view = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  expect(view.container.querySelector(".markdown strong")?.textContent).toBe("Two");
+  const checkbox = view.container.querySelector<HTMLInputElement>(".markdown input[type=checkbox]")!;
+  expect(checkbox.disabled).toBe(true);
+  expect(checkbox.checked).toBe(true);
+  // Without rendered HTML the source is text, never markup.
+  expect(view.container.querySelector(".markdown-source")?.textContent).toBe("*Landed*");
+  expect(view.container.querySelector("em")).toBeNull();
+});
+
+it("shows a card's one-line plain-text summary instead of its Markdown", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify([
+    { slug: "safe-slug", title: "Journey", summary: "# Exampleland\n\n**Two** weeks", summary_text: "Exampleland Two weeks" },
+  ]))));
+  render(<MemoryRouter initialEntries={["/"]}><VisitorRoutes /></MemoryRouter>);
+  const card = await screen.findByRole("link", { name: /Journey/ });
+  expect(card.querySelector("p")?.textContent).toBe("Exampleland Two weeks");
+});

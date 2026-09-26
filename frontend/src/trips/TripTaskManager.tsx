@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { RecordForm, requiredText, TextAreaField, TextField } from "../forms/fields";
 import { useRecordForm } from "../forms/useRecordForm";
+import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { ownerKeys } from "../query/keys";
 import { errorMessage } from "../query/api";
@@ -109,7 +110,7 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
     {!tasksQuery.isPending && !tasks.length && <p>Nog geen taken. Voeg er één toe zodra iets nog geboekt of geregeld moet worden.</p>}
     <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Taak bewerken" : "Taak toevoegen") : "Taak"} dirty={editing && record.dirty} onDismiss={close}>
       {!editing && selected && <div className="stack-form">
-        <div><h3>{selected.title}</h3>{selected.notes && <p>{selected.notes}</p>}<TaskLinks links={selected.links} /></div>
+        <div><h3>{selected.title}</h3><Markdown html={selected.notes_html} text={selected.notes} /><TaskLinks links={selected.links} /></div>
         <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => setConfirmDelete(true)}>Verwijderen</button></div>
         {confirmDelete && <DeleteConfirmation title={`Taak “${selected.title}” verwijderen?`} onCancel={() => setConfirmDelete(false)} onConfirm={() => remove(selected)} />}
       </div>}

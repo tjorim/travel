@@ -229,12 +229,14 @@ def test_public_listing_tracks_live_scope_and_publication_without_owner_data() -
     )
     slug = owner.post(f"/api/trips/{published['id']}/public-projection/publish").json()["slug"]
     assert visitor.get("/api/public/trips").json() == [
-        {"slug": slug, "title": "Public trip", "summary": None, "dates": None}
+        {"slug": slug, "title": "Public trip", "summary": None, "dates": None, "summary_text": None}
     ]
 
     owner.put(f"/api/trips/{published['id']}/public-projection", json=scope(title=False, summary=True))
     cards = visitor.get("/api/public/trips").json()
-    assert cards == [{"slug": slug, "title": None, "summary": "A private trip.", "dates": None}]
+    assert cards == [
+        {"slug": slug, "title": None, "summary": "A private trip.", "dates": None, "summary_text": "A private trip."}
+    ]
     assert not {"id", "trip_id", "owner_subject", "scope", "token"} & cards[0].keys()
     assert draft["id"] not in str(cards) and unlisted["id"] not in str(cards)
 
@@ -421,6 +423,7 @@ def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) ->
         "id": update["id"],
         "title": "Arrival",
         "body": "We landed in Taipei.",
+        "body_html": "<p>We landed in Taipei.</p>\n",
         "date_precision": "day",
         "story_date": "2054-04-04",
         "place": {"label": "Unassigned", "country_code": None, "region": None, "latitude": None, "longitude": None},
