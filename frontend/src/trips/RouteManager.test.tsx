@@ -41,6 +41,7 @@ function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = 
     .collection("/api/trips/trip/areas", areas)
     .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/locations", locations);
+  api.on("POST", /\/areas\/suggest$/, () => ({ existing_area_id: "taipei", area: taipei }));
 }
 beforeEach(() => { auth.session = { accessToken: testToken() }; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); });
@@ -120,6 +121,20 @@ it("files a new location under the chosen area", async () => {
     departure_location: { osm_element_type: "node", osm_element_id: "8", latitude: 25.048, longitude: 121.517, locality: "Taipei", area_id: "taipei" },
     arrival_area_id: "tainan",
   });
+});
+
+it("shows a nearby area suggestion before saving a new location", async () => {
+  seed();
+  api.on("POST", /\/places\/search$/, () => ({ attribution: "Test", attribution_url: "https://example.test", results: [{ osm_element_type: "node", osm_element_id: "8", display_name: "Taipei Main Station", locality: "Taipei", country_code: "TW", latitude: 25.048, longitude: 121.517 }] }));
+  renderWithOwner(<RouteManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  pickAreas("new", "area:tainan");
+  fireEvent.change(screen.getByLabelText("Zoek locatie (vertrek)"), { target: { value: "Taipei Main Station" } });
+  fireEvent.click(screen.getAllByRole("button", { name: "Zoeken" })[0]);
+  fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
+  await waitFor(() => expect((screen.getByLabelText("Gebied van de nieuwe locatie (vertrek)") as HTMLSelectElement).value).toBe("taipei"));
+  fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
+  await waitFor(() => expect(api.lastBody<Record<string, { area_id: string }>>("POST /api/trips/trip/routes")?.departure_location.area_id).toBe("taipei"));
 });
 
 it("reuses a saved location, which is already part of its area", async () => {

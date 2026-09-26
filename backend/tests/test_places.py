@@ -86,6 +86,52 @@ def test_owner_searches_and_saves_a_durable_osm_reference_without_persisting_que
     assert navigation.json() == {"url": "https://www.google.com/maps/dir/?api=1&destination=25.0330000%2C121.5650000", "exact": True}
 
 
+def test_area_suggestion_is_owner_only_and_requires_explicit_selection() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    provider = FakePlaceSearchProvider()
+    app.dependency_overrides[get_place_search_service] = lambda: CachedPlaceSearchService(provider)
+
+    new = owner.post(f"{base}/areas/suggest", json={"latitude": 25.033, "longitude": 121.565})
+    assert new.status_code == 200, new.text
+    assert new.json()["existing_area_id"] is None
+    assert new.json()["area"]["latitude"] == 25.03
+    assert new.json()["area"]["longitude"] == 121.56
+    assert new.json()["area"]["timezone"] == "Asia/Taipei"
+    assert owner.get(f"{base}/areas").json() == []
+
+    created = owner.post(f"{base}/locations", json={
+        "display_name": "Station", "latitude": 25.033, "longitude": 121.565,
+        "locality": "Taipei", "new_area": new.json()["area"],
+    })
+    assert created.status_code == 201, created.text
+    area = owner.get(f"{base}/areas").json()[0]
+    assert area["latitude"] == 25.03 and area["longitude"] == 121.56
+    near = owner.post(f"{base}/areas/suggest", json={"latitude": 25.033, "longitude": 121.565})
+    assert near.json()["existing_area_id"] == area["id"]
+    assert provider.reverse_calls == 1
+    assert client_for("owner-2").post(f"{base}/areas/suggest", json={"latitude": 25.033, "longitude": 121.565}).status_code == 404
+
+
+def test_area_points_are_generalized_on_create_update_and_city_derivation() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    created = owner.post(f"{base}/areas", json={"label": "Taipei", "latitude": 25.03371, "longitude": 121.56541})
+    assert created.status_code == 201
+    assert (created.json()["latitude"], created.json()["longitude"]) == (25.03, 121.57)
+    updated = owner.patch(f"{base}/areas/{created.json()['id']}", json={"latitude": 25.03999, "longitude": 121.56123})
+    assert (updated.json()["latitude"], updated.json()["longitude"]) == (25.04, 121.56)
+    derived = owner.post(f"{base}/locations", json={"locality": "Tainan", "latitude": 22.99911, "longitude": 120.21237})
+    assert derived.status_code == 201
+    assert [(area["latitude"], area["longitude"]) for area in owner.get(f"{base}/areas").json()] == [(25.04, 121.56), (23.0, 120.21)]
+    no_city = owner.post(f"{base}/locations", json={"latitude": 21.12345, "longitude": 120.12345})
+    assert no_city.status_code == 201
+    assert owner.get(f"{base}/areas").json()[-1]["label"] == "Unassigned"
+    assert owner.get(f"{base}/areas").json()[-1]["latitude"] is None
+
+
 def test_owner_can_select_an_area_without_receiving_locations() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)

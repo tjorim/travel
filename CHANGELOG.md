@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Areas now have generalized dots seeded from a location's coordinates, and
+  owner-only coordinate suggestions find a nearby area or propose a new one
+  with a time zone. The owner map can show a hollow derived dot from private
+  locations and save it on request. Route lines and the route editor use area
+  dots. Focusing an area frames its own dot and all its location dots without
+  storing a radius. Visitor projections expose only stored dots of shared areas.
 - Google Photos can be connected from Instellingen with OAuth consent and PKCE.
   Access and refresh tokens persist encrypted in the application database,
   access tokens refresh during imports, and disconnect revokes Google's token.

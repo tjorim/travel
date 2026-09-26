@@ -31,6 +31,8 @@ export function RouteGeometryEditor({ coordinates, onChange, suggestions = [], m
   const inputCoordinates = useRef(coordinates);
   const onChangeRef = useRef(onChange);
   const suggestionsRef = useRef(suggestions);
+  const seeded = useRef(false);
+  const seededOnce = useRef(false);
   const modeRef = useRef(mode);
   const [editorCoordinates, setEditorCoordinates] = useState(coordinates);
   const [ready, setReady] = useState(false);
@@ -44,11 +46,22 @@ export function RouteGeometryEditor({ coordinates, onChange, suggestions = [], m
       inputCoordinates.current = coordinates;
       coordinatesRef.current = coordinates;
       setEditorCoordinates(coordinates);
+      seeded.current = false;
     }
     onChangeRef.current = onChange;
     suggestionsRef.current = suggestions;
     modeRef.current = mode;
   }, [coordinates, onChange, suggestions, mode]);
+
+  useEffect(() => {
+    if (mode !== "edit" || coordinates.length || suggestions.length < 2 || (seededOnce.current && !seeded.current)) return;
+    const endpoints = [suggestions[0].coordinates, suggestions[1].coordinates];
+    if (sameCoordinates(endpoints, coordinatesRef.current)) return;
+    seeded.current = true;
+    seededOnce.current = true;
+    coordinatesRef.current = endpoints;
+    setEditorCoordinates(endpoints);
+  }, [mode, coordinates, suggestions, editorCoordinates.length, onChange]);
 
   useEffect(() => {
     if (!canvas.current) return;
@@ -89,6 +102,7 @@ export function RouteGeometryEditor({ coordinates, onChange, suggestions = [], m
           if (event.originalEvent.target instanceof Element && event.originalEvent.target.closest(".route-geometry-marker")) return;
           const next: RouteCoordinate = [roundedCoordinate(event.lngLat.lng), roundedCoordinate(event.lngLat.lat)];
           const updated = [...coordinatesRef.current, next];
+          seeded.current = false;
           coordinatesRef.current = updated;
           setEditorCoordinates(updated);
           onChangeRef.current(updated);
@@ -108,6 +122,7 @@ export function RouteGeometryEditor({ coordinates, onChange, suggestions = [], m
   }, [editorCoordinates, ready]);
 
   function commit(next: RouteCoordinate[]) {
+    seeded.current = false;
     coordinatesRef.current = next;
     setEditorCoordinates(next);
     onChange(next);

@@ -256,7 +256,7 @@ def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_v
         assert summary[0]["arrival"] == {"label": "Taoyuan", "country_code": "TW", "region": None, "latitude": None, "longitude": None}
         assert summary[0]["carrier"] == "EVA Air"
         assert summary[0]["service_reference"] == "BR-087"
-        # Endpoints appear on the map only when the place itself is shared.
+        # Exact location endpoints appear on the map only when the location itself is shared.
         assert "map" not in summary[0]
         assert "booking_reference" not in summary[0]
         assert "travel_class" not in summary[0]

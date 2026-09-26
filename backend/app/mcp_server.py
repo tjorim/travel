@@ -327,6 +327,12 @@ class TravelMcpBackend:
         """List areas: the cities and regions you authored."""
         return self._call("area.list", "area", None, trip_id, lambda s, sub: areas.list_areas(trip_id, s, sub), lambda x: _models(x, schemas.AreaResponse))
 
+    def suggest_area(self, trip_id: str, payload: schemas.AreaSuggestRequest) -> dict[str, Any]:
+        """Suggest a nearby area or a new generalized area from coordinates; never saves it."""
+        from .places.search import get_place_search_service
+
+        return self._call("area.suggest", "area", None, trip_id, lambda s, sub: areas.suggest_area(trip_id, payload, s, sub, get_place_search_service()), lambda x: _model(x, schemas.AreaSuggestion))
+
     def save_area(self, trip_id: str, payload: schemas.AreaInput) -> dict[str, Any]:
         """Save an area without making it public."""
         return self._call("area.create", "area", None, trip_id, lambda s, sub: areas.save_area(trip_id, payload, s, sub), lambda x: _model(x, schemas.AreaResponse))
@@ -709,7 +715,7 @@ _ADDITIVE_WRITE_TOOLS = frozenset(
 # Tools that call an external service (the place-search provider, media import
 # providers), so their effect is not confined to Travel's own data.
 _OPEN_WORLD_TOOLS = frozenset(
-    {"search_places", "reverse_geocode_place", "start_media_import_session", "complete_media_import_session"}
+    {"search_places", "reverse_geocode_place", "suggest_area", "start_media_import_session", "complete_media_import_session"}
 )
 
 

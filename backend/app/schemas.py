@@ -98,11 +98,14 @@ class LocationInput(LocationFields):
     route. It replaces creating a copy, so nothing else may be supplied with it."""
 
     existing_location_id: str | None = Field(default=None, min_length=1, max_length=32)
+    new_area: "AreaInput | None" = None
 
     @model_validator(mode="after")
     def reuse_supplies_nothing_else(self):
         if self.existing_location_id is not None and self.model_fields_set - {"existing_location_id"}:
             raise ValueError("Supply an existing location on its own, without other location fields")
+        if self.new_area is not None and self.area_id is not None:
+            raise ValueError("Choose an existing area or a new area")
         return self
 
 
@@ -185,6 +188,11 @@ class AreaInput(BaseModel):
 
     _timezone = field_validator("timezone")(require_timezone)
 
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def generalize_coordinate(cls, value: float | None) -> float | None:
+        return round(value, 2) if value is not None else None
+
 
 class AreaUpdate(BaseModel):
     label: str | None = Field(default=None, min_length=1, max_length=120)
@@ -195,6 +203,20 @@ class AreaUpdate(BaseModel):
     timezone: str | None = Field(default=None, max_length=64)
 
     _timezone = field_validator("timezone")(require_timezone)
+
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def generalize_coordinate(cls, value: float | None) -> float | None:
+        return round(value, 2) if value is not None else None
+
+
+class AreaSuggestRequest(PlaceReverseGeocodeRequest):
+    city: str | None = Field(default=None, max_length=120)
+
+
+class AreaSuggestion(BaseModel):
+    existing_area_id: str | None = None
+    area: AreaInput
 
 
 class AreaResponse(AreaInput):

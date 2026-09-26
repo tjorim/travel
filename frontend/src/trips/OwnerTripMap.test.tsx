@@ -63,3 +63,14 @@ it("pins the current map data for offline use", async () => {
   await screen.findByText(/offline bewaard op dit toestel/);
   await screen.findByRole("button", { name: "Offline verwijderen" });
 });
+
+it("offers a private derived area dot and stores it only on request", async () => {
+  const unpointed = { ...taipei, latitude: null, longitude: null };
+  api.collection("/api/trips/trip/locations", [{ ...cafe, area_id: "taipei" }]);
+  api.on("PATCH", /\/areas\/taipei$/, (_url, body) => ({ ...unpointed, ...body }));
+  renderWithOwner(<OwnerTripMap trip={trip} areas={[unpointed]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Taipei" }));
+  expect(api.count("PATCH /api/trips/trip/areas/taipei")).toBe(0);
+  fireEvent.click(screen.getByRole("button", { name: "Gebruik als punt" }));
+  await waitFor(() => expect(api.lastBody("PATCH /api/trips/trip/areas/taipei")).toEqual({ latitude: 25.04, longitude: 121.5 }));
+});

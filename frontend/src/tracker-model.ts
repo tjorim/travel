@@ -68,6 +68,8 @@ export type Area = {
   timezone: string | null;
 };
 
+export type AreaSuggestion = { existing_area_id: string | null; area: Pick<Area, "label" | "country_code" | "region" | "latitude" | "longitude" | "timezone"> };
+
 /** How a route is travelled. */
 export type RouteMode = "flight" | "train" | "bus" | "ferry" | "car" | "bike" | "walk" | "other";
 

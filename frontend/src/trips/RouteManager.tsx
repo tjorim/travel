@@ -161,6 +161,15 @@ export function RouteManager({ trip }: { trip: Trip }) {
     return kind === "area" ? id : kind === "location" ? locations.find((location) => location.id === id)?.area_id ?? "" : value.newAreaId;
   };
   const areaPoint = (value: PlaceValue): { label: string; coordinates: RouteCoordinate }[] => {
+    if (value.choice.startsWith("location:")) {
+      const location = locations.find((candidate) => candidate.id === value.choice.slice("location:".length));
+      if (location?.visibility === "everyone" && location.latitude !== null && location.longitude !== null) {
+        return [{ label: location.display_name ?? location.locality ?? "Locatie", coordinates: [location.longitude, location.latitude] }];
+      }
+    }
+    if (value.newAreaId === "__new__" && value.newAreaCandidate?.latitude != null && value.newAreaCandidate.longitude != null) {
+      return [{ label: value.newAreaCandidate.label, coordinates: [value.newAreaCandidate.longitude, value.newAreaCandidate.latitude] }];
+    }
     const area = areas.find((candidate) => candidate.id === areaIdOf(value));
     return area && area.latitude !== null && area.longitude !== null ? [{ label: area.label, coordinates: [area.longitude, area.latitude] }] : [];
   };

@@ -28,7 +28,7 @@ def _safe_date(value: Any, precision: str) -> str | None:
     return value.isoformat()[: _PRECISION_LENGTH[precision]] if value else None
 
 
-def _share_place(place: Area | None) -> dict[str, Any] | None:
+def _share_place(place: Area | None, shared_areas: set[str] | None = None) -> dict[str, Any] | None:
     """Embed only an area's deliberately authored safe fields."""
     if place is None:
         return None
@@ -36,8 +36,8 @@ def _share_place(place: Area | None) -> dict[str, Any] | None:
         "label": place.label,
         "country_code": place.country_code,
         "region": place.region,
-        "latitude": place.latitude,
-        "longitude": place.longitude,
+        "latitude": round(place.latitude, 2) if (shared_areas is None or place.id in shared_areas) and place.latitude is not None and place.longitude is not None else None,
+        "longitude": round(place.longitude, 2) if (shared_areas is None or place.id in shared_areas) and place.latitude is not None and place.longitude is not None else None,
     }
 
 
@@ -163,7 +163,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         shared_location = _embedded_location(item.location, context)
         values = {
             "title": item.title or (shared_location or {}).get("label") or item.area.label,
-            "summary": item.summary, "place": _share_place(item.area), "date_precision": precision,
+            "summary": item.summary, "place": _share_place(item.area, context["areas"]), "date_precision": precision,
         }
         if item.starts_on is not None:
             values["starts_on"] = _safe_date(item.starts_on, precision)
@@ -180,7 +180,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         locations = context["locations"]
         values = {
             "mode": item.mode.value, "status": item.status.value, "label": item.label,
-            "departure": _share_place(item.departure_area), "arrival": _share_place(item.arrival_area),
+            "departure": _share_place(item.departure_area, context["areas"]), "arrival": _share_place(item.arrival_area, context["areas"]),
             "carrier": item.carrier, "service_reference": item.service_reference,
         }
         if item.departs_at is not None and item.arrives_at is not None:
@@ -203,7 +203,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
     elif kind == "stay":
         precision = item.share_date_precision.value
         values = {
-            "title": item.area.label, "place": _share_place(item.area), "date_precision": precision,
+            "title": item.area.label, "place": _share_place(item.area, context["areas"]), "date_precision": precision,
             "starts_on": _safe_date(item.check_in_date, precision), "ends_on": _safe_date(item.check_out_date, precision),
         }
         if location := _embedded_location(item.location, context):
@@ -211,7 +211,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
     elif kind == "travel_update":
         values = {"title": item.title, "body": item.body, "date_precision": item.date_precision.value,
                   "story_date": _safe_date(item.occurred_at.date(), item.date_precision.value),
-                  "place": _share_place(item.area)}
+                  "place": _share_place(item.area, context["areas"])}
         if location := _embedded_location(item.location, context):
             values["location"] = location
     elif kind == "media_derivative":
@@ -250,6 +250,7 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
     context = {
         "updates": {item.id: local_id("travel_update", item) for item in records["travel_update"]},
         "locations": {item.id for item in records["location"]},
+        "areas": {item.id for item in records["area"]},
     }
     projection: dict[str, Any] = {
         "schema_version": schema_version,

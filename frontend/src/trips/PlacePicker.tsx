@@ -1,5 +1,7 @@
-import { useTripResource } from "../query/owner-queries";
-import { locationName, type Area, type Location, type LocationInput, type PlaceSearchResult, type Visit } from "../tracker-model";
+import { useRef } from "react";
+
+import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { locationName, type Area, type AreaSuggestion, type Location, type LocationInput, type PlaceSearchResult, type Visit } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
 
 /**
@@ -10,13 +12,14 @@ import { PlaceSearchField } from "./PlaceSearchField";
 export type PlaceValue = {
   choice: string;
   newName: string; newLocality: string; newCountryCode: string;
-  /** The area a new location goes into; empty derives it from its city. */
+  /** Existing area id, "__new__" for an accepted candidate, or empty for the city fallback. */
   newAreaId: string;
+  newAreaCandidate: AreaSuggestion["area"] | null;
   /** The search result a new location started from (its address, point and provider reference). */
   newResult: LocationInput | null;
 };
 
-export const emptyPlace = (): PlaceValue => ({ choice: "", newName: "", newLocality: "", newCountryCode: "", newAreaId: "", newResult: null });
+export const emptyPlace = (): PlaceValue => ({ choice: "", newName: "", newLocality: "", newCountryCode: "", newAreaId: "", newAreaCandidate: null, newResult: null });
 
 /** The value that shows what a record already points at. */
 export function placeOf(area: Area, location: Location | null): PlaceValue {
@@ -44,7 +47,7 @@ export function placeFields(value: PlaceValue, prefix = ""): Record<string, unkn
         display_name: value.newName.trim() || null,
         locality: value.newLocality.trim() || null,
         country_code: value.newCountryCode.trim().toUpperCase() || null,
-        ...(value.newAreaId ? { area_id: value.newAreaId } : {}),
+        ...(value.newAreaId === "__new__" && value.newAreaCandidate ? { new_area: value.newAreaCandidate } : value.newAreaId ? { area_id: value.newAreaId } : {}),
       },
     };
   }
@@ -53,12 +56,28 @@ export function placeFields(value: PlaceValue, prefix = ""): Record<string, unkn
 
 /** One picker for a place: areas with their locations nested, and a way to add a new location. */
 export function PlacePicker({ tripId, label, value, onChange, hint }: { tripId: string; label: string; value: PlaceValue; onChange: (value: PlaceValue) => void; hint?: string }) {
+  const currentValue = useRef(value);
+  currentValue.current = value;
   const areas = useTripResource(tripId, "areas").data ?? [];
   const locations = useTripResource(tripId, "locations").data ?? [];
-  const inArea = (area: Area) => locations.filter((location) => location.area_id === area.id);
-  const useResult = (result: PlaceSearchResult) => onChange({
-    ...value, choice: "new", newResult: result, newName: result.display_name ?? "", newLocality: result.locality ?? "", newCountryCode: result.country_code ?? "",
+  const suggestion = useOwnerMutation<{ latitude: number; longitude: number; city?: string }, AreaSuggestion>({
+    fallback: "Gebied kon niet worden voorgesteld.",
+    request: (body) => ({ path: tripPath(tripId, "areas/suggest"), method: "POST", body }),
+    invalidate: () => [],
+    gcTime: 0,
   });
+  const inArea = (area: Area) => locations.filter((location) => location.area_id === area.id);
+  async function useResult(result: PlaceSearchResult) {
+    const next = { ...value, choice: "new", newResult: result, newName: result.display_name ?? "", newLocality: result.locality ?? "", newCountryCode: result.country_code ?? "", newAreaId: "", newAreaCandidate: null };
+    onChange(next);
+    if (result.latitude == null || result.longitude == null) return;
+    try {
+      const proposed = await suggestion.mutateAsync({ latitude: result.latitude, longitude: result.longitude, city: result.locality ?? undefined });
+      if (currentValue.current.newResult?.latitude === result.latitude && currentValue.current.newResult?.longitude === result.longitude && !currentValue.current.newAreaId) {
+        onChange({ ...currentValue.current, newAreaId: proposed.existing_area_id ?? "__new__", newAreaCandidate: proposed.existing_area_id ? null : proposed.area });
+      }
+    } catch { /* Owner can still choose an area or use the city fallback. */ }
+  }
 
   return <fieldset className="place-picker"><legend>{label}</legend>
     <div className="field"><label>{label} kiezen
@@ -73,7 +92,7 @@ export function PlacePicker({ tripId, label, value, onChange, hint }: { tripId: 
     </label></div>
     {hint && <p className="help">{hint}</p>}
     {value.choice === "new" && <div className="place-picker-new">
-      <PlaceSearchField tripId={tripId} legend="Locatie zoeken" inputLabel={`Zoek locatie (${label.toLowerCase()})`} placeholder="Bijvoorbeeld: Taipei Main Station" help="Een gekozen locatie blijft privé. Zonder gebied hieronder wordt het gebied uit de plaats van de locatie afgeleid." onSelect={useResult} />
+      <PlaceSearchField tripId={tripId} legend="Locatie zoeken" inputLabel={`Zoek locatie (${label.toLowerCase()})`} placeholder="Bijvoorbeeld: Taipei Main Station" help="Een gekozen locatie blijft privé. Controleer het voorgestelde gebied voordat je opslaat." onSelect={(result) => void useResult(result)} />
       <div className="field-row">
         <div className="field"><label>Naam <span className="optional">(optioneel)</span><input aria-label={`Naam (${label.toLowerCase()})`} value={value.newName} maxLength={500} onChange={(event) => onChange({ ...value, newName: event.target.value })} /></label></div>
         <div className="field"><label>Plaats <span className="optional">(optioneel)</span><input aria-label={`Plaats (${label.toLowerCase()})`} value={value.newLocality} maxLength={120} onChange={(event) => onChange({ ...value, newLocality: event.target.value })} /></label></div>
@@ -82,10 +101,14 @@ export function PlacePicker({ tripId, label, value, onChange, hint }: { tripId: 
         <div className="field"><label>Landcode <span className="optional">(optioneel)</span><input aria-label={`Landcode (${label.toLowerCase()})`} value={value.newCountryCode} maxLength={2} onChange={(event) => onChange({ ...value, newCountryCode: event.target.value })} /></label></div>
         <div className="field"><label>Gebied <span className="optional">(optioneel)</span>
           <select aria-label={`Gebied van de nieuwe locatie (${label.toLowerCase()})`} value={value.newAreaId} onChange={(event) => onChange({ ...value, newAreaId: event.target.value })}>
-            <option value="">Afleiden uit de plaats</option>{areas.map((area) => <option key={area.id} value={area.id}>{area.label}</option>)}
+            <option value="">{value.newResult?.latitude != null ? "Geen voorstel gebruiken (plaatsregel)" : "Afleiden uit de plaats"}</option>{value.newAreaCandidate && <option value="__new__">Nieuw gebied: {value.newAreaCandidate.label}{value.newAreaCandidate.timezone ? ` · ${value.newAreaCandidate.timezone}` : ""}</option>}{areas.map((area) => <option key={area.id} value={area.id}>{area.label}</option>)}
           </select>
         </label></div>
       </div>
+      {value.newAreaId === "__new__" && value.newAreaCandidate && <div className="field-row">
+        <div className="field"><label>Naam nieuw gebied<input value={value.newAreaCandidate.label} maxLength={120} onChange={(event) => onChange({ ...value, newAreaCandidate: { ...value.newAreaCandidate!, label: event.target.value } })} /></label></div>
+        <div className="field"><label>Tijdzone nieuw gebied<input value={value.newAreaCandidate.timezone ?? ""} maxLength={64} onChange={(event) => onChange({ ...value, newAreaCandidate: { ...value.newAreaCandidate!, timezone: event.target.value || null } })} /></label></div>
+      </div>}
     </div>}
   </fieldset>;
 }

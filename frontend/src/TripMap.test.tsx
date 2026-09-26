@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { TripMap } from "./TripMap";
+import { areaFocusPoints, TripMap } from "./TripMap";
 
 afterEach(cleanup);
 
@@ -21,4 +21,11 @@ it("offers the same non-sensitive map-layer controls to visitors", () => {
   render(<TripMap points={[{ id: "city", label: "Area city", coordinates: [121, 25] }]} lines={[]} />);
   expect(screen.getByRole("button", { name: "3D-terrein" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Satelliet" })).toBeTruthy();
+});
+
+it("frames only the locations filed under the focused area", () => {
+  const area = { id: "a", label: "Area", coordinates: [121, 25] as [number, number], kind: "area" as const };
+  const nearby = { id: "l1", label: "Nearby", coordinates: [121.2, 25.1] as [number, number], kind: "location" as const, areaId: "a" };
+  const far = { id: "l2", label: "Other area", coordinates: [130, 35] as [number, number], kind: "location" as const, areaId: "b" };
+  expect(areaFocusPoints(area, [area, nearby, far])).toEqual([area, nearby]);
 });

@@ -34,6 +34,8 @@ def area_for_location(session: Session, trip_id: str, location: Location) -> Are
     area = Area(
         trip_id=trip_id, label=name[:120], country_code=location.country_code,
         region=location.admin_area if location.locality and not fallback else None,
+        latitude=round(location.latitude, 2) if not fallback and location.latitude is not None and location.longitude is not None else None,
+        longitude=round(location.longitude, 2) if not fallback and location.latitude is not None and location.longitude is not None else None,
     )
     session.add(area)
     session.flush()
@@ -49,8 +51,12 @@ def location_from_input(session: Session, trip_id: str, payload: LocationInput) 
         if existing is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location not found on this trip")
         return existing
-    location = Location(trip_id=trip_id, **payload.model_dump(exclude={"existing_location_id", "area_id"}))
-    if payload.area_id is not None:
+    location = Location(trip_id=trip_id, **payload.model_dump(exclude={"existing_location_id", "area_id", "new_area"}))
+    if payload.new_area is not None:
+        location.area = Area(trip_id=trip_id, **payload.new_area.model_dump())
+        session.add(location.area)
+        session.flush()
+    elif payload.area_id is not None:
         location.area = selected_area(session, trip_id, payload.area_id)
     else:
         location.area = area_for_location(session, trip_id, location)

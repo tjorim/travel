@@ -9,15 +9,26 @@ and [the privacy policy](decisions/36-privacy-sharing-offline-policy.md).
 
 Everything in a trip is one of these. The Dutch word is what the owner sees.
 
-- **Area** (*gebied*): a city or region, with a label, country and an optional
-  rounded point and time zone. Never an address. Sharing an area never shares
-  the locations in it.
+- **Area** (*gebied*): a city or region represented by one dot, with a label,
+  country and an optional point rounded to two decimals and time zone. Never
+  an address or a stored extent. Sharing an area never shares the locations in
+  it. The owner map may show a hollow dot at the mean of its private location
+  points when no area point has been saved; that mean is neither stored nor
+  projected until the owner chooses **Gebruik als punt**, which rounds it.
+  Focusing an area fits its dot and all its location dots in the owner map;
+  the viewport is calculated for display and is not an area radius or boundary.
 - **Location** (*locatie*): a hotel, station, monument or just a city, with an
   address and coordinates when known. It always belongs to exactly one area,
   and stays private until the owner gives it a public name and chooses who
   sees it. A new location goes into the area the owner picks, else into the
   area of its city (made when it does not exist yet), else into a private
   "Unassigned" area.
+  A new city-derived area starts at the location's generalized point when it
+  has coordinates; "Unassigned" never gets a point from a location. The owner
+  can request an area suggestion from coordinates: the closest saved area
+  within 25 km, otherwise a new area candidate from reverse lookup with a
+  proposed IANA time zone. The suggestion never saves or silently re-files a
+  location. The owner selects or edits it before saving.
 - **Visit** (*bezoek*): a stop of the trip: an area, or a location in one, and
   optionally when: days, a start and end time (local at the visit, in the time
   zone of its area) and a kind (free or work). Getting somewhere is a route, not

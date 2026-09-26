@@ -155,6 +155,17 @@ def test_map_inputs_never_include_owner_only_geometry_or_unselected_coordinates(
             assert secret not in delivered.text
 
 
+def test_projection_generalizes_even_a_legacy_area_point() -> None:
+    from app.models import Area
+    from app.projection import _share_place
+
+    area = Area(label="Somewhere", latitude=25.03371, longitude=121.56541)
+    assert _share_place(area) == {
+        "label": "Somewhere", "country_code": None, "region": None,
+        "latitude": 25.03, "longitude": 121.57,
+    }
+
+
 def test_public_listing_tracks_live_scope_and_publication_without_owner_data() -> None:
     owner = client_for("owner-1")
     draft = create_trip(owner, "Private draft")

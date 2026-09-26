@@ -6,7 +6,7 @@ import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { configuredMapStyleUrl, loadMapStyle } from "./map-style";
 import type { RouteMode } from "./tracker-model";
 
-export type MapPoint = { id: string; label: string; coordinates: [number, number]; kind?: "mountain" | "stay" | "airport" | "place"; detail?: string; dates?: string };
+export type MapPoint = { id: string; label: string; coordinates: [number, number]; kind?: "mountain" | "stay" | "airport" | "place" | "area" | "derived" | "location"; areaId?: string; detail?: string; dates?: string };
 export type MapLine = { id: string; label: string; coordinates: [number, number][]; transport?: RouteMode; from?: string; to?: string };
 export type MapPerspective = { center: [number, number]; zoom: number; pitch: number; bearing: number; label?: string; exaggeration?: number };
 
@@ -20,7 +20,12 @@ function fitToData(instance: MapLibreMap, Bounds: typeof import("maplibre-gl").L
   if (!bounds.isEmpty()) instance.fitBounds(bounds, { padding: 45, maxZoom: 10, duration, pitch: 0, bearing: 0 });
 }
 
-export function TripMap({ points, lines, owner = false, perspective, styleUrl = configuredMapStyleUrl, focus }: { points: MapPoint[]; lines: MapLine[]; owner?: boolean; perspective?: MapPerspective; styleUrl?: string; focus?: { id: string; request: number } | null }) {
+/** The owner-only points to frame when an area is focused. */
+export function areaFocusPoints(area: MapPoint, points: MapPoint[]): MapPoint[] {
+  return [area, ...points.filter((point) => point.kind === "location" && point.areaId === area.id)];
+}
+
+export function TripMap({ points, lines, owner = false, perspective, styleUrl = configuredMapStyleUrl, focus, onUseDerived }: { points: MapPoint[]; lines: MapLine[]; owner?: boolean; perspective?: MapPerspective; styleUrl?: string; focus?: { id: string; request: number } | null; onUseDerived?: (point: MapPoint) => void }) {
   const canvas = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -57,7 +62,7 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
       created.on("load", () => {
         if (!instance || disposed) return;
         const routeData: FeatureCollection<LineString> = { type: "FeatureCollection", features: lines.map((line) => ({ type: "Feature", properties: { id: line.id, transport: line.transport ?? "other" }, geometry: { type: "LineString", coordinates: line.coordinates } })) };
-        const pointData: FeatureCollection<Point> = { type: "FeatureCollection", features: points.map((point) => ({ type: "Feature", properties: { id: point.id, kind: point.kind ?? "place" }, geometry: { type: "Point", coordinates: point.coordinates } })) };
+        const pointData: FeatureCollection<Point> = { type: "FeatureCollection", features: points.map((point) => ({ type: "Feature", properties: { id: point.id, kind: point.kind ?? "place", areaId: point.areaId ?? "" }, geometry: { type: "Point", coordinates: point.coordinates } })) };
         instance.addSource("routes", { type: "geojson", data: routeData });
         instance.addSource("stops", { type: "geojson", data: pointData });
         const routeStyles: Record<RouteMode, { color: string; width: number; dash?: number[] }> = {
@@ -73,11 +78,22 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
         for (const [transport, routeStyle] of Object.entries(routeStyles)) {
           instance.addLayer({ id: `route-${transport}`, type: "line", source: "routes", filter: ["==", ["get", "transport"], transport], paint: { "line-color": routeStyle.color, "line-width": routeStyle.width, ...(routeStyle.dash ? { "line-dasharray": routeStyle.dash } : {}) }, layout: { "line-cap": "round", "line-join": "round" } });
         }
-        instance.addLayer({ id: "stop-halo", type: "circle", source: "stops", paint: { "circle-radius": 12, "circle-color": "#63b3ff", "circle-opacity": 0.22 } });
-        instance.addLayer({ id: "stops", type: "circle", source: "stops", paint: { "circle-color": ["match", ["get", "kind"], "mountain", "#6ee7c7", "stay", "#63b3ff", "airport", "#ffd166", "#ff7a59"], "circle-radius": 7, "circle-stroke-color": "#19342d", "circle-stroke-width": 2 } });
+        instance.addLayer({ id: "stop-halo", type: "circle", source: "stops", filter: ["!=", ["get", "kind"], "location"], paint: { "circle-radius": 12, "circle-color": "#63b3ff", "circle-opacity": 0.22 } });
+        instance.addLayer({ id: "stops", type: "circle", source: "stops", filter: ["!=", ["get", "kind"], "location"], paint: { "circle-color": ["match", ["get", "kind"], "mountain", "#6ee7c7", "stay", "#63b3ff", "airport", "#ffd166", "area", "#ff7a59", "derived", "#ffffff", "#ff7a59"], "circle-radius": 8, "circle-stroke-color": "#19342d", "circle-stroke-width": ["match", ["get", "kind"], "derived", 3, 2] } });
+        instance.addLayer({ id: "locations", type: "circle", source: "stops", filter: ["==", ["get", "kind"], "location"], minzoom: 9, paint: { "circle-radius": 5, "circle-color": "#63b3ff", "circle-stroke-color": "#19342d", "circle-stroke-width": 1 } });
+        instance.addLayer({ id: "focused-locations", type: "circle", source: "stops", filter: ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], ""]], maxzoom: 9, paint: { "circle-radius": 5, "circle-color": "#63b3ff", "circle-stroke-color": "#19342d", "circle-stroke-width": 1 } });
+        instance.addLayer({ id: "area-labels", type: "symbol", source: "stops", filter: ["in", ["get", "kind"], ["literal", ["area", "derived"]]], layout: { "text-field": ["get", "label"], "text-size": 13, "text-offset": [0, 1.3], "text-anchor": "top" }, paint: { "text-color": "#19342d", "text-halo-color": "#ffffff", "text-halo-width": 2 } });
         instance.addLayer({ id: "selected-stop", type: "circle", source: "stops", filter: ["==", ["get", "id"], ""], paint: { "circle-radius": 15, "circle-color": "#ffd166", "circle-opacity": 0.32, "circle-stroke-width": 2, "circle-stroke-color": "#ffd166" } });
         fitToData(instance, maplibregl.LngLatBounds, points, lines);
         instance.on("click", "stops", (event) => {
+          const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+          if (point) selectPoint(point);
+        });
+        instance.on("click", "locations", (event) => {
+          const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+          if (point) selectPoint(point);
+        });
+        instance.on("click", "focused-locations", (event) => {
           const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
           if (point) selectPoint(point);
         });
@@ -136,13 +152,28 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
 
   function selectPoint(point: MapPoint) {
     setSelected(point.id);
-    map.current?.flyTo({ center: point.coordinates, zoom: Math.max(map.current.getZoom(), satellite ? 15 : 9), essential: true });
+    const instance = map.current;
+    if (!instance) return;
+    const focusedArea = owner && (point.kind === "area" || point.kind === "derived");
+    instance.setFilter("focused-locations", ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], focusedArea ? point.id : ""]]);
+    const group = focusedArea ? areaFocusPoints(point, points) : [point];
+    if (group.length > 1) {
+      const longitudes = group.map((member) => member.coordinates[0]);
+      const latitudes = group.map((member) => member.coordinates[1]);
+      instance.fitBounds(
+        [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
+        { padding: 60, maxZoom: 11, duration: 500, pitch: 0, bearing: 0 },
+      );
+    } else {
+      instance.flyTo({ center: point.coordinates, zoom: Math.max(instance.getZoom(), satellite ? 15 : 9), essential: true });
+    }
   }
 
   function selectLine(line: MapLine) {
     setSelected(line.id);
     const instance = map.current;
     if (!instance) return;
+    instance.setFilter("focused-locations", ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], ""]]);
     let west = 180, east = -180, south = 90, north = -90;
     for (const [longitude, latitude] of line.coordinates) {
       west = Math.min(west, longitude); east = Math.max(east, longitude);
@@ -159,7 +190,7 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     <div className="button-row"><button className={`secondary compact map-layer-toggle ${terrain ? "active" : ""}`} type="button" aria-pressed={terrain} disabled={!ready} onClick={toggleTerrain}>{perspective?.label ?? "3D-terrein"}{terrain && " · aan"}</button><button className={`secondary compact map-layer-toggle ${satellite ? "active" : ""}`} type="button" aria-pressed={satellite} disabled={!ready} onClick={toggleSatellite}>Satelliet{satellite && " · aan"}</button></div>
     {satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
     <p className="trip-map-privacy">Kaarttegels tonen de bekeken regio aan OpenFreeMap. 3D-terrein vraagt na inschakeling hoogtegegevens op bij Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri.</p>
-    {(selectedPoint || selectedLine) && <p aria-live="polite"><strong>Geselecteerd:</strong> {selectedPoint?.label ?? selectedLine?.label}{selectedPoint?.detail && <> · {selectedPoint.detail}</>}{selectedPoint?.dates && <> · {selectedPoint.dates}</>}</p>}
+    {(selectedPoint || selectedLine) && <p aria-live="polite"><strong>Geselecteerd:</strong> {selectedPoint?.label ?? selectedLine?.label}{selectedPoint?.detail && <> · {selectedPoint.detail}</>}{selectedPoint?.dates && <> · {selectedPoint.dates}</>}{selectedPoint?.kind === "derived" && onUseDerived && <> · <button className="secondary compact" type="button" onClick={() => onUseDerived(selectedPoint)}>Gebruik als punt</button></>}</p>}
     {points.length > 0 && <div className="trip-map-stops"><h4>Punten op de kaart</h4><ol>{points.map((point) => <li key={point.id}><button className="secondary compact" type="button" aria-pressed={selected === point.id} onClick={() => selectPoint(point)}>{point.label}</button></li>)}</ol></div>}
     {lines.length > 0 && <div className="trip-map-words"><h4>Route in woorden</h4><ol>{lines.map((line) => <li key={line.id}><button className="secondary compact" type="button" aria-pressed={selected === line.id} onClick={() => selectLine(line)}>{line.from && line.to ? `${line.from} → ${line.to} · ` : ""}{line.label}</button></li>)}</ol></div>}
   </section>;

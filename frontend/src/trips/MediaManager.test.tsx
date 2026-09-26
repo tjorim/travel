@@ -27,7 +27,8 @@ beforeEach(() => {
   api = fakeApi()
     .collection("/api/trips/trip/media", [photo("p1", "kust.jpg"), photo("p2", "markt.jpg")])
     .collection("/api/trips/trip/media/p1/derivatives", [derivative("x1", "pending", { caption: "Kust" })])
-    .collection("/api/trips/trip/media/p2/derivatives", []);
+    .collection("/api/trips/trip/media/p2/derivatives", [])
+    .collection("/api/trips/trip/visits", []);
   providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: true, connected: true }];
   api.on("GET", /^\/api\/provider-tokens$/, () => providers);
 });
