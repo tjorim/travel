@@ -124,6 +124,32 @@ it("reorders and deletes visits after the in-app confirmation", async () => {
   expect(api.count("DELETE /api/trips/trip/visits/v2")).toBe(1);
 });
 
+it("shows visitor text and private notes in their own labelled sections", async () => {
+  seed([visit("v1", 0, { title: "Belém", summary: "Torre de Belém bezoeken", notes: "Review demo note — bring a light jacket" })]);
+  renderWithOwner(<VisitManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Belém bekijken" }));
+  await screen.findByText("Torre de Belém bezoeken");
+  expect(screen.getByText("Voor bezoekers").tagName).toBe("P");
+  expect(screen.getByText("Alleen voor jou").tagName).toBe("H4");
+  const privateSection = screen.getByText("Alleen voor jou").closest("div")!;
+  expect(within(privateSection).getByText("Review demo note — bring a light jacket")).toBeTruthy();
+});
+
+it("skips the visitor heading when there is no visitor text", async () => {
+  seed([visit("v1", 0, { title: "Alleen privé", summary: null, notes: "Geheime aantekening" })]);
+  renderWithOwner(<VisitManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Alleen privé bekijken" }));
+  await screen.findByText("Geheime aantekening");
+  expect(screen.queryByText("Voor bezoekers")).toBeNull();
+});
+
+it("says so when there is no private note", async () => {
+  seed([visit("v2", 0, { title: "Alleen tekst", summary: "Voor bezoekers tekst", notes: null })]);
+  renderWithOwner(<VisitManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Alleen tekst bekijken" }));
+  await screen.findByText("Geen privénotitie.");
+});
+
 it("describes when a visit is, and which nights a stay covers", () => {
   expect(visitWhen(visit("v", 0))).toBe("Nog geen dag");
   expect(visitWhen(visit("v", 0, { starts_on: "2054-11-21", start_time: "18:30:00", end_time: "21:00:00" }))).toMatch(/18:30–21:00$/);

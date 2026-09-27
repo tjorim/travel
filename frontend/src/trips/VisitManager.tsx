@@ -209,7 +209,8 @@ export function VisitManager({ trip, onShowOnMap, focusId }: { trip: Trip; onSho
     {!visitsQuery.isPending && !visitsQuery.error && visits.length === 0 && <p>Nog geen bezoeken. Voeg er één toe om je reis te ordenen.</p>}
     <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Bezoek bewerken" : "Bezoek toevoegen") : "Bezoek"} dirty={editing && record.dirty} onDismiss={close}>
       {!editing && selected && <div className="stack-form">
-        <div><h3>{visitTitle(selected)}</h3><p>{dayLine(selected)}</p><p>{visitPlace(selected)}</p>{selected.summary && <><p className="markdown-label">Voor bezoekers</p><Markdown html={selected.summary_html} text={selected.summary} /></>}<Markdown html={selected.notes_html} text={selected.notes} />{sleeping(selected)}</div>
+        <div><h3>{visitTitle(selected)}</h3><p>{dayLine(selected)}</p><p>{visitPlace(selected)}</p>{selected.summary && <><p className="markdown-label">Voor bezoekers</p><Markdown html={selected.summary_html} text={selected.summary} /></>}{sleeping(selected)}</div>
+        <div><h4>Alleen voor jou</h4>{selected.notes ? <Markdown html={selected.notes_html} text={selected.notes} /> : <p className="help">Geen privénotitie.</p>}</div>
         <VisibilityControl tripId={trip.id} kind="visit" id={selected.id} value={selected.visibility} name={visitTitle(selected)} />
         <p className="help">{selected.start_time ? (selected.share_time ? "Bezoekers zien ook de tijd, omdat je dat hebt aangevinkt en de datum volledig deelt." : "De tijd blijft privé.") : "Dit bezoek heeft geen tijd."} Notities blijven altijd privé.</p>
         <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
