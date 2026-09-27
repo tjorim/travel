@@ -326,7 +326,14 @@ class Trip(Base):
     routes: Mapped[list["Route"]] = relationship(
         back_populates="trip",
         cascade="all, delete-orphan",
-        order_by=lambda: (Route.departs_at.is_(None), Route.departs_at, Route.created_at),
+        # By day; within a day, day-only routes follow the timed ones, as in the Agenda.
+        order_by=lambda: (
+            Route.departs_on.is_(None),
+            Route.departs_on,
+            Route.departs_at.is_(None),
+            Route.departs_at,
+            Route.created_at,
+        ),
     )
     media_derivatives: Mapped[list["MediaDerivative"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
@@ -473,6 +480,7 @@ class Route(Base):
     __table_args__ = (
         CheckConstraint("(departs_at IS NULL) = (arrives_at IS NULL)", name="ck_route_times_paired"),
         CheckConstraint("arrives_at > departs_at", name="ck_route_arrival_after_departure"),
+        CheckConstraint("departs_at IS NULL OR departs_on IS NOT NULL", name="ck_route_time_needs_a_day"),
     )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
@@ -487,6 +495,10 @@ class Route(Base):
     arrival_area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False)
     departure_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
     arrival_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
+    # The local calendar day of departure, in the departure time zone. A route
+    # can have a day before it has a train ("Kaohsiung → Taipei on 5 December");
+    # once ``departs_at`` is set, this is always its local date.
+    departs_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     departs_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     arrives_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # IANA zones of each end. When set, the owner enters and reads the local

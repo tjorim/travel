@@ -6,6 +6,23 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- A route can have a day before it has a train: `departs_on` is the local
+  departure day in the departure time zone, so "Kaohsiung → Taipei on 5
+  December, no train yet" is stored as a day without inventing a time or
+  putting the date in the label. Exact `departs_at`/`arrives_at` stay optional
+  and need a day (`ck_route_time_needs_a_day`); with them `departs_on` is
+  derived, a different day is refused, and clearing the times keeps the day.
+  Migration `005_route_departure_day` fills it for existing routes from their
+  departure time in the departure zone, else the departure area's, else UTC.
+  The route editor asks for the day first and the times as an optional second
+  step; the Agenda places routes on their day (day-only items after the timed
+  ones of that day) and lists undated visits and routes in a "Nog geen dag"
+  section instead of hiding them; routes are ordered by day everywhere. The
+  trip overview counts `routes_undated` next to `visits_undated`,
+  `list_routes` compact rows carry `departs_on`, and the MCP route tools
+  describe the day-first rule. Shared routes carry `departs_on` next to the
+  times they already shared. Stays keep their required dates.
+  ([#197](https://github.com/tjorim/travel/issues/197))
 - The owner app's Markdown fields share one editor: a plain textarea with a
   snippet toolbar (bold, italic, heading, list, task list, link) and a Preview
   tab that the server renders through the new owner-only

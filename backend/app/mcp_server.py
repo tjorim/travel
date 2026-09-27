@@ -127,6 +127,7 @@ _COMPACT_FIELDS = {
         "mode",
         "status",
         "label",
+        "departs_on",
         "departs_at",
         "arrives_at",
         "departure_timezone",
@@ -459,7 +460,7 @@ class TravelMcpBackend:
         )
 
     def get_trip_overview(self, trip_id: str) -> dict[str, Any]:
-        """Check a trip in one read: counts per kind (to compare with a source such as an archive file), visibility per kind, what the public page and each draft or active link receive, and warnings to review before sharing (an active audience receiving nothing, shared trip dates, planning words like "concept" in a visible label, records without a map point because their area is not shared, undated visits duplicating dated ones)."""
+        """Check a trip in one read: counts per kind, including visits_undated and routes_undated (to compare with a source such as an archive file), visibility per kind, what the public page and each draft or active link receive, and warnings to review before sharing (an active audience receiving nothing, shared trip dates, planning words like "concept" in a visible label, records without a map point because their area is not shared, undated visits duplicating dated ones)."""
         return self._call(
             "trip.overview",
             "trip",
@@ -1282,7 +1283,7 @@ class TravelMcpBackend:
 
     # Routes: between two areas, with optional locations, schedule, booking and drawn line ----
     def list_routes(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
-        """List routes: how the trip gets from one area to another. Compact rows name the ends by id and label and leave out the line, notes and bookings; pass compact=false, or use get_route, for the full records."""
+        """List routes: how the trip gets from one area to another, ordered by departs_on (the local departure day; a route can have a day before it has times). Compact rows name the ends by id and label and leave out the line, notes and bookings; pass compact=false, or use get_route, for the full records."""
         return self._call(
             "route.list",
             "route",
@@ -1293,7 +1294,7 @@ class TravelMcpBackend:
         )
 
     def create_route(self, trip_id: str, payload: schemas.RouteCreate) -> dict[str, Any]:
-        """Create a route between two areas with a travel mode (flight, train, bus, ferry, car, bike, walk or other). The exact locations, schedule, booking details and a drawn GeoJSON line are optional."""
+        """Create a route between two areas with a travel mode (flight, train, bus, ferry, car, bike, walk or other). A day first, times optional: "on 5 December, no train yet" is departs_on alone; never invent a time or put the date in the label. The exact locations, schedule, booking details and a drawn GeoJSON line are optional."""
         return self._call(
             "route.create",
             "route",
@@ -1304,7 +1305,7 @@ class TravelMcpBackend:
         )
 
     def update_route(self, trip_id: str, route_id: str, payload: schemas.RouteUpdate) -> dict[str, Any]:
-        """Update a route."""
+        """Update a route. Set departs_on to give it a day without times; add departs_at and arrives_at together later (its day must stay the local date of departs_at), or set both to null to go back to a day only."""
         return self._call(
             "route.update",
             "route",

@@ -147,8 +147,9 @@ export type Stay = {
 };
 
 /**
- * How the trip gets from one area to another. Only the two areas are required; the exact
- * locations, the schedule, the booking details and a drawn line are optional.
+ * How the trip gets from one area to another. Only the two areas are required; the day, the exact
+ * locations, the schedule, the booking details and a drawn line are optional. A day comes first,
+ * the times are an optional second step.
  */
 export type Route = {
   id: string;
@@ -159,6 +160,8 @@ export type Route = {
   arrival_area: Area;
   departure_location: Location | null;
   arrival_location: Location | null;
+  /** The local day of departure: set before the times are, and always the local date of `departs_at`. */
+  departs_on: string | null;
   departs_at: string | null;
   arrives_at: string | null;
   departure_timezone: string | null;

@@ -635,6 +635,16 @@ def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_l
     backend.create_stay(
         trip["id"], schemas.StayCreate(area_id=chiayi["id"], check_in_date="2054-12-02", check_out_date="2054-12-03")
     )
+    tainan = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan"))
+    day_only = backend.create_route(
+        trip["id"],
+        schemas.RouteCreate(
+            mode="train", departure_area_id=chiayi["id"], arrival_area_id=tainan["id"], departs_on="2054-12-05"
+        ),
+    )
+    backend.create_route(
+        trip["id"], schemas.RouteCreate(mode="train", departure_area_id=tainan["id"], arrival_area_id=chiayi["id"])
+    )
     backend.set_visibility(trip["id"], "visit", dated["id"], "everyone", confirm=True)
     backend.set_public_projection_scope(trip["id"], schemas.ShareScopeInput(trip={"dates": "month"}), confirm=True)
     backend.publish_public_projection(trip["id"], confirm=True)
@@ -645,6 +655,13 @@ def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_l
 
     overview = backend.get_trip_overview(trip["id"])
     assert overview["counts"]["visits"] == 2 and overview["counts"]["visits_undated"] == 1
+    assert overview["counts"]["routes"] == 2 and overview["counts"]["routes_undated"] == 1
+    listed = backend.list_routes(trip["id"])
+    assert [(row["id"], row["departs_on"], row["departs_at"]) for row in listed][0] == (
+        day_only["id"],
+        "2054-12-05",
+        None,
+    )
     assert overview["counts"]["stays"] == 1 and overview["counts"]["locations"] == 1
     assert overview["visibility"]["visit"] == {"everyone": 1, "private": 1}
     public, family = overview["audiences"]

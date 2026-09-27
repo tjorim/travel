@@ -22,12 +22,13 @@ function seed(stays: unknown[], routes: unknown[], visits: unknown[]) {
   api = fakeApi().collection("/api/trips/trip/stays", stays as never[]).collection("/api/trips/trip/routes", routes as never[]).collection("/api/trips/trip/visits", visits as never[]);
 }
 
-it("lists stays, routes and visits together by day, and leaves out what has no day", async () => {
+it("lists stays, routes and visits together by day, then what has no day yet", async () => {
   seed(
     [{ id: "s1", check_in_date: "2054-11-16", check_out_date: "2054-11-20", property_name: "Hotel Royal", check_in_time: null, area: linkou } as unknown as Stay],
     [
-      { id: "r1", mode: "flight", label: null, departure_area: area("ams", "Amsterdam"), arrival_area: taipei, departs_at: "2054-11-16T09:40:00Z", arrives_at: "2054-11-16T22:25:00Z", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei" },
-      { id: "r2", mode: "train", label: "Losse route", departure_area: taipei, arrival_area: linkou, departs_at: null, arrives_at: null },
+      { id: "r1", mode: "flight", label: null, departure_area: area("ams", "Amsterdam"), arrival_area: taipei, departs_on: "2054-11-16", departs_at: "2054-11-16T09:40:00Z", arrives_at: "2054-11-16T22:25:00Z", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei" },
+      { id: "r2", mode: "train", label: "Losse route", departure_area: taipei, arrival_area: linkou, departs_on: null, departs_at: null, arrives_at: null },
+      { id: "r3", mode: "train", label: "Naar het noorden", departure_area: linkou, arrival_area: taipei, departs_on: "2054-11-21", departs_at: null, arrives_at: null },
     ] as unknown as Route[],
     [
       { id: "v1", title: "Nachtmarkt", area: taipei, starts_on: "2054-11-21", ends_on: null, start_time: "18:30:00", end_time: null },
@@ -41,13 +42,17 @@ it("lists stays, routes and visits together by day, and leaves out what has no d
     expect.stringContaining("10:40 Route: Amsterdam → Taipei"),
     expect.stringContaining("Verblijf: Hotel Royal"),
     expect.stringContaining("18:30 Bezoek: Nachtmarkt"),
+    // A route with a day but no train yet is on that day, after what has a time.
+    expect.stringContaining("Route: Naar het noorden"),
+    // Nothing disappears: undated visits and routes are listed together.
+    expect.stringContaining("Bezoek: Ooit"),
+    expect.stringContaining("Route: Losse route"),
   ]);
-  expect(screen.queryByText(/Losse route/)).toBeNull();
-  expect(screen.getByText("1 bezoek heeft nog geen dag en staat niet in de agenda.")).toBeTruthy();
+  expect(screen.getByText("Nog geen dag")).toBeTruthy();
 });
 
 it("says so when nothing has a day yet", async () => {
   seed([], [], []);
   renderWithOwner(<AgendaView trip={trip} />);
-  await screen.findByText(/Nog niets met een dag/);
+  await screen.findByText(/Nog niets in de agenda/);
 });

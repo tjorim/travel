@@ -9,7 +9,7 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { ROUTE_MODE_LABELS, browserTimeZone, daysBetween, localDate, routeTitle, timeZoneOptions, wallClock, type Route, type RouteMode, type TimedRoute, type Trip } from "../tracker-model";
+import { ROUTE_MODE_LABELS, browserTimeZone, daysBetween, formatDay, localDate, routeTitle, timeZoneOptions, wallClock, type Route, type RouteMode, type TimedRoute, type Trip } from "../tracker-model";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { emptyPlace, hasPlace, PlacePicker, placeFields, placeOf, samePlace, type PlaceValue } from "./PlacePicker";
 import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
@@ -31,7 +31,7 @@ export function dayShift(route: Pick<TimedRoute, "departs_at" | "arrives_at" | "
 type Values = {
   mode: RouteMode; status: Route["status"]; label: string;
   departure: PlaceValue; arrival: PlaceValue;
-  departsAt: string; arrivesAt: string; departureTimezone: string; arrivalTimezone: string;
+  departsOn: string; departsAt: string; arrivesAt: string; departureTimezone: string; arrivalTimezone: string;
   carrier: string; serviceReference: string; travelClass: string; bookingReference: string; notes: string;
   documentAssetIds: string[];
   /** The drawn line as JSON text; empty when the route has none. */
@@ -62,7 +62,7 @@ function blank(): Values {
   return {
     mode: "train", status: "planned", label: "",
     departure: emptyPlace(), arrival: emptyPlace(),
-    departsAt: "", arrivesAt: "", departureTimezone: browserTimeZone(), arrivalTimezone: browserTimeZone(),
+    departsOn: "", departsAt: "", arrivesAt: "", departureTimezone: browserTimeZone(), arrivalTimezone: browserTimeZone(),
     carrier: "", serviceReference: "", travelClass: "", bookingReference: "", notes: "",
     documentAssetIds: [], coordinates: "",
   };
@@ -71,6 +71,7 @@ function blank(): Values {
 const fromRoute = (route: Route): Values => ({
   mode: route.mode, status: route.status, label: route.label ?? "",
   departure: placeOf(route.departure_area, route.departure_location), arrival: placeOf(route.arrival_area, route.arrival_location),
+  departsOn: route.departs_on ?? "",
   departsAt: route.departs_at ? wallClock(route.departs_at, route.departure_timezone) : "", arrivesAt: route.arrives_at ? wallClock(route.arrives_at, route.arrival_timezone) : "",
   departureTimezone: route.departure_timezone ?? browserTimeZone(), arrivalTimezone: route.arrival_timezone ?? browserTimeZone(),
   carrier: route.carrier ?? "", serviceReference: route.service_reference ?? "", travelClass: route.travel_class ?? "", bookingReference: route.booking_reference ?? "", notes: route.notes ?? "",
@@ -79,7 +80,7 @@ const fromRoute = (route: Route): Values => ({
 });
 
 const serverFields = {
-  mode: "mode", status: "status", label: "label", departs_at: "departsAt", arrives_at: "arrivesAt", departure_timezone: "departureTimezone", arrival_timezone: "arrivalTimezone",
+  mode: "mode", status: "status", label: "label", departs_on: "departsOn", departs_at: "departsAt", arrives_at: "arrivesAt", departure_timezone: "departureTimezone", arrival_timezone: "arrivalTimezone",
   carrier: "carrier", service_reference: "serviceReference", travel_class: "travelClass", booking_reference: "bookingReference", notes: "notes", geometry: "coordinates",
 };
 
@@ -93,7 +94,7 @@ export function RouteManager({ trip }: { trip: Trip }) {
   const locations = locationsQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
   const dialog = useRecordDialog(routes);
-  const [message, setMessage] = useState("Een route loopt tussen twee gebieden. Stations, tijden, boekingen en een getekende lijn zijn optioneel. Bezoekers zien alleen wat je deelt, en dan met de gebieden, nooit met de locaties.");
+  const [message, setMessage] = useState("Een route loopt tussen twee gebieden. Een dag, stations, tijden, boekingen en een getekende lijn zijn optioneel: kies eerst de dag, de tijden kunnen later. Bezoekers zien alleen wat je deelt, en dan met de gebieden, nooit met de locaties.");
   const [deleteTarget, setDeleteTarget] = useState<Route | null>(null);
   // An end's location is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<Values>(blank());
@@ -121,6 +122,8 @@ export function RouteManager({ trip }: { trip: Trip }) {
       if (!hasPlace(values.arrival)) throw new Error("Kies waar de route eindigt: een gebied of een locatie.");
       if (Boolean(values.departsAt) !== Boolean(values.arrivesAt)) throw new Error("Geef zowel de vertrek- als de aankomsttijd op, of geen van beide.");
       if (values.departsAt && (!values.departureTimezone || !values.arrivalTimezone)) throw new Error("Geef de tijdzone van het vertrek en van de aankomst op.");
+      // A departure time fixes the day: its local date there.
+      if (values.departsAt && values.departsOn && values.departsAt.slice(0, 10) !== values.departsOn) throw new Error(`De vertrektijd valt op ${formatDay(values.departsAt.slice(0, 10))}, niet op de gekozen dag. Pas de dag of de tijd aan.`);
       const line = values.coordinates.trim() ? parseCoordinates(values.coordinates) : null;
       if (typeof line === "string") throw new Error(line);
       await save.mutateAsync({
@@ -129,6 +132,7 @@ export function RouteManager({ trip }: { trip: Trip }) {
           mode: values.mode,
           status: values.status,
           label: values.label.trim() || null,
+          departs_on: values.departsAt ? values.departsAt.slice(0, 10) : values.departsOn || null,
           // Local wall-clock times; the server resolves them in each end's zone.
           departs_at: values.departsAt ? `${values.departsAt}:00` : null,
           arrives_at: values.arrivesAt ? `${values.arrivesAt}:00` : null,
@@ -177,7 +181,8 @@ export function RouteManager({ trip }: { trip: Trip }) {
   };
   const { selected, editing, editingId } = dialog;
   const readError = routesQuery.error ?? areasQuery.error ?? locationsQuery.error ?? documentsQuery.error;
-  const times = (route: Route) => route.departs_at && route.arrives_at ? `${endpointTime(route.departs_at, route.departure_timezone)} → ${endpointTime(route.arrives_at, route.arrival_timezone)}` : null;
+  // The times once booked, else the day alone.
+  const times = (route: Route) => route.departs_at && route.arrives_at ? `${endpointTime(route.departs_at, route.departure_timezone)} → ${endpointTime(route.arrives_at, route.arrival_timezone)}` : route.departs_on ? formatDay(route.departs_on) : null;
   const shift = (route: Route) => {
     if (!route.departs_at || !route.arrives_at) return "";
     const days = dayShift(route as TimedRoute);
@@ -203,7 +208,8 @@ export function RouteManager({ trip }: { trip: Trip }) {
         <record.form.Field name="label">{(input) => <TextField field={input} label="Naam" optional maxLength={160} placeholder="Zonder naam heet de route “vertrek → aankomst”" />}</record.form.Field>
         <record.form.Field name="departure">{(input) => <PlacePicker tripId={trip.id} label="Vertrek" value={input.state.value} onChange={(value) => input.handleChange(value)} />}</record.form.Field>
         <record.form.Field name="arrival">{(input) => <PlacePicker tripId={trip.id} label="Aankomst" value={input.state.value} onChange={(value) => input.handleChange(value)} />}</record.form.Field>
-        <fieldset><legend>Tijden <span className="optional">(optioneel)</span></legend>
+        <record.form.Field name="departsOn">{(input) => <TextField field={input} label="Dag van vertrek" optional type="date" />}</record.form.Field>
+        <fieldset><legend>Tijden <span className="optional">(optioneel, zodra je een verbinding kiest)</span></legend>
           <datalist id="route-time-zones">{timeZoneOptions().map((zone) => <option key={zone} value={zone} />)}</datalist>
           <div className="field-row">
             <record.form.Field name="departsAt">{(input) => <TextField field={input} label="Vertrektijd (lokaal)" optional type="datetime-local" />}</record.form.Field>

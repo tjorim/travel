@@ -153,6 +153,7 @@ def trip_overview(session: Session, trip: Trip) -> dict[str, Any]:
     """Counts, per-audience delivery and review warnings for one owned trip. Changes nothing."""
     counts: dict[str, Any] = {f"{kind}s": len(records(trip)) for kind, records in COLLECTIONS.items()}
     counts["visits_undated"] = sum(1 for visit in trip.visits if visit.starts_on is None)
+    counts["routes_undated"] = sum(1 for route in trip.routes if route.departs_on is None)
     counts["trip_tasks"] = len(trip.trip_tasks)
     counts["trip_tasks_open"] = sum(1 for task in trip.trip_tasks if task.completed_at is None)
     for key, model in (("media_assets", MediaAsset), ("documents", DocumentAsset)):

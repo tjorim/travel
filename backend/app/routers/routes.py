@@ -1,12 +1,14 @@
 """Owner-only routes: how the traveller gets from one area to another.
 
-A route always runs between two areas. The exact locations, the schedule, the
-booking details and a hand-drawn line are all optional. The application takes no
-raw location data: there is no track upload, location session or append-points
-endpoint.
+A route always runs between two areas. The departure day, the exact locations,
+the schedule, the booking details and a hand-drawn line are all optional. A day
+comes first and a time is an optional second step: a route can be "on 5
+December" before a train is chosen, and keeps that day when it gets its times.
+The application takes no raw location data: there is no track upload, location
+session or append-points endpoint.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
@@ -75,6 +77,36 @@ def endpoint_instant(value: datetime, zone: str | None) -> datetime:
     return value.astimezone(UTC)
 
 
+def local_departure_day(route: Route) -> date | None:
+    """The calendar day of the route's departure instant in its departure time zone.
+
+    Without a zone of its own, the departure area's zone applies, else UTC.
+    """
+    if route.departs_at is None:
+        return None
+    departs_at = route.departs_at if route.departs_at.tzinfo is not None else route.departs_at.replace(tzinfo=UTC)
+    zone = route.departure_timezone or route.departure_area.timezone or "UTC"
+    return departs_at.astimezone(ZoneInfo(zone)).date()
+
+
+def settle_departure_day(route: Route, requested: date | None, given: bool) -> None:
+    """Keep ``departs_on`` the local date of ``departs_at``: derive it, or refuse a different day.
+
+    Without a time, the day is whatever was given, and stays when the times are cleared.
+    """
+    local = local_departure_day(route)
+    if local is None:
+        if given:
+            route.departs_on = requested
+        return
+    if given and requested != local:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"The departure day must be the local date of the departure time ({local.isoformat()})",
+        )
+    route.departs_on = local
+
+
 def document_links_from_ids(session: Session, trip_id: str, document_asset_ids: list[str]) -> list[RouteDocumentAsset]:
     """Resolve attachments inside the already-authorized trip boundary.
 
@@ -134,12 +166,14 @@ def create_route(trip_id: str, payload: RouteCreate, session: SessionDep, subjec
                 "departure_location",
                 "arrival_location",
                 "document_asset_ids",
+                "departs_on",
                 "departs_at",
                 "arrives_at",
                 "geometry",
             }
         ),
     )
+    settle_departure_day(route, payload.departs_on, payload.departs_on is not None)
     session.add(route)
     session.commit()
     return session.scalar(_route_query().where(Route.id == route.id))  # type: ignore[return-value]
@@ -188,6 +222,7 @@ def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: Ses
             "departure_location",
             "arrival_location",
             "document_asset_ids",
+            "departs_on",
             "geometry",
         },
     )
@@ -215,6 +250,7 @@ def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: Ses
             validate_route_times(departs_at, arrives_at)
     for field, value in values.items():
         setattr(route, field, value)
+    settle_departure_day(route, payload.departs_on, "departs_on" in payload.model_fields_set)
     session.commit()
     return session.scalar(_route_query().where(Route.id == route.id))  # type: ignore[return-value]
 

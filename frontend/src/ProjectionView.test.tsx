@@ -132,6 +132,14 @@ it("renders every resource kind using only supplied fields", () => {
   expect(screen.getByRole("img", { name: "Gedeelde afbeelding" }).getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media");
 });
 
+it("shows a shared route's day while it has no times", () => {
+  const data = projection();
+  data.routes = [{ id: "north", mode: "train", label: "Naar het noorden", departure: { label: "Kaohsiung" }, arrival: { label: "Taipei" }, departs_on: "2054-12-05" }];
+  const { container } = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  expect(container.textContent).toContain("5 december 2054");
+  expect(container.textContent).not.toContain("Vertrektijd onbekend");
+});
+
 it("does not invent values for omitted fields and keeps audience links separate", () => {
   const data = projection("travel/unlisted-trip@1");
   data.summary = null;

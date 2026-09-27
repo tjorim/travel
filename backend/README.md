@@ -97,8 +97,13 @@ still being chosen, send only `area_id`: every such stay in that area shares
 one city-level location instead of each adding a copy, and `property_name`
 stays empty. Setting `location` to `null` later returns a stay to it.
 
+A route's day comes first: `departs_on` is the local departure day, in the
+departure time zone, and can be set on its own ("on 5 December, no train yet").
 A route's optional schedule is stored as UTC instants plus each end's IANA time
-zone, and comes as a pair: both times or neither. Send `departs_at`/`arrives_at` without an offset together with
+zone, and comes as a pair: both times or neither, and only with a day. With a
+departure time, `departs_on` is derived from it (in the departure zone, else the
+departure area's, else UTC) and a different day is refused; clearing the times
+keeps the day. Send `departs_at`/`arrives_at` without an offset together with
 `departure_timezone`/`arrival_timezone` to enter local wall-clock times such
 as "AMS 10:40 → TPE 06:25 the next day"; a time with an explicit offset is
 used as-is. Responses always carry the UTC offset.

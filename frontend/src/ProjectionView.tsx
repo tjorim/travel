@@ -147,9 +147,11 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
   const arrival = transportPlace(item.arrival);
   const departsAt = transportTime(item, "departure");
   const arrivesAt = transportTime(item, "arrival");
+  // A route with a day but no times yet.
+  const departsOn = storyDate({ ...item, date_precision: "day" }, "departs_on");
   const mode = transportKinds[text(item, "mode") ?? ""];
   const carrier = [text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ");
-  return <article><h3>{routeHeading(item)}</h3>{(departure || arrival) && <p>{departure ?? "Vertrek onbekend"} → {arrival ?? "Aankomst onbekend"}</p>}<p>{[mode, carrier || null, text(item, "status") ? transportStatuses[text(item, "status")!] ?? text(item, "status") : null].filter(Boolean).join(" · ")}</p>{(departsAt || arrivesAt) && <p>{departsAt ?? "Vertrektijd onbekend"} → {arrivesAt ?? "Aankomsttijd onbekend"}</p>}</article>;
+  return <article><h3>{routeHeading(item)}</h3>{(departure || arrival) && <p>{departure ?? "Vertrek onbekend"} → {arrival ?? "Aankomst onbekend"}</p>}<p>{[mode, carrier || null, text(item, "status") ? transportStatuses[text(item, "status")!] ?? text(item, "status") : null].filter(Boolean).join(" · ")}</p>{departsAt || arrivesAt ? <p>{departsAt ?? "Vertrektijd onbekend"} → {arrivesAt ?? "Aankomsttijd onbekend"}</p> : departsOn && <p>{departsOn}</p>}</article>;
 }
 
 const transportMode = (value: string | null | undefined): RouteMode => value && value in ROUTE_MODE_LABELS ? value as RouteMode : "other";

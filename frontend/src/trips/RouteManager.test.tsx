@@ -16,13 +16,13 @@ const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on:
 const savedLocation = { id: "main-station", visibility: "private", label: null, area_id: "taipei", share_address: false, display_name: "Taipei Main Station", locality: "Taipei", country_code: "TW" } as Location;
 const route = (id: string, label: string | null, overrides: Partial<Route> = {}): Route => ({
   id, mode: "train", status: "booked", label, departure_area: taipei, arrival_area: tainan, departure_location: null, arrival_location: null,
-  departs_at: null, arrives_at: null, departure_timezone: null, arrival_timezone: null, carrier: null, service_reference: null, travel_class: null,
+  departs_on: null, departs_at: null, arrives_at: null, departure_timezone: null, arrival_timezone: null, carrier: null, service_reference: null, travel_class: null,
   booking_reference: null, notes: null, document_asset_ids: [], geometry: null, visibility: "private", ...overrides,
 });
 const flight = route("r-flight", null, {
   mode: "flight", departure_area: area("ams", "Amsterdam"), arrival_area: area("tpe", "Taoyuan"),
   departure_location: { id: "ams-airport", area_id: "ams", display_name: "Amsterdam Schiphol", locality: "Amsterdam" } as Location,
-  departs_at: "2054-11-16T09:40:00Z", arrives_at: "2054-11-16T22:25:00Z", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei",
+  departs_on: "2054-11-16", departs_at: "2054-11-16T09:40:00Z", arrives_at: "2054-11-16T22:25:00Z", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei",
   booking_reference: "REF", carrier: "China Airlines",
 });
 const line = route("r-line", "Oostkust", { geometry: { type: "LineString", coordinates: [[121.5, 25], [121.6, 25.1]] } });
@@ -65,7 +65,7 @@ it("needs only a mode and two areas", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByRole("button", { name: "Route Taipei → Tainan bekijken" });
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
-    mode: "bike", departure_area_id: "taipei", arrival_area_id: "tainan", departs_at: null, arrives_at: null, geometry: null, label: null,
+    mode: "bike", departure_area_id: "taipei", arrival_area_id: "tainan", departs_on: null, departs_at: null, arrives_at: null, geometry: null, label: null,
   });
   expect(api.lastBody<{ departure_location: unknown }>("POST /api/trips/trip/routes")?.departure_location).toBeNull();
   expect(screen.getByText("Route opgeslagen.")).toBeTruthy();
@@ -87,8 +87,38 @@ it("takes both times or neither", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
-    departs_at: "2054-11-16T10:40:00", arrives_at: "2054-11-17T06:25:00", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei",
+    departs_on: "2054-11-16", departs_at: "2054-11-16T10:40:00", arrives_at: "2054-11-17T06:25:00", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei",
   });
+});
+
+it("takes a day first, and times only on that day", async () => {
+  seed();
+  renderWithOwner(<RouteManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  pickAreas();
+  fireEvent.change(screen.getByLabelText("Dag van vertrek (optioneel)"), { target: { value: "2054-12-05" } });
+  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), { target: { value: "2054-12-06T08:00" } });
+  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), { target: { value: "2054-12-06T10:00" } });
+  fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
+  await screen.findByText(/De vertrektijd valt op .*, niet op de gekozen dag/);
+  expect(api.count("POST /api/trips/trip/routes")).toBe(0);
+
+  // "Kaohsiung → Taipei on 5 December, no train yet": the day alone.
+  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), { target: { value: "" } });
+  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({ departs_on: "2054-12-05", departs_at: null, arrives_at: null });
+});
+
+it("shows a route's day while it has no times", async () => {
+  seed([route("r-day", "Naar het noorden", { departs_on: "2054-12-05" })]);
+  renderWithOwner(<RouteManager trip={trip} />);
+  const row = await screen.findByRole("button", { name: "Route Naar het noorden bekijken" });
+  expect(row.textContent).toContain("5 dec");
+  fireEvent.click(row);
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  expect((screen.getByLabelText("Dag van vertrek (optioneel)") as HTMLInputElement).value).toBe("2054-12-05");
 });
 
 it("opens a route in detail before its editor, prefilled with its bookings and times", async () => {

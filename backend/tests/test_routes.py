@@ -284,6 +284,7 @@ def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_v
         }
         assert summary[0]["carrier"] == "EVA Air"
         assert summary[0]["service_reference"] == "BR-087"
+        assert summary[0]["departs_on"] == "2054-04-01"
         # Exact location endpoints appear on the map only when the location itself is shared.
         assert "map" not in summary[0]
         assert "booking_reference" not in summary[0]
@@ -330,6 +331,7 @@ def test_endpoint_time_zones_turn_local_wall_clock_times_into_exact_instants(tmp
         travel_class="Premium Economy",
     )
     assert route["departs_at"] == "2054-11-16T09:40:00Z"
+    assert route["departs_on"] == "2054-11-16"
     assert route["arrives_at"].startswith("2054-11-16T22:25:00")
     assert route["departure_timezone"] == "Europe/Amsterdam"
     assert route["arrival_timezone"] == "Asia/Taipei"
@@ -566,6 +568,77 @@ def test_the_schedule_is_optional_but_comes_as_a_pair(tmp_path) -> None:
     assert scheduled["label"] == "Scheduled"
 
 
+def test_a_route_can_have_a_day_before_it_has_times(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    kaohsiung, taipei = area_id(owner, trip["id"], "Kaohsiung"), area_id(owner, trip["id"], "Taipei")
+    base = f"/api/trips/{trip['id']}/routes"
+    ends = {"mode": "train", "departure_area_id": kaohsiung, "arrival_area_id": taipei}
+
+    # "Kaohsiung → Taipei on 5 December, no train yet."
+    created = owner.post(base, json={**ends, "departs_on": "2054-12-05"})
+    assert created.status_code == 201, created.text
+    route = created.json()
+    assert route["departs_on"] == "2054-12-05" and route["departs_at"] is None
+
+    # The train is booked later: the day stays, and follows the local departure time.
+    booked = owner.patch(
+        f"{base}/{route['id']}",
+        json={
+            "departs_at": "2054-12-05T23:30:00",
+            "arrives_at": "2054-12-06T01:10:00",
+            "departure_timezone": "Asia/Taipei",
+            "arrival_timezone": "Asia/Taipei",
+        },
+    )
+    assert booked.status_code == 200, booked.text
+    assert booked.json()["departs_on"] == "2054-12-05"
+    assert booked.json()["departs_at"] == "2054-12-05T15:30:00Z"
+
+    # A day that is not the local date of the departure time is refused.
+    moved = owner.patch(f"{base}/{route['id']}", json={"departs_on": "2054-12-06"})
+    assert moved.status_code == 422 and "2054-12-05" in moved.json()["detail"]
+    assert owner.patch(f"{base}/{route['id']}", json={"departs_on": None}).status_code == 422
+
+    # Clearing the times keeps the day; then the day can move on its own.
+    cleared = owner.patch(f"{base}/{route['id']}", json={"departs_at": None, "arrives_at": None})
+    assert cleared.status_code == 200 and cleared.json()["departs_on"] == "2054-12-05"
+    moved = owner.patch(f"{base}/{route['id']}", json={"departs_on": "2054-12-06"})
+    assert moved.status_code == 200 and moved.json()["departs_on"] == "2054-12-06"
+
+    # Times without a day get one derived: the local date in the departure zone, else UTC.
+    late = owner.post(
+        base,
+        json={
+            **ends,
+            "departs_at": "2054-12-06T23:30:00+08:00",
+            "arrives_at": "2054-12-07T01:00:00+08:00",
+            "departure_timezone": "Asia/Taipei",
+        },
+    ).json()
+    assert late["departs_on"] == "2054-12-06"
+    # Kaohsiung has no zone here, so this is 6 December in UTC although it is the 7th in Exampleland.
+    utc = owner.post(
+        base, json={**ends, "departs_at": "2054-12-07T01:30:00+08:00", "arrives_at": "2054-12-07T03:00:00+08:00"}
+    ).json()
+    assert utc["departs_on"] == "2054-12-06"
+    mismatch = owner.post(
+        base,
+        json={
+            **ends,
+            "departs_on": "2054-12-01",
+            "departs_at": "2054-12-06T09:00:00Z",
+            "arrives_at": "2054-12-06T10:00:00Z",
+        },
+    )
+    assert mismatch.status_code == 422
+
+    # By day; within a day, a day-only route follows the timed ones; undated routes come last.
+    undated = owner.post(base, json={**ends, "label": "Someday"}).json()
+    order = [item["id"] for item in owner.get(base).json()]
+    assert order == [late["id"], utc["id"], route["id"], undated["id"]]
+
+
 def test_a_shared_route_shows_areas_a_line_and_no_stations_or_bookings(tmp_path) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
@@ -599,7 +672,7 @@ def test_a_shared_route_shows_areas_a_line_and_no_stations_or_bookings(tmp_path)
     (shared,) = delivered.json()["routes"]
     assert shared["mode"] == "train" and shared["label"] == "By high-speed rail" and shared["geometry"] == LINE
     assert shared["departure"]["label"] == "Taipei" and shared["arrival"]["label"] == "Tainan"
-    assert "map" not in shared and "departs_at" not in shared
+    assert "map" not in shared and "departs_at" not in shared and "departs_on" not in shared
     for secret in ("SECRET-BOOKING", "Seat 12A", "Taipei Main Station"):
         assert secret not in delivered.text
 

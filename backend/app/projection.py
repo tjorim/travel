@@ -142,8 +142,11 @@ def delivered(trip: Trip, scope: dict) -> dict[str, list[Any]]:
         )
     )
     result["travel_update"].sort(key=lambda item: item.occurred_at)
+    # By day; within a day, day-only routes follow the timed ones, as in the owner Agenda.
     result["route"].sort(
         key=lambda item: (
+            item.departs_on is None,
+            item.departs_on or date.min,
             item.departs_at is None,
             item.departs_at.replace(tzinfo=None) if item.departs_at else datetime.min,
             item.created_at.replace(tzinfo=None),
@@ -216,6 +219,9 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             "carrier": item.carrier,
             "service_reference": item.service_reference,
         }
+        # A route shares its schedule as the owner entered it: the day, and the times once booked.
+        if item.departs_on is not None:
+            values["departs_on"] = item.departs_on.isoformat()
         if item.departs_at is not None and item.arrives_at is not None:
             values.update(
                 departs_at=item.departs_at.isoformat(),

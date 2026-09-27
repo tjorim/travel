@@ -699,6 +699,13 @@ class StoredGeoJsonLineString(GeoJsonLineString):
     model_config = ConfigDict(extra="ignore")
 
 
+_DEPARTS_ON = (
+    "The local day of departure (YYYY-MM-DD), in the departure time zone. Store a day without inventing a time: "
+    "'Kaohsiung → Taipei on 5 December, no train yet' is departs_on alone, never a made-up departs_at. With "
+    "departs_at it is derived when left out, and must equal the local date of departs_at when given."
+)
+
+
 def require_route_ends(model):
     """Each end of a route is an area, given directly or through a location that is filed under one."""
     for end in ("departure", "arrival"):
@@ -708,8 +715,9 @@ def require_route_ends(model):
 
 
 class RouteCreate(InputModel):
-    """A route between two areas. Everything else is optional: the exact locations,
-    the schedule (both times or neither), booking details and a drawn line."""
+    """A route between two areas. Everything else is optional: the departure day,
+    the exact locations, the schedule (both times or neither, and only with a
+    day), booking details and a drawn line."""
 
     mode: RouteMode
     status: RouteStatus = RouteStatus.PLANNED
@@ -718,6 +726,7 @@ class RouteCreate(InputModel):
     arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
     departure_location: LocationInput | None = None
     arrival_location: LocationInput | None = None
+    departs_on: date | None = Field(default=None, description=_DEPARTS_ON)
     # With an end's time zone, a datetime without an offset is the local
     # wall-clock time there. Without one it must carry an explicit offset.
     departs_at: datetime | None = None
@@ -757,6 +766,7 @@ class RouteUpdate(InputModel):
     arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
     departure_location: LocationInput | None = None
     arrival_location: LocationInput | None = None
+    departs_on: date | None = Field(default=None, description=_DEPARTS_ON)
     departs_at: datetime | None = None
     arrives_at: datetime | None = None
     departure_timezone: str | None = Field(default=None, max_length=64)
@@ -788,6 +798,7 @@ class RouteResponse(BaseModel):
     arrival_area: AreaResponse
     departure_location: LocationResponse | None
     arrival_location: LocationResponse | None
+    departs_on: date | None
     departs_at: datetime | None
     arrives_at: datetime | None
     departure_timezone: str | None
