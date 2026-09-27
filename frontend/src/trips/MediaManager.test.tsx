@@ -38,7 +38,7 @@ afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); 
 
 const renderMedia = () => renderWithOwner(<MemoryRouter><MediaManager trip={trip} onStartCaptureFromCandidate={() => undefined} /></MemoryRouter>);
 
-it("lists a new upload straight away and selects it", async () => {
+it("lists a new upload straight away and opens its details", async () => {
   api.on("POST", /\/media\/uploads$/, () => api.push("/api/trips/trip/media", photo("p3", "nieuw.jpg")));
   api.collection("/api/trips/trip/media/p3/derivatives", []);
   renderMedia();
@@ -47,54 +47,82 @@ it("lists a new upload straight away and selects it", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Media uploaden" }));
   fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(["x"], "nieuw.jpg", { type: "image/jpeg" })] } });
   fireEvent.submit(screen.getByRole("button", { name: "Privémedia uploaden" }).closest("form")!);
-  await screen.findByText("nieuw.jpg");
-  expect(screen.getByText(/Voor nieuw\.jpg\./)).toBeTruthy();
+  await screen.findByRole("heading", { level: 2, name: "nieuw.jpg" });
   expect(screen.getByText("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.")).toBeTruthy();
   expect(api.lastBody<FormData>("POST /api/trips/trip/media/uploads")!.get("file")).toBeInstanceOf(File);
   expect(document.querySelector('input[type="file"]')).toBeNull();
 });
 
-it("removes a deleted photo and its derivatives from the screen", async () => {
+it("opens a compact library that reveals a photo's details and copies only after selecting it", async () => {
   renderMedia();
   await screen.findByText("kust.jpg");
-  fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[0]);
+  expect(screen.queryByText("Kopieën om te delen")).toBeNull();
+  expect(screen.queryByText("Origineel bekijken")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "kust.jpg bekijken" }));
+  await screen.findByText("Kopieën om te delen");
+  expect(screen.getByRole("heading", { level: 2, name: "kust.jpg" })).toBeTruthy();
+  expect(screen.getByText("Origineel bekijken")).toBeTruthy();
+  await screen.findByText("Wacht op goedkeuring");
+});
+
+it("removes a deleted photo and its copies from the screen", async () => {
+  renderMedia();
+  await screen.findByText("kust.jpg");
+  fireEvent.click(screen.getByRole("button", { name: "kust.jpg bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Verwijderen" }));
   await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("kust.jpg")).toBeNull());
   expect(screen.getByText("markt.jpg")).toBeTruthy();
   expect(screen.getByText("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.")).toBeTruthy();
-  expect(screen.queryByText("Afgeleiden")).toBeNull();
+  expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
 });
 
-it("creates a derivative within the allowed size and lists it", async () => {
+it("creates a copy within the allowed size and lists it", async () => {
   api.on("POST", /\/media\/p1\/derivatives$/, () => api.push("/api/trips/trip/media/p1/derivatives", derivative("x2", "pending", { width: 800, height: 533 })));
   renderMedia();
+  fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
   await screen.findByText("Wacht op goedkeuring");
+  fireEvent.click(screen.getByRole("button", { name: "Kopie maken" }));
   fireEvent.change(screen.getByLabelText("Maximale zijde (px)"), { target: { value: "10" } });
-  fireEvent.click(screen.getByRole("button", { name: "Metadata-vrije afgeleide maken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Metadata-vrije kopie maken" }));
   await screen.findByText("Kies een maximale zijde tussen 64 en 4000 px.");
   expect(api.count("POST /api/trips/trip/media/p1/derivatives")).toBe(0);
   fireEvent.change(screen.getByLabelText("Maximale zijde (px)"), { target: { value: "800" } });
-  fireEvent.click(screen.getByRole("button", { name: "Metadata-vrije afgeleide maken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Metadata-vrije kopie maken" }));
   await screen.findByText("800 × 533", { exact: false });
   expect(api.lastBody("POST /api/trips/trip/media/p1/derivatives")).toEqual({ purpose: "share", max_dimension: 800 });
 });
 
-it("shows an approved derivative and drops a deleted one without a reload", async () => {
-  api.on("POST", /\/media\/p1\/derivatives\/x1\/approve$/, () => { const rows = api.rows("/api/trips/trip/media/p1/derivatives"); rows[0].review_state = "approved"; return rows[0]; });
+it("returns to the photo without saving when a copy's form is cancelled", async () => {
   renderMedia();
-  fireEvent.click(await screen.findByRole("button", { name: "Expliciet goedkeuren" }));
-  await screen.findByText("Goedgekeurde afgeleide");
-  expect(screen.queryByText("Wacht op goedkeuring")).toBeNull();
-  const derivativeRow = screen.getByText("Goedgekeurde afgeleide").closest("article")!;
-  fireEvent.click(Array.from(derivativeRow.querySelectorAll("button")).find((button) => button.textContent === "Verwijderen")!);
-  await answerConfirmation();
-  await waitFor(() => expect(screen.queryByText("Goedgekeurde afgeleide")).toBeNull());
-  expect(screen.getByText("Afgeleide verwijderd en uit eventuele deelscopes gehaald.")).toBeTruthy();
+  fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
+  fireEvent.click(await screen.findByText("Kopie maken"));
+  fireEvent.click(screen.getByRole("button", { name: "Terug naar het medium" }));
+  await screen.findByText("Kopieën om te delen");
+  expect(screen.queryByLabelText("Maximale zijde (px)")).toBeNull();
 });
 
-it("opens the presentation form with the saved values, saves it and shows the saved caption", async () => {
+it("shows an approved copy and drops a deleted one without a reload", async () => {
+  api.on("POST", /\/media\/p1\/derivatives\/x1\/approve$/, () => { const rows = api.rows("/api/trips/trip/media/p1/derivatives"); rows[0].review_state = "approved"; return rows[0]; });
+  renderMedia();
+  fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Expliciet goedkeuren" }));
+  await screen.findByText("Goedgekeurde kopie");
+  expect(screen.queryByText("Wacht op goedkeuring")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  await answerConfirmation();
+  await waitFor(() => expect(screen.queryByText("Goedgekeurde kopie")).toBeNull());
+  expect(screen.getByText("Kopie verwijderd en uit eventuele deelscopes gehaald.")).toBeTruthy();
+  expect(screen.getByText("Nog geen kopieën voor dit medium.")).toBeTruthy();
+});
+
+it("opens the presentation form with the saved values, saves it and keeps the saved caption", async () => {
   api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => { const rows = api.rows("/api/trips/trip/media/p1/derivatives"); Object.assign(rows[0], { caption: (body as { caption: string }).caption, focal_x: (body as { focal_x: number }).focal_x }); return rows[0]; });
   renderMedia();
+  fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
   const caption = await screen.findByLabelText("Bijschrift") as HTMLInputElement;
   expect(caption.value).toBe("Kust");
   fireEvent.change(screen.getByLabelText("Focus horizontaal (%)"), { target: { value: "150" } });
@@ -107,6 +135,9 @@ it("opens the presentation form with the saved values, saves it and shows the sa
   fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
   await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
   expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({ caption: "Kust bij zonsopgang", focal_x: 40, travel_update_id: null });
+
+  fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
   await waitFor(() => expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe("Kust bij zonsopgang"));
 });
 
@@ -118,11 +149,19 @@ it("shows a thumbnail beside a photo, a readable purpose label, and an inline pr
   const row = screen.getByText("kust.jpg").closest("article")!;
   await waitFor(() => expect(row.querySelector("img")).not.toBeNull());
   expect(row.querySelector("img")!.getAttribute("src")).toBe("blob:test");
-  expect(screen.getByText(/^Delen ·/)).toBeTruthy();
 
-  const derivativeRow = screen.getByText("Wacht op goedkeuring").closest("article")!;
-  await waitFor(() => expect(derivativeRow.querySelectorAll("img").length).toBeGreaterThan(0));
-  const marker = derivativeRow.querySelector(".focal-point-marker") as HTMLElement;
+  fireEvent.click(screen.getByRole("button", { name: "kust.jpg bekijken" }));
+  const copyRow = (await screen.findByText("Wacht op goedkeuring")).closest("article")!;
+  expect(copyRow.textContent).toMatch(/^Wacht op goedkeuringDelen ·/);
+  await waitFor(() => expect(copyRow.querySelectorAll("img").length).toBeGreaterThan(0));
+
+  fireEvent.click(screen.getByRole("button", { name: "Kopie Delen bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
+  const marker = await waitFor(() => {
+    const element = document.querySelector(".focal-point-marker") as HTMLElement | null;
+    if (!element) throw new Error("focal-point marker not rendered yet");
+    return element;
+  });
   expect(marker.style.left).toBe("50%");
   expect(marker.style.top).toBe("50%");
   fireEvent.change(screen.getByLabelText("Focus horizontaal (%)"), { target: { value: "20" } });
