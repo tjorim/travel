@@ -71,11 +71,14 @@ export function Settings() {
 
   const message = notice ?? (providersQuery.error ? errorMessage(providersQuery.error, "De providerstatus kon niet worden geladen.") : providersQuery.isPending ? "Laad providerstatus…" : "Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
   if (!session) return <EmptyState title="Instellingen">Meld aan om de status van je private mediaproviders te bekijken.</EmptyState>;
+  const noProvidersAvailable = providersQuery.isSuccess && providers.length === 0;
 
   return <section className="card manager" aria-labelledby="settings-title">
-    <div><p className="eyebrow">Private accountinstellingen</p><h2 id="settings-title">Instellingen</h2><p>Verbind Google Photos om geselecteerde media privé te importeren.</p></div>
+    <div><p className="eyebrow">Private accountinstellingen</p><h2 id="settings-title">Instellingen</h2><p>{noProvidersAvailable ? "Providerimport is op deze server nog niet beschikbaar." : "Verbind Google Photos om geselecteerde media privé te importeren."}</p></div>
     <p className="help" role="status">{message}</p>
-    <div className="saved-records manager-list">{providers.map((provider) => <article className="provider-row" key={provider.provider}><div><strong>{labels[provider.provider]}</strong><span>{provider.connected ? "Verbonden voor private import" : "Niet verbonden"}</span></div><div className="provider-actions"><span className={`provider-status ${provider.connected ? "connected" : "disconnected"}`}>{provider.connected ? "Verbonden" : "Niet verbonden"}</span>{provider.connected ? <button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>Loskoppelen</button> : provider.provider === "google_photos_picker" ? <button type="button" disabled={connecting} onClick={() => void connectGoogle()}>{connecting ? "Verbinden…" : "Verbinden met Google"}</button> : null}</div></article>)}</div>
+    {noProvidersAvailable
+      ? <p className="help">Er is geen mediaprovider geconfigureerd op deze server, dus er is niets te verbinden. Gebruik direct uploaden op de Media-pagina van een reis om privémedia toe te voegen.</p>
+      : <div className="saved-records manager-list">{providers.map((provider) => <article className="provider-row" key={provider.provider}><div><strong>{labels[provider.provider]}</strong><span>{provider.connected ? "Verbonden voor private import" : "Niet verbonden"}</span></div><div className="provider-actions"><span className={`provider-status ${provider.connected ? "connected" : "disconnected"}`}>{provider.connected ? "Verbonden" : "Niet verbonden"}</span>{provider.connected ? <button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>Loskoppelen</button> : provider.provider === "google_photos_picker" ? <button type="button" disabled={connecting} onClick={() => void connectGoogle()}>{connecting ? "Verbinden…" : "Verbinden met Google"}</button> : null}</div></article>)}</div>}
     {confirmation.dialog}
   </section>;
 }

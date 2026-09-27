@@ -49,6 +49,14 @@ it("hides Google when the server lacks its OAuth credentials", async () => {
   expect(screen.queryByText("GoPro Cloud")).toBeNull();
 });
 
+it("explains that provider import is unavailable when no provider is configured", async () => {
+  providers = [{ provider: "google_photos_picker", available: false, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  renderWithOwner(<Settings />);
+  await screen.findByText("Providerimport is op deze server nog niet beschikbaar.");
+  expect(screen.getByText(/Er is geen mediaprovider geconfigureerd op deze server/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Verbinden met Google" })).toBeNull();
+});
+
 it("completes a Google OAuth return and clears the code from the address", async () => {
   window.history.replaceState(null, "", "/admin/settings?code=authorization-code&state=one-time-state");
   renderWithOwner(<Settings />);
