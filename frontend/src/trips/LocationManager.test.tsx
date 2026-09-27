@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { chooseOption, renderWithOwner, testToken } from "../query/test-utils";
 import type { Location, Trip } from "../tracker-model";
 import { LocationManager } from "./LocationManager";
 
@@ -34,6 +34,6 @@ it("saves a public name and then sets who sees the location", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Naam bewaren" }));
   await screen.findByText("Publieke naam opgeslagen.");
   expect(api.lastBody("PATCH /api/trips/trip/locations/e1")).toEqual({ label: "Warme bron van Beitou" });
-  fireEvent.change(screen.getByLabelText("Zichtbaarheid van Warme bron van Beitou"), { target: { value: "everyone" } });
+  chooseOption("Zichtbaarheid van Warme bron van Beitou", "Iedereen — alle bezoekers");
   await waitFor(() => expect(api.lastBody("PUT /api/trips/trip/visibility/location/e1")).toEqual({ visibility: "everyone" }));
 });

@@ -5,7 +5,7 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderRoutesWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import { chooseOption, renderRoutesWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type { MediaAsset, MediaDerivative, Trip } from "../tracker-model";
 import { MediaManager } from "./MediaManager";
@@ -182,7 +182,7 @@ it("reviews possible visits without storing them, and attaches media to an exist
   await screen.findByText("Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen.");
   expect(api.lastBody("POST /api/trips/trip/media/visit-candidates")).toEqual({ media_asset_ids: ["p1"] });
 
-  fireEvent.change(screen.getByLabelText("Koppel aan"), { target: { value: "e1" } });
+  chooseOption("Koppel aan", "Eerste avond");
   fireEvent.click(screen.getByRole("button", { name: "Aan reisupdate koppelen" }));
   await screen.findByText("Private media gekoppeld aan “Eerste avond”. Er is geen locatie of deelbare inhoud gemaakt.");
   expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e1")).toEqual({ media_asset_ids: ["p2", "p1"] });

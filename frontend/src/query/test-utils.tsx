@@ -1,6 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider, type AnyRoute } from "@tanstack/react-router";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 
 import { __resetOfflineStoreForTests } from "../offline/offline-store";
@@ -38,6 +38,18 @@ export function stubObjectUrls(url = "blob:test") {
 export function restoreObjectUrls() {
   Reflect.deleteProperty(URL, "createObjectURL");
   Reflect.deleteProperty(URL, "revokeObjectURL");
+}
+
+/** The visible text of a SearchSelect's current choice (see forms/fields.tsx), by its accessible label. */
+export function selectedOption(label: string): string {
+  const input = screen.getByLabelText(label);
+  return input.closest(".rs__control")?.querySelector(".rs__single-value")?.textContent ?? "";
+}
+
+/** Opens the SearchSelect labelled `label` (see forms/fields.tsx) and chooses the option named `optionName`. */
+export function chooseOption(label: string, optionName: string | RegExp) {
+  fireEvent.keyDown(screen.getByLabelText(label), { key: "ArrowDown" });
+  fireEvent.click(screen.getByRole("option", { name: optionName }));
 }
 
 /** Empties the device-scoped offline store between tests (needs `fake-indexeddb/auto`). */

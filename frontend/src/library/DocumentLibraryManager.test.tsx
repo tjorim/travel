@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
-import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
+import { chooseOption, renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import type { OwnerDocument, Trip } from "../tracker-model";
 import { DocumentLibraryManager } from "./DocumentLibraryManager";
 
@@ -132,8 +132,9 @@ it("lists an uploaded document at once, linked to its trip, and closes the dialo
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
   await screen.findByText("Geef het document een titel.");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Reisverzekering" } });
+  fireEvent.keyDown(await screen.findByLabelText("Gekoppelde reis (optioneel)"), { key: "ArrowDown" });
   await screen.findByRole("option", { name: "Exampleland 2054" });
-  fireEvent.change(screen.getByLabelText("Gekoppelde reis (optioneel)"), { target: { value: "trip-1" } });
+  chooseOption("Gekoppelde reis (optioneel)", "Exampleland 2054");
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
   await screen.findByText("Kies een bestand om te uploaden.");
   fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(["x"], "polis.pdf", { type: "application/pdf" })] } });

@@ -2,7 +2,7 @@ import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../auth-context";
-import { requiredText, TextField } from "../forms/fields";
+import { requiredText, SearchSelect, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -265,7 +265,7 @@ export function CaptureDialog({ open, lockedTripId = null, candidate = null, onC
           {draft.updateId && <div className="capture-heading"><p className="eyebrow">Mobiel vastleggen</p><div className="button-row"><button className="secondary compact" type="button" onClick={startNew}>Nieuwe reisupdate</button><button className="danger compact" type="button" onClick={removeUpdate}>Verwijderen</button></div></div>}
           <p className={`connection ${connection ? "online" : "offline"}`} role="status">{connection ? "Verbonden — je kiest zelf wanneer je opslaat." : "Offline — concepten blijven lokaal; er is geen automatische synchronisatie."}</p>
           <form ref={record.formRef} className="capture-form" noValidate onSubmit={(event) => { event.preventDefault(); void form.handleSubmit(); }}>
-            {lockedTrip ? <p className="capture-trip-context">Reis: <strong>{lockedTrip.title}</strong></p> : <label>Reis<select value={draft.tripId} onChange={(event) => selectTrip(event.target.value)}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label>}
+            {lockedTrip ? <p className="capture-trip-context">Reis: <strong>{lockedTrip.title}</strong></p> : <label>Reis<SearchSelect ariaLabel="Reis" value={draft.tripId} onChange={selectTrip}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</SearchSelect></label>}
             {selectedTrip && <aside className="publication" aria-label="Delen van deze reisupdate"><strong>Voor je opslaat</strong><span>Een nieuwe reisupdate is privé. Je notities, locatie en foto’s worden nooit gedeeld; de tekst voor bezoekers schrijf je later bij Verhaal.</span></aside>}
             <div className="field-row">
               <form.Field name="occurredAt" listeners={clearSaveState} validators={{ onChange: requiredText("Geef de datum en tijd op."), onSubmit: requiredText("Geef de datum en tijd op.") }}>{(field) => <TextField field={field} label="Datum en tijd" required type="datetime-local" />}</form.Field>

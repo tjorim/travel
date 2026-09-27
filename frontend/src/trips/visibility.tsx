@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { SearchSelect } from "../forms/fields";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
@@ -50,9 +51,9 @@ export function VisibilityControl({ tripId, kind, id, value, name, followsUpdate
   }
   return <div className="field visibility-control">
     <label>Zichtbaarheid
-      <select aria-label={`Zichtbaarheid van ${name}`} value={shown} disabled={save.isPending} onChange={(event) => choose(event.target.value as Visibility)}>
+      <SearchSelect ariaLabel={`Zichtbaarheid van ${name}`} value={shown} isDisabled={save.isPending} onChange={(value) => choose(value as Visibility)}>
         {(Object.keys(VISIBILITY_LABELS) as Visibility[]).map((option) => <option key={option} value={option}>{VISIBILITY_LABELS[option]}</option>)}
-      </select>
+      </SearchSelect>
     </label>
     {error && <span className="field-error" role="alert">{error}</span>}
   </div>;

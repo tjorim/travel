@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { useTripsQuery } from "../query/owner-queries";
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { Area, TravelUpdate, Trip } from "../tracker-model";
 import { TravelUpdateManager } from "./TravelUpdateManager";
 
@@ -113,10 +113,10 @@ it("shows an edited update and removes it only after the in-app confirmation", a
 it("saves who may see an update with the update itself, private by default", async () => {
   renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
-  expect((screen.getByLabelText("Zichtbaarheid") as HTMLSelectElement).value).toBe("private");
+  expect(selectedOption("Zichtbaarheid")).toBe("Privé — alleen ik");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Voor iedereen" } });
   fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
-  fireEvent.change(screen.getByLabelText("Zichtbaarheid"), { target: { value: "everyone" } });
+  chooseOption("Zichtbaarheid", "Iedereen — alle bezoekers");
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
   await screen.findByRole("button", { name: "Reisupdate Voor iedereen bekijken" });
   expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({ visibility: "everyone" });

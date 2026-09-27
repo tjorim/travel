@@ -1,5 +1,6 @@
 import { useRef } from "react";
 
+import { SearchSelect } from "../forms/fields";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { locationName, type Area, type AreaSuggestion, type Location, type LocationInput, type PlaceSearchResult, type Visit } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
@@ -81,14 +82,14 @@ export function PlacePicker({ tripId, label, value, onChange, hint }: { tripId: 
 
   return <fieldset className="place-picker"><legend>{label}</legend>
     <div className="field"><label>{label} kiezen
-      <select aria-label={label} value={value.choice} onChange={(event) => onChange(event.target.value === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: event.target.value })}>
+      <SearchSelect ariaLabel={label} value={value.choice} onChange={(next) => onChange(next === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: next })}>
         <option value="">Kies een gebied of een locatie</option>
         {areas.map((area) => <optgroup key={area.id} label={`${area.label}${area.region ? ` · ${area.region}` : ""}`}>
           <option value={`area:${area.id}`}>{area.label} (heel gebied)</option>
           {inArea(area).map((location) => <option key={location.id} value={`location:${location.id}`}>{locationName(location)}</option>)}
         </optgroup>)}
         <option value="new">Nieuwe locatie…</option>
-      </select>
+      </SearchSelect>
     </label></div>
     {hint && <p className="help">{hint}</p>}
     {value.choice === "new" && <div className="place-picker-new">
@@ -100,9 +101,9 @@ export function PlacePicker({ tripId, label, value, onChange, hint }: { tripId: 
       <div className="field-row">
         <div className="field"><label>Landcode <span className="optional">(optioneel)</span><input aria-label={`Landcode (${label.toLowerCase()})`} value={value.newCountryCode} maxLength={2} onChange={(event) => onChange({ ...value, newCountryCode: event.target.value })} /></label></div>
         <div className="field"><label>Gebied <span className="optional">(optioneel)</span>
-          <select aria-label={`Gebied van de nieuwe locatie (${label.toLowerCase()})`} value={value.newAreaId} onChange={(event) => onChange({ ...value, newAreaId: event.target.value })}>
+          <SearchSelect ariaLabel={`Gebied van de nieuwe locatie (${label.toLowerCase()})`} value={value.newAreaId} onChange={(next) => onChange({ ...value, newAreaId: next })}>
             <option value="">{value.newResult?.latitude != null ? "Geen voorstel gebruiken (plaatsregel)" : "Afleiden uit de plaats"}</option>{value.newAreaCandidate && <option value="__new__">Nieuw gebied: {value.newAreaCandidate.label}{value.newAreaCandidate.timezone ? ` · ${value.newAreaCandidate.timezone}` : ""}</option>}{areas.map((area) => <option key={area.id} value={area.id}>{area.label}</option>)}
-          </select>
+          </SearchSelect>
         </label></div>
       </div>
       {value.newAreaId === "__new__" && value.newAreaCandidate && <div className="field-row">

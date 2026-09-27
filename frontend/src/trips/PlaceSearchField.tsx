@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { SearchSelect } from "../forms/fields";
 import { errorMessage } from "../query/api";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { locationName, type Location, type PlaceSearchResponse, type PlaceSearchResult } from "../tracker-model";
@@ -19,6 +20,7 @@ export function PlaceSearchField({ tripId, legend, inputLabel, placeholder, help
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResponse | null>(null);
   const [state, setState] = useState("");
+  const [existingChoice, setExistingChoice] = useState("");
   const existingQuery = useTripResource(allowExisting ? tripId : null, "locations");
   const existing = existingQuery.data ?? [];
   // A lookup phrase can be sensitive, so it is not retained in the mutation cache.
@@ -48,14 +50,14 @@ export function PlaceSearchField({ tripId, legend, inputLabel, placeholder, help
   }
   return <fieldset className="place-lookup"><legend>{legend} <span className="optional">(optioneel)</span></legend><p>{help}</p>
     {allowExisting && existing.length > 0 && <label>Gebruik een bestaande locatie
-      <select aria-label="Gebruik een bestaande locatie" defaultValue="" onChange={(event) => {
-        const place = existing.find((item) => item.id === event.target.value);
+      <SearchSelect ariaLabel="Gebruik een bestaande locatie" value={existingChoice} onChange={(value) => {
+        const place = existing.find((item) => item.id === value);
         if (place) chooseExisting(place);
-        event.currentTarget.value = "";
+        setExistingChoice("");
       }}>
         <option value="">Kies een eerder opgeslagen locatie</option>
         {existing.map((place) => <option key={place.id} value={place.id}>{locationName(place)}{place.locality ? ` · ${place.locality}` : ""}</option>)}
-      </select>
+      </SearchSelect>
     </label>}
     <div className="field-row"><label>{inputLabel}<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} /></label><div className="button-field"><button className="secondary" type="button" onClick={find}>Zoeken</button></div></div>
     {state && <p className="help" role="status">{state}</p>}

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import { VisibilityControl } from "./visibility";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -16,9 +16,8 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); expect(api.unexpected).toEqu
 it("offers the same three choices for every kind and saves the chosen one at once", async () => {
   api.on("PUT", /\/visibility\/visit\/s1$/, (body) => body);
   renderWithOwner(<VisibilityControl tripId="trip" kind="visit" id="s1" value="private" name="Noordkust" />);
-  const control = screen.getByLabelText("Zichtbaarheid van Noordkust") as HTMLSelectElement;
-  expect([...control.options].map((option) => option.value)).toEqual(["private", "everyone", "custom"]);
-  fireEvent.change(control, { target: { value: "custom" } });
+  expect(selectedOption("Zichtbaarheid van Noordkust")).toEqual("Privé — alleen ik");
+  chooseOption("Zichtbaarheid van Noordkust", "Zelf kiezen in Delen");
   await waitFor(() => expect(api.lastBody("PUT /api/trips/trip/visibility/visit/s1")).toEqual({ visibility: "custom" }));
 });
 
@@ -26,7 +25,7 @@ it("shows the server's reason when a record cannot be shared yet", async () => {
   api.on("PUT", /\/visibility\/location\/e1$/, (body) => body);
   api.failNext = { status: 422, body: { detail: "Give this location a public name before sharing it" } };
   renderWithOwner(<VisibilityControl tripId="trip" kind="location" id="e1" value="private" name="Hotel" />);
-  fireEvent.change(screen.getByLabelText("Zichtbaarheid van Hotel"), { target: { value: "everyone" } });
+  chooseOption("Zichtbaarheid van Hotel", "Iedereen — alle bezoekers");
   expect(await screen.findByRole("alert")).toBeTruthy();
 });
 

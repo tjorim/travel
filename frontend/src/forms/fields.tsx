@@ -1,5 +1,6 @@
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { createContext, useContext, useId, type InputHTMLAttributes, type ReactNode, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { Children, createContext, isValidElement, useContext, useId, type InputHTMLAttributes, type ReactNode, type RefObject, type TextareaHTMLAttributes } from "react";
+import Select, { type GroupBase } from "react-select";
 
 type ServerErrors = Record<string, string>;
 export const ServerFieldErrors = createContext<ServerErrors>({});
@@ -57,12 +58,64 @@ export function TextAreaField({ field, label, optional, ...input }: Common & Omi
   </div>;
 }
 
-export function SelectField({ field, label, optional, children, ...input }: Common & { children: ReactNode } & Omit<SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange" | "onBlur" | "name">) {
+type SearchSelectOption = { value: string; label: ReactNode; isDisabled?: boolean };
+type SearchSelectGroup = GroupBase<SearchSelectOption>;
+
+/** Reads the same `<option>`/`<optgroup>` children a native `<select>` takes, for react-select's `options`. */
+function optionsFromChildren(children: ReactNode): (SearchSelectOption | SearchSelectGroup)[] {
+  const options: (SearchSelectOption | SearchSelectGroup)[] = [];
+  Children.forEach(children, (child) => {
+    if (!isValidElement<{ value?: string; children?: ReactNode; disabled?: boolean; label?: string }>(child)) return;
+    if (child.type === "option") options.push({ value: String(child.props.value ?? ""), label: child.props.children, isDisabled: child.props.disabled });
+    else if (child.type === "optgroup") options.push({ label: child.props.label ?? "", options: optionsFromChildren(child.props.children).filter((option): option is SearchSelectOption => "value" in option) });
+  });
+  return options;
+}
+
+function findOption(options: readonly (SearchSelectOption | SearchSelectGroup)[], value: string): SearchSelectOption | null {
+  for (const option of options) {
+    if ("value" in option) { if (option.value === value) return option; }
+    else { const found = findOption(option.options, value); if (found) return found; }
+  }
+  return null;
+}
+
+/** A search/select control for owner forms, styled to match the shared inputs. Reads the same `<option>`/`<optgroup>` children a native `<select>` would. */
+export function SearchSelect({ ariaLabel, inputId, value, onChange, onBlur, isDisabled, children, ...describedProps }: {
+  ariaLabel?: string;
+  inputId?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  isDisabled?: boolean;
+  children: ReactNode;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+  name?: string;
+}) {
+  const options = optionsFromChildren(children);
+  return <Select<SearchSelectOption, false, SearchSelectGroup>
+    unstyled
+    classNamePrefix="rs"
+    inputId={inputId}
+    aria-label={ariaLabel}
+    aria-invalid={describedProps["aria-invalid"]}
+    aria-describedby={describedProps["aria-describedby"]}
+    name={describedProps.name}
+    isDisabled={isDisabled}
+    options={options}
+    value={findOption(options, value)}
+    onChange={(option) => onChange(option?.value ?? "")}
+    onBlur={onBlur}
+  />;
+}
+
+export function SelectField({ field, label, optional, children, disabled }: Common & { children: ReactNode; disabled?: boolean }) {
   const { message, invalid, describedBy } = useFieldErrors(field);
+  const controlId = useId();
   return <div className="field">
-    <label>{label}{optionalNote(optional)}
-      <select {...input} name={field.name} value={field.state.value ?? ""} aria-invalid={invalid || undefined} aria-describedby={message ? describedBy : undefined} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)}>{children}</select>
-    </label>
+    <label htmlFor={controlId}>{label}{optionalNote(optional)}</label>
+    <SearchSelect inputId={controlId} value={field.state.value ?? ""} isDisabled={disabled} onChange={field.handleChange} onBlur={field.handleBlur} aria-invalid={invalid || undefined} aria-describedby={message ? describedBy : undefined} name={field.name}>{children}</SearchSelect>
     {message && <span id={describedBy} className="field-error" role="alert">{message}</span>}
   </div>;
 }

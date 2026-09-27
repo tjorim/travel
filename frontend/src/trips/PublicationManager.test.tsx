@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { ownerKeys } from "../query/keys";
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type { OverviewAudience, ProjectionDocument, PublicProjectionStatus, ShareLink, ShareScope, Trip, TripOverview } from "../tracker-model";
 import { PublicationManager } from "./PublicationManager";
@@ -98,9 +98,9 @@ it("says what reaches every audience anyway and offers no field checklist", asyn
 
 it("sets who sees a record from Delen with the same control as its own editor", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  const control = await screen.findByLabelText("Zichtbaarheid van Aankomst");
-  expect((control as HTMLSelectElement).value).toBe("everyone");
-  fireEvent.change(control, { target: { value: "private" } });
+  await screen.findByLabelText("Zichtbaarheid van Aankomst");
+  expect(selectedOption("Zichtbaarheid van Aankomst")).toBe("Iedereen — alle bezoekers");
+  chooseOption("Zichtbaarheid van Aankomst", "Privé — alleen ik");
   await waitFor(() => expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u2")).toEqual({ visibility: "private" }));
 });
 

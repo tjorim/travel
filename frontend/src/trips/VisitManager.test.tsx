@@ -4,7 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
+import { chooseOption, renderWithOwner, resetOfflineDb, selectedOption, testToken } from "../query/test-utils";
 import type { Area, Location, Stay, Trip, Visit } from "../tracker-model";
 import { VisitManager, overnights, visitWhen } from "./VisitManager";
 
@@ -35,9 +35,10 @@ function seed(visits: Visit[] = []) {
 beforeEach(() => { auth.session = { accessToken: testToken() }; });
 afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); await resetOfflineDb(); });
 
-/** Opens the form once the areas and locations it lists have arrived. */
+/** Opens the form once the areas and locations it lists have arrived, leaving "Waar" open on them. */
 const openNew = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw bezoek" }));
+  fireEvent.keyDown(await screen.findByLabelText("Waar"), { key: "ArrowDown" });
   await screen.findByRole("option", { name: "Tainan (heel gebied)" });
 };
 
@@ -49,7 +50,7 @@ it("needs only a place, and says so when there is none", async () => {
   await screen.findByText("Kies waar het bezoek is: een gebied of een locatie.");
   expect(api.count("POST /api/trips/trip/visits")).toBe(0);
 
-  fireEvent.change(screen.getByLabelText("Waar"), { target: { value: "area:tainan" } });
+  chooseOption("Waar", "Tainan (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await screen.findByRole("button", { name: "Bezoek Tainan bekijken" });
   expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({ area_id: "tainan", location: null, starts_on: null, start_time: null, share_time: false, position: 0 });
@@ -59,9 +60,9 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
   seed();
   renderWithOwner(<VisitManager trip={trip} />);
   await openNew();
-  const where = screen.getByLabelText("Waar") as HTMLSelectElement;
-  expect(within(where.querySelector("optgroup[label='Taipei']") as HTMLElement).getByText("Beitou Hot Spring")).toBeTruthy();
-  fireEvent.change(where, { target: { value: "location:spring" } });
+  const stationOption = screen.getByRole("option", { name: "Beitou Hot Spring" });
+  expect(stationOption.closest(".rs__group")?.querySelector(".rs__group-heading")?.textContent).toBe("Taipei");
+  chooseOption("Waar", "Beitou Hot Spring");
   fireEvent.change(screen.getByLabelText("Titel (optioneel)"), { target: { value: "Warme bron" } });
 
   // A time belongs to a day.
@@ -81,10 +82,10 @@ it("chooses to show the time to visitors", async () => {
   seed();
   renderWithOwner(<VisitManager trip={trip} />);
   await openNew();
-  fireEvent.change(screen.getByLabelText("Waar"), { target: { value: "area:taipei" } });
+  chooseOption("Waar", "Taipei (heel gebied)");
   fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), { target: { value: "2054-11-21" } });
   fireEvent.change(screen.getByLabelText("Begintijd (optioneel)"), { target: { value: "10:00" } });
-  fireEvent.change(screen.getByLabelText("Datums voor bezoekers"), { target: { value: "day" } });
+  chooseOption("Datums voor bezoekers", "Volledige datums");
   fireEvent.click(screen.getByLabelText(/Toon de tijd aan bezoekers/));
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await waitFor(() => expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({ share_time: true, share_date_precision: "day", start_time: "10:00" }));
@@ -97,10 +98,11 @@ it("rewrites the place only when it changed, and shows where the nights are spen
   expect(screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }).textContent).toContain("Idee · Werk");
   fireEvent.click(screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  fireEvent.keyDown(await screen.findByLabelText("Waar"), { key: "ArrowDown" });
   await screen.findByRole("option", { name: "Tainan (heel gebied)" });
-  expect((screen.getByLabelText("Waar") as HTMLSelectElement).value).toBe("area:taipei");
-  expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("idea");
-  fireEvent.change(screen.getByLabelText("Status"), { target: { value: "confirmed" } });
+  expect(selectedOption("Waar")).toBe("Taipei (heel gebied)");
+  expect(selectedOption("Status")).toBe("Idee");
+  chooseOption("Status", "Bevestigd");
   fireEvent.change(screen.getByLabelText("Notities (optioneel, altijd privé)"), { target: { value: "Laptop mee" } });
   fireEvent.click(screen.getByRole("button", { name: "Bezoek opslaan" }));
   await screen.findByText("Bezoek opgeslagen.");

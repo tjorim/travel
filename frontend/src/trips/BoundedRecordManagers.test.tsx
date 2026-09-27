@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { Area, DocumentAsset, Location, Stay, Trip } from "../tracker-model";
 import { AreaManager } from "./AreaManager";
 import { StayManager } from "./StayManager";
@@ -117,7 +117,8 @@ it("reuses a saved location for a new stay instead of copying its address", asyn
   api = fakeApi().collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/locations", [savedLocation]);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
-  fireEvent.change(await screen.findByLabelText("Gebruik een bestaande locatie"), { target: { value: "bru" } });
+  await screen.findByLabelText("Gebruik een bestaande locatie");
+  chooseOption("Gebruik een bestaande locatie", "Brussels Airport · Zaventem");
   expect((screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)") as HTMLInputElement).value).toBe("Brussels Airport");
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -194,9 +195,8 @@ it("sets who sees a stay from its own detail, with the same control as everywher
   api.on("PUT", /\/visibility\/stay\/s1$/, (body) => body);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
-  const control = screen.getByLabelText("Zichtbaarheid van Hotel") as HTMLSelectElement;
-  expect(control.value).toBe("private");
-  fireEvent.change(control, { target: { value: "everyone" } });
+  expect(selectedOption("Zichtbaarheid van Hotel")).toBe("Privé — alleen ik");
+  chooseOption("Zichtbaarheid van Hotel", "Iedereen — alle bezoekers");
   await waitFor(() => expect(api.lastBody("PUT /api/trips/trip/visibility/stay/s1")).toEqual({ visibility: "everyone" }));
 });
 
@@ -204,8 +204,8 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
   api = fakeApi().collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
-  expect((screen.getByLabelText("Datums voor bezoekers") as HTMLSelectElement).value).toBe("month");
-  fireEvent.change(screen.getByLabelText("Datums voor bezoekers"), { target: { value: "day" } });
+  expect(selectedOption("Datums voor bezoekers")).toBe("Alleen maanden");
+  chooseOption("Datums voor bezoekers", "Volledige datums");
   fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() => expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ share_date_precision: "day" }));

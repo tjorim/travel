@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { Area, DocumentAsset, Location, Route, Trip } from "../tracker-model";
 import { RouteManager } from "./RouteManager";
 
@@ -46,9 +46,9 @@ function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = 
 beforeEach(() => { auth.session = { accessToken: testToken() }; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); });
 
-const pickAreas = (from = "area:taipei", to = "area:tainan") => {
-  fireEvent.change(screen.getByLabelText("Vertrek"), { target: { value: from } });
-  fireEvent.change(screen.getByLabelText("Aankomst"), { target: { value: to } });
+const pickAreas = (from = "Taipei (heel gebied)", to = "Tainan (heel gebied)") => {
+  chooseOption("Vertrek", from);
+  chooseOption("Aankomst", to);
 };
 
 it("needs only a mode and two areas", async () => {
@@ -60,7 +60,7 @@ it("needs only a mode and two areas", async () => {
   await screen.findByText("Kies waar de route begint: een gebied of een locatie.");
   expect(api.count("POST /api/trips/trip/routes")).toBe(0);
 
-  fireEvent.change(screen.getByLabelText("Vervoer"), { target: { value: "bike" } });
+  chooseOption("Vervoer", "Fiets");
   pickAreas();
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByRole("button", { name: "Route Taipei → Tainan bekijken" });
@@ -128,8 +128,8 @@ it("opens a route in detail before its editor, prefilled with its bookings and t
   expect(screen.getByText("Boekingsreferentie: REF")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(screen.getByRole("heading", { name: "Route bewerken" })).toBeTruthy();
-  expect((screen.getByLabelText("Vertrek") as HTMLSelectElement).value).toBe("location:ams-airport");
-  expect((screen.getByLabelText("Aankomst") as HTMLSelectElement).value).toBe("area:tpe");
+  expect(selectedOption("Vertrek")).toBe("Amsterdam Schiphol");
+  expect(selectedOption("Aankomst")).toBe("Taoyuan (heel gebied)");
   expect((screen.getByLabelText("Boekingsreferentie (optioneel)") as HTMLInputElement).value).toBe("REF");
   expect((screen.getByLabelText("Tijdzone vertrek (optioneel)") as HTMLInputElement).value).toBe("Europe/Amsterdam");
   expect((screen.getByLabelText("Vertrektijd (lokaal) (optioneel)") as HTMLInputElement).value).toBe("2054-11-16T10:40");
@@ -140,11 +140,11 @@ it("files a new location under the chosen area", async () => {
   api.on("POST", /\/places\/search$/, () => ({ attribution: "© OpenStreetMap contributors", attribution_url: "https://www.openstreetmap.org/copyright", results: [{ osm_element_type: "node", osm_element_id: "8", display_name: "Taipei Main Station", locality: "Taipei", country_code: "TW", latitude: 25.048, longitude: 121.517 }] }));
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
-  pickAreas("new", "area:tainan");
+  pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
   fireEvent.change(screen.getByLabelText("Zoek locatie (vertrek)"), { target: { value: "Taipei Main Station" } });
   fireEvent.click(screen.getAllByRole("button", { name: "Zoeken" })[0]);
   fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
-  fireEvent.change(screen.getByLabelText("Gebied van de nieuwe locatie (vertrek)"), { target: { value: "taipei" } });
+  chooseOption("Gebied van de nieuwe locatie (vertrek)", "Taipei");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
@@ -158,11 +158,11 @@ it("shows a nearby area suggestion before saving a new location", async () => {
   api.on("POST", /\/places\/search$/, () => ({ attribution: "Test", attribution_url: "https://example.test", results: [{ osm_element_type: "node", osm_element_id: "8", display_name: "Taipei Main Station", locality: "Taipei", country_code: "TW", latitude: 25.048, longitude: 121.517 }] }));
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
-  pickAreas("new", "area:tainan");
+  pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
   fireEvent.change(screen.getByLabelText("Zoek locatie (vertrek)"), { target: { value: "Taipei Main Station" } });
   fireEvent.click(screen.getAllByRole("button", { name: "Zoeken" })[0]);
   fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
-  await waitFor(() => expect((screen.getByLabelText("Gebied van de nieuwe locatie (vertrek)") as HTMLSelectElement).value).toBe("taipei"));
+  await waitFor(() => expect(selectedOption("Gebied van de nieuwe locatie (vertrek)")).toBe("Taipei"));
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(api.lastBody<Record<string, { area_id: string }>>("POST /api/trips/trip/routes")?.departure_location.area_id).toBe("taipei"));
 });
@@ -171,10 +171,11 @@ it("reuses a saved location, which is already part of its area", async () => {
   seed([], [savedLocation]);
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
-  const departure = screen.getByLabelText("Vertrek") as HTMLSelectElement;
   // The location is listed under its area, so one choice says both.
-  expect(within(departure.querySelector("optgroup[label='Taipei']") as HTMLElement).getByText("Taipei Main Station")).toBeTruthy();
-  pickAreas("location:main-station", "area:tainan");
+  fireEvent.keyDown(screen.getByLabelText("Vertrek"), { key: "ArrowDown" });
+  const stationOption = screen.getByRole("option", { name: "Taipei Main Station" });
+  expect(stationOption.closest(".rs__group")?.querySelector(".rs__group-heading")?.textContent).toBe("Taipei");
+  pickAreas("Taipei Main Station", "Tainan (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   const sent = api.lastBody<Record<string, unknown>>("POST /api/trips/trip/routes")!;
@@ -188,7 +189,7 @@ it("rewrites an end only when it changed, and moving to the whole area clears th
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Route Taipei → Tainan bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  expect((screen.getByLabelText("Vertrek") as HTMLSelectElement).value).toBe("location:main-station");
+  expect(selectedOption("Vertrek")).toBe("Taipei Main Station");
   fireEvent.change(screen.getByLabelText("Vervoerder (optioneel)"), { target: { value: "THSR" } });
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -197,7 +198,7 @@ it("rewrites an end only when it changed, and moving to the whole area clears th
 
   fireEvent.click(await screen.findByRole("button", { name: /Route Taipei → Tainan bekijken/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.change(screen.getByLabelText("Vertrek"), { target: { value: "area:taipei" } });
+  chooseOption("Vertrek", "Taipei (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("PATCH /api/trips/trip/routes/r1")).toMatchObject({ departure_area_id: "taipei", departure_location: null });

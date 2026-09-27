@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { SearchSelect } from "../forms/fields";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
@@ -22,9 +23,9 @@ function LocationRow({ tripId, place, areas }: { tripId: string; place: Location
   return <article className="scope-item">
     <div><strong>{locationName(place)}</strong><span>{[place.locality, place.country_code, visibilityLabel(place.visibility)].filter(Boolean).join(" · ")}</span></div>
     <div className="field"><label>Gebied
-      <select aria-label={`Gebied van ${locationName(place)}`} value={place.area_id ?? ""} disabled={save.isPending} onChange={(event) => void apply({ area_id: event.target.value || null }, "Gebied opgeslagen.")}>
+      <SearchSelect ariaLabel={`Gebied van ${locationName(place)}`} value={place.area_id ?? ""} isDisabled={save.isPending} onChange={(value) => void apply({ area_id: value || null }, "Gebied opgeslagen.")}>
         {areas.map((area) => <option key={area.id} value={area.id}>{area.label}</option>)}
-      </select>
+      </SearchSelect>
     </label></div>
     <div className="field"><label>Publieke naam
       <input aria-label={`Publieke naam van ${locationName(place)}`} value={label} maxLength={120} placeholder="Bijvoorbeeld: warme bron van Beitou" onChange={(event) => { setLabel(event.target.value); setMessage(null); }} />
