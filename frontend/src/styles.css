@@ -113,6 +113,7 @@ textarea { min-height: 136px; resize: vertical; }
 .danger { background: #a63b32; }
 .action-link { display: inline-block; padding: 10px 13px; border-radius: 9px; background: #0f493b; color: #fffdf8; font-weight: 700; text-decoration: none; }
 .action-link.secondary { border: 1px solid #87a096; background: transparent; color: #0f493b; }
+.public-link-live code { display: inline-block; overflow-wrap: anywhere; padding: 4px 8px; border-radius: 6px; background: #eef5ef; color: #19342d; font-size: .86rem; }
 .excerpt-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 /* Rows with many actions (agenda) put them under the text instead of squeezing it. */
 .excerpt-row.stacked { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 10px; }

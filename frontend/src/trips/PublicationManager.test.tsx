@@ -190,10 +190,17 @@ it("publishes and withdraws the public page", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
   const publish = await screen.findByRole("button", { name: "Met iedereen delen" });
   await waitFor(() => expect((publish as HTMLButtonElement).disabled).toBe(false));
+  expect(screen.queryByRole("link", { name: "Open publieke pagina" })).toBeNull();
   fireEvent.click(publish);
+  const open = await screen.findByRole("link", { name: "Open publieke pagina" });
+  expect(open.getAttribute("href")).toBe(`${window.location.origin}/trips/exampleland`);
+  expect(screen.getByText(`${window.location.origin}/trips/exampleland`)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Kopieer link" })).toBeTruthy();
   fireEvent.click(await screen.findByRole("button", { name: "Niet meer met iedereen delen" }));
   await screen.findByText("Publieke pagina ingetrokken.");
   expect(screen.getByRole("button", { name: "Met iedereen delen" })).toBeTruthy();
+  expect(screen.queryByRole("link", { name: "Open publieke pagina" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Kopieer link" })).toBeNull();
 });
 
 it("previews the public page after saving its scope", async () => {

@@ -44,6 +44,10 @@ function shareUrl(token: string): string {
   return new URL(`/share/${encodeURIComponent(token)}`, window.location.origin).toString();
 }
 
+function publicUrl(slug: string): string {
+  return new URL(`/trips/${encodeURIComponent(slug)}`, window.location.origin).toString();
+}
+
 function dateLabel(value: string | null): string {
   return value ? formatInstantDate(value) : "—";
 }
@@ -373,6 +377,12 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     setNotice("Link gekopieerd.");
   }
 
+  async function copyPublicLink() {
+    if (!publicStatus?.slug) return;
+    await navigator.clipboard.writeText(publicUrl(publicStatus.slug));
+    setNotice("Publieke link gekopieerd.");
+  }
+
   const catalog = useMemo<CatalogItem[]>(() => {
     const approved = <T extends { review_state: string }>(items: T[] | undefined) => (items ?? []).filter((item) => item.review_state === "approved");
     const updateTitles = new Map(trip.travel_updates.map((update) => [update.id, update.title]));
@@ -399,7 +409,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     <SharingReview overview={overviewQuery.data} />
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Zichtbaarheid per onderdeel</h3><p>Dezelfde keuze als in de editor van elk onderdeel.</p></div></div><VisibilityOverview tripId={trip.id} catalog={catalog} /></div>
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Voor iedereen</h3><p>{isPublished ? "Deze pagina is voor iedereen bereikbaar." : "Deze pagina is nog niet bereikbaar voor bezoekers."}</p></div></div>
+      {isPublished && publicStatus?.slug && <p className="help public-link-live"><code>{publicUrl(publicStatus.slug)}</code></p>}
       <RecordForm record={publicRecord} submitLabel="Keuze bewaren" pendingLabel="Bewaren…" actions={<>
+        {isPublished && publicStatus?.slug && <a className="action-link secondary" href={publicUrl(publicStatus.slug)} target="_blank" rel="noreferrer">Open publieke pagina</a>}
+        {isPublished && publicStatus?.slug && <button className="secondary" type="button" onClick={() => void copyPublicLink().catch(fail("Kopiëren lukte niet."))}>Kopieer link</button>}
         <button className="secondary" type="button" onClick={() => void previewPublic().catch(fail("Voorbeeld laden lukte niet."))}>Bekijk als bezoeker</button>
         <button className={isPublished ? "danger" : ""} type="button" disabled={!publicStatus || togglePublic.isPending} onClick={toggle}>{isPublished ? "Niet meer met iedereen delen" : "Met iedereen delen"}</button>
       </>}>
