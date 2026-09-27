@@ -50,6 +50,7 @@ export type MediaAsset = {
   camera_model: string | null;
   gps: { latitude: number; longitude: number } | null;
   file_url: string;
+  thumbnail_url: string | null;
 };
 
 export type PlaceSearchResponse = {

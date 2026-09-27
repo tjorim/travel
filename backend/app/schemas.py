@@ -1047,6 +1047,7 @@ class MediaAssetResponse(BaseModel):
     camera_model: str | None = None
     gps: MediaGpsCoordinates | None = None
     file_url: str
+    thumbnail_url: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
+import { renderWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type { MediaAsset, MediaDerivative, Trip } from "../tracker-model";
 import { MediaManager } from "./MediaManager";
@@ -31,6 +31,8 @@ beforeEach(() => {
     .collection("/api/trips/trip/visits", []);
   providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: true, connected: true }];
   api.on("GET", /^\/api\/provider-tokens$/, () => providers);
+  // The inline derivative preview and focal-point overlay fetch the derivative's file as a blob.
+  api.on("GET", /^\/files\//, () => ({}));
 });
 afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); await resetOfflineDb(); });
 
@@ -106,6 +108,26 @@ it("opens the presentation form with the saved values, saves it and shows the sa
   await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
   expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({ caption: "Kust bij zonsopgang", focal_x: 40, travel_update_id: null });
   await waitFor(() => expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe("Kust bij zonsopgang"));
+});
+
+it("shows a thumbnail beside a photo, a readable purpose label, and an inline preview with a focal-point marker", async () => {
+  stubObjectUrls();
+  api.rows("/api/trips/trip/media")[0].thumbnail_url = "/files/p1-thumb";
+  renderMedia();
+  await screen.findByText("kust.jpg");
+  const row = screen.getByText("kust.jpg").closest("article")!;
+  await waitFor(() => expect(row.querySelector("img")).not.toBeNull());
+  expect(row.querySelector("img")!.getAttribute("src")).toBe("blob:test");
+  expect(screen.getByText(/^Delen ·/)).toBeTruthy();
+
+  const derivativeRow = screen.getByText("Wacht op goedkeuring").closest("article")!;
+  await waitFor(() => expect(derivativeRow.querySelectorAll("img").length).toBeGreaterThan(0));
+  const marker = derivativeRow.querySelector(".focal-point-marker") as HTMLElement;
+  expect(marker.style.left).toBe("50%");
+  expect(marker.style.top).toBe("50%");
+  fireEvent.change(screen.getByLabelText("Focus horizontaal (%)"), { target: { value: "20" } });
+  expect(marker.style.left).toBe("20%");
+  restoreObjectUrls();
 });
 
 it("reviews possible visits without storing them, and attaches media to an existing reisupdate", async () => {

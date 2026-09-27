@@ -25,6 +25,7 @@ from ..media.service import (
     delete_media_derivative,
     direct_upload,
     expire_stalled_video_derivatives,
+    generate_thumbnail,
     process_video_derivative,
     queue_video_derivative,
 )
@@ -88,6 +89,9 @@ def _asset_response(asset: MediaAsset, trip_id: str) -> MediaAssetResponse:
         camera_model=exif.get("camera_model"),
         gps=MediaGpsCoordinates(**gps) if gps else None,
         file_url=f"/api/trips/{trip_id}/media/{asset.id}/original",
+        thumbnail_url=(
+            f"/api/trips/{trip_id}/media/{asset.id}/thumbnail" if asset.media_kind == MediaKind.PHOTO else None
+        ),
     )
 
 
@@ -265,6 +269,18 @@ def get_media_original(
     original = asset.original_object
     data = storage.get(original.object_key)
     return StreamingResponse(iter([data]), media_type=original.content_type, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/{media_id}/thumbnail")
+def get_media_thumbnail(
+    trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> StreamingResponse:
+    asset = owned_media_asset(session, trip_id, subject, media_id)
+    try:
+        data, content_type = generate_thumbnail(storage, media_asset=asset)
+    except MediaImportError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return StreamingResponse(iter([data]), media_type=content_type, headers={"Cache-Control": "no-store"})
 
 
 # --- Share/preview derivatives: generated only for owner-selected media -----------

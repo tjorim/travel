@@ -661,6 +661,32 @@ def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDe
         session.commit()
 
 
+THUMBNAIL_DIMENSION = 320
+
+
+def generate_thumbnail(storage: ObjectStorage, *, media_asset: MediaAsset) -> tuple[bytes, str]:
+    """Render a small, private identification thumbnail for a photo.
+
+    Generated on the fly from the original on every request rather than
+    stored: it never outlives the media it identifies, and a soft-deleted
+    or purged original simply stops producing one. Only photos have a
+    thumbnail; a video keeps its filename-only listing until reviewed.
+    """
+    if media_asset.media_kind != MediaKind.PHOTO:
+        raise MediaImportError("Only photos have thumbnails")
+    original = media_asset.original_object
+    if original.state != ObjectState.AVAILABLE:
+        raise MediaImportError("The original is not available")
+
+    data = storage.get(original.object_key)
+    with Image.open(io.BytesIO(data)) as opened:
+        oriented = ImageOps.exif_transpose(opened)
+        oriented.thumbnail((THUMBNAIL_DIMENSION, THUMBNAIL_DIMENSION))
+        buffer = io.BytesIO()
+        oriented.convert("RGB").save(buffer, format=DERIVATIVE_FORMAT, quality=80, method=6)
+    return buffer.getvalue(), DERIVATIVE_CONTENT_TYPE
+
+
 def create_derivative(
     session: Session,
     storage: ObjectStorage,

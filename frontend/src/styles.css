@@ -159,6 +159,14 @@ textarea { min-height: 136px; resize: vertical; }
 .selected-item { border-color: #0f493b; box-shadow: 0 0 0 2px #0f493b22; }
 .document-select { min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #19342d; text-align: left; }
 .document-select span { display: block; margin-top: 4px; color: #4d665e; font-size: .86rem; font-weight: 500; }
+.media-asset-select { display: flex; align-items: center; gap: 12px; }
+.media-asset-details { min-width: 0; }
+.media-thumbnail { width: 52px; height: 52px; border-radius: 9px; object-fit: cover; background: #e5ece7; flex: none; }
+.media-thumbnail-placeholder { display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+.derivative-preview-image { display: block; max-width: 260px; max-height: 260px; margin-bottom: 4px; border-radius: 10px; object-fit: contain; background: #e5ece7; }
+.focal-point-preview { position: relative; display: inline-block; max-width: 220px; margin-bottom: 10px; }
+.focal-point-preview .focal-point-preview-image { display: block; width: 100%; max-height: 220px; border-radius: 10px; object-fit: contain; background: #e5ece7; }
+.focal-point-marker { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid #fffdf8; border-radius: 50%; background: #d1453b; box-shadow: 0 0 0 1px #19342d, 0 2px 6px #19342d40; pointer-events: none; }
 .publication-manager { gap: 18px; }
 .scope-editor { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 15px; border: 1px solid #d6e0d9; border-radius: 12px; }
 .scope-editor legend { padding: 0 6px; font-weight: 800; }

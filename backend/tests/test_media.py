@@ -395,6 +395,50 @@ def test_direct_upload_creates_a_media_asset_served_from_storage_not_a_temp_url(
     assert other.get(body["file_url"]).status_code == 404
 
 
+def test_photo_thumbnail_is_a_smaller_owner_only_image(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    data = jpeg_bytes()
+
+    response = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("holiday.jpg", data, "image/jpeg")})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["thumbnail_url"] == f"/api/trips/{trip['id']}/media/{body['id']}/thumbnail"
+
+    thumbnail = owner.get(body["thumbnail_url"])
+    assert thumbnail.status_code == 200
+    assert thumbnail.headers["content-type"] == "image/webp"
+    assert thumbnail.headers["cache-control"] == "no-store"
+    assert len(thumbnail.content) < len(data)
+    with Image.open(io.BytesIO(thumbnail.content)) as image:
+        assert max(image.size) <= 320
+
+    other = client_for("owner-2", tmp_path)
+    assert other.get(body["thumbnail_url"]).status_code == 404
+
+
+def test_video_asset_has_no_thumbnail(tmp_path: Path) -> None:
+    storage = LocalObjectStorage(root=str(tmp_path))
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    with TestingSessionLocal() as session:
+        asset, _ = direct_upload(
+            session,
+            storage,
+            trip_id=trip["id"],
+            filename="clip.mov",
+            content_type="video/quicktime",
+            data=b"not-a-real-video",
+        )
+        asset_id = asset.id
+
+    listing = owner.get(f"/api/trips/{trip['id']}/media")
+    assert listing.status_code == 200
+    [item] = [entry for entry in listing.json() if entry["id"] == asset_id]
+    assert item["thumbnail_url"] is None
+    assert owner.get(f"/api/trips/{trip['id']}/media/{asset_id}/thumbnail").status_code == 404
+
+
 def test_direct_upload_extracts_exif_for_the_owner_while_the_original_keeps_it_embedded(tmp_path: Path) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
