@@ -53,8 +53,8 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 // The trip dialogs share labels with the managers' forms; scope to the dialog.
-const editor = (name: "Reis bewerken" | "Nieuwe reis") => within(screen.getByRole("heading", { name }).closest("dialog")!);
-const openEditor = async () => fireEvent.click(await screen.findByRole("button", { name: "Reis bewerken" }));
+const editor = (name: "Reisgegevens" | "Nieuwe reis") => within(screen.getByRole("heading", { name }).closest("dialog")!);
+const openEditor = async () => fireEvent.click(await screen.findByRole("button", { name: "Reisgegevens" }));
 const renderTrips = (path = "/trips") => renderWithOwner(<MemoryRouter initialEntries={[path]}><Routes>
   <Route path="/trips" element={<Trips />} />
   <Route path="/trips/:tripId" element={<TripWorkspace />} />
@@ -66,11 +66,11 @@ it("lists trips only, and opens a trip's workspace from its row", async () => {
   await screen.findByRole("button", { name: /Exampleland/ });
   // The list page no longer stacks a trip's content or editor under the list.
   expect(screen.queryByText("Private inhoud")).toBeNull();
-  expect(screen.queryByRole("button", { name: "Reis bewerken" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Reisgegevens" })).toBeNull();
   expect(screen.queryByLabelText("Titel")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /IJsland/ }));
   await screen.findByRole("heading", { name: "IJsland" });
-  expect(screen.getByRole("link", { name: "Alle reizen" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "← Alle reizen" })).toBeTruthy();
 });
 
 it("keeps the editor closed in the workspace until asked, then opens the trip with its saved values", async () => {
@@ -79,16 +79,16 @@ it("keeps the editor closed in the workspace until asked, then opens the trip wi
   expect(screen.getByRole("link", { name: "Volledig privéoverzicht" }).getAttribute("href")).toBe("/trips/t1/details");
   expect(screen.queryByLabelText("Titel")).toBeNull();
   await openEditor();
-  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  expect((editor("Reis bewerken").getByLabelText(/Eerste reisdag/) as HTMLInputElement).value).toBe("2054-11-16");
+  await waitFor(() => expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  expect((editor("Reisgegevens").getByLabelText(/Eerste reisdag/) as HTMLInputElement).value).toBe("2054-11-16");
 });
 
 it("shows the renamed trip in the workspace after saving, with one refreshed read", async () => {
   renderTrips("/trips/t1");
   await openEditor();
-  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  fireEvent.change(editor("Reis bewerken").getByLabelText("Titel"), { target: { value: "Exampleland 2054" } });
-  fireEvent.click(editor("Reis bewerken").getByRole("button", { name: "Reis opslaan" }));
+  await waitFor(() => expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  fireEvent.change(editor("Reisgegevens").getByLabelText("Titel"), { target: { value: "Exampleland 2054" } });
+  fireEvent.click(editor("Reisgegevens").getByRole("button", { name: "Reis opslaan" }));
   await screen.findByRole("heading", { name: "Exampleland 2054" });
   expect(screen.getByText("Reis opgeslagen.")).toBeTruthy();
   expect(screen.queryByLabelText("Titel")).toBeNull();
@@ -98,8 +98,8 @@ it("shows the renamed trip in the workspace after saving, with one refreshed rea
 it("drops a deleted trip and returns to the list", async () => {
   renderTrips("/trips/t1");
   await openEditor();
-  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  fireEvent.click(editor("Reis bewerken").getByRole("button", { name: "Reis verwijderen" }));
+  await waitFor(() => expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  fireEvent.click(editor("Reisgegevens").getByRole("button", { name: "Reis verwijderen" }));
   fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
   await screen.findByRole("heading", { name: "Reizen" });
   await waitFor(() => expect(screen.queryByRole("button", { name: /Exampleland/ })).toBeNull());
@@ -125,9 +125,9 @@ it("opens the new-trip dialog straight from the home page link", async () => {
 it("rejects an end date before the start date without calling the server", async () => {
   renderTrips("/trips/t1");
   await openEditor();
-  await waitFor(() => expect((editor("Reis bewerken").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
-  fireEvent.change(editor("Reis bewerken").getByLabelText(/Laatste reisdag/), { target: { value: "2054-11-01" } });
-  fireEvent.click(editor("Reis bewerken").getByRole("button", { name: "Reis opslaan" }));
+  await waitFor(() => expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
+  fireEvent.change(editor("Reisgegevens").getByLabelText(/Laatste reisdag/), { target: { value: "2054-11-01" } });
+  fireEvent.click(editor("Reisgegevens").getByRole("button", { name: "Reis opslaan" }));
   await screen.findByText("De laatste reisdag ligt vóór de eerste.");
   expect(requests.some((request) => request.startsWith("PATCH"))).toBe(false);
 });

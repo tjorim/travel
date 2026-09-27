@@ -135,6 +135,8 @@ textarea { min-height: 136px; resize: vertical; }
 .sharing-review .review-warning { color: #8a3a1f; }
 .manager-subsection { display: grid; gap: 15px; padding-top: 20px; border-top: 1px solid #d6e0d9; }
 .trip-workspace { display: grid; gap: 18px; }
+.back-link { justify-self: start; padding: 4px 0; color: #36574c; font-weight: 700; text-decoration: none; }
+.back-link:hover, .back-link:focus-visible { text-decoration: underline; }
 .trip-workspace-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
 .trip-workspace-header h2 { margin: 0; }
 .trip-workspace-header p { margin: 6px 0 0; color: #4d665e; }

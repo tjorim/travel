@@ -92,15 +92,16 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
 
   // Every trip-bound manager remounts per trip, so no editor or dialog carries one trip's record into another.
   if (workspace && selectedTrip) return <section className="trips trip-workspace" aria-labelledby="trip-detail-title" key={selectedTrip.id}>
+    <NavLink className="back-link" to="/trips">← Alle reizen</NavLink>
     <header className="trip-workspace-header">
       <div><p className="eyebrow">Private reis</p><h2 id="trip-detail-title">{selectedTrip.title}</h2><p>{[selectedTrip.starts_on && selectedTrip.ends_on ? `${selectedTrip.starts_on} — ${selectedTrip.ends_on}` : null, `${selectedTrip.travel_updates.length} reisupdates`].filter(Boolean).join(" · ")}</p></div>
-      <div className="button-row"><button className="secondary compact" type="button" onClick={() => setEditing(true)}>Reis bewerken</button><NavLink className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>Volledig privéoverzicht</NavLink><NavLink className="action-link" to="/trips">Alle reizen</NavLink><NavLink className="action-link" to="/capture">Moment vastleggen</NavLink></div>
+      <div className="button-row"><button className="secondary compact" type="button" onClick={() => setEditing(true)}>Reisgegevens</button><NavLink className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>Volledig privéoverzicht</NavLink><NavLink className="action-link" to="/capture">Moment vastleggen</NavLink></div>
     </header>
     <TripEditor key={`edit-${selectedTrip.id}`} trip={selectedTrip} open={editing} onClose={() => setEditing(false)} onSaved={() => undefined} onDeleted={() => navigate("/trips", { state: { notice: "Reis verwijderd." } })} onNotice={setNotice} />
     <nav className="trip-section-nav" aria-label="Reisonderdelen">
       {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <NavLink key={section} to={sectionUrl(section)} end={section === "overview"} aria-current={currentSection === section ? "page" : undefined}>{label}</NavLink>)}
     </nav>
-    <p className="help" role="status">{message}</p>
+    {(notice ?? arrivalNotice) && <p className="help" role="status">{notice ?? arrivalNotice}</p>}
     {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(update.occurred_at))}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
     {currentSection === "plan" && <><AreaManager trip={selectedTrip} /><LocationManager trip={selectedTrip} /><VisitManager trip={selectedTrip} onShowOnMap={showOnMap} /><StayManager trip={selectedTrip} areas={areas} /><RouteManager trip={selectedTrip} /><AgendaView trip={selectedTrip} /><TripTaskManager trip={selectedTrip} /></>}
     {currentSection === "story" && <TravelUpdateManager trip={selectedTrip} areas={areas} />}

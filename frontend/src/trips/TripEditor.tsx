@@ -52,7 +52,7 @@ export function TripEditor({ trip, open, onClose, onSaved, onDeleted, onNotice }
     remove.mutateAsync(target).then(() => { refresh.forget(target.id); close(); onDeleted(); onNotice("Reis verwijderd."); }, (error: unknown) => onNotice(errorMessage(error, "De reis kon niet worden verwijderd.")));
   }
 
-  return <RecordDialog open={open} title={trip ? "Reis bewerken" : "Nieuwe reis"} dirty={open && record.dirty} onDismiss={close}>
+  return <RecordDialog open={open} title={trip ? "Reisgegevens" : "Nieuwe reis"} dirty={open && record.dirty} onDismiss={close}>
     {open && <RecordForm record={record} submitLabel={trip ? "Reis opslaan" : "Reis maken"} pendingLabel={trip ? "Reis opslaan…" : "Reis maken…"} actions={trip && <button className="danger compact" type="button" onClick={() => setConfirmDelete(true)}>Reis verwijderen</button>}>
       <form.Field name="title" validators={{ onChange: requiredText("Geef de reis een titel."), onSubmit: requiredText("Geef de reis een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</form.Field>
       <form.Field name="summary">{(field) => <MarkdownField field={field} label="Samenvatting" optional maxLength={4000} rows={4} />}</form.Field>
