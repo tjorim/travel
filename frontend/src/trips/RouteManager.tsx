@@ -7,6 +7,7 @@ import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { dayjs } from "../dayjs";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { ROUTE_MODE_LABELS, browserTimeZone, daysBetween, formatDay, localDate, locationName, routeTitle, timeZoneOptions, wallClock, type Route, type RouteMode, type TimedRoute, type Trip } from "../tracker-model";
@@ -20,7 +21,7 @@ const STATUS_LABELS: Record<Route["status"], string> = {
 
 /** "16 nov 10:40" in the end's own zone (browser zone when none is known). */
 function endpointTime(instant: string, timeZone: string | null): string {
-  return new Intl.DateTimeFormat("nl-BE", { timeZone: timeZone ?? undefined, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(instant));
+  return dayjs(instant).tz(timeZone ?? undefined).format("D MMM HH:mm");
 }
 
 /** The archive's "+1 dag": calendar days between local departure and arrival. */

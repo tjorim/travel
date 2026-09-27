@@ -8,7 +8,7 @@ import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { ownerKeys } from "../query/keys";
 import { errorMessage } from "../query/api";
 import { tripPath, useMarkAlertRead, useOwnerMutation, useTripResource } from "../query/owner-queries";
-import { localDateTime, type TaskLink, type Trip, type TripTask } from "../tracker-model";
+import { formatInstant, localDateTime, type TaskLink, type Trip, type TripTask } from "../tracker-model";
 
 const MAX_LINKS = 5;
 type Values = { title: string; notes: string; dueDate: string; remindAt: string; links: TaskLink[] };
@@ -98,7 +98,7 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
   const row = (task: TripTask) => <article key={task.id} className={`excerpt-row${task.completed_at ? " completed" : ""}`}>
     <button className="document-select" type="button" onClick={() => inspect(task)} aria-label={`Taak ${task.title} bekijken`}>
       <strong>{task.title}</strong>
-      <span>{task.completed_at ? `Afgevinkt${task.due_date ? ` · was voor ${task.due_date}` : ""}` : `${task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}${task.remind_at ? ` · Herinnering ${new Intl.DateTimeFormat("nl-BE", { dateStyle: "short", timeStyle: "short" }).format(new Date(task.remind_at))}` : ""}`}</span>
+      <span>{task.completed_at ? `Afgevinkt${task.due_date ? ` · was voor ${task.due_date}` : ""}` : `${task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}${task.remind_at ? ` · Herinnering ${formatInstant(task.remind_at)}` : ""}`}</span>
     </button>
     <div className="button-row"><button className="secondary compact" type="button" onClick={() => toggle(task)}>{task.completed_at ? "Heropenen" : "Afvinken"}</button></div>
   </article>;

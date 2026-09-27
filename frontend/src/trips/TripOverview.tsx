@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { dayjs } from "../dayjs";
 import { useTripResource } from "../query/owner-queries";
 import { addDays, browserTimeZone, daysBetween, formatDay, offsetLabel, stayCoversNight, utcOffsetMinutes, whereabouts, type Stay, timedRoutes, type Route, type Trip, type TripTask } from "../tracker-model";
 
@@ -50,7 +51,7 @@ export function LocalTimes({ trip, stays, routes, now, homeZone = browserTimeZon
   const nowOffset = (zone: string) => utcOffsetMinutes(instant, zone) - utcOffsetMinutes(instant, homeZone);
   const lines: string[] = [];
   if (here.kind !== "home" && here.zone) {
-    const time = new Intl.DateTimeFormat("nl-BE", { timeZone: here.zone, weekday: "short", hour: "2-digit", minute: "2-digit" }).format(now);
+    const time = dayjs(now).tz(here.zone).format("ddd HH:mm");
     lines.push(`Nu ${here.kind === "stay" ? `in ${here.label}` : here.label}: ${time} · ${offsetLabel(nowOffset(here.zone))}`);
   }
   if (destination) {
@@ -82,7 +83,7 @@ export function TripOverview({ trip }: { trip: Trip }) {
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
   if (!trip.starts_on && !badges.length && !stays.length && !routes.length) return null;
   return <section className="card trip-overview" aria-label="Reisoverzicht">
-    {trip.starts_on && <p className="eyebrow">{formatDay(trip.starts_on, { day: "numeric", month: "long" })}{trip.ends_on ? ` — ${formatDay(trip.ends_on, { day: "numeric", month: "long", year: "numeric" })}` : ""}{nights ? ` · ${nights} ${nights === 1 ? "nacht" : "nachten"}` : ""}</p>}
+    {trip.starts_on && <p className="eyebrow">{formatDay(trip.starts_on, "D MMMM")}{trip.ends_on ? ` — ${formatDay(trip.ends_on, "D MMMM YYYY")}` : ""}{nights ? ` · ${nights} ${nights === 1 ? "nacht" : "nachten"}` : ""}</p>}
     {localTimes}
     {badges.length > 0 && <ul className="status-badges">{badges.map((badge) => <li key={badge.label} className={badge.done ? "done" : "open"}><span>{badge.label}</span> <strong>{badge.value}</strong></li>)}</ul>}
   </section>;

@@ -436,11 +436,17 @@ export type ProjectionDocument = {
   navigation: Record<string, unknown>[];
 };
 
+import { dayjs } from "./dayjs";
+
 const draftKey = "travel-tracker-update-draft-v1";
 
 const dayMs = 86_400_000;
 
-/** Add whole days to an ISO calendar date without any time-zone drift. */
+/**
+ * Add whole days to an ISO calendar date without any time-zone drift. Plain `Date` arithmetic
+ * here, not dayjs: this runs in per-night loops (`tripBadges`, `nextAction`) over a trip's full
+ * span, and dayjs's object-per-call overhead turns a multi-year trip into a multi-second render.
+ */
 export function addDays(isoDate: string, days: number): string {
   return new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * dayMs).toISOString().slice(0, 10);
 }
@@ -454,8 +460,8 @@ export function stayCoversNight(stay: Stay, isoDate: string): boolean {
   return stay.status !== "cancelled" && stay.check_in_date <= isoDate && isoDate < stay.check_out_date;
 }
 
-export function formatDay(isoDate: string, options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }): string {
-  return new Intl.DateTimeFormat("nl-BE", { timeZone: "UTC", ...options }).format(new Date(`${isoDate}T00:00:00Z`));
+export function formatDay(isoDate: string, format = "D MMM"): string {
+  return dayjs.utc(isoDate).format(format);
 }
 
 export function formatDayRange(first: string, last: string | null): string {
@@ -466,8 +472,25 @@ export function stayLabel(stay: Stay): string {
   return stay.property_name ?? `Nog te kiezen in ${stay.area.label}`;
 }
 
+/** An instant as the app displays it everywhere: "16 nov 2026, 14:32". */
+export function formatInstant(instant: string | number): string {
+  return dayjs(instant).format("D MMM YYYY, HH:mm");
+}
+
+/** An instant's calendar date only, no time: "16 nov 2026". */
+export function formatInstantDate(instant: string): string {
+  return dayjs(instant).format("D MMM YYYY");
+}
+
+/** A reisupdate's date at its own precision, e.g. "14 maart 2026" or just "2026" — never the raw enum. */
+export function updateDateLabel(occurredAt: string, precision: TravelUpdate["date_precision"]): string {
+  if (precision === "year") return dayjs(occurredAt).format("YYYY");
+  if (precision === "month") return dayjs(occurredAt).format("MMMM YYYY");
+  return formatInstant(occurredAt);
+}
+
 export function browserTimeZone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return dayjs.tz.guess();
 }
 
 export function timeZoneOptions(): string[] {
@@ -475,16 +498,9 @@ export function timeZoneOptions(): string[] {
   return intl.supportedValuesOf?.("timeZone") ?? [browserTimeZone()];
 }
 
-/** Local wall-clock parts of an instant in an IANA zone (browser zone if null). */
-function zonedParts(instant: string, timeZone: string | null): Record<string, string> {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timeZone ?? undefined, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(instant));
-  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
-}
-
 /** ``YYYY-MM-DDTHH:mm`` for a datetime-local input showing the zone's local time. */
 export function wallClock(instant: string, timeZone: string | null): string {
-  const part = zonedParts(instant, timeZone);
-  return `${part.year}-${part.month}-${part.day}T${part.hour}:${part.minute}`;
+  return dayjs(instant).tz(timeZone ?? undefined).format("YYYY-MM-DDTHH:mm");
 }
 
 export function localDate(instant: string, timeZone: string | null): string {
@@ -497,14 +513,11 @@ export function localDate(instant: string, timeZone: string | null): string {
  */
 export function timeForViewer(date: string, time: string, zone: string, viewerZone = browserTimeZone()): { time: string; days: number } | null {
   try {
-    const guess = Date.parse(`${date}T${time.slice(0, 5)}:00Z`);
-    if (Number.isNaN(guess)) return null;
-    // The zone's offset depends on the instant itself, so settle it in two steps (daylight saving).
-    let instant = guess - utcOffsetMinutes(new Date(guess).toISOString(), zone) * 60_000;
-    instant = guess - utcOffsetMinutes(new Date(instant).toISOString(), zone) * 60_000;
-    const there = wallClock(new Date(instant).toISOString(), viewerZone);
-    if (there.slice(0, 16) === `${date}T${time.slice(0, 5)}`) return null;
-    return { time: there.slice(11, 16), days: daysBetween(date, there.slice(0, 10)) };
+    const at = dayjs.tz(`${date}T${time.slice(0, 5)}`, zone);
+    if (!at.isValid()) return null;
+    const there = at.tz(viewerZone);
+    if (there.format("YYYY-MM-DDTHH:mm") === `${date}T${time.slice(0, 5)}`) return null;
+    return { time: there.format("HH:mm"), days: daysBetween(date, there.format("YYYY-MM-DD")) };
   } catch {
     return null;
   }
@@ -515,8 +528,7 @@ export const zoneName = (zone: string): string => zone.split("/").pop()?.replace
 
 /** Minutes a zone is ahead of UTC at an instant, daylight saving included. */
 export function utcOffsetMinutes(instant: string, timeZone: string | null): number {
-  const minute = Math.floor(Date.parse(instant) / 60_000) * 60_000;
-  return Math.round((Date.parse(`${wallClock(new Date(minute).toISOString(), timeZone)}:00Z`) - minute) / 60_000);
+  return dayjs(instant).tz(timeZone ?? undefined).utcOffset();
 }
 
 /** "7 u later dan hier", "1 u 30 min eerder dan hier" or "zelfde tijd als hier". */

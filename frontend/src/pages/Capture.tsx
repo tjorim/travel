@@ -14,6 +14,7 @@ import { EmptyState } from "../tracker-routes";
 import {
   clearDraft,
   emptyDraft,
+  formatInstant,
   localDateTime,
   readDraft,
   saveDraft,
@@ -25,7 +26,7 @@ import {
   type VisitCandidateIntent,
 } from "../tracker-model";
 
-const timestamp = (value: string) => new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+const timestamp = formatInstant;
 const SAVE_FALLBACK = "De reisupdate kon niet worden opgeslagen. Je lokale concept blijft bewaard.";
 
 export function Capture() {

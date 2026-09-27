@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useConfirmation } from "../forms/useConfirmation";
-import { bytesLabel, openBlobInNewTab } from "../tracker-model";
+import { bytesLabel, formatInstant, openBlobInNewTab } from "../tracker-model";
 import { useOfflineCopies } from "./useOfflineCopies";
 import type { OfflineCopySummary, OfflineResourceKind } from "./offline-store";
 
@@ -15,9 +15,7 @@ const KIND_LABELS: Record<OfflineResourceKind, string> = {
   visit: "Bezoek",
 };
 
-function formatMoment(timestamp: number): string {
-  return new Date(timestamp).toLocaleString("nl-NL", { dateStyle: "medium", timeStyle: "short" });
-}
+const formatMoment = formatInstant;
 
 export function OfflineManager() {
   const confirmation = useConfirmation();

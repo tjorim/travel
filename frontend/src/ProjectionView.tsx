@@ -1,4 +1,5 @@
 import { useEffect, useMemo, type ReactNode } from "react";
+import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
 import { TripMap, type MapLine, type MapPoint } from "./TripMap";
 import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
@@ -72,12 +73,12 @@ function transportPlace(value: unknown): string | null {
 
 function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"): string | null {
   const value = text(item, endpoint === "departure" ? "departs_at" : "arrives_at");
-  if (!value || Number.isNaN(Date.parse(value))) return null;
+  if (!value || !dayjs(value).isValid()) return null;
   const timeZone = text(item, endpoint === "departure" ? "departure_timezone" : "arrival_timezone");
   try {
-    return new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short", ...(timeZone ? { timeZone } : {}) }).format(new Date(value));
+    return dayjs(value).tz(timeZone ?? undefined).format("D MMM YYYY, HH:mm");
   } catch {
-    return new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+    return dayjs(value).format("D MMM YYYY, HH:mm");
   }
 }
 
@@ -91,9 +92,10 @@ function storyDate(item: ProjectionItem, field = "story_date"): string | null {
   if ((precisionValue === "day" && value.length !== 10) || (precisionValue === "month" && value.length !== 7) || (precisionValue === "year" && value.length !== 4)) return null;
   const [year, month, day] = value.split("-").map(Number);
   if (month && (month < 1 || month > 12)) return null;
-  if (day && (day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate())) return null;
-  const date = new Date(Date.UTC(year, (month ?? 1) - 1, day ?? 1));
-  return new Intl.DateTimeFormat("nl-BE", { timeZone: "UTC", year: "numeric", ...(precisionValue !== "year" ? { month: "long" as const } : {}), ...(precisionValue === "day" ? { day: "numeric" as const } : {}) }).format(date);
+  const yearMonth = dayjs.utc(`${year}-${String(month ?? 1).padStart(2, "0")}-01`);
+  if (day && (day < 1 || day > yearMonth.daysInMonth())) return null;
+  const date = day ? yearMonth.date(day) : yearMonth;
+  return precisionValue === "year" ? date.format("YYYY") : precisionValue === "month" ? date.format("MMMM YYYY") : date.format("D MMMM YYYY");
 }
 
 /** "november 2026 – december 2026" at whatever precision the owner shared. */

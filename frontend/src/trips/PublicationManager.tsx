@@ -11,7 +11,7 @@ import { RecordDialog } from "../RecordDialog";
 import { RenderedPreview } from "./RenderedPreview";
 import { VisibilityControl } from "./visibility";
 import type { Projection } from "../ProjectionView";
-import { ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, type ProjectionDocument, type PublicProjectionStatus, type ShareLink, type ShareScope, type ShareScopeKind, type Trip, type TripOverview, type OverviewAudience, type OverviewWarning, type Visibility } from "../tracker-model";
+import { formatInstantDate, ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, type ProjectionDocument, type PublicProjectionStatus, type ShareLink, type ShareScope, type ShareScopeKind, type Trip, type TripOverview, type OverviewAudience, type OverviewWarning, type Visibility } from "../tracker-model";
 
 type CatalogItem = { kind: ShareScopeKind; id: string; label: string; detail: string; visibility: Visibility; /** A photo attached to a reisupdate is shared with it, so it has no choice of its own. */ followsUpdate?: string };
 
@@ -45,7 +45,7 @@ function shareUrl(token: string): string {
 }
 
 function dateLabel(value: string | null): string {
-  return value ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium" }).format(new Date(value)) : "—";
+  return value ? formatInstantDate(value) : "—";
 }
 
 function projectionSummary(document: ProjectionDocument): string {

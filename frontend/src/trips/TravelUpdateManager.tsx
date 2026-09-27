@@ -9,7 +9,7 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { localDateTime, locationName, type Area, type LocationInput, type PlaceSearchResult, type TravelUpdate, type Trip, type Visibility } from "../tracker-model";
+import { localDateTime, locationName, updateDateLabel, type Area, type LocationInput, type PlaceSearchResult, type TravelUpdate, type Trip, type Visibility } from "../tracker-model";
 import { VISIBILITY_LABELS, VisibilityControl, visibilityLabel } from "./visibility";
 import { PlaceSearchField } from "./PlaceSearchField";
 
@@ -70,7 +70,7 @@ export function TravelUpdateManager({ trip, areas }: { trip: Trip; areas: Area[]
     <div className="capture-heading"><div><h3 id="updates-title">Reisupdates</h3><p>Wat er gebeurde, met een privé- en een gedeeld deel. Je notities, locatie en foto’s blijven altijd privé; de titel en de tekst voor bezoekers deel je alleen als je dat kiest.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe update</button></div>
     <p className="help" role="status">{message}</p>
     {trip.travel_updates.length > 0 && <div className="saved-records manager-list">{trip.travel_updates.map((item) => <article className="excerpt-row" key={item.id}>
-      <button className="document-select" type="button" onClick={() => dialog.inspect(item.id)} aria-label={`Reisupdate ${item.title} bekijken`}><strong>{item.title}</strong><span>{visibilityLabel(item.visibility)} · {item.date_precision} · {item.area?.label ?? "geen plaats"}</span></button>
+      <button className="document-select" type="button" onClick={() => dialog.inspect(item.id)} aria-label={`Reisupdate ${item.title} bekijken`}><strong>{item.title}</strong><span>{updateDateLabel(item.occurred_at, item.date_precision)} · {visibilityLabel(item.visibility)} · {item.area?.label ?? "geen plaats"}</span></button>
     </article>)}</div>}
     <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Reisupdate bewerken" : "Reisupdate maken") : "Reisupdate"} dirty={editing && record.dirty} onDismiss={close}>
       {!editing && selected && <div className="stack-form">

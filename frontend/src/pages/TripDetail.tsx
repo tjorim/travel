@@ -6,7 +6,7 @@ import { errorMessage, openOwnerFile } from "../query/api";
 import { useOwner, useTripResource, useTripsQuery } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { EmptyState } from "../tracker-routes";
-import { ROUTE_MODE_LABELS, bytesLabel, formatDay, formatDayRange, routeTitle, stayLabel, visitTitle, type Location } from "../tracker-model";
+import { ROUTE_MODE_LABELS, bytesLabel, formatDay, formatDayRange, formatInstant, routeTitle, stayLabel, visitTitle, type Location } from "../tracker-model";
 import { visitWhen } from "../trips/VisitManager";
 import { visibilityLabel } from "../trips/visibility";
 
@@ -18,7 +18,7 @@ function placeLabel(place: Location | null): string {
 }
 
 function timestamp(value: string | null): string {
-  return value ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
+  return value ? formatInstant(value) : "—";
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

@@ -20,7 +20,7 @@ import { TripOverview } from "../trips/TripOverview";
 import { TripTaskManager } from "../trips/TripTaskManager";
 import { errorMessage } from "../query/api";
 import { useTripResource, useTripsQuery } from "../query/owner-queries";
-import type { Trip } from "../tracker-model";
+import { formatInstant, type Trip } from "../tracker-model";
 
 export type TripWorkspaceSection = "overview" | "plan" | "story" | "media" | "sharing";
 
@@ -94,7 +94,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   if (workspace && selectedTrip) return <section className="trips trip-workspace" aria-labelledby="trip-detail-title" key={selectedTrip.id}>
     <NavLink className="back-link" to="/trips">← Alle reizen</NavLink>
     <header className="trip-workspace-header">
-      <div><p className="eyebrow">Private reis</p><h2 id="trip-detail-title">{selectedTrip.title}</h2><p>{[selectedTrip.starts_on && selectedTrip.ends_on ? `${selectedTrip.starts_on} — ${selectedTrip.ends_on}` : null, `${selectedTrip.travel_updates.length} reisupdates`].filter(Boolean).join(" · ")}</p></div>
+      <div><p className="eyebrow">Private reis</p><h2 id="trip-detail-title">{selectedTrip.title}</h2><p>{[selectedTrip.starts_on && selectedTrip.ends_on ? `${selectedTrip.starts_on} — ${selectedTrip.ends_on}` : null, `${selectedTrip.travel_updates.length} ${selectedTrip.travel_updates.length === 1 ? "reisupdate" : "reisupdates"}`].filter(Boolean).join(" · ")}</p></div>
       <div className="button-row"><button className="secondary compact" type="button" onClick={() => setEditing(true)}>Reisgegevens</button><NavLink className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>Volledig privéoverzicht</NavLink><NavLink className="action-link" to="/capture">Moment vastleggen</NavLink></div>
     </header>
     <TripEditor key={`edit-${selectedTrip.id}`} trip={selectedTrip} open={editing} onClose={() => setEditing(false)} onSaved={() => undefined} onDeleted={() => navigate("/trips", { state: { notice: "Reis verwijderd." } })} onNotice={setNotice} />
@@ -102,7 +102,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <NavLink key={section} to={sectionUrl(section)} end={section === "overview"} aria-current={currentSection === section ? "page" : undefined}>{label}</NavLink>)}
     </nav>
     {(notice ?? arrivalNotice) && <p className="help" role="status">{notice ?? arrivalNotice}</p>}
-    {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(update.occurred_at))}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
+    {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{formatInstant(update.occurred_at)}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
     {currentSection === "plan" && <><AreaManager trip={selectedTrip} /><LocationManager trip={selectedTrip} /><VisitManager trip={selectedTrip} onShowOnMap={showOnMap} /><StayManager trip={selectedTrip} areas={areas} /><RouteManager trip={selectedTrip} /><AgendaView trip={selectedTrip} /><TripTaskManager trip={selectedTrip} /></>}
     {currentSection === "story" && <TravelUpdateManager trip={selectedTrip} areas={areas} />}
     {currentSection === "media" && <><DocumentManager trip={selectedTrip} /><LinkedLibraryDocuments tripId={selectedTrip.id} /><MediaManager trip={selectedTrip} /></>}
@@ -113,7 +113,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     <div className="capture-heading"><div><p className="eyebrow">Private reisbeheer</p><h2 id="trips-title">Reizen</h2></div><button className="secondary compact" type="button" onClick={newTrip}>Nieuwe reis</button></div>
     <p className="help" role="status">{message}</p>
     <section className="trip-list" aria-label="Jouw reizen">
-      {trips.map((trip) => <button className="trip-row" type="button" key={trip.id} onClick={() => openTrip(trip)}><strong>{trip.title}</strong><span>{trip.travel_updates.length} reisupdates</span></button>)}
+      {trips.map((trip) => <button className="trip-row" type="button" key={trip.id} onClick={() => openTrip(trip)}><strong>{trip.title}</strong><span>{trip.travel_updates.length} {trip.travel_updates.length === 1 ? "reisupdate" : "reisupdates"}</span></button>)}
       {!trips.length && <p>Je eerste reis blijft privé totdat je iets deelt.</p>}
     </section>
     <TripEditor
