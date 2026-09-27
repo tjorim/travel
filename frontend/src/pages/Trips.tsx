@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
-import { tripsRoute } from "../router";
 import { EmptyState } from "../tracker-routes";
 import { LocationManager } from "../trips/LocationManager";
 import { DocumentManager } from "../trips/DocumentManager";
@@ -33,7 +32,9 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const tripsQuery = useTripsQuery();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const location = useLocation();
-  const searchParams = useSearch({ from: tripsRoute.id });
+  // `strict: false` reads whichever match is active: the trips-list route validates `new`,
+  // but the workspace routes are siblings without it, so a strict match would throw there.
+  const searchParams = useSearch({ strict: false }) as { new?: "1" };
   // `/trips?new=1` (the home page's "Nieuwe reis") opens the new-trip dialog straight away.
   const [creating, setCreating] = useState(() => searchParams.new === "1");
   const [editing, setEditing] = useState(false);
