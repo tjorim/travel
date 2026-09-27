@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-route
 
 import { useAuth } from "../auth-context";
 import { EmptyState } from "../tracker-routes";
-import { LocationManager } from "../trips/LocationManager";
 import { DocumentManager } from "../trips/DocumentManager";
 import { LinkedLibraryDocuments } from "../library/LinkedLibraryDocuments";
 import { VisitManager } from "../trips/VisitManager";
@@ -42,7 +41,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [captureCandidate, setCaptureCandidate] = useState<TravelUpdateCandidateIntent | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // An Agenda row, or the private overview arriving from elsewhere, asks the matching manager below to open that record's dialog.
-  type RecordKind = AgendaRecordKind | "area" | "task" | "update" | "document" | "media";
+  type RecordKind = AgendaRecordKind | "area" | "location" | "task" | "update" | "document" | "media";
   const [recordFocus, setRecordFocus] = useState<({ kind: RecordKind } & DialogFocusRequest) | null>(null);
   const openAgendaRecord = (kind: AgendaRecordKind, id: string) => setRecordFocus({ kind, id, token: Date.now() });
   const openRecordRequest = location.state.openRecord;
@@ -70,7 +69,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   // The list page only lists; a trip is worked on in its own workspace.
   const selectedTrip = workspace ? trips.find((trip) => trip.id === workspace.tripId) ?? null : null;
   const selectedId = selectedTrip?.id ?? null;
-  const openMapRecord = useCallback((kind: "area" | "visit" | "route" | "update", id: string) => {
+  const openMapRecord = useCallback((kind: "area" | "location" | "visit" | "route" | "update", id: string) => {
     if (selectedId) void navigate({ to: `/trips/${encodeURIComponent(selectedId)}/${kind === "update" ? "story" : "plan"}`, state: { openRecord: { kind, id } } });
   }, [navigate, selectedId]);
   const areas = useTripResource(selectedId, "areas").data ?? [];
@@ -135,11 +134,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} onOpenRecord={openMapRecord} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{formatInstant(update.occurred_at)}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
     {currentSection === "plan" && <>
       <nav className="plan-jump-nav" aria-label="Planningsonderdelen">
-        <a href="#agenda">Agenda</a><a href="#areas">Gebieden</a><a href="#locations">Locaties</a><a href="#visits">Bezoeken</a><a href="#stays">Verblijven</a><a href="#routes">Routes</a><a href="#tasks">Nog te regelen</a>
+        <a href="#agenda">Agenda</a><a href="#areas">Gebieden en locaties</a><a href="#visits">Bezoeken</a><a href="#stays">Verblijven</a><a href="#routes">Routes</a><a href="#tasks">Nog te regelen</a>
       </nav>
       <AgendaView trip={selectedTrip} onOpenRecord={openAgendaRecord} />
-      <AreaManager trip={selectedTrip} focusId={recordFocus?.kind === "area" ? recordFocus : null} />
-      <LocationManager trip={selectedTrip} />
+      <AreaManager trip={selectedTrip} focusId={recordFocus?.kind === "area" ? recordFocus : null} locationFocusId={recordFocus?.kind === "location" ? recordFocus : null} />
       <VisitManager trip={selectedTrip} onShowOnMap={showOnMap} focusId={recordFocus?.kind === "visit" ? recordFocus : null} />
       <StayManager trip={selectedTrip} areas={areas} focusId={recordFocus?.kind === "stay" ? recordFocus : null} />
       <RouteManager trip={selectedTrip} focusId={recordFocus?.kind === "route" ? recordFocus : null} />

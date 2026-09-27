@@ -631,3 +631,44 @@ def test_duplicate_areas_merge_so_their_locations_can_be_merged_too() -> None:
     )
     assert folded.status_code == 200, folded.text
     assert owner.get(f"{base}/stays/{moved_stay['id']}").json()["location"]["id"] == kept_stay["location"]["id"]
+
+
+def test_owner_corrects_location_address_without_changing_its_map_point_or_other_fields() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    path = f"/api/trips/{trip['id']}/locations"
+    original = owner.post(
+        path,
+        json={
+            "label": "Hotel Riverside",
+            "display_name": "Original provider name",
+            "address_line1": "12 Guangming Road",
+            "postal_code": "112",
+            "locality": "Taipei",
+            "country_code": "TW",
+            "latitude": 25.0331,
+            "longitude": 121.5651,
+            "osm_element_type": "node",
+            "osm_element_id": "99",
+        },
+    ).json()
+    url = f"{path}/{original['id']}"
+    changed = owner.patch(
+        url,
+        json={
+            "display_name": "My hotel",
+            "address_line1": "14 Guangming Road",
+            "postal_code": None,
+            "address_line2": "Floor 4",
+        },
+    )
+    assert changed.status_code == 200
+    location = changed.json()
+    assert location["display_name"] == "My hotel"
+    assert location["address_line1"] == "14 Guangming Road"
+    assert location["address_line2"] == "Floor 4"
+    assert location["postal_code"] is None
+    assert location["locality"] == "Taipei"
+    assert (location["latitude"], location["longitude"], location["osm_element_id"]) == (25.0331, 121.5651, "99")
+    assert client_for("owner-2").patch(url, json={"address_line1": "Foreign"}).status_code == 404
+    assert owner.patch(url, json={"country_code": "TOO-LONG"}).status_code == 422

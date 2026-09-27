@@ -11,6 +11,7 @@ import { timeZoneOptions, type Area, type PlaceSearchResult, type Trip } from ".
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { PlaceSearchField } from "./PlaceSearchField";
 import { AreaContents } from "./AreaContents";
+import { LocationManager, ownerLocationName } from "./LocationManager";
 
 type Values = { label: string; countryCode: string; region: string; latitude: string; longitude: string; timezone: string };
 const blank = (): Values => ({ label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" });
@@ -21,9 +22,14 @@ const bothCoordinates = ({ value, fieldApi }: { value: string; fieldApi: { form:
   (value === "") !== (String(fieldApi.form.getFieldValue("longitude" as never) ?? "") === "") ? "Vul beide kaartcoördinaten in of laat beide leeg." : undefined;
 const areaCoordinate = (value: number) => (Math.round(value * 100) / 100).toString();
 
-export function AreaManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
+export function AreaManager({ trip, focusId, locationFocusId }: { trip: Trip; focusId?: DialogFocusRequest | null; locationFocusId?: DialogFocusRequest | null }) {
   const areasQuery = useTripResource(trip.id, "areas");
   const areas = areasQuery.data ?? [];
+  const locationsQuery = useTripResource(trip.id, "locations");
+  const locations = locationsQuery.data ?? [];
+  const [locationRequest, setLocationRequest] = useState<{ id?: string; areaId?: string; token: number } | null>(null);
+  const [resumeLocation, setResumeLocation] = useState(false);
+  const requestLocation = (id?: string, areaId?: string) => setLocationRequest({ id, areaId, token: Date.now() + Math.random() });
   const dialog = useRecordDialog(areas);
   useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useState("Een gebied is een stad of regio, zonder adres. Het is niet automatisch openbaar.");
@@ -40,12 +46,12 @@ export function AreaManager({ trip, focusId }: { trip: Trip; focusId?: DialogFoc
     invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "areas"), ownerKeys.trips(subject)],
   });
 
-  const record = useRecordForm<Values>({
+  const record = useRecordForm<Values, Area>({
     defaultValues: blank(),
     fallback: "Het gebied kon niet worden opgeslagen.",
     serverFields,
     submit: async (values) => {
-      await save.mutateAsync({
+      return save.mutateAsync({
         id: dialog.editingId ?? null,
         payload: {
           label: values.label.trim(),
@@ -57,7 +63,7 @@ export function AreaManager({ trip, focusId }: { trip: Trip; focusId?: DialogFoc
         },
       });
     },
-    onSuccess: () => { close(); setMessage("Gebied opgeslagen. Je kunt het bewust aan een bezoek, reisupdate of verblijf koppelen."); },
+    onSuccess: (area) => { close(); setMessage("Gebied opgeslagen. Je kunt het bewust aan een bezoek, reisupdate of verblijf koppelen."); if (resumeLocation) { setResumeLocation(false); requestLocation(undefined, area.id); } },
   });
 
   function close() { dialog.close(); record.load(blank()); }
@@ -83,15 +89,20 @@ export function AreaManager({ trip, focusId }: { trip: Trip; focusId?: DialogFoc
   const { selected, editing, editingId } = dialog;
 
   return <section className="card manager" id="areas" aria-labelledby="areas-title">
-    <div className="capture-heading"><div><h3 id="areas-title">Gebieden</h3><p>Een stad of regio die je kunt hergebruiken. Locaties, verblijven, reisupdates en vervoer horen bij een gebied. Een gebied is privé tot je kiest wie het ziet en deelt nooit automatisch zijn locaties.</p></div><button className="secondary compact" type="button" onClick={create}>Gebied toevoegen</button></div>
+    <span id="locations" />
+    <div className="capture-heading"><div><h3 id="areas-title">Gebieden en locaties</h3><p>Een stad of regio die je kunt hergebruiken. Locaties, verblijven, reisupdates en vervoer horen bij een gebied. Een gebied is privé tot je kiest wie het ziet en deelt nooit automatisch zijn locaties.</p></div><div className="button-row"><button className="secondary compact" type="button" onClick={create}>Gebied toevoegen</button><button className="secondary compact" type="button" onClick={() => requestLocation()}>Locatie toevoegen</button></div></div>
     <p className="help" role="status">{areasQuery.error ? errorMessage(areasQuery.error, "Je gebieden konden niet worden geladen.") : message}</p>
-    {areas.length ? <div className="saved-records manager-list">{areas.map((area) => <article className="excerpt-row" key={area.id}>
-      <button className="document-select" type="button" onClick={() => dialog.inspect(area.id)} aria-label={`Gebied ${area.label} bekijken`}><strong>{area.label}</strong><span>{summary(area)} · {visibilityLabel(area.visibility)}</span></button>
-    </article>)}</div> : !areasQuery.isPending && <p>Nog geen gebieden.</p>}
-    <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Gebied bewerken" : "Gebied toevoegen") : "Gebied"} dirty={editing && record.dirty} onDismiss={close}>
+    {locationsQuery.error && <p role="status">{errorMessage(locationsQuery.error, "Je locaties konden niet worden geladen.")}</p>}
+    {locationsQuery.isPending && <p role="status">Locaties laden…</p>}
+    {areas.length ? <div className="saved-records manager-list">{areas.map((area) => <article className="area-group" key={area.id}>
+      <div className="capture-heading"><button className="document-select" type="button" onClick={() => dialog.inspect(area.id)} aria-label={`Gebied ${area.label} bekijken`}><strong>{area.label}</strong><span>{summary(area)} · {visibilityLabel(area.visibility)}</span></button><button className="secondary compact" type="button" onClick={() => requestLocation(undefined, area.id)}>Locatie toevoegen</button></div>
+      {!locationsQuery.isPending && !locationsQuery.error && <div className="saved-records">{locations.filter((place) => place.area_id === area.id).map((place) => <button className="document-select" key={place.id} type="button" onClick={() => requestLocation(place.id)}><strong>{ownerLocationName(place)}</strong><span>{[place.address_line1, place.locality, place.country_code, visibilityLabel(place.visibility)].filter(Boolean).join(" · ")}</span></button>)}{!locations.some((place) => place.area_id === area.id) && <p className="help">Nog geen locaties in dit gebied.</p>}</div>}
+    </article>)}</div> : !areasQuery.isPending && !areasQuery.error && <p>Nog geen gebieden. Voeg een gebied toe om er locaties in te bewaren.</p>}
+    <LocationManager trip={trip} areas={areas} focusId={locationFocusId} request={locationRequest} onNeedArea={() => { setResumeLocation(true); create(); }} />
+    <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Gebied bewerken" : "Gebied toevoegen") : "Gebied"} dirty={editing && record.dirty} onDismiss={() => { close(); setResumeLocation(false); }}>
       {!editing && selected && <div className="stack-form">
         <div><h3>{selected.label}</h3><p>{summary(selected)}</p>{selected.latitude !== null && selected.longitude !== null && <p>Kaartpunt: {selected.latitude}, {selected.longitude}</p>}</div>
-        <AreaContents trip={trip} area={selected} />
+        <AreaContents trip={trip} area={selected} onOpenLocation={(id) => { dialog.close(); requestLocation(id); }} />
         <VisibilityControl tripId={trip.id} kind="area" id={selected.id} value={selected.visibility} name={selected.label} />
         <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
         {dialog.confirmDelete && <DeleteConfirmation title={`Gebied “${selected.label}” verwijderen?`} description="Dit kan alleen wanneer het gebied niet meer in een bezoek, reisupdate, locatie, verblijf of route wordt gebruikt. Een eventuele losse selectie voor delen wordt ook verwijderd." onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}

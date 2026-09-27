@@ -9,7 +9,7 @@ import { locationName, routeTitle, type Area, type Trip } from "../tracker-model
 
 type OfflineSnapshot = { points: MapPoint[]; lines: MapLine[] };
 
-export function OwnerTripMap({ trip, areas, focus, onOpenRecord }: { trip: Trip; areas: Area[]; focus?: { id: string; request: number } | null; onOpenRecord?: (kind: "area" | "visit" | "route" | "update", id: string) => void }) {
+export function OwnerTripMap({ trip, areas, focus, onOpenRecord }: { trip: Trip; areas: Area[]; focus?: { id: string; request: number } | null; onOpenRecord?: (kind: "area" | "location" | "visit" | "route" | "update", id: string) => void }) {
   const offline = useOfflineCopies();
   const routesQuery = useTripResource(trip.id, "routes");
   const placesQuery = useTripResource(trip.id, "locations");
@@ -69,7 +69,7 @@ export function OwnerTripMap({ trip, areas, focus, onOpenRecord }: { trip: Trip;
     const updates = trip.travel_updates.filter((update) => update.area_id === areaId || update.location?.id === point.id);
     const links = [
       ...(point.kind === "area" || point.kind === "derived" ? [{ label: "Gebied openen", onOpen: () => openRecord?.("area", point.id) }] : []),
-      ...(point.kind === "location" ? [{ label: "Locaties bekijken", href: `/trips/${encodeURIComponent(trip.id)}/plan#locations` }] : []),
+      ...(point.kind === "location" ? [{ label: "Locatie openen", onOpen: () => openRecord?.("location", point.id) }] : []),
       ...visits.map((visit) => ({ label: `Bezoek: ${visit.title ?? visit.area.label}`, onOpen: () => openRecord?.("visit", visit.id) })),
       ...updates.map((update) => ({ label: `Update: ${update.title}${update.media_asset_ids.length ? ` · ${update.media_asset_ids.length} foto’s/media` : ""}`, onOpen: () => openRecord?.("update", update.id) })),
     ];

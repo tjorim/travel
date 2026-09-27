@@ -17,9 +17,9 @@ import { visitWhen, VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../trips/Visi
 import { visibilityLabel } from "../trips/visibility";
 import { ROUTE_MODE_LABELS, bytesLabel, formatDay, formatDayRange, formatInstant, locationName, routeTitle, stayLabel, visitTitle, type Location, type MediaAsset } from "../tracker-model";
 
-type RecordKind = "stay" | "route" | "visit" | "area" | "task" | "update" | "document" | "media";
+type RecordKind = "stay" | "route" | "visit" | "area" | "location" | "task" | "update" | "document" | "media";
 /** Which workspace tab a record kind's dialog opens in. */
-const RECORD_SECTION: Record<RecordKind, "plan" | "story" | "media"> = { stay: "plan", route: "plan", visit: "plan", area: "plan", task: "plan", update: "story", document: "media", media: "media" };
+const RECORD_SECTION: Record<RecordKind, "plan" | "story" | "media"> = { stay: "plan", route: "plan", visit: "plan", area: "plan", location: "plan", task: "plan", update: "story", document: "media", media: "media" };
 
 /** A link to the trip workspace that opens the given record's dialog there. */
 function RecordLink({ tripId, kind, id, children }: { tripId: string; kind: RecordKind; id: string; children: React.ReactNode }) {
@@ -76,7 +76,7 @@ const SECTIONS: { id: string; label: string }[] = [
 export function TripDetail() {
   const navigate = useNavigate();
   const { tripId } = useParams({ strict: false });
-  const openMapRecord = useCallback((kind: "area" | "visit" | "route" | "update", recordId: string) => {
+  const openMapRecord = useCallback((kind: "area" | "location" | "visit" | "route" | "update", recordId: string) => {
     if (tripId) void navigate({ to: `/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`, state: { openRecord: { kind, id: recordId } } });
   }, [navigate, tripId]);
   const { session } = useAuth();

@@ -2,7 +2,7 @@ import { routeTitle, stayLabel, visitTitle, type Area, type Trip } from "../trac
 import { useTripResource } from "../query/owner-queries";
 
 /** What belongs to one area: a private, derived view. Each record stays owned by its own editor. */
-export function AreaContents({ trip, area }: { trip: Trip; area: Area }) {
+export function AreaContents({ trip, area, onOpenLocation }: { trip: Trip; area: Area; onOpenLocation: (id: string) => void }) {
   const locationsQuery = useTripResource(trip.id, "locations");
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
@@ -16,7 +16,7 @@ export function AreaContents({ trip, area }: { trip: Trip; area: Area }) {
   const total = locations.length + updates.length + stays.length + routes.length + visits.length;
   return <div className="scope-group-body">
     {error && <p className="help" role="status">Wat bij dit gebied hoort kon niet volledig worden geladen.</p>}
-    {locations.length > 0 && <p><strong>Locaties</strong> · {locations.map((location) => location.label || location.display_name?.split(",")[0] || location.locality || "Naamloze locatie").join("; ")}</p>}
+    {locations.length > 0 && <div><strong>Locaties</strong><ul>{locations.map((location) => <li key={location.id}><button className="secondary compact" type="button" onClick={() => onOpenLocation(location.id)}>{location.label || location.display_name?.split(",")[0] || location.locality || "Naamloze locatie"}</button></li>)}</ul></div>}
     {visits.length > 0 && <p><strong>Bezoeken</strong> · {visits.map(visitTitle).join("; ")}</p>}
     {stays.length > 0 && <p><strong>Verblijven</strong> · {stays.map(stayLabel).join("; ")}</p>}
     {updates.length > 0 && <p><strong>Reisupdates</strong> · {updates.map((update) => update.title).join("; ")}</p>}

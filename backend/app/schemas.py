@@ -170,12 +170,19 @@ def require_identified_location(location: "LocationInput | None") -> "LocationIn
 
 
 class LocationUpdate(InputModel):
-    """What an existing location lets the owner change: its public name, its area
-    and whether its address is shown when it is shared."""
+    """Owner corrections to a saved location; omitted fields retain their values."""
 
     label: str | None = Field(default=None, min_length=1, max_length=120)
     area_id: str | None = Field(default=None, min_length=1, max_length=32)
     share_address: bool | None = None
+    display_name: str | None = Field(default=None, max_length=500)
+    address_line1: str | None = Field(default=None, max_length=160)
+    address_line2: str | None = Field(default=None, max_length=160)
+    locality: str | None = Field(default=None, max_length=120)
+    admin_area: str | None = Field(default=None, max_length=120)
+    postal_code: str | None = Field(default=None, max_length=20)
+    country_code: str | None = COUNTRY_CODE_FIELD
+    notes: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
 
 
 class MergeRequest(InputModel):

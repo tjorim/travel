@@ -141,6 +141,11 @@ textarea { min-height: 136px; resize: vertical; }
 .manager > .capture-heading h3, .manager-subsection h3 { margin: 0; }
 .manager > .capture-heading p, .manager-subsection > .capture-heading p { max-width: 510px; margin: 6px 0 0; color: #4d665e; line-height: 1.5; }
 .manager-list { margin-top: 2px; }
+.area-group { display: grid; gap: 10px; padding: 16px; border: 1px solid #d6e0d9; border-radius: 12px; background: #fff; }
+.area-group > .capture-heading { align-items: center; margin: 0; }
+.area-group > .saved-records { margin-left: 16px; padding-left: 16px; border-left: 2px solid #d6e0d9; }
+.area-group .document-select { text-align: left; }
+@media (max-width: 620px) { .area-group > .capture-heading { align-items: stretch; flex-direction: column; } .area-group > .saved-records { margin-left: 4px; padding-left: 12px; } }
 .record-dialog { width: min(680px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 32px)); margin: auto; padding: 22px; border: 1px solid #b7c9be; border-radius: 16px; background: #fffdf8; color: #19342d; box-shadow: 0 24px 70px #19342d66; }
 .record-dialog.preview-dialog { width: min(1120px, calc(100vw - 32px)); }
 .record-dialog::backdrop { background: #19342d80; }

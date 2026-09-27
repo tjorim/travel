@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Planning now groups visible locations under their areas, with direct location
+  creation and a shared detail/editor dialog. Owners can correct saved address
+  fields before enabling address sharing; location edits retain map points and
+  refresh linked trip records. ([#251](https://github.com/tjorim/travel/issues/251),
+  [#252](https://github.com/tjorim/travel/issues/252))
 - Map markers and route lines now open persistent detail cards with shared or
   private record links, dates, endpoints and transport when available. Routes
   highlight on selection; the textual controls and “Hele reis tonen” provide

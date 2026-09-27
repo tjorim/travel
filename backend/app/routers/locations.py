@@ -92,6 +92,25 @@ def update_location(
         _carry_links(session, location)
     if "share_address" in changes and payload.share_address is not None:
         location.share_address = payload.share_address
+    for field in (
+        "display_name",
+        "address_line1",
+        "address_line2",
+        "locality",
+        "admin_area",
+        "postal_code",
+        "country_code",
+        "notes",
+    ):
+        if field in changes:
+            setattr(location, field, getattr(payload, field))
+    if location.share_address and not any(
+        (location.address_line1, location.address_line2, location.postal_code, location.locality, location.admin_area)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Add an address before sharing it",
+        )
     if location.label is None and location.visibility != Visibility.PRIVATE:
         # A shared location cannot lose its public name.
         raise HTTPException(

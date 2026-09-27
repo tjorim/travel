@@ -40,7 +40,7 @@ it("lists what belongs to an area in its detail, so areas need no separate overv
   api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", [{ ...savedLocation, label: "Vliegveld" }]).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
-  await screen.findByText(/Vliegveld/);
+  await screen.findAllByText(/Vliegveld/);
   expect(screen.getByText("Locaties")).toBeTruthy();
 });
 
