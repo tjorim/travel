@@ -26,7 +26,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); expect(api.unexpected).toEqu
 const confirmDelete = () => fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
 
 it("opens an area in detail before its editor, prefilled", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []);
+  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   expect(screen.getByRole("heading", { name: "Taipei" })).toBeTruthy();
@@ -37,7 +37,7 @@ it("opens an area in detail before its editor, prefilled", async () => {
 });
 
 it("lists what belongs to an area in its detail, so areas need no separate overview", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", [{ ...savedLocation, label: "Vliegveld" }]).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []);
+  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", [{ ...savedLocation, label: "Vliegveld" }]).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   await screen.findAllByText(/Vliegveld/);
@@ -45,7 +45,7 @@ it("lists what belongs to an area in its detail, so areas need no separate overv
 });
 
 it("deletes an unused area", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []);
+  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
@@ -56,7 +56,7 @@ it("deletes an unused area", async () => {
 });
 
 it("shows an edited area at once and adds a new one to the list", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []);
+  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -74,7 +74,7 @@ it("shows an edited area at once and adds a new one to the list", async () => {
 });
 
 it("asks for both area coordinates or neither", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", []).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []);
+  api = fakeApi().collection("/api/trips/trip/areas", []).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied toevoegen" }));
   fireEvent.change(screen.getByLabelText("Naam"), { target: { value: "Taipei" } });
@@ -85,7 +85,7 @@ it("asks for both area coordinates or neither", async () => {
 });
 
 it("turns a place lookup into an editable, rounded area", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", []).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []);
+  api = fakeApi().collection("/api/trips/trip/areas", []).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
   api.on("POST", /\/places\/search$/, () => ({ attribution: "© OpenStreetMap contributors", attribution_url: "https://www.openstreetmap.org/copyright", results: [{ osm_element_type: "relation", osm_element_id: "123", display_name: "Taipei, Exampleland", locality: "Taipei", admin_area: "Taipei City", country_code: "TW", latitude: 25.033964, longitude: 121.564468 }] }));
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied toevoegen" }));

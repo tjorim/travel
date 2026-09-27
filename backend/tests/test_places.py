@@ -672,3 +672,41 @@ def test_owner_corrects_location_address_without_changing_its_map_point_or_other
     assert (location["latitude"], location["longitude"], location["osm_element_id"]) == (25.0331, 121.5651, "99")
     assert client_for("owner-2").patch(url, json={"address_line1": "Foreign"}).status_code == 404
     assert owner.patch(url, json={"country_code": "TOO-LONG"}).status_code == 422
+
+
+def test_address_correction_updates_only_the_selected_link_and_cannot_share_an_empty_address() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    location = owner.post(
+        f"{base}/locations",
+        json={
+            "label": "Hotel",
+            "display_name": "Private provider address",
+            "address_line1": "Old street",
+            "country_code": "TW",
+            "notes": "Private room",
+        },
+    ).json()
+    url = f"{base}/locations/{location['id']}"
+    chosen = scope(share(owner, trip["id"], "location", location["id"]))
+    listed = owner.post(f"{base}/share-links", json={"label": "Family", "scope": chosen}).json()
+    other = owner.post(f"{base}/share-links", json={"label": "Friends", "scope": scope()}).json()
+    listed_token, other_token = (activate(owner, trip["id"], link["id"])["token"] for link in (listed, other))
+    visitor = TestClient(app)
+
+    assert owner.patch(url, json={"share_address": True}).status_code == 200
+    corrected = owner.patch(url, json={"address_line1": None, "address_line2": "Floor 4", "locality": "Taipei"})
+    assert corrected.status_code == 200, corrected.text
+    assert corrected.json()["country_code"] == "TW"  # Omitted fields remain unchanged.
+    (place,) = visitor.get(f"/api/shared/{listed_token}").json()["places"]
+    assert place["address"] == {"line2": "Floor 4", "locality": "Taipei"}
+    assert visitor.get(f"/api/shared/{other_token}").json()["places"] == []
+    for private in ("Private provider address", "Private room", "display_name", "notes"):
+        assert private not in visitor.get(f"/api/shared/{listed_token}").text
+
+    assert owner.patch(url, json={"address_line2": None, "locality": None}).status_code == 422
+    assert owner.get(f"{base}/locations").json()[0]["address_line2"] == "Floor 4"
+    assert owner.patch(url, json={"share_address": False, "address_line2": None, "locality": None}).status_code == 200
+    assert "address" not in visitor.get(f"/api/shared/{listed_token}").json()["places"][0]
+    assert owner.patch(url, json={"share_address": True}).status_code == 422

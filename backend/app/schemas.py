@@ -170,7 +170,11 @@ def require_identified_location(location: "LocationInput | None") -> "LocationIn
 
 
 class LocationUpdate(InputModel):
-    """Owner corrections to a saved location; omitted fields retain their values."""
+    """Owner corrections to a saved location; omitted fields retain their values.
+
+    A reused location is one record, so corrections appear in every linked
+    stay, visit, route end and travel update.
+    """
 
     label: str | None = Field(default=None, min_length=1, max_length=120)
     area_id: str | None = Field(default=None, min_length=1, max_length=32)

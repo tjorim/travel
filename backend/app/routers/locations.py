@@ -78,7 +78,11 @@ def _carry_links(session: Session, location: Location) -> None:
 def update_location(
     trip_id: str, location_id: str, payload: LocationUpdate, session: SessionDep, subject: SubjectDep
 ) -> Location:
-    """Name a location, move it to another area, or choose whether its address is shown when shared."""
+    """Correct a saved location without replacing its provider/map target.
+
+    The location is reusable: every linked stay, visit, route end and update
+    reads the corrected address from this same record.
+    """
     location = owned_location(session, trip_id, subject, location_id)
     changes = payload.model_fields_set
     if "label" in changes:
