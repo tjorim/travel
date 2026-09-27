@@ -81,7 +81,7 @@ export function AreaManager({ trip }: { trip: Trip }) {
   const summary = (area: Area) => [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") || "Alleen voor deze reis";
   const { selected, editing, editingId } = dialog;
 
-  return <section className="card manager" aria-labelledby="areas-title">
+  return <section className="card manager" id="areas" aria-labelledby="areas-title">
     <div className="capture-heading"><div><h3 id="areas-title">Gebieden</h3><p>Een stad of regio die je kunt hergebruiken. Locaties, verblijven, reisupdates en vervoer horen bij een gebied. Een gebied is privé tot je kiest wie het ziet en deelt nooit automatisch zijn locaties.</p></div><button className="secondary compact" type="button" onClick={create}>Gebied toevoegen</button></div>
     <p className="help" role="status">{areasQuery.error ? errorMessage(areasQuery.error, "Je gebieden konden niet worden geladen.") : message}</p>
     {areas.length ? <div className="saved-records manager-list">{areas.map((area) => <article className="excerpt-row" key={area.id}>

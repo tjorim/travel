@@ -103,7 +103,7 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
     <div className="button-row"><button className="secondary compact" type="button" onClick={() => toggle(task)}>{task.completed_at ? "Heropenen" : "Afvinken"}</button></div>
   </article>;
 
-  return <section className="card manager" aria-labelledby="tasks-title">
+  return <section className="card manager" id="tasks" aria-labelledby="tasks-title">
     <div className="capture-heading"><div><h3 id="tasks-title">Nog te regelen</h3><p>Een deadline sorteert taken. Kies apart een herinnering; meldingen verschijnen hier en worden per e-mail verstuurd zodra de geplande verwerking draait.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe taak</button></div>
     <p className="help" role="status">{message}</p>
     {alerts.length > 0 && <div className="manager-subsection"><h4>Meldingen</h4><div className="saved-records manager-list">{alerts.map((alert) => <article className="excerpt-row" key={alert.id}><div><strong>{alert.title}</strong><span>Geplande herinnering{alert.read_at ? " · Gelezen" : " · Nieuw"}{alert.email_sent_at ? " · E-mail verzonden" : alert.email_attempts >= 5 ? " · E-mailbezorging mislukt" : " · E-mail nog niet verzonden"}</span></div>{!alert.read_at && <button className="secondary compact" type="button" onClick={() => markRead.mutateAsync({ tripId: trip.id, alertId: alert.id }).catch(fail("De melding kon niet worden bijgewerkt."))}>Gelezen</button>}</article>)}</div></div>}

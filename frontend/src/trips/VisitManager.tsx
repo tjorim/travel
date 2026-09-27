@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { CheckboxField, RecordForm, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { useRecordDialog } from "../forms/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage } from "../query/api";
@@ -70,13 +70,14 @@ const lastDay = ({ value, fieldApi }: { value: string } & FormContext) => {
   return !first || value < first ? "De laatste dag volgt op de eerste dag." : undefined;
 };
 
-export function VisitManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: (pointId: string) => void }) {
+export function VisitManager({ trip, onShowOnMap, focusId }: { trip: Trip; onShowOnMap?: (pointId: string) => void; focusId?: DialogFocusRequest | null }) {
   const offline = useOfflineCopies();
   const visitsQuery = useTripResource(trip.id, "visits");
   const staysQuery = useTripResource(trip.id, "stays");
   const visits = useMemo(() => (visitsQuery.data ?? []).slice().sort((left, right) => left.position - right.position), [visitsQuery.data]);
   const stays = staysQuery.data ?? [];
   const dialog = useRecordDialog(visits);
+  useDialogFocus(focusId, dialog.inspect);
   const { selected, editing, editingId } = dialog;
   const [message, setMessage] = useState("Een bezoek is een stop van je reis: een gebied of een locatie, en wanneer. Ze blijft privé tot je kiest wie ze ziet; tijden deel je alleen als je dat zelf aanvinkt.");
   // A place is only rewritten when the editor changed it.
@@ -190,7 +191,7 @@ export function VisitManager({ trip, onShowOnMap }: { trip: Trip; onShowOnMap?: 
     return <div className="entry-details"><span className="entry-detail">Overnachting: {sleep.stays.map(stayLabel).join(", ") || "—"}{sleep.uncovered > 0 ? ` · nog ${sleep.uncovered} ${sleep.uncovered === 1 ? "nacht" : "nachten"} zonder verblijf` : ""}</span></div>;
   }
 
-  return <section className="card manager" aria-labelledby="visits-title">
+  return <section className="card manager" id="visits" aria-labelledby="visits-title">
     <div className="capture-heading"><div><h3 id="visits-title">Bezoeken</h3><p>De stops van je reis: een gebied of een locatie, en wanneer je er bent. Deel ze om bezoekers te laten volgen waar je heen gaat.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw bezoek</button></div>
     <p className="help" role="status">{readError ? errorMessage(readError, "Je bezoeken konden niet worden geladen.") : visitsQuery.isPending ? "Laad je bezoeken…" : message}</p>
     {visits.length > 0 && <div className="saved-records manager-list">{visits.map((visit, index) => <article className="excerpt-row stacked" key={visit.id}>

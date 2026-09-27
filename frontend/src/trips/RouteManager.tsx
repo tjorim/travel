@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 
 import { RecordForm, SelectField, TextAreaField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { useRecordDialog } from "../forms/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
@@ -85,7 +85,7 @@ const serverFields = {
   carrier: "carrier", service_reference: "serviceReference", travel_class: "travelClass", booking_reference: "bookingReference", notes: "notes", geometry: "coordinates",
 };
 
-export function RouteManager({ trip }: { trip: Trip }) {
+export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
   const routesQuery = useTripResource(trip.id, "routes");
   const areasQuery = useTripResource(trip.id, "areas");
   const locationsQuery = useTripResource(trip.id, "locations");
@@ -95,6 +95,7 @@ export function RouteManager({ trip }: { trip: Trip }) {
   const locations = locationsQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
   const dialog = useRecordDialog(routes);
+  useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useState("Een route loopt tussen twee gebieden. Een dag, stations, tijden, boekingen en een getekende lijn zijn optioneel: kies eerst de dag, de tijden kunnen later. Bezoekers zien alleen wat je deelt, en dan met de gebieden, nooit met de locaties.");
   const [deleteTarget, setDeleteTarget] = useState<Route | null>(null);
   // An end's location is only rewritten when one of its fields differs from what the editor opened with.
@@ -190,7 +191,7 @@ export function RouteManager({ trip }: { trip: Trip }) {
     return days !== 0 ? ` (${days > 0 ? "+" : ""}${days} ${Math.abs(days) === 1 ? "dag" : "dagen"})` : "";
   };
 
-  return <section className="card manager" aria-labelledby="routes-title">
+  return <section className="card manager" id="routes" aria-labelledby="routes-title">
     <div className="capture-heading"><div><h3 id="routes-title">Routes</h3><p>Hoe je van het ene gebied naar het andere reist: vlucht, trein, bus, fiets… Stations, tijden en boekingen zijn optioneel en blijven privé. Je kunt er een lijn bij tekenen.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe route</button></div>
     <p className="help" role="status">{readError ? errorMessage(readError, "Je routes konden niet worden geladen.") : routesQuery.isPending ? "Laad je routes…" : message}</p>
     <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Route bewerken" : "Route toevoegen") : "Route"} dirty={editing && record.dirty} onDismiss={close}>

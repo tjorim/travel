@@ -143,6 +143,12 @@ textarea { min-height: 136px; resize: vertical; }
 .trip-section-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid #d6e0d9; }
 .trip-section-nav a { flex: 0 0 auto; padding: 8px 10px; color: #36574c; text-decoration: none; border-radius: 7px 7px 0 0; font-size: .84rem; font-weight: 700; }
 .trip-section-nav a[aria-current="page"] { color: #123c2e; font-weight: 700; background: #e5f0e8; }
+.plan-jump-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-jump-nav a { padding: 6px 10px; border: 1px solid #cbd7ce; border-radius: 999px; color: #36574c; text-decoration: none; font-size: .82rem; font-weight: 700; background: #fffdf8; }
+.plan-jump-nav a:hover, .plan-jump-nav a:focus-visible { background: #e5f0e8; }
+.agenda-day button.agenda-entry { display: block; width: 100%; padding: 4px 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.agenda-day button.agenda-entry:disabled { cursor: default; }
+.agenda-day button.agenda-entry:not(:disabled):hover, .agenda-day button.agenda-entry:not(:disabled):focus-visible { text-decoration: underline; }
 @media (max-width: 620px) { .trip-workspace-header { align-items: stretch; flex-direction: column; } }
 /* On a phone a row's actions and a manager's "new" button no longer fit beside their text, so they go under it. */
 @media (max-width: 620px) {

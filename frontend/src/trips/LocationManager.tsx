@@ -46,7 +46,7 @@ export function LocationManager({ trip }: { trip: Trip }) {
   const areasQuery = useTripResource(trip.id, "areas");
   const locations = locationsQuery.data ?? [];
   const areas = areasQuery.data ?? [];
-  return <section className="card manager" aria-labelledby="locations-title">
+  return <section className="card manager" id="locations" aria-labelledby="locations-title">
     <div className="capture-heading"><div><h3 id="locations-title">Locaties</h3><p>Een locatie is een hotel, station of monument met een adres en hoort altijd bij één gebied. Geef ze een publieke naam en kies wie ze ziet. Het adres deel je alleen als je dat zelf aanvinkt, bijvoorbeeld voor een hotel waar je bereikbaar bent. Notities en boekingen blijven altijd privé.</p></div></div>
     <p className="help" role="status">{locationsQuery.error ? errorMessage(locationsQuery.error, "Je locaties konden niet worden geladen.") : locationsQuery.isPending ? "Laad je locaties…" : locations.length === 0 ? "Nog geen locaties. Ze ontstaan wanneer je een verblijf, vervoer of reisupdate met een locatie vastlegt." : `${locations.length} ${locations.length === 1 ? "locatie" : "locaties"}, allemaal privé tot je kiest.`}</p>
     {locations.length > 0 && <details className="scope-group"><summary><strong>Locaties</strong><span>{locations.filter((place) => place.visibility !== "private").length} van {locations.length} gedeeld</span></summary>

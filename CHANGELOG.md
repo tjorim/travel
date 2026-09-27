@@ -372,6 +372,17 @@ All notable changes to the travel hub are documented here.
   trips, and a row opens that trip's workspace. "Reis bewerken" moved to the
   workspace header, and deleting a trip returns to the list with its
   confirmation.
+- Same-day Agenda items without an exact time no longer tie-break on their
+  opaque record id, which could show a return route before its outbound leg
+  or otherwise disregard a visit's explicit order. The tie-break was dropped
+  in favour of each record's own order: a route by departure day/time/creation
+  order (as the Routes list already shows it) and a visit by its explicit
+  position. ([#206](https://github.com/tjorim/travel/issues/206))
+- The Agenda moved to the top of the Plan tab with a jump-nav row to its other
+  sections, and its rows now open the described stay, route or visit's own
+  dialog instead of only reading its text; the owner no longer has to scroll
+  back up to find and open the same record in another list.
+  ([#208](https://github.com/tjorim/travel/issues/208))
 - "Toon op kaart" on a day-plan step did nothing in the workspace, because the
   map only exists on the overview tab and the scroll target belonged to the old
   stacked page. It now opens the overview, scrolls to the map and focuses the

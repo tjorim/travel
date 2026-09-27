@@ -12,7 +12,7 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("../trips/DocumentManager", () => ({ DocumentManager: () => null }));
-vi.mock("../trips/VisitManager", () => ({ VisitManager: ({ onShowOnMap }: { onShowOnMap?: (id: string) => void }) => <button type="button" onClick={() => onShowOnMap?.("p1")}>Toon op kaart</button> }));
+vi.mock("../trips/VisitManager", () => ({ VisitManager: ({ onShowOnMap, focusId }: { onShowOnMap?: (id: string) => void; focusId?: { id: string } | null }) => <><button type="button" onClick={() => onShowOnMap?.("p1")}>Toon op kaart</button><p>Bezoekfocus {focusId?.id ?? "geen"}</p></> }));
 vi.mock("../trips/AreaManager", () => ({ AreaManager: () => null }));
 vi.mock("../trips/LocationManager", () => ({ LocationManager: () => null }));
 vi.mock("../trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
@@ -20,9 +20,9 @@ vi.mock("../trips/MediaManager", () => ({ MediaManager: () => null }));
 vi.mock("../trips/OwnerTripMap", () => ({ OwnerTripMap: ({ focus }: { focus?: { id: string } | null }) => <p>Kaartfocus {focus?.id ?? "geen"}</p> }));
 vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
-vi.mock("../trips/StayManager", () => ({ StayManager: () => null }));
-vi.mock("../trips/RouteManager", () => ({ RouteManager: () => null }));
-vi.mock("../trips/AgendaView", () => ({ AgendaView: () => null }));
+vi.mock("../trips/StayManager", () => ({ StayManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Verblijffocus {focusId?.id ?? "geen"}</p> }));
+vi.mock("../trips/RouteManager", () => ({ RouteManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Routefocus {focusId?.id ?? "geen"}</p> }));
+vi.mock("../trips/AgendaView", () => ({ AgendaView: ({ onOpenRecord }: { onOpenRecord?: (kind: "stay" | "route" | "visit", id: string) => void }) => <button type="button" onClick={() => onOpenRecord?.("stay", "s1")}>Agendaregel openen</button> }));
 vi.mock("../trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
 vi.mock("../library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 vi.mock("../trips/TripOverview", () => ({ TripOverview: () => null }));
@@ -136,6 +136,15 @@ it("shows a step on the map by opening the overview, whose map focuses that poin
   renderTrips("/trips/t1/plan");
   fireEvent.click(await screen.findByRole("button", { name: "Toon op kaart" }));
   await screen.findByText("Kaartfocus p1");
+});
+
+it("opens only the matching manager's dialog when an agenda row is clicked", async () => {
+  renderTrips("/trips/t1/plan");
+  expect(await screen.findByText("Verblijffocus geen")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Agendaregel openen" }));
+  expect(screen.getByText("Verblijffocus s1")).toBeTruthy();
+  expect(screen.getByText("Bezoekfocus geen")).toBeTruthy();
+  expect(screen.getByText("Routefocus geen")).toBeTruthy();
 });
 
 it("says so when a workspace trip does not exist for this account", async () => {

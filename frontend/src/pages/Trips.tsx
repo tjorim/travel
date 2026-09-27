@@ -7,7 +7,7 @@ import { LocationManager } from "../trips/LocationManager";
 import { DocumentManager } from "../trips/DocumentManager";
 import { LinkedLibraryDocuments } from "../library/LinkedLibraryDocuments";
 import { VisitManager } from "../trips/VisitManager";
-import { AgendaView } from "../trips/AgendaView";
+import { AgendaView, type AgendaRecordKind } from "../trips/AgendaView";
 import { AreaManager } from "../trips/AreaManager";
 import { TravelUpdateManager } from "../trips/TravelUpdateManager";
 import { MediaManager } from "../trips/MediaManager";
@@ -19,6 +19,7 @@ import { TripEditor } from "../trips/TripEditor";
 import { TripOverview } from "../trips/TripOverview";
 import { TripTaskManager } from "../trips/TripTaskManager";
 import { errorMessage } from "../query/api";
+import type { DialogFocusRequest } from "../forms/useRecordDialog";
 import { useTripResource, useTripsQuery } from "../query/owner-queries";
 import { formatInstant, type Trip } from "../tracker-model";
 
@@ -35,6 +36,9 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [creating, setCreating] = useState(() => searchParams.get("new") === "1");
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // An Agenda row asks the matching manager below to open that record's dialog.
+  const [planFocus, setPlanFocus] = useState<({ kind: AgendaRecordKind } & DialogFocusRequest) | null>(null);
+  const openAgendaRecord = (kind: AgendaRecordKind, id: string) => setPlanFocus({ kind, id, token: Date.now() });
   // "Toon op kaart" elsewhere in the workspace opens the overview, whose map focuses that point.
   const focusedPoint = (location.state as { mapFocus?: string } | null)?.mapFocus;
   const mapFocus = useMemo(() => focusedPoint ? { id: focusedPoint, request: 1 } : null, [focusedPoint]);
@@ -103,7 +107,18 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     </nav>
     {(notice ?? arrivalNotice) && <p className="help" role="status">{notice ?? arrivalNotice}</p>}
     {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{formatInstant(update.occurred_at)}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
-    {currentSection === "plan" && <><AreaManager trip={selectedTrip} /><LocationManager trip={selectedTrip} /><VisitManager trip={selectedTrip} onShowOnMap={showOnMap} /><StayManager trip={selectedTrip} areas={areas} /><RouteManager trip={selectedTrip} /><AgendaView trip={selectedTrip} /><TripTaskManager trip={selectedTrip} /></>}
+    {currentSection === "plan" && <>
+      <nav className="plan-jump-nav" aria-label="Planningsonderdelen">
+        <a href="#agenda">Agenda</a><a href="#areas">Gebieden</a><a href="#locations">Locaties</a><a href="#visits">Bezoeken</a><a href="#stays">Verblijven</a><a href="#routes">Routes</a><a href="#tasks">Nog te regelen</a>
+      </nav>
+      <AgendaView trip={selectedTrip} onOpenRecord={openAgendaRecord} />
+      <AreaManager trip={selectedTrip} />
+      <LocationManager trip={selectedTrip} />
+      <VisitManager trip={selectedTrip} onShowOnMap={showOnMap} focusId={planFocus?.kind === "visit" ? planFocus : null} />
+      <StayManager trip={selectedTrip} areas={areas} focusId={planFocus?.kind === "stay" ? planFocus : null} />
+      <RouteManager trip={selectedTrip} focusId={planFocus?.kind === "route" ? planFocus : null} />
+      <TripTaskManager trip={selectedTrip} />
+    </>}
     {currentSection === "story" && <TravelUpdateManager trip={selectedTrip} areas={areas} />}
     {currentSection === "media" && <><DocumentManager trip={selectedTrip} /><LinkedLibraryDocuments tripId={selectedTrip.id} /><MediaManager trip={selectedTrip} /></>}
     {currentSection === "sharing" && <PublicationManager trip={selectedTrip} />}

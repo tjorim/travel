@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { useRecordDialog } from "../forms/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
@@ -40,10 +40,11 @@ const checkOutAfterCheckIn = ({ value, fieldApi }: { value: string; fieldApi: { 
   value && value <= String(fieldApi.form.getFieldValue("checkInDate" as never) ?? "") ? "Uitchecken gebeurt ten vroegste de ochtend na de eerste nacht." : undefined;
 const httpsOnly = ({ value }: { value: string }) => value.trim() && !value.trim().startsWith("https://") ? "Gebruik een https-adres." : undefined;
 
-export function StayManager({ trip }: { trip: Trip; areas?: Area[] }) {
+export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; focusId?: DialogFocusRequest | null }) {
   const staysQuery = useTripResource(trip.id, "stays");
   const stays = staysQuery.data ?? [];
   const stayDialog = useRecordDialog(stays);
+  useDialogFocus(focusId, stayDialog.inspect);
   const [message, setMessage] = useState("Een verblijf is privé. Deel je het, dan zien bezoekers alleen de stad of het gebied en de nachten — nooit de accommodatie.");
   const [deleteTarget, setDeleteTarget] = useState<Stay | null>(null);
   // A stay's place is only rewritten when one of its fields differs from what the editor opened with.
@@ -112,7 +113,7 @@ export function StayManager({ trip }: { trip: Trip; areas?: Area[] }) {
   const { selected: selectedStay, editing: editingStay, editingId: editingStayId } = stayDialog;
   const readError = staysQuery.error;
 
-  return <section className="card manager" aria-labelledby="stays-title">
+  return <section className="card manager" id="stays" aria-labelledby="stays-title">
     <div className="capture-heading"><div><h3 id="stays-title">Verblijven</h3><p>Een verblijf is een reeks nachten: inchecken de namiddag van de eerste nacht, uitchecken de ochtend erna. Adressen, boekingen en contactgegevens zijn uitsluitend privé.</p></div><button className="secondary compact" type="button" onClick={newStay}>Nieuw verblijf</button></div>
     <p className="help" role="status">{readError ? errorMessage(readError, "Je verblijven konden niet worden geladen.") : staysQuery.isPending ? "Laad je private verblijven…" : message}</p>
     {stays.length > 0 && <div className="saved-records manager-list">{stays.map((stay) => {

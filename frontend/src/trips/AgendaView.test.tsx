@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
@@ -55,4 +55,37 @@ it("says so when nothing has a day yet", async () => {
   seed([], [], []);
   renderWithOwner(<AgendaView trip={trip} />);
   await screen.findByText(/Nog niets in de agenda/);
+});
+
+it("keeps each record's own order for same-day items without a time, instead of sorting by opaque id", async () => {
+  seed(
+    [],
+    [
+      // Ids sort alphabetically the other way around, so an id-based tiebreak would reverse these.
+      { id: "z-arrival", mode: "train", label: "Lisbon → Sintra", departure_area: area("lisbon", "Lisbon"), arrival_area: area("sintra", "Sintra"), departs_on: "2054-10-15", departs_at: null, arrives_at: null },
+      { id: "a-return", mode: "train", label: "Sintra → Lisbon", departure_area: area("sintra", "Sintra"), arrival_area: area("lisbon", "Lisbon"), departs_on: "2054-10-15", departs_at: null, arrives_at: null },
+    ] as unknown as Route[],
+    [{ id: "v-sintra", title: "Sintra", area: area("sintra", "Sintra"), starts_on: "2054-10-15", ends_on: null, start_time: null, end_time: null }] as unknown as Visit[],
+  );
+  renderWithOwner(<AgendaView trip={trip} />);
+  await screen.findByText(/Bezoek: Sintra/);
+  const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+  expect(rows).toEqual([
+    expect.stringContaining("Route: Lisbon → Sintra"),
+    expect.stringContaining("Route: Sintra → Lisbon"),
+    expect.stringContaining("Bezoek: Sintra"),
+  ]);
+});
+
+it("opens the record behind an agenda row when it is clicked", async () => {
+  seed(
+    [{ id: "s1", check_in_date: "2054-11-16", check_out_date: "2054-11-20", property_name: "Hotel Royal", check_in_time: null, area: linkou } as unknown as Stay],
+    [{ id: "r1", mode: "train", label: null, departure_area: taipei, arrival_area: linkou, departs_on: "2054-11-16", departs_at: null, arrives_at: null }] as unknown as Route[],
+    [{ id: "v1", title: "Nachtmarkt", area: taipei, starts_on: "2054-11-16", ends_on: null, start_time: null, end_time: null }] as unknown as Visit[],
+  );
+  const onOpenRecord = vi.fn();
+  renderWithOwner(<AgendaView trip={trip} onOpenRecord={onOpenRecord} />);
+  await screen.findByText(/Verblijf: Hotel Royal/);
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf Hotel Royal openen" }));
+  expect(onOpenRecord).toHaveBeenCalledWith("stay", "s1");
 });
