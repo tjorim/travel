@@ -442,6 +442,14 @@ Polarsteps-like features require a fresh product and privacy decision.
 - [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
       whether and how to move old `dist/` content out of Git. It is not a
       dependency of the fresh application launch or a source of URL aliases.
+- [ ] [#229](https://github.com/tjorim/travel/issues/229) Adopt Tailwind CSS
+      and Radix UI primitives as the styling/behavior stack shared with
+      `bordertax`, `champagnefestival`, `daynest` and `worktime`, alongside
+      `cn` and a shared Tailwind lint config. This repo has no Bootstrap to
+      remove, so it is low urgency: `RecordDialog`'s native `<dialog>`
+      approach stays as-is and is the reference other repos' dialogs should
+      follow, and a Radix primitive is only added if a future feature needs
+      Tabs, Accordion, Tooltip, Popover, DropdownMenu or Select behavior.
 - [x] Generalized the Taiwan-only local SVG route map into a reusable,
       data-driven component with selectable route stops. ([#3](https://github.com/tjorim/travel/issues/3))
 - [x] Added opt-in offline copies for selected private documents, with
