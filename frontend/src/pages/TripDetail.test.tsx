@@ -25,6 +25,7 @@ function seed(overrides: Record<string, unknown[]> = {}) {
   const collections: Record<string, unknown[]> = { locations: [], areas: [], routes: [], stays: [], visits: [], "trip-tasks": [], documents: [], media: [], ...overrides };
   api = fakeApi();
   api.collection("/api/trips", [trip as never]);
+  api.collection("/api/library/documents?linked_trip_id=trip", []);
   for (const [resource, rows] of Object.entries(collections)) api.collection(path(resource), rows as never[]);
 }
 const renderDetail = () => renderRoutesWithOwner(routeTree, ["/trips/trip/details"]);
@@ -49,6 +50,36 @@ it("shows a saved location's own name instead of its repeated locality", async (
   renderDetail();
   await screen.findByRole("heading", { name: "Exampleland" });
   expect(screen.getByRole("heading", { name: "Longshan Temple · Taipei · TW" })).toBeTruthy();
+});
+
+it("shows saved travel context, linked documents, and update media in the private overview", async () => {
+  stubObjectUrls("blob:preview");
+  const open = vi.spyOn(window, "open").mockReturnValue({} as Window);
+  seed({
+    locations: [{ id: "l1", label: "Hotel", address_line1: "Main Street 1", address_line2: "Floor 2", postal_code: "1000", locality: "Brussels", admin_area: "Brussels-Capital", country_code: "BE" }],
+    stays: [{ id: "s1", check_in_date: "2054-11-16", check_out_date: "2054-11-18", check_in_time: "15:30:00", check_out_time: "10:00:00", status: "booked", property_name: "Hotel Royal", location: {}, area: { label: "Taipei", timezone: "Asia/Taipei" } }],
+    routes: [{ id: "r1", mode: "flight", status: "booked", label: "BR76", departure_area: { label: "Amsterdam" }, arrival_area: { label: "Taipei" }, departure_location: null, arrival_location: null, departs_on: "2054-11-16", departs_at: "2054-11-16T09:40:00Z", arrives_at: "2054-11-16T22:25:00Z", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei", carrier: null, service_reference: null, travel_class: null, geometry: null }],
+    "trip-tasks": [{ id: "t1", title: "Visum regelen", due_date: null, remind_at: "2054-11-01T09:00:00Z", completed_at: null, notes: null, links: [] }],
+    media: [{ id: "p1", media_kind: "photo", byte_size: 200, captured_at: null, original_filename: "arrival.jpg", thumbnail_url: "/api/trips/trip/media/p1/thumbnail", file_url: "/api/trips/trip/media/p1/original", gps: null }],
+  });
+  api.collection("/api/trips", [{ ...trip, travel_updates: [{ ...trip.travel_updates[0], media_asset_ids: ["p1"] }] }]);
+  api.collection("/api/library/documents?linked_trip_id=trip", [{ id: "ld1", title: "Verzekering", original_filename: "policy.pdf", byte_size: 400, file_url: "/api/library/documents/ld1/original" }]);
+  api.on("GET", /\/media\/p1\/thumbnail$/, () => "image");
+  api.on("GET", /\/library\/documents\/ld1\/original$/, () => "pdf");
+  renderDetail();
+  await screen.findByRole("heading", { name: "Exampleland" });
+  expect(screen.getByText("Drie weken")).toBeTruthy();
+  expect(screen.getByText("Inchecken 15:30 · Uitchecken 10:00 (Asia/Taipei)")).toBeTruthy();
+  expect(screen.getByText(/Amsterdam → Taipei/)).toBeTruthy();
+  expect(screen.getByText(/16 nov 2054, 10:40 \(Europe\/Amsterdam\) → 17 nov 2054, 06:25 \(Asia\/Taipei\)/)).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Hotel · Main Street 1 · Floor 2 · 1000 · Brussels · Brussels-Capital · BE" })).toBeTruthy();
+  expect(screen.getByText(/Herinnering:/)).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Verzekering" })).toBeTruthy();
+  await waitFor(() => expect(screen.getByRole("group", { name: "Media bij Eerste avond" }).querySelector("img")).toBeTruthy());
+  expect(screen.getByRole("group", { name: "Media bij Eerste avond" }).querySelector("a")?.getAttribute("href")).toBe("/trips/trip/media");
+  fireEvent.click(screen.getByRole("button", { name: "Bibliotheekdocument openen" }));
+  await waitFor(() => expect(open).toHaveBeenCalledWith("blob:preview", "_blank", "noopener"));
+  expect(api.unexpected).toEqual([]);
 });
 
 it("shows a loading state, then an error rather than half a trip when one read fails", async () => {

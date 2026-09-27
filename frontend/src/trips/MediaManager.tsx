@@ -43,7 +43,7 @@ const purposeLabel = {
 } as const;
 
 /** Fetches a private, authenticated image as a blob and renders it inline, revoking the object URL on cleanup. */
-function OwnerImage({ session, url, alt, className }: { session: TrackerSession; url: string; alt: string; className?: string }) {
+export function OwnerImage({ session, url, alt, className }: { session: TrackerSession; url: string; alt: string; className?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();

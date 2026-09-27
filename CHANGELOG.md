@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- The private trip overview shows its saved summary, complete location addresses,
+  local route times with endpoint time zones and areas, stay times, task reminders,
+  linked library documents, and authenticated media thumbnails beside updates and
+  media records. The existing record links still open their workspace dialogs.
+  ([#247](https://github.com/tjorim/travel/issues/247))
 - A route can have a day before it has a train: `departs_on` is the local
   departure day in the departure time zone, so "Kaohsiung → Taipei on 5
   December, no train yet" is stored as a day without inventing a time or

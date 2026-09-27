@@ -124,12 +124,12 @@ export function useLibrary<R extends LibraryResource>(resource: R) {
   });
 }
 
-export function useLinkedLibraryDocuments(tripId: string) {
+export function useLinkedLibraryDocuments(tripId: string | null) {
   const owner = useOwner();
   return useQuery({
-    queryKey: ownerKeys.linkedLibraryDocuments(owner?.subject ?? "", tripId),
-    enabled: owner !== null,
-    queryFn: ({ signal }: { signal: AbortSignal }) => ownerRequest<OwnerDocument[]>(owner!.session, `${libraryPath("documents")}?linked_trip_id=${encodeURIComponent(tripId)}`, "Gekoppelde bibliotheekdocumenten konden niet worden geladen.", { signal }),
+    queryKey: ownerKeys.linkedLibraryDocuments(owner?.subject ?? "", tripId ?? ""),
+    enabled: owner !== null && tripId !== null,
+    queryFn: ({ signal }: { signal: AbortSignal }) => ownerRequest<OwnerDocument[]>(owner!.session, `${libraryPath("documents")}?linked_trip_id=${encodeURIComponent(tripId!)}`, "Gekoppelde bibliotheekdocumenten konden niet worden geladen.", { signal }),
   });
 }
 

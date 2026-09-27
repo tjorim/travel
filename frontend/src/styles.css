@@ -79,6 +79,9 @@ textarea { min-height: 136px; resize: vertical; }
 .admin-detail-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .admin-detail-list article, .admin-detail-list li { display: grid; gap: 6px; padding: 12px; border: 1px solid #dce5e1; border-radius: 10px; }
 .admin-detail-list span, .admin-detail-list small { color: #50645e; }
+.admin-detail-media-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.admin-detail-media-item { display: grid; gap: 5px; max-width: 150px; }
+.admin-detail-media-preview { display: block; width: 140px; height: 96px; border-radius: 8px; object-fit: cover; background: #e5ece7; }
 .location { display: grid; gap: 14px; margin: 0; padding: 18px; border: 1px solid #b7c9be; border-radius: 13px; }
 .location legend { padding: 0 6px; color: #19342d; font-weight: 800; }
 .location p { margin: 0; color: #4d665e; font-size: .9rem; line-height: 1.5; }
