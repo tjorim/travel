@@ -170,17 +170,17 @@ it("shows a thumbnail beside a photo, a readable purpose label, and an inline pr
   restoreObjectUrls();
 });
 
-it("reviews possible visits without storing them, and attaches media to an existing reisupdate", async () => {
-  api.on("POST", /\/media\/visit-candidates$/, () => ({ grouping_window_minutes: 120, gps_agreement_metres: 500, unavailable_media_asset_ids: [], candidates: [{ id: "c1", media_asset_ids: ["p1"], starts_at: null, ends_at: null, time_options: [], location_options: [] }] }));
+it("reviews possible travel updates without storing them, and attaches media to an existing reisupdate", async () => {
+  api.on("POST", /\/media\/travel-update-candidates$/, () => ({ grouping_window_minutes: 120, gps_agreement_metres: 500, unavailable_media_asset_ids: [], candidates: [{ id: "c1", media_asset_ids: ["p1"], starts_at: null, ends_at: null, time_options: [], location_options: [] }] }));
   api.on("PATCH", /\/travel-updates\/e1$/, () => ({ id: "e1" }));
   renderMedia();
   await screen.findByText("kust.jpg");
   fireEvent.click(screen.getByRole("button", { name: "Geselecteerde media beoordelen" }));
-  await screen.findByText("Kies eerst private media om als mogelijke bezoeken te bekijken.");
-  fireEvent.click(screen.getAllByLabelText("Bezoeken beoordelen")[0]);
+  await screen.findByText("Kies eerst private media om als mogelijke reisupdates te bekijken.");
+  fireEvent.click(screen.getAllByLabelText("Reisupdates beoordelen")[0]);
   fireEvent.click(screen.getByRole("button", { name: "Geselecteerde media beoordelen" }));
   await screen.findByText("Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen.");
-  expect(api.lastBody("POST /api/trips/trip/media/visit-candidates")).toEqual({ media_asset_ids: ["p1"] });
+  expect(api.lastBody("POST /api/trips/trip/media/travel-update-candidates")).toEqual({ media_asset_ids: ["p1"] });
 
   chooseOption("Koppel aan", "Eerste avond");
   fireEvent.click(screen.getByRole("button", { name: "Aan reisupdate koppelen" }));

@@ -1,4 +1,4 @@
-"""Transient, owner-only visit candidates derived from selected media.
+"""Transient, owner-only travel-update candidates derived from selected media.
 
 Candidates are calculated for a single request and deliberately have no
 database model.  They are a review aid, not a new source of canonical trip
@@ -26,7 +26,7 @@ class CandidateLocation:
 
 
 @dataclass(frozen=True)
-class VisitCandidate:
+class TravelUpdateCandidate:
     id: str
     media_asset_ids: list[str]
     starts_at: datetime | None
@@ -82,13 +82,13 @@ def _location_options(assets: list[MediaAsset]) -> list[CandidateLocation]:
     ]
 
 
-def build_visit_candidates(assets: list[MediaAsset]) -> tuple[list[VisitCandidate], list[str]]:
-    """Group selected media into reviewable visits without writing anything.
+def build_travel_update_candidates(assets: list[MediaAsset]) -> tuple[list[TravelUpdateCandidate], list[str]]:
+    """Group selected media into reviewable travel updates without writing anything.
 
     Timed media are sorted and placed in a two-hour window measured from the
     first item in each group. Media without a capture timestamp form their own
     candidate when they carry GPS; media with neither signal are returned as
-    unavailable rather than being guessed into a visit.
+    unavailable rather than being guessed into a travel update.
     """
     eligible = [asset for asset in assets if asset.captured_at is not None or _gps(asset) is not None]
     unavailable = [asset.id for asset in assets if asset not in eligible]
@@ -115,7 +115,7 @@ def build_visit_candidates(assets: list[MediaAsset]) -> tuple[list[VisitCandidat
         time_options = [(asset.id, _utc(asset.captured_at)) for asset in group if asset.captured_at is not None]
         ids = [asset.id for asset in group]
         candidates.append(
-            VisitCandidate(
+            TravelUpdateCandidate(
                 id="candidate-" + "-".join(sorted(ids)),
                 media_asset_ids=ids,
                 starts_at=time_options[0][1] if time_options else None,

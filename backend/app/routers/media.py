@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from ..auth import current_subject
 from ..database import get_session
 from ..media import oauth
-from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_visit_candidates
+from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_travel_update_candidates
 from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver, provider_available
 from ..media.ranges import media_response
 from ..media.service import (
@@ -48,11 +48,11 @@ from ..schemas import (
     MediaDerivativePresentationUpdate,
     MediaDerivativeResponse,
     MediaGpsCoordinates,
-    MediaVisitCandidateResponse,
-    MediaVisitCandidatesRequest,
-    MediaVisitCandidatesResponse,
-    MediaVisitLocationOption,
-    MediaVisitTimeOption,
+    MediaTravelUpdateCandidateResponse,
+    MediaTravelUpdateCandidatesRequest,
+    MediaTravelUpdateCandidatesResponse,
+    MediaTravelUpdateLocationOption,
+    MediaTravelUpdateTimeOption,
     ProviderConnectionStatus,
     ProviderTokenSet,
 )
@@ -200,10 +200,10 @@ def list_media(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[M
     return [_asset_response(asset, trip_id) for asset in assets]
 
 
-@router.post("/visit-candidates", response_model=MediaVisitCandidatesResponse)
-def suggest_visit_candidates(
-    trip_id: str, payload: MediaVisitCandidatesRequest, session: SessionDep, subject: SubjectDep
-) -> MediaVisitCandidatesResponse:
+@router.post("/travel-update-candidates", response_model=MediaTravelUpdateCandidatesResponse)
+def suggest_travel_update_candidates(
+    trip_id: str, payload: MediaTravelUpdateCandidatesRequest, session: SessionDep, subject: SubjectDep
+) -> MediaTravelUpdateCandidatesResponse:
     """Calculate owner-requested review groups; no candidate is persisted."""
     owned_trip(session, trip_id, subject)
     assets = list(
@@ -220,22 +220,22 @@ def suggest_visit_candidates(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Selected media must belong to this trip"
         )
-    candidates, unavailable = build_visit_candidates(assets)
-    return MediaVisitCandidatesResponse(
+    candidates, unavailable = build_travel_update_candidates(assets)
+    return MediaTravelUpdateCandidatesResponse(
         grouping_window_minutes=int(GROUPING_WINDOW.total_seconds() // 60),
         gps_agreement_metres=GPS_AGREEMENT_METRES,
         candidates=[
-            MediaVisitCandidateResponse(
+            MediaTravelUpdateCandidateResponse(
                 id=candidate.id,
                 media_asset_ids=candidate.media_asset_ids,
                 starts_at=candidate.starts_at,
                 ends_at=candidate.ends_at,
                 time_options=[
-                    MediaVisitTimeOption(media_asset_id=asset_id, captured_at=captured_at)
+                    MediaTravelUpdateTimeOption(media_asset_id=asset_id, captured_at=captured_at)
                     for asset_id, captured_at in candidate.time_options
                 ],
                 location_options=[
-                    MediaVisitLocationOption(
+                    MediaTravelUpdateLocationOption(
                         latitude=location.latitude,
                         longitude=location.longitude,
                         media_asset_ids=location.media_asset_ids,

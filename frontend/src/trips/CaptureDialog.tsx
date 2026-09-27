@@ -22,7 +22,7 @@ import {
   type UpdateDraft,
   type PlaceSearchResponse,
   type PlaceSearchResult,
-  type VisitCandidateIntent,
+  type TravelUpdateCandidateIntent,
 } from "../tracker-model";
 
 const timestamp = formatInstant;
@@ -32,8 +32,8 @@ export type CaptureDialogProps = {
   open: boolean;
   /** Locks the dialog to one trip — the trip-header action never makes the owner reselect it. Omit for the global entry, which asks. */
   lockedTripId?: string | null;
-  /** A visit candidate handed off from the media review (replaces the earlier `navigate("/capture", { state })`). */
-  candidate?: VisitCandidateIntent | null;
+  /** A travel update candidate handed off from the media review (replaces the earlier `navigate("/capture", { state })`). */
+  candidate?: TravelUpdateCandidateIntent | null;
   onCandidateConsumed?: () => void;
   onDismiss: () => void;
 };

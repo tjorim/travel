@@ -1096,7 +1096,7 @@ class MediaDerivativePresentationUpdate(InputModel):
     focal_y: int | None = Field(default=None, ge=0, le=100)
 
 
-class MediaVisitCandidatesRequest(InputModel):
+class MediaTravelUpdateCandidatesRequest(InputModel):
     """Only assets the owner explicitly selected are eligible for review."""
 
     media_asset_ids: list[str] = Field(min_length=1, max_length=100)
@@ -1109,30 +1109,30 @@ class MediaVisitCandidatesRequest(InputModel):
         return values
 
 
-class MediaVisitTimeOption(BaseModel):
+class MediaTravelUpdateTimeOption(BaseModel):
     media_asset_id: str
     captured_at: datetime
 
 
-class MediaVisitLocationOption(MediaGpsCoordinates):
+class MediaTravelUpdateLocationOption(MediaGpsCoordinates):
     media_asset_ids: list[str]
 
 
-class MediaVisitCandidateResponse(BaseModel):
+class MediaTravelUpdateCandidateResponse(BaseModel):
     id: str
     media_asset_ids: list[str]
     starts_at: datetime | None
     ends_at: datetime | None
-    time_options: list[MediaVisitTimeOption]
-    location_options: list[MediaVisitLocationOption]
+    time_options: list[MediaTravelUpdateTimeOption]
+    location_options: list[MediaTravelUpdateLocationOption]
 
 
-class MediaVisitCandidatesResponse(BaseModel):
+class MediaTravelUpdateCandidatesResponse(BaseModel):
     """Ephemeral owner-only review data; it is never a published resource."""
 
     grouping_window_minutes: int
     gps_agreement_metres: int
-    candidates: list[MediaVisitCandidateResponse]
+    candidates: list[MediaTravelUpdateCandidateResponse]
     unavailable_media_asset_ids: list[str]
 
 

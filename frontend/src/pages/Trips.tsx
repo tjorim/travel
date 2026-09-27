@@ -23,7 +23,7 @@ import { CaptureDialog } from "../trips/CaptureDialog";
 import { errorMessage } from "../query/api";
 import type { DialogFocusRequest } from "../forms/useRecordDialog";
 import { useTripResource, useTripsQuery } from "../query/owner-queries";
-import { formatInstant, type Trip, type VisitCandidateIntent } from "../tracker-model";
+import { formatInstant, type Trip, type TravelUpdateCandidateIntent } from "../tracker-model";
 
 export type TripWorkspaceSection = "overview" | "plan" | "story" | "media" | "sharing";
 
@@ -38,7 +38,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [creating, setCreating] = useState(() => searchParams.new === "1");
   const [editing, setEditing] = useState(false);
   const [capturing, setCapturing] = useState(false);
-  const [captureCandidate, setCaptureCandidate] = useState<VisitCandidateIntent | null>(null);
+  const [captureCandidate, setCaptureCandidate] = useState<TravelUpdateCandidateIntent | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // An Agenda row, or the private overview arriving from elsewhere, asks the matching manager below to open that record's dialog.
   type RecordKind = AgendaRecordKind | "area" | "task" | "update" | "document" | "media";
@@ -95,7 +95,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     void navigate({ to: `/trips/${encodeURIComponent(trip.id)}` });
   }
 
-  function startCaptureFromCandidate(candidate: VisitCandidateIntent) {
+  function startCaptureFromCandidate(candidate: TravelUpdateCandidateIntent) {
     setCaptureCandidate(candidate);
     setCapturing(true);
   }

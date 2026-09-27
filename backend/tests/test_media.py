@@ -502,10 +502,12 @@ def test_deleting_media_removes_it_from_owner_queries_immediately(tmp_path: Path
     assert owner.get(f"/api/trips/{trip['id']}/media").json() == []
 
 
-# --- Visit candidates: transient owner review, never canonical data --------------
+# --- Travel update candidates: transient owner review, never canonical data ------
 
 
-def test_owner_can_review_selected_media_as_visits_without_creating_updates_or_places(tmp_path: Path) -> None:
+def test_owner_can_review_selected_media_as_travel_updates_without_creating_updates_or_places(
+    tmp_path: Path,
+) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
 
@@ -545,7 +547,7 @@ def test_owner_can_review_selected_media_as_visits_without_creating_updates_or_p
         session.commit()
 
     reviewed = owner.post(
-        f"/api/trips/{trip['id']}/media/visit-candidates",
+        f"/api/trips/{trip['id']}/media/travel-update-candidates",
         json={"media_asset_ids": [first["id"], second["id"], later["id"], unavailable["id"]]},
     )
     assert reviewed.status_code == 200, reviewed.text
@@ -570,7 +572,7 @@ def test_owner_can_review_selected_media_as_visits_without_creating_updates_or_p
     other = client_for("owner-2", tmp_path)
     assert (
         other.post(
-            f"/api/trips/{trip['id']}/media/visit-candidates", json={"media_asset_ids": [first["id"]]}
+            f"/api/trips/{trip['id']}/media/travel-update-candidates", json={"media_asset_ids": [first["id"]]}
         ).status_code
         == 404
     )

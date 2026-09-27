@@ -50,7 +50,7 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `GET` | `/shared/{token}/navigation/{local_id}` | Redirect a selected unlisted projection navigation marker to Google Maps. |
 | `POST` | `/trips/{trip_id}/media/uploads` | Direct device upload (multipart); the durable fallback path, always available. |
 | `GET` | `/trips/{trip_id}/media` | List the trip's owner-only media assets. |
-| `POST` | `/trips/{trip_id}/media/visit-candidates` | Calculate transient visit-review groups for media explicitly selected by the owner; never writes canonical data. |
+| `POST` | `/trips/{trip_id}/media/travel-update-candidates` | Calculate transient travel-update-review groups for media explicitly selected by the owner; never writes canonical data. |
 | `GET`, `DELETE` | `/trips/{trip_id}/media/{media_id}` | Read or soft-delete a media asset. |
 | `GET` | `/trips/{trip_id}/media/{media_id}/original` | Owner-only, `no-store` original file delivery. |
 | `POST`, `GET` | `/trips/{trip_id}/media/{media_id}/derivatives` | Generate or list stripped/resized derivatives for share/static-export/owner-preview. |
@@ -203,16 +203,17 @@ to the explicit reverse endpoint, then choose a returned place before saving
 the reisupdate. Neither action creates or changes a reisupdate or location
 on its own.
 
-`POST /trips/{trip_id}/media/visit-candidates` adds a separate review step
-for a set of media the owner selected. It calculates, but does not persist,
-candidate visits using a two-hour window anchored at each group’s first
-capture time. GPS readings within 500 m share an explicit option; readings
-outside that threshold remain separate choices, and media with no capture
-time or GPS is omitted rather than guessed into a visit. The response is
-owner-only and cannot be referenced from a share scope. Choosing a candidate
-can only prefill a local reisupdate draft or explicitly attach the selected
-private media to an existing reisupdate. Looking up its GPS still requires the
-owner to invoke the normal reverse-geocode endpoint and select the result.
+`POST /trips/{trip_id}/media/travel-update-candidates` adds a separate review
+step for a set of media the owner selected. It calculates, but does not
+persist, candidate travel updates using a two-hour window anchored at each
+group’s first capture time. GPS readings within 500 m share an explicit
+option; readings outside that threshold remain separate choices, and media
+with no capture time or GPS is omitted rather than guessed into a travel
+update. The response is owner-only and cannot be referenced from a share
+scope. Choosing a candidate can only prefill a local reisupdate draft or
+explicitly attach the selected private media to an existing reisupdate.
+Looking up its GPS still requires the owner to invoke the normal
+reverse-geocode endpoint and select the result.
 
 Search text can itself be sensitive. The service sends it only to the
 configured provider over HTTPS; it does not log it and keeps results only in a

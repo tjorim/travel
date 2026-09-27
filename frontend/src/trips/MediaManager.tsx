@@ -24,9 +24,9 @@ import {
   type MediaDerivative,
   type TravelUpdate,
   type Trip,
-  type VisitCandidate,
-  type VisitCandidatesResponse,
-  type VisitCandidateIntent,
+  type TravelUpdateCandidate,
+  type TravelUpdateCandidatesResponse,
+  type TravelUpdateCandidateIntent,
 } from "../tracker-model";
 
 export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = { photo: "Foto", video: "Video" };
@@ -93,7 +93,7 @@ function PresentationFields({ record, updates, previewUrl, session }: { record: 
 /** Which part of the asset dialog is showing: the asset with its copies, a new copy's form, or one copy's detail/edit. */
 type CopyView = { kind: "asset" } | { kind: "create" } | { kind: "copy"; id: string; edit: boolean };
 
-export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { trip: Trip; onStartCaptureFromCandidate: (candidate: VisitCandidateIntent) => void; focusId?: DialogFocusRequest | null }) {
+export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { trip: Trip; onStartCaptureFromCandidate: (candidate: TravelUpdateCandidateIntent) => void; focusId?: DialogFocusRequest | null }) {
   const owner = useOwner();
   const offline = useOfflineCopies();
   const mediaQuery = useTripResource(trip.id, "media");
@@ -116,7 +116,7 @@ export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { t
   const providers = (useProviderConnections().data ?? []).filter((item) => item.available);
   const [selection, setSelection] = useState<string[]>([]);
   const reviewSelection = selection.filter((id) => assets.some((asset) => asset.id === id));
-  const [candidateReview, setCandidateReview] = useState<VisitCandidatesResponse | null>(null);
+  const [candidateReview, setCandidateReview] = useState<TravelUpdateCandidatesResponse | null>(null);
   const [candidateTimes, setCandidateTimes] = useState<Record<string, string>>({});
   const [candidateLocations, setCandidateLocations] = useState<Record<string, string>>({});
   const [candidateAttachments, setCandidateAttachments] = useState<Record<string, string>>({});
@@ -172,9 +172,9 @@ export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { t
     request: (session) => ({ path: `${mediaPath}/imports/${session.provider}/sessions/${session.id}/complete`, method: "POST" }),
     invalidate: (subject, _session, result) => result?.ready ? refreshMedia(subject) : [],
   });
-  const reviewVisits = useOwnerMutation<string[], VisitCandidatesResponse>({
-    fallback: "De mogelijke bezoeken konden niet worden berekend.",
-    request: (mediaAssetIds) => ({ path: `${mediaPath}/visit-candidates`, method: "POST", body: { media_asset_ids: mediaAssetIds } }),
+  const reviewCandidates = useOwnerMutation<string[], TravelUpdateCandidatesResponse>({
+    fallback: "De mogelijke reisupdates konden niet worden berekend.",
+    request: (mediaAssetIds) => ({ path: `${mediaPath}/travel-update-candidates`, method: "POST", body: { media_asset_ids: mediaAssetIds } }),
     // A review is computed for this screen only; nothing is stored.
     invalidate: () => [],
   });
@@ -360,22 +360,22 @@ export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { t
   }
 
   function review() {
-    if (reviewSelection.length === 0) { setNotice("Kies eerst private media om als mogelijke bezoeken te bekijken."); return; }
-    reviewVisits.mutateAsync(reviewSelection).then((result) => {
+    if (reviewSelection.length === 0) { setNotice("Kies eerst private media om als mogelijke reisupdates te bekijken."); return; }
+    reviewCandidates.mutateAsync(reviewSelection).then((result) => {
       setCandidateReview(result);
       setCandidateTimes({});
       setCandidateLocations({});
       setCandidateAttachments({});
       setCandidateAreas({});
       setNotice(result.candidates.length ? "Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen." : "Deze selectie bevat geen bruikbare opname- of locatiegegevens.");
-    }, fail("De mogelijke bezoeken konden niet worden berekend."));
+    }, fail("De mogelijke reisupdates konden niet worden berekend."));
   }
 
-  function candidateAssetNames(candidate: VisitCandidate) {
+  function candidateAssetNames(candidate: TravelUpdateCandidate) {
     return candidate.media_asset_ids.map((id) => assets.find((asset) => asset.id === id)?.original_filename ?? "naamloos medium").join(", ");
   }
 
-  function suggestCandidateArea(candidate: VisitCandidate) {
+  function suggestCandidateArea(candidate: TravelUpdateCandidate) {
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.location_options.length > 1 && locationIndex === undefined) { setNotice("Kies eerst een GPS-optie."); return; }
     const location = candidate.location_options[locationIndex === undefined ? 0 : Number(locationIndex)];
@@ -386,7 +386,7 @@ export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { t
     );
   }
 
-  function startCandidateUpdate(candidate: VisitCandidate) {
+  function startCandidateUpdate(candidate: TravelUpdateCandidate) {
     const time = candidateTimes[candidate.id] || (candidate.time_options.length === 1 ? candidate.time_options[0].captured_at : "");
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.time_options.length > 1 && !time) { setNotice("Kies eerst welke opnametijd je voor dit kandidaatbezoek wilt gebruiken."); return; }
@@ -395,7 +395,7 @@ export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { t
     onStartCaptureFromCandidate({ tripId: trip.id, mediaAssetIds: candidate.media_asset_ids, occurredAt: time || undefined, gps: selectedLocation && { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude } });
   }
 
-  function attachCandidate(candidate: VisitCandidate) {
+  function attachCandidate(candidate: TravelUpdateCandidate) {
     const update = trip.travel_updates.find((item) => item.id === candidateAttachments[candidate.id]);
     if (!update) { setNotice("Kies eerst een bestaande reisupdate om de private media aan te koppelen."); return; }
     attach.mutateAsync({ updateId: update.id, mediaAssetIds: [...new Set([...update.media_asset_ids, ...candidate.media_asset_ids])] }).then(
@@ -425,8 +425,8 @@ export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { t
       {providers.length > 0 && <div className="button-row">{providers.map((item) => <button key={item.provider} className="secondary" type="button" disabled={!item.connected} title={item.connected ? undefined : "Verbind eerst in Instellingen"} onClick={() => startProvider(item.provider)}>Kies in {providerLabel[item.provider]}</button>)}</div>}
       {importSession && <aside className="import-session"><strong>{providerLabel[importSession.provider]}-selectie</strong><span>Kies eerst alleen de media die je naar deze private reis wilt kopiëren.</span>{importSession.picker_uri && <a className="action-link" href={importSession.picker_uri} target="_blank" rel="noreferrer">Selectie openen</a>}<button type="button" onClick={finishImport}>Selectie importeren</button></aside>}
     </div>
-    {assets.length > 0 && <div className="saved-records manager-list">{assets.map((asset) => <article className={`excerpt-row ${asset.id === selected?.id ? "selected-item" : ""}`} key={asset.id}><button className="document-select media-asset-select" type="button" onClick={() => inspectAsset(asset.id)} aria-label={`${asset.original_filename ?? "Naamloos medium"} bekijken`}>{asset.thumbnail_url && owner ? <OwnerImage session={owner.session} url={asset.thumbnail_url} alt="" className="media-thumbnail" /> : <span className="media-thumbnail media-thumbnail-placeholder" aria-hidden="true">{asset.media_kind === "video" ? "🎞" : "🖼"}</span>}<div className="media-asset-details"><strong>{asset.original_filename ?? "Naamloos medium"}</strong><span>{asset.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(asset.byte_size)}{asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}</span></div></button><div className="button-row"><label className="scope-choice"><input type="checkbox" checked={reviewSelection.includes(asset.id)} onChange={() => toggleReviewSelection(asset.id)} />Bezoeken beoordelen</label></div></article>)}</div>}
-    {assets.length > 0 && <div className="manager-subsection"><div className="capture-heading"><div><h3>Mogelijke bezoeken beoordelen</h3><p>Kies hierboven private media. Kandidaten gebruiken een venster van twee uur en houden GPS-punten die meer dan {candidateReview?.gps_agreement_metres ?? 500} meter verschillen als afzonderlijke keuzes. Ze worden nooit automatisch opgeslagen.</p></div></div><button type="button" onClick={review}>Geselecteerde media beoordelen</button>{candidateReview?.unavailable_media_asset_ids.length ? <p className="help">{candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of GPS-metadata en is niet gegokt in een kandidaat.</p> : null}{candidateReview?.candidates.map((candidate) => <article className="scope-item" key={candidate.id}><strong>{candidateAssetNames(candidate)}</strong><span>{candidate.starts_at ? `${timestamp(candidate.starts_at)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${dayjs(candidate.ends_at).format("HH:mm")}` : ""}` : "Geen opnametijd beschikbaar"}</span>{candidate.time_options.length > 1 && <label>Gebruik opnametijd<SearchSelect ariaLabel="Gebruik opnametijd" value={candidateTimes[candidate.id] ?? ""} onChange={(value) => setCandidateTimes((current) => ({ ...current, [candidate.id]: value }))}><option value="">Kies zelf een tijd</option>{candidate.time_options.map((option) => <option key={option.media_asset_id} value={option.captured_at}>{timestamp(option.captured_at)}</option>)}</SearchSelect></label>}{candidate.location_options.length > 1 && <label>GPS-keuze<SearchSelect ariaLabel="GPS-keuze" value={candidateLocations[candidate.id] ?? ""} onChange={(value) => setCandidateLocations((current) => ({ ...current, [candidate.id]: value }))}><option value="">Locatie negeren</option>{candidate.location_options.map((option, index) => <option key={option.media_asset_ids.join("-")} value={index}>Locatie uit {option.media_asset_ids.length} medium/media</option>)}</SearchSelect></label>}{candidate.location_options.length === 0 && <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>}{candidate.location_options.length > 1 && <p className="help">De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.</p>}{candidate.location_options.length > 0 && <button className="secondary compact" type="button" onClick={() => suggestCandidateArea(candidate)}>Gebied en bezoek voorstellen</button>}{candidateAreas[candidate.id] && <p className="help">{candidateAreas[candidate.id].existing_area_id ? `Bestaand gebied: ${candidateAreas[candidate.id].area.label}` : `Nieuw gebied mogelijk: ${candidateAreas[candidate.id].area.label} (${candidateAreas[candidate.id].area.timezone ?? "tijdzone onbekend"})`}. {visits.filter((visit) => visit.area.id === candidateAreas[candidate.id].existing_area_id && candidate.starts_at && visit.starts_on && candidate.starts_at.slice(0, 10) >= visit.starts_on && candidate.starts_at.slice(0, 10) <= (visit.ends_on ?? visit.starts_on)).map((visit) => visitTitle(visit)).join(", ") || "Nieuw bezoek mogelijk"}. Dit voorstel is niet opgeslagen.</p>}<div className="button-row"><button type="button" onClick={() => startCandidateUpdate(candidate)}>Als nieuwe reisupdate openen</button>{trip.travel_updates.length > 0 && <><label className="scope-choice">Koppel aan<SearchSelect ariaLabel="Koppel aan" value={candidateAttachments[candidate.id] ?? ""} onChange={(value) => setCandidateAttachments((current) => ({ ...current, [candidate.id]: value }))}><option value="">Kies bestaande reisupdate</option>{trip.travel_updates.map((update) => <option value={update.id} key={update.id}>{update.title}</option>)}</SearchSelect></label><button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>Aan reisupdate koppelen</button></>}</div></article>)}</div>}
+    {assets.length > 0 && <div className="saved-records manager-list">{assets.map((asset) => <article className={`excerpt-row ${asset.id === selected?.id ? "selected-item" : ""}`} key={asset.id}><button className="document-select media-asset-select" type="button" onClick={() => inspectAsset(asset.id)} aria-label={`${asset.original_filename ?? "Naamloos medium"} bekijken`}>{asset.thumbnail_url && owner ? <OwnerImage session={owner.session} url={asset.thumbnail_url} alt="" className="media-thumbnail" /> : <span className="media-thumbnail media-thumbnail-placeholder" aria-hidden="true">{asset.media_kind === "video" ? "🎞" : "🖼"}</span>}<div className="media-asset-details"><strong>{asset.original_filename ?? "Naamloos medium"}</strong><span>{asset.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(asset.byte_size)}{asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}</span></div></button><div className="button-row"><label className="scope-choice"><input type="checkbox" checked={reviewSelection.includes(asset.id)} onChange={() => toggleReviewSelection(asset.id)} />Reisupdates beoordelen</label></div></article>)}</div>}
+    {assets.length > 0 && <div className="manager-subsection"><div className="capture-heading"><div><h3>Mogelijke reisupdates beoordelen</h3><p>Kies hierboven private media. Kandidaten gebruiken een venster van twee uur en houden GPS-punten die meer dan {candidateReview?.gps_agreement_metres ?? 500} meter verschillen als afzonderlijke keuzes. Ze worden nooit automatisch opgeslagen.</p></div></div><button type="button" onClick={review}>Geselecteerde media beoordelen</button>{candidateReview?.unavailable_media_asset_ids.length ? <p className="help">{candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of GPS-metadata en is niet gegokt in een kandidaat.</p> : null}{candidateReview?.candidates.map((candidate) => <article className="scope-item" key={candidate.id}><strong>{candidateAssetNames(candidate)}</strong><span>{candidate.starts_at ? `${timestamp(candidate.starts_at)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${dayjs(candidate.ends_at).format("HH:mm")}` : ""}` : "Geen opnametijd beschikbaar"}</span>{candidate.time_options.length > 1 && <label>Gebruik opnametijd<SearchSelect ariaLabel="Gebruik opnametijd" value={candidateTimes[candidate.id] ?? ""} onChange={(value) => setCandidateTimes((current) => ({ ...current, [candidate.id]: value }))}><option value="">Kies zelf een tijd</option>{candidate.time_options.map((option) => <option key={option.media_asset_id} value={option.captured_at}>{timestamp(option.captured_at)}</option>)}</SearchSelect></label>}{candidate.location_options.length > 1 && <label>GPS-keuze<SearchSelect ariaLabel="GPS-keuze" value={candidateLocations[candidate.id] ?? ""} onChange={(value) => setCandidateLocations((current) => ({ ...current, [candidate.id]: value }))}><option value="">Locatie negeren</option>{candidate.location_options.map((option, index) => <option key={option.media_asset_ids.join("-")} value={index}>Locatie uit {option.media_asset_ids.length} medium/media</option>)}</SearchSelect></label>}{candidate.location_options.length === 0 && <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>}{candidate.location_options.length > 1 && <p className="help">De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.</p>}{candidate.location_options.length > 0 && <button className="secondary compact" type="button" onClick={() => suggestCandidateArea(candidate)}>Gebied en bezoek voorstellen</button>}{candidateAreas[candidate.id] && <p className="help">{candidateAreas[candidate.id].existing_area_id ? `Bestaand gebied: ${candidateAreas[candidate.id].area.label}` : `Nieuw gebied mogelijk: ${candidateAreas[candidate.id].area.label} (${candidateAreas[candidate.id].area.timezone ?? "tijdzone onbekend"})`}. {visits.filter((visit) => visit.area.id === candidateAreas[candidate.id].existing_area_id && candidate.starts_at && visit.starts_on && candidate.starts_at.slice(0, 10) >= visit.starts_on && candidate.starts_at.slice(0, 10) <= (visit.ends_on ?? visit.starts_on)).map((visit) => visitTitle(visit)).join(", ") || "Nieuw bezoek mogelijk"}. Dit voorstel is niet opgeslagen.</p>}<div className="button-row"><button type="button" onClick={() => startCandidateUpdate(candidate)}>Als nieuwe reisupdate openen</button>{trip.travel_updates.length > 0 && <><label className="scope-choice">Koppel aan<SearchSelect ariaLabel="Koppel aan" value={candidateAttachments[candidate.id] ?? ""} onChange={(value) => setCandidateAttachments((current) => ({ ...current, [candidate.id]: value }))}><option value="">Kies bestaande reisupdate</option>{trip.travel_updates.map((update) => <option value={update.id} key={update.id}>{update.title}</option>)}</SearchSelect></label><button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>Aan reisupdate koppelen</button></>}</div></article>)}</div>}
     <RecordDialog open={dialogOpen} title={dialogTitle} dirty={dialogDirty} onDismiss={closeAsset}>
       {selected && view.kind === "asset" && <div className="stack-form">
         <div>{selected.thumbnail_url && owner ? <OwnerImage session={owner.session} url={selected.thumbnail_url} alt="" className="media-thumbnail-large" /> : null}<h3>{selected.original_filename ?? "Naamloos medium"}</h3><p>{selected.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(selected.byte_size)}{selected.captured_at ? ` · ${timestamp(selected.captured_at)}` : ""}</p></div>

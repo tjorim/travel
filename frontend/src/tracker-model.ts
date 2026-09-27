@@ -311,7 +311,7 @@ export type MediaDerivative = {
   file_url: string;
 };
 
-export type VisitCandidate = {
+export type TravelUpdateCandidate = {
   id: string;
   media_asset_ids: string[];
   starts_at: string | null;
@@ -320,14 +320,14 @@ export type VisitCandidate = {
   location_options: { latitude: number; longitude: number; media_asset_ids: string[] }[];
 };
 
-export type VisitCandidatesResponse = {
+export type TravelUpdateCandidatesResponse = {
   grouping_window_minutes: number;
   gps_agreement_metres: number;
-  candidates: VisitCandidate[];
+  candidates: TravelUpdateCandidate[];
   unavailable_media_asset_ids: string[];
 };
 
-export type VisitCandidateIntent = {
+export type TravelUpdateCandidateIntent = {
   tripId: string;
   mediaAssetIds: string[];
   occurredAt?: string;

@@ -1024,17 +1024,17 @@ class TravelMcpBackend:
             lambda x: _models(x, schemas.MediaAssetResponse),
         )
 
-    def suggest_media_visit_candidates(
-        self, trip_id: str, payload: schemas.MediaVisitCandidatesRequest
+    def suggest_media_travel_update_candidates(
+        self, trip_id: str, payload: schemas.MediaTravelUpdateCandidatesRequest
     ) -> dict[str, Any]:
-        """Calculate transient owner-review visit candidates; nothing is persisted."""
+        """Calculate transient owner-review travel update candidates; nothing is persisted."""
         return self._call(
-            "media.visit_candidates",
+            "media.travel_update_candidates",
             "media_asset",
             None,
             trip_id,
-            lambda s, sub: media.suggest_visit_candidates(trip_id, payload, s, sub),
-            lambda x: _model(x, schemas.MediaVisitCandidatesResponse),
+            lambda s, sub: media.suggest_travel_update_candidates(trip_id, payload, s, sub),
+            lambda x: _model(x, schemas.MediaTravelUpdateCandidatesResponse),
         )
 
     def delete_media(self, trip_id: str, media_id: str, confirm: bool = False) -> dict[str, str]:
