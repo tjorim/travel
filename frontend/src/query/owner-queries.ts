@@ -1,7 +1,7 @@
 import { onlineManager, useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { decodeSubject, type TrackerSession } from "../auth";
+import { decodeSubject, readSession, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
   Area, DocumentAsset, EmergencyInfoEntry, Visit, MediaAsset, MediaDerivative,
@@ -12,13 +12,23 @@ import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResour
 
 export type Owner = { session: TrackerSession; subject: string };
 
+function ownerFromSession(session: TrackerSession | null): Owner | null {
+  const subject = session ? decodeSubject(session.accessToken) : null;
+  return session && subject ? { session, subject } : null;
+}
+
 /** The signed-in owner, or null when there is no session or its subject is unreadable. */
 export function useOwner(): Owner | null {
   const { session } = useAuth();
-  return useMemo(() => {
-    const subject = session ? decodeSubject(session.accessToken) : null;
-    return session && subject ? { session, subject } : null;
-  }, [session]);
+  return useMemo(() => ownerFromSession(session), [session]);
+}
+
+/**
+ * The signed-in owner read directly from storage, for use outside React (a
+ * route `loader`, which runs before any component mounts).
+ */
+export function currentStoredOwner(): Owner | null {
+  return ownerFromSession(readSession());
 }
 
 type TripResourceData = {

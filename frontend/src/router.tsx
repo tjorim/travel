@@ -1,9 +1,10 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
-import { createMemoryHistory, createRootRoute, createRoute, createRouter, Navigate, Outlet, type AnyRoute } from "@tanstack/react-router";
+import { createMemoryHistory, createRootRouteWithContext, createRoute, createRouter, Navigate, Outlet, type AnyRoute } from "@tanstack/react-router";
 
-import { AuthProvider } from "./auth-context";
 import { Boundary } from "./Boundary";
-import { OwnerQueryProvider } from "./query/OwnerQueryProvider";
+import { currentStoredOwner, tripsQueryOptions } from "./query/owner-queries";
+import { parseFlagParam } from "./router/search-params";
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
@@ -14,14 +15,12 @@ declare module "@tanstack/react-router" {
   }
 }
 
-export const rootRoute = createRootRoute({
-  component: () => (
-    <AuthProvider>
-      <OwnerQueryProvider>
-        <Outlet />
-      </OwnerQueryProvider>
-    </AuthProvider>
-  ),
+// Typed router context, not a React context: it carries the single QueryClient
+// instance (created in App.tsx, wrapped there in the matching QueryClientProvider)
+// that a route's `loader` prefetches into, so it warms the same cache the page's
+// own `useQuery` reads from.
+export const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  component: () => <Outlet />,
 });
 
 export const callbackRoute = createRoute({ getParentRoute: () => rootRoute, path: "auth/callback" });
@@ -40,8 +39,20 @@ export const homeRoute = createRoute({ getParentRoute: () => trackerLayoutRoute,
 export const tripsRoute = createRoute({
   getParentRoute: () => trackerLayoutRoute,
   path: "trips",
-  // The default search (de)serialization JSON-parses digit-led values, turning "1" into the number 1.
-  validateSearch: (search: Record<string, unknown>): { new?: string } => ({ new: search.new == null ? undefined : String(search.new) }),
+  validateSearch: (search: Record<string, unknown>): { new?: "1" } => ({ new: parseFlagParam(search.new) }),
+  loader: async ({ context }) => {
+    // Best-effort prefetch only, mirroring the pattern in tjorim/champagnefestival's
+    // venue-plan loader: no signed-in owner (yet), or the prefetch itself fails, and
+    // this just skips warming the cache — Trips' own useTripsQuery (the exact same
+    // queryOptions) still runs normally and is the sole owner of loading/error UX.
+    const owner = currentStoredOwner();
+    if (!owner) return;
+    try {
+      await context.queryClient.ensureQueryData(tripsQueryOptions(owner));
+    } catch {
+      // Swallowed deliberately — see comment above.
+    }
+  },
 });
 export const tripRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "trips/$tripId" });
 export const tripSectionRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "trips/$tripId/$section" });
@@ -90,10 +101,11 @@ export function buildTrackerRouteTree({
   ]);
 }
 
-export function createTrackerRouter(routeTree: AnyRoute, options?: { initialEntries?: string[]; basepath?: string }) {
+export function createTrackerRouter(routeTree: AnyRoute, options: { queryClient: QueryClient; initialEntries?: string[]; basepath?: string }) {
   return createRouter({
     routeTree,
-    basepath: options?.basepath,
-    history: options?.initialEntries ? createMemoryHistory({ initialEntries: options.initialEntries }) : undefined,
+    basepath: options.basepath,
+    context: { queryClient: options.queryClient },
+    history: options.initialEntries ? createMemoryHistory({ initialEntries: options.initialEntries }) : undefined,
   });
 }

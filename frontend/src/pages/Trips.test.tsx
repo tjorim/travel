@@ -4,6 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
+import { parseFlagParam } from "../router/search-params";
 import type { Trip } from "../tracker-model";
 import { TripWorkspace } from "./TripWorkspace";
 import { Trips } from "./Trips";
@@ -13,7 +14,7 @@ const tripsListRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "trips",
   component: Trips,
-  validateSearch: (search: Record<string, unknown>): { new?: string } => ({ new: search.new == null ? undefined : String(search.new) }),
+  validateSearch: (search: Record<string, unknown>): { new?: "1" } => ({ new: parseFlagParam(search.new) }),
 });
 const tripRoute = createRoute({ getParentRoute: () => rootRoute, path: "trips/$tripId", component: TripWorkspace });
 const tripSectionRoute = createRoute({ getParentRoute: () => rootRoute, path: "trips/$tripId/$section", component: TripWorkspace });
