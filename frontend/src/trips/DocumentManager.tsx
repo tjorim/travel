@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
-import { useRecordDialog } from "../forms/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
@@ -10,15 +10,18 @@ import { tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
 
+export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string> = { booking: "Boeking", itinerary: "Routeplan", receipt: "Bon", other: "Anders" };
+
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
 
-export function DocumentManager({ trip }: { trip: Trip }) {
+export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
   const owner = useOwner();
   const offline = useOfflineCopies();
   const documentsQuery = useTripResource(trip.id, "documents");
   const documents = documentsQuery.data ?? [];
   const dialog = useRecordDialog(documents);
+  useDialogFocus(focusId, dialog.inspect);
   const { selected, editing } = dialog;
   const [notice, setNotice] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);

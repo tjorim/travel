@@ -12,6 +12,8 @@ declare module "@tanstack/react-router" {
     mapFocus?: string;
     /** A message left behind for the page navigated to, e.g. after deleting a trip. */
     notice?: string;
+    /** Set by the private overview so the matching manager opens that record's dialog on arrival. */
+    openRecord?: { kind: "stay" | "route" | "visit" | "area" | "task" | "update" | "document" | "media"; id: string };
   }
 }
 

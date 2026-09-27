@@ -101,6 +101,16 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- The private overview (`/admin/trips/:tripId/details`, "Volledig
+  privéoverzicht") is now scannable: it opens with the trip's booking-status
+  badges and route map, a section jump-nav, and human-readable status/kind
+  labels instead of raw enum values (`planned`, `booking`, `photo`). Each
+  record links straight to its dialog in the trip workspace, so an owner no
+  longer has to leave and re-find it. Reisupdates show the saved visitor
+  `body` next to the private note, no longer only the private note, and a
+  saved location's own name is no longer repeated after itself (`Lisbon · PT`
+  instead of `Lisbon, ... · PT · Lisbon`). The page still explains no
+  implementation detail. ([#213](https://github.com/tjorim/travel/issues/213))
 - The owner PWA and visitor views route with `@tanstack/react-router` instead
   of `react-router-dom`, matching the TanStack Query/Form foundation the app
   already uses. This swaps the routing library only: no loaders, type-safe

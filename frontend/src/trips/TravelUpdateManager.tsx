@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { useRecordDialog } from "../forms/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
@@ -23,8 +23,9 @@ const bodyToShare = ({ value, fieldApi }: { value: string; fieldApi: { form: { g
   fieldApi.form.getFieldValue("visibility" as never) !== "private" && !value.trim() ? "Schrijf eerst de tekst voor bezoekers, of kies “Privé”." : undefined;
 
 /** Travel updates are embedded in the trip, so every write refreshes the trip list. */
-export function TravelUpdateManager({ trip, areas }: { trip: Trip; areas: Area[] }) {
+export function TravelUpdateManager({ trip, areas, focusId }: { trip: Trip; areas: Area[]; focusId?: DialogFocusRequest | null }) {
   const dialog = useRecordDialog(trip.travel_updates);
+  useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useState("Een reisupdate blijft privé totdat je kiest wie hem mag zien.");
   const path = tripPath(trip.id, "travel-updates");
   // An update may add a reusable location and its derived area as well as changing the trip's embedded update list.

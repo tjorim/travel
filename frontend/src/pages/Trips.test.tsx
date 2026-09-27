@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createRootRoute, createRoute } from "@tanstack/react-router";
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
@@ -35,7 +35,7 @@ vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }))
 vi.mock("../trips/StayManager", () => ({ StayManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Verblijffocus {focusId?.id ?? "geen"}</p> }));
 vi.mock("../trips/RouteManager", () => ({ RouteManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Routefocus {focusId?.id ?? "geen"}</p> }));
 vi.mock("../trips/AgendaView", () => ({ AgendaView: ({ onOpenRecord }: { onOpenRecord?: (kind: "stay" | "route" | "visit", id: string) => void }) => <button type="button" onClick={() => onOpenRecord?.("stay", "s1")}>Agendaregel openen</button> }));
-vi.mock("../trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
+vi.mock("../trips/TripTaskManager", () => ({ TripTaskManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Taakfocus {focusId?.id ?? "geen"}</p> }));
 vi.mock("../library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 vi.mock("../trips/TripOverview", () => ({ TripOverview: () => null }));
 
@@ -153,6 +153,14 @@ it("opens only the matching manager's dialog when an agenda row is clicked", asy
   expect(screen.getByText("Verblijffocus s1")).toBeTruthy();
   expect(screen.getByText("Bezoekfocus geen")).toBeTruthy();
   expect(screen.getByText("Routefocus geen")).toBeTruthy();
+});
+
+it("opens a record's dialog when arriving from the private overview with one to open", async () => {
+  const { router } = renderTrips("/trips/t1/plan");
+  expect(await screen.findByText("Taakfocus geen")).toBeTruthy();
+  await act(async () => { await router.navigate({ to: "/trips/t1/plan", state: { openRecord: { kind: "task", id: "tk1" } } }); });
+  expect(await screen.findByText("Taakfocus tk1")).toBeTruthy();
+  expect(screen.getByText("Verblijffocus geen")).toBeTruthy();
 });
 
 it("says so when a workspace trip does not exist for this account", async () => {

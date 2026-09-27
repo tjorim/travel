@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { RecordForm, requiredText, TextField } from "../forms/fields";
-import { useRecordDialog } from "../forms/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
@@ -21,10 +21,11 @@ const bothCoordinates = ({ value, fieldApi }: { value: string; fieldApi: { form:
   (value === "") !== (String(fieldApi.form.getFieldValue("longitude" as never) ?? "") === "") ? "Vul beide kaartcoördinaten in of laat beide leeg." : undefined;
 const areaCoordinate = (value: number) => (Math.round(value * 100) / 100).toString();
 
-export function AreaManager({ trip }: { trip: Trip }) {
+export function AreaManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
   const areasQuery = useTripResource(trip.id, "areas");
   const areas = areasQuery.data ?? [];
   const dialog = useRecordDialog(areas);
+  useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useState("Een gebied is een stad of regio, zonder adres. Het is niet automatisch openbaar.");
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Area>({

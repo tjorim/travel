@@ -15,9 +15,10 @@ import { VisibilityControl, visibilityLabel } from "./visibility";
 import { emptyPlace, hasPlace, PlacePicker, placeFields, placeOf, samePlace, type PlaceValue } from "./PlacePicker";
 import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
 
-const STATUS_LABELS: Record<Route["status"], string> = {
+export const ROUTE_STATUS_LABELS: Record<Route["status"], string> = {
   planned: "Gepland", booked: "Geboekt", confirmed: "Bevestigd", cancelled: "Geannuleerd",
 };
+const STATUS_LABELS = ROUTE_STATUS_LABELS;
 
 /** "16 nov 10:40" in the end's own zone (browser zone when none is known). */
 function endpointTime(instant: string, timeZone: string | null): string {

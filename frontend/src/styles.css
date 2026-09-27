@@ -152,8 +152,10 @@ textarea { min-height: 136px; resize: vertical; }
 .back-link { justify-self: start; padding: 4px 0; color: #36574c; font-weight: 700; text-decoration: none; }
 .back-link:hover, .back-link:focus-visible { text-decoration: underline; }
 .trip-workspace-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
-.trip-workspace-header h2 { margin: 0; }
+.trip-workspace-header h1, .trip-workspace-header h2 { margin: 0; font-size: 1.5rem; }
 .trip-workspace-header p { margin: 6px 0 0; color: #4d665e; }
+.admin-detail-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.admin-detail-heading h3 { margin: 0; }
 .trip-section-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid #d6e0d9; }
 .trip-section-nav a { flex: 0 0 auto; padding: 8px 10px; color: #36574c; text-decoration: none; border-radius: 7px 7px 0 0; font-size: .84rem; font-weight: 700; }
 .trip-section-nav a[aria-current="page"] { color: #123c2e; font-weight: 700; background: #e5f0e8; }

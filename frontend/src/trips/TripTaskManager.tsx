@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { RecordForm, requiredText, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
+import { useDialogFocus, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
@@ -29,7 +30,7 @@ const linkUrlError = ({ value, fieldApi }: { value: string; fieldApi: { form: { 
   return isHttps(value) ? undefined : "Gebruik een https-adres.";
 };
 
-export function TripTaskManager({ trip }: { trip: Trip }) {
+export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const alertsQuery = useTripResource(trip.id, "task-alerts");
   const tasks = tasksQuery.data ?? [];
@@ -40,6 +41,7 @@ export function TripTaskManager({ trip }: { trip: Trip }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const selected = tasks.find((task) => task.id === selectedId) ?? null;
   const editing = editingId !== undefined;
+  useDialogFocus(focusId, (id) => { setSelectedId(id); setEditingId(undefined); setConfirmDelete(false); });
 
   const taskKeys = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "trip-tasks"), ownerKeys.tripResource(subject, trip.id, "task-alerts")];
   const saveTask = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, TripTask>({

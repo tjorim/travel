@@ -40,9 +40,16 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [capturing, setCapturing] = useState(false);
   const [captureCandidate, setCaptureCandidate] = useState<VisitCandidateIntent | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  // An Agenda row asks the matching manager below to open that record's dialog.
-  const [planFocus, setPlanFocus] = useState<({ kind: AgendaRecordKind } & DialogFocusRequest) | null>(null);
-  const openAgendaRecord = (kind: AgendaRecordKind, id: string) => setPlanFocus({ kind, id, token: Date.now() });
+  // An Agenda row, or the private overview arriving from elsewhere, asks the matching manager below to open that record's dialog.
+  type RecordKind = AgendaRecordKind | "area" | "task" | "update" | "document" | "media";
+  const [recordFocus, setRecordFocus] = useState<({ kind: RecordKind } & DialogFocusRequest) | null>(null);
+  const openAgendaRecord = (kind: AgendaRecordKind, id: string) => setRecordFocus({ kind, id, token: Date.now() });
+  const openRecordRequest = location.state.openRecord;
+  const openRecordKind = openRecordRequest?.kind;
+  const openRecordId = openRecordRequest?.id;
+  useEffect(() => {
+    if (openRecordKind && openRecordId) setRecordFocus({ kind: openRecordKind, id: openRecordId, token: Date.now() });
+  }, [openRecordKind, openRecordId]);
   // "Toon op kaart" elsewhere in the workspace opens the overview, whose map focuses that point.
   const focusedPoint = location.state.mapFocus;
   const mapFocus = useMemo(() => focusedPoint ? { id: focusedPoint, request: 1 } : null, [focusedPoint]);
@@ -127,15 +134,15 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         <a href="#agenda">Agenda</a><a href="#areas">Gebieden</a><a href="#locations">Locaties</a><a href="#visits">Bezoeken</a><a href="#stays">Verblijven</a><a href="#routes">Routes</a><a href="#tasks">Nog te regelen</a>
       </nav>
       <AgendaView trip={selectedTrip} onOpenRecord={openAgendaRecord} />
-      <AreaManager trip={selectedTrip} />
+      <AreaManager trip={selectedTrip} focusId={recordFocus?.kind === "area" ? recordFocus : null} />
       <LocationManager trip={selectedTrip} />
-      <VisitManager trip={selectedTrip} onShowOnMap={showOnMap} focusId={planFocus?.kind === "visit" ? planFocus : null} />
-      <StayManager trip={selectedTrip} areas={areas} focusId={planFocus?.kind === "stay" ? planFocus : null} />
-      <RouteManager trip={selectedTrip} focusId={planFocus?.kind === "route" ? planFocus : null} />
-      <TripTaskManager trip={selectedTrip} />
+      <VisitManager trip={selectedTrip} onShowOnMap={showOnMap} focusId={recordFocus?.kind === "visit" ? recordFocus : null} />
+      <StayManager trip={selectedTrip} areas={areas} focusId={recordFocus?.kind === "stay" ? recordFocus : null} />
+      <RouteManager trip={selectedTrip} focusId={recordFocus?.kind === "route" ? recordFocus : null} />
+      <TripTaskManager trip={selectedTrip} focusId={recordFocus?.kind === "task" ? recordFocus : null} />
     </>}
-    {currentSection === "story" && <TravelUpdateManager trip={selectedTrip} areas={areas} />}
-    {currentSection === "media" && <><DocumentManager trip={selectedTrip} /><LinkedLibraryDocuments tripId={selectedTrip.id} /><MediaManager trip={selectedTrip} onStartCaptureFromCandidate={startCaptureFromCandidate} /></>}
+    {currentSection === "story" && <TravelUpdateManager trip={selectedTrip} areas={areas} focusId={recordFocus?.kind === "update" ? recordFocus : null} />}
+    {currentSection === "media" && <><DocumentManager trip={selectedTrip} focusId={recordFocus?.kind === "document" ? recordFocus : null} /><LinkedLibraryDocuments tripId={selectedTrip.id} /><MediaManager trip={selectedTrip} onStartCaptureFromCandidate={startCaptureFromCandidate} focusId={recordFocus?.kind === "media" ? recordFocus : null} /></>}
     {currentSection === "sharing" && <PublicationManager trip={selectedTrip} />}
   </section>;
 

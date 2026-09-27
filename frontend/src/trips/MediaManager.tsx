@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import type { TrackerSession } from "../auth";
 import { RecordForm, SearchSelect, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { useRecordDialog } from "../forms/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
@@ -28,6 +28,8 @@ import {
   type VisitCandidatesResponse,
   type VisitCandidateIntent,
 } from "../tracker-model";
+
+export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = { photo: "Foto", video: "Video" };
 
 const providerLabel = {
   google_photos_picker: "Google Photos",
@@ -91,13 +93,14 @@ function PresentationFields({ record, updates, previewUrl, session }: { record: 
 /** Which part of the asset dialog is showing: the asset with its copies, a new copy's form, or one copy's detail/edit. */
 type CopyView = { kind: "asset" } | { kind: "create" } | { kind: "copy"; id: string; edit: boolean };
 
-export function MediaManager({ trip, onStartCaptureFromCandidate }: { trip: Trip; onStartCaptureFromCandidate: (candidate: VisitCandidateIntent) => void }) {
+export function MediaManager({ trip, onStartCaptureFromCandidate, focusId }: { trip: Trip; onStartCaptureFromCandidate: (candidate: VisitCandidateIntent) => void; focusId?: DialogFocusRequest | null }) {
   const owner = useOwner();
   const offline = useOfflineCopies();
   const mediaQuery = useTripResource(trip.id, "media");
   const visits = useTripResource(trip.id, "visits").data ?? [];
   const assets = mediaQuery.data ?? [];
   const assetDialog = useRecordDialog(assets);
+  useDialogFocus(focusId, assetDialog.inspect);
   const selected = assetDialog.selected;
   const [view, setView] = useState<CopyView>({ kind: "asset" });
   const [confirmDeleteAsset, setConfirmDeleteAsset] = useState(false);

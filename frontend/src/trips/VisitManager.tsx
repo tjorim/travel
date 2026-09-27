@@ -14,8 +14,10 @@ import { addDays, formatDayRange, locationName, stayCoversNight, stayLabel, visi
 import { emptyPlace, hasPlace, PlacePicker, placeFields, placeOfVisit, samePlace, type PlaceValue } from "./PlacePicker";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 
-const KIND_LABELS: Record<VisitKind, string> = { free: "Vrij", work: "Werk" };
-const STATUS_LABELS: Record<VisitStatus, string> = { idea: "Idee", planned: "Gepland", confirmed: "Bevestigd" };
+export const VISIT_KIND_LABELS: Record<VisitKind, string> = { free: "Vrij", work: "Werk" };
+export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = { idea: "Idee", planned: "Gepland", confirmed: "Bevestigd" };
+const KIND_LABELS = VISIT_KIND_LABELS;
+const STATUS_LABELS = VISIT_STATUS_LABELS;
 const PRECISION_LABELS = { day: "Volledige datums", month: "Alleen maanden", year: "Alleen het jaar" } as const;
 
 type TripDates = Pick<Trip, "starts_on" | "ends_on">;
