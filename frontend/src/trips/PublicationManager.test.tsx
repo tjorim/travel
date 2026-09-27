@@ -206,15 +206,31 @@ it("previews the public page after saving its scope", async () => {
   expect(api.count("POST /api/trips/trip/public-projection/preview")).toBe(1);
 });
 
-it("creates an active link directly, then lets its owner retrieve the URL again", async () => {
+it("saves a new link as a draft, letting its owner preview it before activating it explicitly", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe link" }));
-  fireEvent.click(screen.getByRole("button", { name: "Link maken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Concept opslaan" }));
   await screen.findByText("Geef de link een naam.");
   expect(api.count("POST /api/trips/trip/share-links")).toBe(0);
 
   fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Vrienden" } });
-  fireEvent.click(screen.getByRole("button", { name: "Link maken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Concept opslaan" }));
+  await screen.findByText("Concept opgeslagen. Bekijk het voorbeeld en activeer de link zodra je tevreden bent.");
+  // Saving a new link creates it as a draft: no live capability is minted yet.
+  expect(api.count("POST /api/trips/trip/share-links")).toBe(1);
+  expect(api.count("POST /api/trips/trip/share-links/l2/activate")).toBe(0);
+  expect(screen.getByRole("button", { name: /Vrienden/ }).textContent).toContain("draft");
+
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
+  const previewDialog = await screen.findByRole("dialog", { name: "Preview van Vrienden" });
+  expect(within(previewDialog).getByText("Weergegeven preview")).toBeTruthy();
+  expect(api.count("POST /api/trips/trip/share-links/l2/preview")).toBe(1);
+  // Previewing still hasn't activated the link.
+  expect(api.count("POST /api/trips/trip/share-links/l2/activate")).toBe(0);
+  fireEvent.click(within(previewDialog).getByRole("button", { name: "Preview van Vrienden sluiten" }));
+
+  fireEvent.click(screen.getByRole("button", { name: /Vrienden/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Activeren" }));
   const reveal = await screen.findByRole("dialog", { name: "Deellink" });
   expect(within(reveal).getByText(`${window.location.origin}/share/${SECRET}`)).toBeTruthy();
   expect(screen.getByText("De link is actief en kan later opnieuw worden gekopieerd.")).toBeTruthy();

@@ -255,19 +255,12 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     defaultValues: { label: "", scope: emptyScope() },
     fallback: "De deellink kon niet worden opgeslagen.",
     serverFields: { label: "label" },
-    submit: async (values) => {
-      const saved = await saveLink.mutateAsync({ id: editingLinkId, label: values.label.trim(), scope: values.scope });
-      return editingLinkId ? saved : activate.mutateAsync({ link: saved, action: "activate", expiresInDays, reason: reason.trim() || null });
-    },
+    // Saving never activates: a new link is created as a draft the owner can preview, then activate explicitly.
+    submit: (values) => saveLink.mutateAsync({ id: editingLinkId, label: values.label.trim(), scope: values.scope }),
     onSuccess: (saved) => {
+      const wasNew = editingLinkId === null;
       loadLink(saved);
-      if (saved.state === "active" && saved.token) {
-        setRevealedLink({ label: saved.label, url: shareUrl(saved.token) });
-        setLinkEditor(null);
-        setNotice("De link is actief en kan later opnieuw worden gekopieerd.");
-        return;
-      }
-      setNotice("Deellink en scope opgeslagen.");
+      setNotice(wasNew ? "Concept opgeslagen. Bekijk het voorbeeld en activeer de link zodra je tevreden bent." : "Deellink en scope opgeslagen.");
     },
   });
 
@@ -419,11 +412,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     </div>
     <RecordDialog open={linkEditor !== null} title={editingLinkId ? "Deellink bewerken" : "Deellink toevoegen"} dirty={linkRecord.dirty} onDismiss={closeLinkEditor}>
       {linkEditor !== null && <div className="link-editor">
-        <RecordForm record={linkRecord} submitLabel={selectedLink ? "Link opslaan" : "Link maken"} pendingLabel="Opslaan…" disabled={lockedLink} actions={selectedLink ? <button className="secondary" type="button" onClick={() => void previewLink().catch(fail("Voorbeeld laden lukte niet."))}>Bekijk met deze link</button> : undefined}>
+        <RecordForm record={linkRecord} submitLabel={selectedLink ? "Link opslaan" : "Concept opslaan"} pendingLabel="Opslaan…" disabled={lockedLink} actions={<button className="secondary" type="button" disabled={lockedLink || !linkRecord.values.label.trim()} onClick={() => void previewLink().catch(fail("Voorbeeld laden lukte niet."))}>Voorbeeld bekijken</button>}>
           <linkRecord.form.Field name="label" listeners={{ onChange: () => setPreview(null) }} validators={{ onChange: requiredText("Geef de link een naam."), onSubmit: requiredText("Geef de link een naam.") }}>{(field) => <TextField field={field} label="Naam van de link" required maxLength={120} disabled={lockedLink} placeholder="Bijvoorbeeld: familie" />}</linkRecord.form.Field>
           <linkRecord.form.Field name="scope">{(field) => <ScopeEditor name="Scope voor verborgen link" scope={field.state.value} setScope={(scope) => { field.handleChange(scope); setPreview(null); }} catalog={catalog} hasDates={Boolean(trip.starts_on)} disabled={lockedLink} />}</linkRecord.form.Field>
         </RecordForm>
-        <div className="lifecycle"><div className="field-row"><label>Geldig gedurende (dagen)<input type="number" min="1" max="90" disabled={expiresInDays === null} value={expiresInDays ?? 30} onChange={(event) => setExpiresInDays(Number(event.target.value))} /></label><label className="scope-choice"><input type="checkbox" checked={expiresInDays === null} onChange={(event) => setExpiresInDays(event.target.checked ? null : 30)} />Geen vervaldatum</label><label>Reden <span className="optional">(optioneel)</span><input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label></div>{expiresInDays === null && <p className="help">Deze link blijft geldig totdat je hem intrekt of roteert.</p>}{!selectedLink && <p className="help">“Link maken” activeert de link meteen met deze geldigheid.</p>}<div className="button-row">{selectedLink?.state === "draft" && <button type="button" onClick={() => activateLink("activate")}>Activeren</button>}{selectedLink?.state === "active" && <><button className="secondary" type="button" disabled={!selectedLink.token} onClick={revealCurrentLink}>Link tonen</button><button className="danger" type="button" onClick={revokeLink}>Link intrekken</button><button type="button" onClick={() => activateLink("rotate")}>Roteren en nieuwe link tonen</button></>}</div>{selectedLink?.state === "active" && !selectedLink.token && <p className="help">Deze oudere link is nog actief, maar de URL is niet bewaard. Roteer hem één keer om hem voortaan te kunnen kopiëren.</p>}</div>
+        <div className="lifecycle"><div className="field-row"><label>Geldig gedurende (dagen)<input type="number" min="1" max="90" disabled={expiresInDays === null} value={expiresInDays ?? 30} onChange={(event) => setExpiresInDays(Number(event.target.value))} /></label><label className="scope-choice"><input type="checkbox" checked={expiresInDays === null} onChange={(event) => setExpiresInDays(event.target.checked ? null : 30)} />Geen vervaldatum</label><label>Reden <span className="optional">(optioneel)</span><input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label></div>{expiresInDays === null && <p className="help">Deze link blijft geldig totdat je hem intrekt of roteert.</p>}{selectedLink?.state === "draft" && <p className="help">Dit concept is nog niet actief. Bekijk het voorbeeld en klik op “Activeren” zodra je tevreden bent.</p>}<div className="button-row">{selectedLink?.state === "draft" && <button type="button" onClick={() => activateLink("activate")}>Activeren</button>}{selectedLink?.state === "active" && <><button className="secondary" type="button" disabled={!selectedLink.token} onClick={revealCurrentLink}>Link tonen</button><button className="danger" type="button" onClick={revokeLink}>Link intrekken</button><button type="button" onClick={() => activateLink("rotate")}>Roteren en nieuwe link tonen</button></>}</div>{selectedLink?.state === "active" && !selectedLink.token && <p className="help">Deze oudere link is nog actief, maar de URL is niet bewaard. Roteer hem één keer om hem voortaan te kunnen kopiëren.</p>}</div>
       </div>}
     </RecordDialog>
     {preview && owner && <RecordDialog open title={preview.name} className="preview-dialog" onDismiss={() => setPreview(null)}><section className="projection-preview" aria-live="polite"><p>{preview.audience === "public" ? "Doelgroep: iedereen" : "Doelgroep: alleen wie de actieve verborgen link heeft"} · {preview.audience === "public" ? isPublished ? "nu gedeeld" : "nog niet gedeeld" : links.find((link) => link.id === preview.linkId)?.state ?? "concept"}</p><p>{projectionSummary(preview.document)}</p><p className="help">Alleen geselecteerde velden verschijnen hieronder. Privégegevens, boekingen en andere niet-geselecteerde velden blijven verborgen. Dit voorbeeld deelt niets en maakt geen toegangscode aan.</p><RenderedPreview projection={preview.document} audience={preview.audience} tripId={trip.id} linkId={preview.linkId} session={owner.session} /><details><summary>Geleverde velden inspecteren</summary><pre>{JSON.stringify(preview.document, null, 2)}</pre></details></section></RecordDialog>}
