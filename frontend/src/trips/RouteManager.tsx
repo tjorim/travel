@@ -9,7 +9,7 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { ROUTE_MODE_LABELS, browserTimeZone, daysBetween, formatDay, localDate, routeTitle, timeZoneOptions, wallClock, type Route, type RouteMode, type TimedRoute, type Trip } from "../tracker-model";
+import { ROUTE_MODE_LABELS, browserTimeZone, daysBetween, formatDay, localDate, locationName, routeTitle, timeZoneOptions, wallClock, type Route, type RouteMode, type TimedRoute, type Trip } from "../tracker-model";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { emptyPlace, hasPlace, PlacePicker, placeFields, placeOf, samePlace, type PlaceValue } from "./PlacePicker";
 import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
@@ -170,7 +170,7 @@ export function RouteManager({ trip }: { trip: Trip }) {
     if (value.choice.startsWith("location:")) {
       const location = locations.find((candidate) => candidate.id === value.choice.slice("location:".length));
       if (location?.visibility === "everyone" && location.latitude !== null && location.longitude !== null) {
-        return [{ label: location.display_name ?? location.locality ?? "Locatie", coordinates: [location.longitude, location.latitude] }];
+        return [{ label: locationName(location), coordinates: [location.longitude, location.latitude] }];
       }
     }
     if (value.newAreaId === "__new__" && value.newAreaCandidate?.latitude != null && value.newAreaCandidate.longitude != null) {

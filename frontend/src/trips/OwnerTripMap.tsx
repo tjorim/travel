@@ -5,7 +5,7 @@ import { errorMessage } from "../query/api";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { ownerKeys } from "../query/keys";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
-import { routeTitle, type Area, type Trip } from "../tracker-model";
+import { locationName, routeTitle, type Area, type Trip } from "../tracker-model";
 
 type OfflineSnapshot = { points: MapPoint[]; lines: MapLine[] };
 
@@ -51,7 +51,7 @@ export function OwnerTripMap({ trip, areas, focus }: { trip: Trip; areas: Area[]
   })), [areas, placesQuery.data]);
   const points = useMemo<MapPoint[]>(() => [
     ...areaPoints.values(),
-    ...(placesQuery.data ?? []).flatMap((place): MapPoint[] => place.latitude !== null && place.longitude !== null ? [{ id: place.id, label: place.display_name ?? place.locality ?? "Locatie", coordinates: [place.longitude, place.latitude], kind: "location", areaId: place.area_id }] : []),
+    ...(placesQuery.data ?? []).flatMap((place): MapPoint[] => place.latitude !== null && place.longitude !== null ? [{ id: place.id, label: locationName(place), coordinates: [place.longitude, place.latitude], kind: "location", areaId: place.area_id }] : []),
   ], [placesQuery.data, areaPoints]);
   const liveLines = useMemo<MapLine[]>(() => [
     // A route without a drawn line is a straight one between its two areas.

@@ -38,6 +38,13 @@ it("shows the whole private trip once every read has arrived", async () => {
   expect(api.unexpected).toEqual([]);
 });
 
+it("shows a saved location's own name instead of its repeated locality", async () => {
+  seed({ locations: [{ id: "l1", label: "Longshan Temple", display_name: null, locality: "Taipei", country_code: "TW" }] });
+  renderDetail();
+  await screen.findByRole("heading", { name: "Exampleland" });
+  expect(screen.getByRole("heading", { name: "Longshan Temple · Taipei · TW" })).toBeTruthy();
+});
+
 it("shows a loading state, then an error rather than half a trip when one read fails", async () => {
   seed();
   vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url === "/api/trips" ? new Response(JSON.stringify([trip]), { status: 200 }) : url.endsWith("/documents") ? new Response(JSON.stringify({ detail: "kapot" }), { status: 500 }) : new Response("[]", { status: 200 }))));

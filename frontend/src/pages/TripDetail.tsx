@@ -12,7 +12,7 @@ import { visibilityLabel } from "../trips/visibility";
 
 function placeLabel(place: Location | null): string {
   if (!place) return "Geen locatie vastgelegd";
-  return [place.display_name, place.address_line1, place.address_line2, place.locality, place.admin_area, place.postal_code, place.country_code]
+  return [place.label ?? place.display_name, place.address_line1, place.address_line2, place.locality, place.admin_area, place.postal_code, place.country_code]
     .filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index)
     .join(" · ") || "Locatie";
 }

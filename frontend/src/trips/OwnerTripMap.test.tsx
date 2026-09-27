@@ -17,6 +17,7 @@ const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on:
 const taipei: Area = { id: "taipei", visibility: "private", label: "Taipei", country_code: "TW", region: null, latitude: 25.03, longitude: 121.56, timezone: null };
 const route = (id: string, label: string): Route => ({ id, label, mode: "train", status: "planned", departure_area: taipei, arrival_area: taipei, visibility: "private", geometry: { type: "LineString", coordinates: [[121.5, 25], [121.6, 25.1]] } } as Route);
 const cafe = { id: "cafe", display_name: "Café", locality: null, latitude: 25.04, longitude: 121.5 } as Location;
+const pagoda = { id: "pagoda", label: "Longshan Temple", display_name: null, locality: "Taipei", latitude: 25.037, longitude: 121.5 } as Location;
 
 let api: FakeApi;
 beforeEach(() => {
@@ -33,6 +34,13 @@ it("draws routes, areas and locations from the shared reads", async () => {
   expect(screen.getByRole("button", { name: "Taipei" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Café" })).toBeTruthy();
   expect(api.unexpected).toEqual([]);
+});
+
+it("uses a location's saved name over the locality it repeats for other points", async () => {
+  api.collection("/api/trips/trip/locations", [cafe, pagoda]);
+  renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
+  await screen.findByRole("button", { name: "Longshan Temple" });
+  expect(screen.queryAllByRole("button", { name: "Taipei" })).toHaveLength(1);
 });
 
 it("shows a route added elsewhere as soon as its read is refreshed, with no revision prop", async () => {
