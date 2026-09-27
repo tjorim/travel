@@ -193,6 +193,7 @@ textarea { min-height: 136px; resize: vertical; }
 .scope-choice, .scope-fields label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .scope-choice input, .scope-fields input { width: auto; accent-color: #0f493b; }
 .scope-choice small { display: block; margin-top: 3px; color: #4d665e; font-size: .8rem; font-weight: 500; }
+.scope-item-note { color: #4d665e; font-size: .8rem; font-weight: 500; font-style: normal; }
 .scope-items, .link-list { display: grid; gap: 8px; }
 .link-series { display: grid; gap: 8px; }
 .link-history { padding-left: 12px; border-left: 2px solid #d6e0d9; }

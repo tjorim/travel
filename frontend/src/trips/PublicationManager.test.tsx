@@ -72,13 +72,13 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect
 
 const publicScope = () => within(screen.getByRole("group", { name: "Wat iedereen mag zien" }));
 
-it("offers only records set to custom, and only reviewed copies, for an audience to list", async () => {
+it("offers private and custom records, but not everyone's or unreviewed copies, for an audience to choose", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
   await publicScope().findByText("Stad ↔ natuur");
   await waitFor(() => expect(publicScope().getByText("kust.jpg")).toBeTruthy());
-  // The pending copy, the private and everyone updates and the unnamed private location are not choices here.
+  // A still-private record can be chosen directly; the pending copy, the everyone update and the unnamed private location cannot.
   expect(publicScope().getAllByText("Goedgekeurde foto")).toHaveLength(1);
-  expect(publicScope().queryByText("Privé dagboek")).toBeNull();
+  expect(publicScope().getByText("Privé dagboek")).toBeTruthy();
   expect(publicScope().queryByText("Aankomst")).toBeNull();
   expect(publicScope().queryByText(/Hotel, 1 Main/)).toBeNull();
   // A named location is offered under its public name, never its display name.
@@ -90,10 +90,22 @@ it("says what reaches every audience anyway and offers no field checklist", asyn
   renderWithOwner(<PublicationManager trip={trip} />);
   const scopeEditor = publicScope();
   await scopeEditor.findByText("Reisupdates");
-  expect(scopeEditor.getByText(/1 voor iedereen verschijnt hier altijd, 1 privé blijft verborgen/)).toBeTruthy();
+  expect(scopeEditor.getByText(/1 voor iedereen verschijnt hier altijd; 1 privé kun je hieronder aanvinken/)).toBeTruthy();
   fireEvent.click(scopeEditor.getByLabelText(/Stad ↔ natuur/));
   expect(scopeEditor.queryByLabelText("title")).toBeNull();
   expect(scopeEditor.queryByLabelText("body")).toBeNull();
+});
+
+it("checking a still-private record for an audience promotes it to \"Zelf kiezen\" before including it", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const checkbox = await publicScope().findByLabelText(/Privé dagboek/);
+  expect((checkbox as HTMLInputElement).checked).toBe(false);
+  fireEvent.click(checkbox);
+  await waitFor(() => expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({ visibility: "custom" }));
+  await waitFor(() => expect((publicScope().getByLabelText(/Privé dagboek/) as HTMLInputElement).checked).toBe(true));
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
+  expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!.items).toEqual(expect.arrayContaining([{ kind: "travel_update", id: "u1" }]));
 });
 
 it("sets who sees a record from Delen with the same control as its own editor", async () => {
@@ -120,13 +132,16 @@ it("groups records into collapsed sections with a count, and chooses or clears a
   renderWithOwner(<PublicationManager trip={trip} />);
   const group = async (title: string) => within((await publicScope().findByText(title)).closest("details")!);
   const updates = await group("Reisupdates");
-  expect(updates.getByText("0 van 1 gekozen")).toBeTruthy();
+  // The group lists the still-private update alongside the already-custom one; the everyone update stays out.
+  expect(updates.getByText("0 van 2 gekozen")).toBeTruthy();
   expect((updates.getByRole("button", { name: "Niets kiezen" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(updates.getByRole("button", { name: "Alles kiezen" }));
-  expect(updates.getByText("1 van 1 gekozen")).toBeTruthy();
+  await waitFor(() => expect(updates.getByText("2 van 2 gekozen")).toBeTruthy());
   expect((updates.getByLabelText(/Stad ↔ natuur/) as HTMLInputElement).checked).toBe(true);
+  expect((updates.getByLabelText(/Privé dagboek/) as HTMLInputElement).checked).toBe(true);
+  expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({ visibility: "custom" });
   fireEvent.click(updates.getByRole("button", { name: "Niets kiezen" }));
-  expect(updates.getByText("0 van 1 gekozen")).toBeTruthy();
+  expect(updates.getByText("0 van 2 gekozen")).toBeTruthy();
   // The other sections are untouched.
   expect((await group("Gebieden")).getByText("0 van 1 gekozen")).toBeTruthy();
   expect((await group("Locaties")).getByText("0 van 1 gekozen")).toBeTruthy();

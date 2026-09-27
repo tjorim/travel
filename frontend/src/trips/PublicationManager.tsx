@@ -9,7 +9,7 @@ import { ownerKeys } from "../query/keys";
 import { derivativesQueryOptions, tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import { RenderedPreview } from "./RenderedPreview";
-import { VisibilityControl } from "./visibility";
+import { useSetVisibility, VisibilityControl } from "./visibility";
 import type { Projection } from "../ProjectionView";
 import { formatInstantDate, ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, type ProjectionDocument, type PublicProjectionStatus, type ShareLink, type ShareScope, type ShareScopeKind, type Trip, type TripOverview, type OverviewAudience, type OverviewWarning, type Visibility } from "../tracker-model";
 
@@ -67,38 +67,69 @@ function updateItem(scope: ShareScope, item: CatalogItem, included: boolean): Sh
 
 const groupBy = (items: CatalogItem[]) => items.reduce<Map<ShareScopeKind, CatalogItem[]>>((map, item) => map.set(item.kind, [...(map.get(item.kind) ?? []), item]), new Map());
 
-/** One kind of record an audience can list. Collapsed so a long list stays a short page; the count says what is chosen. */
-function ScopeGroup({ kind, items, scope, setScope }: { kind: ShareScopeKind; items: CatalogItem[]; scope: ShareScope; setScope: (scope: ShareScope) => void }) {
+/**
+ * One kind of record an audience can list. Collapsed so a long list stays a short page; the count says what is
+ * chosen. A still-private record can be chosen directly here: checking it promotes it to "Zelf kiezen" first, then
+ * adds it to this audience's scope, so choosing content for an audience never requires leaving this form.
+ */
+function ScopeGroup({ kind, items, scope, setScope, tripId, onError }: { kind: ShareScopeKind; items: CatalogItem[]; scope: ShareScope; setScope: (scope: ShareScope) => void; tripId: string; onError: (error: unknown) => void }) {
+  const setVisibility = useSetVisibility(tripId);
+  const [busy, setBusy] = useState(false);
   const chosen = (item: CatalogItem) => scope.items.some((value) => value.kind === item.kind && value.id === item.id);
   const count = items.filter(chosen).length;
+
+  async function promote(toPromote: CatalogItem[]): Promise<boolean> {
+    if (!toPromote.length) return true;
+    setBusy(true);
+    try {
+      await Promise.all(toPromote.map((item) => setVisibility.mutateAsync({ kind: item.kind, id: item.id, visibility: "custom" })));
+      return true;
+    } catch (error) {
+      onError(error);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function include(item: CatalogItem, checked: boolean) {
+    if (checked && item.visibility === "private" && !(await promote([item]))) return;
+    setScope(updateItem(scope, item, checked));
+  }
+
+  async function chooseAll() {
+    if (!(await promote(items.filter((item) => item.visibility === "private" && !chosen(item))))) return;
+    setScope(items.reduce((current, item) => updateItem(current, item, true), scope));
+  }
+
   return <details className="scope-group">
     <summary><strong>{GROUP_TITLES[kind]}</strong><span>{count} van {items.length} gekozen</span></summary>
     <div className="scope-group-body">
       <div className="button-row">
-        <button className="secondary compact" type="button" disabled={count === items.length} onClick={() => setScope(items.reduce((current, item) => updateItem(current, item, true), scope))}>Alles kiezen</button>
-        <button className="secondary compact" type="button" disabled={count === 0} onClick={() => setScope(items.reduce((current, item) => updateItem(current, item, false), scope))}>Niets kiezen</button>
+        <button className="secondary compact" type="button" disabled={busy || count === items.length} onClick={() => void chooseAll()}>Alles kiezen</button>
+        <button className="secondary compact" type="button" disabled={busy || count === 0} onClick={() => setScope(items.reduce((current, item) => updateItem(current, item, false), scope))}>Niets kiezen</button>
       </div>
-      <div className="scope-items">{items.map((item) => <article className={`scope-item ${chosen(item) ? "included" : ""}`} key={`${item.kind}-${item.id}`}><label className="scope-choice"><input type="checkbox" checked={chosen(item)} onChange={(event) => setScope(updateItem(scope, item, event.target.checked))} /><span><strong>{item.label}</strong><small>{item.detail}</small></span></label></article>)}</div>
+      <div className="scope-items">{items.map((item) => <article className={`scope-item ${chosen(item) ? "included" : ""}`} key={`${item.kind}-${item.id}`}><label className="scope-choice"><input type="checkbox" checked={chosen(item)} disabled={busy} onChange={(event) => void include(item, event.target.checked)} /><span><strong>{item.label}</strong><small>{item.detail}</small>{item.visibility === "private" && <em className="scope-item-note"> · nu privé; aanvinken kiest dit voor dit publiek</em>}</span></label></article>)}</div>
     </div>
   </details>;
 }
 
-/** What every audience gets without being chosen, and what stays private: the same choice as on each record. */
+/** What every audience gets without being chosen: the same setting as on each record, kept out of the lists below. */
 function VisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
   const own = catalog.filter((item) => !item.followsUpdate);
   if (!own.length) return null;
   const everyone = own.filter((item) => item.visibility === "everyone").length;
   const privateCount = own.filter((item) => item.visibility === "private").length;
-  return <p className="help scope-updates-note">Wie wat ziet stel je in bij elk onderdeel, of hieronder bij “Zichtbaarheid per onderdeel”: {everyone} voor iedereen verschijnt hier altijd, {privateCount} privé blijft verborgen. Alleen onderdelen met “Zelf kiezen” kies je hieronder per publiek.</p>;
+  return <p className="help scope-updates-note">{everyone} voor iedereen verschijnt hier altijd; {privateCount} privé kun je hieronder aanvinken om het voor dit publiek te kiezen, wat het automatisch op “Zelf kiezen in Delen” zet.</p>;
 }
 
-function ScopeEditor({ scope, setScope, name, catalog, hasDates, disabled = false }: { scope: ShareScope; setScope: (scope: ShareScope) => void; name: string; catalog: CatalogItem[]; hasDates: boolean; disabled?: boolean }) {
-  const groups = groupBy(catalog.filter((item) => item.visibility === "custom"));
-  return <fieldset className="scope-editor" disabled={disabled}><legend>{name}</legend><p>Kies alleen wat bezoekers mogen zien. Alles wat je niet kiest blijft privé.</p>
+function ScopeEditor({ scope, setScope, name, catalog, hasDates, tripId, onError, disabled = false }: { scope: ShareScope; setScope: (scope: ShareScope) => void; name: string; catalog: CatalogItem[]; hasDates: boolean; tripId: string; onError: (error: unknown) => void; disabled?: boolean }) {
+  const groups = groupBy(catalog.filter((item) => item.visibility !== "everyone"));
+  return <fieldset className="scope-editor" disabled={disabled}><legend>{name}</legend><p>Kies wat bezoekers mogen zien. Alles wat je niet kiest blijft privé.</p>
     <div className="scope-trip-fields"><label className="scope-choice"><input type="checkbox" checked={scope.trip.title} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, title: event.target.checked } })} />Reistitel</label><label className="scope-choice"><input type="checkbox" checked={scope.trip.summary} onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, summary: event.target.checked } })} />Samenvatting</label><label>Hoe precies mogen de reisdatums zijn?<SearchSelect ariaLabel="Hoe precies mogen de reisdatums zijn?" value={scope.trip.dates ?? ""} onChange={(value) => setScope({ ...scope, trip: { ...scope.trip, dates: (value || null) as ShareScope["trip"]["dates"] } })}><option value="">Niet tonen</option>{Object.entries(DATE_PRECISIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SearchSelect></label>{scope.trip.dates === "day" && <small>Bezoekers zien begin- en einddag.</small>}{scope.trip.dates === "month" && <small>Bezoekers zien alleen begin- en eindmaand.</small>}{scope.trip.dates === "year" && <small>Bezoekers zien alleen het reisjaar.</small>}{scope.trip.dates && !hasDates && <small>Deze reis heeft nog geen reisdatums.</small>}</div>
     <VisibilityNote catalog={catalog} />
-    <div className="scope-groups">{[...groups].map(([kind, items]) => <ScopeGroup key={kind} kind={kind} items={items} scope={scope} setScope={setScope} />)}</div>
-    {!groups.size && <p className="help">Geen onderdeel staat op “Zelf kiezen”. Zet een onderdeel op “Zelf kiezen in Delen” om het hier per publiek te kiezen.</p>}
+    <div className="scope-groups">{[...groups].map(([kind, items]) => <ScopeGroup key={kind} kind={kind} items={items} scope={scope} setScope={setScope} tripId={tripId} onError={onError} />)}</div>
+    {!groups.size && <p className="help">Er is nog niets om te kiezen. Onderdelen die al op “Iedereen” staan verschijnen hier altijd; maak eerst een reisupdate, gebied of bezoek aan.</p>}
   </fieldset>;
 }
 
@@ -150,7 +181,7 @@ function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: Cata
   const groups = groupBy(catalog);
   if (!groups.size) return <p className="help">Er zijn nog geen onderdelen die je kunt delen. Maak bijvoorbeeld een reisupdate, gebied of bezoek.</p>;
   return <div className="scope-groups">{[...groups].map(([kind, items]) => <details className="scope-group" key={kind}>
-    <summary><strong>{GROUP_TITLES[kind]}</strong><span>{items.filter((item) => item.visibility !== "private" || item.followsUpdate).length} van {items.length} gedeeld</span></summary>
+    <summary><strong>{GROUP_TITLES[kind]}</strong><span>{items.filter((item) => item.visibility !== "private" || item.followsUpdate).length} van {items.length} staat op “Iedereen” of “Zelf kiezen”</span></summary>
     <div className="scope-group-body scope-items">{items.map((item) => <article className="scope-item" key={item.id}><div><strong>{item.label}</strong><small>{item.detail}</small></div><VisibilityControl tripId={tripId} kind={item.kind} id={item.id} value={item.visibility} name={item.label} followsUpdate={item.followsUpdate} /></article>)}</div>
   </details>)}</div>;
 }
@@ -407,7 +438,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     <p className="help" role="status">{message}</p>
     {revealedLink && <RecordDialog open title="Deellink" onDismiss={() => setRevealedLink(null)}><section className="token-reveal" aria-live="assertive"><strong>{revealedLink.label}</strong><p>Wie deze link heeft, kan de actieve verborgen pagina openen. Je kunt hem later opnieuw kopiëren zolang de link actief blijft.</p><code>{revealedLink.url}</code><button type="button" onClick={() => void copyLink().catch(fail("Kopiëren lukte niet."))}>Link kopiëren</button><button className="secondary compact" type="button" onClick={() => setRevealedLink(null)}>Sluiten</button></section></RecordDialog>}
     <SharingReview overview={overviewQuery.data} />
-    <div className="manager-subsection"><div className="capture-heading"><div><h3>Zichtbaarheid per onderdeel</h3><p>Dezelfde keuze als in de editor van elk onderdeel.</p></div></div><VisibilityOverview tripId={trip.id} catalog={catalog} /></div>
+    <div className="manager-subsection"><div className="capture-heading"><div><h3>Zichtbaarheid per onderdeel</h3><p>Dezelfde keuze als in de editor van elk onderdeel. Dit toont een instelling, niet wie het al daadwerkelijk ontvangt — dat zie je bij “Controle voor het delen” hierboven.</p></div></div><VisibilityOverview tripId={trip.id} catalog={catalog} /></div>
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Voor iedereen</h3><p>{isPublished ? "Deze pagina is voor iedereen bereikbaar." : "Deze pagina is nog niet bereikbaar voor bezoekers."}</p></div></div>
       {isPublished && publicStatus?.slug && <p className="help public-link-live"><code>{publicUrl(publicStatus.slug)}</code></p>}
       <RecordForm record={publicRecord} submitLabel="Keuze bewaren" pendingLabel="Bewaren…" actions={<>
@@ -416,7 +447,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         <button className="secondary" type="button" onClick={() => void previewPublic().catch(fail("Voorbeeld laden lukte niet."))}>Bekijk als bezoeker</button>
         <button className={isPublished ? "danger" : ""} type="button" disabled={!publicStatus || togglePublic.isPending} onClick={toggle}>{isPublished ? "Niet meer met iedereen delen" : "Met iedereen delen"}</button>
       </>}>
-        <publicRecord.form.Field name="scope">{(field) => <ScopeEditor name="Wat iedereen mag zien" scope={field.state.value} setScope={(scope) => { field.handleChange(scope); setPreview(null); }} catalog={catalog} hasDates={Boolean(trip.starts_on)} />}</publicRecord.form.Field>
+        <publicRecord.form.Field name="scope">{(field) => <ScopeEditor name="Wat iedereen mag zien" scope={field.state.value} setScope={(scope) => { field.handleChange(scope); setPreview(null); }} catalog={catalog} hasDates={Boolean(trip.starts_on)} tripId={trip.id} onError={fail("De zichtbaarheid kon niet worden bewaard.")} />}</publicRecord.form.Field>
       </RecordForm>
     </div>
     <div className="manager-subsection"><div className="capture-heading"><div><h3>Verborgen deellinks</h3><p>Elke link heeft een eigen live scope en kan later worden ingetrokken of geroteerd.</p></div><button className="secondary compact" type="button" onClick={() => switchLinkEditor(null)}>Nieuwe link</button></div>
@@ -427,7 +458,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       {linkEditor !== null && <div className="link-editor">
         <RecordForm record={linkRecord} submitLabel={selectedLink ? "Link opslaan" : "Concept opslaan"} pendingLabel="Opslaan…" disabled={lockedLink} actions={<button className="secondary" type="button" disabled={lockedLink || !linkRecord.values.label.trim()} onClick={() => void previewLink().catch(fail("Voorbeeld laden lukte niet."))}>Voorbeeld bekijken</button>}>
           <linkRecord.form.Field name="label" listeners={{ onChange: () => setPreview(null) }} validators={{ onChange: requiredText("Geef de link een naam."), onSubmit: requiredText("Geef de link een naam.") }}>{(field) => <TextField field={field} label="Naam van de link" required maxLength={120} disabled={lockedLink} placeholder="Bijvoorbeeld: familie" />}</linkRecord.form.Field>
-          <linkRecord.form.Field name="scope">{(field) => <ScopeEditor name="Scope voor verborgen link" scope={field.state.value} setScope={(scope) => { field.handleChange(scope); setPreview(null); }} catalog={catalog} hasDates={Boolean(trip.starts_on)} disabled={lockedLink} />}</linkRecord.form.Field>
+          <linkRecord.form.Field name="scope">{(field) => <ScopeEditor name="Scope voor verborgen link" scope={field.state.value} setScope={(scope) => { field.handleChange(scope); setPreview(null); }} catalog={catalog} hasDates={Boolean(trip.starts_on)} tripId={trip.id} onError={fail("De zichtbaarheid kon niet worden bewaard.")} disabled={lockedLink} />}</linkRecord.form.Field>
         </RecordForm>
         <div className="lifecycle"><div className="field-row"><label>Geldig gedurende (dagen)<input type="number" min="1" max="90" disabled={expiresInDays === null} value={expiresInDays ?? 30} onChange={(event) => setExpiresInDays(Number(event.target.value))} /></label><label className="scope-choice"><input type="checkbox" checked={expiresInDays === null} onChange={(event) => setExpiresInDays(event.target.checked ? null : 30)} />Geen vervaldatum</label><label>Reden <span className="optional">(optioneel)</span><input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label></div>{expiresInDays === null && <p className="help">Deze link blijft geldig totdat je hem intrekt of roteert.</p>}{selectedLink?.state === "draft" && <p className="help">Dit concept is nog niet actief. Bekijk het voorbeeld en klik op “Activeren” zodra je tevreden bent.</p>}<div className="button-row">{selectedLink?.state === "draft" && <button type="button" onClick={() => activateLink("activate")}>Activeren</button>}{selectedLink?.state === "active" && <><button className="secondary" type="button" disabled={!selectedLink.token} onClick={revealCurrentLink}>Link tonen</button><button className="danger" type="button" onClick={revokeLink}>Link intrekken</button><button type="button" onClick={() => activateLink("rotate")}>Roteren en nieuwe link tonen</button></>}</div>{selectedLink?.state === "active" && !selectedLink.token && <p className="help">Deze oudere link is nog actief, maar de URL is niet bewaard. Roteer hem één keer om hem voortaan te kunnen kopiëren.</p>}</div>
       </div>}
