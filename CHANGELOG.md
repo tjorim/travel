@@ -106,6 +106,9 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Transport booking badges count non-cancelled routes with a departure day,
+  including journeys without exact times, while leaving undated map routes
+  out of booking progress. ([#248](https://github.com/tjorim/travel/issues/248))
 - The private overview (`/admin/trips/:tripId/details`, "Volledig
   privéoverzicht") is now scannable: it opens with the trip's booking-status
   badges and route map, a section jump-nav, and human-readable status/kind

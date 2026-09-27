@@ -12,7 +12,7 @@ const isBooked = (status: Stay["status"] | Route["status"]) => status === "booke
 export function tripBadges(trip: Pick<Trip, "starts_on" | "ends_on">, stays: Stay[], routes: Route[], tasks: TripTask[]): Badge[] {
   const badges: Badge[] = [];
   // Only scheduled routes are bookings; a drawn line between two areas is not.
-  const activeRoutes = timedRoutes(routes).filter((route) => route.status !== "cancelled");
+  const activeRoutes = routes.filter((route) => route.departs_on && route.status !== "cancelled");
   if (activeRoutes.length) {
     const booked = activeRoutes.filter((route) => isBooked(route.status)).length;
     badges.push({ label: "Vervoer", value: booked === activeRoutes.length ? "geboekt" : `${booked}/${activeRoutes.length} geboekt`, done: booked === activeRoutes.length });
