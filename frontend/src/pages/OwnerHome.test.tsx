@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
+import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { OwnerHome } from "./OwnerHome";
+
+const routeTree = createRootRoute({ component: OwnerHome });
+const renderHome = () => renderRoutesWithOwner(routeTree, ["/"]);
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => ({ session: auth.session }) }));
@@ -34,7 +37,7 @@ it("shows active and planning-first trips with unread alerts", async () => {
     throw new Error(`unexpected request ${url}`);
   }));
 
-  renderWithOwner(<MemoryRouter><OwnerHome /></MemoryRouter>);
+  renderHome();
   await waitFor(() => expect(screen.getByText("Exampleland")).toBeTruthy());
   expect(screen.getByText("Nu op reis")).toBeTruthy();
   expect(screen.getByText("Nog plannen")).toBeTruthy();
@@ -45,15 +48,15 @@ it("shows active and planning-first trips with unread alerts", async () => {
 
 it("offers a first private trip when the owner has none", async () => {
   vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json([]))));
-  renderWithOwner(<MemoryRouter><OwnerHome /></MemoryRouter>);
+  renderHome();
   await waitFor(() => expect(screen.getByText("Begin met je eerste reis")).toBeTruthy());
   expect(screen.getAllByRole("link", { name: "Nieuwe reis" }).length).toBeGreaterThan(0);
 });
 
-it("asks an inaccessible session to sign in", () => {
+it("asks an inaccessible session to sign in", async () => {
   auth.session = null;
-  renderWithOwner(<MemoryRouter><OwnerHome /></MemoryRouter>);
-  expect(screen.getByText("Meld aan om je private reiswerkruimte te openen.")).toBeTruthy();
+  renderHome();
+  expect(await screen.findByText("Meld aan om je private reiswerkruimte te openen.")).toBeTruthy();
 });
 
 const alert = (now: Date) => ({ id: "alert", task_id: "task", kind: "reminder", title: "Check in", scheduled_for: now.toISOString(), created_at: now.toISOString(), read_at: null as string | null, email_sent_at: null, email_attempts: 0, email_last_error: null });
@@ -72,7 +75,7 @@ function inboxApi(patch: () => Response) {
 it("clears a reminder from the inbox at once and keeps it cleared once the server agrees", async () => {
   const fetcher = inboxApi(() => json({}));
   vi.stubGlobal("fetch", fetcher);
-  renderWithOwner(<MemoryRouter><OwnerHome /></MemoryRouter>);
+  renderHome();
   fireEvent.click(await screen.findByRole("button", { name: "Gelezen" }));
   await waitFor(() => expect(screen.queryByText("Check in")).toBeNull());
   expect(fetcher.mock.calls.some(([url, init]) => String(url).endsWith("/task-alerts/alert/read") && (init as RequestInit).method === "PATCH")).toBe(true);
@@ -80,7 +83,7 @@ it("clears a reminder from the inbox at once and keeps it cleared once the serve
 
 it("brings a reminder back with a message when marking it read fails", async () => {
   vi.stubGlobal("fetch", inboxApi(() => new Response(JSON.stringify({ detail: "Bijwerken mislukt." }), { status: 500 })));
-  renderWithOwner(<MemoryRouter><OwnerHome /></MemoryRouter>);
+  renderHome();
   fireEvent.click(await screen.findByRole("button", { name: "Gelezen" }));
   await screen.findByText("Bijwerken mislukt.");
   expect(screen.getByText("Check in")).toBeTruthy();
@@ -91,7 +94,7 @@ it("explains that the workspace needs a connection instead of retrying offline",
   Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
   const fetcher = vi.fn();
   vi.stubGlobal("fetch", fetcher);
-  renderWithOwner(<MemoryRouter><OwnerHome /></MemoryRouter>);
+  renderHome();
   expect(await screen.findByText(/Je bent offline/)).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
 });

@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import "fake-indexeddb/auto";
+import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import { renderRoutesWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type { MediaAsset, MediaDerivative, Trip } from "../tracker-model";
 import { MediaManager } from "./MediaManager";
@@ -36,7 +36,8 @@ beforeEach(() => {
 });
 afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); await resetOfflineDb(); });
 
-const renderMedia = () => renderWithOwner(<MemoryRouter><MediaManager trip={trip} onStartCaptureFromCandidate={() => undefined} /></MemoryRouter>);
+const routeTree = createRootRoute({ component: () => <MediaManager trip={trip} onStartCaptureFromCandidate={() => undefined} /> });
+const renderMedia = () => renderRoutesWithOwner(routeTree, ["/"]);
 
 it("lists a new upload straight away and opens its details", async () => {
   api.on("POST", /\/media\/uploads$/, () => api.push("/api/trips/trip/media", photo("p3", "nieuw.jpg")));

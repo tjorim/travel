@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import { Link, useParams } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
 import { errorMessage, openOwnerFile } from "../query/api";
@@ -26,7 +26,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export function TripDetail() {
-  const { tripId } = useParams();
+  const { tripId } = useParams({ strict: false });
   const { session } = useAuth();
   const owner = useOwner();
   const tripsQuery = useTripsQuery();
@@ -64,7 +64,7 @@ export function TripDetail() {
 
   const openFile = (url: string, fallback: string) => { if (owner) openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorMessage(error, fallback))); };
   return <main className="admin-trip-detail" aria-labelledby="admin-trip-title">
-    <header className="capture-heading"><div><p className="eyebrow">Alleen voor jou · private reis</p><h1 id="admin-trip-title">{trip.title}</h1><Markdown className="lede" html={trip.summary_html} text={trip.summary} />{trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}</div><NavLink className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>Naar reisbeheer</NavLink></header>
+    <header className="capture-heading"><div><p className="eyebrow">Alleen voor jou · private reis</p><h1 id="admin-trip-title">{trip.title}</h1><Markdown className="lede" html={trip.summary_html} text={trip.summary} />{trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}</div><Link className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>Naar reisbeheer</Link></header>
     <p className="help">Deze pagina gebruikt uitsluitend owner-endpoints. Hij maakt geen deellink en levert geen gegevens aan bezoekers.</p>
 
     <Section title="Reisupdates">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
 import { EmptyState } from "../tracker-routes";
@@ -32,9 +32,9 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const tripsQuery = useTripsQuery();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearch({ strict: false }) as { new?: string };
   // `/trips?new=1` (the home page's "Nieuwe reis") opens the new-trip dialog straight away.
-  const [creating, setCreating] = useState(() => searchParams.get("new") === "1");
+  const [creating, setCreating] = useState(() => searchParams.new === "1");
   const [editing, setEditing] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [captureCandidate, setCaptureCandidate] = useState<VisitCandidateIntent | null>(null);
@@ -43,7 +43,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [planFocus, setPlanFocus] = useState<({ kind: AgendaRecordKind } & DialogFocusRequest) | null>(null);
   const openAgendaRecord = (kind: AgendaRecordKind, id: string) => setPlanFocus({ kind, id, token: Date.now() });
   // "Toon op kaart" elsewhere in the workspace opens the overview, whose map focuses that point.
-  const focusedPoint = (location.state as { mapFocus?: string } | null)?.mapFocus;
+  const focusedPoint = location.state.mapFocus;
   const mapFocus = useMemo(() => focusedPoint ? { id: focusedPoint, request: 1 } : null, [focusedPoint]);
   useEffect(() => {
     if (!focusedPoint) return;
@@ -63,14 +63,14 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const selectedId = selectedTrip?.id ?? null;
   const areas = useTripResource(selectedId, "areas").data ?? [];
   // A page we were sent here from (a deleted trip) can leave a message behind.
-  const arrivalNotice = (location.state as { notice?: string } | null)?.notice;
+  const arrivalNotice = location.state.notice;
   const message = notice ?? arrivalNotice ?? (!session ? "Meld aan om je private reizen te laden."
     : tripsQuery.isError ? errorMessage(tripsQuery.error, "Je reizen konden niet worden geladen.")
     : tripsQuery.isPending ? "Je reizen laden…"
     : trips.length ? "Kies een reis om de private details te beheren." : "Nog geen reizen. Maak je eerste private reis aan.");
 
   function showOnMap(pointId: string) {
-    if (selectedTrip) navigate(`/trips/${encodeURIComponent(selectedTrip.id)}`, { state: { mapFocus: pointId } });
+    if (selectedTrip) void navigate({ to: `/trips/${encodeURIComponent(selectedTrip.id)}`, state: { mapFocus: pointId } });
   }
 
   function newTrip() {
@@ -80,11 +80,11 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
 
   function closeNewTrip() {
     setCreating(false);
-    if (searchParams.has("new")) setSearchParams({}, { replace: true });
+    if (searchParams.new !== undefined) void navigate({ to: ".", search: {}, replace: true });
   }
 
   function openTrip(trip: Trip) {
-    navigate(`/trips/${encodeURIComponent(trip.id)}`);
+    void navigate({ to: `/trips/${encodeURIComponent(trip.id)}` });
   }
 
   function startCaptureFromCandidate(candidate: VisitCandidateIntent) {
@@ -109,15 +109,15 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
 
   // Every trip-bound manager remounts per trip, so no editor or dialog carries one trip's record into another.
   if (workspace && selectedTrip) return <section className="trips trip-workspace" aria-labelledby="trip-detail-title" key={selectedTrip.id}>
-    <NavLink className="back-link" to="/trips">← Alle reizen</NavLink>
+    <Link className="back-link" to="/trips">← Alle reizen</Link>
     <header className="trip-workspace-header">
       <div><p className="eyebrow">Private reis</p><h2 id="trip-detail-title">{selectedTrip.title}</h2><p>{[selectedTrip.starts_on && selectedTrip.ends_on ? `${selectedTrip.starts_on} — ${selectedTrip.ends_on}` : null, `${selectedTrip.travel_updates.length} ${selectedTrip.travel_updates.length === 1 ? "reisupdate" : "reisupdates"}`].filter(Boolean).join(" · ")}</p></div>
-      <div className="button-row"><button className="secondary compact" type="button" onClick={() => setEditing(true)}>Reisgegevens</button><NavLink className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>Volledig privéoverzicht</NavLink><button className="action-link" type="button" onClick={() => setCapturing(true)}>Moment vastleggen</button></div>
+      <div className="button-row"><button className="secondary compact" type="button" onClick={() => setEditing(true)}>Reisgegevens</button><Link className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>Volledig privéoverzicht</Link><button className="action-link" type="button" onClick={() => setCapturing(true)}>Moment vastleggen</button></div>
     </header>
-    <TripEditor key={`edit-${selectedTrip.id}`} trip={selectedTrip} open={editing} onClose={() => setEditing(false)} onSaved={() => undefined} onDeleted={() => navigate("/trips", { state: { notice: "Reis verwijderd." } })} onNotice={setNotice} />
+    <TripEditor key={`edit-${selectedTrip.id}`} trip={selectedTrip} open={editing} onClose={() => setEditing(false)} onSaved={() => undefined} onDeleted={() => void navigate({ to: "/trips", state: { notice: "Reis verwijderd." } })} onNotice={setNotice} />
     <CaptureDialog lockedTripId={selectedTrip.id} candidate={captureCandidate} onCandidateConsumed={() => setCaptureCandidate(null)} open={capturing} onDismiss={closeCapture} />
     <nav className="trip-section-nav" aria-label="Reisonderdelen">
-      {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <NavLink key={section} to={sectionUrl(section)} end={section === "overview"} aria-current={currentSection === section ? "page" : undefined}>{label}</NavLink>)}
+      {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <Link key={section} to={sectionUrl(section)} activeOptions={{ exact: section === "overview" }} aria-current={currentSection === section ? "page" : undefined}>{label}</Link>)}
     </nav>
     {(notice ?? arrivalNotice) && <p className="help" role="status">{notice ?? arrivalNotice}</p>}
     {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{formatInstant(update.occurred_at)}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
@@ -150,7 +150,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       trip={null}
       open={creating}
       onClose={closeNewTrip}
-      onSaved={(saved) => navigate(`/trips/${encodeURIComponent(saved.id)}`)}
+      onSaved={(saved) => void navigate({ to: `/trips/${encodeURIComponent(saved.id)}` })}
       onDeleted={() => undefined}
       onNotice={setNotice}
     />

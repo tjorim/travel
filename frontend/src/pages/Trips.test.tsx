@@ -1,12 +1,23 @@
 // @vitest-environment jsdom
+import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import type { Trip } from "../tracker-model";
 import { TripWorkspace } from "./TripWorkspace";
 import { Trips } from "./Trips";
+
+const rootRoute = createRootRoute();
+const tripsListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "trips",
+  component: Trips,
+  validateSearch: (search: Record<string, unknown>): { new?: string } => ({ new: search.new == null ? undefined : String(search.new) }),
+});
+const tripRoute = createRoute({ getParentRoute: () => rootRoute, path: "trips/$tripId", component: TripWorkspace });
+const tripSectionRoute = createRoute({ getParentRoute: () => rootRoute, path: "trips/$tripId/$section", component: TripWorkspace });
+const routeTree = rootRoute.addChildren([tripsListRoute, tripRoute, tripSectionRoute]);
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
@@ -55,11 +66,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 // The trip dialogs share labels with the managers' forms; scope to the dialog.
 const editor = (name: "Reisgegevens" | "Nieuwe reis") => within(screen.getByRole("heading", { name }).closest("dialog")!);
 const openEditor = async () => fireEvent.click(await screen.findByRole("button", { name: "Reisgegevens" }));
-const renderTrips = (path = "/trips") => renderWithOwner(<MemoryRouter initialEntries={[path]}><Routes>
-  <Route path="/trips" element={<Trips />} />
-  <Route path="/trips/:tripId" element={<TripWorkspace />} />
-  <Route path="/trips/:tripId/:section" element={<TripWorkspace />} />
-</Routes></MemoryRouter>);
+const renderTrips = (path = "/trips") => renderRoutesWithOwner(routeTree, [path]);
 
 it("lists trips only, and opens a trip's workspace from its row", async () => {
   renderTrips();
@@ -148,7 +155,8 @@ it("opens only the matching manager's dialog when an agenda row is clicked", asy
 });
 
 it("says so when a workspace trip does not exist for this account", async () => {
-  renderWithOwner(<MemoryRouter><Trips workspace={{ tripId: "missing", section: "overview" }} /></MemoryRouter>);
+  const missingRoot = createRootRoute({ component: () => <Trips workspace={{ tripId: "missing", section: "overview" }} /> });
+  renderRoutesWithOwner(missingRoot, ["/"]);
   expect(await screen.findByRole("heading", { name: "Reis niet gevonden" })).toBeTruthy();
 });
 

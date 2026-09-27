@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { isProjection, projectionMapLines, projectionMapPoints, ProjectionView, visitTimes, type Projection } from "./ProjectionView";
 import { timeForViewer } from "./tracker-model";
 import { VisitorRoutes } from "./visitor-routes";
@@ -79,8 +78,8 @@ it("lists only server supplied public cards and opens their stable slugs", async
     { slug: "hidden-title", title: null, summary: "Approved summary" },
   ])));
   vi.stubGlobal("fetch", fetcher);
-  render(<MemoryRouter initialEntries={["/"]}><VisitorRoutes /></MemoryRouter>);
-  expect(screen.getByRole("status").textContent).toContain("Reizen laden");
+  render(<VisitorRoutes initialEntries={["/"]} />);
+  expect((await screen.findByRole("status")).textContent).toContain("Reizen laden");
   const first = await screen.findByRole("link", { name: /Visible journey/ });
   expect(first.getAttribute("href")).toBe("/trips/safe-slug");
   expect(screen.getByRole("link", { name: /Gepubliceerde reis/ }).getAttribute("href")).toBe("/trips/hidden-title");
@@ -93,7 +92,7 @@ it("shows an empty index and retries a failed listing without using archive rout
   let failed = true;
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => failed ? new Response(null, { status: 503 }) : new Response("[]"));
   vi.stubGlobal("fetch", fetcher);
-  render(<MemoryRouter initialEntries={["/trips/"]}><VisitorRoutes /></MemoryRouter>);
+  render(<VisitorRoutes initialEntries={["/trips/"]} />);
   await screen.findByRole("alert");
   failed = false;
   screen.getByRole("button", { name: "Opnieuw proberen" }).click();
@@ -101,11 +100,11 @@ it("shows an empty index and retries a failed listing without using archive rout
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/public/trips", "/api/public/trips"]);
 });
 
-it("does not treat former archive paths as visitor trips", () => {
+it("does not treat former archive paths as visitor trips", async () => {
   const fetcher = vi.fn();
   vi.stubGlobal("fetch", fetcher);
-  render(<MemoryRouter initialEntries={["/exampleland-2054/"]}><VisitorRoutes /></MemoryRouter>);
-  expect(screen.getByRole("heading", { name: "Pagina niet beschikbaar" })).toBeTruthy();
+  render(<VisitorRoutes initialEntries={["/exampleland-2054/"]} />);
+  expect(await screen.findByRole("heading", { name: "Pagina niet beschikbaar" })).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
 });
 
@@ -160,14 +159,14 @@ it("requests a fresh scoped projection after navigation and shows live edits", a
   let title = "Before edit";
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ ...projection(), title }), { status: 200 }));
   vi.stubGlobal("fetch", fetcher);
-  const first = render(<MemoryRouter initialEntries={["/trips/slug"]}><VisitorRoutes /></MemoryRouter>);
+  const first = render(<VisitorRoutes initialEntries={["/trips/slug"]} />);
   await screen.findByRole("heading", { name: "Before edit" });
   expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe("/admin/");
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips/slug");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" });
   first.unmount();
   title = "After edit";
-  render(<MemoryRouter initialEntries={["/trips/slug"]}><VisitorRoutes /></MemoryRouter>);
+  render(<VisitorRoutes initialEntries={["/trips/slug"]} />);
   await screen.findByRole("heading", { name: "After edit" });
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
 });
@@ -175,7 +174,7 @@ it("requests a fresh scoped projection after navigation and shows live edits", a
 it("uses only the unlisted endpoint and a uniform unavailable state", async () => {
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 404 }));
   vi.stubGlobal("fetch", fetcher);
-  render(<MemoryRouter initialEntries={["/share/token"]}><VisitorRoutes /></MemoryRouter>);
+  render(<VisitorRoutes initialEntries={["/share/token"]} />);
   await screen.findByRole("heading", { name: "Reis niet beschikbaar" });
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/shared/token");
@@ -187,7 +186,7 @@ it("renders a successful unlisted response without requesting public or owner da
   data.updates = [{ id: "update-1", body: "Shared update text" }];
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(data)));
   vi.stubGlobal("fetch", fetcher);
-  render(<MemoryRouter initialEntries={["/share/token"]}><VisitorRoutes /></MemoryRouter>);
+  render(<VisitorRoutes initialEntries={["/share/token"]} />);
   await screen.findByText("Shared update text");
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/shared/token"]);
 });
@@ -202,11 +201,11 @@ it("automatically saves a successfully visited hidden trip on this browser's hom
   });
   vi.stubGlobal("fetch", fetcher);
 
-  const visited = render(<MemoryRouter initialEntries={[`/share/${token}`]}><VisitorRoutes /></MemoryRouter>);
+  const visited = render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("heading", { name: "Family trip" });
   visited.unmount();
 
-  render(<MemoryRouter initialEntries={["/"]}><VisitorRoutes /></MemoryRouter>);
+  render(<VisitorRoutes initialEntries={["/"]} />);
   const saved = await screen.findByRole("link", { name: /Family trip/ });
   expect(saved.getAttribute("href")).toBe(`/share/${token}`);
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen van dit apparaat" }));
@@ -342,7 +341,7 @@ it("shows a card's one-line plain-text summary instead of its Markdown", async (
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify([
     { slug: "safe-slug", title: "Journey", summary: "# Exampleland\n\n**Two** weeks", summary_text: "Exampleland Two weeks" },
   ]))));
-  render(<MemoryRouter initialEntries={["/"]}><VisitorRoutes /></MemoryRouter>);
+  render(<VisitorRoutes initialEntries={["/"]} />);
   const card = await screen.findByRole("link", { name: /Journey/ });
   expect(card.querySelector("p")?.textContent).toBe("Exampleland Two weeks");
 });

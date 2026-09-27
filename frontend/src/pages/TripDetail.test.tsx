@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
+import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import { renderRoutesWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
 import type { Trip } from "../tracker-model";
 import { TripDetail } from "./TripDetail";
+
+const rootRoute = createRootRoute();
+const tripDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: "trips/$tripId/details", component: TripDetail });
+const tripsListRoute = createRoute({ getParentRoute: () => rootRoute, path: "trips", component: () => <p>Alle reizen</p> });
+const routeTree = rootRoute.addChildren([tripDetailRoute, tripsListRoute]);
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
@@ -21,7 +26,7 @@ function seed(overrides: Record<string, unknown[]> = {}) {
   api.collection("/api/trips", [trip as never]);
   for (const [resource, rows] of Object.entries(collections)) api.collection(path(resource), rows as never[]);
 }
-const renderDetail = () => renderWithOwner(<MemoryRouter initialEntries={["/trips/trip/details"]}><Routes><Route path="/trips/:tripId/details" element={<TripDetail />} /><Route path="/trips" element={<p>Alle reizen</p>} /></Routes></MemoryRouter>);
+const renderDetail = () => renderRoutesWithOwner(routeTree, ["/trips/trip/details"]);
 
 beforeEach(() => { auth.session = { accessToken: testToken() }; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); restoreObjectUrls(); });
@@ -49,7 +54,7 @@ it("shows a loading state, then an error rather than half a trip when one read f
   seed();
   vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url === "/api/trips" ? new Response(JSON.stringify([trip]), { status: 200 }) : url.endsWith("/documents") ? new Response(JSON.stringify({ detail: "kapot" }), { status: 500 }) : new Response("[]", { status: 200 }))));
   renderDetail();
-  expect(screen.getByText("Private reis laden…")).toBeTruthy();
+  expect(await screen.findByText("Private reis laden…")).toBeTruthy();
   await screen.findByText("De private reis kon niet volledig worden geladen.");
   expect(screen.queryByRole("heading", { name: "Exampleland" })).toBeNull();
 });

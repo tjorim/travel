@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
+import { createRootRoute } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import { clearDraft, emptyDraft, readDraft, saveDraft, type TravelUpdate, type Trip } from "../tracker-model";
 import { Capture } from "./Capture";
+
+const routeTree = createRootRoute({ component: Capture });
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
@@ -29,7 +31,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); clearDraft("trip"); expect(api.unexpected).toEqual([]); });
 
-const renderCapture = () => renderWithOwner(<MemoryRouter><Capture /></MemoryRouter>);
+const renderCapture = () => renderRoutesWithOwner(routeTree, ["/"]);
 const savedUpdates = () => within(screen.getByRole("heading", { name: "Opgeslagen reisupdates" }).closest("section")!);
 
 it("restores a local draft and keeps it up to date while typing", async () => {

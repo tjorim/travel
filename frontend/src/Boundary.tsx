@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 
 import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
 import { useAuth } from "./auth-context";
@@ -48,7 +48,7 @@ export function Boundary({ children }: { children: ReactNode }) {
     <main className="shell owner-shell owner-shell-authenticated">
       <header className="app-header">
         <nav className="app-nav" aria-label="App navigatie">
-          {navigation.map(([to, label]) => <NavLink key={to} to={to} end={to === "/"}>{label}</NavLink>)}
+          {navigation.map(([to, label]) => <Link key={to} to={to} activeOptions={{ exact: to === "/", includeSearch: false }}>{label}</Link>)}
         </nav>
         <details className="account-menu">
           <summary aria-haspopup="menu">Account</summary>

@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { CaptureDialog } from "../trips/CaptureDialog";
 import type { VisitCandidateIntent } from "../tracker-model";
@@ -8,11 +8,11 @@ import type { VisitCandidateIntent } from "../tracker-model";
 export function Capture() {
   const location = useLocation();
   const navigate = useNavigate();
-  const candidate = (location.state as { candidate?: VisitCandidateIntent } | null)?.candidate ?? null;
+  const candidate = (location.state as { candidate?: VisitCandidateIntent } | undefined)?.candidate ?? null;
 
   function close() {
-    navigate("/trips");
+    void navigate({ to: "/trips" });
   }
 
-  return <CaptureDialog open candidate={candidate} onCandidateConsumed={() => navigate("/capture", { replace: true, state: null })} onDismiss={close} />;
+  return <CaptureDialog open candidate={candidate} onCandidateConsumed={() => void navigate({ to: "/capture", replace: true, state: {} })} onDismiss={close} />;
 }

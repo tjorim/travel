@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, Route, Routes, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createMemoryHistory, createRootRoute, createRoute, createRouter, Link, Outlet, RouterProvider, useParams } from "@tanstack/react-router";
 import { isProjection, ProjectionView, tripDates, type Audience, type Projection, type ProjectionItem } from "./ProjectionView";
 import { forgetSharedTrip, readSavedSharedTrips, rememberSharedTrip, type SavedSharedTrip } from "./saved-shared-trips";
 
@@ -127,21 +127,31 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
 }
 
 function VisitorRoute({ audience }: { audience: Audience }) {
-  const { slug, token } = useParams();
+  const { slug, token } = useParams({ strict: false });
   const identifier = audience === "public" ? slug : token;
   return identifier
     ? <VisitorPage key={`${audience}:${identifier}`} audience={audience} identifier={identifier} />
     : <main className="shell visitor-shell"><section className="card" role="status"><h1>Reis niet beschikbaar</h1></section></main>;
 }
 
-export function VisitorRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<TripIndex />} />
-      <Route path="/trips" element={<TripIndex />} />
-      <Route path="/trips/:slug" element={<VisitorRoute audience="public" />} />
-      <Route path="/share/:token" element={<VisitorRoute audience="share" />} />
-      <Route path="*" element={<main className="shell visitor-shell"><section className="card" role="status"><h1>Pagina niet beschikbaar</h1></section></main>} />
-    </Routes>
-  );
+const visitorRootRoute = createRootRoute({ component: Outlet });
+const visitorIndexRoute = createRoute({ getParentRoute: () => visitorRootRoute, path: "/", component: TripIndex });
+const visitorTripsRoute = createRoute({ getParentRoute: () => visitorRootRoute, path: "trips", component: TripIndex });
+const visitorTripRoute = createRoute({ getParentRoute: () => visitorRootRoute, path: "trips/$slug", component: () => <VisitorRoute audience="public" /> });
+const visitorShareRoute = createRoute({ getParentRoute: () => visitorRootRoute, path: "share/$token", component: () => <VisitorRoute audience="share" /> });
+const visitorNotFoundRoute = createRoute({
+  getParentRoute: () => visitorRootRoute,
+  path: "$",
+  component: () => <main className="shell visitor-shell"><section className="card" role="status"><h1>Pagina niet beschikbaar</h1></section></main>,
+});
+
+export const visitorRouteTree = visitorRootRoute.addChildren([visitorIndexRoute, visitorTripsRoute, visitorTripRoute, visitorShareRoute, visitorNotFoundRoute]);
+
+export function createVisitorRouter(initialEntries?: string[]) {
+  return createRouter({ routeTree: visitorRouteTree, history: initialEntries ? createMemoryHistory({ initialEntries }) : undefined });
+}
+
+export function VisitorRoutes({ initialEntries }: { initialEntries?: string[] } = {}) {
+  const router = useMemo(() => createVisitorRouter(initialEntries), [initialEntries]);
+  return <RouterProvider router={router} />;
 }

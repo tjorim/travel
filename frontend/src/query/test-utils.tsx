@@ -1,4 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryHistory, createRouter, RouterProvider, type AnyRoute } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 
@@ -20,6 +21,12 @@ export function testClient(options?: Parameters<typeof createOwnerQueryClient>[0
 
 export function renderWithOwner(ui: ReactElement, client = testClient()) {
   return { client, ...render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>) };
+}
+
+/** Renders a route tree behind a memory-history router, for pages that read params, search or navigation state. */
+export function renderRoutesWithOwner(routeTree: AnyRoute, initialEntries: string[], client = testClient()) {
+  const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries }) });
+  return { client, router, ...render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>) };
 }
 
 /** jsdom has no object URLs; give a test one and remove it again with `restoreObjectUrls`. */

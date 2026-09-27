@@ -1,27 +1,26 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 
 import { beginSignIn, completeSignIn } from "../auth";
 import { useAuth } from "../auth-context";
 
 export function Callback() {
   const { setSession } = useAuth();
-  const [search] = useSearchParams();
   const navigate = useNavigate();
   const [message, setMessage] = useState("Aanmelden wordt afgerond…");
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    void completeSignIn(search.toString())
+    void completeSignIn(window.location.search)
       .then(({ returnPath, session }) => {
         setSession(session);
-        navigate(returnPath, { replace: true });
+        void navigate({ to: returnPath, replace: true });
       })
       .catch((error: unknown) => {
         setFailed(true);
         setMessage(error instanceof Error ? error.message : "Aanmelden is mislukt.");
       });
-  }, [navigate, search, setSession]);
+  }, [navigate, setSession]);
 
   return (
     <main className="shell">

@@ -101,6 +101,13 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- The owner PWA and visitor views route with `@tanstack/react-router` instead
+  of `react-router-dom`, matching the TanStack Query/Form foundation the app
+  already uses. This swaps the routing library only: no loaders, type-safe
+  search-param schemas or other new capabilities are adopted here, and the
+  owner (`/admin`), public (`/trips`) and unlisted (`/share`) route trees,
+  deep links and `/trips?new=1`/agenda-jump-nav entry points keep working
+  unchanged. ([#221](https://github.com/tjorim/travel/issues/221))
 - The MCP server uses layered tool discovery, like Worktime, Champagnefestival
   and Daynest: clients list only `whoami`, `list_trips`, `get_trip_overview`,
   `search_tools` and `call_tool` instead of all 94 tools (~35k tokens of

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { NavLink } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 
 import type { TrackerSession } from "../auth";
 import { RecordForm, SelectField, TextField } from "../forms/fields";
@@ -418,7 +418,7 @@ export function MediaManager({ trip, onStartCaptureFromCandidate }: { trip: Trip
         <button type="submit" disabled={upload.isPending}>Privémedia uploaden</button>
       </form>}
     </RecordDialog>
-    <div className="manager-subsection"><div className="capture-heading"><div><h3>Importeren</h3><p>{providers.length > 0 ? <>Verbind je provider in <NavLink to="/settings">Instellingen</NavLink> en kies daarna de media die je wilt importeren.</> : "Providerimport is op deze server nog niet beschikbaar. Je kunt media vanaf dit apparaat uploaden."}</p></div></div>
+    <div className="manager-subsection"><div className="capture-heading"><div><h3>Importeren</h3><p>{providers.length > 0 ? <>Verbind je provider in <Link to="/settings">Instellingen</Link> en kies daarna de media die je wilt importeren.</> : "Providerimport is op deze server nog niet beschikbaar. Je kunt media vanaf dit apparaat uploaden."}</p></div></div>
       {providers.length > 0 && <div className="button-row">{providers.map((item) => <button key={item.provider} className="secondary" type="button" disabled={!item.connected} title={item.connected ? undefined : "Verbind eerst in Instellingen"} onClick={() => startProvider(item.provider)}>Kies in {providerLabel[item.provider]}</button>)}</div>}
       {importSession && <aside className="import-session"><strong>{providerLabel[importSession.provider]}-selectie</strong><span>Kies eerst alleen de media die je naar deze private reis wilt kopiëren.</span>{importSession.picker_uri && <a className="action-link" href={importSession.picker_uri} target="_blank" rel="noreferrer">Selectie openen</a>}<button type="button" onClick={finishImport}>Selectie importeren</button></aside>}
     </div>
