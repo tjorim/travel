@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -80,16 +80,30 @@ def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[s
     return [TravelUpdateMediaAsset(media_asset=by_id[asset_id]) for asset_id in media_asset_ids]
 
 
-def owned_trip(session: Session, trip_id: str, subject: str) -> Trip:
-    trip = session.scalar(trip_query().where(Trip.id == trip_id, Trip.owner_subject == subject))
+def owned_trip(session: Session, trip_id: str, subject: str, *, load_relations: bool = True) -> Trip:
+    statement = trip_query() if load_relations else select(Trip)
+    trip = session.scalar(statement.where(Trip.id == trip_id, Trip.owner_subject == subject))
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     return trip
 
 
 @router.get("", response_model=list[TripResponse])
-def list_trips(session: SessionDep, subject: SubjectDep) -> list[Trip]:
-    return list(session.scalars(trip_query().where(Trip.owner_subject == subject).order_by(Trip.created_at.desc())))
+def list_trips(
+    session: SessionDep,
+    subject: SubjectDep,
+    q: str | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[Trip]:
+    statement = trip_query().where(Trip.owner_subject == subject).order_by(Trip.created_at.desc())
+    if q or limit is not None or offset:
+        statement = statement.order_by(Trip.id)
+    if q:
+        statement = statement.where(Trip.title.ilike(f"%{q}%"))
+    if limit is not None:
+        statement = statement.limit(limit)
+    return list(session.scalars(statement.offset(offset)))
 
 
 @router.post("", response_model=TripResponse, status_code=status.HTTP_201_CREATED)
@@ -141,6 +155,33 @@ def _loaded(session: Session, update_id: str) -> TravelUpdate:
         )
         .where(TravelUpdate.id == update_id)
     )  # type: ignore[return-value]
+
+
+@router.get("/{trip_id}/travel-updates", response_model=list[TravelUpdateResponse])
+def list_travel_updates(
+    trip_id: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    q: str | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[TravelUpdate]:
+    trip = owned_trip(session, trip_id, subject, load_relations=False)
+    statement = (
+        select(TravelUpdate)
+        .options(
+            selectinload(TravelUpdate.chosen_area),
+            selectinload(TravelUpdate.location).selectinload(Location.area),
+            selectinload(TravelUpdate.media_links),
+        )
+        .where(TravelUpdate.trip_id == trip.id)
+        .order_by(TravelUpdate.occurred_at.desc(), TravelUpdate.id)
+    )
+    if q:
+        statement = statement.where(TravelUpdate.title.ilike(f"%{q}%"))
+    if limit is not None:
+        statement = statement.limit(limit)
+    return list(session.scalars(statement.offset(offset)))
 
 
 @router.post("/{trip_id}/travel-updates", response_model=TravelUpdateResponse, status_code=status.HTTP_201_CREATED)

@@ -43,6 +43,37 @@ def create_trip(client: TestClient) -> dict[str, object]:
     return response.json()
 
 
+def test_owner_lists_support_bounded_search_without_changing_full_lists() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    other_trip = owner.post("/api/trips", json={"title": "Japan 2055"}).json()
+    base = f"/api/trips/{trip['id']}"
+    taipei = owner.post(f"{base}/areas", json={"label": "Taipei"}).json()
+    owner.post(f"{base}/areas", json={"label": "Tainan"})
+    owner.post(f"{base}/locations", json={"area_id": taipei["id"], "display_name": "Main Station, Taipei"})
+    owner.post(f"{base}/locations", json={"area_id": taipei["id"], "display_name": "Museum, Taipei"})
+    owner.post(f"{base}/travel-updates", json={"occurred_at": "2054-04-04T10:00:00Z", "title": "Arrival"})
+    owner.post(f"{base}/travel-updates", json={"occurred_at": "2054-04-05T10:00:00Z", "title": "Museum"})
+
+    assert {item["id"] for item in owner.get("/api/trips").json()} == {trip["id"], other_trip["id"]}
+    assert [item["id"] for item in owner.get("/api/trips?q=EXAMPLELAND&limit=1").json()] == [trip["id"]]
+    first_area = owner.get(f"{base}/areas?q=tai&limit=1").json()
+    second_area = owner.get(f"{base}/areas?q=tai&limit=1&offset=1").json()
+    assert {first_area[0]["label"], second_area[0]["label"]} == {"Taipei", "Tainan"}
+    assert len(owner.get(f"{base}/areas").json()) == 2
+    assert [item["display_name"] for item in owner.get(f"{base}/locations?q=station").json()] == [
+        "Main Station, Taipei"
+    ]
+    assert [item["title"] for item in owner.get(f"{base}/travel-updates?q=MUSEUM").json()] == ["Museum"]
+    assert len(owner.get(f"{base}/travel-updates").json()) == 2
+    assert owner.get(f"{base}/areas?limit=101").status_code == 422
+    assert owner.get(f"{base}/travel-updates?offset=-1").status_code == 422
+    stranger = client_for("owner-2")
+    foreign = stranger.post("/api/trips", json={"title": "Exampleland secret"}).json()
+    assert [item["id"] for item in stranger.get("/api/trips?q=exampleland").json()] == [foreign["id"]]
+    assert stranger.get(f"{base}/travel-updates?q=museum").status_code == 404
+
+
 def test_owner_can_create_edit_and_delete_a_travel_update_with_a_private_part() -> None:
     client = client_for("owner-1")
     trip = create_trip(client)

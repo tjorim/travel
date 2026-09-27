@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-import { SearchSelect } from "../forms/fields";
+import { AsyncSearchSelect } from "../forms/fields";
 import { errorMessage } from "../query/api";
-import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { tripPath, useLocationSearch, useOwnerMutation } from "../query/owner-queries";
 import { locationName, type Location, type PlaceSearchResponse, type PlaceSearchResult } from "../tracker-model";
 
 /** Owner-only place lookup that never persists a selected result by itself. */
@@ -21,8 +21,8 @@ export function PlaceSearchField({ tripId, legend, inputLabel, placeholder, help
   const [results, setResults] = useState<PlaceSearchResponse | null>(null);
   const [state, setState] = useState("");
   const [existingChoice, setExistingChoice] = useState("");
-  const existingQuery = useTripResource(allowExisting ? tripId : null, "locations");
-  const existing = existingQuery.data ?? [];
+  const existingResults = useRef(new Map<string, Location>());
+  const searchExisting = useLocationSearch(tripId);
   // A lookup phrase can be sensitive, so it is not retained in the mutation cache.
   const search = useOwnerMutation<{ query: string }, PlaceSearchResponse>({
     fallback: "Locaties zoeken is nu niet beschikbaar.",
@@ -49,15 +49,17 @@ export function PlaceSearchField({ tripId, legend, inputLabel, placeholder, help
     setState("Bestaande locatie gekozen; er wordt geen kopie gemaakt.");
   }
   return <fieldset className="place-lookup"><legend>{legend} <span className="optional">(optioneel)</span></legend><p>{help}</p>
-    {allowExisting && existing.length > 0 && <label>Gebruik een bestaande locatie
-      <SearchSelect ariaLabel="Gebruik een bestaande locatie" value={existingChoice} onChange={(value) => {
-        const place = existing.find((item) => item.id === value);
+    {allowExisting && <label>Gebruik een bestaande locatie
+      <AsyncSearchSelect ariaLabel="Gebruik een bestaande locatie" value={existingChoice} onChange={(value) => {
+        const place = existingResults.current.get(value);
         if (place) chooseExisting(place);
         setExistingChoice("");
-      }}>
-        <option value="">Kies een eerder opgeslagen locatie</option>
-        {existing.map((place) => <option key={place.id} value={place.id}>{locationName(place)}{place.locality ? ` · ${place.locality}` : ""}</option>)}
-      </SearchSelect>
+      }} loadOptions={async (phrase) => {
+        const places = await searchExisting(phrase);
+        for (const place of places) existingResults.current.set(place.id, place);
+        return places.map((place) => ({ value: place.id, label: `${locationName(place)}${place.locality ? ` · ${place.locality}` : ""}` }));
+      }} />
+      <small className="help">Typ een naam om opgeslagen locaties te zoeken.</small>
     </label>}
     <div className="field-row"><label>{inputLabel}<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} /></label><div className="button-field"><button className="secondary" type="button" onClick={find}>Zoeken</button></div></div>
     {state && <p className="help" role="status">{state}</p>}

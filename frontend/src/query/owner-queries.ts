@@ -5,7 +5,7 @@ import { decodeSubject, readSession, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
   Area, DocumentAsset, EmergencyInfoEntry, Visit, MediaAsset, MediaDerivative,
-  OwnerDocument, Location, ProviderConnectionStatus, PublicProjectionStatus, ShareLink, Stay, Route, Trip, TripOverview, TripTask, TripTaskAlert,
+  OwnerDocument, Location, ProviderConnectionStatus, PublicProjectionStatus, ShareLink, Stay, Route, Trip, TravelUpdate, TripOverview, TripTask, TripTaskAlert,
 } from "../tracker-model";
 import { ApiError, ownerRequest, type OwnerRequest } from "./api";
 import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
@@ -86,6 +86,35 @@ export function useTripsQuery() {
 
 export function useTripResource<R extends TripResource>(tripId: string | null, resource: R) {
   return useQuery(tripResourceQueryOptions(useOwner(), tripId, resource));
+}
+
+/** Search requests share the owner cache and sit below their parent list key for write invalidation. */
+function useOwnerSearch<T>(path: (query: string) => string, key: (subject: string, query: string) => readonly unknown[], fallback: string) {
+  const owner = useOwner();
+  const client = useQueryClient();
+  return (query: string): Promise<T[]> => owner ? client.fetchQuery({
+    queryKey: key(owner.subject, query),
+    queryFn: ({ signal }) => ownerRequest<T[]>(owner.session, path(query), fallback, { signal }),
+    staleTime: 30_000,
+  }) : Promise.resolve([]);
+}
+
+const searchParams = (query: string) => `?${new URLSearchParams({ q: query.trim(), limit: "50" })}`;
+
+export function useAreaSearch(tripId: string) {
+  return useOwnerSearch<Area>((q) => tripPath(tripId, `areas${searchParams(q)}`), (subject, q) => [...ownerKeys.tripResource(subject, tripId, "areas"), "search", q], "Je gebieden konden niet worden doorzocht.");
+}
+
+export function useLocationSearch(tripId: string) {
+  return useOwnerSearch<Location>((q) => tripPath(tripId, `locations${searchParams(q)}`), (subject, q) => [...ownerKeys.tripResource(subject, tripId, "locations"), "search", q], "Je locaties konden niet worden doorzocht.");
+}
+
+export function useTripSearch() {
+  return useOwnerSearch<Trip>((q) => `/api/trips${searchParams(q)}`, (subject, q) => [...ownerKeys.trips(subject), "search", q], "Je reizen konden niet worden doorzocht.");
+}
+
+export function useTravelUpdateSearch(tripId: string) {
+  return useOwnerSearch<TravelUpdate>((q) => tripPath(tripId, `travel-updates${searchParams(q)}`), (subject, q) => [...ownerKeys.trip(subject, tripId), "travel-updates", "search", q], "Je reisupdates konden niet worden doorzocht.");
 }
 
 type DerivativeData = { media: MediaDerivative[] };

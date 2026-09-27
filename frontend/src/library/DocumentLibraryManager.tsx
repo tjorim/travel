@@ -1,12 +1,12 @@
 import { useState } from "react";
 
-import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import { AsyncSearchSelect, RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
 import { ownerKeys } from "../query/keys";
-import { libraryPath, useLibrary, useOwner, useOwnerMutation, useTripsQuery } from "../query/owner-queries";
+import { libraryPath, useLibrary, useOwner, useOwnerMutation, useTripSearch, useTripsQuery } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type OwnerDocument } from "../tracker-model";
 
@@ -18,6 +18,7 @@ export function DocumentLibraryManager() {
   const offline = useOfflineCopies();
   const documentsQuery = useLibrary("documents");
   const tripsQuery = useTripsQuery();
+  const searchTrips = useTripSearch();
   const documents = documentsQuery.data ?? [];
   const trips = tripsQuery.data ?? [];
   const dialog = useRecordDialog(documents);
@@ -121,7 +122,7 @@ export function DocumentLibraryManager() {
           <record.form.Field name="title" validators={{ onChange: requiredText("Geef het document een titel."), onSubmit: requiredText("Geef het document een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</record.form.Field>
           <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort"><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></SelectField>}</record.form.Field>
         </div>
-        <record.form.Field name="linkedTripId">{(field) => <SelectField field={field} label="Gekoppelde reis" optional><option value="">Geen koppeling</option>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</SelectField>}</record.form.Field>
+        <record.form.Field name="linkedTripId">{(field) => <div className="field"><label>Gekoppelde reis <span className="optional">(optioneel)</span><AsyncSearchSelect ariaLabel="Gekoppelde reis (optioneel)" value={field.state.value} selectedOption={field.state.value ? { value: field.state.value, label: tripTitle(field.state.value) } : null} defaultOptions={[{ value: "", label: "Geen koppeling" }, ...trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title }))]} onChange={field.handleChange} loadOptions={async (q) => [{ value: "", label: "Geen koppeling" }, ...(await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title }))]} /></label></div>}</record.form.Field>
         <div className="field"><label>Privébestand<input key={fileKey} required type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label></div>
       </RecordForm>}
     </RecordDialog>

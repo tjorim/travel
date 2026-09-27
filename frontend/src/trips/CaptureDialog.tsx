@@ -2,13 +2,13 @@ import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../auth-context";
-import { requiredText, SearchSelect, TextField } from "../forms/fields";
+import { AsyncSearchSelect, requiredText, SearchSelect, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
-import { tripPath, useOwnerMutation, useTripResource, useTripsQuery } from "../query/owner-queries";
+import { tripPath, useOwnerMutation, useTripResource, useTripSearch, useTripsQuery } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import {
   clearDraft,
@@ -45,6 +45,7 @@ export function CaptureDialog({ open, lockedTripId = null, candidate = null, onC
   const confirmation = useConfirmation();
   const { session } = useAuth();
   const tripsQuery = useTripsQuery();
+  const searchTrips = useTripSearch();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const [connection, setConnection] = useState(navigator.onLine);
   const [draftState, setDraftState] = useState("Concept laden…");
@@ -265,7 +266,7 @@ export function CaptureDialog({ open, lockedTripId = null, candidate = null, onC
           {draft.updateId && <div className="capture-heading"><p className="eyebrow">Mobiel vastleggen</p><div className="button-row"><button className="secondary compact" type="button" onClick={startNew}>Nieuwe reisupdate</button><button className="danger compact" type="button" onClick={removeUpdate}>Verwijderen</button></div></div>}
           <p className={`connection ${connection ? "online" : "offline"}`} role="status">{connection ? "Verbonden — je kiest zelf wanneer je opslaat." : "Offline — concepten blijven lokaal; er is geen automatische synchronisatie."}</p>
           <form ref={record.formRef} className="capture-form" noValidate onSubmit={(event) => { event.preventDefault(); void form.handleSubmit(); }}>
-            {lockedTrip ? <p className="capture-trip-context">Reis: <strong>{lockedTrip.title}</strong></p> : <label>Reis<SearchSelect ariaLabel="Reis" value={draft.tripId} onChange={selectTrip}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</SearchSelect></label>}
+            {lockedTrip ? <p className="capture-trip-context">Reis: <strong>{lockedTrip.title}</strong></p> : <label>Reis<AsyncSearchSelect ariaLabel="Reis" value={draft.tripId} selectedOption={selectedTrip ? { value: selectedTrip.id, label: selectedTrip.title } : null} defaultOptions={trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title }))} onChange={selectTrip} loadOptions={async (q) => (await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title }))} /></label>}
             {selectedTrip && <aside className="publication" aria-label="Delen van deze reisupdate"><strong>Voor je opslaat</strong><span>Een nieuwe reisupdate is privé. Je notities, locatie en foto’s worden nooit gedeeld; de tekst voor bezoekers schrijf je later bij Verhaal.</span></aside>}
             <div className="field-row">
               <form.Field name="occurredAt" listeners={clearSaveState} validators={{ onChange: requiredText("Geef de datum en tijd op."), onSubmit: requiredText("Geef de datum en tijd op.") }}>{(field) => <TextField field={field} label="Datum en tijd" required type="datetime-local" />}</form.Field>

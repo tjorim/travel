@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-only trip, area, location and travel-update lists now support bounded,
+  case-insensitive search and offset pagination. The growing place, trip and
+  media attachment, copy presentation and saved-location pickers search these
+  lists as the owner types, while existing unfiltered list calls keep their
+  response shape. ([#238](https://github.com/tjorim/travel/issues/238))
+
 - Planning now groups visible locations under their areas, with direct location
   creation and a shared detail/editor dialog. Owners can correct saved address
   fields before enabling address sharing; location edits retain map points and

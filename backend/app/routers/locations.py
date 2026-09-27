@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -48,9 +48,23 @@ def owned_location(session: Session, trip_id: str, subject: str, location_id: st
 
 
 @router.get("/locations", response_model=list[LocationResponse])
-def list_locations(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[Location]:
-    trip = owned_trip(session, trip_id, subject)
-    return list(session.scalars(select(Location).where(Location.trip_id == trip.id).order_by(Location.created_at)))
+def list_locations(
+    trip_id: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    q: str | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[Location]:
+    trip = owned_trip(session, trip_id, subject, load_relations=False)
+    statement = select(Location).where(Location.trip_id == trip.id).order_by(Location.created_at)
+    if q or limit is not None or offset:
+        statement = statement.order_by(Location.id)
+    if q:
+        statement = statement.where(Location.label.ilike(f"%{q}%") | Location.display_name.ilike(f"%{q}%"))
+    if limit is not None:
+        statement = statement.limit(limit)
+    return list(session.scalars(statement.offset(offset)))
 
 
 @router.post("/locations", response_model=LocationResponse, status_code=status.HTTP_201_CREATED)

@@ -142,6 +142,25 @@ it("opens the presentation form with the saved values, saves it and keeps the sa
   await waitFor(() => expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe("Kust bij zonsopgang"));
 });
 
+it("searches travel updates when linking a copy's presentation", async () => {
+  api.on("GET", /\/travel-updates\?q=Eerste&limit=50$/, () => trip.travel_updates);
+  api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => {
+    const rows = api.rows("/api/trips/trip/media/p1/derivatives");
+    Object.assign(rows[0], body);
+    return rows[0];
+  });
+  renderMedia();
+  fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
+  fireEvent.change(screen.getByLabelText("Bij reisupdate"), { target: { value: "Eerste" } });
+  fireEvent.click(await screen.findByRole("option", { name: "Eerste avond" }));
+  expect(api.count("GET /api/trips/trip/travel-updates?q=Eerste&limit=50")).toBe(1);
+  fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
+  await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
+  expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({ travel_update_id: "e1" });
+});
+
 it("shows a thumbnail beside a photo, a readable purpose label, and an inline preview with a focal-point marker", async () => {
   stubObjectUrls();
   api.rows("/api/trips/trip/media")[0].thumbnail_url = "/files/p1-thumb";
@@ -172,6 +191,7 @@ it("shows a thumbnail beside a photo, a readable purpose label, and an inline pr
 
 it("reviews possible travel updates without storing them, and attaches media to an existing reisupdate", async () => {
   api.on("POST", /\/media\/travel-update-candidates$/, () => ({ grouping_window_minutes: 120, gps_agreement_metres: 500, unavailable_media_asset_ids: [], candidates: [{ id: "c1", media_asset_ids: ["p1"], starts_at: null, ends_at: null, time_options: [], location_options: [] }] }));
+  api.on("GET", /\/travel-updates\?q=Eerste&limit=50$/, () => trip.travel_updates);
   api.on("PATCH", /\/travel-updates\/e1$/, () => ({ id: "e1" }));
   renderMedia();
   await screen.findByText("kust.jpg");
@@ -182,7 +202,8 @@ it("reviews possible travel updates without storing them, and attaches media to 
   await screen.findByText("Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen.");
   expect(api.lastBody("POST /api/trips/trip/media/travel-update-candidates")).toEqual({ media_asset_ids: ["p1"] });
 
-  chooseOption("Koppel aan", "Eerste avond");
+  fireEvent.change(screen.getByLabelText("Koppel aan"), { target: { value: "Eerste" } });
+  fireEvent.click(await screen.findByRole("option", { name: "Eerste avond" }));
   fireEvent.click(screen.getByRole("button", { name: "Aan reisupdate koppelen" }));
   await screen.findByText("Private media gekoppeld aan “Eerste avond”. Er is geen locatie of deelbare inhoud gemaakt.");
   expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e1")).toEqual({ media_asset_ids: ["p2", "p1"] });

@@ -1,7 +1,7 @@
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 
-import { SearchSelect } from "../forms/fields";
-import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import { AsyncSearchSelect, SearchSelect, type SearchSelectGroup, type SearchSelectOption } from "../forms/fields";
+import { tripPath, useAreaSearch, useLocationSearch, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { locationName, type Area, type AreaSuggestion, type Location, type LocationInput, type PlaceSearchResult, type Visit } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
 
@@ -61,13 +61,36 @@ export function PlacePicker({ tripId, label, value, onChange, hint }: { tripId: 
   currentValue.current = value;
   const areas = useTripResource(tripId, "areas").data ?? [];
   const locations = useTripResource(tripId, "locations").data ?? [];
+  const searchAreas = useAreaSearch(tripId);
+  const searchLocations = useLocationSearch(tripId);
   const suggestion = useOwnerMutation<{ latitude: number; longitude: number; city?: string }, AreaSuggestion>({
     fallback: "Gebied kon niet worden voorgesteld.",
     request: (body) => ({ path: tripPath(tripId, "areas/suggest"), method: "POST", body }),
     invalidate: () => [],
     gcTime: 0,
   });
-  const inArea = (area: Area) => locations.filter((location) => location.area_id === area.id);
+  const loadPlaces = useCallback(async (query: string): Promise<(SearchSelectOption | SearchSelectGroup)[]> => {
+    const [matchingAreas, matchingLocations] = await Promise.all([searchAreas(query), searchLocations(query)]);
+    const grouped = new Map<string, { area: Area; places: Location[] }>();
+    for (const area of matchingAreas) grouped.set(area.id, { area, places: [] });
+    for (const location of matchingLocations) {
+      const area = areas.find((item) => item.id === location.area_id);
+      if (area && !grouped.has(area.id)) grouped.set(area.id, { area, places: [] });
+      grouped.get(location.area_id)?.places.push(location);
+    }
+    return [
+      { value: "", label: "Kies een gebied of een locatie" },
+      ...[...grouped.values()].map(({ area, places }) => ({ label: `${area.label}${area.region ? ` · ${area.region}` : ""}`, options: [
+        { value: `area:${area.id}`, label: `${area.label} (heel gebied)` },
+        ...places.map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
+      ] })),
+      { value: "new", label: "Nieuwe locatie…" },
+    ];
+  }, [areas, searchAreas, searchLocations]);
+  const selectedOption = value.choice === "new" ? { value: "new", label: "Nieuwe locatie…" }
+    : value.choice.startsWith("area:") ? { value: value.choice, label: `${areas.find((area) => area.id === value.choice.slice(5))?.label ?? value.choice} (heel gebied)` }
+    : value.choice.startsWith("location:") ? { value: value.choice, label: locationName(locations.find((location) => location.id === value.choice.slice(9)) ?? {}) }
+    : null;
   async function useResult(result: PlaceSearchResult) {
     const next = { ...value, choice: "new", newResult: result, newName: result.display_name ?? "", newLocality: result.locality ?? "", newCountryCode: result.country_code ?? "", newAreaId: "", newAreaCandidate: null };
     onChange(next);
@@ -82,14 +105,14 @@ export function PlacePicker({ tripId, label, value, onChange, hint }: { tripId: 
 
   return <fieldset className="place-picker"><legend>{label}</legend>
     <div className="field"><label>{label} kiezen
-      <SearchSelect ariaLabel={label} value={value.choice} onChange={(next) => onChange(next === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: next })}>
-        <option value="">Kies een gebied of een locatie</option>
-        {areas.map((area) => <optgroup key={area.id} label={`${area.label}${area.region ? ` · ${area.region}` : ""}`}>
-          <option value={`area:${area.id}`}>{area.label} (heel gebied)</option>
-          {inArea(area).map((location) => <option key={location.id} value={`location:${location.id}`}>{locationName(location)}</option>)}
-        </optgroup>)}
-        <option value="new">Nieuwe locatie…</option>
-      </SearchSelect>
+      <AsyncSearchSelect ariaLabel={label} value={value.choice} selectedOption={selectedOption} defaultOptions={[
+        { value: "", label: "Kies een gebied of een locatie" },
+        ...areas.slice(0, 50).map((area) => ({ label: `${area.label}${area.region ? ` · ${area.region}` : ""}`, options: [
+          { value: `area:${area.id}`, label: `${area.label} (heel gebied)` },
+          ...locations.slice(0, 50).filter((location) => location.area_id === area.id).map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
+        ] })),
+        { value: "new", label: "Nieuwe locatie…" },
+      ]} loadOptions={loadPlaces} onChange={(next) => onChange(next === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: next })} />
     </label></div>
     {hint && <p className="help">{hint}</p>}
     {value.choice === "new" && <div className="place-picker-new">

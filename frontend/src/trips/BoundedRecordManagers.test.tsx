@@ -115,10 +115,12 @@ it("keeps an exact looked-up stay place private until the stay is saved", async 
 
 it("reuses a saved location for a new stay instead of copying its address", async () => {
   api = fakeApi().collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/locations", [savedLocation]);
+  api.on("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
-  await screen.findByLabelText("Gebruik een bestaande locatie");
-  chooseOption("Gebruik een bestaande locatie", "Brussels Airport · Zaventem");
+  fireEvent.change(await screen.findByLabelText("Gebruik een bestaande locatie"), { target: { value: "Brussels" } });
+  fireEvent.click(await screen.findByRole("option", { name: "Brussels Airport · Zaventem" }));
+  expect(api.count("GET /api/trips/trip/locations?q=Brussels&limit=50")).toBe(1);
   expect((screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)") as HTMLInputElement).value).toBe("Brussels Airport");
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

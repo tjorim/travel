@@ -1,6 +1,7 @@
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { Children, createContext, isValidElement, useContext, useId, type InputHTMLAttributes, type ReactNode, type RefObject, type TextareaHTMLAttributes } from "react";
+import { Children, createContext, isValidElement, useCallback, useContext, useEffect, useId, useRef, type InputHTMLAttributes, type ReactNode, type RefObject, type TextareaHTMLAttributes } from "react";
 import Select, { type GroupBase } from "react-select";
+import AsyncSelect from "react-select/async";
 
 type ServerErrors = Record<string, string>;
 export const ServerFieldErrors = createContext<ServerErrors>({});
@@ -58,8 +59,8 @@ export function TextAreaField({ field, label, optional, ...input }: Common & Omi
   </div>;
 }
 
-type SearchSelectOption = { value: string; label: ReactNode; isDisabled?: boolean };
-type SearchSelectGroup = GroupBase<SearchSelectOption>;
+export type SearchSelectOption = { value: string; label: ReactNode; isDisabled?: boolean };
+export type SearchSelectGroup = GroupBase<SearchSelectOption>;
 
 /** Reads the same `<option>`/`<optgroup>` children a native `<select>` takes, for react-select's `options`. */
 function optionsFromChildren(children: ReactNode): (SearchSelectOption | SearchSelectGroup)[] {
@@ -107,6 +108,31 @@ export function SearchSelect({ ariaLabel, inputId, value, onChange, onBlur, isDi
     value={findOption(options, value)}
     onChange={(option) => onChange(option?.value ?? "")}
     onBlur={onBlur}
+  />;
+}
+
+/** A bounded server search. The selected option is supplied separately so it stays visible outside search results. */
+export function AsyncSearchSelect({ ariaLabel, inputId, value, selectedOption, defaultOptions = [], onChange, loadOptions, isDisabled }: {
+  ariaLabel: string;
+  inputId?: string;
+  value: string;
+  selectedOption?: SearchSelectOption | null;
+  defaultOptions?: (SearchSelectOption | SearchSelectGroup)[];
+  onChange: (value: string) => void;
+  loadOptions: (query: string) => Promise<(SearchSelectOption | SearchSelectGroup)[]>;
+  isDisabled?: boolean;
+}) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const debounced = useCallback((query: string, callback: (options: (SearchSelectOption | SearchSelectGroup)[]) => void) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => { void loadOptions(query).then(callback).catch(() => callback([])); }, query ? 250 : 0);
+  }, [loadOptions]);
+  return <AsyncSelect<SearchSelectOption, false, SearchSelectGroup>
+    unstyled classNamePrefix="rs" inputId={inputId} aria-label={ariaLabel}
+    defaultOptions={defaultOptions} cacheOptions={false} loadOptions={debounced} isDisabled={isDisabled}
+    value={selectedOption ?? (value ? { value, label: value } : null)}
+    onChange={(option) => onChange(option?.value ?? "")}
   />;
 }
 

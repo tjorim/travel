@@ -3,7 +3,7 @@
 from math import asin, cos, radians, sin, sqrt
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from timezonefinder import TimezoneFinder
@@ -94,9 +94,23 @@ def owned_area(session: Session, trip_id: str, area_id: str) -> Area:
 
 
 @router.get("/areas", response_model=list[AreaResponse])
-def list_areas(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[Area]:
-    trip = owned_trip(session, trip_id, subject)
-    return list(session.scalars(select(Area).where(Area.trip_id == trip.id).order_by(Area.created_at)))
+def list_areas(
+    trip_id: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    q: str | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[Area]:
+    trip = owned_trip(session, trip_id, subject, load_relations=False)
+    statement = select(Area).where(Area.trip_id == trip.id).order_by(Area.created_at)
+    if q or limit is not None or offset:
+        statement = statement.order_by(Area.id)
+    if q:
+        statement = statement.where(Area.label.ilike(f"%{q}%"))
+    if limit is not None:
+        statement = statement.limit(limit)
+    return list(session.scalars(statement.offset(offset)))
 
 
 @router.post("/areas", response_model=AreaResponse, status_code=status.HTTP_201_CREATED)
