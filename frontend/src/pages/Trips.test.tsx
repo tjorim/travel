@@ -77,7 +77,7 @@ it("keeps the editor closed in the workspace until asked, then opens the trip wi
   renderTrips("/trips/t1");
   await screen.findByRole("heading", { name: "Exampleland" });
   expect(screen.getByRole("link", { name: "Volledig privéoverzicht" }).getAttribute("href")).toBe("/trips/t1/details");
-  expect(screen.queryByLabelText("Titel")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Reisgegevens" })).toBeNull();
   await openEditor();
   await waitFor(() => expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"));
   expect((editor("Reisgegevens").getByLabelText(/Eerste reisdag/) as HTMLInputElement).value).toBe("2054-11-16");
@@ -91,7 +91,7 @@ it("shows the renamed trip in the workspace after saving, with one refreshed rea
   fireEvent.click(editor("Reisgegevens").getByRole("button", { name: "Reis opslaan" }));
   await screen.findByRole("heading", { name: "Exampleland 2054" });
   expect(screen.getByText("Reis opgeslagen.")).toBeTruthy();
-  expect(screen.queryByLabelText("Titel")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Reisgegevens" })).toBeNull();
   expect(requests.filter((request) => request === "GET /api/trips")).toHaveLength(2);
 });
 

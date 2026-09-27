@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); await resetOfflineDb(); });
 
-const renderMedia = () => renderWithOwner(<MemoryRouter><MediaManager trip={trip} /></MemoryRouter>);
+const renderMedia = () => renderWithOwner(<MemoryRouter><MediaManager trip={trip} onStartCaptureFromCandidate={() => undefined} /></MemoryRouter>);
 
 it("lists a new upload straight away and selects it", async () => {
   api.on("POST", /\/media\/uploads$/, () => api.push("/api/trips/trip/media", photo("p3", "nieuw.jpg")));

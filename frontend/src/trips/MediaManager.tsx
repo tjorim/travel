@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 import { RecordForm, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
@@ -25,6 +25,7 @@ import {
   type Trip,
   type VisitCandidate,
   type VisitCandidatesResponse,
+  type VisitCandidateIntent,
 } from "../tracker-model";
 
 const providerLabel = {
@@ -69,11 +70,10 @@ function PresentationForm({ derivative, updates, save }: { derivative: MediaDeri
   </div>;
 }
 
-export function MediaManager({ trip }: { trip: Trip }) {
+export function MediaManager({ trip, onStartCaptureFromCandidate }: { trip: Trip; onStartCaptureFromCandidate: (candidate: VisitCandidateIntent) => void }) {
   const confirmation = useConfirmation();
   const owner = useOwner();
   const offline = useOfflineCopies();
-  const navigate = useNavigate();
   const mediaQuery = useTripResource(trip.id, "media");
   const visits = useTripResource(trip.id, "visits").data ?? [];
   const assets = mediaQuery.data ?? [];
@@ -313,9 +313,7 @@ export function MediaManager({ trip }: { trip: Trip }) {
     if (candidate.time_options.length > 1 && !time) { setNotice("Kies eerst welke opnametijd je voor dit kandidaatbezoek wilt gebruiken."); return; }
     if (candidate.location_options.length > 1 && locationIndex === undefined) { setNotice("De GPS-metagegevens verschillen. Kies eerst zelf een locatieoptie, of negeer de locatie."); return; }
     const selectedLocation = locationIndex === "" ? undefined : candidate.location_options[locationIndex === undefined ? 0 : Number(locationIndex)];
-    navigate("/capture", {
-      state: { candidate: { tripId: trip.id, mediaAssetIds: candidate.media_asset_ids, occurredAt: time || undefined, gps: selectedLocation && { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude } } },
-    });
+    onStartCaptureFromCandidate({ tripId: trip.id, mediaAssetIds: candidate.media_asset_ids, occurredAt: time || undefined, gps: selectedLocation && { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude } });
   }
 
   function attachCandidate(candidate: VisitCandidate) {

@@ -438,7 +438,7 @@ export type ProjectionDocument = {
 
 import { dayjs } from "./dayjs";
 
-const draftKey = "travel-tracker-update-draft-v1";
+const draftKey = "travel-tracker-update-draft-v2";
 
 const dayMs = 86_400_000;
 
@@ -584,24 +584,36 @@ export function emptyDraft(tripId = ""): UpdateDraft {
   return { tripId, updateId: null, occurredAt: localDateTime(), title: "", notes: "", location: null, mediaAssetIds: [] };
 }
 
-export function readDraft(): UpdateDraft | null {
+/** Drafts are kept per trip, so opening the capture form for one trip never
+ * reads or overwrites another trip's unsaved draft. */
+function readDraftStore(): Record<string, UpdateDraft> {
   try {
     const value = localStorage.getItem(draftKey);
-    if (!value) return null;
-    const draft = JSON.parse(value) as Partial<UpdateDraft>;
-    if (typeof draft.tripId !== "string" || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof draft.notes !== "string") return null;
-    return { ...emptyDraft(draft.tripId), ...draft, updateId: typeof draft.updateId === "string" ? draft.updateId : null };
+    if (!value) return {};
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, UpdateDraft>) : {};
   } catch {
-    return null;
+    return {};
   }
 }
 
-export function clearDraft(): void {
-  localStorage.removeItem(draftKey);
+export function readDraft(tripId: string): UpdateDraft | null {
+  const draft = readDraftStore()[tripId] as Partial<UpdateDraft> | undefined;
+  if (!draft || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof draft.notes !== "string") return null;
+  return { ...emptyDraft(tripId), ...draft, tripId, updateId: typeof draft.updateId === "string" ? draft.updateId : null };
+}
+
+export function clearDraft(tripId: string): void {
+  const store = readDraftStore();
+  if (!(tripId in store)) return;
+  delete store[tripId];
+  localStorage.setItem(draftKey, JSON.stringify(store));
 }
 
 export function saveDraft(draft: UpdateDraft): void {
-  localStorage.setItem(draftKey, JSON.stringify(draft));
+  const store = readDraftStore();
+  store[draft.tripId] = draft;
+  localStorage.setItem(draftKey, JSON.stringify(store));
 }
 
 export function bytesLabel(bytes: number): string {
