@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Map markers and route lines now open persistent detail cards with shared or
+  private record links, dates, endpoints and transport when available. Routes
+  highlight on selection; the textual controls and “Hele reis tonen” provide
+  keyboard and touch access to the same selection and full-trip view.
+  Visitor details use only the published projection. ([#249](https://github.com/tjorim/travel/issues/249))
 - The private trip overview shows its saved summary, complete location addresses,
   local route times with endpoint time zones and areas, stay times, task reminders,
   linked library documents, and authenticated media thumbnails beside updates and

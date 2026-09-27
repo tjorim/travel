@@ -9,10 +9,11 @@ import { locationName, routeTitle, type Area, type Trip } from "../tracker-model
 
 type OfflineSnapshot = { points: MapPoint[]; lines: MapLine[] };
 
-export function OwnerTripMap({ trip, areas, focus }: { trip: Trip; areas: Area[]; focus?: { id: string; request: number } | null }) {
+export function OwnerTripMap({ trip, areas, focus, onOpenRecord }: { trip: Trip; areas: Area[]; focus?: { id: string; request: number } | null; onOpenRecord?: (kind: "area" | "visit" | "route" | "update", id: string) => void }) {
   const offline = useOfflineCopies();
   const routesQuery = useTripResource(trip.id, "routes");
   const placesQuery = useTripResource(trip.id, "locations");
+  const visitsQuery = useTripResource(trip.id, "visits");
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
   const [notice, setNotice] = useState("");
   const savePoint = useOwnerMutation<{ id: string; latitude: number; longitude: number }, Area>({
@@ -61,8 +62,26 @@ export function OwnerTripMap({ trip, areas, focus }: { trip: Trip; areas: Area[]
       return coordinates ? [{ id: route.id, label: routeTitle(route), coordinates, transport: route.mode }] : [];
     }),
   ], [routesQuery.data, areaPoints]);
-  const displayedPoints = snapshot?.points ?? points;
-  const lines = snapshot?.lines ?? liveLines;
+  const openRecord = onOpenRecord;
+  const displayedPoints = useMemo(() => (snapshot?.points ?? points).map((point) => {
+    const areaId = point.kind === "location" ? point.areaId : point.id;
+    const visits = (visitsQuery.data ?? []).filter((visit) => visit.area.id === areaId || visit.location?.id === point.id);
+    const updates = trip.travel_updates.filter((update) => update.area_id === areaId || update.location?.id === point.id);
+    const links = [
+      ...(point.kind === "area" || point.kind === "derived" ? [{ label: "Gebied openen", onOpen: () => openRecord?.("area", point.id) }] : []),
+      ...(point.kind === "location" ? [{ label: "Locaties bekijken", href: `/trips/${encodeURIComponent(trip.id)}/plan#locations` }] : []),
+      ...visits.map((visit) => ({ label: `Bezoek: ${visit.title ?? visit.area.label}`, onOpen: () => openRecord?.("visit", visit.id) })),
+      ...updates.map((update) => ({ label: `Update: ${update.title}${update.media_asset_ids.length ? ` · ${update.media_asset_ids.length} foto’s/media` : ""}`, onOpen: () => openRecord?.("update", update.id) })),
+    ];
+    return { ...point, links };
+  }), [snapshot?.points, points, visitsQuery.data, trip.travel_updates, openRecord]);
+  const lines = useMemo(() => (snapshot?.lines ?? liveLines).map((line) => {
+    const route = (routesQuery.data ?? []).find((item) => item.id === line.id);
+    return { ...line, from: route?.departure_area.label ?? line.from, to: route?.arrival_area.label ?? line.to,
+      dates: route?.departs_on ?? line.dates,
+      links: route ? [{ label: "Route openen", onOpen: () => openRecord?.("route", route.id) }] : line.links,
+      transport: route?.mode ?? line.transport };
+  }), [snapshot?.lines, liveLines, routesQuery.data, openRecord]);
 
   async function toggleOffline() {
     if (offline.isPinned("route_data", trip.id)) {

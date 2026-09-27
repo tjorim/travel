@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { dayjs } from "../dayjs";
 import { useAuth } from "../auth-context";
@@ -74,7 +74,11 @@ const SECTIONS: { id: string; label: string }[] = [
 ];
 
 export function TripDetail() {
+  const navigate = useNavigate();
   const { tripId } = useParams({ strict: false });
+  const openMapRecord = useCallback((kind: "area" | "visit" | "route" | "update", recordId: string) => {
+    if (tripId) void navigate({ to: `/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`, state: { openRecord: { kind, id: recordId } } });
+  }, [navigate, tripId]);
   const { session } = useAuth();
   const owner = useOwner();
   const tripsQuery = useTripsQuery();
@@ -121,7 +125,7 @@ export function TripDetail() {
     </header>
     {trip.summary && <section className="card admin-detail-section" aria-label="Reissamenvatting"><Markdown html={trip.summary_html} text={trip.summary} /></section>}
     <TripOverview trip={trip} />
-    <OwnerTripMap trip={trip} areas={areas} />
+    <OwnerTripMap trip={trip} areas={areas} onOpenRecord={openMapRecord} />
     <nav className="plan-jump-nav" aria-label="Onderdelen van dit overzicht">
       {SECTIONS.map(({ id: sectionId, label }) => <a key={sectionId} href={`#${sectionId}`}>{label}</a>)}
     </nav>

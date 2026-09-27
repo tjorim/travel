@@ -72,6 +72,22 @@ it("shows explicitly shared transport endpoints as map points and uses them for 
   }]);
 });
 
+it("links map cards only to records supplied in the visitor projection", () => {
+  const data = projection();
+  data.places = [{ id: "lisbon", label: "Lisbon", latitude: 38, longitude: -9 }];
+  data.visits = [{ id: "visit", title: "Arrival", place: { label: "Lisbon", latitude: 38, longitude: -9 }, starts_on: "2054-09", date_precision: "month" }];
+  data.updates = [{ id: "update", title: "First day", place: { label: "Lisbon", latitude: 38, longitude: -9 }, story_date: "2054-09", date_precision: "month" }];
+  data.routes = [{ id: "route", label: "To Coimbra", mode: "train", departure: { label: "Lisbon", latitude: 38, longitude: -9 }, arrival: { label: "Coimbra", latitude: 40, longitude: -8 } }];
+  render(<ProjectionView projection={data} audience="public" identifier="trip" />);
+  fireEvent.click(screen.getByRole("button", { name: "Lisbon" }));
+  expect(screen.getByRole("link", { name: "Bezoek: Arrival" }).getAttribute("href")).toBe("#visit-visit");
+  expect(screen.getByRole("link", { name: "Update: First day" }).getAttribute("href")).toBe("#update");
+  expect(document.getElementById("visit-visit")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /To Coimbra/ }));
+  expect(screen.getByRole("link", { name: "Route bekijken" }).getAttribute("href")).toBe("#route-route");
+  expect(document.getElementById("route-route")).toBeTruthy();
+});
+
 it("lists only server supplied public cards and opens their stable slugs", async () => {
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify([
     { slug: "safe-slug", title: "Visible journey", summary: null },
@@ -126,7 +142,7 @@ it("renders every resource kind using only supplied fields", () => {
   for (const value of ["Hidden street", "Secret place note", "Secret story", "Secret booking", "Secret track", "Secret photo", "Secret PDF", "5"]) {
     expect(container.textContent).not.toContain(value);
   }
-  expect(screen.getByRole("button", { name: "Shared route" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Shared route/ })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Routebeschrijving" }).getAttribute("href")).toBe("/api/public/trips/safe-slug/navigation/place");
   expect(screen.getByRole("img", { name: "Gedeelde afbeelding" }).getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media");
 });

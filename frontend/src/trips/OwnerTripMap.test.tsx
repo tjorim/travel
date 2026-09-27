@@ -24,13 +24,14 @@ beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi()
     .collection("/api/trips/trip/routes", [route("r1", "Oostkust")])
-    .collection("/api/trips/trip/locations", [cafe]);
+    .collection("/api/trips/trip/locations", [cafe])
+    .collection("/api/trips/trip/visits", []);
 });
 afterEach(async () => { cleanup(); vi.unstubAllGlobals(); await resetOfflineDb(); });
 
 it("draws routes, areas and locations from the shared reads", async () => {
   renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
-  await screen.findByRole("button", { name: "Oostkust" });
+  await screen.findByRole("button", { name: /Oostkust/ });
   expect(screen.getByRole("button", { name: "Taipei" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Café" })).toBeTruthy();
   expect(api.unexpected).toEqual([]);
@@ -45,10 +46,10 @@ it("uses a location's saved name over the locality it repeats for other points",
 
 it("shows a route added elsewhere as soon as its read is refreshed, with no revision prop", async () => {
   const { client } = renderWithOwner(<OwnerTripMap trip={trip} areas={[]} />);
-  await screen.findByRole("button", { name: "Oostkust" });
+  await screen.findByRole("button", { name: /Oostkust/ });
   api.push("/api/trips/trip/routes", route("r2", "Westkust"));
   await act(async () => { await client.invalidateQueries({ queryKey: ownerKeys.tripResource("owner-1", "trip", "routes") }); });
-  await screen.findByRole("button", { name: "Westkust" });
+  await screen.findByRole("button", { name: /Westkust/ });
 });
 
 it("falls back to the pinned map copy when the live reads are refused", async () => {
@@ -66,7 +67,7 @@ it("falls back to the pinned map copy when the live reads are refused", async ()
 
 it("pins the current map data for offline use", async () => {
   renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
-  await screen.findByRole("button", { name: "Oostkust" });
+  await screen.findByRole("button", { name: /Oostkust/ });
   fireEvent.click(screen.getByRole("button", { name: "Kaart offline bewaren" }));
   await screen.findByText(/offline bewaard op dit toestel/);
   await screen.findByRole("button", { name: "Offline verwijderen" });

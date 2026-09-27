@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
@@ -70,6 +70,9 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   // The list page only lists; a trip is worked on in its own workspace.
   const selectedTrip = workspace ? trips.find((trip) => trip.id === workspace.tripId) ?? null : null;
   const selectedId = selectedTrip?.id ?? null;
+  const openMapRecord = useCallback((kind: "area" | "visit" | "route" | "update", id: string) => {
+    if (selectedId) void navigate({ to: `/trips/${encodeURIComponent(selectedId)}/${kind === "update" ? "story" : "plan"}`, state: { openRecord: { kind, id } } });
+  }, [navigate, selectedId]);
   const areas = useTripResource(selectedId, "areas").data ?? [];
   // A page we were sent here from (a deleted trip) can leave a message behind.
   const arrivalNotice = location.state.notice;
@@ -129,7 +132,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       {([['overview', 'Overzicht'], ['plan', 'Plan'], ['story', 'Verhaal'], ['media', 'Media & documenten'], ['sharing', 'Delen']] as const).map(([section, label]) => <Link key={section} to={sectionUrl(section)} activeOptions={{ exact: section === "overview" }} aria-current={currentSection === section ? "page" : undefined}>{label}</Link>)}
     </nav>
     {(notice ?? arrivalNotice) && <p className="help" role="status">{notice ?? arrivalNotice}</p>}
-    {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{formatInstant(update.occurred_at)}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
+    {currentSection === "overview" && <><TripOverview trip={selectedTrip} /><OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} onOpenRecord={openMapRecord} /><div className="detail-grid"><section className="card"><h3>Reisupdates</h3>{selectedTrip.travel_updates.length ? <div className="saved-records">{selectedTrip.travel_updates.slice().sort((left, right) => right.occurred_at.localeCompare(left.occurred_at)).map((update) => <div className="update-summary" key={update.id}><strong>{update.title}</strong><span>{formatInstant(update.occurred_at)}</span></div>)}</div> : <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>}</section><TripTaskManager trip={selectedTrip} /></div></>}
     {currentSection === "plan" && <>
       <nav className="plan-jump-nav" aria-label="Planningsonderdelen">
         <a href="#agenda">Agenda</a><a href="#areas">Gebieden</a><a href="#locations">Locaties</a><a href="#visits">Bezoeken</a><a href="#stays">Verblijven</a><a href="#routes">Routes</a><a href="#tasks">Nog te regelen</a>
