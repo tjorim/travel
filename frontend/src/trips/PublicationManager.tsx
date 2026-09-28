@@ -1113,7 +1113,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         )}
       </RecordDialog>
       {preview && owner && (
-        <RecordDialog open title={preview.name} className="preview-dialog" onDismiss={() => setPreview(null)}>
+        <RecordDialog open title={preview.name} className="max-w-280" onDismiss={() => setPreview(null)}>
           <section className="projection-preview" aria-live="polite">
             <p>
               {preview.audience === "public"

@@ -303,10 +303,11 @@ it("asks before discarding an unsaved link scope when changing editors", async (
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
   fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Familie en vrienden" } });
-  fireEvent.click(screen.getByRole("button", { name: "Nieuwe link" }));
-  expect(await screen.findByText("Niet-opgeslagen linkwijzigingen verwerpen?")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Deellink bewerken sluiten" }));
+  expect(await screen.findByText("Wijzigingen verwerpen?")).toBeTruthy();
   expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe("Familie en vrienden");
   await answerConfirmation("Wijzigingen verwerpen");
+  fireEvent.click(screen.getByRole("button", { name: "Nieuwe link" }));
   await waitFor(() => expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe(""));
 });
 
@@ -376,7 +377,7 @@ it("saves a new link as a draft, letting its owner preview it before activating 
   // Saving a new link creates it as a draft: no live capability is minted yet.
   expect(api.count("POST /api/trips/trip/share-links")).toBe(1);
   expect(api.count("POST /api/trips/trip/share-links/l2/activate")).toBe(0);
-  expect(screen.getByRole("button", { name: /Vrienden/ }).textContent).toContain("draft");
+  expect(screen.getByRole("button", { name: /Vrienden/, hidden: true }).textContent).toContain("draft");
 
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
   const previewDialog = await screen.findByRole("dialog", { name: "Preview van Vrienden" });
@@ -392,7 +393,7 @@ it("saves a new link as a draft, letting its owner preview it before activating 
   expect(within(reveal).getByText(`${window.location.origin}/share/${SECRET}`)).toBeTruthy();
   expect(screen.getByText("De link is actief en kan later opnieuw worden gekopieerd.")).toBeTruthy();
   expect(api.lastBody("POST /api/trips/trip/share-links/l2/activate")).toEqual({ expires_in_days: 30, reason: null });
-  expect(screen.getByRole("button", { name: /Vrienden/ }).textContent).toContain("active");
+  expect(screen.getByRole("button", { name: /Vrienden/, hidden: true }).textContent).toContain("active");
 
   fireEvent.click(screen.getByRole("button", { name: "Sluiten" }));
   expect(screen.queryByText(`${window.location.origin}/share/${SECRET}`)).toBeNull();
@@ -413,7 +414,7 @@ it("revokes an active link and locks its editor", async () => {
   await screen.findByText("Deellink ingetrokken.");
   expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).disabled).toBe(true);
   expect((screen.getByRole("button", { name: "Link opslaan" }) as HTMLButtonElement).disabled).toBe(true);
-  expect(screen.getByRole("button", { name: /Familie/ }).textContent).toContain("revoked");
+  expect(screen.getByRole("button", { name: /Familie/, hidden: true }).textContent).toContain("revoked");
 });
 
 it("saves a renamed link and shows the new name in the list", async () => {
@@ -422,7 +423,7 @@ it("saves a renamed link and shows the new name in the list", async () => {
   expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe("Familie");
   fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Familie en vrienden" } });
   fireEvent.click(screen.getByRole("button", { name: "Link opslaan" }));
-  await screen.findByRole("button", { name: /Familie en vrienden/ });
+  await screen.findByRole("button", { name: /Familie en vrienden/, hidden: true });
   expect(screen.queryByRole("button", { name: /^Familie ·/ })).toBeNull();
 });
 

@@ -654,13 +654,11 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
         </div>
       )}
       {deleteTarget && (
-        <RecordDialog open title="Verwijderen bevestigen" onDismiss={() => setDeleteTarget(null)}>
-          <DeleteConfirmation
-            title={`Route “${routeTitle(deleteTarget)}” verwijderen?`}
-            onCancel={() => setDeleteTarget(null)}
-            onConfirm={() => confirmDelete(deleteTarget)}
-          />
-        </RecordDialog>
+        <DeleteConfirmation
+          title={`Route “${routeTitle(deleteTarget)}” verwijderen?`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => confirmDelete(deleteTarget)}
+        />
       )}
     </section>
   );

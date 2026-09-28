@@ -9,4 +9,8 @@
   --color-travel-forest: #0f493b;
   --color-travel-muted: #4d665e;
   --color-travel-focus: #e3a91c;
+  --color-travel-surface: #fffdf8;
+  --color-travel-border: #b7c9be;
+  --color-travel-warning: #b68110;
+  --color-travel-warning-surface: #fff6d9;
 }

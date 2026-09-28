@@ -121,8 +121,7 @@ afterEach(() => {
 });
 
 // The trip dialogs share labels with the managers' forms; scope to the dialog.
-const editor = (name: "Reisgegevens" | "Nieuwe reis") =>
-  within(screen.getByRole("heading", { name }).closest("dialog")!);
+const editor = (name: "Reisgegevens" | "Nieuwe reis") => within(screen.getByRole("dialog", { name }));
 const openEditor = async () => fireEvent.click(await screen.findByRole("button", { name: "Reisgegevens" }));
 const renderTrips = (path = "/trips") => renderRoutesWithOwner(routeTree, [path]);
 

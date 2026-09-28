@@ -1,4 +1,7 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
+import { Dialog } from "@base-ui/react/dialog";
+import { cn } from "cn";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type RecordDialogProps = {
   open: boolean;
@@ -10,43 +13,41 @@ type RecordDialogProps = {
   onAfterClose?: () => void;
 };
 
-/** A bounded owner-only record editor. Native dialogs provide the focus trap and
- * return focus to the control that opened them; the CSS turns it into a sheet
- * on narrow screens. */
+const backdrop = "fixed inset-0 bg-travel-ink/50";
+const viewport = "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto max-[620px]:items-end";
+const popup =
+  "box-border mx-4 max-h-dvh w-full max-w-170 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-5.5 text-travel-ink shadow-2xl max-[620px]:mb-0 max-[620px]:max-w-none max-[620px]:rounded-b-none max-[620px]:p-4.5";
+const confirmation = "grid gap-3 rounded-xl border-2 border-travel-warning bg-travel-warning-surface p-4";
+
+/** Shared owner editor with guarded dismissal and focus return. */
 export function RecordDialog({
   open,
   title,
   children,
-  className = "",
+  className,
   dirty = false,
   onDismiss,
   onAfterClose,
 }: RecordDialogProps) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const scrollPosition = useRef({ x: 0, y: 0 });
-  const headingId = useId();
+  const wasOpen = useRef(false);
+  const continueEditing = useRef<HTMLButtonElement>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
+  // Controlled dialogs can open without a Base UI Trigger.
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    scrollPosition.current = { x: window.scrollX, y: window.scrollY };
+  }
+  wasOpen.current = open;
+
   useEffect(() => {
-    const element = dialog.current;
-    if (!element) return;
-    if (open && !element.open) {
-      origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      scrollPosition.current = { x: window.scrollX, y: window.scrollY };
-      if (typeof element.showModal === "function") element.showModal();
-      else element.setAttribute("open", "");
-    }
-    if (!open && element.open) {
-      if (typeof element.close === "function") element.close();
-      else element.removeAttribute("open");
-      origin.current?.focus({ preventScroll: true });
-      if (scrollPosition.current.x || scrollPosition.current.y)
-        window.scrollTo(scrollPosition.current.x, scrollPosition.current.y);
-    }
+    if (!open) setConfirmDiscard(false);
   }, [open]);
 
   function dismiss() {
+    if (confirmDiscard) return;
     if (dirty) {
       setConfirmDiscard(true);
       return;
@@ -55,48 +56,67 @@ export function RecordDialog({
   }
 
   return (
-    <dialog
-      ref={dialog}
-      className={`record-dialog ${className}`.trim()}
-      aria-labelledby={headingId}
-      onCancel={(event) => {
-        event.preventDefault();
-        dismiss();
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) dismiss();
       }}
-      onClose={() => {
-        if (open) onDismiss();
-        onAfterClose?.();
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) {
+          if (scrollPosition.current.x || scrollPosition.current.y)
+            window.scrollTo(scrollPosition.current.x, scrollPosition.current.y);
+          onAfterClose?.();
+        }
       }}
     >
-      <div className="record-dialog-header">
-        <h2 id={headingId}>{title}</h2>
-        <button className="secondary compact" type="button" aria-label={`${title} sluiten`} onClick={dismiss}>
-          Sluiten
-        </button>
-      </div>
-      {children}
-      {confirmDiscard && (
-        <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby={`${headingId}-discard`}>
-          <h3 id={`${headingId}-discard`}>Wijzigingen verwerpen?</h3>
-          <p>Je niet-opgeslagen wijzigingen gaan verloren.</p>
-          <div className="button-row">
-            <button
-              className="danger compact"
-              type="button"
-              onClick={() => {
-                setConfirmDiscard(false);
-                onDismiss();
+      <Dialog.Portal>
+        <Dialog.Backdrop className={backdrop} />
+        <Dialog.Viewport className={viewport}>
+          <Dialog.Popup className={cn(popup, className)} finalFocus={() => origin.current} aria-label={title}>
+            <div className="mb-4.5 flex items-start justify-between gap-4">
+              <Dialog.Title className="m-0">{title}</Dialog.Title>
+              <Dialog.Close className="secondary compact" aria-label={`${title} sluiten`}>
+                Sluiten
+              </Dialog.Close>
+            </div>
+            {children}
+            <AlertDialog.Root
+              open={confirmDiscard}
+              onOpenChange={(nextOpen) => {
+                if (!nextOpen) setConfirmDiscard(false);
               }}
             >
-              Wijzigingen verwerpen
-            </button>
-            <button className="secondary compact" type="button" autoFocus onClick={() => setConfirmDiscard(false)}>
-              Verder bewerken
-            </button>
-          </div>
-        </div>
-      )}
-    </dialog>
+              <AlertDialog.Portal>
+                <AlertDialog.Backdrop className={backdrop} />
+                <AlertDialog.Viewport className={viewport}>
+                  <AlertDialog.Popup className={cn(popup, confirmation, "max-w-md")} initialFocus={continueEditing}>
+                    <AlertDialog.Title className="m-0">Wijzigingen verwerpen?</AlertDialog.Title>
+                    <AlertDialog.Description className="m-0">
+                      Je niet-opgeslagen wijzigingen gaan verloren.
+                    </AlertDialog.Description>
+                    <div className="button-row">
+                      <button
+                        className="danger compact"
+                        type="button"
+                        onClick={() => {
+                          setConfirmDiscard(false);
+                          onDismiss();
+                        }}
+                      >
+                        Wijzigingen verwerpen
+                      </button>
+                      <AlertDialog.Close className="secondary compact" ref={continueEditing}>
+                        Verder bewerken
+                      </AlertDialog.Close>
+                    </div>
+                  </AlertDialog.Popup>
+                </AlertDialog.Viewport>
+              </AlertDialog.Portal>
+            </AlertDialog.Root>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -115,19 +135,26 @@ export function DeleteConfirmation({
   onCancel,
   onConfirm,
 }: DeleteConfirmationProps) {
-  const headingId = useId();
+  const cancel = useRef<HTMLButtonElement>(null);
   return (
-    <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby={headingId}>
-      <h3 id={headingId}>{title}</h3>
-      <p>{description}</p>
-      <div className="button-row">
-        <button className="danger compact" type="button" autoFocus onClick={onConfirm}>
-          {confirmLabel}
-        </button>
-        <button className="secondary compact" type="button" onClick={onCancel}>
-          Annuleren
-        </button>
-      </div>
-    </div>
+    <AlertDialog.Root open onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className={backdrop} />
+        <AlertDialog.Viewport className={viewport}>
+          <AlertDialog.Popup className={cn(popup, confirmation, "max-w-md")} initialFocus={cancel}>
+            <AlertDialog.Title className="m-0">{title}</AlertDialog.Title>
+            <AlertDialog.Description className="m-0">{description}</AlertDialog.Description>
+            <div className="button-row">
+              <button className="danger compact" type="button" onClick={onConfirm}>
+                {confirmLabel}
+              </button>
+              <AlertDialog.Close className="secondary compact" ref={cancel}>
+                Annuleren
+              </AlertDialog.Close>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Viewport>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   );
 }

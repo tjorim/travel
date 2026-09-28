@@ -479,13 +479,11 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
         )}
       </RecordDialog>
       {deleteTarget && (
-        <RecordDialog open title="Verwijderen bevestigen" onDismiss={() => setDeleteTarget(null)}>
-          <DeleteConfirmation
-            title={`“${stayLabel(deleteTarget)}” verwijderen?`}
-            onCancel={() => setDeleteTarget(null)}
-            onConfirm={confirmDelete}
-          />
-        </RecordDialog>
+        <DeleteConfirmation
+          title={`“${stayLabel(deleteTarget)}” verwijderen?`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
       )}
     </section>
   );

@@ -719,56 +719,6 @@ textarea {
     padding-left: 12px;
   }
 }
-.record-dialog {
-  width: min(680px, calc(100vw - 32px));
-  max-height: min(760px, calc(100vh - 32px));
-  margin: auto;
-  padding: 22px;
-  border: 1px solid #b7c9be;
-  border-radius: 16px;
-  background: #fffdf8;
-  color: #19342d;
-  box-shadow: 0 24px 70px #19342d66;
-}
-.record-dialog.preview-dialog {
-  width: min(1120px, calc(100vw - 32px));
-}
-.record-dialog::backdrop {
-  background: #19342d80;
-}
-.record-dialog-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: start;
-  margin-bottom: 18px;
-}
-.record-dialog-header h2 {
-  margin: 0;
-}
-.record-confirm {
-  display: grid;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 16px;
-  border: 2px solid #b68110;
-  border-radius: 12px;
-  background: #fff6d9;
-}
-.record-confirm h3,
-.record-confirm p {
-  margin: 0;
-}
-@media (max-width: 620px) {
-  .record-dialog {
-    width: 100%;
-    max-width: none;
-    max-height: calc(100dvh - 12px);
-    margin: 12px 0 0;
-    padding: 18px;
-    border-radius: 16px 16px 0 0;
-  }
-}
 .sharing-review {
   display: grid;
   gap: 6px;

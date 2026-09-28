@@ -145,6 +145,12 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Shared record editors now use Base UI Dialog, with Base UI Alert Dialog for
+  discard and delete confirmations. Their presentation uses Tailwind theme
+  values, retains the mobile sheet, and guards Escape, outside presses, and
+  close buttons when there are unsaved changes. The broader view styling
+  migration remains tracked in [#264](https://github.com/tjorim/travel/issues/264).
+
 - Transport booking badges count non-cancelled routes with a departure day,
   including journeys without exact times, while leaving undated map routes
   out of booking progress. ([#248](https://github.com/tjorim/travel/issues/248))

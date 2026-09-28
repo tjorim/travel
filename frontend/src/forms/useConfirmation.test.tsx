@@ -47,11 +47,14 @@ it("runs the action only after the owner confirms", async () => {
 
 it("leaves the action alone when the owner cancels or closes the dialog", async () => {
   render(<Fixture />);
-  fireEvent.click(screen.getByRole("button", { name: "Verwijder" }));
+  const opener = screen.getByRole("button", { name: "Verwijder" });
+  opener.focus();
+  fireEvent.click(opener);
   await answerConfirmation("Annuleren");
   expect(screen.queryByRole("alertdialog")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Verwijder" }));
-  fireEvent.click(screen.getByRole("button", { name: "Bevestigen sluiten" }));
+  expect(document.activeElement).toBe(opener);
+  fireEvent.click(opener);
+  fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
   expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(action).not.toHaveBeenCalled();
 });

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 
-import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { DeleteConfirmation } from "../RecordDialog";
 
 export type ConfirmationRequest = {
   title: string;
@@ -20,18 +20,16 @@ export function useConfirmation(): { ask: (request: ConfirmationRequest) => void
   return {
     ask: setRequest,
     dialog: request && (
-      <RecordDialog open title="Bevestigen" onDismiss={close}>
-        <DeleteConfirmation
-          title={request.title}
-          description={request.description}
-          confirmLabel={request.confirmLabel}
-          onCancel={close}
-          onConfirm={() => {
-            close();
-            request.onConfirm();
-          }}
-        />
-      </RecordDialog>
+      <DeleteConfirmation
+        title={request.title}
+        description={request.description}
+        confirmLabel={request.confirmLabel}
+        onCancel={close}
+        onConfirm={() => {
+          close();
+          request.onConfirm();
+        }}
+      />
     ),
   };
 }
