@@ -298,10 +298,13 @@ export function LocationManager({
             {!address(selected) && selected.country_code && <p>Landcode: {selected.country_code}</p>}
             {selected.notes && <p>Privénotities: {selected.notes}</p>}
             {mapTarget(selected.latitude, selected.longitude)}
-            {selected.osm_element_type && (
+            {selected.osm_url && (
               <p className="help">
-                Providerlocatie: {selected.osm_element_type} {selected.osm_element_id}. Een adrescorrectie verplaatst
-                dit kaartpunt of navigatiedoel niet.
+                Providerlocatie:{" "}
+                <a href={selected.osm_url} target="_blank" rel="noreferrer">
+                  {selected.osm_element_type} {selected.osm_element_id}
+                </a>
+                . Een adrescorrectie verplaatst dit kaartpunt of navigatiedoel niet.
               </p>
             )}
             <p>

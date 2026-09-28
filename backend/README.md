@@ -190,8 +190,11 @@ OpenStreetMap
 attribution, a durable OSM `(element type, element ID)` reference, and the
 owner-selected display snapshot; Nominatim's result-local `place_id` is never
 stored as an application identifier. Saving the selected result creates an
-owner-only location, including its address, coordinates and viewport. A
-reverse lookup is only a suggestion: it does not create or attach a place. It
+owner-only location, including its canonical OSM URL, address, coordinates and viewport.
+Existing OSM references receive their URL when the location migration runs.
+Nominatim requests prefer English names for both search and reverse lookup;
+when an English name is unavailable, Nominatim uses the available OSM name.
+A reverse lookup is only a suggestion: it does not create or attach a place. It
 is intended for an owner-confirmed media-EXIF suggestion flow (#52), never for
 automatic capture or canonical writes.
 

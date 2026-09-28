@@ -13,6 +13,7 @@ export type Location = {
   display_name: string | null;
   osm_element_type: "node" | "way" | "relation" | null;
   osm_element_id: string | null;
+  osm_url: string | null;
   address_line1: string | null;
   address_line2: string | null;
   locality: string | null;
@@ -32,7 +33,7 @@ export type Location = {
 };
 
 /** A location to create, or with `existing_location_id` a location the trip already has (sent on its own). */
-export type LocationInput = Partial<Omit<Location, "id" | "visibility" | "area_id" | "share_address">> & {
+export type LocationInput = Partial<Omit<Location, "id" | "visibility" | "area_id" | "share_address" | "osm_url">> & {
   existing_location_id?: string;
 };
 

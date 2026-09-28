@@ -82,6 +82,7 @@ def test_owner_searches_and_saves_a_durable_osm_reference_without_persisting_que
     place = saved.json()
     assert place["osm_element_type"] == "way"
     assert place["osm_element_id"] == "12345"
+    assert place["osm_url"] == "https://www.openstreetmap.org/way/12345"
     assert place["display_name"] == "Secret Hotel, Taipei, Exampleland"
     # The exact target exists only on the owner route, not a public projection.
     navigation = owner.get(f"/api/trips/{trip['id']}/locations/{place['id']}/navigation")

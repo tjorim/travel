@@ -18,6 +18,9 @@ const location = {
   visibility: "private",
   share_address: false,
   display_name: "Beitou Hot Spring, 12 Guangming Road, Taipei",
+  osm_element_type: "node",
+  osm_element_id: "42",
+  osm_url: "https://www.openstreetmap.org/node/42",
   locality: "Taipei",
   country_code: "TW",
   address_line1: "12 Guangming Road",
@@ -57,6 +60,7 @@ it("opens saved details and edits the address with an explicit save", async () =
     <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
   );
   expect(await screen.findByText(/Opgeslagen adres: 12 Guangming Road/)).toBeTruthy();
+  expect(screen.getByRole("link", { name: "node 42" }).getAttribute("href")).toBe(location.osm_url);
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   fireEvent.change(screen.getByLabelText("Adresregel 1 (optioneel)"), { target: { value: "14 Guangming Road" } });
   fireEvent.click(screen.getByRole("button", { name: "Locatie opslaan" }));

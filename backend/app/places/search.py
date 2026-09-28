@@ -68,7 +68,7 @@ class NominatimSearchProvider:
         try:
             response = httpx.get(
                 f"{self.config.osm_place_search_api_base.rstrip('/')}/{path}",
-                params={"format": "jsonv2", "addressdetails": 1, **params},
+                params={"format": "jsonv2", "addressdetails": 1, "accept-language": "en", **params},
                 headers={"User-Agent": self.config.osm_place_search_user_agent, "Accept": "application/json"},
                 timeout=self.config.osm_place_search_timeout_seconds,
             )

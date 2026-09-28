@@ -265,6 +265,7 @@ class Location(Base):
     # Nominatim's result-local ``place_id`` is intentionally not stored.
     osm_element_type: Mapped[str | None] = mapped_column(String(12), nullable=True)
     osm_element_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    osm_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     address_line1: Mapped[str | None] = mapped_column(String(160), nullable=True)
     address_line2: Mapped[str | None] = mapped_column(String(160), nullable=True)

@@ -245,6 +245,7 @@ class AreaMergeResult(BaseModel):
 class LocationResponse(LocationFields):
     id: str
     visibility: Visibility
+    osm_url: str | None
     # A response is read from stored data, not sent by a client.
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 

@@ -105,6 +105,8 @@ def location_from_input(session: Session, trip_id: str, payload: LocationInput) 
             )
         return existing
     location = Location(trip_id=trip_id, **payload.model_dump(exclude={"existing_location_id", "area_id", "new_area"}))
+    if payload.osm_element_type is not None and payload.osm_element_id is not None:
+        location.osm_url = f"https://www.openstreetmap.org/{payload.osm_element_type}/{payload.osm_element_id}"
     if payload.new_area is not None:
         location.area = Area(trip_id=trip_id, **payload.new_area.model_dump())
         session.add(location.area)
