@@ -14,5 +14,12 @@ export function Capture() {
     void navigate({ to: "/trips" });
   }
 
-  return <CaptureDialog open candidate={candidate} onCandidateConsumed={() => void navigate({ to: "/capture", replace: true, state: {} })} onDismiss={close} />;
+  return (
+    <CaptureDialog
+      open
+      candidate={candidate}
+      onCandidateConsumed={() => void navigate({ to: "/capture", replace: true, state: {} })}
+      onDismiss={close}
+    />
+  );
 }

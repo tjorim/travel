@@ -9,10 +9,30 @@ const action = vi.fn();
 
 function Fixture() {
   const confirmation = useConfirmation();
-  return <><button type="button" onClick={() => confirmation.ask({ title: "Iets verwijderen?", description: "Dit is definitief.", confirmLabel: "Ja, weg ermee", onConfirm: action })}>Verwijder</button>{confirmation.dialog}</>;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() =>
+          confirmation.ask({
+            title: "Iets verwijderen?",
+            description: "Dit is definitief.",
+            confirmLabel: "Ja, weg ermee",
+            onConfirm: action,
+          })
+        }
+      >
+        Verwijder
+      </button>
+      {confirmation.dialog}
+    </>
+  );
 }
 
-afterEach(() => { cleanup(); action.mockReset(); });
+afterEach(() => {
+  cleanup();
+  action.mockReset();
+});
 
 it("runs the action only after the owner confirms", async () => {
   render(<Fixture />);

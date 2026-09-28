@@ -10,22 +10,80 @@ import { RouteManager } from "./RouteManager";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const area = (id: string, label: string, latitude: number | null = null, longitude: number | null = null): Area => ({ id, visibility: "private", label, country_code: "TW", region: null, latitude, longitude, timezone: null });
-const taipei = area("taipei", "Taipei", 25.03, 121.56), tainan = area("tainan", "Tainan", 23.0, 120.2);
+const area = (id: string, label: string, latitude: number | null = null, longitude: number | null = null): Area => ({
+  id,
+  visibility: "private",
+  label,
+  country_code: "TW",
+  region: null,
+  latitude,
+  longitude,
+  timezone: null,
+});
+const taipei = area("taipei", "Taipei", 25.03, 121.56),
+  tainan = area("tainan", "Tainan", 23.0, 120.2);
 const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
-const savedLocation = { id: "main-station", visibility: "private", label: null, area_id: "taipei", share_address: false, display_name: "Taipei Main Station", locality: "Taipei", country_code: "TW" } as Location;
+const savedLocation = {
+  id: "main-station",
+  visibility: "private",
+  label: null,
+  area_id: "taipei",
+  share_address: false,
+  display_name: "Taipei Main Station",
+  locality: "Taipei",
+  country_code: "TW",
+} as Location;
 const route = (id: string, label: string | null, overrides: Partial<Route> = {}): Route => ({
-  id, mode: "train", status: "booked", label, departure_area: taipei, arrival_area: tainan, departure_location: null, arrival_location: null,
-  departs_on: null, departs_at: null, arrives_at: null, departure_timezone: null, arrival_timezone: null, carrier: null, service_reference: null, travel_class: null,
-  booking_reference: null, notes: null, document_asset_ids: [], geometry: null, visibility: "private", ...overrides,
+  id,
+  mode: "train",
+  status: "booked",
+  label,
+  departure_area: taipei,
+  arrival_area: tainan,
+  departure_location: null,
+  arrival_location: null,
+  departs_on: null,
+  departs_at: null,
+  arrives_at: null,
+  departure_timezone: null,
+  arrival_timezone: null,
+  carrier: null,
+  service_reference: null,
+  travel_class: null,
+  booking_reference: null,
+  notes: null,
+  document_asset_ids: [],
+  geometry: null,
+  visibility: "private",
+  ...overrides,
 });
 const flight = route("r-flight", null, {
-  mode: "flight", departure_area: area("ams", "Amsterdam"), arrival_area: area("tpe", "Taoyuan"),
-  departure_location: { id: "ams-airport", area_id: "ams", display_name: "Amsterdam Schiphol", locality: "Amsterdam" } as Location,
-  departs_on: "2054-11-16", departs_at: "2054-11-16T09:40:00Z", arrives_at: "2054-11-16T22:25:00Z", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei",
-  booking_reference: "REF", carrier: "China Airlines",
+  mode: "flight",
+  departure_area: area("ams", "Amsterdam"),
+  arrival_area: area("tpe", "Taoyuan"),
+  departure_location: {
+    id: "ams-airport",
+    area_id: "ams",
+    display_name: "Amsterdam Schiphol",
+    locality: "Amsterdam",
+  } as Location,
+  departs_on: "2054-11-16",
+  departs_at: "2054-11-16T09:40:00Z",
+  arrives_at: "2054-11-16T22:25:00Z",
+  departure_timezone: "Europe/Amsterdam",
+  arrival_timezone: "Asia/Taipei",
+  booking_reference: "REF",
+  carrier: "China Airlines",
 });
-const line = route("r-line", "Oostkust", { geometry: { type: "LineString", coordinates: [[121.5, 25], [121.6, 25.1]] } });
+const line = route("r-line", "Oostkust", {
+  geometry: {
+    type: "LineString",
+    coordinates: [
+      [121.5, 25],
+      [121.6, 25.1],
+    ],
+  },
+});
 const ticket = { id: "d1", title: "Ticket" } as DocumentAsset;
 
 let api: FakeApi;
@@ -33,9 +91,12 @@ function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = 
   api = fakeApi()
     .collection("/api/trips/trip/routes", routes, {
       // The service answers with the areas the ends were filed under.
-      create: (body, count) => route(`new-${count}`, (body.label as string | null) ?? null, {
-        mode: body.mode as Route["mode"], departure_area: areas.find((item) => item.id === body.departure_area_id) ?? taipei, arrival_area: areas.find((item) => item.id === body.arrival_area_id) ?? tainan,
-      }),
+      create: (body, count) =>
+        route(`new-${count}`, (body.label as string | null) ?? null, {
+          mode: body.mode as Route["mode"],
+          departure_area: areas.find((item) => item.id === body.departure_area_id) ?? taipei,
+          arrival_area: areas.find((item) => item.id === body.arrival_area_id) ?? tainan,
+        }),
       update: (row, body) => ({ ...row, ...body }),
     })
     .collection("/api/trips/trip/areas", areas)
@@ -43,8 +104,15 @@ function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = 
     .collection("/api/trips/trip/locations", locations);
   api.on("POST", /\/areas\/suggest$/, () => ({ existing_area_id: "taipei", area: taipei }));
 }
-beforeEach(() => { auth.session = { accessToken: testToken() }; });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); });
+beforeEach(() => {
+  auth.session = { accessToken: testToken() };
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  expect(api.unexpected).toEqual([]);
+});
 
 const pickAreas = (from = "Taipei (heel gebied)", to = "Tainan (heel gebied)") => {
   chooseOption("Vertrek", from);
@@ -65,7 +133,14 @@ it("needs only a mode and two areas", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByRole("button", { name: "Route Taipei → Tainan bekijken" });
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
-    mode: "bike", departure_area_id: "taipei", arrival_area_id: "tainan", departs_on: null, departs_at: null, arrives_at: null, geometry: null, label: null,
+    mode: "bike",
+    departure_area_id: "taipei",
+    arrival_area_id: "tainan",
+    departs_on: null,
+    departs_at: null,
+    arrives_at: null,
+    geometry: null,
+    label: null,
   });
   expect(api.lastBody<{ departure_location: unknown }>("POST /api/trips/trip/routes")?.departure_location).toBeNull();
   expect(screen.getByText("Route opgeslagen.")).toBeTruthy();
@@ -76,18 +151,26 @@ it("takes both times or neither", async () => {
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas();
-  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), { target: { value: "2054-11-16T10:40" } });
+  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), {
+    target: { value: "2054-11-16T10:40" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByText("Geef zowel de vertrek- als de aankomsttijd op, of geen van beide.");
   expect(api.count("POST /api/trips/trip/routes")).toBe(0);
 
   fireEvent.change(screen.getByLabelText("Tijdzone vertrek (optioneel)"), { target: { value: "Europe/Amsterdam" } });
-  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), { target: { value: "2054-11-17T06:25" } });
+  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), {
+    target: { value: "2054-11-17T06:25" },
+  });
   fireEvent.change(screen.getByLabelText("Tijdzone aankomst (optioneel)"), { target: { value: "Asia/Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
-    departs_on: "2054-11-16", departs_at: "2054-11-16T10:40:00", arrives_at: "2054-11-17T06:25:00", departure_timezone: "Europe/Amsterdam", arrival_timezone: "Asia/Taipei",
+    departs_on: "2054-11-16",
+    departs_at: "2054-11-16T10:40:00",
+    arrives_at: "2054-11-17T06:25:00",
+    departure_timezone: "Europe/Amsterdam",
+    arrival_timezone: "Asia/Taipei",
   });
 });
 
@@ -97,8 +180,12 @@ it("takes a day first, and times only on that day", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas();
   fireEvent.change(screen.getByLabelText("Dag van vertrek (optioneel)"), { target: { value: "2054-12-05" } });
-  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), { target: { value: "2054-12-06T08:00" } });
-  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), { target: { value: "2054-12-06T10:00" } });
+  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), {
+    target: { value: "2054-12-06T08:00" },
+  });
+  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), {
+    target: { value: "2054-12-06T10:00" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByText(/De vertrektijd valt op .*, niet op de gekozen dag/);
   expect(api.count("POST /api/trips/trip/routes")).toBe(0);
@@ -108,7 +195,11 @@ it("takes a day first, and times only on that day", async () => {
   fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), { target: { value: "" } });
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({ departs_on: "2054-12-05", departs_at: null, arrives_at: null });
+  expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
+    departs_on: "2054-12-05",
+    departs_at: null,
+    arrives_at: null,
+  });
 });
 
 it("shows a route's day while it has no times", async () => {
@@ -132,12 +223,28 @@ it("opens a route in detail before its editor, prefilled with its bookings and t
   expect(selectedOption("Aankomst")).toBe("Taoyuan (heel gebied)");
   expect((screen.getByLabelText("Boekingsreferentie (optioneel)") as HTMLInputElement).value).toBe("REF");
   expect((screen.getByLabelText("Tijdzone vertrek (optioneel)") as HTMLInputElement).value).toBe("Europe/Amsterdam");
-  expect((screen.getByLabelText("Vertrektijd (lokaal) (optioneel)") as HTMLInputElement).value).toBe("2054-11-16T10:40");
+  expect((screen.getByLabelText("Vertrektijd (lokaal) (optioneel)") as HTMLInputElement).value).toBe(
+    "2054-11-16T10:40",
+  );
 });
 
 it("files a new location under the chosen area", async () => {
   seed();
-  api.on("POST", /\/places\/search$/, () => ({ attribution: "© OpenStreetMap contributors", attribution_url: "https://www.openstreetmap.org/copyright", results: [{ osm_element_type: "node", osm_element_id: "8", display_name: "Taipei Main Station", locality: "Taipei", country_code: "TW", latitude: 25.048, longitude: 121.517 }] }));
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "© OpenStreetMap contributors",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+    results: [
+      {
+        osm_element_type: "node",
+        osm_element_id: "8",
+        display_name: "Taipei Main Station",
+        locality: "Taipei",
+        country_code: "TW",
+        latitude: 25.048,
+        longitude: 121.517,
+      },
+    ],
+  }));
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
@@ -148,14 +255,35 @@ it("files a new location under the chosen area", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
-    departure_location: { osm_element_type: "node", osm_element_id: "8", latitude: 25.048, longitude: 121.517, locality: "Taipei", area_id: "taipei" },
+    departure_location: {
+      osm_element_type: "node",
+      osm_element_id: "8",
+      latitude: 25.048,
+      longitude: 121.517,
+      locality: "Taipei",
+      area_id: "taipei",
+    },
     arrival_area_id: "tainan",
   });
 });
 
 it("shows a nearby area suggestion before saving a new location", async () => {
   seed();
-  api.on("POST", /\/places\/search$/, () => ({ attribution: "Test", attribution_url: "https://example.test", results: [{ osm_element_type: "node", osm_element_id: "8", display_name: "Taipei Main Station", locality: "Taipei", country_code: "TW", latitude: 25.048, longitude: 121.517 }] }));
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "Test",
+    attribution_url: "https://example.test",
+    results: [
+      {
+        osm_element_type: "node",
+        osm_element_id: "8",
+        display_name: "Taipei Main Station",
+        locality: "Taipei",
+        country_code: "TW",
+        latitude: 25.048,
+        longitude: 121.517,
+      },
+    ],
+  }));
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
@@ -164,7 +292,11 @@ it("shows a nearby area suggestion before saving a new location", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
   await waitFor(() => expect(selectedOption("Gebied van de nieuwe locatie (vertrek)")).toBe("Taipei"));
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
-  await waitFor(() => expect(api.lastBody<Record<string, { area_id: string }>>("POST /api/trips/trip/routes")?.departure_location.area_id).toBe("taipei"));
+  await waitFor(() =>
+    expect(
+      api.lastBody<Record<string, { area_id: string }>>("POST /api/trips/trip/routes")?.departure_location.area_id,
+    ).toBe("taipei"),
+  );
 });
 
 it("reuses a saved location, which is already part of its area", async () => {
@@ -194,14 +326,18 @@ it("rewrites an end only when it changed, and moving to the whole area clears th
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("PATCH /api/trips/trip/routes/r1")).toMatchObject({ carrier: "THSR" });
-  for (const untouched of ["departure_location", "departure_area_id", "arrival_area_id", "arrival_location"]) expect(api.lastBody("PATCH /api/trips/trip/routes/r1")).not.toHaveProperty(untouched);
+  for (const untouched of ["departure_location", "departure_area_id", "arrival_area_id", "arrival_location"])
+    expect(api.lastBody("PATCH /api/trips/trip/routes/r1")).not.toHaveProperty(untouched);
 
   fireEvent.click(await screen.findByRole("button", { name: /Route Taipei → Tainan bekijken/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   chooseOption("Vertrek", "Taipei (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.lastBody("PATCH /api/trips/trip/routes/r1")).toMatchObject({ departure_area_id: "taipei", departure_location: null });
+  expect(api.lastBody("PATCH /api/trips/trip/routes/r1")).toMatchObject({
+    departure_area_id: "taipei",
+    departure_location: null,
+  });
 });
 
 it("offers the areas' points to a drawn line, and shows a saved line in its editor", async () => {
@@ -214,11 +350,22 @@ it("offers the areas' points to a drawn line, and shows a saved line in its edit
   expect(screen.getByRole("heading", { name: "Route tekenen op kaart" })).toBeTruthy();
   expect(screen.getByText("2 punten · minstens twee punten zijn nodig.")).toBeTruthy();
   fireEvent.click(screen.getByText("Geavanceerd: coördinaten als JSON plakken"));
-  expect((screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)") as HTMLTextAreaElement).value).toBe("[[121.5,25],[121.6,25.1]]");
+  expect((screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)") as HTMLTextAreaElement).value).toBe(
+    "[[121.5,25],[121.6,25.1]]",
+  );
   fireEvent.change(screen.getAllByLabelText("Naam (optioneel)")[0], { target: { value: "Oostkust noord" } });
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
   await screen.findByRole("button", { name: "Route Oostkust noord bekijken" });
-  expect(api.lastBody("PATCH /api/trips/trip/routes/r-line")).toMatchObject({ label: "Oostkust noord", geometry: { type: "LineString", coordinates: [[121.5, 25], [121.6, 25.1]] } });
+  expect(api.lastBody("PATCH /api/trips/trip/routes/r-line")).toMatchObject({
+    label: "Oostkust noord",
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [121.5, 25],
+        [121.6, 25.1],
+      ],
+    },
+  });
   expect(screen.getByText("Route opgeslagen.")).toBeTruthy();
 });
 
@@ -236,9 +383,21 @@ it("sends a pasted line only when it has at least two valid points", async () =>
   await screen.findByText("Gebruik geldige JSON met minstens twee [lengtegraad, breedtegraad]-paren.");
   expect(api.count("POST /api/trips/trip/routes")).toBe(0);
 
-  fireEvent.change(screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)"), { target: { value: "[[121.5,25],[121.7,25.2]]" } });
+  fireEvent.change(screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)"), {
+    target: { value: "[[121.5,25],[121.7,25.2]]" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
-  await waitFor(() => expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({ geometry: { type: "LineString", coordinates: [[121.5, 25], [121.7, 25.2]] } }));
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [121.5, 25],
+          [121.7, 25.2],
+        ],
+      },
+    }),
+  );
 });
 
 it("links documents to a route and forgets a deleted one after the in-app confirmation", async () => {

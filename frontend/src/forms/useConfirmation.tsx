@@ -19,14 +19,19 @@ export function useConfirmation(): { ask: (request: ConfirmationRequest) => void
   const close = () => setRequest(null);
   return {
     ask: setRequest,
-    dialog: request && <RecordDialog open title="Bevestigen" onDismiss={close}>
-      <DeleteConfirmation
-        title={request.title}
-        description={request.description}
-        confirmLabel={request.confirmLabel}
-        onCancel={close}
-        onConfirm={() => { close(); request.onConfirm(); }}
-      />
-    </RecordDialog>,
+    dialog: request && (
+      <RecordDialog open title="Bevestigen" onDismiss={close}>
+        <DeleteConfirmation
+          title={request.title}
+          description={request.description}
+          confirmLabel={request.confirmLabel}
+          onCancel={close}
+          onConfirm={() => {
+            close();
+            request.onConfirm();
+          }}
+        />
+      </RecordDialog>
+    ),
   };
 }

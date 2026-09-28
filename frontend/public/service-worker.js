@@ -8,7 +8,13 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith("travel-admin-shell-") && key !== CACHE).map((key) => caches.delete(key)))),
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.filter((key) => key.startsWith("travel-admin-shell-") && key !== CACHE).map((key) => caches.delete(key)),
+        ),
+      ),
   );
   self.clients.claim();
 });
@@ -16,11 +22,13 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.mode !== "navigate" || !new URL(event.request.url).pathname.startsWith("/admin/")) return;
   event.respondWith(
-    fetch(event.request).then((response) => {
-      if (response.ok && response.headers.get("Content-Type")?.includes("text/html")) {
-        event.waitUntil(caches.open(CACHE).then((cache) => cache.put("/admin/", response.clone())));
-      }
-      return response;
-    }).catch(async () => (await caches.match("/admin/")) || Response.error()),
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok && response.headers.get("Content-Type")?.includes("text/html")) {
+          event.waitUntil(caches.open(CACHE).then((cache) => cache.put("/admin/", response.clone())));
+        }
+        return response;
+      })
+      .catch(async () => (await caches.match("/admin/")) || Response.error()),
   );
 });

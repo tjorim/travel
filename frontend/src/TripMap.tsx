@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { cn } from "cn";
 import type { FeatureCollection, LineString, Point } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -7,14 +8,59 @@ import { configuredMapStyleUrl, loadMapStyle } from "./map-style";
 import { ROUTE_MODE_LABELS, type RouteMode } from "./tracker-model";
 
 export type MapLink = { label: string; href?: string; onOpen?: () => void };
-export type MapPoint = { id: string; label: string; coordinates: [number, number]; kind?: "mountain" | "stay" | "airport" | "place" | "area" | "derived" | "location"; areaId?: string; detail?: string; dates?: string; links?: MapLink[] };
-export type MapLine = { id: string; label: string; coordinates: [number, number][]; transport?: RouteMode; from?: string; to?: string; dates?: string; links?: MapLink[] };
-export type MapPerspective = { center: [number, number]; zoom: number; pitch: number; bearing: number; label?: string; exaggeration?: number };
+export type MapPoint = {
+  id: string;
+  label: string;
+  coordinates: [number, number];
+  kind?: "mountain" | "stay" | "airport" | "place" | "area" | "derived" | "location";
+  areaId?: string;
+  detail?: string;
+  dates?: string;
+  links?: MapLink[];
+};
+export type MapLine = {
+  id: string;
+  label: string;
+  coordinates: [number, number][];
+  transport?: RouteMode;
+  from?: string;
+  to?: string;
+  dates?: string;
+  links?: MapLink[];
+};
+export type MapPerspective = {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+  label?: string;
+  exaggeration?: number;
+};
 
 const terrainUrl = "https://tiles.mapterhorn.com/tilejson.json";
 const satelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const attribution = <><a href="https://openfreemap.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© OpenFreeMap</a> · <a href="https://openmaptiles.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© OpenStreetMap</a></>;
-function fitToData(instance: MapLibreMap, Bounds: typeof import("maplibre-gl").LngLatBounds, points: MapPoint[], lines: MapLine[], duration = 0) {
+const attribution = (
+  <>
+    <a href="https://openfreemap.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+      © OpenFreeMap
+    </a>{" "}
+    ·{" "}
+    <a href="https://openmaptiles.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+      OpenMapTiles
+    </a>{" "}
+    ·{" "}
+    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+      © OpenStreetMap
+    </a>
+  </>
+);
+function fitToData(
+  instance: MapLibreMap,
+  Bounds: typeof import("maplibre-gl").LngLatBounds,
+  points: MapPoint[],
+  lines: MapLine[],
+  duration = 0,
+) {
   const bounds = new Bounds();
   points.forEach((point) => bounds.extend(point.coordinates));
   lines.forEach((line) => line.coordinates.forEach((coordinate) => bounds.extend(coordinate)));
@@ -26,7 +72,23 @@ export function areaFocusPoints(area: MapPoint, points: MapPoint[]): MapPoint[] 
   return [area, ...points.filter((point) => point.kind === "location" && point.areaId === area.id)];
 }
 
-export function TripMap({ points, lines, owner = false, perspective, styleUrl = configuredMapStyleUrl, focus, onUseDerived }: { points: MapPoint[]; lines: MapLine[]; owner?: boolean; perspective?: MapPerspective; styleUrl?: string; focus?: { id: string; request: number } | null; onUseDerived?: (point: MapPoint) => void }) {
+export function TripMap({
+  points,
+  lines,
+  owner = false,
+  perspective,
+  styleUrl = configuredMapStyleUrl,
+  focus,
+  onUseDerived,
+}: {
+  points: MapPoint[];
+  lines: MapLine[];
+  owner?: boolean;
+  perspective?: MapPerspective;
+  styleUrl?: string;
+  focus?: { id: string; request: number } | null;
+  onUseDerived?: (point: MapPoint) => void;
+}) {
   const canvas = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -52,86 +114,245 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     setSelected(null);
     setSelectedKind(null);
     try {
-      if (!window.WebGLRenderingContext) { setError("Deze browser ondersteunt geen WebGL. Gebruik de route in woorden."); return; }
+      if (!window.WebGLRenderingContext) {
+        setError("Deze browser ondersteunt geen WebGL. Gebruik de route in woorden.");
+        return;
+      }
       const probe = document.createElement("canvas");
-      if (!probe.getContext("webgl2") && !probe.getContext("webgl")) { setError("Deze browser ondersteunt geen WebGL. Gebruik de route in woorden."); return; }
-    } catch { setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden."); return; }
-    void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal)]).then(([maplibregl, style]) => {
-      if (disposed || !canvas.current) return;
-      maplibregl.setWorkerUrl(mapWorkerUrl);
-      const created = new maplibregl.Map({ container: canvas.current, style, attributionControl: false, renderWorldCopies: false, maxPitch: 60, transformRequest: (url: string) => ({ url, credentials: "same-origin" }) });
-      instance = created;
-      map.current = instance;
-      created.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-      created.on("load", () => {
-        if (!instance || disposed) return;
-        const routeData: FeatureCollection<LineString> = { type: "FeatureCollection", features: lines.map((line) => ({ type: "Feature", properties: { id: line.id, transport: line.transport ?? "other" }, geometry: { type: "LineString", coordinates: line.coordinates } })) };
-        const pointData: FeatureCollection<Point> = { type: "FeatureCollection", features: points.map((point) => ({ type: "Feature", properties: { id: point.id, label: point.label, kind: point.kind ?? "place", areaId: point.areaId ?? "" }, geometry: { type: "Point", coordinates: point.coordinates } })) };
-        instance.addSource("routes", { type: "geojson", data: routeData });
-        instance.addSource("stops", { type: "geojson", data: pointData });
-        const routeStyles: Record<RouteMode, { color: string; width: number; dash?: number[] }> = {
-          flight: { color: "#ff7a59", width: 3, dash: [2, 2] },
-          train: { color: "#63b3ff", width: 4, dash: [2, 1.4] },
-          bus: { color: "#d4a017", width: 4 },
-          car: { color: "#e37749", width: 4 },
-          ferry: { color: "#3aa6b9", width: 4, dash: [3, 1.5] },
-          bike: { color: "#0f7760", width: 4, dash: [1.5, 1.2] },
-          walk: { color: "#7a8f3a", width: 3, dash: [0.6, 1.6] },
-          other: { color: "#9aa5b1", width: 3 },
-        };
-        for (const [transport, routeStyle] of Object.entries(routeStyles)) {
-          instance.addLayer({ id: `route-${transport}`, type: "line", source: "routes", filter: ["==", ["get", "transport"], transport], paint: { "line-color": routeStyle.color, "line-width": routeStyle.width, ...(routeStyle.dash ? { "line-dasharray": routeStyle.dash } : {}) }, layout: { "line-cap": "round", "line-join": "round" } });
-        }
-        instance.addLayer({ id: "route-hit", type: "line", source: "routes", paint: { "line-color": "#000000", "line-width": 22, "line-opacity": 0 } });
-        instance.addLayer({ id: "stop-halo", type: "circle", source: "stops", filter: ["!=", ["get", "kind"], "location"], paint: { "circle-radius": 12, "circle-color": "#63b3ff", "circle-opacity": 0.22 } });
-        instance.addLayer({ id: "stops", type: "circle", source: "stops", filter: ["!=", ["get", "kind"], "location"], paint: { "circle-color": ["match", ["get", "kind"], "mountain", "#6ee7c7", "stay", "#63b3ff", "airport", "#ffd166", "area", "#ff7a59", "derived", "#ffffff", "#ff7a59"], "circle-radius": 8, "circle-stroke-color": "#19342d", "circle-stroke-width": ["match", ["get", "kind"], "derived", 3, 2] } });
-        instance.addLayer({ id: "locations", type: "circle", source: "stops", filter: ["==", ["get", "kind"], "location"], minzoom: 9, paint: { "circle-radius": 5, "circle-color": "#63b3ff", "circle-stroke-color": "#19342d", "circle-stroke-width": 1 } });
-        instance.addLayer({ id: "focused-locations", type: "circle", source: "stops", filter: ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], ""]], maxzoom: 9, paint: { "circle-radius": 5, "circle-color": "#63b3ff", "circle-stroke-color": "#19342d", "circle-stroke-width": 1 } });
-        instance.addLayer({ id: "area-labels", type: "symbol", source: "stops", filter: ["in", ["get", "kind"], ["literal", ["area", "derived"]]], layout: { "text-field": ["get", "label"], "text-size": 13, "text-offset": [0, 1.3], "text-anchor": "top" }, paint: { "text-color": "#19342d", "text-halo-color": "#ffffff", "text-halo-width": 2 } });
-        instance.addLayer({ id: "selected-route", type: "line", source: "routes", filter: ["==", ["get", "id"], ""], paint: { "line-color": "#19342d", "line-width": 10, "line-opacity": 0.65 }, layout: { "line-cap": "round", "line-join": "round" } }, "stop-halo");
-        instance.addLayer({ id: "selected-stop", type: "circle", source: "stops", filter: ["==", ["get", "id"], ""], paint: { "circle-radius": 15, "circle-color": "#ffd166", "circle-opacity": 0.32, "circle-stroke-width": 2, "circle-stroke-color": "#ffd166" } });
-        fitToData(instance, maplibregl.LngLatBounds, points, lines);
-        instance.on("click", "stops", (event) => {
-          const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
-          if (point) selectPoint(point);
+      if (!probe.getContext("webgl2") && !probe.getContext("webgl")) {
+        setError("Deze browser ondersteunt geen WebGL. Gebruik de route in woorden.");
+        return;
+      }
+    } catch {
+      setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden.");
+      return;
+    }
+    void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal)])
+      .then(([maplibregl, style]) => {
+        if (disposed || !canvas.current) return;
+        maplibregl.setWorkerUrl(mapWorkerUrl);
+        const created = new maplibregl.Map({
+          container: canvas.current,
+          style,
+          attributionControl: false,
+          renderWorldCopies: false,
+          maxPitch: 60,
+          transformRequest: (url: string) => ({ url, credentials: "same-origin" }),
         });
-        instance.on("click", "locations", (event) => {
-          const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
-          if (point) selectPoint(point);
+        instance = created;
+        map.current = instance;
+        created.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+        created.on("load", () => {
+          if (!instance || disposed) return;
+          const routeData: FeatureCollection<LineString> = {
+            type: "FeatureCollection",
+            features: lines.map((line) => ({
+              type: "Feature",
+              properties: { id: line.id, transport: line.transport ?? "other" },
+              geometry: { type: "LineString", coordinates: line.coordinates },
+            })),
+          };
+          const pointData: FeatureCollection<Point> = {
+            type: "FeatureCollection",
+            features: points.map((point) => ({
+              type: "Feature",
+              properties: { id: point.id, label: point.label, kind: point.kind ?? "place", areaId: point.areaId ?? "" },
+              geometry: { type: "Point", coordinates: point.coordinates },
+            })),
+          };
+          instance.addSource("routes", { type: "geojson", data: routeData });
+          instance.addSource("stops", { type: "geojson", data: pointData });
+          const routeStyles: Record<RouteMode, { color: string; width: number; dash?: number[] }> = {
+            flight: { color: "#ff7a59", width: 3, dash: [2, 2] },
+            train: { color: "#63b3ff", width: 4, dash: [2, 1.4] },
+            bus: { color: "#d4a017", width: 4 },
+            car: { color: "#e37749", width: 4 },
+            ferry: { color: "#3aa6b9", width: 4, dash: [3, 1.5] },
+            bike: { color: "#0f7760", width: 4, dash: [1.5, 1.2] },
+            walk: { color: "#7a8f3a", width: 3, dash: [0.6, 1.6] },
+            other: { color: "#9aa5b1", width: 3 },
+          };
+          for (const [transport, routeStyle] of Object.entries(routeStyles)) {
+            instance.addLayer({
+              id: `route-${transport}`,
+              type: "line",
+              source: "routes",
+              filter: ["==", ["get", "transport"], transport],
+              paint: {
+                "line-color": routeStyle.color,
+                "line-width": routeStyle.width,
+                ...(routeStyle.dash ? { "line-dasharray": routeStyle.dash } : {}),
+              },
+              layout: { "line-cap": "round", "line-join": "round" },
+            });
+          }
+          instance.addLayer({
+            id: "route-hit",
+            type: "line",
+            source: "routes",
+            paint: { "line-color": "#000000", "line-width": 22, "line-opacity": 0 },
+          });
+          instance.addLayer({
+            id: "stop-halo",
+            type: "circle",
+            source: "stops",
+            filter: ["!=", ["get", "kind"], "location"],
+            paint: { "circle-radius": 12, "circle-color": "#63b3ff", "circle-opacity": 0.22 },
+          });
+          instance.addLayer({
+            id: "stops",
+            type: "circle",
+            source: "stops",
+            filter: ["!=", ["get", "kind"], "location"],
+            paint: {
+              "circle-color": [
+                "match",
+                ["get", "kind"],
+                "mountain",
+                "#6ee7c7",
+                "stay",
+                "#63b3ff",
+                "airport",
+                "#ffd166",
+                "area",
+                "#ff7a59",
+                "derived",
+                "#ffffff",
+                "#ff7a59",
+              ],
+              "circle-radius": 8,
+              "circle-stroke-color": "#19342d",
+              "circle-stroke-width": ["match", ["get", "kind"], "derived", 3, 2],
+            },
+          });
+          instance.addLayer({
+            id: "locations",
+            type: "circle",
+            source: "stops",
+            filter: ["==", ["get", "kind"], "location"],
+            minzoom: 9,
+            paint: {
+              "circle-radius": 5,
+              "circle-color": "#63b3ff",
+              "circle-stroke-color": "#19342d",
+              "circle-stroke-width": 1,
+            },
+          });
+          instance.addLayer({
+            id: "focused-locations",
+            type: "circle",
+            source: "stops",
+            filter: ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], ""]],
+            maxzoom: 9,
+            paint: {
+              "circle-radius": 5,
+              "circle-color": "#63b3ff",
+              "circle-stroke-color": "#19342d",
+              "circle-stroke-width": 1,
+            },
+          });
+          instance.addLayer({
+            id: "area-labels",
+            type: "symbol",
+            source: "stops",
+            filter: ["in", ["get", "kind"], ["literal", ["area", "derived"]]],
+            layout: { "text-field": ["get", "label"], "text-size": 13, "text-offset": [0, 1.3], "text-anchor": "top" },
+            paint: { "text-color": "#19342d", "text-halo-color": "#ffffff", "text-halo-width": 2 },
+          });
+          instance.addLayer(
+            {
+              id: "selected-route",
+              type: "line",
+              source: "routes",
+              filter: ["==", ["get", "id"], ""],
+              paint: { "line-color": "#19342d", "line-width": 10, "line-opacity": 0.65 },
+              layout: { "line-cap": "round", "line-join": "round" },
+            },
+            "stop-halo",
+          );
+          instance.addLayer({
+            id: "selected-stop",
+            type: "circle",
+            source: "stops",
+            filter: ["==", ["get", "id"], ""],
+            paint: {
+              "circle-radius": 15,
+              "circle-color": "#ffd166",
+              "circle-opacity": 0.32,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffd166",
+            },
+          });
+          fitToData(instance, maplibregl.LngLatBounds, points, lines);
+          instance.on("click", "stops", (event) => {
+            const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            if (point) selectPoint(point);
+          });
+          instance.on("click", "locations", (event) => {
+            const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            if (point) selectPoint(point);
+          });
+          instance.on("click", "focused-locations", (event) => {
+            const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            if (point) selectPoint(point);
+          });
+          instance.on("mouseenter", "stops", () => {
+            if (instance) instance.getCanvas().style.cursor = "pointer";
+          });
+          instance.on("mouseleave", "stops", () => {
+            if (instance) instance.getCanvas().style.cursor = "";
+          });
+          const routeLayers = ["route-hit"];
+          instance.on("click", routeLayers, (event) => {
+            // Markers sit above routes. Keep a tap on an overlapping marker a point selection.
+            if (
+              instance?.queryRenderedFeatures(event.point, { layers: ["stops", "locations", "focused-locations"] })
+                .length
+            )
+              return;
+            const line = lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            if (line) selectLine(line);
+          });
+          instance.on("mousemove", routeLayers, (event) => {
+            const line = lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            setHovered(line?.label ?? "");
+            if (instance) instance.getCanvas().style.cursor = "pointer";
+          });
+          instance.on("mouseleave", routeLayers, () => {
+            setHovered("");
+            if (instance) instance.getCanvas().style.cursor = "";
+          });
+          instance.on("mousemove", ["stops", "locations", "focused-locations"], (event) => {
+            setHovered(points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id)?.label ?? "");
+          });
+          instance.on("mouseleave", ["stops", "locations", "focused-locations"], () => setHovered(""));
+          setReady(true);
         });
-        instance.on("click", "focused-locations", (event) => {
-          const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
-          if (point) selectPoint(point);
+        created.on("error", () => {
+          if (!disposed)
+            setError(
+              created.isStyleLoaded()
+                ? "Kaarttegels konden niet volledig worden geladen. De route in woorden blijft beschikbaar."
+                : "De kaartstijl kon niet worden geladen. Gebruik de route in woorden.",
+            );
         });
-        instance.on("mouseenter", "stops", () => { if (instance) instance.getCanvas().style.cursor = "pointer"; });
-        instance.on("mouseleave", "stops", () => { if (instance) instance.getCanvas().style.cursor = ""; });
-        const routeLayers = ["route-hit"];
-        instance.on("click", routeLayers, (event) => {
-          // Markers sit above routes. Keep a tap on an overlapping marker a point selection.
-          if (instance?.queryRenderedFeatures(event.point, { layers: ["stops", "locations", "focused-locations"] }).length) return;
-          const line = lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
-          if (line) selectLine(line);
-        });
-        instance.on("mousemove", routeLayers, (event) => {
-          const line = lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
-          setHovered(line?.label ?? "");
-          if (instance) instance.getCanvas().style.cursor = "pointer";
-        });
-        instance.on("mouseleave", routeLayers, () => { setHovered(""); if (instance) instance.getCanvas().style.cursor = ""; });
-        instance.on("mousemove", ["stops", "locations", "focused-locations"], (event) => {
-          setHovered(points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id)?.label ?? "");
-        });
-        instance.on("mouseleave", ["stops", "locations", "focused-locations"], () => setHovered(""));
-        setReady(true);
+      })
+      .catch(() => {
+        if (!disposed) setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden.");
       });
-      created.on("error", () => { if (!disposed) setError(created.isStyleLoaded() ? "Kaarttegels konden niet volledig worden geladen. De route in woorden blijft beschikbaar." : "De kaartstijl kon niet worden geladen. Gebruik de route in woorden."); });
-    }).catch(() => { if (!disposed) setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden."); });
-    return () => { disposed = true; controller.abort(); instance?.remove(); map.current = null; };
+    return () => {
+      disposed = true;
+      controller.abort();
+      instance?.remove();
+      map.current = null;
+    };
   }, [points, lines, hasGeometry, styleUrl]);
 
   useEffect(() => {
-    if (ready && map.current?.getLayer("selected-stop")) map.current.setFilter("selected-stop", ["==", ["get", "id"], selectedPoint?.id ?? ""]);
-    if (ready && map.current?.getLayer("selected-route")) map.current.setFilter("selected-route", ["==", ["get", "id"], selectedLine?.id ?? ""]);
+    if (ready && map.current?.getLayer("selected-stop"))
+      map.current.setFilter("selected-stop", ["==", ["get", "id"], selectedPoint?.id ?? ""]);
+    if (ready && map.current?.getLayer("selected-route"))
+      map.current.setFilter("selected-route", ["==", ["get", "id"], selectedLine?.id ?? ""]);
   }, [ready, selectedPoint, selectedLine]);
 
   // An outside request (such as an agenda entry) selects a stop by id; the
@@ -148,30 +369,48 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
       if (terrain) {
         instance.setTerrain(null);
         instance.easeTo({ pitch: 0, duration: 700, essential: true });
-      }
-      else {
-        if (!instance.getSource("terrain")) instance.addSource("terrain", { type: "raster-dem", url: terrainUrl, tileSize: 512, encoding: "terrarium" });
+      } else {
+        if (!instance.getSource("terrain"))
+          instance.addSource("terrain", { type: "raster-dem", url: terrainUrl, tileSize: 512, encoding: "terrarium" });
         instance.setTerrain({ source: "terrain", exaggeration: perspective?.exaggeration ?? 1.35 });
         instance.easeTo({ pitch: Math.min(perspective?.pitch ?? 55, 60), duration: 700, essential: true });
       }
-      setTerrain(!terrain); setError("");
-    } catch { setError("3D-terrein kon niet worden geladen. De routekaart blijft beschikbaar."); }
+      setTerrain(!terrain);
+      setError("");
+    } catch {
+      setError("3D-terrein kon niet worden geladen. De routekaart blijft beschikbaar.");
+    }
   }
 
   function toggleSatellite() {
     const instance = map.current;
     if (!instance || !ready) return;
     try {
-      if (!instance.getSource("satellite")) instance.addSource("satellite", { type: "raster", tiles: [satelliteUrl], tileSize: 256, maxzoom: 19 });
+      if (!instance.getSource("satellite"))
+        instance.addSource("satellite", { type: "raster", tiles: [satelliteUrl], tileSize: 256, maxzoom: 19 });
       if (!instance.getLayer("satellite")) {
         const layers = instance.getStyle().layers;
-        const buildingLayer = layers.find((layer) => layer.type === "fill-extrusion" && layer["source-layer"] === "building");
+        const buildingLayer = layers.find(
+          (layer) => layer.type === "fill-extrusion" && layer["source-layer"] === "building",
+        );
         const beforeLayer = buildingLayer?.id ?? layers.find((layer) => layer.type === "symbol")?.id ?? "route-flight";
-        instance.addLayer({ id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" }, paint: { "raster-fade-duration": 150 } }, beforeLayer);
+        instance.addLayer(
+          {
+            id: "satellite",
+            type: "raster",
+            source: "satellite",
+            layout: { visibility: "none" },
+            paint: { "raster-fade-duration": 150 },
+          },
+          beforeLayer,
+        );
       }
       instance.setLayoutProperty("satellite", "visibility", satellite ? "none" : "visible");
-      setSatellite(!satellite); setError("");
-    } catch { setError("Satellietbeelden konden niet worden geladen. De routekaart blijft beschikbaar."); }
+      setSatellite(!satellite);
+      setError("");
+    } catch {
+      setError("Satellietbeelden konden niet worden geladen. De routekaart blijft beschikbaar.");
+    }
   }
 
   function selectPoint(point: MapPoint) {
@@ -180,17 +419,28 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     const instance = map.current;
     if (!instance) return;
     const focusedArea = owner && (point.kind === "area" || point.kind === "derived");
-    instance.setFilter("focused-locations", ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], focusedArea ? point.id : ""]]);
+    instance.setFilter("focused-locations", [
+      "all",
+      ["==", ["get", "kind"], "location"],
+      ["==", ["get", "areaId"], focusedArea ? point.id : ""],
+    ]);
     const group = focusedArea ? areaFocusPoints(point, points) : [point];
     if (group.length > 1) {
       const longitudes = group.map((member) => member.coordinates[0]);
       const latitudes = group.map((member) => member.coordinates[1]);
       instance.fitBounds(
-        [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
+        [
+          [Math.min(...longitudes), Math.min(...latitudes)],
+          [Math.max(...longitudes), Math.max(...latitudes)],
+        ],
         { padding: 60, maxZoom: 11, duration: 500, pitch: 0, bearing: 0 },
       );
     } else {
-      instance.flyTo({ center: point.coordinates, zoom: Math.max(instance.getZoom(), satellite ? 15 : 9), essential: true });
+      instance.flyTo({
+        center: point.coordinates,
+        zoom: Math.max(instance.getZoom(), satellite ? 15 : 9),
+        essential: true,
+      });
     }
   }
 
@@ -199,13 +449,28 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     setSelectedKind("line");
     const instance = map.current;
     if (!instance) return;
-    instance.setFilter("focused-locations", ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], ""]]);
-    let west = 180, east = -180, south = 90, north = -90;
+    instance.setFilter("focused-locations", [
+      "all",
+      ["==", ["get", "kind"], "location"],
+      ["==", ["get", "areaId"], ""],
+    ]);
+    let west = 180,
+      east = -180,
+      south = 90,
+      north = -90;
     for (const [longitude, latitude] of line.coordinates) {
-      west = Math.min(west, longitude); east = Math.max(east, longitude);
-      south = Math.min(south, latitude); north = Math.max(north, latitude);
+      west = Math.min(west, longitude);
+      east = Math.max(east, longitude);
+      south = Math.min(south, latitude);
+      north = Math.max(north, latitude);
     }
-    instance.fitBounds([[west, south], [east, north]], { padding: 45, maxZoom: 12, duration: 500 });
+    instance.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 45, maxZoom: 12, duration: 500 },
+    );
   }
 
   function resetFocus() {
@@ -213,22 +478,175 @@ export function TripMap({ points, lines, owner = false, perspective, styleUrl = 
     setSelectedKind(null);
     const instance = map.current;
     if (!instance) return;
-    instance.setFilter("focused-locations", ["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], ""]]);
-    void import("maplibre-gl").then(({ LngLatBounds }) => { if (map.current === instance) fitToData(instance, LngLatBounds, points, lines, 500); });
+    instance.setFilter("focused-locations", [
+      "all",
+      ["==", ["get", "kind"], "location"],
+      ["==", ["get", "areaId"], ""],
+    ]);
+    void import("maplibre-gl").then(({ LngLatBounds }) => {
+      if (map.current === instance) fitToData(instance, LngLatBounds, points, lines, 500);
+    });
   }
 
   const links = selectedPoint?.links ?? selectedLine?.links ?? [];
 
-  if (!hasGeometry) return <section className="card trip-map"><h3>Kaart</h3><p>Voor deze reis zijn nog geen kaartcoördinaten beschikbaar.</p></section>;
-  return <section className="card trip-map" aria-label="Reiskaart">
-    <h3>Kaart</h3>
-    <div className="trip-map-canvas-wrap"><div ref={canvas} className="trip-map-canvas" role="img" aria-label="Kaart met punten en routes" />{hovered && <span className="trip-map-hover" aria-hidden="true">{hovered}</span>}{error && !ready && <p className="trip-map-fallback">Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de puntknoppen.</p>}<div className="trip-map-attribution">{attribution}{terrain && <> · <a href="https://mapterhorn.com/attribution" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Mapterhorn</a></>}{satellite && <> · <a href="https://www.esri.com/" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">© Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community</>}</div></div>
-    {error && <p role="status" className="help">{error}</p>}
-    <div className="button-row"><button className="secondary compact" type="button" onClick={resetFocus}>Hele reis tonen</button><button className={`secondary compact map-layer-toggle ${terrain ? "active" : ""}`} type="button" aria-pressed={terrain} disabled={!ready} onClick={toggleTerrain}>{perspective?.label ?? "3D-terrein"}{terrain && " · aan"}</button><button className={`secondary compact map-layer-toggle ${satellite ? "active" : ""}`} type="button" aria-pressed={satellite} disabled={!ready} onClick={toggleSatellite}>Satelliet{satellite && " · aan"}</button></div>
-    {satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
-    <p className="trip-map-privacy">Kaarttegels tonen de bekeken regio aan OpenFreeMap. 3D-terrein vraagt na inschakeling hoogtegegevens op bij Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri.</p>
-    {(selectedPoint || selectedLine) && <div className="trip-map-detail" aria-live="polite"><strong>{selectedPoint?.label ?? selectedLine?.label}</strong>{(selectedLine?.from || selectedLine?.to) && <p>{selectedLine.from ?? "Vertrek onbekend"} → {selectedLine.to ?? "Aankomst onbekend"}</p>}{selectedLine?.transport && <p>{ROUTE_MODE_LABELS[selectedLine.transport]}</p>}{(selectedPoint?.detail || selectedPoint?.dates || selectedLine?.dates) && <p>{[selectedPoint?.detail, selectedPoint?.dates, selectedLine?.dates].filter(Boolean).join(" · ")}</p>}{links.length > 0 && <ul>{links.map((link, index) => <li key={`${link.label}-${index}`}>{link.href ? <a href={link.href}>{link.label}</a> : <button className="secondary compact" type="button" onClick={link.onOpen}>{link.label}</button>}</li>)}</ul>}{selectedPoint?.kind === "derived" && onUseDerived && <button className="secondary compact" type="button" onClick={() => onUseDerived(selectedPoint)}>Gebruik als punt</button>}</div>}
-    {points.length > 0 && <div className="trip-map-stops"><h4>Punten op de kaart</h4><ol>{points.map((point) => <li key={point.id}><button className="secondary compact" type="button" aria-pressed={selectedKind === "point" && selected === point.id} onClick={() => selectPoint(point)}>{point.label}</button></li>)}</ol></div>}
-    {lines.length > 0 && <div className="trip-map-words"><h4>Route in woorden</h4><ol>{lines.map((line) => <li key={line.id}><button className="secondary compact" type="button" aria-pressed={selectedKind === "line" && selected === line.id} onClick={() => selectLine(line)}>{line.from && line.to ? `${line.from} → ${line.to} · ` : ""}{line.label}</button></li>)}</ol></div>}
-  </section>;
+  if (!hasGeometry)
+    return (
+      <section className="card trip-map">
+        <h3>Kaart</h3>
+        <p>Voor deze reis zijn nog geen kaartcoördinaten beschikbaar.</p>
+      </section>
+    );
+  return (
+    <section className="card trip-map" aria-label="Reiskaart">
+      <h3>Kaart</h3>
+      <div className="trip-map-canvas-wrap">
+        <div ref={canvas} className="trip-map-canvas" role="img" aria-label="Kaart met punten en routes" />
+        {hovered && (
+          <span className="trip-map-hover" aria-hidden="true">
+            {hovered}
+          </span>
+        )}
+        {error && !ready && (
+          <p className="trip-map-fallback">
+            Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de puntknoppen.
+          </p>
+        )}
+        <div className="trip-map-attribution">
+          {attribution}
+          {terrain && (
+            <>
+              {" "}
+              ·{" "}
+              <a
+                href="https://mapterhorn.com/attribution"
+                target="_blank"
+                rel="noreferrer"
+                referrerPolicy="no-referrer"
+              >
+                © Mapterhorn
+              </a>
+            </>
+          )}
+          {satellite && (
+            <>
+              {" "}
+              ·{" "}
+              <a href="https://www.esri.com/" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+                © Esri
+              </a>
+              , Maxar, Earthstar Geographics, and the GIS User Community
+            </>
+          )}
+        </div>
+      </div>
+      {error && (
+        <p role="status" className="help">
+          {error}
+        </p>
+      )}
+      <div className="button-row">
+        <button className="secondary compact" type="button" onClick={resetFocus}>
+          Hele reis tonen
+        </button>
+        <button
+          className={cn("secondary compact map-layer-toggle", terrain && "active")}
+          type="button"
+          aria-pressed={terrain}
+          disabled={!ready}
+          onClick={toggleTerrain}
+        >
+          {perspective?.label ?? "3D-terrein"}
+          {terrain && " · aan"}
+        </button>
+        <button
+          className={cn("secondary compact map-layer-toggle", satellite && "active")}
+          type="button"
+          aria-pressed={satellite}
+          disabled={!ready}
+          onClick={toggleSatellite}
+        >
+          Satelliet{satellite && " · aan"}
+        </button>
+      </div>
+      {satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
+      <p className="trip-map-privacy">
+        Kaarttegels tonen de bekeken regio aan OpenFreeMap. 3D-terrein vraagt na inschakeling hoogtegegevens op bij
+        Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri.
+      </p>
+      {(selectedPoint || selectedLine) && (
+        <div className="trip-map-detail" aria-live="polite">
+          <strong>{selectedPoint?.label ?? selectedLine?.label}</strong>
+          {(selectedLine?.from || selectedLine?.to) && (
+            <p>
+              {selectedLine.from ?? "Vertrek onbekend"} → {selectedLine.to ?? "Aankomst onbekend"}
+            </p>
+          )}
+          {selectedLine?.transport && <p>{ROUTE_MODE_LABELS[selectedLine.transport]}</p>}
+          {(selectedPoint?.detail || selectedPoint?.dates || selectedLine?.dates) && (
+            <p>{[selectedPoint?.detail, selectedPoint?.dates, selectedLine?.dates].filter(Boolean).join(" · ")}</p>
+          )}
+          {links.length > 0 && (
+            <ul>
+              {links.map((link, index) => (
+                <li key={`${link.label}-${index}`}>
+                  {link.href ? (
+                    <a href={link.href}>{link.label}</a>
+                  ) : (
+                    <button className="secondary compact" type="button" onClick={link.onOpen}>
+                      {link.label}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {selectedPoint?.kind === "derived" && onUseDerived && (
+            <button className="secondary compact" type="button" onClick={() => onUseDerived(selectedPoint)}>
+              Gebruik als punt
+            </button>
+          )}
+        </div>
+      )}
+      {points.length > 0 && (
+        <div className="trip-map-stops">
+          <h4>Punten op de kaart</h4>
+          <ol>
+            {points.map((point) => (
+              <li key={point.id}>
+                <button
+                  className="secondary compact"
+                  type="button"
+                  aria-pressed={selectedKind === "point" && selected === point.id}
+                  onClick={() => selectPoint(point)}
+                >
+                  {point.label}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {lines.length > 0 && (
+        <div className="trip-map-words">
+          <h4>Route in woorden</h4>
+          <ol>
+            {lines.map((line) => (
+              <li key={line.id}>
+                <button
+                  className="secondary compact"
+                  type="button"
+                  aria-pressed={selectedKind === "line" && selected === line.id}
+                  onClick={() => selectLine(line)}
+                >
+                  {line.from && line.to ? `${line.from} → ${line.to} · ` : ""}
+                  {line.label}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </section>
+  );
 }

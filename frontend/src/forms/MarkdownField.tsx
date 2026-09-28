@@ -41,20 +41,42 @@ type RenderResult = { html: string | null; text: string | null };
  */
 function MarkdownPreview({ source, format }: { source: string; format: MarkdownFormat }) {
   const owner = useOwner();
-  const [state, setState] = useState<{ kind: "loading" } | { kind: "ready"; result: RenderResult } | { kind: "error"; message: string }>({ kind: "loading" });
+  const [state, setState] = useState<
+    { kind: "loading" } | { kind: "ready"; result: RenderResult } | { kind: "error"; message: string }
+  >({ kind: "loading" });
 
   useEffect(() => {
-    if (!owner) { setState({ kind: "error", message: "Meld je aan om een voorbeeld te zien." }); return; }
+    if (!owner) {
+      setState({ kind: "error", message: "Meld je aan om een voorbeeld te zien." });
+      return;
+    }
     const controller = new AbortController();
     setState({ kind: "loading" });
-    ownerRequest<RenderResult>(owner.session, "/api/markdown/render", "Het voorbeeld kon niet worden geladen.", { method: "POST", body: { source, format }, signal: controller.signal })
+    ownerRequest<RenderResult>(owner.session, "/api/markdown/render", "Het voorbeeld kon niet worden geladen.", {
+      method: "POST",
+      body: { source, format },
+      signal: controller.signal,
+    })
       .then((result) => setState({ kind: "ready", result }))
-      .catch((error: unknown) => { if (!controller.signal.aborted) setState({ kind: "error", message: errorMessage(error, "Het voorbeeld kon niet worden geladen.") }); });
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted)
+          setState({ kind: "error", message: errorMessage(error, "Het voorbeeld kon niet worden geladen.") });
+      });
     return () => controller.abort();
   }, [owner, source, format]);
 
-  if (state.kind === "loading") return <p className="help" role="status">Voorbeeld laden…</p>;
-  if (state.kind === "error") return <p className="form-error" role="alert">{state.message}</p>;
+  if (state.kind === "loading")
+    return (
+      <p className="help" role="status">
+        Voorbeeld laden…
+      </p>
+    );
+  if (state.kind === "error")
+    return (
+      <p className="form-error" role="alert">
+        {state.message}
+      </p>
+    );
   if (!state.result.html) return <p className="help">Nog niets om te tonen.</p>;
   return <Markdown html={state.result.html} text={source} />;
 }
@@ -63,9 +85,23 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
  * A textarea for a Markdown field with a small snippet toolbar and a Preview tab rendered by the
  * server. No WYSIWYG: the owner writes the source, which is what is stored.
  */
-export function MarkdownField({ field, label, optional, format = "markdown", ...input }: { field: AnyFieldApi; label: string; optional?: string | boolean; format?: MarkdownFormat } & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange" | "onBlur" | "name" | "id">) {
+export function MarkdownField({
+  field,
+  label,
+  optional,
+  format = "markdown",
+  ...input
+}: { field: AnyFieldApi; label: string; optional?: string | boolean; format?: MarkdownFormat } & Omit<
+  TextareaHTMLAttributes<HTMLTextAreaElement>,
+  "value" | "onChange" | "onBlur" | "name" | "id"
+>) {
   const server = useContext(ServerFieldErrors)[field.name];
-  const errors = [...field.state.meta.errors.map((error: unknown) => typeof error === "string" ? error : (error as { message?: string } | null)?.message ?? ""), server ?? ""].filter(Boolean);
+  const errors = [
+    ...field.state.meta.errors.map((error: unknown) =>
+      typeof error === "string" ? error : ((error as { message?: string } | null)?.message ?? ""),
+    ),
+    server ?? "",
+  ].filter(Boolean);
   const message = errors[0] ?? null;
   const id = useId();
   const describedBy = `${id}-error`;
@@ -86,25 +122,74 @@ export function MarkdownField({ field, label, optional, format = "markdown", ...
 
   const apply = (snippet: MarkdownSnippet) => {
     const element = textarea.current;
-    const edit = applyMarkdownSnippet(value, element?.selectionStart ?? value.length, element?.selectionEnd ?? value.length, snippet);
+    const edit = applyMarkdownSnippet(
+      value,
+      element?.selectionStart ?? value.length,
+      element?.selectionEnd ?? value.length,
+      snippet,
+    );
     pendingSelection.current = [edit.selectionStart, edit.selectionEnd];
     field.handleChange(edit.value);
   };
 
-  return <div className="field markdown-field">
-    <label htmlFor={id}>{label}{optionalNote(optional)}</label>
-    <div className="markdown-editor-bar">
-      <div className="markdown-tabs" role="group" aria-label={`Weergave van ${label.toLowerCase()}`}>
-        <button type="button" className="compact" aria-pressed={!previewing} onClick={() => setPreviewing(false)}>Schrijven</button>
-        <button type="button" className="compact" aria-pressed={previewing} onClick={() => setPreviewing(true)}>Voorbeeld</button>
+  return (
+    <div className="field">
+      <label htmlFor={id}>
+        {label}
+        {optionalNote(optional)}
+      </label>
+      <div className="markdown-editor-bar">
+        <div className="markdown-tabs" role="group" aria-label={`Weergave van ${label.toLowerCase()}`}>
+          <button type="button" className="compact" aria-pressed={!previewing} onClick={() => setPreviewing(false)}>
+            Schrijven
+          </button>
+          <button type="button" className="compact" aria-pressed={previewing} onClick={() => setPreviewing(true)}>
+            Voorbeeld
+          </button>
+        </div>
+        {!previewing && SNIPPETS[format].length > 0 && (
+          <div className="markdown-toolbar" role="toolbar" aria-label={`Opmaak voor ${label.toLowerCase()}`}>
+            {SNIPPETS[format].map(({ snippet, label: name, text }) => (
+              <button
+                key={snippet}
+                type="button"
+                className={`compact secondary markdown-snippet-${snippet}`}
+                aria-label={name}
+                title={name}
+                onClick={() => apply(snippet)}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      {!previewing && SNIPPETS[format].length > 0 && <div className="markdown-toolbar" role="toolbar" aria-label={`Opmaak voor ${label.toLowerCase()}`}>
-        {SNIPPETS[format].map(({ snippet, label: name, text }) => <button key={snippet} type="button" className={`compact secondary markdown-snippet-${snippet}`} aria-label={name} title={name} onClick={() => apply(snippet)}>{text}</button>)}
-      </div>}
+      <textarea
+        {...rest}
+        ref={textarea}
+        id={id}
+        name={field.name}
+        hidden={previewing}
+        value={value}
+        aria-required={required || undefined}
+        aria-invalid={message ? true : undefined}
+        aria-describedby={[hint, message ? describedBy : null].filter(Boolean).join(" ")}
+        onBlur={field.handleBlur}
+        onChange={(event) => field.handleChange(event.target.value)}
+      />
+      {previewing && (
+        <div className="markdown-preview" aria-live="polite">
+          <MarkdownPreview source={value} format={format} />
+        </div>
+      )}
+      <span id={hint} className="markdown-hint">
+        {HINTS[format]}
+      </span>
+      {message && (
+        <span id={describedBy} className="field-error" role="alert">
+          {message}
+        </span>
+      )}
     </div>
-    <textarea {...rest} ref={textarea} id={id} name={field.name} hidden={previewing} value={value} aria-required={required || undefined} aria-invalid={message ? true : undefined} aria-describedby={[hint, message ? describedBy : null].filter(Boolean).join(" ")} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)} />
-    {previewing && <div className="markdown-preview" aria-live="polite"><MarkdownPreview source={value} format={format} /></div>}
-    <span id={hint} className="markdown-hint">{HINTS[format]}</span>
-    {message && <span id={describedBy} className="field-error" role="alert">{message}</span>}
-  </div>;
+  );
 }

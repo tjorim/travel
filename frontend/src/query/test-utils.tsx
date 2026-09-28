@@ -15,7 +15,10 @@ export function testToken(subject = "owner-1"): string {
 export function testClient(options?: Parameters<typeof createOwnerQueryClient>[0]) {
   const client = createOwnerQueryClient(options);
   // Keep failing reads final and fast in tests.
-  client.setDefaultOptions({ ...client.getDefaultOptions(), queries: { ...client.getDefaultOptions().queries, retry: false } });
+  client.setDefaultOptions({
+    ...client.getDefaultOptions(),
+    queries: { ...client.getDefaultOptions().queries, retry: false },
+  });
   return client;
 }
 
@@ -26,7 +29,15 @@ export function renderWithOwner(ui: ReactElement, client = testClient()) {
 /** Renders a route tree behind a memory-history router, for pages that read params, search or navigation state. */
 export function renderRoutesWithOwner(routeTree: AnyRoute, initialEntries: string[], client = testClient()) {
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries }) });
-  return { client, router, ...render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>) };
+  return {
+    client,
+    router,
+    ...render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 /** jsdom has no object URLs; give a test one and remove it again with `restoreObjectUrls`. */

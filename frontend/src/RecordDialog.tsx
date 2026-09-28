@@ -13,7 +13,15 @@ type RecordDialogProps = {
 /** A bounded owner-only record editor. Native dialogs provide the focus trap and
  * return focus to the control that opened them; the CSS turns it into a sheet
  * on narrow screens. */
-export function RecordDialog({ open, title, children, className = "", dirty = false, onDismiss, onAfterClose }: RecordDialogProps) {
+export function RecordDialog({
+  open,
+  title,
+  children,
+  className = "",
+  dirty = false,
+  onDismiss,
+  onAfterClose,
+}: RecordDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const scrollPosition = useRef({ x: 0, y: 0 });
@@ -33,27 +41,63 @@ export function RecordDialog({ open, title, children, className = "", dirty = fa
       if (typeof element.close === "function") element.close();
       else element.removeAttribute("open");
       origin.current?.focus({ preventScroll: true });
-      if (scrollPosition.current.x || scrollPosition.current.y) window.scrollTo(scrollPosition.current.x, scrollPosition.current.y);
+      if (scrollPosition.current.x || scrollPosition.current.y)
+        window.scrollTo(scrollPosition.current.x, scrollPosition.current.y);
     }
   }, [open]);
 
   function dismiss() {
-    if (dirty) { setConfirmDiscard(true); return; }
+    if (dirty) {
+      setConfirmDiscard(true);
+      return;
+    }
     onDismiss();
   }
 
-  return <dialog ref={dialog} className={`record-dialog ${className}`.trim()} aria-labelledby={headingId} onCancel={(event) => { event.preventDefault(); dismiss(); }} onClose={() => { if (open) onDismiss(); onAfterClose?.(); }}>
-    <div className="record-dialog-header">
-      <h2 id={headingId}>{title}</h2>
-      <button className="secondary compact" type="button" aria-label={`${title} sluiten`} onClick={dismiss}>Sluiten</button>
-    </div>
-    {children}
-    {confirmDiscard && <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby={`${headingId}-discard`}>
-      <h3 id={`${headingId}-discard`}>Wijzigingen verwerpen?</h3>
-      <p>Je niet-opgeslagen wijzigingen gaan verloren.</p>
-      <div className="button-row"><button className="danger compact" type="button" onClick={() => { setConfirmDiscard(false); onDismiss(); }}>Wijzigingen verwerpen</button><button className="secondary compact" type="button" autoFocus onClick={() => setConfirmDiscard(false)}>Verder bewerken</button></div>
-    </div>}
-  </dialog>;
+  return (
+    <dialog
+      ref={dialog}
+      className={`record-dialog ${className}`.trim()}
+      aria-labelledby={headingId}
+      onCancel={(event) => {
+        event.preventDefault();
+        dismiss();
+      }}
+      onClose={() => {
+        if (open) onDismiss();
+        onAfterClose?.();
+      }}
+    >
+      <div className="record-dialog-header">
+        <h2 id={headingId}>{title}</h2>
+        <button className="secondary compact" type="button" aria-label={`${title} sluiten`} onClick={dismiss}>
+          Sluiten
+        </button>
+      </div>
+      {children}
+      {confirmDiscard && (
+        <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby={`${headingId}-discard`}>
+          <h3 id={`${headingId}-discard`}>Wijzigingen verwerpen?</h3>
+          <p>Je niet-opgeslagen wijzigingen gaan verloren.</p>
+          <div className="button-row">
+            <button
+              className="danger compact"
+              type="button"
+              onClick={() => {
+                setConfirmDiscard(false);
+                onDismiss();
+              }}
+            >
+              Wijzigingen verwerpen
+            </button>
+            <button className="secondary compact" type="button" autoFocus onClick={() => setConfirmDiscard(false)}>
+              Verder bewerken
+            </button>
+          </div>
+        </div>
+      )}
+    </dialog>
+  );
 }
 
 type DeleteConfirmationProps = {
@@ -64,11 +108,26 @@ type DeleteConfirmationProps = {
   onConfirm: () => void;
 };
 
-export function DeleteConfirmation({ title, description = "Deze actie kan niet ongedaan worden gemaakt.", confirmLabel = "Verwijderen", onCancel, onConfirm }: DeleteConfirmationProps) {
+export function DeleteConfirmation({
+  title,
+  description = "Deze actie kan niet ongedaan worden gemaakt.",
+  confirmLabel = "Verwijderen",
+  onCancel,
+  onConfirm,
+}: DeleteConfirmationProps) {
   const headingId = useId();
-  return <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby={headingId}>
-    <h3 id={headingId}>{title}</h3>
-    <p>{description}</p>
-    <div className="button-row"><button className="danger compact" type="button" autoFocus onClick={onConfirm}>{confirmLabel}</button><button className="secondary compact" type="button" onClick={onCancel}>Annuleren</button></div>
-  </div>;
+  return (
+    <div className="record-confirm" role="alertdialog" aria-modal="true" aria-labelledby={headingId}>
+      <h3 id={headingId}>{title}</h3>
+      <p>{description}</p>
+      <div className="button-row">
+        <button className="danger compact" type="button" autoFocus onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+        <button className="secondary compact" type="button" onClick={onCancel}>
+          Annuleren
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -52,7 +52,11 @@ export function readSession(): TrackerSession | null {
   if (!stored) return null;
   try {
     const session = JSON.parse(stored) as TrackerSession;
-    if (typeof session.accessToken !== "string" || typeof session.expiresAt !== "number" || session.expiresAt <= Date.now()) {
+    if (
+      typeof session.accessToken !== "string" ||
+      typeof session.expiresAt !== "number" ||
+      session.expiresAt <= Date.now()
+    ) {
       sessionStorage.removeItem(storageKey);
       return null;
     }
@@ -79,7 +83,10 @@ export function shouldRestoreSession(): boolean {
 export async function beginSignIn(returnPath: string, { silent = false }: SignInOptions = {}): Promise<void> {
   const codeVerifier = randomValue();
   const state = randomValue();
-  sessionStorage.setItem(transactionKey, JSON.stringify({ codeVerifier, returnPath: trackerPath(returnPath), state, silent }));
+  sessionStorage.setItem(
+    transactionKey,
+    JSON.stringify({ codeVerifier, returnPath: trackerPath(returnPath), state, silent }),
+  );
   if (silent) sessionStorage.setItem(silentRestoreKey, "1");
   else sessionStorage.removeItem(silentRestoreKey);
 

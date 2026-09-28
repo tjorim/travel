@@ -36,19 +36,30 @@ const navigableCollections = ["places", "stays"] as const;
 export function isProjection(value: unknown, audience: Audience): value is Projection {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const document = value as Record<string, unknown>;
-  return document.schema_version === (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1")
-    && (document.title === null || typeof document.title === "string")
-    && (document.summary === null || typeof document.summary === "string")
-    && (document.summary_html == null || typeof document.summary_html === "string")
-    && (document.summary_text == null || typeof document.summary_text === "string")
-    && (document.dates === null || (!!document.dates && typeof document.dates === "object" && !Array.isArray(document.dates)))
-    && collections.every((key) => Array.isArray(document[key]) && (document[key] as unknown[]).every(
-      (item) => item !== null && typeof item === "object" && !Array.isArray(item) && typeof (item as ProjectionItem).id === "string",
-    ));
+  return (
+    document.schema_version === (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1") &&
+    (document.title === null || typeof document.title === "string") &&
+    (document.summary === null || typeof document.summary === "string") &&
+    (document.summary_html == null || typeof document.summary_html === "string") &&
+    (document.summary_text == null || typeof document.summary_text === "string") &&
+    (document.dates === null ||
+      (!!document.dates && typeof document.dates === "object" && !Array.isArray(document.dates))) &&
+    collections.every(
+      (key) =>
+        Array.isArray(document[key]) &&
+        (document[key] as unknown[]).every(
+          (item) =>
+            item !== null &&
+            typeof item === "object" &&
+            !Array.isArray(item) &&
+            typeof (item as ProjectionItem).id === "string",
+        ),
+    )
+  );
 }
 
 function text(item: ProjectionItem, field: string): string | null {
-  return typeof item[field] === "string" && item[field] ? item[field] as string : null;
+  return typeof item[field] === "string" && item[field] ? (item[field] as string) : null;
 }
 
 function place(value: unknown): string | null {
@@ -59,7 +70,13 @@ function place(value: unknown): string | null {
 
 function precision(item: ProjectionItem): string | null {
   const value = text(item, "date_precision");
-  return value === "day" ? "Dagprecisie" : value === "month" ? "Maandprecisie" : value === "year" ? "Jaarprecisie" : null;
+  return value === "day"
+    ? "Dagprecisie"
+    : value === "month"
+      ? "Maandprecisie"
+      : value === "year"
+        ? "Jaarprecisie"
+        : null;
 }
 
 function transportPlace(value: unknown): string | null {
@@ -68,7 +85,7 @@ function transportPlace(value: unknown): string | null {
   const area = [text(item, "label"), text(item, "region")];
   return area.some(Boolean)
     ? [...area, text(item, "country_code")].filter(Boolean).join(" · ")
-    : ([text(item, "locality"), text(item, "country_code")].filter(Boolean).join(" · ") || null);
+    : [text(item, "locality"), text(item, "country_code")].filter(Boolean).join(" · ") || null;
 }
 
 function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"): string | null {
@@ -76,33 +93,51 @@ function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"):
   if (!value || !dayjs(value).isValid()) return null;
   const timeZone = text(item, endpoint === "departure" ? "departure_timezone" : "arrival_timezone");
   try {
-    return dayjs(value).tz(timeZone ?? undefined).format("D MMM YYYY, HH:mm");
+    return dayjs(value)
+      .tz(timeZone ?? undefined)
+      .format("D MMM YYYY, HH:mm");
   } catch {
     return dayjs(value).format("D MMM YYYY, HH:mm");
   }
 }
 
 const transportKinds: Record<string, string> = { ...ROUTE_MODE_LABELS, other: "Vervoer" };
-const transportStatuses: Record<string, string> = { planned: "Gepland", booked: "Geboekt", confirmed: "Bevestigd", cancelled: "Geannuleerd" };
+const transportStatuses: Record<string, string> = {
+  planned: "Gepland",
+  booked: "Geboekt",
+  confirmed: "Bevestigd",
+  cancelled: "Geannuleerd",
+};
 
 function storyDate(item: ProjectionItem, field = "story_date"): string | null {
   const value = text(item, field);
-  const precisionValue = text(item, "date_precision") ?? ({ 4: "year", 7: "month", 10: "day" } as Record<number, string>)[value?.length ?? 0];
+  const precisionValue =
+    text(item, "date_precision") ??
+    ({ 4: "year", 7: "month", 10: "day" } as Record<number, string>)[value?.length ?? 0];
   if (!value || !/^(\d{4}|\d{4}-\d{2}|\d{4}-\d{2}-\d{2})$/.test(value)) return null;
-  if ((precisionValue === "day" && value.length !== 10) || (precisionValue === "month" && value.length !== 7) || (precisionValue === "year" && value.length !== 4)) return null;
+  if (
+    (precisionValue === "day" && value.length !== 10) ||
+    (precisionValue === "month" && value.length !== 7) ||
+    (precisionValue === "year" && value.length !== 4)
+  )
+    return null;
   const [year, month, day] = value.split("-").map(Number);
   if (month && (month < 1 || month > 12)) return null;
   const yearMonth = dayjs.utc(`${year}-${String(month ?? 1).padStart(2, "0")}-01`);
   if (day && (day < 1 || day > yearMonth.daysInMonth())) return null;
   const date = day ? yearMonth.date(day) : yearMonth;
-  return precisionValue === "year" ? date.format("YYYY") : precisionValue === "month" ? date.format("MMMM YYYY") : date.format("D MMMM YYYY");
+  return precisionValue === "year"
+    ? date.format("YYYY")
+    : precisionValue === "month"
+      ? date.format("MMMM YYYY")
+      : date.format("D MMMM YYYY");
 }
 
 /** "november 2026 – december 2026" at whatever precision the owner shared. */
 export function tripDates(dates: ProjectionItem | null | undefined): string | null {
   if (!dates) return null;
   const [start, end] = [storyDate(dates, "starts_on"), storyDate(dates, "ends_on")];
-  return start && end && start !== end ? `${start} – ${end}` : start ?? end;
+  return start && end && start !== end ? `${start} – ${end}` : (start ?? end);
 }
 
 /** A shared visit time: local at the visit, with the viewer's own time when that differs. */
@@ -132,16 +167,44 @@ function focus(item: ProjectionItem, field: "focal_x" | "focal_y"): number {
 
 function hasFileMarker(item: ProjectionItem, field: "image" | "video" | "file"): boolean {
   const marker = item[field];
-  return !!marker && typeof marker === "object" && !Array.isArray(marker) && (marker as { id?: unknown }).id === item.id;
+  return (
+    !!marker && typeof marker === "object" && !Array.isArray(marker) && (marker as { id?: unknown }).id === item.id
+  );
 }
 
-function ResourceSection({ title, items, render, anchor }: { title: string; items: ProjectionItem[]; render: (item: ProjectionItem) => ReactNode; anchor: string }) {
+function ResourceSection({
+  title,
+  items,
+  render,
+  anchor,
+}: {
+  title: string;
+  items: ProjectionItem[];
+  render: (item: ProjectionItem) => ReactNode;
+  anchor: string;
+}) {
   if (!items.length) return null;
-  return <section className="card visitor-section" aria-label={title}><h2>{title}</h2><ul className="visitor-items">{items.map((item) => <li key={item.id} id={`${anchor}-${item.id}`}>{render(item)}</li>)}</ul></section>;
+  return (
+    <section className="card visitor-section" aria-label={title}>
+      <h2>{title}</h2>
+      <ul className="visitor-items">
+        {items.map((item) => (
+          <li key={item.id} id={`${anchor}-${item.id}`}>
+            {render(item)}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 function routeHeading(item: ProjectionItem): string {
-  return text(item, "label") ?? ([text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ") || transportKinds[text(item, "mode") ?? ""] || "Route");
+  return (
+    text(item, "label") ??
+    ([text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ") ||
+      transportKinds[text(item, "mode") ?? ""] ||
+      "Route")
+  );
 }
 
 function RouteSummary({ item }: { item: ProjectionItem }) {
@@ -153,14 +216,48 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
   const departsOn = storyDate({ ...item, date_precision: "day" }, "departs_on");
   const mode = transportKinds[text(item, "mode") ?? ""];
   const carrier = [text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ");
-  return <article><h3>{routeHeading(item)}</h3>{(departure || arrival) && <p>{departure ?? "Vertrek onbekend"} → {arrival ?? "Aankomst onbekend"}</p>}<p>{[mode, carrier || null, text(item, "status") ? transportStatuses[text(item, "status")!] ?? text(item, "status") : null].filter(Boolean).join(" · ")}</p>{departsAt || arrivesAt ? <p>{departsAt ?? "Vertrektijd onbekend"} → {arrivesAt ?? "Aankomsttijd onbekend"}</p> : departsOn && <p>{departsOn}</p>}</article>;
+  return (
+    <article>
+      <h3>{routeHeading(item)}</h3>
+      {(departure || arrival) && (
+        <p>
+          {departure ?? "Vertrek onbekend"} → {arrival ?? "Aankomst onbekend"}
+        </p>
+      )}
+      <p>
+        {[
+          mode,
+          carrier || null,
+          text(item, "status") ? (transportStatuses[text(item, "status")!] ?? text(item, "status")) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
+      {departsAt || arrivesAt ? (
+        <p>
+          {departsAt ?? "Vertrektijd onbekend"} → {arrivesAt ?? "Aankomsttijd onbekend"}
+        </p>
+      ) : (
+        departsOn && <p>{departsOn}</p>
+      )}
+    </article>
+  );
 }
 
-const transportMode = (value: string | null | undefined): RouteMode => value && value in ROUTE_MODE_LABELS ? value as RouteMode : "other";
+const transportMode = (value: string | null | undefined): RouteMode =>
+  value && value in ROUTE_MODE_LABELS ? (value as RouteMode) : "other";
 
 const validPoint = (values: Record<string, unknown>): [number, number] | null => {
   const { latitude, longitude } = values;
-  if (typeof latitude !== "number" || typeof longitude !== "number" || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+  if (
+    typeof latitude !== "number" ||
+    typeof longitude !== "number" ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    Math.abs(latitude) > 90 ||
+    Math.abs(longitude) > 180
+  )
+    return null;
   return [longitude, latitude];
 };
 
@@ -172,8 +269,22 @@ function routeLines(projection: Projection): MapLine[] {
     const geometry = item.geometry;
     if (geometry && typeof geometry === "object" && !Array.isArray(geometry)) {
       const line = geometry as { type?: unknown; coordinates?: unknown };
-      if (line.type === "LineString" && Array.isArray(line.coordinates) && line.coordinates.length >= 2 && line.coordinates.every((point) => Array.isArray(point) && point.length === 2 && point.every((value) => typeof value === "number" && Number.isFinite(value)) && Math.abs(point[0]) <= 180 && Math.abs(point[1]) <= 90)) {
-        return [{ id: item.id, label: routeHeading(item), coordinates: line.coordinates as [number, number][], transport }];
+      if (
+        line.type === "LineString" &&
+        Array.isArray(line.coordinates) &&
+        line.coordinates.length >= 2 &&
+        line.coordinates.every(
+          (point) =>
+            Array.isArray(point) &&
+            point.length === 2 &&
+            point.every((value) => typeof value === "number" && Number.isFinite(value)) &&
+            Math.abs(point[0]) <= 180 &&
+            Math.abs(point[1]) <= 90,
+        )
+      ) {
+        return [
+          { id: item.id, label: routeHeading(item), coordinates: line.coordinates as [number, number][], transport },
+        ];
       }
     }
     const end = (endpoint: "departure" | "arrival") => {
@@ -184,9 +295,19 @@ function routeLines(projection: Projection): MapLine[] {
       const coordinates = validPoint(area as Record<string, unknown>);
       return coordinates ? { coordinates, label: text(area as ProjectionItem, "label") ?? "" } : null;
     };
-    const departure = end("departure"), arrival = end("arrival");
+    const departure = end("departure"),
+      arrival = end("arrival");
     if (!departure || !arrival) return [];
-    return [{ id: `route-${item.id}`, label: routeHeading(item), coordinates: [departure.coordinates, arrival.coordinates], transport, from: departure.label, to: arrival.label }];
+    return [
+      {
+        id: `route-${item.id}`,
+        label: routeHeading(item),
+        coordinates: [departure.coordinates, arrival.coordinates],
+        transport,
+        from: departure.label,
+        to: arrival.label,
+      },
+    ];
   });
 }
 
@@ -198,11 +319,37 @@ export function projectionMapPoints(projection: Projection): MapPoint[] {
   const point = (item: ProjectionItem, place: unknown): MapPoint[] => {
     if (!place || typeof place !== "object" || Array.isArray(place)) return [];
     const values = place as Record<string, unknown>;
-    const latitude = values.latitude, longitude = values.longitude;
-    if (typeof latitude !== "number" || typeof longitude !== "number" || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return [];
-    return [{ id: item.id, label: text(item, "label") ?? (typeof values.label === "string" ? values.label : "Locatie"), coordinates: [longitude, latitude] }];
+    const latitude = values.latitude,
+      longitude = values.longitude;
+    if (
+      typeof latitude !== "number" ||
+      typeof longitude !== "number" ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      Math.abs(latitude) > 90 ||
+      Math.abs(longitude) > 180
+    )
+      return [];
+    return [
+      {
+        id: item.id,
+        label: text(item, "label") ?? (typeof values.label === "string" ? values.label : "Locatie"),
+        coordinates: [longitude, latitude],
+      },
+    ];
   };
-  const points = [...projection.places.flatMap((item) => point(item, item)), ...projection.visits.flatMap((item) => [...point(item, item.place), ...point({ ...item, id: `${item.id}-location`, label: undefined }, item.location)]), ...projection.routes.flatMap((item) => [routeLocationPoint(item, "departure"), routeLocationPoint(item, "arrival")].filter((value): value is MapPoint => value !== null))];
+  const points = [
+    ...projection.places.flatMap((item) => point(item, item)),
+    ...projection.visits.flatMap((item) => [
+      ...point(item, item.place),
+      ...point({ ...item, id: `${item.id}-location`, label: undefined }, item.location),
+    ]),
+    ...projection.routes.flatMap((item) =>
+      [routeLocationPoint(item, "departure"), routeLocationPoint(item, "arrival")].filter(
+        (value): value is MapPoint => value !== null,
+      ),
+    ),
+  ];
   return [...new Map(points.map((value) => [`${value.coordinates.join(",")}:${value.label}`, value])).values()];
 }
 
@@ -212,57 +359,199 @@ function routeLocationPoint(item: ProjectionItem, endpoint: "departure" | "arriv
   const point = (map as Record<string, unknown>)[endpoint];
   if (!point || typeof point !== "object" || Array.isArray(point)) return null;
   const values = point as Record<string, unknown>;
-  const latitude = values.latitude, longitude = values.longitude;
-  if (typeof latitude !== "number" || typeof longitude !== "number" || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
-  return { id: `transport-${item.id}-${endpoint}`, label: typeof values.label === "string" && values.label ? values.label : endpoint === "departure" ? "Vertrekpunt" : "Aankomstpunt", coordinates: [longitude, latitude], kind: values.kind === "airport" ? "airport" : "place" };
+  const latitude = values.latitude,
+    longitude = values.longitude;
+  if (
+    typeof latitude !== "number" ||
+    typeof longitude !== "number" ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    Math.abs(latitude) > 90 ||
+    Math.abs(longitude) > 180
+  )
+    return null;
+  return {
+    id: `transport-${item.id}-${endpoint}`,
+    label:
+      typeof values.label === "string" && values.label
+        ? values.label
+        : endpoint === "departure"
+          ? "Vertrekpunt"
+          : "Aankomstpunt",
+    coordinates: [longitude, latitude],
+    kind: values.kind === "airport" ? "airport" : "place",
+  };
 }
 
-function Gallery({ items, fileUrl, title = "Galerij" }: { items: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string | null; title?: string }) {
+function Gallery({
+  items,
+  fileUrl,
+  title = "Galerij",
+}: {
+  items: ProjectionItem[];
+  fileUrl: (item: ProjectionItem) => string | null;
+  title?: string;
+}) {
   if (!items.length) return null;
-  return <section className="visitor-gallery" aria-label={title}><h3>{title}</h3><ul>{items.map((item) => <li key={item.id}><figure>
-    {hasFileMarker(item, "image") && (fileUrl(item) ? <img src={fileUrl(item)!} alt={text(item, "alt_text") ?? "Gedeelde afbeelding"} width={positiveSize(item, "width")} height={positiveSize(item, "height")} style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }} loading="lazy" decoding="async" referrerPolicy="no-referrer" /> : <p role="status">Afbeelding laden of niet beschikbaar.</p>)}
-    {hasFileMarker(item, "video") && fileUrl(item) && <video controls preload="none" playsInline poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined} aria-label={text(item, "alt_text") ?? "Gedeelde video"} width={positiveSize(item, "width") ?? undefined} height={positiveSize(item, "height") ?? undefined}><source src={fileUrl(item)!} type="video/mp4" /></video>}
-    <Markdown as="figcaption" html={text(item, "caption_html")} text={text(item, "caption")} />
-  </figure></li>)}</ul></section>;
+  return (
+    <section className="visitor-gallery" aria-label={title}>
+      <h3>{title}</h3>
+      <ul>
+        {items.map((item) => (
+          <li key={item.id}>
+            <figure>
+              {hasFileMarker(item, "image") &&
+                (fileUrl(item) ? (
+                  <img
+                    src={fileUrl(item)!}
+                    alt={text(item, "alt_text") ?? "Gedeelde afbeelding"}
+                    width={positiveSize(item, "width")}
+                    height={positiveSize(item, "height")}
+                    style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <p role="status">Afbeelding laden of niet beschikbaar.</p>
+                ))}
+              {hasFileMarker(item, "video") && fileUrl(item) && (
+                <video
+                  controls
+                  preload="none"
+                  playsInline
+                  poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined}
+                  aria-label={text(item, "alt_text") ?? "Gedeelde video"}
+                  width={positiveSize(item, "width") ?? undefined}
+                  height={positiveSize(item, "height") ?? undefined}
+                >
+                  <source src={fileUrl(item)!} type="video/mp4" />
+                </video>
+              )}
+              <Markdown as="figcaption" html={text(item, "caption_html")} text={text(item, "caption")} />
+            </figure>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
-function Updates({ updates, media, fileUrl }: { updates: ProjectionItem[]; media: ProjectionItem[]; fileUrl: (item: ProjectionItem) => string | null }) {
+function Updates({
+  updates,
+  media,
+  fileUrl,
+}: {
+  updates: ProjectionItem[];
+  media: ProjectionItem[];
+  fileUrl: (item: ProjectionItem) => string | null;
+}) {
   if (!updates.length) return null;
-  return <section className="card visitor-section visitor-story" aria-label="Reisupdates"><h2>Reisupdates</h2>
-    <nav aria-label="Updates in dit verhaal"><ol>{updates.map((item) => <li key={item.id}><a href={`#${item.id}`}>{text(item, "title") ?? storyDate(item) ?? "Update"}</a></li>)}</ol></nav>
-    <ol className="visitor-timeline">{updates.map((item) => <li key={item.id} id={item.id} tabIndex={-1}><article>
-      <div className="visitor-update-meta">{storyDate(item) ? <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time> : precision(item) ? <span>{precision(item)}</span> : null}{place(item.place) && <span>{place(item.place)}</span>}</div>
-      <h3>{text(item, "title") ?? "Update"}</h3><Markdown html={text(item, "body_html")} text={text(item, "body")} />
-      <Gallery items={media.filter((image) => image.update === item.id)} fileUrl={fileUrl} title="Media bij deze update" />
-    </article></li>)}</ol>
-  </section>;
+  return (
+    <section className="card visitor-section visitor-story" aria-label="Reisupdates">
+      <h2>Reisupdates</h2>
+      <nav aria-label="Updates in dit verhaal">
+        <ol>
+          {updates.map((item) => (
+            <li key={item.id}>
+              <a href={`#${item.id}`}>{text(item, "title") ?? storyDate(item) ?? "Update"}</a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <ol className="visitor-timeline">
+        {updates.map((item) => (
+          <li key={item.id} id={item.id} tabIndex={-1}>
+            <article>
+              <div className="visitor-update-meta">
+                {storyDate(item) ? (
+                  <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time>
+                ) : precision(item) ? (
+                  <span>{precision(item)}</span>
+                ) : null}
+                {place(item.place) && <span>{place(item.place)}</span>}
+              </div>
+              <h3>{text(item, "title") ?? "Update"}</h3>
+              <Markdown html={text(item, "body_html")} text={text(item, "body")} />
+              <Gallery
+                items={media.filter((image) => image.update === item.id)}
+                fileUrl={fileUrl}
+                title="Media bij deze update"
+              />
+            </article>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
 }
 
-export function ProjectionView({ projection, audience, identifier, previewResources }: { projection: Projection; audience: Audience; identifier: string; previewResources?: PreviewResources }) {
-  const mapLines = useMemo(() => projectionMapLines(projection).map((line) => {
-    const route = projection.routes.find((item) => item.id === line.id || `route-${item.id}` === line.id);
-    if (!route) return line;
-    return { ...line, from: line.from ?? transportPlace(route.departure) ?? undefined, to: line.to ?? transportPlace(route.arrival) ?? undefined,
-      dates: [transportTime(route, "departure") ?? storyDate({ ...route, date_precision: "day" }, "departs_on"), transportTime(route, "arrival")].filter(Boolean).join(" → ") || undefined,
-      links: [{ label: "Route bekijken", href: `#route-${route.id}` }] };
-  }), [projection]);
-  const mapPoints = useMemo(() => projectionMapPoints(projection).map((point) => {
-    const visit = projection.visits.find((item) => item.id === point.id || `${item.id}-location` === point.id);
-    const placeItem = projection.places.find((item) => item.id === point.id);
-    const route = projection.routes.find((item) => point.id === `transport-${item.id}-departure` || point.id === `transport-${item.id}-arrival`);
-    const matchingPlace = (value: unknown) => !!value && typeof value === "object" && !Array.isArray(value)
-      && (value as Record<string, unknown>).latitude === point.coordinates[1]
-      && (value as Record<string, unknown>).longitude === point.coordinates[0];
-    const relatedVisits = projection.visits.filter((item) => item.id === visit?.id || matchingPlace(item.place) || matchingPlace(item.location));
-    const relatedUpdates = projection.updates.filter((item) => matchingPlace(item.place));
-    const links = [
-      ...(placeItem ? [{ label: "Locatie bekijken", href: `#place-${placeItem.id}` }] : []),
-      ...relatedVisits.map((item) => ({ label: `Bezoek: ${text(item, "title") ?? "Bezoek"}`, href: `#visit-${item.id}` })),
-      ...relatedUpdates.map((item) => ({ label: `Update: ${text(item, "title") ?? "Update"}`, href: `#${item.id}` })),
-      ...(route ? [{ label: "Route bekijken", href: `#route-${route.id}` }] : []),
-    ];
-    return { ...point, dates: visit ? tripDates(visit) ?? undefined : undefined, links };
-  }), [projection]);
+export function ProjectionView({
+  projection,
+  audience,
+  identifier,
+  previewResources,
+}: {
+  projection: Projection;
+  audience: Audience;
+  identifier: string;
+  previewResources?: PreviewResources;
+}) {
+  const mapLines = useMemo(
+    () =>
+      projectionMapLines(projection).map((line) => {
+        const route = projection.routes.find((item) => item.id === line.id || `route-${item.id}` === line.id);
+        if (!route) return line;
+        return {
+          ...line,
+          from: line.from ?? transportPlace(route.departure) ?? undefined,
+          to: line.to ?? transportPlace(route.arrival) ?? undefined,
+          dates:
+            [
+              transportTime(route, "departure") ?? storyDate({ ...route, date_precision: "day" }, "departs_on"),
+              transportTime(route, "arrival"),
+            ]
+              .filter(Boolean)
+              .join(" → ") || undefined,
+          links: [{ label: "Route bekijken", href: `#route-${route.id}` }],
+        };
+      }),
+    [projection],
+  );
+  const mapPoints = useMemo(
+    () =>
+      projectionMapPoints(projection).map((point) => {
+        const visit = projection.visits.find((item) => item.id === point.id || `${item.id}-location` === point.id);
+        const placeItem = projection.places.find((item) => item.id === point.id);
+        const route = projection.routes.find(
+          (item) => point.id === `transport-${item.id}-departure` || point.id === `transport-${item.id}-arrival`,
+        );
+        const matchingPlace = (value: unknown) =>
+          !!value &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          (value as Record<string, unknown>).latitude === point.coordinates[1] &&
+          (value as Record<string, unknown>).longitude === point.coordinates[0];
+        const relatedVisits = projection.visits.filter(
+          (item) => item.id === visit?.id || matchingPlace(item.place) || matchingPlace(item.location),
+        );
+        const relatedUpdates = projection.updates.filter((item) => matchingPlace(item.place));
+        const links = [
+          ...(placeItem ? [{ label: "Locatie bekijken", href: `#place-${placeItem.id}` }] : []),
+          ...relatedVisits.map((item) => ({
+            label: `Bezoek: ${text(item, "title") ?? "Bezoek"}`,
+            href: `#visit-${item.id}`,
+          })),
+          ...relatedUpdates.map((item) => ({
+            label: `Update: ${text(item, "title") ?? "Update"}`,
+            href: `#${item.id}`,
+          })),
+          ...(route ? [{ label: "Route bekijken", href: `#route-${route.id}` }] : []),
+        ];
+        return { ...point, dates: visit ? (tripDates(visit) ?? undefined) : undefined, links };
+      }),
+    [projection],
+  );
   useEffect(() => {
     if (previewResources) return;
     const fragment = window.location.hash.slice(1);
@@ -275,29 +564,126 @@ export function ProjectionView({ projection, audience, identifier, previewResour
   const displayed = new Set(navigableCollections.flatMap((key) => projection[key].map((item) => item.id)));
   const navigationLink = (item: ProjectionItem) => {
     if (!navigation.has(item.id)) return null;
-    if (previewResources) return <button className="visitor-resource-action" type="button" onClick={() => previewResources.openNavigation(item.id)}>Routebeschrijving</button>;
+    if (previewResources)
+      return (
+        <button
+          className="visitor-resource-action"
+          type="button"
+          onClick={() => previewResources.openNavigation(item.id)}
+        >
+          Routebeschrijving
+        </button>
+      );
     const base = audience === "public" ? "/api/public/trips" : "/api/shared";
-    return <a href={`${base}/${encodeURIComponent(identifier)}/navigation/${encodeURIComponent(item.id)}`} referrerPolicy="no-referrer" rel="noreferrer">Routebeschrijving</a>;
+    return (
+      <a
+        href={`${base}/${encodeURIComponent(identifier)}/navigation/${encodeURIComponent(item.id)}`}
+        referrerPolicy="no-referrer"
+        rel="noreferrer"
+      >
+        Routebeschrijving
+      </a>
+    );
   };
-  const fileUrl = (item: ProjectionItem) => previewResources
-    ? previewResources.images[item.id] ?? null
-    : `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}/files/${encodeURIComponent(item.id)}`;
+  const fileUrl = (item: ProjectionItem) =>
+    previewResources
+      ? (previewResources.images[item.id] ?? null)
+      : `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}/files/${encodeURIComponent(item.id)}`;
   const updateIds = new Set(projection.updates.map((item) => item.id));
   const looseMedia = projection.media.filter((item) => typeof item.update !== "string" || !updateIds.has(item.update));
   const empty = collections.every((key) => projection[key].length === 0);
   const dates = tripDates(projection.dates);
-  if (empty && !projection.summary && !dates) return <section className="card" role="status"><h2>Nog geen gedeelde inhoud</h2><p>Voor deze reis is nog geen inhoud geselecteerd.</p></section>;
+  if (empty && !projection.summary && !dates)
+    return (
+      <section className="card" role="status">
+        <h2>Nog geen gedeelde inhoud</h2>
+        <p>Voor deze reis is nog geen inhoud geselecteerd.</p>
+      </section>
+    );
 
-  return <div className="visitor-content">
-    {(projection.summary || dates) && <section className="card"><h2>Reisoverzicht</h2>{dates && <p className="eyebrow">{dates}</p>}<Markdown html={projection.summary_html} text={projection.summary} /></section>}
-    {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
-    {empty && <section className="card" role="status"><h2>Nog geen gedeeld verhaal of foto’s</h2><p>Er zijn nog geen reisupdates of foto’s gedeeld.</p></section>}
-    <ResourceSection title="Bezoeken" anchor="visit" items={projection.visits} render={(item) => <article><h3>{text(item, "title") ?? "Bezoek"}</h3>{tripDates(item) && <p>{tripDates(item)}</p>}{visitTimes(item) && <p>{visitTimes(item)}</p>}<Markdown html={text(item, "summary_html")} text={text(item, "summary")} />{place(item.place) && <p>{place(item.place)}</p>}</article>} />
-    <ResourceSection title="Gebieden en locaties" anchor="place" items={projection.places} render={(item) => <article><h3>{text(item, "label") ?? "Locatie"}</h3>{[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>}{navigationLink(item)}</article>} />
-    <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
-    <ResourceSection title="Verblijven" anchor="stay" items={projection.stays} render={(item) => <article><h3>{text(item, "title") ?? "Verblijf"}</h3>{tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}{place(item.place) && <p>{place(item.place)}</p>}{navigationLink(item)}</article>} />
-    <ResourceSection title="Routes" anchor="route" items={projection.routes} render={(item) => <RouteSummary item={item} />} />
-    {looseMedia.length > 0 && <section className="card visitor-section"><h2>Galerij</h2><Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" /></section>}
-    {projection.navigation.some((item) => !displayed.has(item.id)) && <ResourceSection title="Navigatie" anchor="navigation" items={projection.navigation.filter((item) => !displayed.has(item.id))} render={(item) => <article><h3>Bestemming</h3>{navigationLink(item)}</article>} />}
-  </div>;
+  return (
+    <div className="visitor-content">
+      {(projection.summary || dates) && (
+        <section className="card">
+          <h2>Reisoverzicht</h2>
+          {dates && <p className="eyebrow">{dates}</p>}
+          <Markdown html={projection.summary_html} text={projection.summary} />
+        </section>
+      )}
+      {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
+      {empty && (
+        <section className="card" role="status">
+          <h2>Nog geen gedeeld verhaal of foto’s</h2>
+          <p>Er zijn nog geen reisupdates of foto’s gedeeld.</p>
+        </section>
+      )}
+      <ResourceSection
+        title="Bezoeken"
+        anchor="visit"
+        items={projection.visits}
+        render={(item) => (
+          <article>
+            <h3>{text(item, "title") ?? "Bezoek"}</h3>
+            {tripDates(item) && <p>{tripDates(item)}</p>}
+            {visitTimes(item) && <p>{visitTimes(item)}</p>}
+            <Markdown html={text(item, "summary_html")} text={text(item, "summary")} />
+            {place(item.place) && <p>{place(item.place)}</p>}
+          </article>
+        )}
+      />
+      <ResourceSection
+        title="Gebieden en locaties"
+        anchor="place"
+        items={projection.places}
+        render={(item) => (
+          <article>
+            <h3>{text(item, "label") ?? "Locatie"}</h3>
+            {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
+              <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>
+            )}
+            {navigationLink(item)}
+          </article>
+        )}
+      />
+      <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
+      <ResourceSection
+        title="Verblijven"
+        anchor="stay"
+        items={projection.stays}
+        render={(item) => (
+          <article>
+            <h3>{text(item, "title") ?? "Verblijf"}</h3>
+            {tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}
+            {place(item.place) && <p>{place(item.place)}</p>}
+            {navigationLink(item)}
+          </article>
+        )}
+      />
+      <ResourceSection
+        title="Routes"
+        anchor="route"
+        items={projection.routes}
+        render={(item) => <RouteSummary item={item} />}
+      />
+      {looseMedia.length > 0 && (
+        <section className="card visitor-section">
+          <h2>Galerij</h2>
+          <Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" />
+        </section>
+      )}
+      {projection.navigation.some((item) => !displayed.has(item.id)) && (
+        <ResourceSection
+          title="Navigatie"
+          anchor="navigation"
+          items={projection.navigation.filter((item) => !displayed.has(item.id))}
+          render={(item) => (
+            <article>
+              <h3>Bestemming</h3>
+              {navigationLink(item)}
+            </article>
+          )}
+        />
+      )}
+    </div>
+  );
 }

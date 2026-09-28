@@ -86,17 +86,17 @@ export function useOfflineCopies(): UseOfflineCopies {
   useEffect(() => {
     if (!subject || !session || !online) return;
     // Only the status matters: a refused or missing record removes its copy, an unreachable server leaves it.
-    const probe = (url: string) => ownerRequest(session, url, "De offline kopie kon niet worden gecontroleerd.").then(
-      () => new Response(null, { status: 200 }),
-      (error: unknown) => {
-        if (!(error instanceof ApiError)) return new Response(null, { status: 200 });
-        if (error.offline) throw error;
-        return new Response(null, { status: error.status });
-      },
-    );
+    const probe = (url: string) =>
+      ownerRequest(session, url, "De offline kopie kon niet worden gecontroleerd.").then(
+        () => new Response(null, { status: 200 }),
+        (error: unknown) => {
+          if (!(error instanceof ApiError)) return new Response(null, { status: 200 });
+          if (error.offline) throw error;
+          return new Response(null, { status: error.status });
+        },
+      );
     void revalidateOfflineCopies(subject, probe).then(() => refresh());
     // Intentionally re-runs only when connectivity flips back on or the signed-in subject changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject, online]);
 
   return {
@@ -107,7 +107,8 @@ export function useOfflineCopies(): UseOfflineCopies {
     online,
     disclosure,
     persisted,
-    isPinned: (resourceKind, resourceId) => copies.some((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId),
+    isPinned: (resourceKind, resourceId) =>
+      copies.some((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId),
     async pin(input) {
       if (!subject) throw new Error("Meld aan om iets offline te bewaren.");
       await pinOfflineCopy({ ...input, subject });

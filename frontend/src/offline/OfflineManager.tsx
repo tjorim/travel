@@ -72,21 +72,38 @@ export function OfflineManager() {
           <h3 id="offline-title">Offline</h3>
           <p>Bewust bewaarde kopieën blijven alleen op dit toestel en verdwijnen bij afmelden.</p>
         </div>
-        {offline.copies.length > 0 && <button className="danger compact" type="button" onClick={clearAll}>Alles wissen</button>}
+        {offline.copies.length > 0 && (
+          <button className="danger compact" type="button" onClick={clearAll}>
+            Alles wissen
+          </button>
+        )}
       </div>
       <p className="help" role="status">
-        {message
-          || (offline.unsupported && "Offline opslag wordt niet ondersteund in deze browser.")
-          || (!offline.online && "Je bent offline. Kopieën worden opnieuw gecontroleerd zodra je weer verbinding hebt.")
-          || (offline.copies.length > 0 ? `${offline.copies.length} offline kopie(ën) · ${bytesLabel(totalBytes)} op dit toestel.` : "Nog geen offline kopieën.")}
+        {message ||
+          (offline.unsupported && "Offline opslag wordt niet ondersteund in deze browser.") ||
+          (!offline.online && "Je bent offline. Kopieën worden opnieuw gecontroleerd zodra je weer verbinding hebt.") ||
+          (offline.copies.length > 0
+            ? `${offline.copies.length} offline kopie(ën) · ${bytesLabel(totalBytes)} op dit toestel.`
+            : "Nog geen offline kopieën.")}
       </p>
       {offline.disclosure?.exportable && (
-        <p className="help">Je browser kan de offline sleutel niet als niet-exporteerbaar bewaren; kopieën zijn best-effort versleuteld op dit toestel.</p>
+        <p className="help">
+          Je browser kan de offline sleutel niet als niet-exporteerbaar bewaren; kopieën zijn best-effort versleuteld op
+          dit toestel.
+        </p>
       )}
       {offline.persisted === false && (
-        <p className="help">Je browser heeft geen persistente opslag toegekend voor deze offline kopieën; ze kunnen automatisch worden opgeruimd bij weinig opslagruimte op dit toestel.</p>
+        <p className="help">
+          Je browser heeft geen persistente opslag toegekend voor deze offline kopieën; ze kunnen automatisch worden
+          opgeruimd bij weinig opslagruimte op dit toestel.
+        </p>
       )}
-      {!offline.copies.length && offline.loaded && <p>Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of bezoek om het hier te laten verschijnen.</p>}
+      {!offline.copies.length && offline.loaded && (
+        <p>
+          Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of bezoek om het hier te laten
+          verschijnen.
+        </p>
+      )}
       {offline.copies.length > 0 && (
         <div className="saved-records manager-list">
           {offline.copies.map((copy) => (
@@ -94,12 +111,17 @@ export function OfflineManager() {
               <div>
                 <strong>{copy.title}</strong>
                 <span>
-                  {KIND_LABELS[copy.resourceKind]} · {bytesLabel(copy.byteSize)} · laatst gecontroleerd {formatMoment(copy.lastValidatedAt)} · geldig tot {formatMoment(copy.leaseExpiresAt)}
+                  {KIND_LABELS[copy.resourceKind]} · {bytesLabel(copy.byteSize)} · laatst gecontroleerd{" "}
+                  {formatMoment(copy.lastValidatedAt)} · geldig tot {formatMoment(copy.leaseExpiresAt)}
                 </span>
               </div>
               <div className="button-row">
-                <button className="secondary compact" type="button" onClick={() => void view(copy)}>Bekijken</button>
-                <button className="danger compact" type="button" onClick={() => remove(copy)}>Verwijderen</button>
+                <button className="secondary compact" type="button" onClick={() => void view(copy)}>
+                  Bekijken
+                </button>
+                <button className="danger compact" type="button" onClick={() => remove(copy)}>
+                  Verwijderen
+                </button>
               </div>
             </article>
           ))}
@@ -107,9 +129,15 @@ export function OfflineManager() {
       )}
       {viewingText && (
         <div className="card manager-subsection">
-          <div className="capture-heading"><div><h3>{viewingText.title}</h3></div></div>
+          <div className="capture-heading">
+            <div>
+              <h3>{viewingText.title}</h3>
+            </div>
+          </div>
           <pre>{viewingText.text}</pre>
-          <button className="secondary compact" type="button" onClick={() => setViewingText(null)}>Sluiten</button>
+          <button className="secondary compact" type="button" onClick={() => setViewingText(null)}>
+            Sluiten
+          </button>
         </div>
       )}
       {confirmation.dialog}

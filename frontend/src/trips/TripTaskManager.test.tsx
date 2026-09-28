@@ -10,37 +10,93 @@ import { TripTaskManager } from "./TripTaskManager";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: "2054-11-16", ends_on: null, travel_updates: [] };
-const task = (id: string, title: string, extra: Partial<TripTask> = {}): TripTask => ({ id, title, notes: null, due_date: null, remind_at: null, reminded_at: null, links: [], completed_at: null, created_at: "2054-09-01T00:00:00Z", ...extra });
+const trip: Trip = {
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: "2054-11-16",
+  ends_on: null,
+  travel_updates: [],
+};
+const task = (id: string, title: string, extra: Partial<TripTask> = {}): TripTask => ({
+  id,
+  title,
+  notes: null,
+  due_date: null,
+  remind_at: null,
+  reminded_at: null,
+  links: [],
+  completed_at: null,
+  created_at: "2054-09-01T00:00:00Z",
+  ...extra,
+});
 
-type Api = { tasks: TripTask[]; alerts: TripTaskAlert[]; failNext: { status: number; body: unknown } | null; requests: string[] };
+type Api = {
+  tasks: TripTask[];
+  alerts: TripTaskAlert[];
+  failNext: { status: number; body: unknown } | null;
+  requests: string[];
+};
 let api: Api;
 
-function json(value: unknown, status = 200) { return Promise.resolve(new Response(JSON.stringify(value), { status })); }
+function json(value: unknown, status = 200) {
+  return Promise.resolve(new Response(JSON.stringify(value), { status }));
+}
 
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = { tasks: [task("a", "Visum regelen"), task("b", "Reisverzekering")], alerts: [], failNext: null, requests: [] };
-  vi.stubGlobal("fetch", vi.fn((url: string, init: RequestInit = {}) => {
-    const method = init.method ?? "GET";
-    api.requests.push(`${method} ${url}`);
-    if (method !== "GET" && api.failNext) { const failure = api.failNext; api.failNext = null; return json(failure.body, failure.status); }
-    const body = init.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
-    if (url.endsWith("/stays")) return json([] as Stay[]);
-    if (url.endsWith("/routes")) return json([] as Route[]);
-    if (url.endsWith("/task-alerts")) return json(api.alerts);
-    if (url.endsWith("/trip-tasks") && method === "GET") return json(api.tasks);
-    if (url.endsWith("/trip-tasks") && method === "POST") { const created = task(`new-${api.tasks.length}`, String(body.title), { notes: (body.notes as string | null) ?? null }); api.tasks = [...api.tasks, created]; return json(created, 201); }
-    const match = /trip-tasks\/([^/]+)$/.exec(url);
-    if (match && method === "PATCH") { api.tasks = api.tasks.map((item) => item.id === match[1] ? { ...item, ...("title" in body ? { title: String(body.title) } : {}), ...("completed" in body ? { completed_at: body.completed ? "2054-09-24T10:00:00Z" : null } : {}) } : item); return json(api.tasks.find((item) => item.id === match[1])); }
-    if (match && method === "DELETE") { api.tasks = api.tasks.filter((item) => item.id !== match[1]); return Promise.resolve(new Response(null, { status: 204 })); }
-    throw new Error(`unexpected request ${method} ${url}`);
-  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init: RequestInit = {}) => {
+      const method = init.method ?? "GET";
+      api.requests.push(`${method} ${url}`);
+      if (method !== "GET" && api.failNext) {
+        const failure = api.failNext;
+        api.failNext = null;
+        return json(failure.body, failure.status);
+      }
+      const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+      if (url.endsWith("/stays")) return json([] as Stay[]);
+      if (url.endsWith("/routes")) return json([] as Route[]);
+      if (url.endsWith("/task-alerts")) return json(api.alerts);
+      if (url.endsWith("/trip-tasks") && method === "GET") return json(api.tasks);
+      if (url.endsWith("/trip-tasks") && method === "POST") {
+        const created = task(`new-${api.tasks.length}`, String(body.title), {
+          notes: (body.notes as string | null) ?? null,
+        });
+        api.tasks = [...api.tasks, created];
+        return json(created, 201);
+      }
+      const match = /trip-tasks\/([^/]+)$/.exec(url);
+      if (match && method === "PATCH") {
+        api.tasks = api.tasks.map((item) =>
+          item.id === match[1]
+            ? {
+                ...item,
+                ...("title" in body ? { title: String(body.title) } : {}),
+                ...("completed" in body ? { completed_at: body.completed ? "2054-09-24T10:00:00Z" : null } : {}),
+              }
+            : item,
+        );
+        return json(api.tasks.find((item) => item.id === match[1]));
+      }
+      if (match && method === "DELETE") {
+        api.tasks = api.tasks.filter((item) => item.id !== match[1]);
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      throw new Error(`unexpected request ${method} ${url}`);
+    }),
+  );
 });
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
-const openTask = async (title: string) => fireEvent.click(await screen.findByRole("button", { name: `Taak ${title} bekijken` }));
+const openTask = async (title: string) =>
+  fireEvent.click(await screen.findByRole("button", { name: `Taak ${title} bekijken` }));
 
 it("shows the edited title straight after saving, without a reload", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
@@ -56,7 +112,13 @@ it("shows the edited title straight after saving, without a reload", async () =>
 });
 
 it("opens the editor with the saved task instead of a blank form", async () => {
-  api.tasks = [task("a", "Visum regelen", { notes: "Bij de ambassade", due_date: "2054-10-01", links: [{ label: "Ambassade", url: "https://example.test" }] })];
+  api.tasks = [
+    task("a", "Visum regelen", {
+      notes: "Bij de ambassade",
+      due_date: "2054-10-01",
+      links: [{ label: "Ambassade", url: "https://example.test" }],
+    }),
+  ];
   renderWithOwner(<TripTaskManager trip={trip} />);
   await openTask("Visum regelen");
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -87,7 +149,12 @@ it("restores a task when completing it is refused", async () => {
 });
 
 it("refreshes the overview badge when a task is completed elsewhere on the screen", async () => {
-  renderWithOwner(<><TripOverview trip={trip} /><TripTaskManager trip={trip} /></>);
+  renderWithOwner(
+    <>
+      <TripOverview trip={trip} />
+      <TripTaskManager trip={trip} />
+    </>,
+  );
   await screen.findByText("2 open");
   fireEvent.click(screen.getAllByRole("button", { name: "Afvinken" })[0]);
   await screen.findByText("1 open");
@@ -131,7 +198,16 @@ it("validates the form, keeps the editor open on a server error, and resets afte
 it("disables submit while saving and asks before discarding a dirty form", async () => {
   let release: () => void = () => undefined;
   const original = globalThis.fetch;
-  vi.stubGlobal("fetch", vi.fn((url: string, init: RequestInit = {}) => init.method === "POST" ? new Promise<Response>((resolve) => { release = () => resolve(new Response(JSON.stringify(task("z", "Nieuw")), { status: 201 })); }) : original(url, init)));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init: RequestInit = {}) =>
+      init.method === "POST"
+        ? new Promise<Response>((resolve) => {
+            release = () => resolve(new Response(JSON.stringify(task("z", "Nieuw")), { status: 201 }));
+          })
+        : original(url, init),
+    ),
+  );
   renderWithOwner(<TripTaskManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe taak" }));
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw" } });
@@ -140,7 +216,7 @@ it("disables submit while saving and asks before discarding a dirty form", async
   fireEvent.click(screen.getByRole("button", { name: "Verder bewerken" }));
 
   fireEvent.click(screen.getByRole("button", { name: "Taak toevoegen" }));
-  const busy = await screen.findByRole("button", { name: "Opslaan…" }) as HTMLButtonElement;
+  const busy = (await screen.findByRole("button", { name: "Opslaan…" })) as HTMLButtonElement;
   expect(busy.disabled).toBe(true);
   release();
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

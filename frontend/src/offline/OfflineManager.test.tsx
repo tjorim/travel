@@ -9,7 +9,10 @@ import { OfflineManager } from "./OfflineManager";
 import { __resetOfflineStoreForTests, pinOfflineCopy } from "./offline-store";
 
 function fakeAccessToken(subject: string): string {
-  const payload = btoa(JSON.stringify({ sub: subject })).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+  const payload = btoa(JSON.stringify({ sub: subject }))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
   return `header.${payload}.signature`;
 }
 
@@ -31,17 +34,27 @@ afterEach(async () => {
 });
 
 function withSession(): void {
-  sessionStorage.setItem("travel-tracker-session", JSON.stringify({ accessToken: fakeAccessToken(SUBJECT), expiresAt: Date.now() + 60_000 }));
+  sessionStorage.setItem(
+    "travel-tracker-session",
+    JSON.stringify({ accessToken: fakeAccessToken(SUBJECT), expiresAt: Date.now() + 60_000 }),
+  );
 }
 
 function stubMetadataFetch(): void {
-  vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ id: "doc-1" }), { status: 200 }))));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => Promise.resolve(new Response(JSON.stringify({ id: "doc-1" }), { status: 200 }))),
+  );
 }
 
 it("shows an empty state without any pinned copies", async () => {
   withSession();
   stubMetadataFetch();
-  render(<AuthProvider><OfflineManager /></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
   await screen.findByText("Nog geen offline kopieën.");
 });
 
@@ -62,7 +75,11 @@ it("lists a pinned document, opens it, and removes it individually", async () =>
   vi.stubGlobal("open", openSpy);
   vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
-  render(<AuthProvider><OfflineManager /></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
   await screen.findByText("Insurance policy");
 
   screen.getByRole("button", { name: "Bekijken" }).click();
@@ -84,12 +101,17 @@ it("shows an emergency-info snapshot inline instead of opening a new tab", async
     metadataUrl: "/api/library/emergency-info/entry-1",
     title: "Mom",
     contentType: "application/json",
-    bytes: new TextEncoder().encode(JSON.stringify({ label: "Mom", value: "+32 470 00 00 00" }, null, 2)).buffer as ArrayBuffer,
+    bytes: new TextEncoder().encode(JSON.stringify({ label: "Mom", value: "+32 470 00 00 00" }, null, 2))
+      .buffer as ArrayBuffer,
   });
 
   const openSpy = vi.fn();
   vi.stubGlobal("open", openSpy);
-  render(<AuthProvider><OfflineManager /></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
   await screen.findByText("Mom");
 
   screen.getByRole("button", { name: "Bekijken" }).click();
@@ -119,13 +141,19 @@ it("clears every pinned copy on this device after confirmation", async () => {
     bytes: new TextEncoder().encode("{}").buffer as ArrayBuffer,
   });
 
-  render(<AuthProvider><OfflineManager /></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
   await screen.findByText("Insurance policy");
 
   screen.getByRole("button", { name: "Alles wissen" }).click();
   await answerConfirmation("Alles wissen");
   await screen.findByText("Alle offline kopieën op dit toestel zijn verwijderd.");
-  await screen.findByText("Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of bezoek om het hier te laten verschijnen.");
+  await screen.findByText(
+    "Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of bezoek om het hier te laten verschijnen.",
+  );
   expect(screen.queryByText("Insurance policy")).toBeNull();
   expect(screen.queryByText("Mom")).toBeNull();
 });
@@ -133,7 +161,11 @@ it("clears every pinned copy on this device after confirmation", async () => {
 it("shows a disclosure when the browser declines persistent storage", async () => {
   withSession();
   stubMetadataFetch();
-  vi.stubGlobal("navigator", { ...navigator, onLine: true, storage: { persist: vi.fn().mockResolvedValue(false), persisted: vi.fn().mockResolvedValue(false) } });
+  vi.stubGlobal("navigator", {
+    ...navigator,
+    onLine: true,
+    storage: { persist: vi.fn().mockResolvedValue(false), persisted: vi.fn().mockResolvedValue(false) },
+  });
   await pinOfflineCopy({
     subject: SUBJECT,
     resourceKind: "library_document",
@@ -144,14 +176,24 @@ it("shows a disclosure when the browser declines persistent storage", async () =
     bytes: new TextEncoder().encode("bytes").buffer as ArrayBuffer,
   });
 
-  render(<AuthProvider><OfflineManager /></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
 
-  await screen.findByText("Je browser heeft geen persistente opslag toegekend voor deze offline kopieën; ze kunnen automatisch worden opgeruimd bij weinig opslagruimte op dit toestel.");
+  await screen.findByText(
+    "Je browser heeft geen persistente opslag toegekend voor deze offline kopieën; ze kunnen automatisch worden opgeruimd bij weinig opslagruimte op dit toestel.",
+  );
 });
 
 it("tells the owner their copies are pending revalidation while offline", async () => {
   withSession();
   Object.defineProperty(window.navigator, "onLine", { value: false, configurable: true });
-  render(<AuthProvider><OfflineManager /></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
   await screen.findByText("Je bent offline. Kopieën worden opnieuw gecontroleerd zodra je weer verbinding hebt.");
 });

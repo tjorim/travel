@@ -22,13 +22,17 @@ beforeEach(() => {
     { id: "t1", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] },
     { id: "t2", title: "IJsland", summary: null, starts_on: null, ends_on: null, travel_updates: [] },
   ];
-  api = fakeApi()
-    .collection("/api/trips/t1/media", [])
-    .collection("/api/trips/t2/media", []);
+  api = fakeApi().collection("/api/trips/t1/media", []).collection("/api/trips/t2/media", []);
   api.on("GET", /^\/api\/trips$/, () => trips);
 });
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); clearDraft("t1"); clearDraft("t2"); });
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  clearDraft("t1");
+  clearDraft("t2");
+});
 
 it("locks the dialog to the given trip, showing its name instead of a trip picker", async () => {
   renderWithOwner(<CaptureDialog open lockedTripId="t1" onDismiss={() => undefined} />);
@@ -40,7 +44,7 @@ it("locks the dialog to the given trip, showing its name instead of a trip picke
 it("never mixes drafts between trips: opening one trip's dialog leaves another trip's draft untouched", async () => {
   saveDraft({ ...emptyDraft("t2"), title: "IJsland concept", notes: "" });
   renderWithOwner(<CaptureDialog open lockedTripId="t1" onDismiss={() => undefined} />);
-  const title = await screen.findByLabelText("Titel") as HTMLInputElement;
+  const title = (await screen.findByLabelText("Titel")) as HTMLInputElement;
   expect(title.value).toBe("");
   fireEvent.change(title, { target: { value: "Exampleland concept" } });
   await waitFor(() => expect(readDraft("t1")?.title).toBe("Exampleland concept"));

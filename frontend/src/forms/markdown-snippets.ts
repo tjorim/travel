@@ -20,7 +20,12 @@ const LINE_PREFIX: Partial<Record<MarkdownSnippet, { prefix: string; placeholder
  * selected line (or the cursor's line); a link turns the selection into its text, and a selected
  * address into its target, then selects the part still to fill in.
  */
-export function applyMarkdownSnippet(value: string, selectionStart: number, selectionEnd: number, snippet: MarkdownSnippet): MarkdownEdit {
+export function applyMarkdownSnippet(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  snippet: MarkdownSnippet,
+): MarkdownEdit {
   const start = Math.max(0, Math.min(selectionStart, selectionEnd, value.length));
   const end = Math.min(value.length, Math.max(selectionStart, selectionEnd));
   const selected = value.slice(start, end);
@@ -31,7 +36,11 @@ export function applyMarkdownSnippet(value: string, selectionStart: number, sele
   if (wrap) {
     const inner = selected || wrap.placeholder;
     const at = start + wrap.marker.length;
-    return { value: `${before}${wrap.marker}${inner}${wrap.marker}${after}`, selectionStart: at, selectionEnd: at + inner.length };
+    return {
+      value: `${before}${wrap.marker}${inner}${wrap.marker}${after}`,
+      selectionStart: at,
+      selectionEnd: at + inner.length,
+    };
   }
 
   const line = LINE_PREFIX[snippet];
@@ -44,10 +53,18 @@ export function applyMarkdownSnippet(value: string, selectionStart: number, sele
     if (lines.length === 1 && !lines[0].trim()) {
       const text = `${line.prefix}${line.placeholder}`;
       const at = lineStart + line.prefix.length;
-      return { value: `${value.slice(0, lineStart)}${text}${value.slice(lineEnd)}`, selectionStart: at, selectionEnd: at + line.placeholder.length };
+      return {
+        value: `${value.slice(0, lineStart)}${text}${value.slice(lineEnd)}`,
+        selectionStart: at,
+        selectionEnd: at + line.placeholder.length,
+      };
     }
-    const block = lines.map((text) => text.trim() ? `${line.prefix}${text}` : text).join("\n");
-    return { value: `${value.slice(0, lineStart)}${block}${value.slice(lineEnd)}`, selectionStart: lineStart, selectionEnd: lineStart + block.length };
+    const block = lines.map((text) => (text.trim() ? `${line.prefix}${text}` : text)).join("\n");
+    return {
+      value: `${value.slice(0, lineStart)}${block}${value.slice(lineEnd)}`,
+      selectionStart: lineStart,
+      selectionEnd: lineStart + block.length,
+    };
   }
 
   // A link: a selected address becomes the target, any other selection the link text.
@@ -57,5 +74,9 @@ export function applyMarkdownSnippet(value: string, selectionStart: number, sele
   const inserted = `[${text}](${url})`;
   const selectText = address || !selected;
   const at = selectText ? start + 1 : start + text.length + 3;
-  return { value: `${before}${inserted}${after}`, selectionStart: at, selectionEnd: at + (selectText ? text.length : url.length) };
+  return {
+    value: `${before}${inserted}${after}`,
+    selectionStart: at,
+    selectionEnd: at + (selectText ? text.length : url.length),
+  };
 }

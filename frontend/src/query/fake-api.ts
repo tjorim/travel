@@ -64,7 +64,10 @@ export class FakeApi {
   }
 
   install(): this {
-    vi.stubGlobal("fetch", vi.fn((url: string, init: RequestInit = {}) => Promise.resolve(this.handle(String(url), init))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init: RequestInit = {}) => Promise.resolve(this.handle(String(url), init))),
+    );
     return this;
   }
 
@@ -73,7 +76,7 @@ export class FakeApi {
     const key = `${method} ${url}`;
     this.requests.push(key);
     const raw = init.body;
-    const body = typeof raw === "string" ? JSON.parse(raw) as unknown : raw;
+    const body = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
     this.bodies.push({ key, body });
     if (method !== "GET" && this.failNext) {
       const failure = this.failNext;
@@ -91,7 +94,9 @@ export class FakeApi {
     if (own) {
       if (method === "GET") return json(own.rows);
       if (method === "POST") {
-        const created = own.create ? own.create(body as Body, own.rows.length) : { id: `new-${own.rows.length}`, ...(body as Body) };
+        const created = own.create
+          ? own.create(body as Body, own.rows.length)
+          : { id: `new-${own.rows.length}`, ...(body as Body) };
         own.rows = [...own.rows, created];
         return json(created, 201);
       }
@@ -104,7 +109,7 @@ export class FakeApi {
       if (current && method === "GET") return json(current);
       if (current && method === "PATCH") {
         const updated = parent.update ? parent.update(current, body as Body) : { ...current, ...(body as Body) };
-        parent.rows = parent.rows.map((row) => row.id === id ? updated : row);
+        parent.rows = parent.rows.map((row) => (row.id === id ? updated : row));
         return json(updated);
       }
       if (current && method === "DELETE") {

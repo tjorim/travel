@@ -32,10 +32,13 @@ export type Location = {
 };
 
 /** A location to create, or with `existing_location_id` a location the trip already has (sent on its own). */
-export type LocationInput = Partial<Omit<Location, "id" | "visibility" | "area_id" | "share_address">> & { existing_location_id?: string };
+export type LocationInput = Partial<Omit<Location, "id" | "visibility" | "area_id" | "share_address">> & {
+  existing_location_id?: string;
+};
 
 /** What the owner calls a location: the first part of its name, never a full address line. */
-export const locationName = (place: Partial<Pick<Location, "display_name" | "locality" | "label">>): string => place.label || place.display_name?.split(",")[0]?.trim() || place.locality || "Locatie zonder naam";
+export const locationName = (place: Partial<Pick<Location, "display_name" | "locality" | "label">>): string =>
+  place.label || place.display_name?.split(",")[0]?.trim() || place.locality || "Locatie zonder naam";
 export type PlaceSearchResult = LocationInput;
 
 export type MediaAsset = {
@@ -70,13 +73,23 @@ export type Area = {
   timezone: string | null;
 };
 
-export type AreaSuggestion = { existing_area_id: string | null; area: Pick<Area, "label" | "country_code" | "region" | "latitude" | "longitude" | "timezone"> };
+export type AreaSuggestion = {
+  existing_area_id: string | null;
+  area: Pick<Area, "label" | "country_code" | "region" | "latitude" | "longitude" | "timezone">;
+};
 
 /** How a route is travelled. */
 export type RouteMode = "flight" | "train" | "bus" | "ferry" | "car" | "bike" | "walk" | "other";
 
 export const ROUTE_MODE_LABELS: Record<RouteMode, string> = {
-  flight: "Vlucht", train: "Trein", bus: "Bus", ferry: "Veerboot", car: "Auto", bike: "Fiets", walk: "Te voet", other: "Anders",
+  flight: "Vlucht",
+  train: "Trein",
+  bus: "Bus",
+  ferry: "Veerboot",
+  car: "Auto",
+  bike: "Fiets",
+  walk: "Te voet",
+  other: "Anders",
 };
 
 /**
@@ -180,10 +193,12 @@ export type Route = {
 
 /** A route whose schedule is known. */
 export type TimedRoute = Route & { departs_at: string; arrives_at: string };
-export const timedRoutes = (routes: Route[]): TimedRoute[] => routes.filter((route): route is TimedRoute => route.departs_at !== null && route.arrives_at !== null);
+export const timedRoutes = (routes: Route[]): TimedRoute[] =>
+  routes.filter((route): route is TimedRoute => route.departs_at !== null && route.arrives_at !== null);
 
 /** What a route is called: its label, else where it goes. */
-export const routeTitle = (route: Pick<Route, "label" | "departure_area" | "arrival_area">): string => route.label ?? `${route.departure_area.label} → ${route.arrival_area.label}`;
+export const routeTitle = (route: Pick<Route, "label" | "departure_area" | "arrival_area">): string =>
+  route.label ?? `${route.departure_area.label} → ${route.arrival_area.label}`;
 
 /** What kind of days a visit is: free days, or working ones. */
 export type VisitKind = "free" | "work";
@@ -217,7 +232,8 @@ export type Visit = {
 };
 
 /** What a visit is called: its title, else its location, else its area. */
-export const visitTitle = (visit: Pick<Visit, "title" | "area" | "location">): string => visit.title ?? (visit.location ? locationName(visit.location) : visit.area.label);
+export const visitTitle = (visit: Pick<Visit, "title" | "area" | "location">): string =>
+  visit.title ?? (visit.location ? locationName(visit.location) : visit.area.label);
 
 export type TripTask = {
   id: string;
@@ -383,7 +399,12 @@ export type OverviewAudience = {
 };
 
 export type OverviewWarning = {
-  code: "live_audience_receives_nothing" | "trip_dates_shared" | "planning_marker_visible" | "map_point_withheld" | "undated_visit_duplicates_dated";
+  code:
+    | "live_audience_receives_nothing"
+    | "trip_dates_shared"
+    | "planning_marker_visible"
+    | "map_point_withheld"
+    | "undated_visit_duplicates_dated";
   severity: "warning" | "info";
   /** English, for API and MCP clients; the PWA words each code itself. */
   message: string;
@@ -501,7 +522,9 @@ export function timeZoneOptions(): string[] {
 
 /** ``YYYY-MM-DDTHH:mm`` for a datetime-local input showing the zone's local time. */
 export function wallClock(instant: string, timeZone: string | null): string {
-  return dayjs(instant).tz(timeZone ?? undefined).format("YYYY-MM-DDTHH:mm");
+  return dayjs(instant)
+    .tz(timeZone ?? undefined)
+    .format("YYYY-MM-DDTHH:mm");
 }
 
 export function localDate(instant: string, timeZone: string | null): string {
@@ -512,7 +535,12 @@ export function localDate(instant: string, timeZone: string | null): string {
  * A local time at a visit, as a viewer elsewhere would read it: `null` when the viewer's clock says
  * the same, else their time and how many days off their date is (-1, 0 or 1).
  */
-export function timeForViewer(date: string, time: string, zone: string, viewerZone = browserTimeZone()): { time: string; days: number } | null {
+export function timeForViewer(
+  date: string,
+  time: string,
+  zone: string,
+  viewerZone = browserTimeZone(),
+): { time: string; days: number } | null {
   try {
     const at = dayjs.tz(`${date}T${time.slice(0, 5)}`, zone);
     if (!at.isValid()) return null;
@@ -529,13 +557,16 @@ export const zoneName = (zone: string): string => zone.split("/").pop()?.replace
 
 /** Minutes a zone is ahead of UTC at an instant, daylight saving included. */
 export function utcOffsetMinutes(instant: string, timeZone: string | null): number {
-  return dayjs(instant).tz(timeZone ?? undefined).utcOffset();
+  return dayjs(instant)
+    .tz(timeZone ?? undefined)
+    .utcOffset();
 }
 
 /** "7 u later dan hier", "1 u 30 min eerder dan hier" or "zelfde tijd als hier". */
 export function offsetLabel(minutes: number): string {
   if (minutes === 0) return "zelfde tijd als hier";
-  const hours = Math.floor(Math.abs(minutes) / 60), rest = Math.abs(minutes) % 60;
+  const hours = Math.floor(Math.abs(minutes) / 60),
+    rest = Math.abs(minutes) % 60;
   return `${[hours ? `${hours} u` : "", rest ? `${rest} min` : ""].filter(Boolean).join(" ")} ${minutes > 0 ? "later" : "eerder"} dan hier`;
 }
 
@@ -564,14 +595,29 @@ export function whereabouts(instant: string, stays: Stay[], routes: Route[], hom
   ];
   const home: Whereabouts = { kind: "home", zone: homeZone, label: "thuis" };
   if (!bounds.length || now < Math.min(...bounds) || now >= Math.max(...bounds)) return home;
-  const route = active.find((candidate) => Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at));
-  if (route) return { kind: "travel", zone: route.arrival_timezone, label: `onderweg naar ${route.arrival_area.label}` };
+  const route = active.find(
+    (candidate) => Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at),
+  );
+  if (route)
+    return { kind: "travel", zone: route.arrival_timezone, label: `onderweg naar ${route.arrival_area.label}` };
   const current = zoned.find((stay) => stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)));
   if (current) return { kind: "stay", zone: stayZone(current), label: current.area.label };
   const last = [
-    ...active.filter((candidate) => Date.parse(candidate.arrives_at) <= now).map((candidate) => ({ at: Date.parse(candidate.arrives_at), zone: candidate.arrival_timezone, label: candidate.arrival_area.label })),
+    ...active
+      .filter((candidate) => Date.parse(candidate.arrives_at) <= now)
+      .map((candidate) => ({
+        at: Date.parse(candidate.arrives_at),
+        zone: candidate.arrival_timezone,
+        label: candidate.arrival_area.label,
+      })),
     // A stay that already began counts as recent up to its check-out.
-    ...zoned.filter((stay) => midday(stay.check_in_date) <= now).map((stay) => ({ at: Math.min(now, midday(stay.check_out_date)), zone: stayZone(stay), label: stay.area.label })),
+    ...zoned
+      .filter((stay) => midday(stay.check_in_date) <= now)
+      .map((stay) => ({
+        at: Math.min(now, midday(stay.check_out_date)),
+        zone: stayZone(stay),
+        label: stay.area.label,
+      })),
   ].sort((left, right) => right.at - left.at)[0];
   return last ? { kind: "between", zone: last.zone, label: `tussen verblijven, laatst in ${last.label}` } : home;
 }
@@ -582,7 +628,15 @@ export function localDateTime(value = new Date()): string {
 }
 
 export function emptyDraft(tripId = ""): UpdateDraft {
-  return { tripId, updateId: null, occurredAt: localDateTime(), title: "", notes: "", location: null, mediaAssetIds: [] };
+  return {
+    tripId,
+    updateId: null,
+    occurredAt: localDateTime(),
+    title: "",
+    notes: "",
+    location: null,
+    mediaAssetIds: [],
+  };
 }
 
 /** Drafts are kept per trip, so opening the capture form for one trip never
@@ -600,8 +654,19 @@ function readDraftStore(): Record<string, UpdateDraft> {
 
 export function readDraft(tripId: string): UpdateDraft | null {
   const draft = readDraftStore()[tripId] as Partial<UpdateDraft> | undefined;
-  if (!draft || typeof draft.occurredAt !== "string" || typeof draft.title !== "string" || typeof draft.notes !== "string") return null;
-  return { ...emptyDraft(tripId), ...draft, tripId, updateId: typeof draft.updateId === "string" ? draft.updateId : null };
+  if (
+    !draft ||
+    typeof draft.occurredAt !== "string" ||
+    typeof draft.title !== "string" ||
+    typeof draft.notes !== "string"
+  )
+    return null;
+  return {
+    ...emptyDraft(tripId),
+    ...draft,
+    tripId,
+    updateId: typeof draft.updateId === "string" ? draft.updateId : null,
+  };
 }
 
 export function clearDraft(tripId: string): void {

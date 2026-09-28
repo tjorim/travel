@@ -20,7 +20,12 @@ const KIND_LABELS: Record<EmergencyInfoKind, string> = {
 
 type Values = { kind: EmergencyInfoKind; label: string; value: string; notes: string };
 const blank = (): Values => ({ kind: "contact", label: "", value: "", notes: "" });
-const fromEntry = (entry: EmergencyInfoEntry): Values => ({ kind: entry.kind, label: entry.label, value: entry.value, notes: entry.notes ?? "" });
+const fromEntry = (entry: EmergencyInfoEntry): Values => ({
+  kind: entry.kind,
+  label: entry.label,
+  value: entry.value,
+  notes: entry.notes ?? "",
+});
 
 export function EmergencyInfoManager() {
   const offline = useOfflineCopies();
@@ -47,13 +52,35 @@ export function EmergencyInfoManager() {
     defaultValues: blank(),
     fallback: "De noodinformatie kon niet worden opgeslagen.",
     serverFields: { kind: "kind", label: "label", value: "value", notes: "notes" },
-    submit: async (values) => { await save.mutateAsync({ id: dialog.editingId ?? null, payload: { kind: values.kind, label: values.label.trim(), value: values.value.trim(), notes: values.notes.trim() || null } }); },
-    onSuccess: () => { close(); setNotice("Noodinformatie opgeslagen."); },
+    submit: async (values) => {
+      await save.mutateAsync({
+        id: dialog.editingId ?? null,
+        payload: {
+          kind: values.kind,
+          label: values.label.trim(),
+          value: values.value.trim(),
+          notes: values.notes.trim() || null,
+        },
+      });
+    },
+    onSuccess: () => {
+      close();
+      setNotice("Noodinformatie opgeslagen.");
+    },
   });
 
-  function close() { dialog.close(); record.load(blank()); }
-  function create() { record.load(blank()); dialog.create(); }
-  function edit(entry: EmergencyInfoEntry) { record.load(fromEntry(entry)); dialog.edit(entry.id); }
+  function close() {
+    dialog.close();
+    record.load(blank());
+  }
+  function create() {
+    record.load(blank());
+    dialog.create();
+  }
+  function edit(entry: EmergencyInfoEntry) {
+    record.load(fromEntry(entry));
+    dialog.edit(entry.id);
+  }
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
 
   function erase(entry: EmergencyInfoEntry) {
@@ -82,32 +109,149 @@ export function EmergencyInfoManager() {
     setNotice(`“${entry.label}” is offline bewaard op dit toestel.`);
   }
 
-  const message = notice ?? (entriesQuery.error ? errorMessage(entriesQuery.error, "Je noodinformatie kon niet worden geladen.") : entriesQuery.isPending ? "Laad je noodinformatie…" : "Contacten, nummers en medische notities blijven uitsluitend voor jou zichtbaar.");
+  const message =
+    notice ??
+    (entriesQuery.error
+      ? errorMessage(entriesQuery.error, "Je noodinformatie kon niet worden geladen.")
+      : entriesQuery.isPending
+        ? "Laad je noodinformatie…"
+        : "Contacten, nummers en medische notities blijven uitsluitend voor jou zichtbaar.");
 
-  return <section className="card manager" aria-labelledby="emergency-info-title">
-    <div className="capture-heading"><div><h3 id="emergency-info-title">Noodinformatie</h3><p>Contacten, relevante nummers en beknopte medische of hulpverlenersnotities, los van één specifieke reis.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuwe invoer</button></div>
-    <p className="help" role="status">{message}</p>
-    {entries.length > 0 && <div className="saved-records manager-list">{entries.map((entry) => <article className="excerpt-row stacked" key={entry.id}>
-      <button className="document-select" type="button" onClick={() => dialog.inspect(entry.id)} aria-label={`Noodinformatie ${entry.label} bekijken`}><strong>{entry.label}</strong><span>{KIND_LABELS[entry.kind]} · {entry.value}{entry.notes ? ` · ${entry.notes_text ?? entry.notes}` : ""}</span></button>
-      <div className="button-row">
-        <button className="secondary compact" type="button" onClick={() => void togglePin(entry).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("emergency_info", entry.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
-      </div>
-    </article>)}</div>}
-    {!entries.length && !entriesQuery.isPending && <p>Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.</p>}
-    <RecordDialog open={editing || selected !== null} title={editing ? (editingId ? "Noodinformatie bewerken" : "Noodinformatie toevoegen") : "Noodinformatie"} dirty={editing && record.dirty} onDismiss={close}>
-      {!editing && selected && <div className="stack-form">
-        <div><h3>{selected.label}</h3><p>{KIND_LABELS[selected.kind]} · {selected.value}</p><Markdown html={selected.notes_html} text={selected.notes} /></div>
-        <div className="button-row"><button type="button" onClick={() => edit(selected)}>Bewerken</button><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
-        {dialog.confirmDelete && <DeleteConfirmation title={`“${selected.label}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
-      </div>}
-      {editing && <RecordForm record={record} submitLabel={editingId ? "Opslaan" : "Toevoegen"} pendingLabel="Opslaan…">
-        <div className="field-row">
-          <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort">{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</SelectField>}</record.form.Field>
-          <record.form.Field name="label" validators={{ onChange: requiredText("Geef de invoer een label."), onSubmit: requiredText("Geef de invoer een label.") }}>{(field) => <TextField field={field} label="Label" required maxLength={160} placeholder="Bijvoorbeeld: Mama, Ambassade, Allergie" />}</record.form.Field>
+  return (
+    <section className="card manager" aria-labelledby="emergency-info-title">
+      <div className="capture-heading">
+        <div>
+          <h3 id="emergency-info-title">Noodinformatie</h3>
+          <p>
+            Contacten, relevante nummers en beknopte medische of hulpverlenersnotities, los van één specifieke reis.
+          </p>
         </div>
-        <record.form.Field name="value" validators={{ onChange: requiredText("Vul een waarde in."), onSubmit: requiredText("Vul een waarde in.") }}>{(field) => <TextField field={field} label="Waarde" required maxLength={255} placeholder="Telefoonnummer of korte omschrijving" />}</record.form.Field>
-        <record.form.Field name="notes">{(field) => <MarkdownField field={field} label="Notities" optional maxLength={4000} rows={3} />}</record.form.Field>
-      </RecordForm>}
-    </RecordDialog>
-  </section>;
+        <button className="secondary compact" type="button" onClick={create}>
+          Nieuwe invoer
+        </button>
+      </div>
+      <p className="help" role="status">
+        {message}
+      </p>
+      {entries.length > 0 && (
+        <div className="saved-records manager-list">
+          {entries.map((entry) => (
+            <article className="excerpt-row stacked" key={entry.id}>
+              <button
+                className="document-select"
+                type="button"
+                onClick={() => dialog.inspect(entry.id)}
+                aria-label={`Noodinformatie ${entry.label} bekijken`}
+              >
+                <strong>{entry.label}</strong>
+                <span>
+                  {KIND_LABELS[entry.kind]} · {entry.value}
+                  {entry.notes ? ` · ${entry.notes_text ?? entry.notes}` : ""}
+                </span>
+              </button>
+              <div className="button-row">
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => void togglePin(entry).catch(fail("Offline bewaren is mislukt."))}
+                >
+                  {offline.isPinned("emergency_info", entry.id) ? "Offline verwijderen" : "Offline bewaren"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+      {!entries.length && !entriesQuery.isPending && (
+        <p>Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.</p>
+      )}
+      <RecordDialog
+        open={editing || selected !== null}
+        title={editing ? (editingId ? "Noodinformatie bewerken" : "Noodinformatie toevoegen") : "Noodinformatie"}
+        dirty={editing && record.dirty}
+        onDismiss={close}
+      >
+        {!editing && selected && (
+          <div className="stack-form">
+            <div>
+              <h3>{selected.label}</h3>
+              <p>
+                {KIND_LABELS[selected.kind]} · {selected.value}
+              </p>
+              <Markdown html={selected.notes_html} text={selected.notes} />
+            </div>
+            <div className="button-row">
+              <button type="button" onClick={() => edit(selected)}>
+                Bewerken
+              </button>
+              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+                Verwijderen
+              </button>
+            </div>
+            {dialog.confirmDelete && (
+              <DeleteConfirmation
+                title={`“${selected.label}” verwijderen?`}
+                onCancel={() => dialog.setConfirmDelete(false)}
+                onConfirm={() => erase(selected)}
+              />
+            )}
+          </div>
+        )}
+        {editing && (
+          <RecordForm record={record} submitLabel={editingId ? "Opslaan" : "Toevoegen"} pendingLabel="Opslaan…">
+            <div className="field-row">
+              <record.form.Field name="kind">
+                {(field) => (
+                  <SelectField field={field} label="Soort">
+                    {Object.entries(KIND_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </SelectField>
+                )}
+              </record.form.Field>
+              <record.form.Field
+                name="label"
+                validators={{
+                  onChange: requiredText("Geef de invoer een label."),
+                  onSubmit: requiredText("Geef de invoer een label."),
+                }}
+              >
+                {(field) => (
+                  <TextField
+                    field={field}
+                    label="Label"
+                    required
+                    maxLength={160}
+                    placeholder="Bijvoorbeeld: Mama, Ambassade, Allergie"
+                  />
+                )}
+              </record.form.Field>
+            </div>
+            <record.form.Field
+              name="value"
+              validators={{
+                onChange: requiredText("Vul een waarde in."),
+                onSubmit: requiredText("Vul een waarde in."),
+              }}
+            >
+              {(field) => (
+                <TextField
+                  field={field}
+                  label="Waarde"
+                  required
+                  maxLength={255}
+                  placeholder="Telefoonnummer of korte omschrijving"
+                />
+              )}
+            </record.form.Field>
+            <record.form.Field name="notes">
+              {(field) => <MarkdownField field={field} label="Notities" optional maxLength={4000} rows={3} />}
+            </record.form.Field>
+          </RecordForm>
+        )}
+      </RecordDialog>
+    </section>
+  );
 }

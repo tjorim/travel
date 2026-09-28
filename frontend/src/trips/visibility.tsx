@@ -22,7 +22,11 @@ export const visibilityLabel = (visibility: Visibility): string => SHORT_LABELS[
 export function useSetVisibility(tripId: string) {
   return useOwnerMutation<{ kind: ShareScopeKind; id: string; visibility: Visibility }, { visibility: Visibility }>({
     fallback: "De zichtbaarheid kon niet worden bewaard.",
-    request: ({ kind, id, visibility }) => ({ path: tripPath(tripId, `visibility/${kind}/${encodeURIComponent(id)}`), method: "PUT", body: { visibility } }),
+    request: ({ kind, id, visibility }) => ({
+      path: tripPath(tripId, `visibility/${kind}/${encodeURIComponent(id)}`),
+      method: "PUT",
+      body: { visibility },
+    }),
     invalidate: (subject) => [ownerKeys.trip(subject, tripId), ownerKeys.trips(subject)],
   });
 }
@@ -31,7 +35,14 @@ export function useSetVisibility(tripId: string) {
  * The one control for who sees a record. It saves at once, so it works the same in an item's own
  * editor and in Delen. The server says when a record cannot be shared yet, and that is shown here.
  */
-export function VisibilityControl({ tripId, kind, id, value, name, followsUpdate }: {
+export function VisibilityControl({
+  tripId,
+  kind,
+  id,
+  value,
+  name,
+  followsUpdate,
+}: {
   tripId: string;
   kind: ShareScopeKind;
   id: string;
@@ -43,18 +54,36 @@ export function VisibilityControl({ tripId, kind, id, value, name, followsUpdate
 }) {
   const save = useSetVisibility(tripId);
   const [error, setError] = useState<string | null>(null);
-  if (followsUpdate) return <p className="help visibility-control">Wordt gedeeld samen met reisupdate “{followsUpdate}”.</p>;
+  if (followsUpdate) return <p className="help">Wordt gedeeld samen met reisupdate “{followsUpdate}”.</p>;
   const shown = save.isPending && save.variables ? save.variables.visibility : value;
   function choose(visibility: Visibility) {
     setError(null);
-    save.mutateAsync({ kind, id, visibility }).catch((failure: unknown) => setError(errorMessage(failure, "De zichtbaarheid kon niet worden bewaard.")));
+    save
+      .mutateAsync({ kind, id, visibility })
+      .catch((failure: unknown) => setError(errorMessage(failure, "De zichtbaarheid kon niet worden bewaard.")));
   }
-  return <div className="field visibility-control">
-    <label>Zichtbaarheid
-      <SearchSelect ariaLabel={`Zichtbaarheid van ${name}`} value={shown} isDisabled={save.isPending} onChange={(value) => choose(value as Visibility)}>
-        {(Object.keys(VISIBILITY_LABELS) as Visibility[]).map((option) => <option key={option} value={option}>{VISIBILITY_LABELS[option]}</option>)}
-      </SearchSelect>
-    </label>
-    {error && <span className="field-error" role="alert">{error}</span>}
-  </div>;
+  return (
+    <div className="field">
+      <label>
+        Zichtbaarheid
+        <SearchSelect
+          ariaLabel={`Zichtbaarheid van ${name}`}
+          value={shown}
+          isDisabled={save.isPending}
+          onChange={(value) => choose(value as Visibility)}
+        >
+          {(Object.keys(VISIBILITY_LABELS) as Visibility[]).map((option) => (
+            <option key={option} value={option}>
+              {VISIBILITY_LABELS[option]}
+            </option>
+          ))}
+        </SearchSelect>
+      </label>
+      {error && (
+        <span className="field-error" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
+  );
 }

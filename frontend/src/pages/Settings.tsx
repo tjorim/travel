@@ -36,18 +36,36 @@ export function Settings() {
     if (!params.has("state")) return;
     completed.current = true;
     window.history.replaceState(null, "", window.location.pathname);
-    if (params.get("error")) { setNotice("Google Photos heeft de verbinding niet toegestaan."); return; }
+    if (params.get("error")) {
+      setNotice("Google Photos heeft de verbinding niet toegestaan.");
+      return;
+    }
     const code = params.get("code");
     const state = params.get("state");
-    if (!code || !state) { setNotice("De Google Photos-verbinding is onvolledig."); return; }
+    if (!code || !state) {
+      setNotice("De Google Photos-verbinding is onvolledig.");
+      return;
+    }
     setConnecting(true);
-    void ownerRequest<void>(session, "/api/provider-tokens/google_photos_picker/oauth/complete", "Google Photos kon niet worden verbonden.", {
-      method: "POST", body: { code, state },
-    }).then(() => {
-      setNotice("Google Photos is verbonden voor private imports.");
-      const key = ownerKeys.providers(decodeSubject(session.accessToken) ?? "");
-      void queryClient.cancelQueries({ queryKey: key }).then(() => queryClient.invalidateQueries({ queryKey: key }));
-    }, (error: unknown) => setNotice(errorMessage(error, "Google Photos kon niet worden verbonden.")))
+    void ownerRequest<void>(
+      session,
+      "/api/provider-tokens/google_photos_picker/oauth/complete",
+      "Google Photos kon niet worden verbonden.",
+      {
+        method: "POST",
+        body: { code, state },
+      },
+    )
+      .then(
+        () => {
+          setNotice("Google Photos is verbonden voor private imports.");
+          const key = ownerKeys.providers(decodeSubject(session.accessToken) ?? "");
+          void queryClient
+            .cancelQueries({ queryKey: key })
+            .then(() => queryClient.invalidateQueries({ queryKey: key }));
+        },
+        (error: unknown) => setNotice(errorMessage(error, "Google Photos kon niet worden verbonden.")),
+      )
       .finally(() => setConnecting(false));
   }, [session, queryClient]);
 
@@ -55,7 +73,12 @@ export function Settings() {
     if (!session) return;
     setConnecting(true);
     try {
-      const result = await ownerRequest<{ authorization_url: string }>(session, "/api/provider-tokens/google_photos_picker/oauth/start", "Google Photos kon niet worden gestart.", { method: "POST" });
+      const result = await ownerRequest<{ authorization_url: string }>(
+        session,
+        "/api/provider-tokens/google_photos_picker/oauth/start",
+        "Google Photos kon niet worden gestart.",
+        { method: "POST" },
+      );
       window.location.assign(result.authorization_url);
     } catch (error) {
       setNotice(errorMessage(error, "Google Photos kon niet worden gestart."));
@@ -64,21 +87,78 @@ export function Settings() {
   }
 
   function disconnect(provider: Provider) {
-    confirmation.ask({ title: `${labels[provider]} loskoppelen?`, description: "Bestaande geïmporteerde media blijven privé beschikbaar.", confirmLabel: "Loskoppelen", onConfirm: () => {
-      revoke.mutateAsync(provider).then(() => setNotice(`${labels[provider]} is losgekoppeld.`), (error: unknown) => setNotice(errorMessage(error, "De provider kon niet worden losgekoppeld.")));
-    } });
+    confirmation.ask({
+      title: `${labels[provider]} loskoppelen?`,
+      description: "Bestaande geïmporteerde media blijven privé beschikbaar.",
+      confirmLabel: "Loskoppelen",
+      onConfirm: () => {
+        revoke.mutateAsync(provider).then(
+          () => setNotice(`${labels[provider]} is losgekoppeld.`),
+          (error: unknown) => setNotice(errorMessage(error, "De provider kon niet worden losgekoppeld.")),
+        );
+      },
+    });
   }
 
-  const message = notice ?? (providersQuery.error ? errorMessage(providersQuery.error, "De providerstatus kon niet worden geladen.") : providersQuery.isPending ? "Laad providerstatus…" : "Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
-  if (!session) return <EmptyState title="Instellingen">Meld aan om de status van je private mediaproviders te bekijken.</EmptyState>;
+  const message =
+    notice ??
+    (providersQuery.error
+      ? errorMessage(providersQuery.error, "De providerstatus kon niet worden geladen.")
+      : providersQuery.isPending
+        ? "Laad providerstatus…"
+        : "Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
+  if (!session)
+    return (
+      <EmptyState title="Instellingen">Meld aan om de status van je private mediaproviders te bekijken.</EmptyState>
+    );
   const noProvidersAvailable = providersQuery.isSuccess && providers.length === 0;
 
-  return <section className="card manager" aria-labelledby="settings-title">
-    <div><p className="eyebrow">Private accountinstellingen</p><h2 id="settings-title">Instellingen</h2><p>{noProvidersAvailable ? "Providerimport is op deze server nog niet beschikbaar." : "Verbind Google Photos om geselecteerde media privé te importeren."}</p></div>
-    <p className="help" role="status">{message}</p>
-    {noProvidersAvailable
-      ? <p className="help">Er is geen mediaprovider geconfigureerd op deze server, dus er is niets te verbinden. Gebruik direct uploaden op de Media-pagina van een reis om privémedia toe te voegen.</p>
-      : <div className="saved-records manager-list">{providers.map((provider) => <article className="provider-row" key={provider.provider}><div><strong>{labels[provider.provider]}</strong><span>{provider.connected ? "Verbonden voor private import" : "Niet verbonden"}</span></div><div className="provider-actions"><span className={`provider-status ${provider.connected ? "connected" : "disconnected"}`}>{provider.connected ? "Verbonden" : "Niet verbonden"}</span>{provider.connected ? <button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>Loskoppelen</button> : provider.provider === "google_photos_picker" ? <button type="button" disabled={connecting} onClick={() => void connectGoogle()}>{connecting ? "Verbinden…" : "Verbinden met Google"}</button> : null}</div></article>)}</div>}
-    {confirmation.dialog}
-  </section>;
+  return (
+    <section className="card manager" aria-labelledby="settings-title">
+      <div>
+        <p className="eyebrow">Private accountinstellingen</p>
+        <h2 id="settings-title">Instellingen</h2>
+        <p>
+          {noProvidersAvailable
+            ? "Providerimport is op deze server nog niet beschikbaar."
+            : "Verbind Google Photos om geselecteerde media privé te importeren."}
+        </p>
+      </div>
+      <p className="help" role="status">
+        {message}
+      </p>
+      {noProvidersAvailable ? (
+        <p className="help">
+          Er is geen mediaprovider geconfigureerd op deze server, dus er is niets te verbinden. Gebruik direct uploaden
+          op de Media-pagina van een reis om privémedia toe te voegen.
+        </p>
+      ) : (
+        <div className="saved-records manager-list">
+          {providers.map((provider) => (
+            <article className="provider-row" key={provider.provider}>
+              <div>
+                <strong>{labels[provider.provider]}</strong>
+                <span>{provider.connected ? "Verbonden voor private import" : "Niet verbonden"}</span>
+              </div>
+              <div className="provider-actions">
+                <span className={`provider-status ${provider.connected ? "connected" : "disconnected"}`}>
+                  {provider.connected ? "Verbonden" : "Niet verbonden"}
+                </span>
+                {provider.connected ? (
+                  <button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>
+                    Loskoppelen
+                  </button>
+                ) : provider.provider === "google_photos_picker" ? (
+                  <button type="button" disabled={connecting} onClick={() => void connectGoogle()}>
+                    {connecting ? "Verbinden…" : "Verbinden met Google"}
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+      {confirmation.dialog}
+    </section>
+  );
 }

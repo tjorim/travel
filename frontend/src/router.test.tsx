@@ -45,10 +45,16 @@ const routeComponents = {
 // reproduces #239: Trips is a sibling (not a descendant) of tripsRoute on these paths.
 const workspaceRouteComponents = { ...routeComponents, Trips, TripWorkspace };
 
-afterEach(() => { sessionStorage.clear(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  sessionStorage.clear();
+  vi.unstubAllGlobals();
+});
 
 it("prefetches the trips list through tripsRoute's loader before Trips reads it", async () => {
-  sessionStorage.setItem("travel-tracker-session", JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }));
+  sessionStorage.setItem(
+    "travel-tracker-session",
+    JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }),
+  );
   const fetcher = vi.fn(() => json([{ id: "t1", title: "Exampleland" }]));
   vi.stubGlobal("fetch", fetcher);
 
@@ -56,7 +62,13 @@ it("prefetches the trips list through tripsRoute's loader before Trips reads it"
   const routeTree = buildTrackerRouteTree(routeComponents);
   const router = createTrackerRouter(routeTree, { queryClient, initialEntries: ["/trips"] });
 
-  render(<AuthProvider><OwnerQueryProvider client={queryClient}><RouterProvider router={router} /></OwnerQueryProvider></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OwnerQueryProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </OwnerQueryProvider>
+    </AuthProvider>,
+  );
 
   await waitFor(() => expect(screen.getByText("Trips geladen")).toBeTruthy());
   // The loader's ensureQueryData and Trips' own useTripsQuery share one cache
@@ -72,26 +84,45 @@ it("skips the prefetch (and any request) when there is no signed-in owner", asyn
   const routeTree = buildTrackerRouteTree(routeComponents);
   const router = createTrackerRouter(routeTree, { queryClient, initialEntries: ["/trips"] });
 
-  render(<AuthProvider><OwnerQueryProvider client={queryClient}><RouterProvider router={router} /></OwnerQueryProvider></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OwnerQueryProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </OwnerQueryProvider>
+    </AuthProvider>,
+  );
 
   await waitFor(() => expect(screen.getByText("Trips geladen")).toBeTruthy());
   expect(fetcher).not.toHaveBeenCalled();
 });
 
 it("opens a trip workspace section directly without crashing (regression for #239)", async () => {
-  sessionStorage.setItem("travel-tracker-session", JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }));
-  vi.stubGlobal("fetch", vi.fn((url: string) => {
-    if (url === "/api/trips") return json([{ id: "t1", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] }]);
-    if (url.endsWith("/areas")) return json([]);
-    throw new Error(`unexpected request ${url}`);
-  }));
+  sessionStorage.setItem(
+    "travel-tracker-session",
+    JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }),
+  );
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url === "/api/trips")
+        return json([{ id: "t1", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] }]);
+      if (url.endsWith("/areas")) return json([]);
+      throw new Error(`unexpected request ${url}`);
+    }),
+  );
 
   const queryClient = createOwnerQueryClient();
   const routeTree = buildTrackerRouteTree(workspaceRouteComponents);
   // A direct load of a trip's sharing section, as in the issue's reproduction steps.
   const router = createTrackerRouter(routeTree, { queryClient, initialEntries: ["/trips/t1/sharing"] });
 
-  render(<AuthProvider><OwnerQueryProvider client={queryClient}><RouterProvider router={router} /></OwnerQueryProvider></AuthProvider>);
+  render(
+    <AuthProvider>
+      <OwnerQueryProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </OwnerQueryProvider>
+    </AuthProvider>,
+  );
 
   await waitFor(() => expect(screen.getByRole("heading", { name: "Exampleland" })).toBeTruthy());
 });

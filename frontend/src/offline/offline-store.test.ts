@@ -58,7 +58,12 @@ it("pins a copy and lists it for the owning subject", async () => {
   await pinOfflineCopy(pinInput());
   const copies = await listOfflineCopies(OWNER);
   expect(copies).toHaveLength(1);
-  expect(copies[0]).toMatchObject({ title: "Insurance policy", resourceKind: "library_document", resourceId: "doc-1", byteSize: bytesOf("private pdf bytes").byteLength });
+  expect(copies[0]).toMatchObject({
+    title: "Insurance policy",
+    resourceKind: "library_document",
+    resourceId: "doc-1",
+    byteSize: bytesOf("private pdf bytes").byteLength,
+  });
 });
 
 it("opens a pinned copy and decrypts its original bytes after a simulated reload", async () => {
@@ -75,15 +80,43 @@ it("opens a pinned copy and decrypts its original bytes after a simulated reload
 });
 
 it("keeps explicitly pinned media, map data and visits private across a simulated reload", async () => {
-  await pinOfflineCopy(pinInput({ resourceKind: "media_asset", resourceId: "media-1", title: "Arrival.jpg", contentType: "image/jpeg", bytes: bytesOf("media bytes") }));
-  await pinOfflineCopy(pinInput({ resourceKind: "route_data", resourceId: "trip-1", title: "Exampleland · map", metadataUrl: "/api/trips/trip-1/offline-map", contentType: "application/json", bytes: bytesOf('{"lines":[]}') }));
-  await pinOfflineCopy(pinInput({ resourceKind: "visit", resourceId: "visit-1", title: "Arrival", metadataUrl: "/api/trips/trip-1/visits/visit-1", contentType: "application/json", bytes: bytesOf('{"title":"Arrival"}') }));
+  await pinOfflineCopy(
+    pinInput({
+      resourceKind: "media_asset",
+      resourceId: "media-1",
+      title: "Arrival.jpg",
+      contentType: "image/jpeg",
+      bytes: bytesOf("media bytes"),
+    }),
+  );
+  await pinOfflineCopy(
+    pinInput({
+      resourceKind: "route_data",
+      resourceId: "trip-1",
+      title: "Exampleland · map",
+      metadataUrl: "/api/trips/trip-1/offline-map",
+      contentType: "application/json",
+      bytes: bytesOf('{"lines":[]}'),
+    }),
+  );
+  await pinOfflineCopy(
+    pinInput({
+      resourceKind: "visit",
+      resourceId: "visit-1",
+      title: "Arrival",
+      metadataUrl: "/api/trips/trip-1/visits/visit-1",
+      contentType: "application/json",
+      bytes: bytesOf('{"title":"Arrival"}'),
+    }),
+  );
 
   await __resetOfflineStoreForTests();
 
   const copies = await listOfflineCopies(OWNER);
   expect(copies.map((copy) => copy.resourceKind).sort()).toEqual(["media_asset", "route_data", "visit"]);
-  await expect((await openOfflineCopy(OWNER, copies.find((copy) => copy.resourceKind === "media_asset")!.id)).text()).resolves.toBe("media bytes");
+  await expect(
+    (await openOfflineCopy(OWNER, copies.find((copy) => copy.resourceKind === "media_asset")!.id)).text(),
+  ).resolves.toBe("media bytes");
   await removeOfflineCopy(copies.find((copy) => copy.resourceKind === "route_data")!.id);
   expect(await listOfflineCopies(OTHER_OWNER)).toHaveLength(0);
   expect((await listOfflineCopies(OWNER)).map((copy) => copy.resourceKind)).not.toContain("route_data");

@@ -34,6 +34,9 @@ be browsed with `python3 -m http.server 8080 --directory dist`.
 
 Production routing, secrets, backups and media storage live in the central
 `apps` infrastructure ([apps#223](https://github.com/tjorim/apps/pull/223)).
+Its VPS deployment playbook and upgrade script build `travel/frontend` with
+the provisioned Node 24 and direct `pnpm install --frozen-lockfile` and
+`pnpm build` commands.
 Caddy there serves the built PWA shells and proxies the API; it no longer
 serves `dist/`, so the archive's `private/` files are not published anywhere.
 Owner access uses the Keycloak `travel` realm; public and unlisted visitors
@@ -51,8 +54,8 @@ use the application's scoped projection routes.
 PostgreSQL:
 
 ```bash
-(cd frontend && vp env exec --node "$(cat .node-version)" pnpm install --frozen-lockfile \
-  && vp env exec --node "$(cat .node-version)" pnpm build)
+(cd frontend && test "$(node --version)" = "v$(cat .node-version)" \
+  && pnpm install --frozen-lockfile && pnpm build)
 cp Caddyfile.example Caddyfile
 docker compose up -d --build
 docker compose exec travel-api alembic upgrade head

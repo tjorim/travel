@@ -7,7 +7,14 @@ const SUBJECT_INDEX = "by_subject";
 export const OFFLINE_SCHEMA_VERSION = "travel/offline-copy@1";
 export const OFFLINE_LEASE_MS = 7 * 24 * 60 * 60 * 1000;
 
-export type OfflineResourceKind = "library_document" | "trip_document" | "emergency_info" | "media_asset" | "media_derivative" | "route_data" | "visit";
+export type OfflineResourceKind =
+  | "library_document"
+  | "trip_document"
+  | "emergency_info"
+  | "media_asset"
+  | "media_derivative"
+  | "route_data"
+  | "visit";
 
 export type OfflineCopyRecord = {
   id: string;
@@ -130,12 +137,18 @@ function promisifyTransaction(transaction: IDBTransaction): Promise<void> {
   });
 }
 
-async function getKeyRecord(db: IDBDatabase, subject: string): Promise<{ subject: string; key: CryptoKey; exportable: boolean; createdAt: number } | null> {
+async function getKeyRecord(
+  db: IDBDatabase,
+  subject: string,
+): Promise<{ subject: string; key: CryptoKey; exportable: boolean; createdAt: number } | null> {
   const record = await promisifyRequest(db.transaction(KEYS_STORE, "readonly").objectStore(KEYS_STORE).get(subject));
   return (record as { subject: string; key: CryptoKey; exportable: boolean; createdAt: number } | undefined) ?? null;
 }
 
-async function putKeyRecord(db: IDBDatabase, record: { subject: string; key: CryptoKey; exportable: boolean; createdAt: number }): Promise<void> {
+async function putKeyRecord(
+  db: IDBDatabase,
+  record: { subject: string; key: CryptoKey; exportable: boolean; createdAt: number },
+): Promise<void> {
   const transaction = db.transaction(KEYS_STORE, "readwrite");
   transaction.objectStore(KEYS_STORE).put(record);
   await promisifyTransaction(transaction);
@@ -176,7 +189,11 @@ export async function getKeyDisclosure(subject: string): Promise<KeyDisclosure |
 }
 
 async function getCopiesForSubject(db: IDBDatabase, subject: string): Promise<OfflineCopyRecord[]> {
-  const request = db.transaction(COPIES_STORE, "readonly").objectStore(COPIES_STORE).index(SUBJECT_INDEX).getAll(subject);
+  const request = db
+    .transaction(COPIES_STORE, "readonly")
+    .objectStore(COPIES_STORE)
+    .index(SUBJECT_INDEX)
+    .getAll(subject);
   return promisifyRequest(request) as Promise<OfflineCopyRecord[]>;
 }
 
@@ -202,7 +219,11 @@ function toSummary(record: OfflineCopyRecord): OfflineCopySummary {
   return summary;
 }
 
-export async function findPinnedCopy(subject: string, resourceKind: OfflineResourceKind, resourceId: string): Promise<OfflineCopySummary | null> {
+export async function findPinnedCopy(
+  subject: string,
+  resourceKind: OfflineResourceKind,
+  resourceId: string,
+): Promise<OfflineCopySummary | null> {
   const db = await openDb();
   const records = await getCopiesForSubject(db, subject);
   const match = records.find((record) => record.resourceKind === resourceKind && record.resourceId === resourceId);
@@ -271,13 +292,20 @@ export async function wipeOfflineData(subject: string): Promise<void> {
 export async function openOfflineCopy(subject: string, id: string): Promise<Blob> {
   const db = await openDb();
   const record = await getCopy(db, id);
-  if (!record || record.subject !== subject) throw new Error("Deze offline kopie is niet beschikbaar voor dit account.");
+  if (!record || record.subject !== subject)
+    throw new Error("Deze offline kopie is niet beschikbaar voor dit account.");
   if (record.leaseExpiresAt <= Date.now()) {
     await deleteCopy(db, id);
-    throw new Error("De offline geldigheidsperiode van deze kopie is verlopen. Verbind opnieuw met internet om ze te vernieuwen.");
+    throw new Error(
+      "De offline geldigheidsperiode van deze kopie is verlopen. Verbind opnieuw met internet om ze te vernieuwen.",
+    );
   }
   const { key } = await getOrCreateDeviceKey(subject);
-  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: record.iv as BufferSource }, key, record.ciphertext);
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: record.iv as BufferSource },
+    key,
+    record.ciphertext,
+  );
   return new Blob([plaintext], { type: record.contentType });
 }
 
@@ -288,7 +316,10 @@ export type RevalidateFetch = (metadataUrl: string) => Promise<Response>;
  * lease alone bounds how long a genuinely offline device may keep reading a copy,
  * but a live check removes copies that were deleted, unshared or re-owned sooner.
  */
-export async function revalidateOfflineCopies(subject: string, fetchImpl: RevalidateFetch): Promise<{ checked: number; removed: number }> {
+export async function revalidateOfflineCopies(
+  subject: string,
+  fetchImpl: RevalidateFetch,
+): Promise<{ checked: number; removed: number }> {
   const db = await openDb();
   const records = await getCopiesForSubject(db, subject);
   const now = Date.now();

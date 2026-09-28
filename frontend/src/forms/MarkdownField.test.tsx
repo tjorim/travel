@@ -15,11 +15,16 @@ afterEach(() => {
 
 function Editor({ initial = "", format }: { initial?: string; format?: MarkdownFormat }) {
   const form = useForm({ defaultValues: { notes: initial } });
-  return <form.Field name="notes">{(field) => <MarkdownField field={field} label="Notities" format={format} />}</form.Field>;
+  return (
+    <form.Field name="notes">{(field) => <MarkdownField field={field} label="Notities" format={format} />}</form.Field>
+  );
 }
 
 function withOwner(ui: React.ReactElement) {
-  sessionStorage.setItem("travel-tracker-session", JSON.stringify({ accessToken: testToken(), expiresAt: Date.now() + 60_000 }));
+  sessionStorage.setItem(
+    "travel-tracker-session",
+    JSON.stringify({ accessToken: testToken(), expiresAt: Date.now() + 60_000 }),
+  );
   return render(<AuthProvider>{ui}</AuthProvider>);
 }
 
@@ -35,14 +40,28 @@ it("applies a toolbar snippet to the selection", () => {
 
 it("offers only bold, italic and link for a caption, and no toolbar for contact details", () => {
   const caption = render(<Editor format="inline" />);
-  expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Schrijven", "Voorbeeld", "B", "I", "Link"]);
+  expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
+    "Schrijven",
+    "Voorbeeld",
+    "B",
+    "I",
+    "Link",
+  ]);
   caption.unmount();
   render(<Editor format="contact" />);
   expect(screen.queryByRole("toolbar")).toBeNull();
 });
 
 it("previews the server's rendering of the current text", async () => {
-  const fetch = vi.fn(async () => new Response(JSON.stringify({ html: "<table><tbody><tr><td><strong>Day 1</strong></td></tr></tbody></table>", text: "Day 1" })));
+  const fetch = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          html: "<table><tbody><tr><td><strong>Day 1</strong></td></tr></tbody></table>",
+          text: "Day 1",
+        }),
+      ),
+  );
   vi.stubGlobal("fetch", fetch);
   withOwner(<Editor initial="| **Day 1** |" format="markdown" />);
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
@@ -59,7 +78,10 @@ it("previews the server's rendering of the current text", async () => {
 });
 
 it("says so when the preview cannot be rendered", async () => {
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: "Nope" }), { status: 422 })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify({ detail: "Nope" }), { status: 422 })),
+  );
   withOwner(<Editor initial="x" format="contact" />);
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
   expect((await screen.findByRole("alert")).textContent).toBe("Nope");

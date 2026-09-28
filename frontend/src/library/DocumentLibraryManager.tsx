@@ -6,7 +6,14 @@ import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
 import { ownerKeys } from "../query/keys";
-import { libraryPath, useLibrary, useOwner, useOwnerMutation, useTripSearch, useTripsQuery } from "../query/owner-queries";
+import {
+  libraryPath,
+  useLibrary,
+  useOwner,
+  useOwnerMutation,
+  useTripSearch,
+  useTripsQuery,
+} from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type OwnerDocument } from "../tracker-model";
 
@@ -54,7 +61,10 @@ export function DocumentLibraryManager() {
       if (values.linkedTripId) data.set("linked_trip_id", values.linkedTripId);
       await upload.mutateAsync(data);
     },
-    onSuccess: () => { close(); setNotice("Document toegevoegd aan je bibliotheek."); },
+    onSuccess: () => {
+      close();
+      setNotice("Document toegevoegd aan je bibliotheek.");
+    },
   });
 
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
@@ -66,7 +76,10 @@ export function DocumentLibraryManager() {
     setFileKey((current) => current + 1);
     record.load(blank());
   }
-  function create() { close(); dialog.create(); }
+  function create() {
+    close();
+    dialog.create();
+  }
 
   function erase(document: OwnerDocument) {
     remove.mutateAsync(document).then(async () => {
@@ -83,7 +96,11 @@ export function DocumentLibraryManager() {
       setNotice(`“${document.title}” is niet langer offline beschikbaar.`);
       return;
     }
-    const blob = await ownerFile(owner.session, document.file_url, "Het document kon niet worden opgehaald voor offline gebruik.");
+    const blob = await ownerFile(
+      owner.session,
+      document.file_url,
+      "Het document kon niet worden opgehaald voor offline gebruik.",
+    );
     await offline.pin({
       resourceKind: "library_document",
       resourceId: document.id,
@@ -96,35 +113,162 @@ export function DocumentLibraryManager() {
   }
 
   const readError = documentsQuery.error ?? tripsQuery.error;
-  const message = notice ?? (readError ? errorMessage(readError, "Je bibliotheek kon niet worden geladen.") : documentsQuery.isPending ? "Laad je bibliotheek…" : "Reisessentials blijven uitsluitend in je private bibliotheek, los van één specifieke reis.");
+  const message =
+    notice ??
+    (readError
+      ? errorMessage(readError, "Je bibliotheek kon niet worden geladen.")
+      : documentsQuery.isPending
+        ? "Laad je bibliotheek…"
+        : "Reisessentials blijven uitsluitend in je private bibliotheek, los van één specifieke reis.");
 
-  const summary = (document: OwnerDocument) => `${document.original_filename ?? "Naamloos bestand"} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
+  const summary = (document: OwnerDocument) =>
+    `${document.original_filename ?? "Naamloos bestand"} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
 
-  return <section className="card manager" aria-labelledby="library-documents-title">
-    <div className="capture-heading"><div><h3 id="library-documents-title">Documenten</h3><p>Herbruikbare essentials zoals een verzekeringspolis of identiteitskopie, los van één specifieke reis.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw document</button></div>
-    <p className="help" role="status">{message}</p>
-    {documents.length > 0 && <div className="saved-records manager-list">{documents.map((document) => <article className="excerpt-row stacked" key={document.id}>
-      <button className="document-select" type="button" onClick={() => dialog.inspect(document.id)} aria-label={`Document ${document.title} bekijken`}><strong>{document.title}</strong><span>{summary(document)}</span></button>
-      <div className="button-row">
-        <button className="secondary compact" type="button" onClick={() => { if (owner) openOwnerFile(owner.session, document.file_url, "Het private origineel kon niet worden geopend.").catch(fail("Het private origineel kon niet worden geopend.")); }}>Bekijken</button>
-        <button className="secondary compact" type="button" onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("library_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button>
-      </div>
-    </article>)}</div>}
-    {!documents.length && !documentsQuery.isPending && <p>Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.</p>}
-    <RecordDialog open={editing || selected !== null} title={editing ? "Document uploaden" : "Document"} dirty={editing && record.dirty} onDismiss={close}>
-      {!editing && selected && <div className="stack-form">
-        <div><h3>{selected.title}</h3><p>{summary(selected)}</p></div>
-        <div className="button-row"><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
-        {dialog.confirmDelete && <DeleteConfirmation title={`Document “${selected.title}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
-      </div>}
-      {editing && <RecordForm record={record} submitLabel="Document uploaden" pendingLabel="Uploaden…">
-        <div className="field-row">
-          <record.form.Field name="title" validators={{ onChange: requiredText("Geef het document een titel."), onSubmit: requiredText("Geef het document een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</record.form.Field>
-          <record.form.Field name="kind">{(field) => <SelectField field={field} label="Soort"><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></SelectField>}</record.form.Field>
+  return (
+    <section className="card manager" aria-labelledby="library-documents-title">
+      <div className="capture-heading">
+        <div>
+          <h3 id="library-documents-title">Documenten</h3>
+          <p>Herbruikbare essentials zoals een verzekeringspolis of identiteitskopie, los van één specifieke reis.</p>
         </div>
-        <record.form.Field name="linkedTripId">{(field) => <div className="field"><label>Gekoppelde reis <span className="optional">(optioneel)</span><AsyncSearchSelect ariaLabel="Gekoppelde reis (optioneel)" value={field.state.value} selectedOption={field.state.value ? { value: field.state.value, label: tripTitle(field.state.value) } : null} defaultOptions={[{ value: "", label: "Geen koppeling" }, ...trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title }))]} onChange={field.handleChange} loadOptions={async (q) => [{ value: "", label: "Geen koppeling" }, ...(await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title }))]} /></label></div>}</record.form.Field>
-        <div className="field"><label>Privébestand<input key={fileKey} required type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label></div>
-      </RecordForm>}
-    </RecordDialog>
-  </section>;
+        <button className="secondary compact" type="button" onClick={create}>
+          Nieuw document
+        </button>
+      </div>
+      <p className="help" role="status">
+        {message}
+      </p>
+      {documents.length > 0 && (
+        <div className="saved-records manager-list">
+          {documents.map((document) => (
+            <article className="excerpt-row stacked" key={document.id}>
+              <button
+                className="document-select"
+                type="button"
+                onClick={() => dialog.inspect(document.id)}
+                aria-label={`Document ${document.title} bekijken`}
+              >
+                <strong>{document.title}</strong>
+                <span>{summary(document)}</span>
+              </button>
+              <div className="button-row">
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => {
+                    if (owner)
+                      openOwnerFile(
+                        owner.session,
+                        document.file_url,
+                        "Het private origineel kon niet worden geopend.",
+                      ).catch(fail("Het private origineel kon niet worden geopend."));
+                  }}
+                >
+                  Bekijken
+                </button>
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}
+                >
+                  {offline.isPinned("library_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+      {!documents.length && !documentsQuery.isPending && (
+        <p>Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.</p>
+      )}
+      <RecordDialog
+        open={editing || selected !== null}
+        title={editing ? "Document uploaden" : "Document"}
+        dirty={editing && record.dirty}
+        onDismiss={close}
+      >
+        {!editing && selected && (
+          <div className="stack-form">
+            <div>
+              <h3>{selected.title}</h3>
+              <p>{summary(selected)}</p>
+            </div>
+            <div className="button-row">
+              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+                Verwijderen
+              </button>
+            </div>
+            {dialog.confirmDelete && (
+              <DeleteConfirmation
+                title={`Document “${selected.title}” verwijderen?`}
+                onCancel={() => dialog.setConfirmDelete(false)}
+                onConfirm={() => erase(selected)}
+              />
+            )}
+          </div>
+        )}
+        {editing && (
+          <RecordForm record={record} submitLabel="Document uploaden" pendingLabel="Uploaden…">
+            <div className="field-row">
+              <record.form.Field
+                name="title"
+                validators={{
+                  onChange: requiredText("Geef het document een titel."),
+                  onSubmit: requiredText("Geef het document een titel."),
+                }}
+              >
+                {(field) => <TextField field={field} label="Titel" required maxLength={160} />}
+              </record.form.Field>
+              <record.form.Field name="kind">
+                {(field) => (
+                  <SelectField field={field} label="Soort">
+                    <option value="booking">Boeking</option>
+                    <option value="itinerary">Routeplan</option>
+                    <option value="receipt">Bon</option>
+                    <option value="other">Anders</option>
+                  </SelectField>
+                )}
+              </record.form.Field>
+            </div>
+            <record.form.Field name="linkedTripId">
+              {(field) => (
+                <div className="field">
+                  <label>
+                    Gekoppelde reis <span className="optional">(optioneel)</span>
+                    <AsyncSearchSelect
+                      ariaLabel="Gekoppelde reis (optioneel)"
+                      value={field.state.value}
+                      selectedOption={
+                        field.state.value ? { value: field.state.value, label: tripTitle(field.state.value) } : null
+                      }
+                      defaultOptions={[
+                        { value: "", label: "Geen koppeling" },
+                        ...trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title })),
+                      ]}
+                      onChange={field.handleChange}
+                      loadOptions={async (q) => [
+                        { value: "", label: "Geen koppeling" },
+                        ...(await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title })),
+                      ]}
+                    />
+                  </label>
+                </div>
+              )}
+            </record.form.Field>
+            <div className="field">
+              <label>
+                Privébestand
+                <input
+                  key={fileKey}
+                  required
+                  type="file"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          </RecordForm>
+        )}
+      </RecordDialog>
+    </section>
+  );
 }

@@ -2,7 +2,8 @@ import { expect, it } from "vitest";
 
 import { applyMarkdownSnippet } from "./markdown-snippets";
 
-const selected = (edit: { value: string; selectionStart: number; selectionEnd: number }) => edit.value.slice(edit.selectionStart, edit.selectionEnd);
+const selected = (edit: { value: string; selectionStart: number; selectionEnd: number }) =>
+  edit.value.slice(edit.selectionStart, edit.selectionEnd);
 
 it("wraps the selection in bold or italic and keeps it selected", () => {
   const bold = applyMarkdownSnippet("Night market", 0, 5, "bold");

@@ -13,13 +13,21 @@ afterEach(() => {
 });
 
 function transaction(silent: boolean) {
-  sessionStorage.setItem(transactionKey, JSON.stringify({ codeVerifier: "verifier", returnPath: "/trips", state: "state", silent }));
+  sessionStorage.setItem(
+    transactionKey,
+    JSON.stringify({ codeVerifier: "verifier", returnPath: "/trips", state: "state", silent }),
+  );
 }
 
 describe("owner browser session recovery", () => {
   it("keeps only a non-secret restoration marker after a successful sign-in", async () => {
     transaction(false);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })),
+    );
 
     await expect(completeSignIn("?code=code&state=state")).resolves.toMatchObject({ returnPath: "/trips" });
 
@@ -31,7 +39,12 @@ describe("owner browser session recovery", () => {
 
   it("requests silent recovery when browser session storage is unavailable", async () => {
     transaction(false);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })),
+    );
     await completeSignIn("?code=code&state=state");
 
     sessionStorage.clear();
@@ -52,7 +65,12 @@ describe("owner browser session recovery", () => {
 
   it("removes both the credential and restoration marker on explicit sign-out", async () => {
     transaction(false);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })),
+    );
     await completeSignIn("?code=code&state=state");
 
     clearSession();

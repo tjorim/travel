@@ -21,7 +21,13 @@ type RecordFormOptions<TValues, TResult> = {
  * values, submit-pending state, server errors (form- and field-level) and
  * reset-after-success. Pair it with `RecordForm` and `TextField`.
  */
-export function useRecordForm<TValues extends Record<string, unknown>, TResult = void>({ defaultValues, submit, onSuccess, fallback, serverFields = {} }: RecordFormOptions<TValues, TResult>) {
+export function useRecordForm<TValues extends Record<string, unknown>, TResult = void>({
+  defaultValues,
+  submit,
+  onSuccess,
+  fallback,
+  serverFields = {},
+}: RecordFormOptions<TValues, TResult>) {
   const formRef = useRef<HTMLFormElement>(null);
   // TanStack Form re-applies `defaultValues` on every render where they differ from the ones it saw last and the
   // form is untouched. The baseline therefore lives in a ref and is handed back unchanged after each reset, so
@@ -40,7 +46,8 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
       } catch (error) {
         const fields: Record<string, string> = {};
         if (error instanceof ApiError) {
-          for (const [name, message] of Object.entries(error.fieldErrors)) if (serverFields[name]) fields[serverFields[name]] = message;
+          for (const [name, message] of Object.entries(error.fieldErrors))
+            if (serverFields[name]) fields[serverFields[name]] = message;
         }
         setServerFieldErrors(fields);
         setServerError(errorMessage(error, fallback));
@@ -69,12 +76,15 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
   }, [values]);
 
   /** Loads a record (or a blank one) into the editor and makes it the clean baseline. */
-  const load = useCallback((next: TValues) => {
-    setServerError(null);
-    setServerFieldErrors({});
-    baseline.current = next;
-    form.reset(next);
-  }, [form]);
+  const load = useCallback(
+    (next: TValues) => {
+      setServerError(null);
+      setServerFieldErrors({});
+      baseline.current = next;
+      form.reset(next);
+    },
+    [form],
+  );
 
   return { form, formRef, values, serverError, serverFieldErrors, pending, dirty, load };
 }

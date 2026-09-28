@@ -1,0 +1,12 @@
+/* Keep the existing element and component styles while new views adopt utilities. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-travel-ink: #19342d;
+  --color-travel-paper: #f5f0e8;
+  --color-travel-forest: #0f493b;
+  --color-travel-muted: #4d665e;
+  --color-travel-focus: #e3a91c;
+}

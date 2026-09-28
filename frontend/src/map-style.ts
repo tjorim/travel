@@ -15,10 +15,11 @@ export async function loadMapStyle(styleUrl: string, signal: AbortSignal): Promi
   if (styleUrl !== defaultStyleUrl) return styleUrl;
   const response = await fetch(styleUrl, { signal, referrerPolicy: "no-referrer", credentials: "omit" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const style = await response.json() as StyleSpecification;
+  const style = (await response.json()) as StyleSpecification;
   for (const layer of style.layers ?? []) {
     const property = numericFilters[layer.id];
-    if (property && "filter" in layer && layer.filter) layer.filter = ["all", ["==", ["typeof", ["get", property]], "number"], layer.filter] as typeof layer.filter;
+    if (property && "filter" in layer && layer.filter)
+      layer.filter = ["all", ["==", ["typeof", ["get", property]], "number"], layer.filter] as typeof layer.filter;
   }
   return style;
 }

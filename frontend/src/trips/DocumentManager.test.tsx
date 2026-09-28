@@ -12,18 +12,39 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
-const asset = (id: string, title: string): DocumentAsset => ({ id, title, document_kind: "booking", byte_size: 512, content_type: "application/pdf", original_filename: `${id}.pdf`, created_at: "2054-01-01T00:00:00Z", file_url: `/api/trips/trip/documents/${id}/original` } as DocumentAsset);
+const asset = (id: string, title: string): DocumentAsset =>
+  ({
+    id,
+    title,
+    document_kind: "booking",
+    byte_size: 512,
+    content_type: "application/pdf",
+    original_filename: `${id}.pdf`,
+    created_at: "2054-01-01T00:00:00Z",
+    file_url: `/api/trips/trip/documents/${id}/original`,
+  }) as DocumentAsset;
 let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  api = fakeApi()
-    .collection("/api/trips/trip/documents", [asset("d1", "Vliegticket"), asset("d2", "Hotelbevestiging")]);
+  api = fakeApi().collection("/api/trips/trip/documents", [
+    asset("d1", "Vliegticket"),
+    asset("d2", "Hotelbevestiging"),
+  ]);
 });
-afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); restoreObjectUrls(); expect(api.unexpected).toEqual([]); await resetOfflineDb(); });
+afterEach(async () => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  restoreObjectUrls();
+  expect(api.unexpected).toEqual([]);
+  await resetOfflineDb();
+});
 
-const pickFile = (input: Element | null, name = "bestand.pdf") => fireEvent.change(input!, { target: { files: [new File(["x"], name, { type: "application/pdf" })] } });
+const pickFile = (input: Element | null, name = "bestand.pdf") =>
+  fireEvent.change(input!, { target: { files: [new File(["x"], name, { type: "application/pdf" })] } });
 
-const openDocument = async (title: string) => fireEvent.click(await screen.findByRole("button", { name: `Document ${title} bekijken` }));
+const openDocument = async (title: string) =>
+  fireEvent.click(await screen.findByRole("button", { name: `Document ${title} bekijken` }));
 
 it("keeps an opened document private with no sharing controls", async () => {
   renderWithOwner(<DocumentManager trip={trip} />);
@@ -73,7 +94,9 @@ it("pins a document through the authenticated download and unpins it again", asy
   await screen.findByText("Vliegticket");
   fireEvent.click(screen.getAllByRole("button", { name: "Offline bewaren" })[0]);
   await screen.findByText("“Vliegticket” is offline bewaard op dit toestel.");
-  const [, init] = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls.find(([url]) => url.endsWith("/original"))!;
+  const [, init] = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls.find(([url]) =>
+    url.endsWith("/original"),
+  )!;
   expect((init.headers as Record<string, string>).Authorization).toMatch(/^Bearer /);
   fireEvent.click(await screen.findByRole("button", { name: "Offline verwijderen" }));
   await screen.findByText("“Vliegticket” is niet langer offline beschikbaar.");

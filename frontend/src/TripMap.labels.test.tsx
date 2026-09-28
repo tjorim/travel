@@ -12,31 +12,54 @@ type CapturedMap = {
 };
 const maps = vi.hoisted(() => [] as CapturedMap[]);
 
-vi.mock("./map-style", () => ({ configuredMapStyleUrl: "test-style", loadMapStyle: async () => ({ version: 8, sources: {}, layers: [] }) }));
+vi.mock("./map-style", () => ({
+  configuredMapStyleUrl: "test-style",
+  loadMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+}));
 vi.mock("maplibre-gl", () => ({
   setWorkerUrl: () => {},
   NavigationControl: class {},
   LngLatBounds: class {
-    isEmpty() { return false; }
-    extend() { return this; }
+    isEmpty() {
+      return false;
+    }
+    extend() {
+      return this;
+    }
   },
   Map: class {
     sources: Record<string, FeatureCollection<Point>> = {};
     layers: SymbolLayerSpecification[] = [];
     removed = false;
-    constructor() { maps.push(this); }
+    constructor() {
+      maps.push(this);
+    }
     addControl() {}
-    addSource(id: string, source: { data: FeatureCollection<Point> }) { this.sources[id] = source.data; }
-    addLayer(layer: SymbolLayerSpecification) { this.layers.push(layer); }
-    getLayer(id: string) { return this.layers.find((layer) => layer.id === id); }
+    addSource(id: string, source: { data: FeatureCollection<Point> }) {
+      this.sources[id] = source.data;
+    }
+    addLayer(layer: SymbolLayerSpecification) {
+      this.layers.push(layer);
+    }
+    getLayer(id: string) {
+      return this.layers.find((layer) => layer.id === id);
+    }
     setFilter() {}
     fitBounds() {}
-    on(event: string, callback: () => void) { if (event === "load") queueMicrotask(callback); }
-    remove() { this.removed = true; }
+    on(event: string, callback: () => void) {
+      if (event === "load") queueMicrotask(callback);
+    }
+    remove() {
+      this.removed = true;
+    }
   },
 }));
 
-afterEach(() => { cleanup(); maps.length = 0; vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  maps.length = 0;
+  vi.restoreAllMocks();
+});
 
 it("supplies custom and derived area names to the visible label layer after map updates", async () => {
   Object.defineProperty(window, "WebGLRenderingContext", { configurable: true, value: class {} });
@@ -51,7 +74,10 @@ it("supplies custom and derived area names to the visible label layer after map 
     { id: "custom", label: "My Secret Base Camp", kind: "area", areaId: "" },
     { id: "derived", label: "Morning Walks", kind: "derived", areaId: "" },
   ]);
-  expect(maps[0].sources.stops.features.map((feature) => feature.geometry.coordinates)).toEqual([[121, 25], [121.1, 25.1]]);
+  expect(maps[0].sources.stops.features.map((feature) => feature.geometry.coordinates)).toEqual([
+    [121, 25],
+    [121.1, 25.1],
+  ]);
   const labels = maps[0].layers.find((layer) => layer.id === "area-labels")!;
   expect(labels.source).toBe("stops");
   expect(labels.filter).toEqual(["in", ["get", "kind"], ["literal", ["area", "derived"]]]);

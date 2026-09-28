@@ -10,7 +10,12 @@ import { tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
 
-export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string> = { booking: "Boeking", itinerary: "Routeplan", receipt: "Bon", other: "Anders" };
+export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string> = {
+  booking: "Boeking",
+  itinerary: "Routeplan",
+  receipt: "Bon",
+  other: "Anders",
+};
 
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
@@ -37,7 +42,10 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     fallback: "Het document kon niet worden verwijderd.",
     request: (document) => ({ path: `${tripPath(trip.id, "documents")}/${document.id}`, method: "DELETE" }),
     // A route drops the link to a deleted document on the server.
-    invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "documents"), ownerKeys.tripResource(subject, trip.id, "routes")],
+    invalidate: (subject) => [
+      ownerKeys.tripResource(subject, trip.id, "documents"),
+      ownerKeys.tripResource(subject, trip.id, "routes"),
+    ],
   });
   const uploadRecord = useRecordForm<UploadValues>({
     defaultValues: blankUpload(),
@@ -51,7 +59,10 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       body.set("file", file);
       await upload.mutateAsync(body);
     },
-    onSuccess: () => { close(); setNotice("Privédocument geüpload."); },
+    onSuccess: () => {
+      close();
+      setNotice("Privédocument geüpload.");
+    },
   });
 
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
@@ -62,7 +73,10 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     setInputKey((current) => current + 1);
     uploadRecord.load(blankUpload());
   }
-  function create() { close(); dialog.create(); }
+  function create() {
+    close();
+    dialog.create();
+  }
 
   function erase(document: DocumentAsset) {
     remove.mutateAsync(document).then(async () => {
@@ -79,7 +93,11 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       setNotice(`“${document.title}” is niet langer offline beschikbaar.`);
       return;
     }
-    const blob = await ownerFile(owner.session, document.file_url, "Het document kon niet worden opgehaald voor offline gebruik.");
+    const blob = await ownerFile(
+      owner.session,
+      document.file_url,
+      "Het document kon niet worden opgehaald voor offline gebruik.",
+    );
     await offline.pin({
       resourceKind: "trip_document",
       resourceId: document.id,
@@ -96,23 +114,130 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   }
 
   const readError = documentsQuery.error;
-  const message = notice ?? (readError ? errorMessage(readError, "Je documenten konden niet worden geladen.") : documentsQuery.isPending ? "Laad je private documenten…" : documents.length ? "Documenten en originelen blijven uitsluitend in je private tracker." : "Upload een privédocument wanneer je het wilt bewaren.");
+  const message =
+    notice ??
+    (readError
+      ? errorMessage(readError, "Je documenten konden niet worden geladen.")
+      : documentsQuery.isPending
+        ? "Laad je private documenten…"
+        : documents.length
+          ? "Documenten en originelen blijven uitsluitend in je private tracker."
+          : "Upload een privédocument wanneer je het wilt bewaren.");
 
-  return <section className="card manager" aria-labelledby="documents-title"><div className="capture-heading"><div><h3 id="documents-title">Documenten</h3><p>Documenten blijven altijd privé en worden nooit met bezoekers gedeeld.</p></div><button className="secondary compact" type="button" onClick={create}>Nieuw document</button></div><p className="help" role="status">{message}</p>
-    {documents.length > 0 && <div className="saved-records manager-list">{documents.map((document) => <article className="excerpt-row stacked" key={document.id}><button className="document-select" type="button" onClick={() => dialog.inspect(document.id)} aria-label={`Document ${document.title} bekijken`}><strong>{document.title}</strong><span>{document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</span></button><div className="button-row"><button className="secondary compact" type="button" onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}>Origineel bekijken</button><button className="secondary compact" type="button" onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}>{offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}</button></div></article>)}</div>}
-    <RecordDialog open={editing || selected !== null} title={editing ? "Document uploaden" : "Document"} dirty={editing && uploadRecord.dirty} onDismiss={close}>
-      {!editing && selected && <div className="stack-form">
-        <div><h3>{selected.title}</h3><p>{selected.original_filename ?? "Naamloos bestand"} · {bytesLabel(selected.byte_size)}</p></div>
-        <div className="button-row"><button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>Verwijderen</button></div>
-        {dialog.confirmDelete && <DeleteConfirmation title={`Document “${selected.title}” verwijderen?`} onCancel={() => dialog.setConfirmDelete(false)} onConfirm={() => erase(selected)} />}
-      </div>}
-      {editing && <RecordForm record={uploadRecord} submitLabel="Document uploaden" pendingLabel="Uploaden…">
-        <div className="field-row">
-          <uploadRecord.form.Field name="title" validators={{ onChange: requiredText("Geef het document een titel."), onSubmit: requiredText("Geef het document een titel.") }}>{(field) => <TextField field={field} label="Titel" required maxLength={160} />}</uploadRecord.form.Field>
-          <uploadRecord.form.Field name="kind">{(field) => <SelectField field={field} label="Soort"><option value="booking">Boeking</option><option value="itinerary">Routeplan</option><option value="receipt">Bon</option><option value="other">Anders</option></SelectField>}</uploadRecord.form.Field>
+  return (
+    <section className="card manager" aria-labelledby="documents-title">
+      <div className="capture-heading">
+        <div>
+          <h3 id="documents-title">Documenten</h3>
+          <p>Documenten blijven altijd privé en worden nooit met bezoekers gedeeld.</p>
         </div>
-        <div className="field"><label>Privébestand<input key={inputKey} required type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label></div>
-      </RecordForm>}
-    </RecordDialog>
-  </section>;
+        <button className="secondary compact" type="button" onClick={create}>
+          Nieuw document
+        </button>
+      </div>
+      <p className="help" role="status">
+        {message}
+      </p>
+      {documents.length > 0 && (
+        <div className="saved-records manager-list">
+          {documents.map((document) => (
+            <article className="excerpt-row stacked" key={document.id}>
+              <button
+                className="document-select"
+                type="button"
+                onClick={() => dialog.inspect(document.id)}
+                aria-label={`Document ${document.title} bekijken`}
+              >
+                <strong>{document.title}</strong>
+                <span>
+                  {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}
+                </span>
+              </button>
+              <div className="button-row">
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}
+                >
+                  Origineel bekijken
+                </button>
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}
+                >
+                  {offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+      <RecordDialog
+        open={editing || selected !== null}
+        title={editing ? "Document uploaden" : "Document"}
+        dirty={editing && uploadRecord.dirty}
+        onDismiss={close}
+      >
+        {!editing && selected && (
+          <div className="stack-form">
+            <div>
+              <h3>{selected.title}</h3>
+              <p>
+                {selected.original_filename ?? "Naamloos bestand"} · {bytesLabel(selected.byte_size)}
+              </p>
+            </div>
+            <div className="button-row">
+              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+                Verwijderen
+              </button>
+            </div>
+            {dialog.confirmDelete && (
+              <DeleteConfirmation
+                title={`Document “${selected.title}” verwijderen?`}
+                onCancel={() => dialog.setConfirmDelete(false)}
+                onConfirm={() => erase(selected)}
+              />
+            )}
+          </div>
+        )}
+        {editing && (
+          <RecordForm record={uploadRecord} submitLabel="Document uploaden" pendingLabel="Uploaden…">
+            <div className="field-row">
+              <uploadRecord.form.Field
+                name="title"
+                validators={{
+                  onChange: requiredText("Geef het document een titel."),
+                  onSubmit: requiredText("Geef het document een titel."),
+                }}
+              >
+                {(field) => <TextField field={field} label="Titel" required maxLength={160} />}
+              </uploadRecord.form.Field>
+              <uploadRecord.form.Field name="kind">
+                {(field) => (
+                  <SelectField field={field} label="Soort">
+                    <option value="booking">Boeking</option>
+                    <option value="itinerary">Routeplan</option>
+                    <option value="receipt">Bon</option>
+                    <option value="other">Anders</option>
+                  </SelectField>
+                )}
+              </uploadRecord.form.Field>
+            </div>
+            <div className="field">
+              <label>
+                Privébestand
+                <input
+                  key={inputKey}
+                  required
+                  type="file"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          </RecordForm>
+        )}
+      </RecordDialog>
+    </section>
+  );
 }

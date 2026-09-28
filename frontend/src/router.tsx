@@ -1,6 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
-import { createMemoryHistory, createRootRouteWithContext, createRoute, createRouter, Navigate, Outlet, type AnyRoute } from "@tanstack/react-router";
+import {
+  createMemoryHistory,
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  Navigate,
+  Outlet,
+  type AnyRoute,
+} from "@tanstack/react-router";
 
 import { Boundary } from "./Boundary";
 import { currentStoredOwner, tripsQueryOptions } from "./query/owner-queries";
@@ -13,7 +21,10 @@ declare module "@tanstack/react-router" {
     /** A message left behind for the page navigated to, e.g. after deleting a trip. */
     notice?: string;
     /** Set by the private overview so the matching manager opens that record's dialog on arrival. */
-    openRecord?: { kind: "stay" | "route" | "visit" | "area" | "location" | "task" | "update" | "document" | "media"; id: string };
+    openRecord?: {
+      kind: "stay" | "route" | "visit" | "area" | "location" | "task" | "update" | "document" | "media";
+      id: string;
+    };
   }
 }
 
@@ -57,7 +68,10 @@ export const tripsRoute = createRoute({
   },
 });
 export const tripRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "trips/$tripId" });
-export const tripSectionRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "trips/$tripId/$section" });
+export const tripSectionRoute = createRoute({
+  getParentRoute: () => trackerLayoutRoute,
+  path: "trips/$tripId/$section",
+});
 export const tripDetailRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "trips/$tripId/details" });
 export const captureRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "capture" });
 export const libraryRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "library" });
@@ -103,7 +117,10 @@ export function buildTrackerRouteTree({
   ]);
 }
 
-export function createTrackerRouter(routeTree: AnyRoute, options: { queryClient: QueryClient; initialEntries?: string[]; basepath?: string }) {
+export function createTrackerRouter(
+  routeTree: AnyRoute,
+  options: { queryClient: QueryClient; initialEntries?: string[]; basepath?: string },
+) {
   return createRouter({
     routeTree,
     basepath: options.basepath,

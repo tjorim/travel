@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added Tailwind CSS to the owner and visitor builds for new styling, `cn` for
+  conditional classes, Oxlint rules for utility classes, and Oxfmt commands
+  for frontend formatting. Frontend sources have been formatted with Oxfmt;
+  existing views keep their current CSS and native record dialogs.
+  ([#229](https://github.com/tjorim/travel/issues/229))
+
 - Owner-only trip, area, location and travel-update lists now support bounded,
   case-insensitive search and offset pagination. The growing place, trip and
   media attachment, copy presentation and saved-location pickers search these

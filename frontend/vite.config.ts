@@ -1,9 +1,14 @@
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 function visitorRoutes(): Plugin {
-  const rewrite = (request: { url?: string }, response: { setHeader(name: string, value: string): void }, next: () => void) => {
+  const rewrite = (
+    request: { url?: string },
+    response: { setHeader(name: string, value: string): void },
+    next: () => void,
+  ) => {
     const path = request.url?.split("?", 1)[0] ?? "";
     if (path === "/") request.url = "/admin/landing.html";
     if (/^\/trips(?:\/|$)/.test(path)) request.url = "/admin/public.html";
@@ -47,9 +52,10 @@ function devSession(): Plugin {
     apply: "serve",
     transformIndexHtml: {
       order: "pre",
-      handler: (html, context) => context.filename.endsWith("/frontend/index.html")
-        ? html.replace("<head>", `<head><script>${seed}</script>`)
-        : html,
+      handler: (html, context) =>
+        context.filename.endsWith("/frontend/index.html")
+          ? html.replace("<head>", `<head><script>${seed}</script>`)
+          : html,
     },
   };
 }
@@ -57,7 +63,7 @@ function devSession(): Plugin {
 export default defineConfig({
   base: "/admin/",
   test: { setupFiles: ["./src/test-setup.ts"] },
-  plugins: [react(), visitorRoutes(), ...(devBypassToken ? [devSession()] : [])],
+  plugins: [react(), tailwindcss(), visitorRoutes(), ...(devBypassToken ? [devSession()] : [])],
   // Mirrors Caddy's `/api/*` route so `pnpm dev` reaches a locally running API.
   server: {
     proxy: {

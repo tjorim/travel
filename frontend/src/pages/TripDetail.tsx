@@ -15,27 +15,92 @@ import { OwnerTripMap } from "../trips/OwnerTripMap";
 import { TripOverview } from "../trips/TripOverview";
 import { visitWhen, VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../trips/VisitManager";
 import { visibilityLabel } from "../trips/visibility";
-import { ROUTE_MODE_LABELS, bytesLabel, formatDay, formatDayRange, formatInstant, locationName, routeTitle, stayLabel, visitTitle, type Location, type MediaAsset } from "../tracker-model";
+import {
+  ROUTE_MODE_LABELS,
+  bytesLabel,
+  formatDay,
+  formatDayRange,
+  formatInstant,
+  locationName,
+  routeTitle,
+  stayLabel,
+  visitTitle,
+  type Location,
+  type MediaAsset,
+} from "../tracker-model";
 
 type RecordKind = "stay" | "route" | "visit" | "area" | "location" | "task" | "update" | "document" | "media";
 /** Which workspace tab a record kind's dialog opens in. */
-const RECORD_SECTION: Record<RecordKind, "plan" | "story" | "media"> = { stay: "plan", route: "plan", visit: "plan", area: "plan", location: "plan", task: "plan", update: "story", document: "media", media: "media" };
+const RECORD_SECTION: Record<RecordKind, "plan" | "story" | "media"> = {
+  stay: "plan",
+  route: "plan",
+  visit: "plan",
+  area: "plan",
+  location: "plan",
+  task: "plan",
+  update: "story",
+  document: "media",
+  media: "media",
+};
 
 /** A link to the trip workspace that opens the given record's dialog there. */
-function RecordLink({ tripId, kind, id, children }: { tripId: string; kind: RecordKind; id: string; children: React.ReactNode }) {
-  return <Link className="action-link compact" to={`/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`} state={{ openRecord: { kind, id } }}>{children}</Link>;
+function RecordLink({
+  tripId,
+  kind,
+  id,
+  children,
+}: {
+  tripId: string;
+  kind: RecordKind;
+  id: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      className="action-link compact"
+      to={`/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`}
+      state={{ openRecord: { kind, id } }}
+    >
+      {children}
+    </Link>
+  );
 }
 
 /** A record's title beside a link to its dialog, kept out of the heading's own accessible name. */
-function RecordHeading({ tripId, kind, id, children }: { tripId: string; kind: RecordKind; id: string; children: React.ReactNode }) {
-  return <div className="admin-detail-heading"><h3>{children}</h3><RecordLink tripId={tripId} kind={kind} id={id}>Openen</RecordLink></div>;
+function RecordHeading({
+  tripId,
+  kind,
+  id,
+  children,
+}: {
+  tripId: string;
+  kind: RecordKind;
+  id: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="admin-detail-heading">
+      <h3>{children}</h3>
+      <RecordLink tripId={tripId} kind={kind} id={id}>
+        Openen
+      </RecordLink>
+    </div>
+  );
 }
 
 function placeLabel(place: Location | null): string {
   if (!place) return "Geen locatie vastgelegd";
   const name = locationName(place);
-  const extra = [place.address_line1, place.address_line2, place.postal_code, place.locality, place.admin_area, place.country_code]
-    .filter((value, index, values): value is string => Boolean(value) && value !== name && values.indexOf(value) === index);
+  const extra = [
+    place.address_line1,
+    place.address_line2,
+    place.postal_code,
+    place.locality,
+    place.admin_area,
+    place.country_code,
+  ].filter(
+    (value, index, values): value is string => Boolean(value) && value !== name && values.indexOf(value) === index,
+  );
   return extra.length ? `${name} · ${extra.join(" · ")}` : name;
 }
 
@@ -44,21 +109,38 @@ function timestamp(value: string | null): string {
 }
 
 function endpointTime(instant: string, zone: string | null): string {
-  return zone ? `${dayjs(instant).tz(zone).format("D MMM YYYY, HH:mm")} (${zone})` : `${formatInstant(instant)} (${dayjs.tz.guess()})`;
+  return zone
+    ? `${dayjs(instant).tz(zone).format("D MMM YYYY, HH:mm")} (${zone})`
+    : `${formatInstant(instant)} (${dayjs.tz.guess()})`;
 }
 
 function routeEndpoint(area: string, place: Location | null): string {
   return place ? `${area} · ${placeLabel(place)}` : area;
 }
 
-function MediaPreview({ asset, session }: { asset: MediaAsset; session: NonNullable<ReturnType<typeof useOwner>>["session"] }) {
-  return asset.thumbnail_url
-    ? <OwnerImage session={session} url={asset.thumbnail_url} alt="" className="admin-detail-media-preview" />
-    : <span className="admin-detail-media-preview media-thumbnail-placeholder" aria-hidden="true">{asset.media_kind === "video" ? "🎞" : "🖼"}</span>;
+function MediaPreview({
+  asset,
+  session,
+}: {
+  asset: MediaAsset;
+  session: NonNullable<ReturnType<typeof useOwner>>["session"];
+}) {
+  return asset.thumbnail_url ? (
+    <OwnerImage session={session} url={asset.thumbnail_url} alt="" className="admin-detail-media-preview" />
+  ) : (
+    <span className="admin-detail-media-preview media-thumbnail-placeholder" aria-hidden="true">
+      {asset.media_kind === "video" ? "🎞" : "🖼"}
+    </span>
+  );
 }
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
-  return <section id={id} className="card admin-detail-section"><h2>{title}</h2>{children}</section>;
+  return (
+    <section id={id} className="card admin-detail-section">
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
 }
 
 const SECTIONS: { id: string; label: string }[] = [
@@ -76,13 +158,20 @@ const SECTIONS: { id: string; label: string }[] = [
 export function TripDetail() {
   const navigate = useNavigate();
   const { tripId } = useParams({ strict: false });
-  const openMapRecord = useCallback((kind: "area" | "location" | "visit" | "route" | "update", recordId: string) => {
-    if (tripId) void navigate({ to: `/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`, state: { openRecord: { kind, id: recordId } } });
-  }, [navigate, tripId]);
+  const openMapRecord = useCallback(
+    (kind: "area" | "location" | "visit" | "route" | "update", recordId: string) => {
+      if (tripId)
+        void navigate({
+          to: `/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`,
+          state: { openRecord: { kind, id: recordId } },
+        });
+    },
+    [navigate, tripId],
+  );
   const { session } = useAuth();
   const owner = useOwner();
   const tripsQuery = useTripsQuery();
-  const trip = tripId ? tripsQuery.data?.find((candidate) => candidate.id === tripId) ?? null : null;
+  const trip = tripId ? (tripsQuery.data?.find((candidate) => candidate.id === tripId) ?? null) : null;
   // Nothing is read for a trip that does not exist.
   const id = trip ? trip.id : null;
   const placesQuery = useTripResource(id, "locations");
@@ -107,113 +196,403 @@ export function TripDetail() {
   const media = mediaQuery.data;
   const mediaById = new Map(media?.map((asset) => [asset.id, asset]));
 
-  const readError = [tripsQuery, placesQuery, areasQuery, routesQuery, staysQuery, visitsQuery, tasksQuery, documentsQuery, libraryDocumentsQuery, mediaQuery].find((query) => query.isError)?.error;
+  const readError = [
+    tripsQuery,
+    placesQuery,
+    areasQuery,
+    routesQuery,
+    staysQuery,
+    visitsQuery,
+    tasksQuery,
+    documentsQuery,
+    libraryDocumentsQuery,
+    mediaQuery,
+  ].find((query) => query.isError)?.error;
 
   if (!session) return <EmptyState title="Private reis">Meld aan om private reisdetails te bekijken.</EmptyState>;
   if (!tripId) return <EmptyState title="Reis niet gevonden">Deze reis heeft geen geldige identificatie.</EmptyState>;
-  if (tripsQuery.isSuccess && !trip) return <EmptyState title="Reis niet gevonden">Deze private reis bestaat niet of is niet beschikbaar voor jouw account.</EmptyState>;
+  if (tripsQuery.isSuccess && !trip)
+    return (
+      <EmptyState title="Reis niet gevonden">
+        Deze private reis bestaat niet of is niet beschikbaar voor jouw account.
+      </EmptyState>
+    );
   // The page shows a whole trip or nothing: a partial page would read as if records were missing.
-  if (!trip || !places || !areas || !routes || !stays || !visits || !tasks || !documents || !libraryDocuments || !media) {
-    return <section className="card" role={readError ? "alert" : "status"}><h2>Private reis</h2><p>{readError ? "De private reis kon niet volledig worden geladen." : "Private reis laden…"}</p></section>;
+  if (
+    !trip ||
+    !places ||
+    !areas ||
+    !routes ||
+    !stays ||
+    !visits ||
+    !tasks ||
+    !documents ||
+    !libraryDocuments ||
+    !media
+  ) {
+    return (
+      <section className="card" role={readError ? "alert" : "status"}>
+        <h2>Private reis</h2>
+        <p>{readError ? "De private reis kon niet volledig worden geladen." : "Private reis laden…"}</p>
+      </section>
+    );
   }
 
-  const openFile = (url: string, fallback: string) => { if (owner) openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorMessage(error, fallback))); };
-  return <main className="admin-trip-detail" aria-labelledby="admin-trip-title">
-    <header className="trip-workspace-header">
-      <div><p className="eyebrow">Alleen voor jou · volledig privéoverzicht</p><h1 id="admin-trip-title">{trip.title}</h1>{trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}</div>
-      <Link className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>Naar reisbeheer</Link>
-    </header>
-    {trip.summary && <section className="card admin-detail-section" aria-label="Reissamenvatting"><Markdown html={trip.summary_html} text={trip.summary} /></section>}
-    <TripOverview trip={trip} />
-    <OwnerTripMap trip={trip} areas={areas} onOpenRecord={openMapRecord} />
-    <nav className="plan-jump-nav" aria-label="Onderdelen van dit overzicht">
-      {SECTIONS.map(({ id: sectionId, label }) => <a key={sectionId} href={`#${sectionId}`}>{label}</a>)}
-    </nav>
-    {notice && <p className="help" role="status">{notice}</p>}
+  const openFile = (url: string, fallback: string) => {
+    if (owner)
+      openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorMessage(error, fallback)));
+  };
+  return (
+    <main className="admin-trip-detail" aria-labelledby="admin-trip-title">
+      <header className="trip-workspace-header">
+        <div>
+          <p className="eyebrow">Alleen voor jou · volledig privéoverzicht</p>
+          <h1 id="admin-trip-title">{trip.title}</h1>
+          {trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}
+        </div>
+        <Link className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>
+          Naar reisbeheer
+        </Link>
+      </header>
+      {trip.summary && (
+        <section className="card admin-detail-section" aria-label="Reissamenvatting">
+          <Markdown html={trip.summary_html} text={trip.summary} />
+        </section>
+      )}
+      <TripOverview trip={trip} />
+      <OwnerTripMap trip={trip} areas={areas} onOpenRecord={openMapRecord} />
+      <nav className="plan-jump-nav" aria-label="Onderdelen van dit overzicht">
+        {SECTIONS.map(({ id: sectionId, label }) => (
+          <a key={sectionId} href={`#${sectionId}`}>
+            {label}
+          </a>
+        ))}
+      </nav>
+      {notice && (
+        <p className="help" role="status">
+          {notice}
+        </p>
+      )}
 
-    <Section id="updates" title="Reisupdates">
-      {trip.travel_updates.length ? <div className="admin-detail-list">{trip.travel_updates.slice().sort((a, b) => a.occurred_at.localeCompare(b.occurred_at)).map((update) => <article key={update.id}>
-        <RecordHeading tripId={trip.id} kind="update" id={update.id}>{update.title}</RecordHeading>
-        <p>{timestamp(update.occurred_at)} · {placeLabel(update.location)} · {visibilityLabel(update.visibility)}</p>
-        <p className="markdown-label">Voor bezoekers</p>
-        {update.body ? <Markdown html={update.body_html} text={update.body} /> : <p className="help">Nog geen tekst voor bezoekers.</p>}
-        {update.private_notes && <><p className="markdown-label">Privénotitie</p><Markdown html={update.private_notes_html} text={update.private_notes} /></>}
-        {update.media_asset_ids.length > 0 && <div className="admin-detail-media-grid" role="group" aria-label={`Media bij ${update.title}`}>
-          {update.media_asset_ids.map((assetId) => { const asset = mediaById.get(assetId); return asset && owner ? <div key={assetId} className="admin-detail-media-item"><MediaPreview asset={asset} session={owner.session} /><RecordLink tripId={trip.id} kind="media" id={asset.id}>{asset.original_filename ?? "Medium openen"}</RecordLink></div> : null; })}
-        </div>}
-      </article>)}</div> : <p>Geen reisupdates vastgelegd.</p>}
-    </Section>
-    <Section id="visits" title="Bezoeken">
-      {visits.length ? <ol className="admin-detail-list">{visits.map((visit) => <li key={visit.id}>
-        <RecordHeading tripId={trip.id} kind="visit" id={visit.id}><strong>{visitTitle(visit)}</strong></RecordHeading>
-        <span>{visitWhen(visit)}{visit.kind ? ` · ${VISIT_KIND_LABELS[visit.kind]}` : ""}{visit.status ? ` · ${VISIT_STATUS_LABELS[visit.status]}` : ""} · {visit.location ? `${placeLabel(visit.location)} · ` : ""}{visit.area.label}</span>
-        <Markdown html={visit.notes_html} text={visit.notes} />
-        {visit.summary && <><p className="markdown-label">Voor bezoekers</p><Markdown html={visit.summary_html} text={visit.summary} /></>}
-      </li>)}</ol> : <p>Nog geen bezoeken.</p>}
-    </Section>
-    <Section id="stays" title="Verblijven">
-      {stays.length ? <div className="admin-detail-list">{stays.slice().sort((a, b) => a.check_in_date.localeCompare(b.check_in_date)).map((stay) => <article key={stay.id}>
-        <RecordHeading tripId={trip.id} kind="stay" id={stay.id}>{stayLabel(stay)}</RecordHeading>
-        <p>{formatDayRange(stay.check_in_date, stay.check_out_date)} · {stayStateLabel(stay)}</p>
-        {(stay.check_in_time || stay.check_out_time) && <p>{[stay.check_in_time && `Inchecken ${stay.check_in_time.slice(0, 5)}`, stay.check_out_time && `Uitchecken ${stay.check_out_time.slice(0, 5)}`].filter(Boolean).join(" · ")}{stay.area.timezone ? ` (${stay.area.timezone})` : ""}</p>}
-        <p>{placeLabel(stay.location)}{` · ${stay.area.label}`}</p>
-        {stay.website_url && <a href={stay.website_url} target="_blank" rel="noreferrer">Website accommodatie</a>}
-        {stay.booking_reference && <p>Boekingsreferentie: {stay.booking_reference}</p>}
-        {stay.contact_details && <><p className="markdown-label">Contact</p><Markdown html={stay.contact_details_html} text={stay.contact_details} /></>}
-        <Markdown html={stay.notes_html} text={stay.notes} />
-      </article>)}</div> : <p>Geen verblijven vastgelegd.</p>}
-    </Section>
-    <Section id="routes" title="Routes">
-      {routes.length ? <div className="admin-detail-list">{routes.map((route) => <article key={route.id}>
-        <RecordHeading tripId={trip.id} kind="route" id={route.id}>{routeTitle(route)}</RecordHeading>
-        <p>{[ROUTE_MODE_LABELS[route.mode], ROUTE_STATUS_LABELS[route.status], route.departs_at && route.arrives_at ? `${endpointTime(route.departs_at, route.departure_timezone)} → ${endpointTime(route.arrives_at, route.arrival_timezone)}` : route.departs_on ? formatDay(route.departs_on) : null, route.geometry ? `lijn van ${route.geometry.coordinates.length} punten` : null].filter(Boolean).join(" · ")}</p>
-        <p>{routeEndpoint(route.departure_area.label, route.departure_location)} → {routeEndpoint(route.arrival_area.label, route.arrival_location)}</p>
-        <p>{[route.carrier, route.service_reference, route.travel_class].filter(Boolean).join(" · ")}</p>
-        {route.booking_reference && <p>Boekingsreferentie: {route.booking_reference}</p>}
-        <Markdown html={route.notes_html} text={route.notes} />
-      </article>)}</div> : <p>Geen routes vastgelegd.</p>}
-    </Section>
-    <Section id="tasks" title="Taken">
-      {tasks.length ? <div className="admin-detail-list">{tasks.slice().sort((a, b) => (a.completed_at ? 1 : 0) - (b.completed_at ? 1 : 0) || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999")).map((task) => <article key={task.id}>
-        <RecordHeading tripId={trip.id} kind="task" id={task.id}>{task.title}</RecordHeading>
-        <p>{task.completed_at ? `Afgerond op ${timestamp(task.completed_at)}` : task.due_date ? `Voor ${formatDay(task.due_date)}` : "Geen deadline"}</p>
-        {task.remind_at && <p>Herinnering: {timestamp(task.remind_at)}</p>}
-        <Markdown html={task.notes_html} text={task.notes} />
-        {task.links.map((link) => <p key={link.url}><a href={link.url} target="_blank" rel="noreferrer">{link.label}</a></p>)}
-      </article>)}</div> : <p>Geen taken vastgelegd.</p>}
-    </Section>
-    <Section id="locations" title="Locaties">
-      {places.length ? <div className="admin-detail-list">{places.map((place) => <article key={place.id}>
-        <div className="admin-detail-heading"><h3>{placeLabel(place)}</h3><Link className="action-link compact" to={`/trips/${encodeURIComponent(trip.id)}/plan`}>Naar planning</Link></div>
-        <Markdown html={place.notes_html} text={place.notes} />
-        {place.latitude != null && place.longitude != null && <p>Coördinaten: {place.latitude}, {place.longitude}</p>}
-      </article>)}</div> : <p>Geen locaties vastgelegd.</p>}
-    </Section>
-    <Section id="areas" title="Gebieden">
-      {areas.length ? <div className="admin-detail-list">{areas.map((place) => <article key={place.id}>
-        <RecordHeading tripId={trip.id} kind="area" id={place.id}>{place.label}</RecordHeading>
-        <p>{[place.region, place.country_code].filter(Boolean).join(" · ")}</p>
-      </article>)}</div> : <p>Nog geen gebieden vastgelegd.</p>}
-    </Section>
-    <Section id="documents" title="Privédocumenten">
-      {documents.length || libraryDocuments.length ? <div className="admin-detail-list">{documents.map((document) => <article key={document.id}>
-        <RecordHeading tripId={trip.id} kind="document" id={document.id}>{document.title}</RecordHeading>
-        <p>{DOCUMENT_KIND_LABELS[document.document_kind]} · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</p>
-        <button className="secondary compact" type="button" onClick={() => openFile(document.file_url, "Het private document kon niet worden geopend.")}>Document openen</button>
-      </article>)}{libraryDocuments.map((document) => <article key={`library-${document.id}`}>
-        <div className="admin-detail-heading"><h3>{document.title}</h3><Link className="action-link compact" to="/library">Naar bibliotheek</Link></div>
-        <p>Bibliotheek · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}</p>
-        <button className="secondary compact" type="button" onClick={() => openFile(document.file_url, "Het bibliotheekdocument kon niet worden geopend.")}>Bibliotheekdocument openen</button>
-      </article>)}</div> : <p>Geen privédocumenten vastgelegd.</p>}
-    </Section>
-    <Section id="media" title="Privémedia">
-      {media.length ? <div className="admin-detail-list">{media.map((asset) => <article key={asset.id}>
-        <RecordHeading tripId={trip.id} kind="media" id={asset.id}>{asset.original_filename ?? "Naamloos medium"}</RecordHeading>
-        {owner && <MediaPreview asset={asset} session={owner.session} />}
-        <p>{MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)} · vastgelegd {timestamp(asset.captured_at)}</p>
-        {asset.gps && <p>GPS: {asset.gps.latitude}, {asset.gps.longitude}</p>}
-        <button className="secondary compact" type="button" onClick={() => openFile(asset.file_url, "De privemedia konden niet worden geopend.")}>Media openen</button>
-      </article>)}</div> : <p>Geen privémedia vastgelegd.</p>}
-    </Section>
-  </main>;
+      <Section id="updates" title="Reisupdates">
+        {trip.travel_updates.length ? (
+          <div className="admin-detail-list">
+            {trip.travel_updates
+              .slice()
+              .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
+              .map((update) => (
+                <article key={update.id}>
+                  <RecordHeading tripId={trip.id} kind="update" id={update.id}>
+                    {update.title}
+                  </RecordHeading>
+                  <p>
+                    {timestamp(update.occurred_at)} · {placeLabel(update.location)} ·{" "}
+                    {visibilityLabel(update.visibility)}
+                  </p>
+                  <p className="markdown-label">Voor bezoekers</p>
+                  {update.body ? (
+                    <Markdown html={update.body_html} text={update.body} />
+                  ) : (
+                    <p className="help">Nog geen tekst voor bezoekers.</p>
+                  )}
+                  {update.private_notes && (
+                    <>
+                      <p className="markdown-label">Privénotitie</p>
+                      <Markdown html={update.private_notes_html} text={update.private_notes} />
+                    </>
+                  )}
+                  {update.media_asset_ids.length > 0 && (
+                    <div className="admin-detail-media-grid" role="group" aria-label={`Media bij ${update.title}`}>
+                      {update.media_asset_ids.map((assetId) => {
+                        const asset = mediaById.get(assetId);
+                        return asset && owner ? (
+                          <div key={assetId} className="admin-detail-media-item">
+                            <MediaPreview asset={asset} session={owner.session} />
+                            <RecordLink tripId={trip.id} kind="media" id={asset.id}>
+                              {asset.original_filename ?? "Medium openen"}
+                            </RecordLink>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                </article>
+              ))}
+          </div>
+        ) : (
+          <p>Geen reisupdates vastgelegd.</p>
+        )}
+      </Section>
+      <Section id="visits" title="Bezoeken">
+        {visits.length ? (
+          <ol className="admin-detail-list">
+            {visits.map((visit) => (
+              <li key={visit.id}>
+                <RecordHeading tripId={trip.id} kind="visit" id={visit.id}>
+                  <strong>{visitTitle(visit)}</strong>
+                </RecordHeading>
+                <span>
+                  {visitWhen(visit)}
+                  {visit.kind ? ` · ${VISIT_KIND_LABELS[visit.kind]}` : ""}
+                  {visit.status ? ` · ${VISIT_STATUS_LABELS[visit.status]}` : ""} ·{" "}
+                  {visit.location ? `${placeLabel(visit.location)} · ` : ""}
+                  {visit.area.label}
+                </span>
+                <Markdown html={visit.notes_html} text={visit.notes} />
+                {visit.summary && (
+                  <>
+                    <p className="markdown-label">Voor bezoekers</p>
+                    <Markdown html={visit.summary_html} text={visit.summary} />
+                  </>
+                )}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p>Nog geen bezoeken.</p>
+        )}
+      </Section>
+      <Section id="stays" title="Verblijven">
+        {stays.length ? (
+          <div className="admin-detail-list">
+            {stays
+              .slice()
+              .sort((a, b) => a.check_in_date.localeCompare(b.check_in_date))
+              .map((stay) => (
+                <article key={stay.id}>
+                  <RecordHeading tripId={trip.id} kind="stay" id={stay.id}>
+                    {stayLabel(stay)}
+                  </RecordHeading>
+                  <p>
+                    {formatDayRange(stay.check_in_date, stay.check_out_date)} · {stayStateLabel(stay)}
+                  </p>
+                  {(stay.check_in_time || stay.check_out_time) && (
+                    <p>
+                      {[
+                        stay.check_in_time && `Inchecken ${stay.check_in_time.slice(0, 5)}`,
+                        stay.check_out_time && `Uitchecken ${stay.check_out_time.slice(0, 5)}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      {stay.area.timezone ? ` (${stay.area.timezone})` : ""}
+                    </p>
+                  )}
+                  <p>
+                    {placeLabel(stay.location)}
+                    {` · ${stay.area.label}`}
+                  </p>
+                  {stay.website_url && (
+                    <a href={stay.website_url} target="_blank" rel="noreferrer">
+                      Website accommodatie
+                    </a>
+                  )}
+                  {stay.booking_reference && <p>Boekingsreferentie: {stay.booking_reference}</p>}
+                  {stay.contact_details && (
+                    <>
+                      <p className="markdown-label">Contact</p>
+                      <Markdown html={stay.contact_details_html} text={stay.contact_details} />
+                    </>
+                  )}
+                  <Markdown html={stay.notes_html} text={stay.notes} />
+                </article>
+              ))}
+          </div>
+        ) : (
+          <p>Geen verblijven vastgelegd.</p>
+        )}
+      </Section>
+      <Section id="routes" title="Routes">
+        {routes.length ? (
+          <div className="admin-detail-list">
+            {routes.map((route) => (
+              <article key={route.id}>
+                <RecordHeading tripId={trip.id} kind="route" id={route.id}>
+                  {routeTitle(route)}
+                </RecordHeading>
+                <p>
+                  {[
+                    ROUTE_MODE_LABELS[route.mode],
+                    ROUTE_STATUS_LABELS[route.status],
+                    route.departs_at && route.arrives_at
+                      ? `${endpointTime(route.departs_at, route.departure_timezone)} → ${endpointTime(route.arrives_at, route.arrival_timezone)}`
+                      : route.departs_on
+                        ? formatDay(route.departs_on)
+                        : null,
+                    route.geometry ? `lijn van ${route.geometry.coordinates.length} punten` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                <p>
+                  {routeEndpoint(route.departure_area.label, route.departure_location)} →{" "}
+                  {routeEndpoint(route.arrival_area.label, route.arrival_location)}
+                </p>
+                <p>{[route.carrier, route.service_reference, route.travel_class].filter(Boolean).join(" · ")}</p>
+                {route.booking_reference && <p>Boekingsreferentie: {route.booking_reference}</p>}
+                <Markdown html={route.notes_html} text={route.notes} />
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>Geen routes vastgelegd.</p>
+        )}
+      </Section>
+      <Section id="tasks" title="Taken">
+        {tasks.length ? (
+          <div className="admin-detail-list">
+            {tasks
+              .slice()
+              .sort(
+                (a, b) =>
+                  (a.completed_at ? 1 : 0) - (b.completed_at ? 1 : 0) ||
+                  (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"),
+              )
+              .map((task) => (
+                <article key={task.id}>
+                  <RecordHeading tripId={trip.id} kind="task" id={task.id}>
+                    {task.title}
+                  </RecordHeading>
+                  <p>
+                    {task.completed_at
+                      ? `Afgerond op ${timestamp(task.completed_at)}`
+                      : task.due_date
+                        ? `Voor ${formatDay(task.due_date)}`
+                        : "Geen deadline"}
+                  </p>
+                  {task.remind_at && <p>Herinnering: {timestamp(task.remind_at)}</p>}
+                  <Markdown html={task.notes_html} text={task.notes} />
+                  {task.links.map((link) => (
+                    <p key={link.url}>
+                      <a href={link.url} target="_blank" rel="noreferrer">
+                        {link.label}
+                      </a>
+                    </p>
+                  ))}
+                </article>
+              ))}
+          </div>
+        ) : (
+          <p>Geen taken vastgelegd.</p>
+        )}
+      </Section>
+      <Section id="locations" title="Locaties">
+        {places.length ? (
+          <div className="admin-detail-list">
+            {places.map((place) => (
+              <article key={place.id}>
+                <div className="admin-detail-heading">
+                  <h3>{placeLabel(place)}</h3>
+                  <Link className="action-link compact" to={`/trips/${encodeURIComponent(trip.id)}/plan`}>
+                    Naar planning
+                  </Link>
+                </div>
+                <Markdown html={place.notes_html} text={place.notes} />
+                {place.latitude != null && place.longitude != null && (
+                  <p>
+                    Coördinaten: {place.latitude}, {place.longitude}
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>Geen locaties vastgelegd.</p>
+        )}
+      </Section>
+      <Section id="areas" title="Gebieden">
+        {areas.length ? (
+          <div className="admin-detail-list">
+            {areas.map((place) => (
+              <article key={place.id}>
+                <RecordHeading tripId={trip.id} kind="area" id={place.id}>
+                  {place.label}
+                </RecordHeading>
+                <p>{[place.region, place.country_code].filter(Boolean).join(" · ")}</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>Nog geen gebieden vastgelegd.</p>
+        )}
+      </Section>
+      <Section id="documents" title="Privédocumenten">
+        {documents.length || libraryDocuments.length ? (
+          <div className="admin-detail-list">
+            {documents.map((document) => (
+              <article key={document.id}>
+                <RecordHeading tripId={trip.id} kind="document" id={document.id}>
+                  {document.title}
+                </RecordHeading>
+                <p>
+                  {DOCUMENT_KIND_LABELS[document.document_kind]} · {document.original_filename ?? "Naamloos bestand"} ·{" "}
+                  {bytesLabel(document.byte_size)}
+                </p>
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => openFile(document.file_url, "Het private document kon niet worden geopend.")}
+                >
+                  Document openen
+                </button>
+              </article>
+            ))}
+            {libraryDocuments.map((document) => (
+              <article key={`library-${document.id}`}>
+                <div className="admin-detail-heading">
+                  <h3>{document.title}</h3>
+                  <Link className="action-link compact" to="/library">
+                    Naar bibliotheek
+                  </Link>
+                </div>
+                <p>
+                  Bibliotheek · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}
+                </p>
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => openFile(document.file_url, "Het bibliotheekdocument kon niet worden geopend.")}
+                >
+                  Bibliotheekdocument openen
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>Geen privédocumenten vastgelegd.</p>
+        )}
+      </Section>
+      <Section id="media" title="Privémedia">
+        {media.length ? (
+          <div className="admin-detail-list">
+            {media.map((asset) => (
+              <article key={asset.id}>
+                <RecordHeading tripId={trip.id} kind="media" id={asset.id}>
+                  {asset.original_filename ?? "Naamloos medium"}
+                </RecordHeading>
+                {owner && <MediaPreview asset={asset} session={owner.session} />}
+                <p>
+                  {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)} · vastgelegd{" "}
+                  {timestamp(asset.captured_at)}
+                </p>
+                {asset.gps && (
+                  <p>
+                    GPS: {asset.gps.latitude}, {asset.gps.longitude}
+                  </p>
+                )}
+                <button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => openFile(asset.file_url, "De privemedia konden niet worden geopend.")}
+                >
+                  Media openen
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>Geen privémedia vastgelegd.</p>
+        )}
+      </Section>
+    </main>
+  );
 }

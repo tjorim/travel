@@ -15,16 +15,29 @@ let providers: { provider: string; available: boolean; connected: boolean }[];
 beforeEach(() => {
   window.history.replaceState(null, "", "/admin/settings");
   auth.session = { accessToken: testToken() };
-  providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  providers = [
+    { provider: "google_photos_picker", available: true, connected: false },
+    { provider: "gopro_cloud", available: false, connected: false },
+  ];
   api = fakeApi();
   api.on("GET", /^\/api\/provider-tokens$/, () => providers);
   api.on("POST", /^\/api\/provider-tokens\/google_photos_picker\/oauth\/complete$/, () => {
-    providers = providers.map((item) => item.provider === "google_photos_picker" ? { ...item, connected: true } : item);
+    providers = providers.map((item) =>
+      item.provider === "google_photos_picker" ? { ...item, connected: true } : item,
+    );
     return undefined;
   });
-  api.on("DELETE", /^\/api\/provider-tokens\/([^/]+)$/, (_body, match) => { providers = providers.map((item) => item.provider === match[1] ? { ...item, connected: false } : item); return undefined; });
+  api.on("DELETE", /^\/api\/provider-tokens\/([^/]+)$/, (_body, match) => {
+    providers = providers.map((item) => (item.provider === match[1] ? { ...item, connected: false } : item));
+    return undefined;
+  });
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); });
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  expect(api.unexpected).toEqual([]);
+});
 
 it("asks to sign in before showing provider state", () => {
   auth.session = null;
@@ -42,7 +55,10 @@ it("hides unconfigured providers and offers Google OAuth", async () => {
 });
 
 it("hides Google when the server lacks its OAuth credentials", async () => {
-  providers = [{ provider: "google_photos_picker", available: false, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  providers = [
+    { provider: "google_photos_picker", available: false, connected: false },
+    { provider: "gopro_cloud", available: false, connected: false },
+  ];
   renderWithOwner(<Settings />);
   await screen.findByText("Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
   expect(screen.queryByText("Google Photos")).toBeNull();
@@ -50,7 +66,10 @@ it("hides Google when the server lacks its OAuth credentials", async () => {
 });
 
 it("explains that provider import is unavailable when no provider is configured", async () => {
-  providers = [{ provider: "google_photos_picker", available: false, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  providers = [
+    { provider: "google_photos_picker", available: false, connected: false },
+    { provider: "gopro_cloud", available: false, connected: false },
+  ];
   renderWithOwner(<Settings />);
   await screen.findByText("Providerimport is op deze server nog niet beschikbaar.");
   expect(screen.getByText(/Er is geen mediaprovider geconfigureerd op deze server/)).toBeTruthy();
@@ -61,7 +80,10 @@ it("completes a Google OAuth return and clears the code from the address", async
   window.history.replaceState(null, "", "/admin/settings?code=authorization-code&state=one-time-state");
   renderWithOwner(<Settings />);
   await screen.findByText("Google Photos is verbonden voor private imports.");
-  expect(api.lastBody("POST /api/provider-tokens/google_photos_picker/oauth/complete")).toEqual({ code: "authorization-code", state: "one-time-state" });
+  expect(api.lastBody("POST /api/provider-tokens/google_photos_picker/oauth/complete")).toEqual({
+    code: "authorization-code",
+    state: "one-time-state",
+  });
   expect(window.location.search).toBe("");
   await waitFor(() => expect(screen.getByRole("button", { name: "Loskoppelen" })).toBeTruthy());
   expect(api.count("PUT /api/provider-tokens/google_photos_picker")).toBe(0);

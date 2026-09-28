@@ -4,29 +4,91 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
-import type { Area, DocumentAsset, Location, Stay, Trip } from "../tracker-model";
+import type { Area, Location, Stay, Trip } from "../tracker-model";
 import { AreaManager } from "./AreaManager";
 import { StayManager } from "./StayManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: "2054-11-16", ends_on: null, travel_updates: [] };
-const area: Area = { id: "area-1", visibility: "private", label: "Taipei", country_code: "TW", region: "Taipei City", latitude: 25.03, longitude: 121.56, timezone: "Asia/Taipei" };
-const savedLocation = { id: "bru", visibility: "private", label: null, area_id: "area-1", share_address: false, display_name: "Brussels Airport", address_line1: "Leopoldlaan", locality: "Zaventem", country_code: "BE" } as Location;
+const trip: Trip = {
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: "2054-11-16",
+  ends_on: null,
+  travel_updates: [],
+};
+const area: Area = {
+  id: "area-1",
+  visibility: "private",
+  label: "Taipei",
+  country_code: "TW",
+  region: "Taipei City",
+  latitude: 25.03,
+  longitude: 121.56,
+  timezone: "Asia/Taipei",
+};
+const savedLocation = {
+  id: "bru",
+  visibility: "private",
+  label: null,
+  area_id: "area-1",
+  share_address: false,
+  display_name: "Brussels Airport",
+  address_line1: "Leopoldlaan",
+  locality: "Zaventem",
+  country_code: "BE",
+} as Location;
 // A created stay comes back with the area its location was filed under.
-const createdStay = { create: (body: Record<string, unknown>, count: number) => ({ id: `new-${count}`, area, ...body }) };
-const stay = (id: string, name: string): Stay => ({ id, check_in_date: "2054-11-16", check_out_date: "2054-11-18", check_in_time: null, check_out_time: null, status: "booked", property_name: name, website_url: null, booking_reference: "ABC", contact_details: null, notes: null, location: {} as Stay["location"], area: area, visibility: "private", share_date_precision: "month" });
-const document = (id: string, title: string) => ({ id, title, document_kind: "booking", byte_size: 1, content_type: "application/pdf", original_filename: null, created_at: "2054-01-01T00:00:00Z", file_url: `/files/${id}` }) as DocumentAsset;
+const createdStay = {
+  create: (body: Record<string, unknown>, count: number) => ({ id: `new-${count}`, area, ...body }),
+};
+const stay = (id: string, name: string): Stay => ({
+  id,
+  check_in_date: "2054-11-16",
+  check_out_date: "2054-11-18",
+  check_in_time: null,
+  check_out_time: null,
+  status: "booked",
+  property_name: name,
+  website_url: null,
+  booking_reference: "ABC",
+  contact_details: null,
+  notes: null,
+  location: {} as Stay["location"],
+  area: area,
+  visibility: "private",
+  share_date_precision: "month",
+});
 
 let api: FakeApi;
-beforeEach(() => { auth.session = { accessToken: testToken() }; });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); expect(api.unexpected).toEqual([]); });
+beforeEach(() => {
+  auth.session = { accessToken: testToken() };
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  expect(api.unexpected).toEqual([]);
+});
 
-const confirmDelete = () => fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+const confirmDelete = () =>
+  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
 
 it("opens an area in detail before its editor, prefilled", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   expect(screen.getByRole("heading", { name: "Taipei" })).toBeTruthy();
@@ -37,7 +99,19 @@ it("opens an area in detail before its editor, prefilled", async () => {
 });
 
 it("lists what belongs to an area in its detail, so areas need no separate overview", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", [{ ...savedLocation, label: "Vliegveld" }]).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/locations", [{ ...savedLocation, label: "Vliegveld" }])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   await screen.findAllByText(/Vliegveld/);
@@ -45,7 +119,19 @@ it("lists what belongs to an area in its detail, so areas need no separate overv
 });
 
 it("deletes an unused area", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
@@ -56,7 +142,19 @@ it("deletes an unused area", async () => {
 });
 
 it("shows an edited area at once and adds a new one to the list", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", [area]).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -70,11 +168,28 @@ it("shows an edited area at once and adds a new one to the list", async () => {
   fireEvent.change(screen.getByLabelText("Landcode (optioneel)"), { target: { value: "tw" } });
   fireEvent.click(screen.getByRole("button", { name: "Gebied opslaan" }));
   await screen.findByRole("button", { name: "Gebied Tainan bekijken" });
-  expect(api.lastBody("POST /api/trips/trip/areas")).toMatchObject({ label: "Tainan", country_code: "TW", latitude: null, longitude: null });
+  expect(api.lastBody("POST /api/trips/trip/areas")).toMatchObject({
+    label: "Tainan",
+    country_code: "TW",
+    latitude: null,
+    longitude: null,
+  });
 });
 
 it("asks for both area coordinates or neither", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", []).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied toevoegen" }));
   fireEvent.change(screen.getByLabelText("Naam"), { target: { value: "Taipei" } });
@@ -85,8 +200,35 @@ it("asks for both area coordinates or neither", async () => {
 });
 
 it("turns a place lookup into an editable, rounded area", async () => {
-  api = fakeApi().collection("/api/trips/trip/areas", []).collection("/api/trips/trip/locations", []).collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/routes", []).collection("/api/trips/trip/visits", []).value("/api/trips/trip/public-projection", { trip_id: "trip", surface_state: "unpublished", scope: { items: [] }, slug: null }).value("/api/trips/trip/share-links", []);
-  api.on("POST", /\/places\/search$/, () => ({ attribution: "© OpenStreetMap contributors", attribution_url: "https://www.openstreetmap.org/copyright", results: [{ osm_element_type: "relation", osm_element_id: "123", display_name: "Taipei, Exampleland", locality: "Taipei", admin_area: "Taipei City", country_code: "TW", latitude: 25.033964, longitude: 121.564468 }] }));
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "© OpenStreetMap contributors",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+    results: [
+      {
+        osm_element_type: "relation",
+        osm_element_id: "123",
+        display_name: "Taipei, Exampleland",
+        locality: "Taipei",
+        admin_area: "Taipei City",
+        country_code: "TW",
+        latitude: 25.033964,
+        longitude: 121.564468,
+      },
+    ],
+  }));
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied toevoegen" }));
   fireEvent.change(screen.getByLabelText("Zoek stad of regio"), { target: { value: "Taipei" } });
@@ -100,46 +242,85 @@ it("turns a place lookup into an editable, rounded area", async () => {
 
 it("keeps an exact looked-up stay place private until the stay is saved", async () => {
   api = fakeApi().collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/locations", []);
-  api.on("POST", /\/places\/search$/, () => ({ attribution: "© OpenStreetMap contributors", attribution_url: "https://www.openstreetmap.org/copyright", results: [{ osm_element_type: "node", osm_element_id: "42", display_name: "Hotel Taipei", address_line1: "1 Example Road", locality: "Taipei", country_code: "TW", latitude: 25.034, longitude: 121.565 }] }));
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "© OpenStreetMap contributors",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+    results: [
+      {
+        osm_element_type: "node",
+        osm_element_id: "42",
+        display_name: "Hotel Taipei",
+        address_line1: "1 Example Road",
+        locality: "Taipei",
+        country_code: "TW",
+        latitude: 25.034,
+        longitude: 121.565,
+      },
+    ],
+  }));
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
   fireEvent.change(screen.getByLabelText("Zoek verblijf of adres"), { target: { value: "Hotel Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Hotel Taipei" }));
-  expect((screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)") as HTMLInputElement).value).toBe("Hotel Taipei");
+  expect((screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)") as HTMLInputElement).value).toBe(
+    "Hotel Taipei",
+  );
   expect((screen.getByLabelText("Adres (optioneel)") as HTMLInputElement).value).toBe("1 Example Road");
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ location: { osm_element_type: "node", osm_element_id: "42", latitude: 25.034, longitude: 121.565, locality: "Taipei" } });
+  expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({
+    location: {
+      osm_element_type: "node",
+      osm_element_id: "42",
+      latitude: 25.034,
+      longitude: 121.565,
+      locality: "Taipei",
+    },
+  });
 });
 
 it("reuses a saved location for a new stay instead of copying its address", async () => {
-  api = fakeApi().collection("/api/trips/trip/stays", [], createdStay).collection("/api/trips/trip/locations", [savedLocation]);
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/locations", [savedLocation]);
   api.on("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
   fireEvent.change(await screen.findByLabelText("Gebruik een bestaande locatie"), { target: { value: "Brussels" } });
   fireEvent.click(await screen.findByRole("option", { name: "Brussels Airport · Zaventem" }));
   expect(api.count("GET /api/trips/trip/locations?q=Brussels&limit=50")).toBe(1);
-  expect((screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)") as HTMLInputElement).value).toBe("Brussels Airport");
+  expect((screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)") as HTMLInputElement).value).toBe(
+    "Brussels Airport",
+  );
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.lastBody<{ location: unknown }>("POST /api/trips/trip/stays")?.location).toEqual({ existing_location_id: "bru" });
+  expect(api.lastBody<{ location: unknown }>("POST /api/trips/trip/stays")?.location).toEqual({
+    existing_location_id: "bru",
+  });
 });
 
 it("keeps a stay's saved location when a hotel detail is corrected", async () => {
-  api = fakeApi().collection("/api/trips/trip/stays", [{ ...stay("s1", "Airport hotel"), location: savedLocation }]).collection("/api/trips/trip/locations", [savedLocation]);
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [{ ...stay("s1", "Airport hotel"), location: savedLocation }])
+    .collection("/api/trips/trip/locations", [savedLocation]);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: /Airport hotel/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.change(screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)"), { target: { value: "Airport hotel Brussels" } });
+  fireEvent.change(screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)"), {
+    target: { value: "Airport hotel Brussels" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf opslaan" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.lastBody<{ location: unknown }>("PATCH /api/trips/trip/stays/s1")?.location).toEqual({ existing_location_id: "bru" });
+  expect(api.lastBody<{ location: unknown }>("PATCH /api/trips/trip/stays/s1")?.location).toEqual({
+    existing_location_id: "bru",
+  });
 });
 
 it("opens a stay in private detail before editing, prefilled", async () => {
-  api = fakeApi().collection("/api/trips/trip/stays", [stay("s1", "Hotel")]).collection("/api/trips/trip/locations", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
   expect(screen.getByText("Boekingsreferentie: ABC")).toBeTruthy();
@@ -151,11 +332,15 @@ it("opens a stay in private detail before editing, prefilled", async () => {
 });
 
 it("shows an edited stay and removes a deleted one without a reload", async () => {
-  api = fakeApi().collection("/api/trips/trip/stays", [stay("s1", "Hotel"), stay("s2", "Hostel")]).collection("/api/trips/trip/locations", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel"), stay("s2", "Hostel")])
+    .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.change(screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)"), { target: { value: "Hotel Royal" } });
+  fireEvent.change(screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)"), {
+    target: { value: "Hotel Royal" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf opslaan" }));
   await screen.findByRole("button", { name: /Hotel Royal/ });
   expect(screen.queryByRole("button", { name: /^Hotel · / })).toBeNull();
@@ -169,7 +354,9 @@ it("shows an edited stay and removes a deleted one without a reload", async () =
 });
 
 it("rewrites a stay's place only when a place field changed", async () => {
-  api = fakeApi().collection("/api/trips/trip/stays", [stay("s1", "Hotel")]).collection("/api/trips/trip/locations", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -185,7 +372,9 @@ it("keeps check-out after check-in and moves it along with the first night", asy
   renderWithOwner(<StayManager trip={trip} areas={[]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
   fireEvent.change(screen.getByLabelText("Eerste nacht (inchecken)"), { target: { value: "2054-11-20" } });
-  await waitFor(() => expect((screen.getByLabelText("Uitchecken (ochtend)") as HTMLInputElement).value).toBe("2054-11-21"));
+  await waitFor(() =>
+    expect((screen.getByLabelText("Uitchecken (ochtend)") as HTMLInputElement).value).toBe("2054-11-21"),
+  );
   fireEvent.change(screen.getByLabelText("Uitchecken (ochtend)"), { target: { value: "2054-11-19" } });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await screen.findByText("Uitchecken gebeurt ten vroegste de ochtend na de eerste nacht.");
@@ -193,13 +382,17 @@ it("keeps check-out after check-in and moves it along with the first night", asy
 });
 
 it("sets who sees a stay from its own detail, with the same control as everywhere", async () => {
-  api = fakeApi().collection("/api/trips/trip/stays", [stay("s1", "Hotel")]).collection("/api/trips/trip/locations", []);
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection("/api/trips/trip/locations", []);
   api.on("PUT", /\/visibility\/stay\/s1$/, (body) => body);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
   expect(selectedOption("Zichtbaarheid van Hotel")).toBe("Privé — alleen ik");
   chooseOption("Zichtbaarheid van Hotel", "Iedereen — alle bezoekers");
-  await waitFor(() => expect(api.lastBody("PUT /api/trips/trip/visibility/stay/s1")).toEqual({ visibility: "everyone" }));
+  await waitFor(() =>
+    expect(api.lastBody("PUT /api/trips/trip/visibility/stay/s1")).toEqual({ visibility: "everyone" }),
+  );
 });
 
 it("lets the owner choose how precisely visitors see a stay's nights", async () => {
@@ -210,7 +403,9 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
   chooseOption("Datums voor bezoekers", "Volledige datums");
   fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
-  await waitFor(() => expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ share_date_precision: "day" }));
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ share_date_precision: "day" }),
+  );
 });
 
 it("refuses a stay without a location, but accepts a city on its own", async () => {
@@ -223,5 +418,7 @@ it("refuses a stay without a location, but accepts a city on its own", async () 
 
   fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Alishan" } });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
-  await waitFor(() => expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ location: { locality: "Alishan" } }));
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ location: { locality: "Alishan" } }),
+  );
 });

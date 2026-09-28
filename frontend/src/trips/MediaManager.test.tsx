@@ -5,7 +5,13 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { chooseOption, renderRoutesWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import {
+  renderRoutesWithOwner,
+  resetOfflineDb,
+  restoreObjectUrls,
+  stubObjectUrls,
+  testToken,
+} from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type { MediaAsset, MediaDerivative, Trip } from "../tracker-model";
 import { MediaManager } from "./MediaManager";
@@ -14,11 +20,59 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
-  id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null,
-  travel_updates: [{ id: "e1", occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title: "Eerste avond", body: "…", private_notes: null, area_id: null, location: null, media_asset_ids: ["p2"], visibility: "private" }],
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: null,
+  ends_on: null,
+  travel_updates: [
+    {
+      id: "e1",
+      occurred_at: "2054-11-16T10:00:00Z",
+      date_precision: "day",
+      title: "Eerste avond",
+      body: "…",
+      private_notes: null,
+      area_id: null,
+      location: null,
+      media_asset_ids: ["p2"],
+      visibility: "private",
+    },
+  ],
 };
-const photo = (id: string, name: string): MediaAsset => ({ id, media_kind: "photo", original_filename: name, byte_size: 2048, content_type: "image/jpeg", captured_at: null, gps: null, file_url: `/api/trips/trip/media/${id}/original` } as MediaAsset);
-const derivative = (id: string, state: "pending" | "approved", extra: Partial<MediaDerivative> = {}): MediaDerivative => ({ id, media_asset_id: "p1", purpose: "share", review_state: state, metadata_stripped_at: null, width: 800, height: 600, travel_update_id: null, caption: null, alt_text: null, focal_x: null, focal_y: null, visibility: "private", created_at: "2054-01-01T00:00:00Z", file_url: `/files/${id}`, ...extra });
+const photo = (id: string, name: string): MediaAsset =>
+  ({
+    id,
+    media_kind: "photo",
+    original_filename: name,
+    byte_size: 2048,
+    content_type: "image/jpeg",
+    captured_at: null,
+    gps: null,
+    file_url: `/api/trips/trip/media/${id}/original`,
+  }) as MediaAsset;
+const derivative = (
+  id: string,
+  state: "pending" | "approved",
+  extra: Partial<MediaDerivative> = {},
+): MediaDerivative => ({
+  id,
+  media_asset_id: "p1",
+  purpose: "share",
+  review_state: state,
+  metadata_stripped_at: null,
+  width: 800,
+  height: 600,
+  travel_update_id: null,
+  caption: null,
+  alt_text: null,
+  focal_x: null,
+  focal_y: null,
+  visibility: "private",
+  created_at: "2054-01-01T00:00:00Z",
+  file_url: `/files/${id}`,
+  ...extra,
+});
 
 let api: FakeApi;
 let providers: { provider: string; available: boolean; connected: boolean }[];
@@ -29,14 +83,25 @@ beforeEach(() => {
     .collection("/api/trips/trip/media/p1/derivatives", [derivative("x1", "pending", { caption: "Kust" })])
     .collection("/api/trips/trip/media/p2/derivatives", [])
     .collection("/api/trips/trip/visits", []);
-  providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: true, connected: true }];
+  providers = [
+    { provider: "google_photos_picker", available: true, connected: false },
+    { provider: "gopro_cloud", available: true, connected: true },
+  ];
   api.on("GET", /^\/api\/provider-tokens$/, () => providers);
   // The inline derivative preview and focal-point overlay fetch the derivative's file as a blob.
   api.on("GET", /^\/files\//, () => ({}));
 });
-afterEach(async () => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); expect(api.unexpected).toEqual([]); await resetOfflineDb(); });
+afterEach(async () => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  expect(api.unexpected).toEqual([]);
+  await resetOfflineDb();
+});
 
-const routeTree = createRootRoute({ component: () => <MediaManager trip={trip} onStartCaptureFromCandidate={() => undefined} /> });
+const routeTree = createRootRoute({
+  component: () => <MediaManager trip={trip} onStartCaptureFromCandidate={() => undefined} />,
+});
 const renderMedia = () => renderRoutesWithOwner(routeTree, ["/"]);
 
 it("lists a new upload straight away and opens its details", async () => {
@@ -46,7 +111,9 @@ it("lists a new upload straight away and opens its details", async () => {
   await screen.findByText("kust.jpg");
   expect(document.querySelector('input[type="file"]')).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Media uploaden" }));
-  fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(["x"], "nieuw.jpg", { type: "image/jpeg" })] } });
+  fireEvent.change(document.querySelector('input[type="file"]')!, {
+    target: { files: [new File(["x"], "nieuw.jpg", { type: "image/jpeg" })] },
+  });
   fireEvent.submit(screen.getByRole("button", { name: "Privémedia uploaden" }).closest("form")!);
   await screen.findByRole("heading", { level: 2, name: "nieuw.jpg" });
   expect(screen.getByText("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.")).toBeTruthy();
@@ -74,12 +141,16 @@ it("removes a deleted photo and its copies from the screen", async () => {
   await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("kust.jpg")).toBeNull());
   expect(screen.getByText("markt.jpg")).toBeTruthy();
-  expect(screen.getByText("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.")).toBeTruthy();
+  expect(
+    screen.getByText("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald."),
+  ).toBeTruthy();
   expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
 });
 
 it("creates a copy within the allowed size and lists it", async () => {
-  api.on("POST", /\/media\/p1\/derivatives$/, () => api.push("/api/trips/trip/media/p1/derivatives", derivative("x2", "pending", { width: 800, height: 533 })));
+  api.on("POST", /\/media\/p1\/derivatives$/, () =>
+    api.push("/api/trips/trip/media/p1/derivatives", derivative("x2", "pending", { width: 800, height: 533 })),
+  );
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
   await screen.findByText("Wacht op goedkeuring");
@@ -104,7 +175,11 @@ it("returns to the photo without saving when a copy's form is cancelled", async 
 });
 
 it("shows an approved copy and drops a deleted one without a reload", async () => {
-  api.on("POST", /\/media\/p1\/derivatives\/x1\/approve$/, () => { const rows = api.rows("/api/trips/trip/media/p1/derivatives"); rows[0].review_state = "approved"; return rows[0]; });
+  api.on("POST", /\/media\/p1\/derivatives\/x1\/approve$/, () => {
+    const rows = api.rows("/api/trips/trip/media/p1/derivatives");
+    rows[0].review_state = "approved";
+    return rows[0];
+  });
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
@@ -119,12 +194,19 @@ it("shows an approved copy and drops a deleted one without a reload", async () =
 });
 
 it("opens the presentation form with the saved values, saves it and keeps the saved caption", async () => {
-  api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => { const rows = api.rows("/api/trips/trip/media/p1/derivatives"); Object.assign(rows[0], { caption: (body as { caption: string }).caption, focal_x: (body as { focal_x: number }).focal_x }); return rows[0]; });
+  api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => {
+    const rows = api.rows("/api/trips/trip/media/p1/derivatives");
+    Object.assign(rows[0], {
+      caption: (body as { caption: string }).caption,
+      focal_x: (body as { focal_x: number }).focal_x,
+    });
+    return rows[0];
+  });
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
-  const caption = await screen.findByLabelText("Bijschrift") as HTMLInputElement;
+  const caption = (await screen.findByLabelText("Bijschrift")) as HTMLInputElement;
   expect(caption.value).toBe("Kust");
   fireEvent.change(screen.getByLabelText("Focus horizontaal (%)"), { target: { value: "150" } });
   fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
@@ -135,11 +217,17 @@ it("opens the presentation form with the saved values, saves it and keeps the sa
   fireEvent.change(screen.getByLabelText("Focus horizontaal (%)"), { target: { value: "40" } });
   fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
   await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
-  expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({ caption: "Kust bij zonsopgang", focal_x: 40, travel_update_id: null });
+  expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({
+    caption: "Kust bij zonsopgang",
+    focal_x: 40,
+    travel_update_id: null,
+  });
 
   fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
-  await waitFor(() => expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe("Kust bij zonsopgang"));
+  await waitFor(() =>
+    expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe("Kust bij zonsopgang"),
+  );
 });
 
 it("searches travel updates when linking a copy's presentation", async () => {
@@ -158,7 +246,9 @@ it("searches travel updates when linking a copy's presentation", async () => {
   expect(api.count("GET /api/trips/trip/travel-updates?q=Eerste&limit=50")).toBe(1);
   fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
   await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
-  expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({ travel_update_id: "e1" });
+  expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({
+    travel_update_id: "e1",
+  });
 });
 
 it("shows a thumbnail beside a photo, a readable purpose label, and an inline preview with a focal-point marker", async () => {
@@ -190,7 +280,14 @@ it("shows a thumbnail beside a photo, a readable purpose label, and an inline pr
 });
 
 it("reviews possible travel updates without storing them, and attaches media to an existing reisupdate", async () => {
-  api.on("POST", /\/media\/travel-update-candidates$/, () => ({ grouping_window_minutes: 120, gps_agreement_metres: 500, unavailable_media_asset_ids: [], candidates: [{ id: "c1", media_asset_ids: ["p1"], starts_at: null, ends_at: null, time_options: [], location_options: [] }] }));
+  api.on("POST", /\/media\/travel-update-candidates$/, () => ({
+    grouping_window_minutes: 120,
+    gps_agreement_metres: 500,
+    unavailable_media_asset_ids: [],
+    candidates: [
+      { id: "c1", media_asset_ids: ["p1"], starts_at: null, ends_at: null, time_options: [], location_options: [] },
+    ],
+  }));
   api.on("GET", /\/travel-updates\?q=Eerste&limit=50$/, () => trip.travel_updates);
   api.on("PATCH", /\/travel-updates\/e1$/, () => ({ id: "e1" }));
   renderMedia();
@@ -210,8 +307,18 @@ it("reviews possible travel updates without storing them, and attaches media to 
 });
 
 it("starts an import and reports a selection that is not ready yet", async () => {
-  api.on("POST", /\/media\/imports\/gopro_cloud\/sessions$/, () => ({ id: "sess", provider: "gopro_cloud", state: "pending", picker_uri: "https://picker.example/x", expires_at: null }));
-  api.on("POST", /\/media\/imports\/gopro_cloud\/sessions\/sess\/complete$/, () => ({ ready: false, imported: [], failed: [] }));
+  api.on("POST", /\/media\/imports\/gopro_cloud\/sessions$/, () => ({
+    id: "sess",
+    provider: "gopro_cloud",
+    state: "pending",
+    picker_uri: "https://picker.example/x",
+    expires_at: null,
+  }));
+  api.on("POST", /\/media\/imports\/gopro_cloud\/sessions\/sess\/complete$/, () => ({
+    ready: false,
+    imported: [],
+    failed: [],
+  }));
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "Kies in GoPro Cloud" }));
   await screen.findByText("GoPro Cloud-selectie");
@@ -220,7 +327,10 @@ it("starts an import and reports a selection that is not ready yet", async () =>
 });
 
 it("hides a provider the server does not offer and disables one the owner has not connected", async () => {
-  providers = [{ provider: "google_photos_picker", available: true, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  providers = [
+    { provider: "google_photos_picker", available: true, connected: false },
+    { provider: "gopro_cloud", available: false, connected: false },
+  ];
   renderMedia();
   const google = await screen.findByRole("button", { name: "Kies in Google Photos" });
   expect((google as HTMLButtonElement).disabled).toBe(true);
@@ -228,7 +338,10 @@ it("hides a provider the server does not offer and disables one the owner has no
 });
 
 it("offers no provider import when OAuth is not configured on the server", async () => {
-  providers = [{ provider: "google_photos_picker", available: false, connected: false }, { provider: "gopro_cloud", available: false, connected: false }];
+  providers = [
+    { provider: "google_photos_picker", available: false, connected: false },
+    { provider: "gopro_cloud", available: false, connected: false },
+  ];
   renderMedia();
   await screen.findByText(/Providerimport is op deze server nog niet beschikbaar/);
   expect(screen.queryByRole("button", { name: "Kies in Google Photos" })).toBeNull();

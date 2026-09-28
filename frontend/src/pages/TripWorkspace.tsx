@@ -7,6 +7,7 @@ const sections = new Set<TripWorkspaceSection>(["overview", "plan", "story", "me
 export function TripWorkspace() {
   const { tripId, section } = useParams({ strict: false });
   if (!tripId) return <Navigate to="/trips" replace />;
-  if (section && !sections.has(section as TripWorkspaceSection)) return <Navigate to={`/trips/${encodeURIComponent(tripId)}`} replace />;
+  if (section && !sections.has(section as TripWorkspaceSection))
+    return <Navigate to={`/trips/${encodeURIComponent(tripId)}`} replace />;
   return <Trips workspace={{ tripId, section: (section as TripWorkspaceSection | undefined) ?? "overview" }} />;
 }

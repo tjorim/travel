@@ -6,24 +6,43 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { useTripsQuery } from "../query/owner-queries";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
-import type { Area, TravelUpdate, Trip } from "../tracker-model";
+import type { TravelUpdate, Trip } from "../tracker-model";
 import { TravelUpdateManager } from "./TravelUpdateManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const taipei: Area = { id: "taipei", visibility: "private", label: "Taipei", country_code: "TW", region: null, latitude: null, longitude: null, timezone: null };
-const tainan: Area = { id: "tainan", visibility: "private", label: "Tainan", country_code: "TW", region: null, latitude: null, longitude: null, timezone: null };
-const update = (id: string, title: string, visibility: TravelUpdate["visibility"] = "private"): TravelUpdate => ({ id, occurred_at: "2054-11-16T10:00:00Z", date_precision: "day", title, body: "De eerste avond.", private_notes: null, area_id: null, location: null, media_asset_ids: [], visibility });
+const update = (id: string, title: string, visibility: TravelUpdate["visibility"] = "private"): TravelUpdate => ({
+  id,
+  occurred_at: "2054-11-16T10:00:00Z",
+  date_precision: "day",
+  title,
+  body: "De eerste avond.",
+  private_notes: null,
+  area_id: null,
+  location: null,
+  media_asset_ids: [],
+  visibility,
+});
 
 let state: { trip: Trip };
 let api: FakeApi;
 
 /** Travel updates live inside the trip: writes change it and the trip list is what refreshes. */
-function embed(key: "travel_updates", path: string, shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => item) {
+function embed(
+  key: "travel_updates",
+  path: string,
+  shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => item,
+) {
   const list = () => state.trip[key] as { id: string }[];
-  const set = (items: unknown[]) => { state.trip = { ...state.trip, [key]: items as TravelUpdate[] }; };
-  api.on("POST", new RegExp(`^/api/trips/trip/${path}$`), (body) => { const created = shape({ id: `new-${list().length}`, position: list().length, ...(body as object) }); set([...list(), created]); return created; });
+  const set = (items: unknown[]) => {
+    state.trip = { ...state.trip, [key]: items as TravelUpdate[] };
+  };
+  api.on("POST", new RegExp(`^/api/trips/trip/${path}$`), (body) => {
+    const created = shape({ id: `new-${list().length}`, position: list().length, ...(body as object) });
+    set([...list(), created]);
+    return created;
+  });
   api.on("PATCH", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (body, match) => {
     const move = (body as { position?: number }).position;
     if (move !== undefined) {
@@ -34,10 +53,13 @@ function embed(key: "travel_updates", path: string, shape: (item: Record<string,
       set(items.map((item, position) => ({ ...item, position })));
       return moved;
     }
-    set(list().map((item) => item.id === match[1] ? shape({ ...item, ...(body as object) }) : item));
+    set(list().map((item) => (item.id === match[1] ? shape({ ...item, ...(body as object) }) : item)));
     return list().find((item) => item.id === match[1]);
   });
-  api.on("DELETE", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (_body, match) => { set(list().filter((item) => item.id !== match[1])); return undefined; });
+  api.on("DELETE", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (_body, match) => {
+    set(list().filter((item) => item.id !== match[1]));
+    return undefined;
+  });
 }
 
 function Screen({ children }: { children: (trip: Trip) => ReactNode }) {
@@ -47,15 +69,29 @@ function Screen({ children }: { children: (trip: Trip) => ReactNode }) {
 
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  state = { trip: { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [update("e1", "Aankomst"), update("e2", "Vertrek")] } };
+  state = {
+    trip: {
+      id: "trip",
+      title: "Exampleland",
+      summary: null,
+      starts_on: null,
+      ends_on: null,
+      travel_updates: [update("e1", "Aankomst"), update("e2", "Vertrek")],
+    },
+  };
   api = fakeApi();
   api.collection("/api/trips/trip/locations", []);
   api.on("GET", /^\/api\/trips$/, () => [state.trip]);
   embed("travel_updates", "travel-updates");
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); expect(api.unexpected).toEqual([]); });
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  expect(api.unexpected).toEqual([]);
+});
 
-const confirmDelete = () => fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+const confirmDelete = () =>
+  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
 
 it("opens a travel update in detail before editing and asks before discarding edits", async () => {
   renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);

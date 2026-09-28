@@ -7,10 +7,23 @@ import { RecordDialog } from "./RecordDialog";
 
 function Fixture() {
   const [open, setOpen] = useState(false);
-  return <><button type="button" onClick={() => setOpen(true)}>Record openen</button><RecordDialog open={open} title="Record" onDismiss={() => setOpen(false)}><p>Inhoud</p></RecordDialog></>;
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Record openen
+      </button>
+      <RecordDialog open={open} title="Record" onDismiss={() => setOpen(false)}>
+        <p>Inhoud</p>
+      </RecordDialog>
+    </>
+  );
 }
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it("restores focus and scroll position after dismissal", () => {
   const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);

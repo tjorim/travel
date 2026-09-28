@@ -36,8 +36,13 @@ export function Boundary({ children }: { children: ReactNode }) {
         <header>
           <p className="eyebrow">Travel · privé standaard</p>
           <h1>Jouw route, bewust gedeeld.</h1>
-          <p className="lede">Deze app houdt het bestaande reisarchief apart. Je account is persoonlijk en wordt nooit op publieke reizen getoond.</p>
-          <button type="button" onClick={signIn}>Aanmelden</button>
+          <p className="lede">
+            Deze app houdt het bestaande reisarchief apart. Je account is persoonlijk en wordt nooit op publieke reizen
+            getoond.
+          </p>
+          <button type="button" onClick={signIn}>
+            Aanmelden
+          </button>
         </header>
         {children}
       </main>
@@ -48,14 +53,22 @@ export function Boundary({ children }: { children: ReactNode }) {
     <main className="shell owner-shell owner-shell-authenticated">
       <header className="app-header">
         <nav className="app-nav" aria-label="App navigatie">
-          {navigation.map(([to, label]) => <Link key={to} to={to} activeOptions={{ exact: to === "/", includeSearch: false }}>{label}</Link>)}
+          {navigation.map(([to, label]) => (
+            <Link key={to} to={to} activeOptions={{ exact: to === "/", includeSearch: false }}>
+              {label}
+            </Link>
+          ))}
         </nav>
         <details className="account-menu">
           <summary aria-haspopup="menu">Account</summary>
           <div className="account-menu-panel" role="menu">
-            <p><strong>Aangemeld</strong></p>
+            <p>
+              <strong>Aangemeld</strong>
+            </p>
             <p className="help">Je toegangstoken blijft alleen voor deze browsersessie bewaard.</p>
-            <button className="secondary" type="button" role="menuitem" onClick={() => void signOut()}>Afmelden</button>
+            <button className="secondary" type="button" role="menuitem" onClick={() => void signOut()}>
+              Afmelden
+            </button>
           </div>
         </details>
       </header>

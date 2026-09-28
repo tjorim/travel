@@ -27,7 +27,11 @@ export function Callback() {
       <section className="card">
         <h1>Aanmelden</h1>
         <p>{message}</p>
-        {failed && <button type="button" onClick={() => void beginSignIn("/")}>Opnieuw aanmelden</button>}
+        {failed && (
+          <button type="button" onClick={() => void beginSignIn("/")}>
+            Opnieuw aanmelden
+          </button>
+        )}
       </section>
     </main>
   );

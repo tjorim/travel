@@ -13,10 +13,14 @@ export type SavedSharedTrip = {
 function isSavedSharedTrip(value: unknown): value is SavedSharedTrip {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const trip = value as Record<string, unknown>;
-  return typeof trip.token === "string" && trip.token.length >= 20 && trip.token.length <= 512
-    && (trip.title === null || typeof trip.title === "string")
-    && (trip.summary === null || typeof trip.summary === "string")
-    && typeof trip.lastVisitedAt === "string";
+  return (
+    typeof trip.token === "string" &&
+    trip.token.length >= 20 &&
+    trip.token.length <= 512 &&
+    (trip.title === null || typeof trip.title === "string") &&
+    (trip.summary === null || typeof trip.summary === "string") &&
+    typeof trip.lastVisitedAt === "string"
+  );
 }
 
 export function readSavedSharedTrips(): SavedSharedTrip[] {
@@ -25,7 +29,9 @@ export function readSavedSharedTrips(): SavedSharedTrip[] {
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isSavedSharedTrip).sort((left, right) => right.lastVisitedAt.localeCompare(left.lastVisitedAt));
+    return parsed
+      .filter(isSavedSharedTrip)
+      .sort((left, right) => right.lastVisitedAt.localeCompare(left.lastVisitedAt));
   } catch {
     return [];
   }

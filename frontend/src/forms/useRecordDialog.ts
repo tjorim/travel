@@ -20,10 +20,26 @@ export function useRecordDialog<T extends { id: string }>(items: readonly T[]) {
     editingId,
     confirmDelete,
     setConfirmDelete,
-    create() { setSelectedId(null); setEditingId(null); setConfirmDelete(false); },
-    edit(id: string) { setSelectedId(id); setEditingId(id); setConfirmDelete(false); },
-    inspect(id: string) { setSelectedId(id); setEditingId(undefined); setConfirmDelete(false); },
-    close() { setSelectedId(null); setEditingId(undefined); setConfirmDelete(false); },
+    create() {
+      setSelectedId(null);
+      setEditingId(null);
+      setConfirmDelete(false);
+    },
+    edit(id: string) {
+      setSelectedId(id);
+      setEditingId(id);
+      setConfirmDelete(false);
+    },
+    inspect(id: string) {
+      setSelectedId(id);
+      setEditingId(undefined);
+      setConfirmDelete(false);
+    },
+    close() {
+      setSelectedId(null);
+      setEditingId(undefined);
+      setConfirmDelete(false);
+    },
   };
 }
 

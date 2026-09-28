@@ -51,12 +51,16 @@ TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel
   uv run alembic downgrade base
 ```
 
-For frontend work, use the repository's pinned Node version:
+For frontend work, install the Node version in `frontend/.node-version` and
+run pnpm directly (CI uses pnpm 10.28.2):
 
 ```bash
 cd frontend
-vp env exec --node "$(cat .node-version)" pnpm install --frozen-lockfile
-vp env exec --node "$(cat .node-version)" pnpm build
+test "$(node --version)" = "v$(cat .node-version)"
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm format:check
+pnpm build
 ```
 
 GitHub Actions runs each affected component's checks on pull requests and all
@@ -67,6 +71,16 @@ of them on every push to `main`.
 Use two-space indentation in TypeScript, CSS and JSON, and match the
 surrounding code. Keep Python to the Ruff configuration in
 `backend/pyproject.toml`.
+
+Use Tailwind utilities for new frontend styling and `cn` for conditional
+utility classes. Existing rules in `frontend/src/styles.css` remain while
+affected views migrate; do not extend that file for new styling. The frontend
+lint command checks new utility classes and permits only legacy classes
+defined in that stylesheet. The existing native `RecordDialog` remains until
+the dialog migration in #264; use Radix Dialog and Alert Dialog for that work
+while preserving its current dismissal and focus behavior.
+Use Oxfmt for frontend formatting with `pnpm format`, and run
+`pnpm format:check` before submitting changes.
 
 Operational data (stays, routes, visits, tasks, documents) stays
 owner-only; visitor views receive only fields an owner scope explicitly

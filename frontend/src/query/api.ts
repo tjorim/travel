@@ -13,10 +13,16 @@ export class ApiError extends Error {
     this.fieldErrors = fieldErrors;
   }
 
-  get unauthorized(): boolean { return this.status === 401; }
-  get offline(): boolean { return this.status === 0; }
+  get unauthorized(): boolean {
+    return this.status === 401;
+  }
+  get offline(): boolean {
+    return this.status === 0;
+  }
   /** The server understood the request and rejected it: retrying cannot help. */
-  get permanent(): boolean { return this.status >= 400 && this.status < 500; }
+  get permanent(): boolean {
+    return this.status >= 400 && this.status < 500;
+  }
 }
 
 const offlineMessage = "Geen verbinding met de server. Controleer je verbinding en probeer opnieuw.";
@@ -40,7 +46,7 @@ function detailMessage(detail: unknown): { message: string | null; fields: Recor
 
 /** Maps a failed response to the message shown to the owner. */
 export async function apiFailure(response: Response, fallback: string): Promise<ApiError> {
-  const body = await response.json().catch(() => null) as { detail?: unknown } | null;
+  const body = (await response.json().catch(() => null)) as { detail?: unknown } | null;
   const { message, fields } = detailMessage(body?.detail);
   return new ApiError(response.status === 401 ? unauthorizedMessage : message || fallback, response.status, fields);
 }
@@ -72,27 +78,45 @@ async function send(url: string, init: RequestInit, signal: AbortSignal | undefi
  * and nowhere else in the query layer, so it never reaches a query key, a
  * cached value or a devtools panel.
  */
-export async function ownerRequest<T>(session: TrackerSession, path: string, fallback: string, { method = "GET", body, signal, cache, credentials }: OwnerRequest = {}): Promise<T> {
+export async function ownerRequest<T>(
+  session: TrackerSession,
+  path: string,
+  fallback: string,
+  { method = "GET", body, signal, cache, credentials }: OwnerRequest = {},
+): Promise<T> {
   const multipart = typeof FormData !== "undefined" && body instanceof FormData;
-  const response = await send(path, {
-    method,
-    // A multipart body carries its own boundary in the Content-Type the browser sets.
-    headers: multipart ? authorization(session) : { ...authorization(session), "Content-Type": "application/json" },
-    ...(body === undefined ? {} : { body: multipart ? body : JSON.stringify(body) }),
-    ...(cache ? { cache } : {}),
-    ...(credentials ? { credentials } : {}),
-  }, signal);
+  const response = await send(
+    path,
+    {
+      method,
+      // A multipart body carries its own boundary in the Content-Type the browser sets.
+      headers: multipart ? authorization(session) : { ...authorization(session), "Content-Type": "application/json" },
+      ...(body === undefined ? {} : { body: multipart ? body : JSON.stringify(body) }),
+      ...(cache ? { cache } : {}),
+      ...(credentials ? { credentials } : {}),
+    },
+    signal,
+  );
   if (!response.ok) throw await apiFailure(response, fallback);
   if (response.status === 204) return undefined as T;
-  return await response.json() as T;
+  return (await response.json()) as T;
 }
 
 /**
  * Downloads a protected file. The bytes go to the caller (an object URL, an
  * offline copy) and never into the query cache.
  */
-export async function ownerFile(session: TrackerSession, url: string, fallback: string, { signal, cache, credentials }: Pick<OwnerRequest, "signal" | "cache" | "credentials"> = {}): Promise<Blob> {
-  const response = await send(url, { headers: authorization(session), ...(cache ? { cache } : {}), ...(credentials ? { credentials } : {}) }, signal);
+export async function ownerFile(
+  session: TrackerSession,
+  url: string,
+  fallback: string,
+  { signal, cache, credentials }: Pick<OwnerRequest, "signal" | "cache" | "credentials"> = {},
+): Promise<Blob> {
+  const response = await send(
+    url,
+    { headers: authorization(session), ...(cache ? { cache } : {}), ...(credentials ? { credentials } : {}) },
+    signal,
+  );
   if (!response.ok) throw await apiFailure(response, fallback);
   return response.blob();
 }
