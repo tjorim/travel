@@ -1,3 +1,6 @@
+import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { Input } from "@base-ui/react/input";
+import { Button } from "@base-ui/react/button";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 
@@ -132,14 +135,19 @@ function PresentationFields({
   return (
     <>
       {previewUrl && session && (
-        <div className="focal-point-preview">
+        <div className="relative mb-2.5 inline-block max-w-55">
           <OwnerImage
             session={session}
             url={previewUrl}
             alt="Voorvertoning van de kopie"
-            className="focal-point-preview-image"
+            className="block max-h-55 w-full rounded-travel-media bg-travel-media-bg object-contain"
           />
-          <span className="focal-point-marker" style={{ left: `${focalX}%`, top: `${focalY}%` }} aria-hidden="true" />
+          <span
+            data-focal-point-marker=""
+            className="pointer-events-none absolute -mt-2.25 -ml-2.25 size-4.5 rounded-full border-2 border-travel-surface bg-travel-focal-marker shadow-md"
+            style={{ left: `${focalX}%`, top: `${focalY}%` }}
+            aria-hidden="true"
+          />
         </div>
       )}
       <record.form.Field name="travelUpdateId">
@@ -673,13 +681,13 @@ export function MediaManager({
         ? presentationRecord.dirty
         : false;
   const cancelAction = (
-    <button className="secondary" type="button" onClick={backToAsset}>
+    <Button className="secondary" type="button" onClick={backToAsset}>
       Terug naar het medium
-    </button>
+    </Button>
   );
 
   return (
-    <section className="card manager" aria-labelledby="media-title">
+    <section className="travel-card manager" aria-labelledby="media-title">
       <div className="capture-heading">
         <div>
           <h3 id="media-title">Mediabibliotheek</h3>
@@ -688,9 +696,9 @@ export function MediaManager({
             bewust worden gedeeld.
           </p>
         </div>
-        <button className="secondary compact" type="button" onClick={openUpload}>
+        <Button className="secondary compact" type="button" onClick={openUpload}>
           Media uploaden
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {message}
@@ -705,7 +713,7 @@ export function MediaManager({
           <form className="stack-form" onSubmit={submitUpload}>
             <label>
               Foto of video van dit apparaat
-              <input
+              <Input
                 key={uploadKey}
                 required
                 type="file"
@@ -713,9 +721,9 @@ export function MediaManager({
                 onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
               />
             </label>
-            <button type="submit" disabled={upload.isPending}>
+            <Button type="submit" disabled={upload.isPending}>
               Privémedia uploaden
-            </button>
+            </Button>
           </form>
         )}
       </RecordDialog>
@@ -738,7 +746,7 @@ export function MediaManager({
         {providers.length > 0 && (
           <div className="button-row">
             {providers.map((item) => (
-              <button
+              <Button
                 key={item.provider}
                 className="secondary"
                 type="button"
@@ -747,12 +755,12 @@ export function MediaManager({
                 onClick={() => startProvider(item.provider)}
               >
                 Kies in {providerLabel[item.provider]}
-              </button>
+              </Button>
             ))}
           </div>
         )}
         {importSession && (
-          <aside className="import-session">
+          <aside className="grid gap-2.25 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.5 text-sm leading-normal text-travel-warning-ink [&_.action-link]:w-fit [&_button]:w-fit">
             <strong>{providerLabel[importSession.provider]}-selectie</strong>
             <span>Kies eerst alleen de media die je naar deze private reis wilt kopiëren.</span>
             {importSession.picker_uri && (
@@ -760,43 +768,50 @@ export function MediaManager({
                 Selectie openen
               </a>
             )}
-            <button type="button" onClick={finishImport}>
+            <Button type="button" onClick={finishImport}>
               Selectie importeren
-            </button>
+            </Button>
           </aside>
         )}
       </div>
       {assets.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {assets.map((asset) => (
-            <article className={`excerpt-row ${asset.id === selected?.id ? "selected-item" : ""}`} key={asset.id}>
-              <button
-                className="document-select media-asset-select"
+            <article className="excerpt-row" data-selected={asset.id === selected?.id ? "" : undefined} key={asset.id}>
+              <Button
+                className="document-select flex items-center gap-3"
                 type="button"
                 onClick={() => inspectAsset(asset.id)}
                 aria-label={`${asset.original_filename ?? "Naamloos medium"} bekijken`}
               >
                 {asset.thumbnail_url && owner ? (
-                  <OwnerImage session={owner.session} url={asset.thumbnail_url} alt="" className="media-thumbnail" />
+                  <OwnerImage
+                    session={owner.session}
+                    url={asset.thumbnail_url}
+                    alt=""
+                    className="size-13 shrink-0 rounded-lg bg-travel-media-bg object-cover"
+                  />
                 ) : (
-                  <span className="media-thumbnail media-thumbnail-placeholder" aria-hidden="true">
+                  <span
+                    className="size-13 shrink-0 rounded-lg bg-travel-media-bg object-cover media-thumbnail-placeholder"
+                    aria-hidden="true"
+                  >
                     {asset.media_kind === "video" ? "🎞" : "🖼"}
                   </span>
                 )}
-                <div className="media-asset-details">
+                <div className="min-w-0">
                   <strong>{asset.original_filename ?? "Naamloos medium"}</strong>
                   <span>
                     {asset.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(asset.byte_size)}
                     {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
                   </span>
                 </div>
-              </button>
+              </Button>
               <div className="button-row">
                 <label className="scope-choice">
-                  <input
-                    type="checkbox"
+                  <TravelCheckbox
                     checked={reviewSelection.includes(asset.id)}
-                    onChange={() => toggleReviewSelection(asset.id)}
+                    onCheckedChange={() => toggleReviewSelection(asset.id)}
                   />
                   Reisupdates beoordelen
                 </label>
@@ -817,9 +832,9 @@ export function MediaManager({
               </p>
             </div>
           </div>
-          <button type="button" onClick={review}>
+          <Button type="button" onClick={review}>
             Geselecteerde media beoordelen
-          </button>
+          </Button>
           {candidateReview?.unavailable_media_asset_ids.length ? (
             <p className="help">
               {candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of
@@ -877,9 +892,9 @@ export function MediaManager({
                 </p>
               )}
               {candidate.location_options.length > 0 && (
-                <button className="secondary compact" type="button" onClick={() => suggestCandidateArea(candidate)}>
+                <Button className="secondary compact" type="button" onClick={() => suggestCandidateArea(candidate)}>
                   Gebied en bezoek voorstellen
-                </button>
+                </Button>
               )}
               {candidateAreas[candidate.id] && (
                 <p className="help">
@@ -902,9 +917,9 @@ export function MediaManager({
                 </p>
               )}
               <div className="button-row">
-                <button type="button" onClick={() => startCandidateUpdate(candidate)}>
+                <Button type="button" onClick={() => startCandidateUpdate(candidate)}>
                   Als nieuwe reisupdate openen
-                </button>
+                </Button>
                 {
                   <>
                     <label className="scope-choice">
@@ -936,9 +951,9 @@ export function MediaManager({
                         }}
                       />
                     </label>
-                    <button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>
+                    <Button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>
                       Aan reisupdate koppelen
-                    </button>
+                    </Button>
                   </>
                 }
               </div>
@@ -955,7 +970,7 @@ export function MediaManager({
                   session={owner.session}
                   url={selected.thumbnail_url}
                   alt=""
-                  className="media-thumbnail-large"
+                  className="mb-1 block max-h-65 max-w-65 rounded-travel-media bg-travel-media-bg object-contain"
                 />
               ) : null}
               <h3>{selected.original_filename ?? "Naamloos medium"}</h3>
@@ -965,14 +980,14 @@ export function MediaManager({
               </p>
             </div>
             <div className="button-row">
-              <button
+              <Button
                 className="secondary compact"
                 type="button"
                 onClick={() => open(selected.file_url, "Het private origineel kon niet worden geopend.")}
               >
                 Origineel bekijken
-              </button>
-              <button
+              </Button>
+              <Button
                 className="secondary compact"
                 type="button"
                 onClick={() =>
@@ -980,10 +995,10 @@ export function MediaManager({
                 }
               >
                 {offline.isPinned("media_asset", selected.id) ? "Offline verwijderen" : "Offline bewaren"}
-              </button>
-              <button className="danger compact" type="button" onClick={() => setConfirmDeleteAsset(true)}>
+              </Button>
+              <Button className="danger compact" type="button" onClick={() => setConfirmDeleteAsset(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {confirmDeleteAsset && (
               <DeleteConfirmation
@@ -999,31 +1014,39 @@ export function MediaManager({
                   <h4>Kopieën om te delen</h4>
                   <p>Een nieuwe kopie vereist altijd expliciete goedkeuring.</p>
                 </div>
-                <button className="secondary compact" type="button" onClick={startCreateCopy}>
+                <Button className="secondary compact" type="button" onClick={startCreateCopy}>
                   Kopie maken
-                </button>
+                </Button>
               </div>
               {derivatives.length > 0 ? (
-                <div className="saved-records manager-list">
+                <div className="saved-records mt-0.5">
                   {derivatives.map((item) => {
                     const canPreview = item.processing_state !== "processing" && item.processing_state !== "failed";
                     const previewUrl = item.media_kind === "video" ? (item.poster_url ?? null) : item.file_url;
                     return (
                       <article className="excerpt-row" key={item.id}>
-                        <button
-                          className="document-select media-asset-select"
+                        <Button
+                          className="document-select flex items-center gap-3"
                           type="button"
                           onClick={() => viewCopy(item.id)}
                           aria-label={`Kopie ${purposeLabel[item.purpose]} bekijken`}
                         >
                           {canPreview && previewUrl && owner ? (
-                            <OwnerImage session={owner.session} url={previewUrl} alt="" className="media-thumbnail" />
+                            <OwnerImage
+                              session={owner.session}
+                              url={previewUrl}
+                              alt=""
+                              className="size-13 shrink-0 rounded-lg bg-travel-media-bg object-cover"
+                            />
                           ) : (
-                            <span className="media-thumbnail media-thumbnail-placeholder" aria-hidden="true">
+                            <span
+                              className="size-13 shrink-0 rounded-lg bg-travel-media-bg object-cover media-thumbnail-placeholder"
+                              aria-hidden="true"
+                            >
                               {item.media_kind === "video" ? "🎞" : "🖼"}
                             </span>
                           )}
-                          <div className="media-asset-details">
+                          <div className="min-w-0">
                             <strong>
                               {item.processing_state === "processing"
                                 ? "Wordt verwerkt…"
@@ -1038,7 +1061,7 @@ export function MediaManager({
                               {item.width && item.height ? `${item.width} × ${item.height}` : "afmetingen onbekend"}
                             </span>
                           </div>
-                        </button>
+                        </Button>
                       </article>
                     );
                   })}
@@ -1080,10 +1103,9 @@ export function MediaManager({
                 <derivativeRecord.form.Field name="removeAudio">
                   {(field) => (
                     <label className="scope-choice">
-                      <input
-                        type="checkbox"
+                      <TravelCheckbox
                         checked={field.state.value}
-                        onChange={(event) => field.handleChange(event.target.checked)}
+                        onCheckedChange={(checked) => field.handleChange(checked)}
                       />
                       Geluid verwijderen
                     </label>
@@ -1111,7 +1133,7 @@ export function MediaManager({
                     session={owner.session}
                     url={previewUrl}
                     alt={`Voorvertoning van de kopie van ${selected.original_filename ?? "dit medium"}`}
-                    className="derivative-preview-image"
+                    className="mb-1 block max-h-65 max-w-65 rounded-travel-media bg-travel-media-bg object-contain"
                   />
                 )}
                 <div>
@@ -1149,16 +1171,16 @@ export function MediaManager({
                   )}
                 <div className="button-row">
                   {canPreview && (
-                    <button
+                    <Button
                       className="secondary compact"
                       type="button"
                       onClick={() => open(selectedDerivative.file_url, "De private kopie kon niet worden geopend.")}
                     >
                       {selectedDerivative.media_kind === "video" ? "Video en geluid controleren" : "Bekijken"}
-                    </button>
+                    </Button>
                   )}
                   {canPreview && (
-                    <button
+                    <Button
                       className="secondary compact"
                       type="button"
                       onClick={() =>
@@ -1170,10 +1192,10 @@ export function MediaManager({
                       {offline.isPinned("media_derivative", selectedDerivative.id)
                         ? "Offline verwijderen"
                         : `Offline bewaren (${bytesLabel(selectedDerivative.byte_size ?? 0)})`}
-                    </button>
+                    </Button>
                   )}
                   {selectedDerivative.processing_state === "failed" && (
-                    <button
+                    <Button
                       className="secondary compact"
                       type="button"
                       onClick={() =>
@@ -1183,10 +1205,10 @@ export function MediaManager({
                       }
                     >
                       Opnieuw proberen
-                    </button>
+                    </Button>
                   )}
                   {selectedDerivative.review_state === "pending" && canPreview && (
-                    <button
+                    <Button
                       className="compact"
                       type="button"
                       onClick={() =>
@@ -1199,16 +1221,16 @@ export function MediaManager({
                       }
                     >
                       Expliciet goedkeuren
-                    </button>
+                    </Button>
                   )}
                   {selectedDerivative.purpose === "share" && selectedDerivative.processing_state !== "processing" && (
-                    <button className="secondary compact" type="button" onClick={() => editCopy(selectedDerivative)}>
+                    <Button className="secondary compact" type="button" onClick={() => editCopy(selectedDerivative)}>
                       Presentatie bewerken
-                    </button>
+                    </Button>
                   )}
-                  <button className="danger compact" type="button" onClick={() => setConfirmDeleteCopy(true)}>
+                  <Button className="danger compact" type="button" onClick={() => setConfirmDeleteCopy(true)}>
                     Verwijderen
-                  </button>
+                  </Button>
                 </div>
                 {confirmDeleteCopy && (
                   <DeleteConfirmation

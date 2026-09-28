@@ -1,4 +1,7 @@
+import { Button } from "@base-ui/react/button";
+import { TravelTextarea } from "../ui/TravelTextarea";
 import type { AnyFieldApi } from "@tanstack/react-form";
+import { cn } from "cn";
 import { useContext, useEffect, useId, useRef, useState, type TextareaHTMLAttributes } from "react";
 
 import { Markdown } from "../Markdown";
@@ -138,33 +141,47 @@ export function MarkdownField({
         {label}
         {optionalNote(optional)}
       </label>
-      <div className="markdown-editor-bar">
-        <div className="markdown-tabs" role="group" aria-label={`Weergave van ${label.toLowerCase()}`}>
-          <button type="button" className="compact" aria-pressed={!previewing} onClick={() => setPreviewing(false)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex flex-wrap gap-1" role="group" aria-label={`Weergave van ${label.toLowerCase()}`}>
+          <Button
+            type="button"
+            className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
+            aria-pressed={!previewing}
+            onClick={() => setPreviewing(false)}
+          >
             Schrijven
-          </button>
-          <button type="button" className="compact" aria-pressed={previewing} onClick={() => setPreviewing(true)}>
+          </Button>
+          <Button
+            type="button"
+            className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
+            aria-pressed={previewing}
+            onClick={() => setPreviewing(true)}
+          >
             Voorbeeld
-          </button>
+          </Button>
         </div>
         {!previewing && SNIPPETS[format].length > 0 && (
-          <div className="markdown-toolbar" role="toolbar" aria-label={`Opmaak voor ${label.toLowerCase()}`}>
+          <div className="flex flex-wrap gap-1" role="toolbar" aria-label={`Opmaak voor ${label.toLowerCase()}`}>
             {SNIPPETS[format].map(({ snippet, label: name, text }) => (
-              <button
+              <Button
                 key={snippet}
                 type="button"
-                className={`compact secondary markdown-snippet-${snippet}`}
+                className={cn(
+                  "compact secondary min-w-9",
+                  snippet === "bold" && "font-extrabold",
+                  snippet === "italic" && "italic",
+                )}
                 aria-label={name}
                 title={name}
                 onClick={() => apply(snippet)}
               >
                 {text}
-              </button>
+              </Button>
             ))}
           </div>
         )}
       </div>
-      <textarea
+      <TravelTextarea
         {...rest}
         ref={textarea}
         id={id}
@@ -178,11 +195,14 @@ export function MarkdownField({
         onChange={(event) => field.handleChange(event.target.value)}
       />
       {previewing && (
-        <div className="markdown-preview" aria-live="polite">
+        <div
+          className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-white px-3 py-2.75"
+          aria-live="polite"
+        >
           <MarkdownPreview source={value} format={format} />
         </div>
       )}
-      <span id={hint} className="markdown-hint">
+      <span id={hint} className="text-xs text-travel-muted">
         {HINTS[format]}
       </span>
       {message && (

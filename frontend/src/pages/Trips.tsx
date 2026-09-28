@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -143,13 +144,16 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   // Every trip-bound manager remounts per trip, so no editor or dialog carries one trip's record into another.
   if (workspace && selectedTrip)
     return (
-      <section className="trips trip-workspace" aria-labelledby="trip-detail-title" key={selectedTrip.id}>
-        <Link className="back-link" to="/trips">
+      <section className="grid gap-4.5" aria-labelledby="trip-detail-title" key={selectedTrip.id}>
+        <Link
+          className="justify-self-start py-1 font-bold text-travel-muted no-underline hover:underline focus-visible:underline"
+          to="/trips"
+        >
           ← Alle reizen
         </Link>
-        <header className="trip-workspace-header">
+        <header className="flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch [&_h1]:m-0 [&_h2]:m-0 [&_h1]:text-2xl [&_h2]:text-2xl [&_p]:mt-1.5 [&_p]:mb-0 [&_p]:text-travel-muted">
           <div>
-            <p className="eyebrow">Private reis</p>
+            <p className="travel-eyebrow">Private reis</p>
             <h2 id="trip-detail-title">{selectedTrip.title}</h2>
             <p>
               {[
@@ -163,15 +167,15 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             </p>
           </div>
           <div className="button-row">
-            <button className="secondary compact" type="button" onClick={() => setEditing(true)}>
+            <Button className="secondary compact" type="button" onClick={() => setEditing(true)}>
               Reisgegevens
-            </button>
+            </Button>
             <Link className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>
               Volledig privéoverzicht
             </Link>
-            <button className="action-link" type="button" onClick={() => setCapturing(true)}>
+            <Button className="action-link" type="button" onClick={() => setCapturing(true)}>
               Moment vastleggen
-            </button>
+            </Button>
           </div>
         </header>
         <TripEditor
@@ -190,7 +194,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           open={capturing}
           onDismiss={closeCapture}
         />
-        <nav className="trip-section-nav" aria-label="Reisonderdelen">
+        <nav className="flex gap-1.5 overflow-x-auto border-b border-travel-divider pb-0.5" aria-label="Reisonderdelen">
           {(
             [
               ["overview", "Overzicht"],
@@ -202,6 +206,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             ] as const
           ).map(([section, label]) => (
             <Link
+              className="shrink-0 rounded-t-lg px-2.5 py-2 text-sm font-bold text-travel-muted no-underline aria-[current=page]:bg-travel-selected-bg aria-[current=page]:text-travel-forest"
               key={section}
               to={sectionUrl(section)}
               activeOptions={{ exact: section === "overview" }}
@@ -220,8 +225,8 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           <>
             <TripOverview trip={selectedTrip} />
             <OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} onOpenRecord={openMapRecord} />
-            <div className="detail-grid">
-              <section className="card">
+            <div className="grid gap-4.5 min-[680px]:grid-cols-2">
+              <section className="travel-card">
                 <h3>Reisupdates</h3>
                 {selectedTrip.travel_updates.length ? (
                   <div className="saved-records">
@@ -229,7 +234,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
                       .slice()
                       .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
                       .map((update) => (
-                        <div className="update-summary" key={update.id}>
+                        <div
+                          className="grid w-full gap-1 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 text-left text-travel-ink shadow-sm [&_span]:text-sm [&_span]:font-medium [&_span]:text-travel-muted"
+                          key={update.id}
+                        >
                           <strong>{update.title}</strong>
                           <span>{formatInstant(update.occurred_at)}</span>
                         </div>
@@ -245,7 +253,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         )}
         {currentSection === "plan" && (
           <>
-            <nav className="plan-jump-nav" aria-label="Planningsonderdelen">
+            <nav
+              className="flex flex-wrap gap-1.5 [&_a]:rounded-full [&_a]:border [&_a]:border-travel-card-border [&_a]:bg-travel-surface [&_a]:px-2.5 [&_a]:py-1.5 [&_a]:text-sm [&_a]:font-bold [&_a]:text-travel-muted [&_a]:no-underline [&_a:hover]:bg-travel-selected-bg [&_a:focus-visible]:bg-travel-selected-bg"
+              aria-label="Planningsonderdelen"
+            >
               <a href="#agenda">Agenda</a>
               <a href="#areas">Gebieden en locaties</a>
               <a href="#visits">Bezoeken</a>
@@ -297,27 +308,35 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     );
 
   return (
-    <section className="trips" aria-labelledby="trips-title">
+    <section className="grid gap-4.5" aria-labelledby="trips-title">
       <div className="capture-heading">
         <div>
-          <p className="eyebrow">Private reisbeheer</p>
+          <p className="travel-eyebrow">Private reisbeheer</p>
           <h2 id="trips-title">Reizen</h2>
         </div>
-        <button className="secondary compact" type="button" onClick={newTrip}>
+        <Button className="secondary compact" type="button" onClick={newTrip}>
           Nieuwe reis
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {message}
       </p>
-      <section className="trip-list" aria-label="Jouw reizen">
+      <section
+        className="grid content-start gap-2 [&>p]:m-0 [&>p]:leading-normal [&>p]:text-travel-muted"
+        aria-label="Jouw reizen"
+      >
         {trips.map((trip) => (
-          <button className="trip-row" type="button" key={trip.id} onClick={() => openTrip(trip)}>
+          <Button
+            className="grid w-full gap-1 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 text-left text-travel-ink shadow-sm [&_span]:text-sm [&_span]:font-medium [&_span]:text-travel-muted"
+            type="button"
+            key={trip.id}
+            onClick={() => openTrip(trip)}
+          >
             <strong>{trip.title}</strong>
             <span>
               {trip.travel_updates.length} {trip.travel_updates.length === 1 ? "reisupdate" : "reisupdates"}
             </span>
-          </button>
+          </Button>
         ))}
         {!trips.length && <p>Je eerste reis blijft privé totdat je iets deelt.</p>}
       </section>

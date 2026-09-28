@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { RecordForm, requiredText, TextField } from "../forms/fields";
@@ -106,9 +107,9 @@ export function TripEditor({
           pendingLabel={trip ? "Reis opslaan…" : "Reis maken…"}
           actions={
             trip && (
-              <button className="danger compact" type="button" onClick={() => setConfirmDelete(true)}>
+              <Button className="danger compact" type="button" onClick={() => setConfirmDelete(true)}>
                 Reis verwijderen
-              </button>
+              </Button>
             )
           }
         >

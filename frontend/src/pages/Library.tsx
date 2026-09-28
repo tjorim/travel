@@ -10,9 +10,9 @@ export function Library() {
     return <EmptyState title="Bibliotheek">Meld aan om gedeelde essentials en noodinformatie te bekijken.</EmptyState>;
 
   return (
-    <section className="library" aria-labelledby="library-title">
+    <section className="grid gap-4.5" aria-labelledby="library-title">
       <div>
-        <p className="eyebrow">Los van je reizen</p>
+        <p className="travel-eyebrow">Los van je reizen</p>
         <h2 id="library-title">Bibliotheek</h2>
         <p>
           Reisdocumenten en noodinformatie die niet aan één specifieke reis vastzitten. Koppel een document optioneel

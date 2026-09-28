@@ -1,3 +1,5 @@
+import { Input } from "@base-ui/react/input";
+import { Button } from "@base-ui/react/button";
 import { useRef, useState } from "react";
 
 import { AsyncSearchSelect } from "../forms/fields";
@@ -71,9 +73,9 @@ export function PlaceSearchField({
     setState("Bestaande locatie gekozen; er wordt geen kopie gemaakt.");
   }
   return (
-    <fieldset className="place-lookup">
+    <fieldset className="m-0 grid gap-2.5 rounded-travel-media border border-travel-divider p-3 [&>p]:m-0 [&>p]:text-sm [&>p]:leading-normal [&>p]:text-travel-muted">
       <legend>
-        {legend} <span className="optional">(optioneel)</span>
+        {legend} <span className="font-medium text-travel-optional">(optioneel)</span>
       </legend>
       <p>{help}</p>
       {allowExisting && (
@@ -102,12 +104,12 @@ export function PlaceSearchField({
       <div className="field-row">
         <label>
           {inputLabel}
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} />
         </label>
-        <div className="button-field">
-          <button className="secondary" type="button" onClick={find}>
+        <div className="flex items-end">
+          <Button className="secondary" type="button" onClick={find}>
             Zoeken
-          </button>
+          </Button>
         </div>
       </div>
       {state && (
@@ -116,16 +118,16 @@ export function PlaceSearchField({
         </p>
       )}
       {results && (
-        <div className="place-results">
+        <div className="grid gap-1.75">
           {results.results.map((result) => (
-            <button
-              className="place-result"
+            <Button
+              className="w-full border border-travel-border bg-white text-left font-semibold text-travel-ink"
               type="button"
               key={`${result.osm_element_type}-${result.osm_element_id}`}
               onClick={() => choose(result)}
             >
               {result.display_name}
-            </button>
+            </Button>
           ))}
           <p className="help">
             Zoekresultaten:{" "}

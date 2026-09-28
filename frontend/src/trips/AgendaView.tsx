@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useMemo } from "react";
 
 import { useTripResource } from "../query/owner-queries";
@@ -138,8 +139,8 @@ export function AgendaView({
 
   const row = (item: AgendaItem) => (
     <li key={item.id}>
-      <button
-        className="agenda-entry"
+      <Button
+        className="block w-full cursor-pointer border-0 bg-transparent px-0 py-1 text-left text-inherit disabled:cursor-default enabled:hover:underline enabled:focus-visible:underline"
         type="button"
         disabled={!onOpenRecord}
         onClick={() => onOpenRecord?.(item.recordKind, item.recordId)}
@@ -153,12 +154,12 @@ export function AgendaView({
           {item.last && item.last !== item.first ? `${formatDayRange(item.first, item.last)} · ` : ""}
           {item.where}
         </small>
-      </button>
+      </Button>
     </li>
   );
 
   return (
-    <section className="card manager" id="agenda" aria-labelledby="agenda-title">
+    <section className="travel-card manager" id="agenda" aria-labelledby="agenda-title">
       <div className="capture-heading">
         <div>
           <h3 id="agenda-title">Agenda</h3>
@@ -171,17 +172,17 @@ export function AgendaView({
       {items.length === 0 && undated.length === 0 ? (
         <p>Nog niets in de agenda. Voeg een verblijf, route of bezoek toe, dan verschijnt het hier.</p>
       ) : (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {[...days].map(([day, entries]) => (
-            <article className="excerpt-row stacked" key={day}>
+            <article className="excerpt-row" data-stacked="" key={day}>
               <strong>{formatDayRange(day, null)}</strong>
-              <ul className="agenda-day">{entries.map(row)}</ul>
+              <ul>{entries.map(row)}</ul>
             </article>
           ))}
           {undated.length > 0 && (
-            <article className="excerpt-row stacked">
+            <article className="excerpt-row" data-stacked="">
               <strong>Nog geen dag</strong>
-              <ul className="agenda-day">{undated.map(row)}</ul>
+              <ul>{undated.map(row)}</ul>
             </article>
           )}
         </div>

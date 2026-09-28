@@ -1,3 +1,8 @@
+import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { TravelTextarea } from "../ui/TravelTextarea";
+import { Input } from "@base-ui/react/input";
+import { Progress } from "@base-ui/react/progress";
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RecordDialog, DeleteConfirmation } from "../RecordDialog";
@@ -64,12 +69,16 @@ const count = (rows: Item[]) => {
 };
 function PackingProgress({ rows, label }: { rows: Item[]; label: string }) {
   return (
-    <progress
+    <Progress.Root
       aria-label={label}
       value={rows.filter((item) => item.packed).length}
       max={Math.max(rows.length, 1)}
-      className="h-2 w-full overflow-hidden rounded-full accent-travel-forest"
-    />
+      className="block w-full"
+    >
+      <Progress.Track className="block h-2 overflow-hidden rounded-full bg-travel-tint">
+        <Progress.Indicator className="h-full rounded-full bg-travel-forest" />
+      </Progress.Track>
+    </Progress.Root>
   );
 }
 const BAG_TYPES = [
@@ -340,9 +349,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </p>
         )}
         {offline.online && (
-          <button type="button" onClick={() => void refresh()}>
+          <Button type="button" onClick={() => void refresh()}>
             Opnieuw proberen
-          </button>
+          </Button>
         )}
       </section>
     );
@@ -364,42 +373,42 @@ export function PackingManager({ trip }: { trip: Trip }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {list && (
-            <button className="secondary compact" type="button" onClick={() => startBag()}>
+            <Button className="secondary compact" type="button" onClick={() => startBag()}>
               Tas toevoegen
-            </button>
+            </Button>
           )}
           {list && (
-            <button type="button" onClick={() => startItem()}>
+            <Button type="button" onClick={() => startItem()}>
               Item toevoegen
-            </button>
+            </Button>
           )}
-          <button className="secondary compact" type="button" onClick={() => setReuseOpen(true)}>
+          <Button className="secondary compact" type="button" onClick={() => setReuseOpen(true)}>
             Lijst hergebruiken
-          </button>
+          </Button>
           {list && (
-            <button className="secondary compact" type="button" onClick={() => setTemplateName(list.name)}>
+            <Button className="secondary compact" type="button" onClick={() => setTemplateName(list.name)}>
               Als sjabloon bewaren
-            </button>
+            </Button>
           )}
           {list && (
-            <button className="secondary compact" type="button" onClick={() => setShowSuggestions(!showSuggestions)}>
+            <Button className="secondary compact" type="button" onClick={() => setShowSuggestions(!showSuggestions)}>
               Suggesties uit eerdere reizen
-            </button>
+            </Button>
           )}
           {list && (
-            <button
+            <Button
               className="secondary compact"
               type="button"
               disabled={busy || offline.unsupported || !offline.online}
               onClick={() => void saveOfflineCopy()}
             >
               {offline.isPinned("packing_list", list.id) ? "Offline kopie vernieuwen" : "Offline bewaren"}
-            </button>
+            </Button>
           )}
           {list && offline.isPinned("packing_list", list.id) && (
-            <button className="secondary compact" type="button" onClick={() => void removeOfflineCopy()}>
+            <Button className="secondary compact" type="button" onClick={() => void removeOfflineCopy()}>
               Offline verwijderen
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -411,13 +420,13 @@ export function PackingManager({ trip }: { trip: Trip }) {
       {!list ? (
         <div className="rounded-xl border p-5">
           <p>Nog geen paklijst voor deze reis.</p>
-          <button
+          <Button
             type="button"
             disabled={busy}
             onClick={() => void save(() => request(base, "POST", { name: "Paklijst" }), "Paklijst aangemaakt.")}
           >
             Paklijst maken
-          </button>
+          </Button>
         </div>
       ) : (
         <>
@@ -447,9 +456,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
           ) : bagsQuery.isError || itemsQuery.isError ? (
             <div role="alert">
               Inpaklijst laden mislukt.{" "}
-              <button type="button" onClick={() => void refresh()}>
+              <Button type="button" onClick={() => void refresh()}>
                 Opnieuw proberen
-              </button>
+              </Button>
             </div>
           ) : (
             <>
@@ -461,9 +470,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
                   {suggestionsQuery.isError && (
                     <p role="alert">
                       Suggesties laden mislukt.{" "}
-                      <button type="button" onClick={() => void suggestionsQuery.refetch()}>
+                      <Button type="button" onClick={() => void suggestionsQuery.refetch()}>
                         Opnieuw proberen
-                      </button>
+                      </Button>
                     </p>
                   )}
                   {suggestionsQuery.data
@@ -475,7 +484,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                           {suggestion.usually_cabin ? " · meestal in handbagage" : ""}
                           {suggestion.usually_essential ? " · meestal essentieel" : ""}
                         </p>
-                        <button
+                        <Button
                           type="button"
                           className="secondary compact"
                           onClick={() => {
@@ -489,8 +498,8 @@ export function PackingManager({ trip }: { trip: Trip }) {
                           }}
                         >
                           Toevoegen
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           className="secondary compact"
                           onClick={() =>
@@ -498,20 +507,20 @@ export function PackingManager({ trip }: { trip: Trip }) {
                           }
                         >
                           Negeren
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   {suggestionsQuery.data?.length === 0 && <p>Nog geen terugkerende items om voor te stellen.</p>}
                 </section>
               )}
-              <button
+              <Button
                 type="button"
                 className="secondary compact"
                 aria-expanded={leavingSoon}
                 onClick={() => setLeavingSoon(!leavingSoon)}
               >
                 Vertrekcheck
-              </button>
+              </Button>
               {leavingSoon && (
                 <section aria-label="Vertrekcheck" className="space-y-3 rounded-xl border p-4">
                   <h4 className="text-lg font-semibold">Vertrekcheck</h4>
@@ -603,7 +612,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 />
                 <label>
                   Zoeken{" "}
-                  <input
+                  <Input
                     type="search"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
@@ -614,12 +623,12 @@ export function PackingManager({ trip }: { trip: Trip }) {
               {selecting && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
                   <span>{selected.length} geselecteerd</span>
-                  <button type="button" disabled={busy || !selected.length} onClick={() => void bulk(true)}>
+                  <Button type="button" disabled={busy || !selected.length} onClick={() => void bulk(true)}>
                     Inpakken
-                  </button>
-                  <button type="button" disabled={busy || !selected.length} onClick={() => void bulk(false)}>
+                  </Button>
+                  <Button type="button" disabled={busy || !selected.length} onClick={() => void bulk(false)}>
                     Uitpakken
-                  </button>
+                  </Button>
                   <label>
                     Verplaatsen naar{" "}
                     <SearchSelect
@@ -639,7 +648,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                       ))}
                     </SearchSelect>
                   </label>
-                  <button
+                  <Button
                     type="button"
                     className="secondary compact"
                     onClick={() => {
@@ -648,32 +657,32 @@ export function PackingManager({ trip }: { trip: Trip }) {
                     }}
                   >
                     Klaar
-                  </button>
+                  </Button>
                 </div>
               )}
               {!!items.length && (
                 <div className="flex flex-wrap gap-2">
                   {!selecting && (
-                    <button type="button" className="secondary compact" onClick={() => setSelecting(true)}>
+                    <Button type="button" className="secondary compact" onClick={() => setSelecting(true)}>
                       Items selecteren
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
                     type="button"
                     className="secondary compact"
                     disabled={busy}
                     onClick={() => void bulk(true, undefined, true)}
                   >
                     Alles inpakken
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     className="secondary compact"
                     disabled={busy}
                     onClick={() => void bulk(false, undefined, true)}
                   >
                     Alles uitpakken
-                  </button>
+                  </Button>
                 </div>
               )}
               {notice && (
@@ -706,21 +715,21 @@ export function PackingManager({ trip }: { trip: Trip }) {
                         <div className="flex flex-wrap gap-2">
                           {group === "bag" && (
                             <>
-                              <button
+                              <Button
                                 type="button"
                                 className="secondary compact"
                                 onClick={() => startItem(undefined, section.bag?.id ?? null)}
                               >
                                 Snel toevoegen
-                              </button>
+                              </Button>
                               {section.bag && (
-                                <button
+                                <Button
                                   type="button"
                                   className="secondary compact"
                                   onClick={() => startBag(section.bag!)}
                                 >
                                   Tas bewerken
-                                </button>
+                                </Button>
                               )}
                             </>
                           )}
@@ -736,15 +745,12 @@ export function PackingManager({ trip }: { trip: Trip }) {
                                 {selecting ? (
                                   <label className="flex size-11 shrink-0 items-center justify-center">
                                     <span className="sr-only">Selecteer {item.label}</span>
-                                    <input
-                                      type="checkbox"
-                                      className="size-6! p-0! accent-travel-forest"
+                                    <TravelCheckbox
+                                      className="size-6"
                                       checked={selected.includes(item.id)}
-                                      onChange={(event) =>
+                                      onCheckedChange={(checked) =>
                                         setSelected((current) =>
-                                          event.target.checked
-                                            ? [...current, item.id]
-                                            : current.filter((id) => id !== item.id),
+                                          checked ? [...current, item.id] : current.filter((id) => id !== item.id),
                                         )
                                       }
                                     />
@@ -755,12 +761,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
                                       {item.quantity > 1 ? `${item.quantity} × ` : ""}
                                       {item.label} ingepakt
                                     </span>
-                                    <input
-                                      type="checkbox"
-                                      className="size-6! p-0! accent-travel-forest"
+                                    <TravelCheckbox
+                                      className="size-6"
                                       checked={item.packed}
                                       disabled={savingIds.includes(item.id)}
-                                      onChange={() => void toggle(item)}
+                                      onCheckedChange={() => void toggle(item)}
                                     />
                                   </label>
                                 )}
@@ -799,20 +804,20 @@ export function PackingManager({ trip }: { trip: Trip }) {
                                   )}
                                   {item.notes && <p className="mt-1 text-sm">{item.notes}</p>}
                                   {item.id in unsaved && !savingIds.includes(item.id) && (
-                                    <button type="button" onClick={() => void toggle(item, unsaved[item.id])}>
+                                    <Button type="button" onClick={() => void toggle(item, unsaved[item.id])}>
                                       Opnieuw proberen: {item.label}
-                                    </button>
+                                    </Button>
                                   )}
                                 </div>
                                 {!selecting && (
-                                  <button
+                                  <Button
                                     type="button"
                                     className="secondary compact shrink-0"
                                     aria-label={`${item.label} bewerken`}
                                     onClick={() => startItem(item)}
                                   >
                                     Bewerken
-                                  </button>
+                                  </Button>
                                 )}
                               </div>
                             </li>
@@ -852,7 +857,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
         >
           <label className="block">
             Naam *
-            <input
+            <Input
               autoFocus
               required
               maxLength={160}
@@ -863,7 +868,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </label>
           <label className="block">
             Aantal
-            <input
+            <Input
               type="number"
               min="1"
               max="99"
@@ -875,7 +880,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </label>
           <label className="block">
             Categorie
-            <input
+            <Input
               maxLength={80}
               value={itemDraft.category ?? ""}
               onChange={(event) => setItemDraft({ ...itemDraft, category: event.target.value || null })}
@@ -899,7 +904,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </label>
           <label className="block">
             Gewicht per stuk (gram)
-            <input
+            <Input
               type="number"
               min="0"
               value={itemDraft.weight_g ?? ""}
@@ -911,7 +916,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </label>
           <label className="block">
             Notitie
-            <textarea
+            <TravelTextarea
               maxLength={4000}
               value={itemDraft.notes ?? ""}
               onChange={(event) => setItemDraft({ ...itemDraft, notes: event.target.value || null })}
@@ -920,11 +925,10 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </label>
           {(["essential", "last_minute", "valuable", "cabin_only", "checked_only"] as const).map((flag) => (
             <label key={flag} className="block">
-              <input
-                type="checkbox"
-                className="size-5! p-0! accent-travel-forest"
+              <TravelCheckbox
+                className="size-5"
                 checked={itemDraft[flag]}
-                onChange={(event) => setItemDraft({ ...itemDraft, [flag]: event.target.checked })}
+                onCheckedChange={(checked) => setItemDraft({ ...itemDraft, [flag]: checked })}
               />{" "}
               {
                 {
@@ -939,17 +943,17 @@ export function PackingManager({ trip }: { trip: Trip }) {
           ))}
           {itemDraft.cabin_only && itemDraft.checked_only && <p role="alert">Kies maximaal één bagagebeperking.</p>}
           <div className="flex gap-2">
-            <button type="submit" disabled={busy || (itemDraft.cabin_only && itemDraft.checked_only)}>
+            <Button type="submit" disabled={busy || (itemDraft.cabin_only && itemDraft.checked_only)}>
               Opslaan
-            </button>
+            </Button>
             {itemDialog !== "new" && (
-              <button
+              <Button
                 type="button"
                 className="danger compact"
                 onClick={() => setConfirm({ kind: "item", id: itemDialog! })}
               >
                 Verwijderen
-              </button>
+              </Button>
             )}
           </div>
         </form>
@@ -996,7 +1000,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
         >
           <label className="block">
             Naam *
-            <input
+            <Input
               autoFocus
               required
               maxLength={160}
@@ -1022,7 +1026,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </label>
           <label className="block">
             Gewichtslimiet (gram)
-            <input
+            <Input
               type="number"
               min="1"
               value={bagDraft.weight_limit_g ?? ""}
@@ -1036,17 +1040,17 @@ export function PackingManager({ trip }: { trip: Trip }) {
             />
           </label>
           <div className="flex gap-2">
-            <button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy}>
               Opslaan
-            </button>
+            </Button>
             {bagDialog !== "new" && (
-              <button
+              <Button
                 type="button"
                 className="danger compact"
                 onClick={() => setConfirm({ kind: "bag", id: bagDialog! })}
               >
                 Verwijderen
-              </button>
+              </Button>
             )}
           </div>
         </form>
@@ -1116,25 +1120,24 @@ export function PackingManager({ trip }: { trip: Trip }) {
               {templatesQuery.data?.map((template) => (
                 <div key={template.id} className="flex items-center justify-between gap-2">
                   <label className="block">
-                    <input
-                      type="checkbox"
+                    <TravelCheckbox
                       checked={templateIds.includes(template.id)}
-                      onChange={(event) =>
+                      onCheckedChange={(checked) =>
                         setTemplateIds((current) =>
-                          event.target.checked ? [...current, template.id] : current.filter((id) => id !== template.id),
+                          checked ? [...current, template.id] : current.filter((id) => id !== template.id),
                         )
                       }
                     />{" "}
                     {template.name}
                   </label>
-                  <button
+                  <Button
                     type="button"
                     className="secondary compact"
                     aria-label={`${template.name} verwijderen`}
                     onClick={() => setTemplateToDelete(template.id)}
                   >
                     Verwijderen
-                  </button>
+                  </Button>
                 </div>
               ))}
             </fieldset>
@@ -1144,7 +1147,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
           )}
           <label className="block">
             Naam nieuwe paklijst
-            <input
+            <Input
               required
               maxLength={160}
               value={reuseName}
@@ -1156,12 +1159,12 @@ export function PackingManager({ trip }: { trip: Trip }) {
             Tassen, volgorde, categorieën, aantallen, notities en toewijzingen blijven bewaard. Alle items beginnen
             uitgepakt.
           </p>
-          <button
+          <Button
             type="submit"
             disabled={busy || !reuseName.trim() || (reuseMode === "copy" ? !sourceId : !templateIds.length)}
           >
             Nieuwe paklijst maken
-          </button>
+          </Button>
         </form>
         {templateToDelete && (
           <DeleteConfirmation
@@ -1198,7 +1201,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
         >
           <label className="block">
             Naam sjabloon
-            <input
+            <Input
               autoFocus
               required
               maxLength={160}
@@ -1207,9 +1210,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
               className="block w-full rounded border p-2"
             />
           </label>
-          <button type="submit" disabled={busy || !templateName?.trim()}>
+          <Button type="submit" disabled={busy || !templateName?.trim()}>
             Bewaren
-          </button>
+          </Button>
         </form>
       </RecordDialog>
     </section>

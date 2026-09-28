@@ -155,6 +155,11 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#264](https://github.com/tjorim/travel/issues/264) Migrated owner,
+      public and unlisted presentation to Tailwind utilities and named theme
+      tokens, removed the legacy class allowlist, and moved shared record,
+      discard and delete dialogs to Base UI while retaining dismissal safeguards.
+
 - [x] [#176](https://github.com/tjorim/travel/issues/176) Kept both library
       and trip documents owner-only; removed document twins, share choices,
       visitor fields and MCP derivative tools. Deleting a document now purges
@@ -450,9 +455,6 @@ Polarsteps-like features require a fresh product and privacy decision.
       tracks migration of existing dialogs to Base UI Dialog and Alert Dialog.
       Equivalent app work is tracked in bordertax#248,
       champagnefestival#1103, daynest#933 and worktime#1376.
-- [ ] [#264](https://github.com/tjorim/travel/issues/264) Migrate existing
-      frontend styling to Tailwind CSS and record dialogs to Base UI primitives,
-      preserving the current visual identity and interaction safeguards.
 - [x] Generalized the Taiwan-only local SVG route map into a reusable,
       data-driven component with selectable route stops. ([#3](https://github.com/tjorim/travel/issues/3))
 - [x] Added opt-in offline copies for selected private documents, with

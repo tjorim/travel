@@ -1,4 +1,6 @@
+import { Button } from "@base-ui/react/button";
 import { useEffect, useMemo, type ReactNode } from "react";
+import { cn } from "cn";
 import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
 import { TripMap, type MapLine, type MapPoint } from "./TripMap";
@@ -185,11 +187,15 @@ function ResourceSection({
 }) {
   if (!items.length) return null;
   return (
-    <section className="card visitor-section" aria-label={title}>
-      <h2>{title}</h2>
-      <ul className="visitor-items">
+    <section className="travel-card" aria-label={title}>
+      <h2 className="mb-4.5">{title}</h2>
+      <ul className="m-0 grid list-none gap-0 p-0 [&_a]:mt-2.5 [&_a]:inline-block [&_a]:font-bold [&_a]:text-travel-forest [&_a]:underline-offset-3 [&_a:focus-visible]:outline-3 [&_a:focus-visible]:outline-offset-3 [&_a:focus-visible]:outline-travel-focus [&_h3]:mb-1.75 [&_h3]:text-lg [&_p]:my-1.25 [&_p]:wrap-anywhere [&_p]:whitespace-pre-wrap">
         {items.map((item) => (
-          <li key={item.id} id={`${anchor}-${item.id}`}>
+          <li
+            className="border-t border-travel-divider py-4 first:border-0 first:pt-0 last:pb-0"
+            key={item.id}
+            id={`${anchor}-${item.id}`}
+          >
             {render(item)}
           </li>
         ))}
@@ -394,15 +400,16 @@ function Gallery({
 }) {
   if (!items.length) return null;
   return (
-    <section className="visitor-gallery" aria-label={title}>
-      <h3>{title}</h3>
-      <ul>
+    <section className="mt-4.5 min-w-0" aria-label={title}>
+      <h3 className="mb-3 text-base">{title}</h3>
+      <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
-          <li key={item.id}>
-            <figure>
+          <li className="min-w-0" key={item.id}>
+            <figure className="m-0">
               {hasFileMarker(item, "image") &&
                 (fileUrl(item) ? (
                   <img
+                    className="block aspect-4/3 h-auto max-h-90 w-full rounded-travel-media bg-travel-tint object-cover"
                     src={fileUrl(item)!}
                     alt={text(item, "alt_text") ?? "Gedeelde afbeelding"}
                     width={positiveSize(item, "width")}
@@ -428,7 +435,12 @@ function Gallery({
                   <source src={fileUrl(item)!} type="video/mp4" />
                 </video>
               )}
-              <Markdown as="figcaption" html={text(item, "caption_html")} text={text(item, "caption")} />
+              <Markdown
+                as="figcaption"
+                className="mt-1.75 wrap-anywhere leading-normal text-travel-muted"
+                html={text(item, "caption_html")}
+                text={text(item, "caption")}
+              />
             </figure>
           </li>
         ))}
@@ -448,22 +460,31 @@ function Updates({
 }) {
   if (!updates.length) return null;
   return (
-    <section className="card visitor-section visitor-story" aria-label="Reisupdates">
-      <h2>Reisupdates</h2>
+    <section className="travel-card" aria-label="Reisupdates">
+      <h2 className="mb-4.5">Reisupdates</h2>
       <nav aria-label="Updates in dit verhaal">
-        <ol>
+        <ol className="m-0 mb-6 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
           {updates.map((item) => (
             <li key={item.id}>
-              <a href={`#${item.id}`}>{text(item, "title") ?? storyDate(item) ?? "Update"}</a>
+              <a
+                className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+                href={`#${item.id}`}
+              >
+                {text(item, "title") ?? storyDate(item) ?? "Update"}
+              </a>
             </li>
           ))}
         </ol>
       </nav>
-      <ol className="visitor-timeline">
+      <ol
+        aria-label="Reisupdates tijdlijn"
+        className="m-0 grid list-none gap-6 border-l-2 border-travel-border py-0 pr-0 pl-5.5"
+      >
         {updates.map((item) => (
-          <li key={item.id} id={item.id} tabIndex={-1}>
+          <li className="relative min-w-0 scroll-mt-6" key={item.id} id={item.id} tabIndex={-1}>
+            <span aria-hidden="true" className="absolute top-2 -left-7.25 size-3 rounded-full bg-travel-forest" />
             <article>
-              <div className="visitor-update-meta">
+              <div className="flex flex-wrap gap-x-3.5 gap-y-1.25 text-sm font-bold text-travel-muted">
                 {storyDate(item) ? (
                   <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time>
                 ) : precision(item) ? (
@@ -471,7 +492,7 @@ function Updates({
                 ) : null}
                 {place(item.place) && <span>{place(item.place)}</span>}
               </div>
-              <h3>{text(item, "title") ?? "Update"}</h3>
+              <h3 className="my-1.5 text-xl">{text(item, "title") ?? "Update"}</h3>
               <Markdown html={text(item, "body_html")} text={text(item, "body")} />
               <Gallery
                 items={media.filter((image) => image.update === item.id)}
@@ -566,13 +587,13 @@ export function ProjectionView({
     if (!navigation.has(item.id)) return null;
     if (previewResources)
       return (
-        <button
-          className="visitor-resource-action"
+        <Button
+          className="mt-2.5 bg-transparent p-0 text-travel-forest underline underline-offset-3"
           type="button"
           onClick={() => previewResources.openNavigation(item.id)}
         >
           Routebeschrijving
-        </button>
+        </Button>
       );
     const base = audience === "public" ? "/api/public/trips" : "/api/shared";
     return (
@@ -595,24 +616,24 @@ export function ProjectionView({
   const dates = tripDates(projection.dates);
   if (empty && !projection.summary && !dates)
     return (
-      <section className="card" role="status">
+      <section className="travel-card" role="status">
         <h2>Nog geen gedeelde inhoud</h2>
         <p>Voor deze reis is nog geen inhoud geselecteerd.</p>
       </section>
     );
 
   return (
-    <div className="visitor-content">
+    <div className={cn("grid gap-4.5", previewResources ? "mt-5" : "mt-7.5")}>
       {(projection.summary || dates) && (
-        <section className="card">
+        <section className="travel-card">
           <h2>Reisoverzicht</h2>
-          {dates && <p className="eyebrow">{dates}</p>}
+          {dates && <p className="travel-eyebrow">{dates}</p>}
           <Markdown html={projection.summary_html} text={projection.summary} />
         </section>
       )}
       {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
       {empty && (
-        <section className="card" role="status">
+        <section className="travel-card" role="status">
           <h2>Nog geen gedeeld verhaal of foto’s</h2>
           <p>Er zijn nog geen reisupdates of foto’s gedeeld.</p>
         </section>
@@ -666,8 +687,8 @@ export function ProjectionView({
         render={(item) => <RouteSummary item={item} />}
       />
       {looseMedia.length > 0 && (
-        <section className="card visitor-section">
-          <h2>Galerij</h2>
+        <section className="travel-card">
+          <h2 className="mb-4.5">Galerij</h2>
           <Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" />
         </section>
       )}

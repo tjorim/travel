@@ -1,16 +1,352 @@
-/* Keep the existing element and component styles while new views adopt utilities. */
+/* Application presentation and document defaults use Tailwind; styles.css only renders Markdown. */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
 @theme {
+  --font-travel-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --text-travel-title: clamp(2.8rem, 12vw, 5.8rem);
+  --text-travel-form-label: 0.9rem;
+  --leading-travel-title: 0.9;
+  --tracking-travel-title: -0.07em;
+  --spacing-travel-title: 10ch;
+  --spacing-travel-shell: min(720px, calc(100% - 32px));
+  --spacing-travel-owner-shell: min(1240px, calc(100% - 64px));
+  --spacing-travel-index-shell: min(1000px, calc(100% - 32px));
+  --spacing-travel-home-title: 12ch;
+  --tracking-travel-eyebrow: 0.13em;
+  --tracking-travel-markdown-label: 0.08em;
+  --spacing-map-canvas: clamp(300px, 48vw, 480px);
+  --spacing-map-owner-canvas: clamp(420px, 48vw, 620px);
+  --spacing-route-canvas: clamp(240px, 38vw, 360px);
+  --spacing-route-preview-canvas: clamp(200px, 30vw, 300px);
+  --radius-travel-media: 10px;
+  --radius-travel-control: 9px;
+  --radius-travel-card: 18px;
   --color-travel-ink: #19342d;
+  --color-travel-label: #27483e;
+  --color-travel-input-border: #9eb4aa;
   --color-travel-paper: #f5f0e8;
   --color-travel-forest: #0f493b;
   --color-travel-muted: #4d665e;
   --color-travel-focus: #e3a91c;
   --color-travel-surface: #fffdf8;
   --color-travel-border: #b7c9be;
+  --color-travel-control-border: #87a096;
+  --color-travel-danger: #a63b32;
+  --color-travel-divider: #d6e0d9;
+  --color-travel-tint: #eef5ef;
+  --color-travel-map-bg: #e8eee8;
+  --color-travel-map-detail: #f1f6f0;
+  --color-travel-map-marker: #ff7a59;
+  --color-travel-card-border: #cbd7ce;
+  --color-travel-detail-border: #dce5e1;
+  --color-travel-detail-muted: #50645e;
+  --color-travel-media-bg: #e5ece7;
+  --color-travel-warning-border: #d1b971;
+  --color-travel-warning-ink: #65551d;
+  --color-travel-warning-muted: #735f1d;
+  --color-travel-optional: #5b736a;
+  --color-travel-online-surface: #e2f1e8;
+  --color-travel-online-ink: #20583f;
+  --color-travel-offline-surface: #fbecd2;
+  --color-travel-offline-ink: #77471b;
+  --color-travel-link: #0f7760;
+  --color-travel-status-pending: #d9a441;
+  --color-travel-review-warning: #8a3a1f;
+  --color-travel-selected-bg: #e5f0e8;
+  --color-travel-focal-marker: #d1453b;
+  --color-travel-panel: #fbfdf9;
+  --color-travel-disconnected-surface: #eef1ee;
+  --color-travel-disconnected-ink: #50645b;
+  --color-travel-warning-dark: #59460e;
+  --color-travel-eyebrow: #31705d;
+  --color-travel-positive: #315c4e;
+  --color-travel-hover: #f3f9f4;
+  --color-travel-error-surface: #fbeceb;
+  --color-travel-error-ink: #8a2e27;
   --color-travel-warning: #b68110;
   --color-travel-warning-surface: #fff6d9;
+  --shadow-travel-card: 0 12px 35px #19342d12;
+}
+
+@layer base {
+  :root {
+    @apply bg-travel-paper font-travel-sans text-travel-ink;
+    color-scheme: light;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    @apply m-0 min-w-80;
+  }
+  h1 {
+    @apply m-0 max-w-travel-title text-travel-title leading-travel-title tracking-travel-title;
+  }
+  button {
+    @apply cursor-pointer rounded-travel-control border-0 bg-travel-forest px-3.75 py-2.75 font-bold text-travel-surface;
+    font: inherit;
+    font-weight: 700;
+  }
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    @apply outline-3 outline-offset-2 outline-travel-focus;
+  }
+  label {
+    @apply grid gap-1.75 text-travel-form-label font-extrabold text-travel-label;
+  }
+  input,
+  textarea {
+    @apply w-full rounded-travel-control border border-travel-input-border bg-white px-3 py-2.75 font-normal text-travel-ink;
+    font: inherit;
+    font-weight: 400;
+  }
+  textarea {
+    @apply min-h-34 resize-y;
+  }
+}
+
+@utility travel-shell {
+  @apply mx-auto min-h-screen w-travel-shell pt-12 pb-25 min-[680px]:pt-18;
+}
+
+@utility travel-eyebrow {
+  @apply mt-0 mb-3 text-xs font-extrabold tracking-travel-eyebrow text-travel-eyebrow uppercase;
+}
+
+@utility markdown-label {
+  @apply mt-2 mb-0.5 text-xs font-extrabold tracking-travel-markdown-label text-travel-eyebrow uppercase;
+}
+
+/* Reusable owner controls and form feedback. */
+@utility secondary {
+  @apply border border-travel-control-border bg-transparent text-travel-forest;
+}
+
+@utility compact {
+  @apply px-2.75 py-2 text-sm;
+}
+
+@utility danger {
+  @apply bg-travel-danger;
+}
+
+@utility action-link {
+  @apply inline-block rounded-lg bg-travel-forest px-3.25 py-2.5 font-bold text-travel-surface no-underline;
+  &.secondary {
+    @apply border border-travel-control-border bg-transparent text-travel-forest;
+  }
+}
+
+@utility help {
+  @apply m-0 rounded-lg bg-travel-tint px-2.75 py-2.25 text-sm leading-normal text-travel-positive;
+}
+
+@utility button-row {
+  @apply flex flex-wrap gap-2;
+}
+
+@utility capture-heading {
+  @apply flex items-end justify-between gap-4.5;
+}
+
+@utility saved-records {
+  @apply grid gap-2;
+  & h3 {
+    @apply mt-3 mb-0.5;
+  }
+}
+
+@utility field {
+  @apply grid content-start gap-1.5;
+}
+
+@utility field-row {
+  @apply grid gap-3.5 min-[560px]:grid-cols-2;
+}
+
+@utility field-error {
+  @apply text-sm font-bold text-travel-danger;
+}
+
+@utility form-error {
+  @apply m-0 rounded-lg bg-travel-error-surface px-2.75 py-2.25 text-sm font-bold text-travel-error-ink;
+}
+
+@utility stack-form {
+  @apply grid gap-3.75;
+  & textarea {
+    @apply min-h-22.5;
+  }
+}
+
+@utility travel-detail-list {
+  @apply m-0 grid list-none gap-3 p-0;
+  & article,
+  & li {
+    @apply grid gap-1.5 rounded-travel-media border border-travel-detail-border p-3;
+  }
+  & span,
+  & small {
+    @apply text-travel-detail-muted;
+  }
+}
+
+@utility connection {
+  @apply m-0 rounded-xl px-3.5 py-3 text-sm leading-normal;
+  &.online {
+    @apply bg-travel-online-surface text-travel-online-ink;
+  }
+  &.offline {
+    @apply bg-travel-offline-surface text-travel-offline-ink;
+  }
+}
+
+@utility publication {
+  @apply m-0 grid gap-0.75 rounded-xl border border-travel-warning-border bg-travel-warning-surface px-3.5 py-3 text-sm leading-normal text-travel-warning-ink;
+}
+
+@utility location {
+  @apply m-0 grid gap-3.5 rounded-xl border border-travel-border p-4.5;
+  & legend {
+    @apply px-1.5 font-extrabold text-travel-ink;
+  }
+  & p {
+    @apply m-0 text-sm leading-normal text-travel-muted;
+  }
+  & .secondary {
+    @apply w-fit;
+  }
+}
+
+@utility excerpt-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  @apply grid w-full items-center gap-1 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 text-left text-travel-ink shadow-sm max-[620px]:grid-cols-1 max-[620px]:items-start max-[620px]:justify-items-start max-[620px]:gap-2.5;
+  & span {
+    @apply text-sm font-medium text-travel-muted;
+  }
+  &[data-stacked] {
+    @apply grid-cols-1 items-start gap-2.5;
+  }
+  &[data-completed] {
+    @apply opacity-60;
+    & strong {
+      @apply line-through;
+    }
+  }
+  &[data-selected] {
+    @apply border-travel-forest ring-2 ring-travel-forest/15;
+  }
+  @media (max-width: 620px) {
+    & > .document-select,
+    & > div:first-child,
+    & .entry-details {
+      @apply justify-self-stretch;
+    }
+  }
+}
+
+@utility manager {
+  @apply grid gap-4.5;
+  & > .capture-heading {
+    @apply -mb-1 max-[620px]:flex-col max-[620px]:items-start max-[620px]:gap-2.5;
+    & h3 {
+      @apply m-0;
+    }
+    & p {
+      @apply mt-1.5 mb-0 max-w-127.5 leading-normal text-travel-muted;
+    }
+  }
+}
+
+@utility manager-subsection {
+  @apply grid gap-3.75 border-t border-travel-divider pt-5;
+  & h3 {
+    @apply m-0;
+  }
+  & > .capture-heading {
+    @apply max-[620px]:flex-col max-[620px]:items-start max-[620px]:gap-2.5;
+    & p {
+      @apply mt-1.5 mb-0 max-w-127.5 leading-normal text-travel-muted;
+    }
+  }
+}
+
+@utility document-select {
+  @apply min-w-0 rounded-none border-0 bg-transparent p-0 text-left text-travel-ink;
+  & span {
+    @apply mt-1 block text-sm font-medium text-travel-muted;
+  }
+}
+
+@utility media-thumbnail-placeholder {
+  @apply flex items-center justify-center text-xl;
+}
+
+@utility scope-choice {
+  @apply flex items-center gap-2 font-semibold;
+  & small {
+    @apply mt-0.75 block text-xs font-medium text-travel-muted;
+  }
+}
+
+@utility scope-group {
+  @apply rounded-travel-media border border-travel-divider bg-white;
+  & > button {
+    @apply flex w-full items-center justify-between gap-3 rounded-none bg-transparent px-3.25 py-2.75 text-left text-travel-ink;
+    &::before {
+      content: "▸";
+      @apply mr-2 text-travel-muted transition-transform;
+    }
+    & strong {
+      @apply flex-1;
+    }
+    & span {
+      @apply text-sm font-medium text-travel-muted;
+    }
+  }
+  & > button[data-panel-open]::before {
+    @apply rotate-90;
+  }
+}
+
+@utility scope-item {
+  @apply grid gap-2.5 rounded-travel-media border border-travel-divider bg-white p-2.75;
+  &[data-included] {
+    @apply border-travel-forest bg-travel-hover;
+  }
+}
+
+@utility link-row {
+  @apply grid w-full gap-0.75 border border-travel-card-border bg-travel-surface text-left text-travel-ink;
+  & span {
+    @apply text-sm font-medium text-travel-muted;
+  }
+  &[data-selected] {
+    @apply border-travel-forest ring-2 ring-travel-forest/15;
+  }
+}
+
+@utility provider-status {
+  @apply rounded-full bg-travel-disconnected-surface px-2 py-1.25 text-xs font-extrabold text-travel-disconnected-ink;
+  &[data-connected] {
+    @apply bg-travel-online-surface text-travel-online-ink;
+  }
+}
+
+@utility publication-panel {
+  @apply grid gap-3.75 rounded-xl border border-travel-divider bg-travel-panel p-3.75;
+}
+
+/* Shared surface used by owner and visitor cards. */
+@utility travel-card {
+  @apply rounded-travel-card border border-travel-card-border bg-travel-surface p-6 shadow-travel-card;
+  & h2 {
+    @apply mt-0;
+  }
+  & p {
+    @apply mb-0 leading-relaxed text-travel-muted;
+  }
 }

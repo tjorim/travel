@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -114,9 +115,9 @@ export function Settings() {
   const noProvidersAvailable = providersQuery.isSuccess && providers.length === 0;
 
   return (
-    <section className="card manager" aria-labelledby="settings-title">
+    <section className="travel-card manager" aria-labelledby="settings-title">
       <div>
-        <p className="eyebrow">Private accountinstellingen</p>
+        <p className="travel-eyebrow">Private accountinstellingen</p>
         <h2 id="settings-title">Instellingen</h2>
         <p>
           {noProvidersAvailable
@@ -133,25 +134,30 @@ export function Settings() {
           op de Media-pagina van een reis om privémedia toe te voegen.
         </p>
       ) : (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {providers.map((provider) => (
-            <article className="provider-row" key={provider.provider}>
+            <article
+              className="grid gap-3 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 shadow-sm [&>div:first-child]:grid [&>div:first-child]:gap-1"
+              key={provider.provider}
+            >
               <div>
                 <strong>{labels[provider.provider]}</strong>
-                <span>{provider.connected ? "Verbonden voor private import" : "Niet verbonden"}</span>
+                <span className="text-sm font-medium text-travel-muted">
+                  {provider.connected ? "Verbonden voor private import" : "Niet verbonden"}
+                </span>
               </div>
-              <div className="provider-actions">
-                <span className={`provider-status ${provider.connected ? "connected" : "disconnected"}`}>
+              <div className="flex flex-wrap items-end gap-2.25">
+                <span className="provider-status" data-connected={provider.connected ? "" : undefined}>
                   {provider.connected ? "Verbonden" : "Niet verbonden"}
                 </span>
                 {provider.connected ? (
-                  <button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>
+                  <Button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>
                     Loskoppelen
-                  </button>
+                  </Button>
                 ) : provider.provider === "google_photos_picker" ? (
-                  <button type="button" disabled={connecting} onClick={() => void connectGoogle()}>
+                  <Button type="button" disabled={connecting} onClick={() => void connectGoogle()}>
                     {connecting ? "Verbinden…" : "Verbinden met Google"}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </article>

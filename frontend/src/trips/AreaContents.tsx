@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { routeTitle, stayLabel, visitTitle, type Area, type Trip } from "../tracker-model";
 import { useTripResource } from "../query/owner-queries";
 
@@ -25,7 +26,7 @@ export function AreaContents({
   const error = locationsQuery.error || staysQuery.error || routesQuery.error || visitsQuery.error;
   const total = locations.length + updates.length + stays.length + routes.length + visits.length;
   return (
-    <div className="scope-group-body">
+    <div className="grid gap-2.5 px-3.25 pt-0 pb-3.25">
       {error && (
         <p className="help" role="status">
           Wat bij dit gebied hoort kon niet volledig worden geladen.
@@ -37,9 +38,9 @@ export function AreaContents({
           <ul>
             {locations.map((location) => (
               <li key={location.id}>
-                <button className="secondary compact" type="button" onClick={() => onOpenLocation(location.id)}>
+                <Button className="secondary compact" type="button" onClick={() => onOpenLocation(location.id)}>
                   {location.label || location.display_name?.split(",")[0] || location.locality || "Naamloze locatie"}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

@@ -1,3 +1,5 @@
+import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { Input } from "@base-ui/react/input";
 import { useEffect, useRef, useState } from "react";
 import { ChoiceGroup } from "../ui/ChoiceGroup";
 import { formatInstant } from "../tracker-model";
@@ -106,7 +108,7 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
         />
         <label>
           Zoeken{" "}
-          <input
+          <Input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -131,13 +133,7 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
               {rows.map((item) => (
                 <li key={item.id} className="py-2">
                   <label className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={item.packed}
-                      disabled
-                      readOnly
-                      aria-label={`${item.label} ingepakt`}
-                    />
+                    <TravelCheckbox checked={item.packed} disabled readOnly aria-label={`${item.label} ingepakt`} />
                     <span>
                       <strong className={item.packed ? "line-through opacity-60" : ""}>
                         {item.quantity > 1 ? `${item.quantity} × ` : ""}

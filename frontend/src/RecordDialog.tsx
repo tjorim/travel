@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { cn } from "cn";
@@ -18,6 +19,10 @@ const viewport = "fixed inset-0 z-50 flex items-center justify-center overflow-y
 const popup =
   "box-border mx-4 max-h-dvh w-full max-w-170 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-5.5 text-travel-ink shadow-2xl max-[620px]:mb-0 max-[620px]:max-w-none max-[620px]:rounded-b-none max-[620px]:p-4.5";
 const confirmation = "grid gap-3 rounded-xl border-2 border-travel-warning bg-travel-warning-surface p-4";
+const compactButton = "cursor-pointer rounded-lg px-3 py-2 text-sm font-bold";
+const secondaryButton = "border border-travel-control-border bg-transparent text-travel-forest";
+const dangerButton = "border-0 bg-travel-danger text-travel-surface";
+const buttonRow = "flex flex-wrap gap-2";
 
 /** Shared owner editor with guarded dismissal and focus return. */
 export function RecordDialog({
@@ -75,7 +80,7 @@ export function RecordDialog({
           <Dialog.Popup className={cn(popup, className)} finalFocus={() => origin.current} aria-label={title}>
             <div className="mb-4.5 flex items-start justify-between gap-4">
               <Dialog.Title className="m-0">{title}</Dialog.Title>
-              <Dialog.Close className="secondary compact" aria-label={`${title} sluiten`}>
+              <Dialog.Close className={cn(compactButton, secondaryButton)} aria-label={`${title} sluiten`}>
                 Sluiten
               </Dialog.Close>
             </div>
@@ -94,9 +99,9 @@ export function RecordDialog({
                     <AlertDialog.Description className="m-0">
                       Je niet-opgeslagen wijzigingen gaan verloren.
                     </AlertDialog.Description>
-                    <div className="button-row">
-                      <button
-                        className="danger compact"
+                    <div className={buttonRow}>
+                      <Button
+                        className={cn(compactButton, dangerButton)}
                         type="button"
                         onClick={() => {
                           setConfirmDiscard(false);
@@ -104,8 +109,8 @@ export function RecordDialog({
                         }}
                       >
                         Wijzigingen verwerpen
-                      </button>
-                      <AlertDialog.Close className="secondary compact" ref={continueEditing}>
+                      </Button>
+                      <AlertDialog.Close className={cn(compactButton, secondaryButton)} ref={continueEditing}>
                         Verder bewerken
                       </AlertDialog.Close>
                     </div>
@@ -144,11 +149,11 @@ export function DeleteConfirmation({
           <AlertDialog.Popup className={cn(popup, confirmation, "max-w-md")} initialFocus={cancel}>
             <AlertDialog.Title className="m-0">{title}</AlertDialog.Title>
             <AlertDialog.Description className="m-0">{description}</AlertDialog.Description>
-            <div className="button-row">
-              <button className="danger compact" type="button" onClick={onConfirm}>
+            <div className={buttonRow}>
+              <Button className={cn(compactButton, dangerButton)} type="button" onClick={onConfirm}>
                 {confirmLabel}
-              </button>
-              <AlertDialog.Close className="secondary compact" ref={cancel}>
+              </Button>
+              <AlertDialog.Close className={cn(compactButton, secondaryButton)} ref={cancel}>
                 Annuleren
               </AlertDialog.Close>
             </div>

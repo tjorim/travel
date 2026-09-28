@@ -517,15 +517,15 @@ it("renders dated updates in projection order with direct links and scoped photo
   expect(
     screen.getByRole("navigation", { name: "Updates in dit verhaal" }).querySelectorAll("a")[1]?.getAttribute("href"),
   ).toBe("#update-first");
-  expect(container.querySelectorAll(".visitor-timeline > li")[1]?.id).toBe("update-first");
+  expect(container.querySelectorAll('ol[aria-label="Reisupdates tijdlijn"] > li')[1]?.id).toBe("update-first");
   expect(screen.getByText("Area coast")).toBeTruthy();
   expect(screen.getByText("2 april 2054")).toBeTruthy();
   expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("src")).toBe(
     "/api/shared/token/files/media-1",
   );
   expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("style")).toContain("25% 60%");
-  expect(screen.getByText("At the station").closest(".visitor-timeline")).toBeTruthy();
-  expect(screen.getByText("Elsewhere").closest(".visitor-timeline")).toBeNull();
+  expect(screen.getByText("At the station").closest('ol[aria-label="Reisupdates tijdlijn"]')).toBeTruthy();
+  expect(screen.getByText("Elsewhere").closest('ol[aria-label="Reisupdates tijdlijn"]')).toBeNull();
 });
 
 it("keeps story-only, image-only, and empty projections readable", () => {
@@ -568,7 +568,7 @@ it("uses the visitor story renderer for an owner preview and requests only owner
     expect(visitor.container.textContent).toContain(value);
   }
   expect(preview.container.textContent).not.toContain("Owner secret");
-  fireEvent.click(preview.container.querySelector(".visitor-resource-action")!);
+  fireEvent.click(screen.getByRole("button", { name: "Routebeschrijving" }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/trips/trip/share-links/draft-link/preview/navigation/area-1");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
@@ -601,8 +601,14 @@ it("renders the same scoped gallery in preview without requesting a visitor file
       previewResources={{ images: { "photo-1": "blob:owner-preview" }, openFile: vi.fn(), openNavigation: vi.fn() }}
     />,
   );
-  expect(visitor.container.querySelector(".visitor-timeline .visitor-gallery")?.textContent).toContain("Station");
-  expect(preview.container.querySelector(".visitor-timeline .visitor-gallery")?.textContent).toContain("Station");
+  expect(
+    visitor.container.querySelector('ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]')
+      ?.textContent,
+  ).toContain("Station");
+  expect(
+    preview.container.querySelector('ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]')
+      ?.textContent,
+  ).toContain("Station");
   expect(preview.container.querySelector("img")?.getAttribute("src")).toBe("blob:owner-preview");
   expect(preview.container.innerHTML).not.toContain("/api/public/trips/");
 });
@@ -683,7 +689,7 @@ it("shows the server's sanitized Markdown and falls back to plain source text", 
   expect(checkbox.disabled).toBe(true);
   expect(checkbox.checked).toBe(true);
   // Without rendered HTML the source is text, never markup.
-  expect(view.container.querySelector(".markdown-source")?.textContent).toBe("*Landed*");
+  expect(view.container.querySelector("[data-markdown-source]")?.textContent).toBe("*Landed*");
   expect(view.container.querySelector("em")).toBeNull();
 });
 

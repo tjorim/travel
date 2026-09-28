@@ -1,3 +1,7 @@
+import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { Input } from "@base-ui/react/input";
+import { Button } from "@base-ui/react/button";
+import { Collapsible } from "@base-ui/react/collapsible";
 import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -162,55 +166,61 @@ function ScopeGroup({
   }
 
   return (
-    <details className="scope-group">
-      <summary>
+    <Collapsible.Root className="scope-group" data-disclosure="">
+      <Collapsible.Trigger>
         <strong>{GROUP_TITLES[kind]}</strong>
         <span>
           {count} van {items.length} gekozen
         </span>
-      </summary>
-      <div className="scope-group-body">
+      </Collapsible.Trigger>
+      <Collapsible.Panel keepMounted className="grid gap-2.5 px-3.25 pt-0 pb-3.25">
         <div className="button-row">
-          <button
+          <Button
             className="secondary compact"
             type="button"
             disabled={busy || count === items.length}
             onClick={() => void chooseAll()}
           >
             Alles kiezen
-          </button>
-          <button
+          </Button>
+          <Button
             className="secondary compact"
             type="button"
             disabled={busy || count === 0}
             onClick={() => setScope(items.reduce((current, item) => updateItem(current, item, false), scope))}
           >
             Niets kiezen
-          </button>
+          </Button>
         </div>
-        <div className="scope-items">
+        <div className="grid gap-2">
           {items.map((item) => (
-            <article className={`scope-item ${chosen(item) ? "included" : ""}`} key={`${item.kind}-${item.id}`}>
+            <article
+              className="scope-item"
+              data-included={chosen(item) ? "" : undefined}
+              key={`${item.kind}-${item.id}`}
+            >
               <label className="scope-choice">
-                <input
-                  type="checkbox"
+                <TravelCheckbox
                   checked={chosen(item)}
                   disabled={busy}
-                  onChange={(event) => void include(item, event.target.checked)}
+                  onCheckedChange={(checked) => void include(item, checked)}
                 />
                 <span>
                   <strong>{item.label}</strong>
                   <small>{item.detail}</small>
                   {item.visibility === "private" && (
-                    <em className="scope-item-note"> · nu privé; aanvinken kiest dit voor dit publiek</em>
+                    <em className="text-xs font-medium not-italic text-travel-muted">
+                      {" "}
+                      · nu privé; aanvinken kiest dit voor dit publiek
+                    </em>
                   )}
                 </span>
               </label>
             </article>
           ))}
         </div>
-      </div>
-    </details>
+      </Collapsible.Panel>
+    </Collapsible.Root>
   );
 }
 
@@ -249,23 +259,24 @@ function ScopeEditor({
 }) {
   const groups = groupBy(catalog.filter((item) => item.visibility !== "everyone"));
   return (
-    <fieldset className="scope-editor" disabled={disabled}>
+    <fieldset
+      className="m-0 grid min-w-0 gap-3 rounded-xl border border-travel-divider p-3.75 [&>legend]:px-1.5 [&>legend]:font-extrabold [&>p]:m-0 [&>p]:text-sm"
+      disabled={disabled}
+    >
       <legend>{name}</legend>
       <p>Kies wat bezoekers mogen zien. Alles wat je niet kiest blijft privé.</p>
-      <div className="scope-trip-fields">
+      <div className="flex flex-wrap gap-x-3.5 gap-y-2">
         <label className="scope-choice">
-          <input
-            type="checkbox"
+          <TravelCheckbox
             checked={scope.trip.title}
-            onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, title: event.target.checked } })}
+            onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, title: checked } })}
           />
           Reistitel
         </label>
         <label className="scope-choice">
-          <input
-            type="checkbox"
+          <TravelCheckbox
             checked={scope.trip.summary}
-            onChange={(event) => setScope({ ...scope, trip: { ...scope.trip, summary: event.target.checked } })}
+            onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, summary: checked } })}
           />
           Samenvatting
         </label>
@@ -292,7 +303,7 @@ function ScopeEditor({
         {scope.trip.dates && !hasDates && <small>Deze reis heeft nog geen reisdatums.</small>}
       </div>
       <VisibilityNote catalog={catalog} />
-      <div className="scope-groups">
+      <div className="grid gap-2">
         {[...groups].map(([kind, items]) => (
           <ScopeGroup
             key={kind}
@@ -364,7 +375,7 @@ function SharingReview({ overview }: { overview: TripOverview | undefined }) {
           <p>Wat elk actief of ontworpen publiek nu krijgt, en wat je best nakijkt.</p>
         </div>
       </div>
-      <ul className="sharing-review" aria-label="Controle voor het delen">
+      <ul className="m-0 grid gap-1.5 pl-5 leading-normal text-travel-positive" aria-label="Controle voor het delen">
         {overview.audiences.map((audience) => {
           const delivered = audience.delivered;
           return (
@@ -379,7 +390,7 @@ function SharingReview({ overview }: { overview: TripOverview | undefined }) {
         {warnings.map((warning, index) => (
           <li
             key={`${warning.code}-${warning.audience_id ?? warning.id ?? ""}-${index}`}
-            className={warning.severity === "warning" ? "review-warning" : undefined}
+            className={warning.severity === "warning" ? "text-travel-review-warning" : undefined}
           >
             {reviewText(warning, overview.audiences)}
           </li>
@@ -399,17 +410,17 @@ function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: Cata
       </p>
     );
   return (
-    <div className="scope-groups">
+    <div className="grid gap-2">
       {[...groups].map(([kind, items]) => (
-        <details className="scope-group" key={kind}>
-          <summary>
+        <Collapsible.Root className="scope-group" data-disclosure="" key={kind}>
+          <Collapsible.Trigger>
             <strong>{GROUP_TITLES[kind]}</strong>
             <span>
               {items.filter((item) => item.visibility !== "private" || item.followsUpdate).length} van {items.length}{" "}
               staat op “Iedereen” of “Zelf kiezen”
             </span>
-          </summary>
-          <div className="scope-group-body scope-items">
+          </Collapsible.Trigger>
+          <Collapsible.Panel keepMounted className="grid gap-2 px-3.25 pt-0 pb-3.25">
             {items.map((item) => (
               <article className="scope-item" key={item.id}>
                 <div>
@@ -426,8 +437,8 @@ function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: Cata
                 />
               </article>
             ))}
-          </div>
-        </details>
+          </Collapsible.Panel>
+        </Collapsible.Root>
       ))}
     </div>
   );
@@ -804,7 +815,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const isPublished = publicStatus?.surface_state === "published";
 
   return (
-    <section className="card manager publication-manager" aria-labelledby="publication-manager-title">
+    <section className="travel-card manager gap-4.5" aria-labelledby="publication-manager-title">
       <div className="capture-heading">
         <div>
           <h3 id="publication-manager-title">Delen</h3>
@@ -819,19 +830,22 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       </p>
       {revealedLink && (
         <RecordDialog open title="Deellink" onDismiss={() => setRevealedLink(null)}>
-          <section className="token-reveal" aria-live="assertive">
+          <section
+            className="grid gap-2.5 rounded-xl border-2 border-travel-warning bg-travel-warning-surface p-4 text-travel-warning-dark [&_p]:m-0 [&_p]:text-travel-warning-dark! [&_code]:block [&_code]:wrap-anywhere [&_code]:rounded-lg [&_code]:bg-travel-surface [&_code]:p-2.5 [&_code]:text-sm [&_code]:text-travel-ink [&_button]:w-fit"
+            aria-live="assertive"
+          >
             <strong>{revealedLink.label}</strong>
             <p>
               Wie deze link heeft, kan de actieve verborgen pagina openen. Je kunt hem later opnieuw kopiëren zolang de
               link actief blijft.
             </p>
             <code>{revealedLink.url}</code>
-            <button type="button" onClick={() => void copyLink().catch(fail("Kopiëren lukte niet."))}>
+            <Button type="button" onClick={() => void copyLink().catch(fail("Kopiëren lukte niet."))}>
               Link kopiëren
-            </button>
-            <button className="secondary compact" type="button" onClick={() => setRevealedLink(null)}>
+            </Button>
+            <Button className="secondary compact" type="button" onClick={() => setRevealedLink(null)}>
               Sluiten
-            </button>
+            </Button>
           </section>
         </RecordDialog>
       )}
@@ -860,8 +874,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           </div>
         </div>
         {isPublished && publicStatus?.slug && (
-          <p className="help public-link-live">
-            <code>{publicUrl(publicStatus.slug)}</code>
+          <p className="help">
+            <code className="inline-block wrap-anywhere rounded-md bg-travel-tint px-2 py-1 text-sm text-travel-ink">
+              {publicUrl(publicStatus.slug)}
+            </code>
           </p>
         )}
         <RecordForm
@@ -881,29 +897,29 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 </a>
               )}
               {isPublished && publicStatus?.slug && (
-                <button
+                <Button
                   className="secondary"
                   type="button"
                   onClick={() => void copyPublicLink().catch(fail("Kopiëren lukte niet."))}
                 >
                   Kopieer link
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 className="secondary"
                 type="button"
                 onClick={() => void previewPublic().catch(fail("Voorbeeld laden lukte niet."))}
               >
                 Bekijk als bezoeker
-              </button>
-              <button
+              </Button>
+              <Button
                 className={isPublished ? "danger" : ""}
                 type="button"
                 disabled={!publicStatus || togglePublic.isPending}
                 onClick={toggle}
               >
                 {isPublished ? "Niet meer met iedereen delen" : "Met iedereen delen"}
-              </button>
+              </Button>
             </>
           }
         >
@@ -931,17 +947,18 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             <h3>Verborgen deellinks</h3>
             <p>Elke link heeft een eigen live scope en kan later worden ingetrokken of geroteerd.</p>
           </div>
-          <button className="secondary compact" type="button" onClick={() => switchLinkEditor(null)}>
+          <Button className="secondary compact" type="button" onClick={() => switchLinkEditor(null)}>
             Nieuwe link
-          </button>
+          </Button>
         </div>
         {linkSeries.length > 0 && (
-          <div className="link-list">
+          <div className="grid gap-2">
             {linkSeries.map(({ id, current, history }) => (
-              <div className="link-series" key={id}>
-                <button
+              <div className="grid gap-2" key={id}>
+                <Button
                   type="button"
-                  className={`link-row ${current.id === editingLinkId ? "selected" : ""}`}
+                  className="link-row"
+                  data-selected={current.id === editingLinkId ? "" : undefined}
                   onClick={() => switchLinkEditor(current)}
                 >
                   <strong>{current.label}</strong>
@@ -951,17 +968,18 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                       ? ` · ${history.length} eerdere ${history.length === 1 ? "versie" : "versies"}`
                       : ""}
                   </span>
-                </button>
+                </Button>
                 {history.length > 0 && (
-                  <details className="link-history">
-                    <summary>
+                  <Collapsible.Root className="border-l-2 border-travel-divider pl-3">
+                    <Collapsible.Trigger className="bg-transparent p-0 text-left text-sm font-bold text-travel-muted">
                       {history.length} eerdere {history.length === 1 ? "versie" : "versies"} bekijken
-                    </summary>
-                    <div className="link-list">
+                    </Collapsible.Trigger>
+                    <Collapsible.Panel keepMounted className="mt-2 grid gap-2">
                       {history.map((link) => (
-                        <button
+                        <Button
                           type="button"
-                          className={`link-row ${link.id === editingLinkId ? "selected" : ""}`}
+                          className="link-row"
+                          data-selected={link.id === editingLinkId ? "" : undefined}
                           key={link.id}
                           onClick={() => switchLinkEditor(link)}
                         >
@@ -969,10 +987,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                           <span>
                             {link.state} · verlopen {dateLabel(link.revoked_at ?? link.expires_at)}
                           </span>
-                        </button>
+                        </Button>
                       ))}
-                    </div>
-                  </details>
+                    </Collapsible.Panel>
+                  </Collapsible.Root>
                 )}
               </div>
             ))}
@@ -989,21 +1007,21 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         onDismiss={closeLinkEditor}
       >
         {linkEditor !== null && (
-          <div className="link-editor">
+          <div className="publication-panel">
             <RecordForm
               record={linkRecord}
               submitLabel={selectedLink ? "Link opslaan" : "Concept opslaan"}
               pendingLabel="Opslaan…"
               disabled={lockedLink}
               actions={
-                <button
+                <Button
                   className="secondary"
                   type="button"
                   disabled={lockedLink || !linkRecord.values.label.trim()}
                   onClick={() => void previewLink().catch(fail("Voorbeeld laden lukte niet."))}
                 >
                   Voorbeeld bekijken
-                </button>
+                </Button>
               }
             >
               <linkRecord.form.Field
@@ -1043,11 +1061,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 )}
               </linkRecord.form.Field>
             </RecordForm>
-            <div className="lifecycle">
+            <div className="publication-panel">
               <div className="field-row">
                 <label>
                   Geldig gedurende (dagen)
-                  <input
+                  <Input
                     type="number"
                     min="1"
                     max="90"
@@ -1057,16 +1075,15 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                   />
                 </label>
                 <label className="scope-choice">
-                  <input
-                    type="checkbox"
+                  <TravelCheckbox
                     checked={expiresInDays === null}
-                    onChange={(event) => setExpiresInDays(event.target.checked ? null : 30)}
+                    onCheckedChange={(checked) => setExpiresInDays(checked ? null : 30)}
                   />
                   Geen vervaldatum
                 </label>
                 <label>
-                  Reden <span className="optional">(optioneel)</span>
-                  <input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+                  Reden <span className="font-medium text-travel-optional">(optioneel)</span>
+                  <Input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
                 </label>
               </div>
               {expiresInDays === null && (
@@ -1079,26 +1096,26 @@ export function PublicationManager({ trip }: { trip: Trip }) {
               )}
               <div className="button-row">
                 {selectedLink?.state === "draft" && (
-                  <button type="button" onClick={() => activateLink("activate")}>
+                  <Button type="button" onClick={() => activateLink("activate")}>
                     Activeren
-                  </button>
+                  </Button>
                 )}
                 {selectedLink?.state === "active" && (
                   <>
-                    <button
+                    <Button
                       className="secondary"
                       type="button"
                       disabled={!selectedLink.token}
                       onClick={revealCurrentLink}
                     >
                       Link tonen
-                    </button>
-                    <button className="danger" type="button" onClick={revokeLink}>
+                    </Button>
+                    <Button className="danger" type="button" onClick={revokeLink}>
                       Link intrekken
-                    </button>
-                    <button type="button" onClick={() => activateLink("rotate")}>
+                    </Button>
+                    <Button type="button" onClick={() => activateLink("rotate")}>
                       Roteren en nieuwe link tonen
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -1114,7 +1131,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       </RecordDialog>
       {preview && owner && (
         <RecordDialog open title={preview.name} className="max-w-280" onDismiss={() => setPreview(null)}>
-          <section className="projection-preview" aria-live="polite">
+          <section
+            className="publication-panel [&_h3]:m-0 [&_p]:m-0 [&_pre]:max-h-80 [&_pre]:overflow-auto [&_pre]:rounded-lg [&_pre]:bg-travel-ink [&_pre]:p-3 [&_pre]:text-xs [&_pre]:text-travel-tint"
+            aria-live="polite"
+          >
             <p>
               {preview.audience === "public"
                 ? "Doelgroep: iedereen"
@@ -1138,10 +1158,14 @@ export function PublicationManager({ trip }: { trip: Trip }) {
               linkId={preview.linkId}
               session={owner.session}
             />
-            <details>
-              <summary>Geleverde velden inspecteren</summary>
-              <pre>{JSON.stringify(preview.document, null, 2)}</pre>
-            </details>
+            <Collapsible.Root>
+              <Collapsible.Trigger className="bg-transparent p-0 text-left font-bold text-travel-forest">
+                Geleverde velden inspecteren
+              </Collapsible.Trigger>
+              <Collapsible.Panel keepMounted>
+                <pre>{JSON.stringify(preview.document, null, 2)}</pre>
+              </Collapsible.Panel>
+            </Collapsible.Root>
           </section>
         </RecordDialog>
       )}

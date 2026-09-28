@@ -157,9 +157,9 @@ it("opens a packing copy as a read-only list", async () => {
   );
   await screen.findByText("Exampleland · Paklijst");
   screen.getByRole("button", { name: "Bekijken" }).click();
-  const checkbox = (await screen.findByRole("checkbox", { name: "Paspoort ingepakt" })) as HTMLInputElement;
-  expect(checkbox.checked).toBe(true);
-  expect(checkbox.disabled).toBe(true);
+  const checkbox = await screen.findByRole("checkbox", { name: "Paspoort ingepakt" });
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  expect(checkbox.getAttribute("aria-disabled")).toBe("true");
   expect(screen.getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/)).toBeTruthy();
 });
 

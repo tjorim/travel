@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useRef, useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
@@ -250,7 +251,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
   const readError = staysQuery.error;
 
   return (
-    <section className="card manager" id="stays" aria-labelledby="stays-title">
+    <section className="travel-card manager" id="stays" aria-labelledby="stays-title">
       <div className="capture-heading">
         <div>
           <h3 id="stays-title">Verblijven</h3>
@@ -259,9 +260,9 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
             Adressen, boekingen en contactgegevens zijn uitsluitend privé.
           </p>
         </div>
-        <button className="secondary compact" type="button" onClick={newStay}>
+        <Button className="secondary compact" type="button" onClick={newStay}>
           Nieuw verblijf
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {readError
@@ -271,12 +272,12 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
             : message}
       </p>
       {stays.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {stays.map((stay) => {
             const nights = daysBetween(stay.check_in_date, stay.check_out_date);
             return (
               <article className="excerpt-row" key={stay.id}>
-                <button className="document-select" type="button" onClick={() => stayDialog.inspect(stay.id)}>
+                <Button className="document-select" type="button" onClick={() => stayDialog.inspect(stay.id)}>
                   <strong>{stayLabel(stay)}</strong>
                   <span>
                     {[
@@ -289,10 +290,10 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
-                </button>
-                <button className="danger compact" type="button" onClick={() => setDeleteTarget(stay)}>
+                </Button>
+                <Button className="danger compact" type="button" onClick={() => setDeleteTarget(stay)}>
                   Verwijderen
-                </button>
+                </Button>
               </article>
             );
           })}
@@ -333,12 +334,12 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               name={stayLabel(selectedStay)}
             />
             <div className="button-row">
-              <button type="button" onClick={() => editStay(selectedStay)}>
+              <Button type="button" onClick={() => editStay(selectedStay)}>
                 Bewerken
-              </button>
-              <button className="danger" type="button" onClick={() => setDeleteTarget(selectedStay)}>
+              </Button>
+              <Button className="danger" type="button" onClick={() => setDeleteTarget(selectedStay)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
           </div>
         )}

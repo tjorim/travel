@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import type { FeatureCollection, LineString, Point } from "geojson";
@@ -492,27 +493,35 @@ export function TripMap({
 
   if (!hasGeometry)
     return (
-      <section className="card trip-map">
-        <h3>Kaart</h3>
+      <section className="travel-card grid min-w-0 gap-3.5">
+        <h3 className="m-0">Kaart</h3>
         <p>Voor deze reis zijn nog geen kaartcoördinaten beschikbaar.</p>
       </section>
     );
   return (
-    <section className="card trip-map" aria-label="Reiskaart">
-      <h3>Kaart</h3>
-      <div className="trip-map-canvas-wrap">
-        <div ref={canvas} className="trip-map-canvas" role="img" aria-label="Kaart met punten en routes" />
+    <section className="travel-card grid min-w-0 gap-3.5" aria-label="Reiskaart">
+      <h3 className="m-0">Kaart</h3>
+      <div
+        className={cn(
+          "relative h-map-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
+          owner && "min-[960px]:h-map-owner-canvas",
+        )}
+      >
+        <div ref={canvas} className="size-full" role="img" aria-label="Kaart met punten en routes" />
         {hovered && (
-          <span className="trip-map-hover" aria-hidden="true">
+          <span
+            className="pointer-events-none absolute top-3 left-3 max-w-full rounded-md bg-travel-surface px-2.25 py-1.25 text-sm text-travel-ink shadow-md"
+            aria-hidden="true"
+          >
             {hovered}
           </span>
         )}
         {error && !ready && (
-          <p className="trip-map-fallback">
+          <p className="absolute inset-0 m-0 grid place-content-center bg-travel-map-bg p-6 text-center text-travel-muted">
             Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de puntknoppen.
           </p>
         )}
-        <div className="trip-map-attribution">
+        <div className="absolute right-0 bottom-0 z-2 max-w-full bg-travel-surface/90 px-1.5 py-0.75 text-xs text-travel-ink [&_a]:text-inherit">
           {attribution}
           {terrain && (
             <>
@@ -546,11 +555,14 @@ export function TripMap({
         </p>
       )}
       <div className="button-row">
-        <button className="secondary compact" type="button" onClick={resetFocus}>
+        <Button className="secondary compact" type="button" onClick={resetFocus}>
           Hele reis tonen
-        </button>
-        <button
-          className={cn("secondary compact map-layer-toggle", terrain && "active")}
+        </Button>
+        <Button
+          className={cn(
+            "secondary compact",
+            terrain && "border-travel-forest! bg-travel-forest! text-travel-surface! inset-shadow-sm",
+          )}
           type="button"
           aria-pressed={terrain}
           disabled={!ready}
@@ -558,24 +570,30 @@ export function TripMap({
         >
           {perspective?.label ?? "3D-terrein"}
           {terrain && " · aan"}
-        </button>
-        <button
-          className={cn("secondary compact map-layer-toggle", satellite && "active")}
+        </Button>
+        <Button
+          className={cn(
+            "secondary compact",
+            satellite && "border-travel-forest! bg-travel-forest! text-travel-surface! inset-shadow-sm",
+          )}
           type="button"
           aria-pressed={satellite}
           disabled={!ready}
           onClick={toggleSatellite}
         >
           Satelliet{satellite && " · aan"}
-        </button>
+        </Button>
       </div>
       {satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
-      <p className="trip-map-privacy">
+      <p className="m-0 text-sm">
         Kaarttegels tonen de bekeken regio aan OpenFreeMap. 3D-terrein vraagt na inschakeling hoogtegegevens op bij
         Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri.
       </p>
       {(selectedPoint || selectedLine) && (
-        <div className="trip-map-detail" aria-live="polite">
+        <div
+          className="rounded-travel-media border border-travel-border bg-travel-map-detail px-4 py-3.5 [&_a]:font-bold [&_a]:text-travel-forest [&_p]:mt-1.25 [&_p]:mb-0 [&_ul]:mt-2.5 [&_ul]:mb-0 [&_ul]:flex [&_ul]:list-none [&_ul]:flex-wrap [&_ul]:gap-x-4 [&_ul]:gap-y-2 [&_ul]:p-0"
+          aria-live="polite"
+        >
           <strong>{selectedPoint?.label ?? selectedLine?.label}</strong>
           {(selectedLine?.from || selectedLine?.to) && (
             <p>
@@ -593,47 +611,47 @@ export function TripMap({
                   {link.href ? (
                     <a href={link.href}>{link.label}</a>
                   ) : (
-                    <button className="secondary compact" type="button" onClick={link.onOpen}>
+                    <Button className="secondary compact" type="button" onClick={link.onOpen}>
                       {link.label}
-                    </button>
+                    </Button>
                   )}
                 </li>
               ))}
             </ul>
           )}
           {selectedPoint?.kind === "derived" && onUseDerived && (
-            <button className="secondary compact" type="button" onClick={() => onUseDerived(selectedPoint)}>
+            <Button className="secondary compact" type="button" onClick={() => onUseDerived(selectedPoint)}>
               Gebruik als punt
-            </button>
+            </Button>
           )}
         </div>
       )}
       {points.length > 0 && (
-        <div className="trip-map-stops">
+        <div>
           <h4>Punten op de kaart</h4>
-          <ol>
+          <ol className="flex list-none flex-wrap gap-1.75 p-0">
             {points.map((point) => (
               <li key={point.id}>
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   aria-pressed={selectedKind === "point" && selected === point.id}
                   onClick={() => selectPoint(point)}
                 >
                   {point.label}
-                </button>
+                </Button>
               </li>
             ))}
           </ol>
         </div>
       )}
       {lines.length > 0 && (
-        <div className="trip-map-words">
+        <div>
           <h4>Route in woorden</h4>
-          <ol>
+          <ol className="mb-0 pl-5.5">
             {lines.map((line) => (
               <li key={line.id}>
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   aria-pressed={selectedKind === "line" && selected === line.id}
@@ -641,7 +659,7 @@ export function TripMap({
                 >
                   {line.from && line.to ? `${line.from} → ${line.to} · ` : ""}
                   {line.label}
-                </button>
+                </Button>
               </li>
             ))}
           </ol>

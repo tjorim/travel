@@ -65,7 +65,7 @@ it("previews the server's rendering of the current text", async () => {
   vi.stubGlobal("fetch", fetch);
   withOwner(<Editor initial="| **Day 1** |" format="markdown" />);
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
-  await waitFor(() => expect(document.querySelector(".markdown-preview .markdown strong")?.textContent).toBe("Day 1"));
+  await waitFor(() => expect(document.querySelector(".markdown strong")?.textContent).toBe("Day 1"));
   const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
   expect(url).toBe("/api/markdown/render");
   expect(init.method).toBe("POST");

@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useMemo, useRef, useState } from "react";
 
 import { CheckboxField, RecordForm, SelectField, TextField } from "../forms/fields";
@@ -311,8 +312,8 @@ export function VisitManager({
     const sleep = overnights(visit, stays, trip);
     if (!sleep.stays.length && !sleep.uncovered) return null;
     return (
-      <div className="entry-details">
-        <span className="entry-detail">
+      <div className="grid gap-0.75">
+        <span className="text-sm font-medium text-travel-muted">
           Overnachting: {sleep.stays.map(stayLabel).join(", ") || "—"}
           {sleep.uncovered > 0
             ? ` · nog ${sleep.uncovered} ${sleep.uncovered === 1 ? "nacht" : "nachten"} zonder verblijf`
@@ -323,7 +324,7 @@ export function VisitManager({
   }
 
   return (
-    <section className="card manager" id="visits" aria-labelledby="visits-title">
+    <section className="travel-card manager" id="visits" aria-labelledby="visits-title">
       <div className="capture-heading">
         <div>
           <h3 id="visits-title">Bezoeken</h3>
@@ -332,9 +333,9 @@ export function VisitManager({
             waar je heen gaat.
           </p>
         </div>
-        <button className="secondary compact" type="button" onClick={create}>
+        <Button className="secondary compact" type="button" onClick={create}>
           Nieuw bezoek
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {readError
@@ -344,10 +345,10 @@ export function VisitManager({
             : message}
       </p>
       {visits.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {visits.map((visit, index) => (
-            <article className="excerpt-row stacked" key={visit.id}>
-              <button
+            <article className="excerpt-row" data-stacked="" key={visit.id}>
+              <Button
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(visit.id)}
@@ -355,37 +356,37 @@ export function VisitManager({
               >
                 <strong>{visitTitle(visit)}</strong>
                 <span>{[dayLine(visit), visitPlace(visit), visibilityLabel(visit.visibility)].join(" · ")}</span>
-              </button>
+              </Button>
               {sleeping(visit)}
               <div className="button-row">
                 {onShowOnMap && (
-                  <button className="secondary compact" type="button" onClick={() => onShowOnMap(mapPointFor(visit))}>
+                  <Button className="secondary compact" type="button" onClick={() => onShowOnMap(mapPointFor(visit))}>
                     Toon op kaart
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => void toggleOffline(visit).catch(fail("Het bezoek kon niet offline worden bewaard."))}
                 >
                   {offline.isPinned("visit", visit.id) ? "Offline verwijderen" : "Offline bewaren"}
-                </button>
-                <button
+                </Button>
+                <Button
                   className="secondary compact"
                   type="button"
                   disabled={index === 0}
                   onClick={() => shift(visit, -1)}
                 >
                   Omhoog
-                </button>
-                <button
+                </Button>
+                <Button
                   className="secondary compact"
                   type="button"
                   disabled={index === visits.length - 1}
                   onClick={() => shift(visit, 1)}
                 >
                   Omlaag
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -438,12 +439,12 @@ export function VisitManager({
               Notities blijven altijd privé.
             </p>
             <div className="button-row">
-              <button type="button" onClick={() => edit(selected)}>
+              <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
-              </button>
-              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              </Button>
+              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation

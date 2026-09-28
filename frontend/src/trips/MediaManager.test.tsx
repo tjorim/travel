@@ -268,7 +268,7 @@ it("shows a thumbnail beside a photo, a readable purpose label, and an inline pr
   fireEvent.click(screen.getByRole("button", { name: "Kopie Delen bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
   const marker = await waitFor(() => {
-    const element = document.querySelector(".focal-point-marker") as HTMLElement | null;
+    const element = document.querySelector("[data-focal-point-marker]") as HTMLElement | null;
     if (!element) throw new Error("focal-point marker not rendered yet");
     return element;
   });

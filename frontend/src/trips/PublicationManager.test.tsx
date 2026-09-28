@@ -188,6 +188,11 @@ afterEach(() => {
 });
 
 const publicScope = () => within(screen.getByRole("group", { name: "Wat iedereen mag zien" }));
+async function openPublicGroup(title: string) {
+  const trigger = await publicScope().findByRole("button", { name: new RegExp(`^${title}`) });
+  if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
+  return within(trigger.closest("[data-disclosure]")!);
+}
 
 it("offers private and custom records, but not everyone's or unreviewed copies, for an audience to choose", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
@@ -210,20 +215,28 @@ it("says what reaches every audience anyway and offers no field checklist", asyn
   expect(
     scopeEditor.getByText(/1 voor iedereen verschijnt hier altijd; 1 privé kun je hieronder aanvinken/),
   ).toBeTruthy();
-  fireEvent.click(scopeEditor.getByLabelText(/Stad ↔ natuur/));
+  await openPublicGroup("Reisupdates");
+  fireEvent.click(scopeEditor.getByRole("checkbox", { name: /Stad ↔ natuur/ }));
   expect(scopeEditor.queryByLabelText("title")).toBeNull();
   expect(scopeEditor.queryByLabelText("body")).toBeNull();
 });
 
 it('checking a still-private record for an audience promotes it to "Zelf kiezen" before including it', async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  const checkbox = await publicScope().findByLabelText(/Privé dagboek/);
-  expect((checkbox as HTMLInputElement).checked).toBe(false);
+  await openPublicGroup("Reisupdates");
+  const checkbox = await publicScope().findByRole("checkbox", { name: /Privé dagboek/ });
+  expect(checkbox.getAttribute("aria-checked")).toBe("false");
   fireEvent.click(checkbox);
   await waitFor(() =>
     expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({ visibility: "custom" }),
   );
-  await waitFor(() => expect((publicScope().getByLabelText(/Privé dagboek/) as HTMLInputElement).checked).toBe(true));
+  await waitFor(() =>
+    expect(
+      publicScope()
+        .getByRole("checkbox", { name: /Privé dagboek/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true"),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
   await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
   expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!.items).toEqual(
@@ -233,6 +246,8 @@ it('checking a still-private record for an audience promotes it to "Zelf kiezen"
 
 it("sets who sees a record from Delen with the same control as its own editor", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
+  const visibility = within(screen.getByRole("region", { name: "Delen" }));
+  fireEvent.click(await visibility.findByRole("button", { name: /^Reisupdates.*staat op/ }));
   await screen.findByLabelText("Zichtbaarheid van Aankomst");
   expect(selectedOption("Zichtbaarheid van Aankomst")).toBe("Iedereen — alle bezoekers");
   chooseOption("Zichtbaarheid van Aankomst", "Privé — alleen ik");
@@ -243,7 +258,7 @@ it("sets who sees a record from Delen with the same control as its own editor", 
 
 it("offers a redacted route summary, without the owner-only booking fields", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  const transport = within((await publicScope().findByText("Routes")).closest("details")!);
+  const transport = await openPublicGroup("Routes");
   expect(transport.getByText("Vlucht: Zaventem → Taoyuan")).toBeTruthy();
   expect(transport.getByText(/nooit boekingscode, reisklasse, notities of documenten/i)).toBeTruthy();
   fireEvent.click(transport.getByRole("button", { name: "Alles kiezen" }));
@@ -257,15 +272,16 @@ it("offers a redacted route summary, without the owner-only booking fields", asy
 
 it("groups records into collapsed sections with a count, and chooses or clears a whole section", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  const group = async (title: string) => within((await publicScope().findByText(title)).closest("details")!);
-  const updates = await group("Reisupdates");
+  const group = async (title: string) =>
+    within((await publicScope().findByRole("button", { name: new RegExp(`^${title}`) })).closest("[data-disclosure]")!);
+  const updates = await openPublicGroup("Reisupdates");
   // The group lists the still-private update alongside the already-custom one; the everyone update stays out.
   expect(updates.getByText("0 van 2 gekozen")).toBeTruthy();
   expect((updates.getByRole("button", { name: "Niets kiezen" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(updates.getByRole("button", { name: "Alles kiezen" }));
   await waitFor(() => expect(updates.getByText("2 van 2 gekozen")).toBeTruthy());
-  expect((updates.getByLabelText(/Stad ↔ natuur/) as HTMLInputElement).checked).toBe(true);
-  expect((updates.getByLabelText(/Privé dagboek/) as HTMLInputElement).checked).toBe(true);
+  expect(updates.getByRole("checkbox", { name: /Stad ↔ natuur/ }).getAttribute("aria-checked")).toBe("true");
+  expect(updates.getByRole("checkbox", { name: /Privé dagboek/ }).getAttribute("aria-checked")).toBe("true");
   expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({ visibility: "custom" });
   fireEvent.click(updates.getByRole("button", { name: "Niets kiezen" }));
   expect(updates.getByText("0 van 2 gekozen")).toBeTruthy();
@@ -290,13 +306,12 @@ it("groups a rotated URL under its current link instead of listing it as another
     link("l1", "Familie", "revoked"),
   ]);
   renderWithOwner(<PublicationManager trip={trip} />);
-  const history = await screen.findByText("1 eerdere versie bekijken");
-  const series = history.closest(".link-series")!;
-  expect(series.querySelectorAll(":scope > .link-row")).toHaveLength(1);
-  const details = history.closest("details")!;
-  expect(details.open).toBe(false);
+  const history = await screen.findByRole("button", { name: "1 eerdere versie bekijken" });
+  const disclosure = history.parentElement!;
+  expect(disclosure.parentElement!.querySelectorAll(":scope > button")).toHaveLength(1);
+  expect(history.getAttribute("aria-expanded")).toBe("false");
   fireEvent.click(history);
-  expect(details.open).toBe(true);
+  expect(history.getAttribute("aria-expanded")).toBe("true");
 });
 
 it("asks before discarding an unsaved link scope when changing editors", async () => {
@@ -313,28 +328,37 @@ it("asks before discarding an unsaved link scope when changing editors", async (
 
 it("saves the chosen public scope and shows the server's copy afterwards", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  const checkbox = await within(await screen.findByRole("group", { name: "Wat iedereen mag zien" })).findByLabelText(
-    /Stad ↔ natuur/,
-  );
+  const checkbox = (await openPublicGroup("Reisupdates")).getByRole("checkbox", { name: /Stad ↔ natuur/ });
   fireEvent.click(checkbox);
   fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
   await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
   expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!.items).toEqual([
     { kind: "travel_update", id: "u3" },
   ]);
-  expect((publicScope().getByLabelText(/Stad ↔ natuur/) as HTMLInputElement).checked).toBe(true);
+  expect(
+    publicScope()
+      .getByRole("checkbox", { name: /Stad ↔ natuur/ })
+      .getAttribute("aria-checked"),
+  ).toBe("true");
 });
 
 it("keeps unsaved public scope edits when the server copy is refreshed", async () => {
   const { client } = renderWithOwner(<PublicationManager trip={trip} />);
+  await openPublicGroup("Reisupdates");
   fireEvent.click(
-    await within(await screen.findByRole("group", { name: "Wat iedereen mag zien" })).findByLabelText(/Stad ↔ natuur/),
+    await within(await screen.findByRole("group", { name: "Wat iedereen mag zien" })).findByRole("checkbox", {
+      name: /Stad ↔ natuur/,
+    }),
   );
   status = { ...status, scope: { ...scope(), trip: { title: false, summary: true, dates: null } } };
   await act(async () => {
     await client.invalidateQueries({ queryKey: ownerKeys.tripResource("owner-1", "trip", "public-projection") });
   });
-  expect((publicScope().getByLabelText(/Stad ↔ natuur/) as HTMLInputElement).checked).toBe(true);
+  expect(
+    publicScope()
+      .getByRole("checkbox", { name: /Stad ↔ natuur/ })
+      .getAttribute("aria-checked"),
+  ).toBe("true");
 });
 
 it("publishes and withdraws the public page", async () => {

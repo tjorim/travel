@@ -1,3 +1,4 @@
+import { Input } from "@base-ui/react/input";
 import { useCallback, useRef } from "react";
 
 import { AsyncSearchSelect, SearchSelect, type SearchSelectGroup, type SearchSelectOption } from "../forms/fields";
@@ -226,8 +227,8 @@ export function PlacePicker({
           <div className="field-row">
             <div className="field">
               <label>
-                Naam <span className="optional">(optioneel)</span>
-                <input
+                Naam <span className="font-medium text-travel-optional">(optioneel)</span>
+                <Input
                   aria-label={`Naam (${label.toLowerCase()})`}
                   value={value.newName}
                   maxLength={500}
@@ -237,8 +238,8 @@ export function PlacePicker({
             </div>
             <div className="field">
               <label>
-                Plaats <span className="optional">(optioneel)</span>
-                <input
+                Plaats <span className="font-medium text-travel-optional">(optioneel)</span>
+                <Input
                   aria-label={`Plaats (${label.toLowerCase()})`}
                   value={value.newLocality}
                   maxLength={120}
@@ -250,8 +251,8 @@ export function PlacePicker({
           <div className="field-row">
             <div className="field">
               <label>
-                Landcode <span className="optional">(optioneel)</span>
-                <input
+                Landcode <span className="font-medium text-travel-optional">(optioneel)</span>
+                <Input
                   aria-label={`Landcode (${label.toLowerCase()})`}
                   value={value.newCountryCode}
                   maxLength={2}
@@ -261,7 +262,7 @@ export function PlacePicker({
             </div>
             <div className="field">
               <label>
-                Gebied <span className="optional">(optioneel)</span>
+                Gebied <span className="font-medium text-travel-optional">(optioneel)</span>
                 <SearchSelect
                   ariaLabel={`Gebied van de nieuwe locatie (${label.toLowerCase()})`}
                   value={value.newAreaId}
@@ -292,7 +293,7 @@ export function PlacePicker({
               <div className="field">
                 <label>
                   Naam nieuw gebied
-                  <input
+                  <Input
                     value={value.newAreaCandidate.label}
                     maxLength={120}
                     onChange={(event) =>
@@ -307,7 +308,7 @@ export function PlacePicker({
               <div className="field">
                 <label>
                   Tijdzone nieuw gebied
-                  <input
+                  <Input
                     value={value.newAreaCandidate.timezone ?? ""}
                     maxLength={64}
                     onChange={(event) =>

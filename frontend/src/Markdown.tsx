@@ -17,11 +17,17 @@ export function Markdown({
 }) {
   if (!text?.trim()) return null;
   if (!html) {
-    const classes = ["markdown-source", className].filter(Boolean).join(" ");
+    const classes = ["whitespace-pre-line", as === "figcaption" && "leading-normal", className]
+      .filter(Boolean)
+      .join(" ");
     return as === "figcaption" ? (
-      <figcaption className={classes}>{text}</figcaption>
+      <figcaption className={classes} data-markdown-source="">
+        {text}
+      </figcaption>
     ) : (
-      <p className={classes}>{text}</p>
+      <p className={classes} data-markdown-source="">
+        {text}
+      </p>
     );
   }
   const Element = as ?? "div";

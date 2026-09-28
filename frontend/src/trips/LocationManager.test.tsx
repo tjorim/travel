@@ -148,7 +148,11 @@ it("blocks address sharing without address parts", async () => {
   );
   expect(await screen.findByText(/Geen adres vastgelegd/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  expect(screen.getByLabelText("Adres ook delen met ontvangers van deze locatie")).toHaveProperty("disabled", true);
+  expect(
+    screen
+      .getByRole("checkbox", { name: "Adres ook delen met ontvangers van deze locatie" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
 });
 
 it("reviews and corrects an OSM snapshot without changing its saved point", async () => {

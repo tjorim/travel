@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { RecordForm, requiredText, TextField } from "../forms/fields";
@@ -25,7 +26,7 @@ const serverFields = { title: "title", notes: "notes", due_date: "dueDate", remi
 
 function TaskLinks({ links }: { links: TaskLink[] }) {
   return links.length ? (
-    <span className="task-links">
+    <span className="flex flex-wrap gap-2 [&_a]:font-bold [&_a]:text-travel-link">
       {links.map((link) => (
         <a key={link.url} href={link.url} target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
           {link.label} ↗
@@ -184,8 +185,8 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   }
 
   const row = (task: TripTask) => (
-    <article key={task.id} className={`excerpt-row${task.completed_at ? " completed" : ""}`}>
-      <button
+    <article key={task.id} className="excerpt-row" data-completed={task.completed_at ? "" : undefined}>
+      <Button
         className="document-select"
         type="button"
         onClick={() => inspect(task)}
@@ -197,17 +198,17 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
             ? `Afgevinkt${task.due_date ? ` · was voor ${task.due_date}` : ""}`
             : `${task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}${task.remind_at ? ` · Herinnering ${formatInstant(task.remind_at)}` : ""}`}
         </span>
-      </button>
+      </Button>
       <div className="button-row">
-        <button className="secondary compact" type="button" onClick={() => toggle(task)}>
+        <Button className="secondary compact" type="button" onClick={() => toggle(task)}>
           {task.completed_at ? "Heropenen" : "Afvinken"}
-        </button>
+        </Button>
       </div>
     </article>
   );
 
   return (
-    <section className="card manager" id="tasks" aria-labelledby="tasks-title">
+    <section className="travel-card manager" id="tasks" aria-labelledby="tasks-title">
       <div className="capture-heading">
         <div>
           <h3 id="tasks-title">Nog te regelen</h3>
@@ -216,9 +217,9 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
             verstuurd zodra de geplande verwerking draait.
           </p>
         </div>
-        <button className="secondary compact" type="button" onClick={create}>
+        <Button className="secondary compact" type="button" onClick={create}>
           Nieuwe taak
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {message}
@@ -226,7 +227,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       {alerts.length > 0 && (
         <div className="manager-subsection">
           <h4>Meldingen</h4>
-          <div className="saved-records manager-list">
+          <div className="saved-records mt-0.5">
             {alerts.map((alert) => (
               <article className="excerpt-row" key={alert.id}>
                 <div>
@@ -241,7 +242,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                   </span>
                 </div>
                 {!alert.read_at && (
-                  <button
+                  <Button
                     className="secondary compact"
                     type="button"
                     onClick={() =>
@@ -251,7 +252,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                     }
                   >
                     Gelezen
-                  </button>
+                  </Button>
                 )}
               </article>
             ))}
@@ -259,7 +260,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         </div>
       )}
       {tasks.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {openTasks.map(row)}
           {completedTasks.map(row)}
         </div>
@@ -281,12 +282,12 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
               <TaskLinks links={selected.links} />
             </div>
             <div className="button-row">
-              <button type="button" onClick={() => edit(selected)}>
+              <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
-              </button>
-              <button className="danger" type="button" onClick={() => setConfirmDelete(true)}>
+              </Button>
+              <Button className="danger" type="button" onClick={() => setConfirmDelete(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {confirmDelete && (
               <DeleteConfirmation
@@ -327,7 +328,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
               {(links) => (
                 <fieldset>
                   <legend>
-                    Links <span className="optional">(optioneel, https)</span>
+                    Links <span className="font-medium text-travel-optional">(optioneel, https)</span>
                   </legend>
                   {links.state.value.map((_, index) => (
                     <div className="field-row" key={index}>
@@ -349,19 +350,19 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                       >
                         {(field) => <TextField field={field} label="Adres" type="url" maxLength={2048} />}
                       </record.form.Field>
-                      <button className="secondary compact" type="button" onClick={() => void links.removeValue(index)}>
+                      <Button className="secondary compact" type="button" onClick={() => void links.removeValue(index)}>
                         Link verwijderen
-                      </button>
+                      </Button>
                     </div>
                   ))}
                   {links.state.value.length < MAX_LINKS && (
-                    <button
+                    <Button
                       className="secondary compact"
                       type="button"
                       onClick={() => void links.pushValue({ label: "", url: "" })}
                     >
                       Link toevoegen
-                    </button>
+                    </Button>
                   )}
                 </fieldset>
               )}

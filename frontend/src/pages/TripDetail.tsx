@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useCallback, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
@@ -79,7 +80,7 @@ function RecordHeading({
   children: React.ReactNode;
 }) {
   return (
-    <div className="admin-detail-heading">
+    <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
       <h3>{children}</h3>
       <RecordLink tripId={tripId} kind={kind} id={id}>
         Openen
@@ -126,9 +127,17 @@ function MediaPreview({
   session: NonNullable<ReturnType<typeof useOwner>>["session"];
 }) {
   return asset.thumbnail_url ? (
-    <OwnerImage session={session} url={asset.thumbnail_url} alt="" className="admin-detail-media-preview" />
+    <OwnerImage
+      session={session}
+      url={asset.thumbnail_url}
+      alt=""
+      className="block h-24 w-35 rounded-lg bg-travel-media-bg object-cover"
+    />
   ) : (
-    <span className="admin-detail-media-preview media-thumbnail-placeholder" aria-hidden="true">
+    <span
+      className="block h-24 w-35 rounded-lg bg-travel-media-bg object-cover media-thumbnail-placeholder"
+      aria-hidden="true"
+    >
       {asset.media_kind === "video" ? "🎞" : "🖼"}
     </span>
   );
@@ -136,7 +145,7 @@ function MediaPreview({
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="card admin-detail-section">
+    <section id={id} className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0">
       <h2>{title}</h2>
       {children}
     </section>
@@ -231,7 +240,7 @@ export function TripDetail() {
     !media
   ) {
     return (
-      <section className="card" role={readError ? "alert" : "status"}>
+      <section className="travel-card" role={readError ? "alert" : "status"}>
         <h2>Private reis</h2>
         <p>{readError ? "De private reis kon niet volledig worden geladen." : "Private reis laden…"}</p>
       </section>
@@ -243,10 +252,10 @@ export function TripDetail() {
       openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorMessage(error, fallback)));
   };
   return (
-    <main className="admin-trip-detail" aria-labelledby="admin-trip-title">
-      <header className="trip-workspace-header">
+    <main className="grid gap-4.5" aria-labelledby="admin-trip-title">
+      <header className="flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch [&_h1]:m-0 [&_h2]:m-0 [&_h1]:text-2xl [&_h2]:text-2xl [&_p]:mt-1.5 [&_p]:mb-0 [&_p]:text-travel-muted">
         <div>
-          <p className="eyebrow">Alleen voor jou · volledig privéoverzicht</p>
+          <p className="travel-eyebrow">Alleen voor jou · volledig privéoverzicht</p>
           <h1 id="admin-trip-title">{trip.title}</h1>
           {trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}
         </div>
@@ -255,13 +264,16 @@ export function TripDetail() {
         </Link>
       </header>
       {trip.summary && (
-        <section className="card admin-detail-section" aria-label="Reissamenvatting">
+        <section className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0" aria-label="Reissamenvatting">
           <Markdown html={trip.summary_html} text={trip.summary} />
         </section>
       )}
       <TripOverview trip={trip} />
       <OwnerTripMap trip={trip} areas={areas} onOpenRecord={openMapRecord} />
-      <nav className="plan-jump-nav" aria-label="Onderdelen van dit overzicht">
+      <nav
+        className="flex flex-wrap gap-1.5 [&_a]:rounded-full [&_a]:border [&_a]:border-travel-card-border [&_a]:bg-travel-surface [&_a]:px-2.5 [&_a]:py-1.5 [&_a]:text-sm [&_a]:font-bold [&_a]:text-travel-muted [&_a]:no-underline [&_a:hover]:bg-travel-selected-bg [&_a:focus-visible]:bg-travel-selected-bg"
+        aria-label="Onderdelen van dit overzicht"
+      >
         {SECTIONS.map(({ id: sectionId, label }) => (
           <a key={sectionId} href={`#${sectionId}`}>
             {label}
@@ -276,7 +288,7 @@ export function TripDetail() {
 
       <Section id="updates" title="Reisupdates">
         {trip.travel_updates.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {trip.travel_updates
               .slice()
               .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
@@ -302,11 +314,11 @@ export function TripDetail() {
                     </>
                   )}
                   {update.media_asset_ids.length > 0 && (
-                    <div className="admin-detail-media-grid" role="group" aria-label={`Media bij ${update.title}`}>
+                    <div className="flex flex-wrap gap-3" role="group" aria-label={`Media bij ${update.title}`}>
                       {update.media_asset_ids.map((assetId) => {
                         const asset = mediaById.get(assetId);
                         return asset && owner ? (
-                          <div key={assetId} className="admin-detail-media-item">
+                          <div key={assetId} className="grid max-w-37.5 gap-1.25">
                             <MediaPreview asset={asset} session={owner.session} />
                             <RecordLink tripId={trip.id} kind="media" id={asset.id}>
                               {asset.original_filename ?? "Medium openen"}
@@ -325,7 +337,7 @@ export function TripDetail() {
       </Section>
       <Section id="visits" title="Bezoeken">
         {visits.length ? (
-          <ol className="admin-detail-list">
+          <ol className="travel-detail-list">
             {visits.map((visit) => (
               <li key={visit.id}>
                 <RecordHeading tripId={trip.id} kind="visit" id={visit.id}>
@@ -354,7 +366,7 @@ export function TripDetail() {
       </Section>
       <Section id="stays" title="Verblijven">
         {stays.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {stays
               .slice()
               .sort((a, b) => a.check_in_date.localeCompare(b.check_in_date))
@@ -403,7 +415,7 @@ export function TripDetail() {
       </Section>
       <Section id="routes" title="Routes">
         {routes.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {routes.map((route) => (
               <article key={route.id}>
                 <RecordHeading tripId={trip.id} kind="route" id={route.id}>
@@ -439,7 +451,7 @@ export function TripDetail() {
       </Section>
       <Section id="tasks" title="Taken">
         {tasks.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {tasks
               .slice()
               .sort(
@@ -477,10 +489,10 @@ export function TripDetail() {
       </Section>
       <Section id="locations" title="Locaties">
         {places.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {places.map((place) => (
               <article key={place.id}>
-                <div className="admin-detail-heading">
+                <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
                   <h3>{placeLabel(place)}</h3>
                   <Link className="action-link compact" to={`/trips/${encodeURIComponent(trip.id)}/plan`}>
                     Naar planning
@@ -501,7 +513,7 @@ export function TripDetail() {
       </Section>
       <Section id="areas" title="Gebieden">
         {areas.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {areas.map((place) => (
               <article key={place.id}>
                 <RecordHeading tripId={trip.id} kind="area" id={place.id}>
@@ -517,7 +529,7 @@ export function TripDetail() {
       </Section>
       <Section id="documents" title="Privédocumenten">
         {documents.length || libraryDocuments.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {documents.map((document) => (
               <article key={document.id}>
                 <RecordHeading tripId={trip.id} kind="document" id={document.id}>
@@ -527,18 +539,18 @@ export function TripDetail() {
                   {DOCUMENT_KIND_LABELS[document.document_kind]} · {document.original_filename ?? "Naamloos bestand"} ·{" "}
                   {bytesLabel(document.byte_size)}
                 </p>
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => openFile(document.file_url, "Het private document kon niet worden geopend.")}
                 >
                   Document openen
-                </button>
+                </Button>
               </article>
             ))}
             {libraryDocuments.map((document) => (
               <article key={`library-${document.id}`}>
-                <div className="admin-detail-heading">
+                <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
                   <h3>{document.title}</h3>
                   <Link className="action-link compact" to="/library">
                     Naar bibliotheek
@@ -547,13 +559,13 @@ export function TripDetail() {
                 <p>
                   Bibliotheek · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}
                 </p>
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => openFile(document.file_url, "Het bibliotheekdocument kon niet worden geopend.")}
                 >
                   Bibliotheekdocument openen
-                </button>
+                </Button>
               </article>
             ))}
           </div>
@@ -563,7 +575,7 @@ export function TripDetail() {
       </Section>
       <Section id="media" title="Privémedia">
         {media.length ? (
-          <div className="admin-detail-list">
+          <div className="travel-detail-list">
             {media.map((asset) => (
               <article key={asset.id}>
                 <RecordHeading tripId={trip.id} kind="media" id={asset.id}>
@@ -579,13 +591,13 @@ export function TripDetail() {
                     GPS: {asset.gps.latitude}, {asset.gps.longitude}
                   </p>
                 )}
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => openFile(asset.file_url, "De privemedia konden niet worden geopend.")}
                 >
                   Media openen
-                </button>
+                </Button>
               </article>
             ))}
           </div>

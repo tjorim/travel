@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createMemoryHistory,
@@ -54,8 +55,12 @@ function isPublicTripCards(value: unknown): value is PublicTripCard[] {
 
 function OwnerLink() {
   return (
-    <footer className="trip-index-footer">
-      <a href="/admin/" referrerPolicy="no-referrer">
+    <footer className="mt-10.5">
+      <a
+        className="font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+        href="/admin/"
+        referrerPolicy="no-referrer"
+      >
         Mijn reizen beheren
       </a>
     </footer>
@@ -96,43 +101,46 @@ function TripIndex() {
     return () => controller.abort();
   }, [attempt]);
   return (
-    <main className="shell trip-index">
+    <main className="travel-shell w-travel-index-shell! [&_h1]:max-w-none [&_section]:mt-10">
       <header>
-        <p className="eyebrow">Travel</p>
+        <p className="travel-eyebrow">Travel</p>
         <h1>Op reis</h1>
-        <p className="lede">Ontdek de reizen die hier publiek gedeeld worden.</p>
+        <p className="max-w-145 leading-relaxed text-travel-muted">Ontdek de reizen die hier publiek gedeeld worden.</p>
       </header>
       <section aria-label="Publieke reizen" aria-live="polite">
         {state.kind === "loading" && (
-          <div className="card" role="status">
+          <div className="travel-card" role="status">
             <h2>Reizen laden</h2>
             <p>Een ogenblik geduld.</p>
           </div>
         )}
         {state.kind === "error" && (
-          <div className="card" role="alert">
+          <div className="travel-card" role="alert">
             <h2>Reizen kunnen niet worden geladen</h2>
             <p>Probeer het opnieuw wanneer de verbinding werkt.</p>
-            <button type="button" onClick={() => setAttempt((current) => current + 1)}>
+            <Button type="button" onClick={() => setAttempt((current) => current + 1)}>
               Opnieuw proberen
-            </button>
+            </Button>
           </div>
         )}
         {state.kind === "ready" && state.trips.length === 0 && (
-          <div className="card" role="status">
+          <div className="travel-card" role="status">
             <h2>Nog geen publieke reizen</h2>
             <p>Kom later terug om nieuwe reizen te ontdekken.</p>
           </div>
         )}
         {state.kind === "ready" && state.trips.length > 0 && (
-          <ul className="trip-cards">
+          <ul className="m-0 grid list-none grid-cols-1 gap-4.5 p-0 min-[620px]:grid-cols-2 min-[960px]:grid-cols-3">
             {state.trips.map((trip) => (
               <li key={trip.slug}>
-                <Link className="trip-card card" to={`/trips/${encodeURIComponent(trip.slug)}`}>
-                  <span className="eyebrow">{tripDates(trip.dates) ?? "Publieke reis"}</span>
+                <Link
+                  className="travel-card flex h-full flex-col text-inherit no-underline transition-all hover:-translate-y-0.75 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus [&_h2]:mb-3 [&_h2]:text-2xl [&_p]:wrap-anywhere"
+                  to={`/trips/${encodeURIComponent(trip.slug)}`}
+                >
+                  <span className="travel-eyebrow">{tripDates(trip.dates) ?? "Publieke reis"}</span>
                   <h2>{trip.title ?? "Gepubliceerde reis"}</h2>
                   {(trip.summary_text ?? trip.summary) && <p>{trip.summary_text ?? trip.summary}</p>}
-                  <span className="trip-card-link">
+                  <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
                     Bekijk reis <span aria-hidden="true">→</span>
                   </span>
                 </Link>
@@ -144,21 +152,26 @@ function TripIndex() {
       {savedTrips.length > 0 && (
         <section aria-label="Op dit apparaat bewaarde verborgen reizen">
           <h2>Eerder bekeken verborgen reizen</h2>
-          <p className="lede">Alleen in deze browser bewaard. Wie dit apparaat gebruikt, kan deze links openen.</p>
-          <ul className="trip-cards">
+          <p className="max-w-145 leading-relaxed text-travel-muted">
+            Alleen in deze browser bewaard. Wie dit apparaat gebruikt, kan deze links openen.
+          </p>
+          <ul className="m-0 grid list-none grid-cols-1 gap-4.5 p-0 min-[620px]:grid-cols-2 min-[960px]:grid-cols-3">
             {savedTrips.map((trip) => (
-              <li key={trip.token} className="saved-trip">
-                <Link className="trip-card card" to={`/share/${encodeURIComponent(trip.token)}`}>
-                  <span className="eyebrow">Verborgen reis</span>
+              <li key={trip.token} className="grid gap-2 [&>button]:justify-self-start">
+                <Link
+                  className="travel-card flex h-full flex-col text-inherit no-underline transition-all hover:-translate-y-0.75 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus [&_h2]:mb-3 [&_h2]:text-2xl [&_p]:wrap-anywhere"
+                  to={`/share/${encodeURIComponent(trip.token)}`}
+                >
+                  <span className="travel-eyebrow">Verborgen reis</span>
                   <h2>{trip.title ?? "Gedeelde reis"}</h2>
                   {trip.summary && <p>{trip.summary}</p>}
-                  <span className="trip-card-link">
+                  <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
                     Bekijk reis <span aria-hidden="true">→</span>
                   </span>
                 </Link>
-                <button className="secondary compact" type="button" onClick={() => forget(trip.token)}>
+                <Button className="secondary compact" type="button" onClick={() => forget(trip.token)}>
                   Verwijderen van dit apparaat
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -217,30 +230,30 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
   return (
-    <main className="shell">
+    <main className="travel-shell">
       <header>
-        <p className="eyebrow">Travel</p>
+        <p className="travel-eyebrow">Travel</p>
         <h1>{state.kind === "ready" && state.projection.title ? state.projection.title : "Gedeelde reis"}</h1>
       </header>
       {state.kind === "loading" && (
-        <section className="card" role="status" aria-live="polite">
+        <section className="travel-card" role="status" aria-live="polite">
           <h2>Reis laden</h2>
           <p>Een ogenblik geduld.</p>
         </section>
       )}
       {state.kind === "unavailable" && (
-        <section className="card" role="status">
+        <section className="travel-card" role="status">
           <h2>Reis niet beschikbaar</h2>
           <p>Deze reis is niet beschikbaar.</p>
         </section>
       )}
       {state.kind === "error" && (
-        <section className="card" role="alert">
+        <section className="travel-card" role="alert">
           <h2>Reis kan niet worden geladen</h2>
           <p>Probeer het opnieuw wanneer de verbinding werkt.</p>
-          <button type="button" onClick={retry}>
+          <Button type="button" onClick={retry}>
             Opnieuw proberen
-          </button>
+          </Button>
         </section>
       )}
       {state.kind === "ready" && (
@@ -257,8 +270,8 @@ function VisitorRoute({ audience }: { audience: Audience }) {
   return identifier ? (
     <VisitorPage key={`${audience}:${identifier}`} audience={audience} identifier={identifier} />
   ) : (
-    <main className="shell">
-      <section className="card" role="status">
+    <main className="travel-shell">
+      <section className="travel-card" role="status">
         <h1>Reis niet beschikbaar</h1>
       </section>
     </main>
@@ -282,8 +295,8 @@ const visitorNotFoundRoute = createRoute({
   getParentRoute: () => visitorRootRoute,
   path: "$",
   component: () => (
-    <main className="shell">
-      <section className="card" role="status">
+    <main className="travel-shell">
+      <section className="travel-card" role="status">
         <h1>Pagina niet beschikbaar</h1>
       </section>
     </main>

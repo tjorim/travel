@@ -405,7 +405,7 @@ it("links documents to a route and forgets a deleted one after the in-app confir
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Route Amsterdam → Taoyuan bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.click(await screen.findByLabelText("Ticket"));
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Ticket" }));
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("PATCH /api/trips/trip/routes/r-flight")).toMatchObject({ document_asset_ids: ["d1"] });

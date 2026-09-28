@@ -122,7 +122,7 @@ it("groups canonical items, filters unpacked and shows known weight", async () =
   renderWithOwner(<PackingManager trip={trip} />);
   expect(within(await screen.findByRole("region", { name: "Niet toegewezen" })).getByText("Paspoort")).toBeTruthy();
   expect(screen.getByText(/600 g bekend/)).toBeTruthy();
-  expect(screen.getByRole("progressbar", { name: "Totale inpakvoortgang" }).getAttribute("value")).toBe("1");
+  expect(screen.getByRole("progressbar", { name: "Totale inpakvoortgang" }).getAttribute("aria-valuenow")).toBe("1");
   fireEvent.click(screen.getByRole("radio", { name: "Per categorie" }));
   expect(screen.getByRole("region", { name: "Kleding" })).toBeTruthy();
   expect(screen.getAllByText("2 × Sokken")).toHaveLength(1);
@@ -174,7 +174,7 @@ it("retains a failed toggle for retry", async () => {
   fireEvent.click(checkbox);
   fireEvent.click(await screen.findByRole("button", { name: "Opnieuw proberen: Sokken" }));
   await waitFor(() => expect(screen.queryByRole("button", { name: "Opnieuw proberen: Sokken" })).toBeNull());
-  expect((checkbox as HTMLInputElement).checked).toBe(true);
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
 });
 
 it("moves items through edit and quick adds into a bag without order controls", async () => {
@@ -259,8 +259,8 @@ it("saves a private read-only snapshot and restores its filters offline", async 
   const offlineView = await screen.findByRole("region", { name: "Offline paklijst Paklijst" });
   expect(within(offlineView).getByText(/bewaard op/)).toBeTruthy();
   expect(within(offlineView).getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/)).toBeTruthy();
-  expect((within(offlineView).getByRole("checkbox", { name: "Sokken ingepakt" }) as HTMLInputElement).disabled).toBe(
-    true,
+  expect(within(offlineView).getByRole("checkbox", { name: "Sokken ingepakt" }).getAttribute("aria-disabled")).toBe(
+    "true",
   );
   expect(screen.queryByRole("button", { name: "Tas toevoegen" })).toBeNull();
   fireEvent.click(within(offlineView).getByRole("radio", { name: "Per categorie" }));

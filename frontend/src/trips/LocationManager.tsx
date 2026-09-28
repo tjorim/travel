@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useEffect, useState } from "react";
 
 import { CheckboxField, RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
@@ -264,7 +265,7 @@ export function LocationManager({
   return (
     <>
       {resume && !editing && (
-        <button
+        <Button
           type="button"
           className="secondary compact"
           onClick={() => {
@@ -273,7 +274,7 @@ export function LocationManager({
           }}
         >
           Locatieconcept hervatten
-        </button>
+        </Button>
       )}
       <RecordDialog
         open={editing || selected !== null}
@@ -329,9 +330,9 @@ export function LocationManager({
             />
             {notice && <p role="status">{notice}</p>}
             <div className="button-row">
-              <button type="button" onClick={() => edit(selected)}>
+              <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -349,14 +350,14 @@ export function LocationManager({
                 !record.values.locality.trim())
             }
             actions={
-              <button className="secondary" type="button" onClick={close}>
+              <Button className="secondary" type="button" onClick={close}>
                 Annuleren
-              </button>
+              </Button>
             }
           >
             {!areas.length && <p>Maak eerst een gebied. Je locatieconcept blijft bewaard.</p>}
             {!areas.length && (
-              <button
+              <Button
                 type="button"
                 className="secondary"
                 onClick={() => {
@@ -366,7 +367,7 @@ export function LocationManager({
                 }}
               >
                 Gebied toevoegen
-              </button>
+              </Button>
             )}
             <record.form.Field
               name="areaId"
@@ -384,7 +385,7 @@ export function LocationManager({
               )}
             </record.form.Field>
             {areas.length > 0 && (
-              <button
+              <Button
                 type="button"
                 className="secondary compact"
                 onClick={() => {
@@ -394,7 +395,7 @@ export function LocationManager({
                 }}
               >
                 Nieuw gebied toevoegen
-              </button>
+              </Button>
             )}
             {!editingId && (
               <PlaceSearchField

@@ -1,3 +1,6 @@
+import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { Button } from "@base-ui/react/button";
+import { Collapsible } from "@base-ui/react/collapsible";
 import { useRef, useState } from "react";
 
 import { RecordForm, SelectField, TextAreaField, TextField } from "../forms/fields";
@@ -336,7 +339,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
   };
 
   return (
-    <section className="card manager" id="routes" aria-labelledby="routes-title">
+    <section className="travel-card manager" id="routes" aria-labelledby="routes-title">
       <div className="capture-heading">
         <div>
           <h3 id="routes-title">Routes</h3>
@@ -345,9 +348,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
             zijn optioneel en blijven privé. Je kunt er een lijn bij tekenen.
           </p>
         </div>
-        <button className="secondary compact" type="button" onClick={create}>
+        <Button className="secondary compact" type="button" onClick={create}>
           Nieuwe route
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {readError
@@ -397,12 +400,12 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               documenten, en een station alleen als je die locatie zelf deelt.
             </p>
             <div className="button-row">
-              <button type="button" onClick={() => edit(selected)}>
+              <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
-              </button>
-              <button className="danger" type="button" onClick={() => setDeleteTarget(selected)}>
+              </Button>
+              <Button className="danger" type="button" onClick={() => setDeleteTarget(selected)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -472,7 +475,8 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
             </record.form.Field>
             <fieldset>
               <legend>
-                Tijden <span className="optional">(optioneel, zodra je een verbinding kiest)</span>
+                Tijden{" "}
+                <span className="font-medium text-travel-optional">(optioneel, zodra je een verbinding kiest)</span>
               </legend>
               <datalist id="route-time-zones">
                 {timeZoneOptions().map((zone) => (
@@ -514,88 +518,94 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 </record.form.Field>
               </div>
             </fieldset>
-            <details
-              open={Boolean(
+            <Collapsible.Root
+              defaultOpen={Boolean(
                 record.form.state.values.carrier ||
                 record.form.state.values.bookingReference ||
                 record.form.state.values.notes,
               )}
             >
-              <summary>Boekingsdetails (optioneel, privé)</summary>
-              <div className="field-row">
-                <record.form.Field name="carrier">
+              <Collapsible.Trigger className="w-full bg-transparent px-0 text-left text-travel-forest">
+                Boekingsdetails (optioneel, privé)
+              </Collapsible.Trigger>
+              <Collapsible.Panel keepMounted className="grid gap-3">
+                <div className="field-row">
+                  <record.form.Field name="carrier">
+                    {(input) => (
+                      <TextField
+                        field={input}
+                        label="Vervoerder"
+                        optional
+                        maxLength={160}
+                        placeholder="Bijvoorbeeld: EVA Air"
+                      />
+                    )}
+                  </record.form.Field>
+                  <record.form.Field name="serviceReference">
+                    {(input) => (
+                      <TextField
+                        field={input}
+                        label="Vlucht-/dienstnummer"
+                        optional
+                        maxLength={40}
+                        placeholder="BR-087"
+                      />
+                    )}
+                  </record.form.Field>
+                </div>
+                <record.form.Field name="travelClass">
                   {(input) => (
                     <TextField
                       field={input}
-                      label="Vervoerder"
+                      label="Reisklasse"
                       optional
-                      maxLength={160}
-                      placeholder="Bijvoorbeeld: EVA Air"
+                      maxLength={80}
+                      placeholder="Bijvoorbeeld: Premium Economy"
                     />
                   )}
                 </record.form.Field>
-                <record.form.Field name="serviceReference">
-                  {(input) => (
-                    <TextField
-                      field={input}
-                      label="Vlucht-/dienstnummer"
-                      optional
-                      maxLength={40}
-                      placeholder="BR-087"
-                    />
-                  )}
+                <record.form.Field name="bookingReference">
+                  {(input) => <TextField field={input} label="Boekingsreferentie" optional maxLength={255} />}
                 </record.form.Field>
-              </div>
-              <record.form.Field name="travelClass">
-                {(input) => (
-                  <TextField
-                    field={input}
-                    label="Reisklasse"
-                    optional
-                    maxLength={80}
-                    placeholder="Bijvoorbeeld: Premium Economy"
-                  />
+                <record.form.Field name="notes">
+                  {(input) => <MarkdownField field={input} label="Notities" optional maxLength={4000} rows={3} />}
+                </record.form.Field>
+                {documents.length > 0 && (
+                  <record.form.Field name="documentAssetIds">
+                    {(input) => (
+                      <fieldset>
+                        <legend>
+                          Gekoppelde documenten <span className="font-medium text-travel-optional">(optioneel)</span>
+                        </legend>
+                        {documents.map((document) => (
+                          <label
+                            className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold"
+                            key={document.id}
+                          >
+                            <TravelCheckbox
+                              checked={input.state.value.includes(document.id)}
+                              onCheckedChange={() =>
+                                input.handleChange(
+                                  input.state.value.includes(document.id)
+                                    ? input.state.value.filter((id) => id !== document.id)
+                                    : [...input.state.value, document.id],
+                                )
+                              }
+                            />
+                            {document.title}
+                          </label>
+                        ))}
+                      </fieldset>
+                    )}
+                  </record.form.Field>
                 )}
-              </record.form.Field>
-              <record.form.Field name="bookingReference">
-                {(input) => <TextField field={input} label="Boekingsreferentie" optional maxLength={255} />}
-              </record.form.Field>
-              <record.form.Field name="notes">
-                {(input) => <MarkdownField field={input} label="Notities" optional maxLength={4000} rows={3} />}
-              </record.form.Field>
-              {documents.length > 0 && (
-                <record.form.Field name="documentAssetIds">
-                  {(input) => (
-                    <fieldset>
-                      <legend>
-                        Gekoppelde documenten <span className="optional">(optioneel)</span>
-                      </legend>
-                      {documents.map((document) => (
-                        <label className="media-choice" key={document.id}>
-                          <input
-                            type="checkbox"
-                            checked={input.state.value.includes(document.id)}
-                            onChange={() =>
-                              input.handleChange(
-                                input.state.value.includes(document.id)
-                                  ? input.state.value.filter((id) => id !== document.id)
-                                  : [...input.state.value, document.id],
-                              )
-                            }
-                          />
-                          {document.title}
-                        </label>
-                      ))}
-                    </fieldset>
-                  )}
-                </record.form.Field>
-              )}
-            </details>
+              </Collapsible.Panel>
+            </Collapsible.Root>
             <record.form.Field name="coordinates" validators={{ onBlur: validCoordinates, onSubmit: validCoordinates }}>
               {(input) => (
                 <fieldset>
                   <legend>
-                    Lijn op de kaart <span className="optional">(optioneel)</span>
+                    Lijn op de kaart <span className="font-medium text-travel-optional">(optioneel)</span>
                   </legend>
                   <RouteGeometryEditor
                     coordinates={editableCoordinates(input.state.value)}
@@ -607,15 +617,19 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                       ...areaPoint(record.form.state.values.arrival),
                     ]}
                   />
-                  <details className="route-geometry-advanced">
-                    <summary>Geavanceerd: coördinaten als JSON plakken</summary>
-                    <TextAreaField
-                      field={input}
-                      label="Lijncoördinaten (JSON)"
-                      optional
-                      placeholder="[[121.5,25.0],[121.6,25.1]]"
-                    />
-                  </details>
+                  <Collapsible.Root className="border-t border-travel-divider pt-2.5">
+                    <Collapsible.Trigger className="w-full bg-transparent p-0 text-left font-bold text-travel-forest">
+                      Geavanceerd: coördinaten als JSON plakken
+                    </Collapsible.Trigger>
+                    <Collapsible.Panel keepMounted className="mt-2.5">
+                      <TextAreaField
+                        field={input}
+                        label="Lijncoördinaten (JSON)"
+                        optional
+                        placeholder="[[121.5,25.0],[121.6,25.1]]"
+                      />
+                    </Collapsible.Panel>
+                  </Collapsible.Root>
                 </fieldset>
               )}
             </record.form.Field>
@@ -623,10 +637,10 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
         )}
       </RecordDialog>
       {routes.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {routes.map((route) => (
             <article className="excerpt-row" key={route.id}>
-              <button
+              <Button
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(route.id)}
@@ -645,10 +659,10 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
-              </button>
-              <button className="danger compact" type="button" onClick={() => setDeleteTarget(route)}>
+              </Button>
+              <Button className="danger compact" type="button" onClick={() => setDeleteTarget(route)}>
                 Verwijderen
-              </button>
+              </Button>
             </article>
           ))}
         </div>

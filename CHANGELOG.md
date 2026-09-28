@@ -158,11 +158,20 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Owner, public and unlisted views now use Tailwind utilities and named Travel
+  theme tokens for their application styling. The legacy class allowlist is
+  removed; Tailwind's base layer handles document and form defaults, and the
+  remaining stylesheet covers sanitized Markdown. Buttons, inputs,
+  checkboxes, textareas, disclosures and packing progress use Base UI
+  primitives with Tailwind styling. Desktop and mobile layouts retain the
+  existing visual identity.
+  ([#264](https://github.com/tjorim/travel/issues/264))
+
 - Shared record editors now use Base UI Dialog, with Base UI Alert Dialog for
   discard and delete confirmations. Their presentation uses Tailwind theme
   values, retains the mobile sheet, and guards Escape, outside presses, and
-  close buttons when there are unsaved changes. The broader view styling
-  migration remains tracked in [#264](https://github.com/tjorim/travel/issues/264).
+  close buttons when there are unsaved changes.
+  ([#264](https://github.com/tjorim/travel/issues/264))
 
 - Transport booking badges count non-cancelled routes with a departure day,
   including journeys without exact times, while leaving undated map routes

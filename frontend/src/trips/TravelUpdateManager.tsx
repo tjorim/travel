@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
@@ -160,7 +161,7 @@ export function TravelUpdateManager({
   const { selected, editing, editingId } = dialog;
 
   return (
-    <section className="card manager" aria-labelledby="updates-title">
+    <section className="travel-card manager" aria-labelledby="updates-title">
       <div className="capture-heading">
         <div>
           <h3 id="updates-title">Reisupdates</h3>
@@ -169,18 +170,18 @@ export function TravelUpdateManager({
             titel en de tekst voor bezoekers deel je alleen als je dat kiest.
           </p>
         </div>
-        <button className="secondary compact" type="button" onClick={create}>
+        <Button className="secondary compact" type="button" onClick={create}>
           Nieuwe update
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {message}
       </p>
       {trip.travel_updates.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {trip.travel_updates.map((item) => (
             <article className="excerpt-row" key={item.id}>
-              <button
+              <Button
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(item.id)}
@@ -191,7 +192,7 @@ export function TravelUpdateManager({
                   {updateDateLabel(item.occurred_at, item.date_precision)} · {visibilityLabel(item.visibility)} ·{" "}
                   {item.area?.label ?? "geen plaats"}
                 </span>
-              </button>
+              </Button>
             </article>
           ))}
         </div>
@@ -238,12 +239,12 @@ export function TravelUpdateManager({
               name={selected.title}
             />
             <div className="button-row">
-              <button type="button" onClick={() => edit(selected)}>
+              <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
-              </button>
-              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              </Button>
+              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
@@ -318,13 +319,13 @@ export function TravelUpdateManager({
                   {place && (
                     <p className="help">
                       Gekozen locatie: {locationName(place)}{" "}
-                      <button
+                      <Button
                         className="compact secondary"
                         type="button"
                         onClick={() => record.form.setFieldValue("location", null)}
                       >
                         Locatie wissen
-                      </button>
+                      </Button>
                     </p>
                   )}
                 </>

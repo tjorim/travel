@@ -1,8 +1,13 @@
+import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { TravelTextarea } from "../ui/TravelTextarea";
+import { Input } from "@base-ui/react/input";
+import { Button } from "@base-ui/react/button";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   createContext,
   useContext,
   useId,
+  type ComponentProps,
   type InputHTMLAttributes,
   type ReactNode,
   type RefObject,
@@ -60,9 +65,9 @@ export function RecordForm({
           </p>
         )}
         <div className="button-row">
-          <button type="submit" disabled={pending || disabled}>
+          <Button type="submit" disabled={pending || disabled}>
             {pending ? pendingLabel : submitLabel}
-          </button>
+          </Button>
           {actions}
         </div>
       </form>
@@ -88,7 +93,9 @@ export const optionalNote = (optional: Common["optional"]) =>
   optional ? (
     <>
       {" "}
-      <span className="optional">{typeof optional === "string" ? optional : "(optioneel)"}</span>
+      <span className="font-medium text-travel-optional">
+        {typeof optional === "string" ? optional : "(optioneel)"}
+      </span>
     </>
   ) : null;
 
@@ -105,7 +112,7 @@ export function TextField({
       <label>
         {label}
         {optionalNote(optional)}
-        <input
+        <Input
           {...rest}
           name={field.name}
           value={field.state.value ?? ""}
@@ -138,7 +145,7 @@ export function TextAreaField({
       <label>
         {label}
         {optionalNote(optional)}
-        <textarea
+        <TravelTextarea
           {...rest}
           name={field.name}
           value={field.state.value ?? ""}
@@ -203,21 +210,21 @@ export const requiredText =
 export function CheckboxField({
   field,
   label,
-  className = "media-choice",
+  className = "flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold",
   ...input
 }: { field: AnyFieldApi; label: ReactNode; className?: string } & Omit<
-  InputHTMLAttributes<HTMLInputElement>,
-  "checked" | "value" | "onChange" | "onBlur" | "name" | "type"
+  ComponentProps<typeof TravelCheckbox>,
+  "checked" | "defaultChecked" | "onCheckedChange" | "name" | "children" | "className"
 >) {
   return (
     <label className={className}>
-      <input
+      <TravelCheckbox
         {...input}
-        type="checkbox"
+
         name={field.name}
         checked={Boolean(field.state.value)}
         onBlur={field.handleBlur}
-        onChange={(event) => field.handleChange(event.target.checked)}
+        onCheckedChange={(checked) => field.handleChange(checked)}
       />
       {label}
     </label>

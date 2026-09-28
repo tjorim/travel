@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -161,29 +162,33 @@ export function OwnerHome() {
   if (!session) return <EmptyState title="Jouw reizen">Meld aan om je private reiswerkruimte te openen.</EmptyState>;
   if (state === "loading")
     return (
-      <section className="card" role="status">
+      <section className="travel-card" role="status">
         <h2>Jouw reizen</h2>
         <p>{message}</p>
       </section>
     );
   if (state === "error")
     return (
-      <section className="card" role="alert">
+      <section className="travel-card" role="alert">
         <h2>Je reiswerkruimte is niet beschikbaar</h2>
         <p>{message}</p>
-        <button type="button" onClick={() => window.location.reload()}>
+        <Button type="button" onClick={() => window.location.reload()}>
           Opnieuw proberen
-        </button>
+        </Button>
       </section>
     );
 
   return (
-    <main className="owner-home" aria-labelledby="owner-home-title">
+    <main className="grid gap-6.5" aria-labelledby="owner-home-title">
       <header className="capture-heading">
         <div>
-          <p className="eyebrow">Private reiswerkruimte</p>
-          <h1 id="owner-home-title">Waar wil je verder?</h1>
-          <p className="lede">Je reizen, aandachtspunten en herinneringen op één rustige plek.</p>
+          <p className="travel-eyebrow">Private reiswerkruimte</p>
+          <h1 className="max-w-travel-home-title" id="owner-home-title">
+            Waar wil je verder?
+          </h1>
+          <p className="max-w-145 leading-relaxed text-travel-muted">
+            Je reizen, aandachtspunten en herinneringen op één rustige plek.
+          </p>
         </div>
         <div className="button-row">
           <a className="secondary action-link" href="/">
@@ -200,8 +205,10 @@ export function OwnerHome() {
         </p>
       )}
       {unreadAlerts.length > 0 && (
-        <section className="card owner-inbox" aria-labelledby="inbox-title">
-          <h2 id="inbox-title">Inbox</h2>
+        <section className="travel-card" aria-labelledby="inbox-title">
+          <h2 className="m-0" id="inbox-title">
+            Inbox
+          </h2>
           <p>
             {unreadAlerts.length} {unreadAlerts.length === 1 ? "nieuwe herinnering" : "nieuwe herinneringen"}
           </p>
@@ -214,7 +221,7 @@ export function OwnerHome() {
                     {alert.trip.title} · gepland voor {formatInstant(alert.scheduled_for)}
                   </span>
                 </div>
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() =>
@@ -226,25 +233,29 @@ export function OwnerHome() {
                   }
                 >
                   Gelezen
-                </button>
+                </Button>
               </article>
             ))}
           </div>
         </section>
       )}
       <section aria-labelledby="trip-list-title">
-        <div className="section-heading">
-          <h2 id="trip-list-title">Nu en binnenkort</h2>
-          <Link to="/trips">Alle reizen beheren</Link>
+        <div className="mb-3 flex items-baseline justify-between gap-4">
+          <h2 className="m-0" id="trip-list-title">
+            Nu en binnenkort
+          </h2>
+          <Link className="font-bold text-travel-forest" to="/trips">
+            Alle reizen beheren
+          </Link>
         </div>
         {visibleTrips.length ? (
-          <div className="owner-trip-cards">
+          <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 min-[900px]:grid-cols-3">
             {visibleTrips.map((trip) => {
               const snapshot = snapshots[trip.id] ?? { stays: [], routes: [], tasks: [], alerts: [] };
               const status = tripState(trip, day);
               return (
-                <article className="card owner-trip-card" key={trip.id}>
-                  <p className="eyebrow">
+                <article className="travel-card flex flex-col gap-3 [&_h3]:m-0 [&_p]:m-0" key={trip.id}>
+                  <p className="travel-eyebrow">
                     {status === "active" ? "Nu op reis" : status === "upcoming" ? "Binnenkort" : "Nog plannen"}
                   </p>
                   <h3>{trip.title}</h3>
@@ -256,11 +267,11 @@ export function OwnerHome() {
                   ) : (
                     <p>Kies reisdata wanneer je klaar bent om te plannen.</p>
                   )}
-                  <p className="next-action">
+                  <p className="grid gap-0.75 rounded-travel-media bg-travel-tint px-3 py-2.75 text-sm text-travel-positive! [&_strong]:text-travel-ink">
                     <strong>Volgende stap</strong>
                     {nextAction(trip, snapshot)}
                   </p>
-                  <Link className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>
+                  <Link className="action-link mt-auto w-fit" to={`/trips/${encodeURIComponent(trip.id)}`}>
                     Open reis
                   </Link>
                 </article>
@@ -268,7 +279,7 @@ export function OwnerHome() {
             })}
           </div>
         ) : (
-          <section className="card">
+          <section className="travel-card">
             <h3>{trips.length ? "Geen actieve of komende reizen" : "Begin met je eerste reis"}</h3>
             <p>{trips.length ? "Eerdere reizen blijven beschikbaar via beheren." : message}</p>
             <Link className="action-link" to="/trips" search={{ new: "1" }}>
@@ -278,11 +289,17 @@ export function OwnerHome() {
         )}
       </section>
       {recentUpdates.length > 0 && (
-        <section className="card owner-activity" aria-labelledby="activity-title">
-          <h2 id="activity-title">Recent vastgelegd</h2>
+        <section className="travel-card grid gap-3.5" aria-labelledby="activity-title">
+          <h2 className="m-0" id="activity-title">
+            Recent vastgelegd
+          </h2>
           <div className="saved-records">
             {recentUpdates.map((update) => (
-              <Link className="activity-row" key={update.id} to={`/trips/${encodeURIComponent(update.trip.id)}`}>
+              <Link
+                className="grid gap-1 rounded-travel-media border border-travel-divider p-3 text-travel-ink no-underline hover:border-travel-forest hover:bg-travel-hover [&_span]:text-sm [&_span]:text-travel-muted"
+                key={update.id}
+                to={`/trips/${encodeURIComponent(update.trip.id)}`}
+              >
                 <strong>{update.title}</strong>
                 <span>
                   {update.trip.title} · {formatInstant(update.occurred_at)}

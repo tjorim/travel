@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useOfflineCopies } from "../offline/useOfflineCopies";
@@ -223,7 +224,7 @@ export function OwnerTripMap({
         }
       />
       <div className="button-row">
-        <button
+        <Button
           className="secondary compact"
           type="button"
           disabled={displayedPoints.length === 0 && lines.length === 0}
@@ -234,7 +235,7 @@ export function OwnerTripMap({
           }
         >
           {offline.isPinned("route_data", trip.id) ? "Offline verwijderen" : "Kaart offline bewaren"}
-        </button>
+        </Button>
       </div>
       <p className="help">
         Alleen de private GeoJSON-kaartgegevens worden bewust bewaard; kaarttegels worden niet offline opgeslagen.

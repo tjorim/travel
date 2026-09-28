@@ -206,7 +206,7 @@ it("searches a place, lets the owner choose it and sends it with the update", as
 
 it("links a private photo to the update", async () => {
   renderCapture();
-  fireEvent.click(await screen.findByLabelText("markt.jpg"));
+  fireEvent.click(await screen.findByRole("checkbox", { name: /markt.jpg/ }));
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Markt" } });
   fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), { target: { value: "Fruit" } });
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));

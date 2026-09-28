@@ -1,4 +1,6 @@
+import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "cn";
 import type { FeatureCollection, LineString } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -126,7 +128,7 @@ export function RouteGeometryEditor({
             if (modeRef.current === "preview") return;
             if (
               event.originalEvent.target instanceof Element &&
-              event.originalEvent.target.closest(".route-geometry-marker")
+              event.originalEvent.target.closest("[data-route-marker]")
             )
               return;
             const next: RouteCoordinate = [roundedCoordinate(event.lngLat.lng), roundedCoordinate(event.lngLat.lat)];
@@ -179,7 +181,9 @@ export function RouteGeometryEditor({
     markers.current.forEach((marker) => marker.remove());
     markers.current = points.map((coordinate, index) => {
       const element = document.createElement("div");
-      element.className = "route-geometry-marker";
+      element.dataset.routeMarker = "";
+      element.className =
+        "grid size-7 place-items-center rounded-full border-2 border-travel-ink bg-travel-map-marker text-xs font-extrabold text-travel-ink shadow-sm select-none";
       element.textContent = String(index + 1);
       const editable = modeRef.current === "edit";
       element.title = editable ? `Routepunt ${index + 1} verslepen` : `Routepunt ${index + 1}`;
@@ -225,23 +229,30 @@ export function RouteGeometryEditor({
   }
 
   return (
-    <section className={`route-geometry-editor${preview ? " preview" : ""}`} aria-labelledby="route-geometry-title">
+    <section className="grid gap-2.5" aria-labelledby="route-geometry-title">
       <div>
-        <h3 id="route-geometry-title">{preview ? "Routevoorbeeld" : "Route tekenen op kaart"}</h3>
-        <p>
+        <h3 className="m-0 text-base" id="route-geometry-title">
+          {preview ? "Routevoorbeeld" : "Route tekenen op kaart"}
+        </h3>
+        <p className="mt-1 mb-0 text-sm leading-normal text-travel-muted">
           {preview
             ? "Dit is de opgeslagen route op kaart. De kaart is alleen ter controle; bewerken gebeurt via de knop hieronder."
             : "Klik de algemene plaatsen van je route in volgorde aan. Versleep een genummerd punt om het te verbeteren. Elke positie wordt afgerond tot ongeveer 100 meter; teken geen exacte track."}
         </p>
       </div>
-      <div className="route-geometry-canvas-wrap">
+      <div
+        className={cn(
+          "relative h-route-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
+          preview && "h-route-preview-canvas",
+        )}
+      >
         <div
           ref={canvas}
-          className="route-geometry-canvas"
+          className="size-full"
           aria-label={preview ? "Kaartvoorbeeld van route" : "Kaarteditor voor route"}
         />
         {error && (
-          <p className="route-geometry-fallback">
+          <p className="absolute inset-0 m-0 grid place-content-center bg-travel-map-bg p-6 text-center">
             {preview
               ? "Het routevoorbeeld kon niet worden geladen."
               : "De kaarteditor kon niet worden geladen. Je kunt hieronder nog coördinaten als JSON plakken."}
@@ -251,43 +262,43 @@ export function RouteGeometryEditor({
       {!preview && (
         <>
           <div className="button-row">
-            <button
+            <Button
               className="secondary compact"
               type="button"
               disabled={!ready || !editorCoordinates.length}
               onClick={() => showWholeRoute()}
             >
               Route tonen
-            </button>
-            <button
+            </Button>
+            <Button
               className="secondary compact"
               type="button"
               disabled={!editorCoordinates.length}
               onClick={() => commit(editorCoordinates.slice(0, -1))}
             >
               Laatste punt verwijderen
-            </button>
-            <button
+            </Button>
+            <Button
               className="secondary compact"
               type="button"
               disabled={!editorCoordinates.length}
               onClick={() => commit([])}
             >
               Punten wissen
-            </button>
+            </Button>
           </div>
           {suggestions.length > 0 && (
-            <div className="route-geometry-suggestions">
+            <div className="flex flex-wrap items-center gap-1.75 text-sm text-travel-muted">
               <span>Gebruik een gebied:</span>
               {suggestions.map((suggestion) => (
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   key={suggestion.label}
                   onClick={() => addSuggestion(suggestion)}
                 >
                   Voeg {suggestion.label} toe
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -301,7 +312,10 @@ export function RouteGeometryEditor({
             : `${editorCoordinates.length} ${editorCoordinates.length === 1 ? "punt" : "punten"} · minstens twee punten zijn nodig.`}
       </p>
       {!preview && editorCoordinates.length > 0 && (
-        <ol className="route-geometry-points" aria-label="Routepunten">
+        <ol
+          className="m-0 flex list-none flex-wrap gap-x-3.5 gap-y-1.25 p-0 text-xs text-travel-muted"
+          aria-label="Routepunten"
+        >
           {editorCoordinates.map(([longitude, latitude], index) => (
             <li key={`${longitude}-${latitude}-${index}`}>
               Punt {index + 1}: {latitude.toFixed(3)}, {longitude.toFixed(3)}

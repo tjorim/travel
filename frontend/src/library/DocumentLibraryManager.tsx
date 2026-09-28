@@ -1,3 +1,5 @@
+import { Input } from "@base-ui/react/input";
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { AsyncSearchSelect, RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
@@ -125,24 +127,24 @@ export function DocumentLibraryManager() {
     `${document.original_filename ?? "Naamloos bestand"} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
 
   return (
-    <section className="card manager" aria-labelledby="library-documents-title">
+    <section className="travel-card manager" aria-labelledby="library-documents-title">
       <div className="capture-heading">
         <div>
           <h3 id="library-documents-title">Documenten</h3>
           <p>Herbruikbare essentials zoals een verzekeringspolis of identiteitskopie, los van één specifieke reis.</p>
         </div>
-        <button className="secondary compact" type="button" onClick={create}>
+        <Button className="secondary compact" type="button" onClick={create}>
           Nieuw document
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {message}
       </p>
       {documents.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {documents.map((document) => (
-            <article className="excerpt-row stacked" key={document.id}>
-              <button
+            <article className="excerpt-row" data-stacked="" key={document.id}>
+              <Button
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(document.id)}
@@ -150,9 +152,9 @@ export function DocumentLibraryManager() {
               >
                 <strong>{document.title}</strong>
                 <span>{summary(document)}</span>
-              </button>
+              </Button>
               <div className="button-row">
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => {
@@ -165,14 +167,14 @@ export function DocumentLibraryManager() {
                   }}
                 >
                   Bekijken
-                </button>
-                <button
+                </Button>
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}
                 >
                   {offline.isPinned("library_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -194,9 +196,9 @@ export function DocumentLibraryManager() {
               <p>{summary(selected)}</p>
             </div>
             <div className="button-row">
-              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
@@ -234,7 +236,7 @@ export function DocumentLibraryManager() {
               {(field) => (
                 <div className="field">
                   <label>
-                    Gekoppelde reis <span className="optional">(optioneel)</span>
+                    Gekoppelde reis <span className="font-medium text-travel-optional">(optioneel)</span>
                     <AsyncSearchSelect
                       ariaLabel="Gekoppelde reis (optioneel)"
                       value={field.state.value}
@@ -258,7 +260,7 @@ export function DocumentLibraryManager() {
             <div className="field">
               <label>
                 Privébestand
-                <input
+                <Input
                   key={fileKey}
                   required
                   type="file"

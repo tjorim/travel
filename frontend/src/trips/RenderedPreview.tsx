@@ -103,10 +103,10 @@ export function RenderedPreview({
 
   if (!isProjection(projection, audience)) return <p role="alert">De preview kon niet veilig worden weergegeven.</p>;
   return (
-    <div className="rendered-preview">
-      <header className="visitor-preview-header">
-        <p className="eyebrow">Travel · Voorvertoning</p>
-        <h2>{projection.title || "Gedeelde reis"}</h2>
+    <div className="rounded-xl border border-travel-card-border bg-travel-paper p-5">
+      <header>
+        <p className="travel-eyebrow">Travel · Voorvertoning</p>
+        <h2 className="m-0 text-3xl leading-none tracking-tight">{projection.title || "Gedeelde reis"}</h2>
       </header>
       {error && <p role="alert">{error}</p>}
       <ProjectionView

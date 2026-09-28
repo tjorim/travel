@@ -73,12 +73,14 @@ surrounding code. Keep Python to the Ruff configuration in
 `backend/pyproject.toml`.
 
 Use Tailwind utilities for new frontend styling and `cn` for conditional
-utility classes. Existing rules in `frontend/src/styles.css` remain while
-affected views migrate; do not extend that file for new styling. The frontend
-lint command checks new utility classes and permits only legacy classes
-defined in that stylesheet. The existing native `RecordDialog` remains until
-the dialog migration in #264; use Base UI Dialog and Alert Dialog for that work
-while preserving its current dismissal and focus behavior.
+utility classes. Keep reusable design values in named Tailwind theme tokens.
+Tailwind's base layer holds document and form defaults;
+`frontend/src/styles.css` holds only sanitized Markdown styling. Use Base UI
+Button, Input, Checkbox, Collapsible and Progress for matching controls; render
+textareas through Base UI Field.Control. Shared record editors use Base UI
+Dialog and Alert Dialog with guarded dismissal and focus return.
+The frontend lint command checks utility classes without a legacy-class
+allowlist.
 Use Oxfmt for frontend formatting with `pnpm format`, and run
 `pnpm format:check` before submitting changes.
 

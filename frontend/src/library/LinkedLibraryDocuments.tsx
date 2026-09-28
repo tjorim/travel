@@ -9,7 +9,7 @@ export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
   if (!documents.length) return null;
 
   return (
-    <section className="card" aria-labelledby="linked-library-documents-title">
+    <section className="travel-card" aria-labelledby="linked-library-documents-title">
       <div className="capture-heading">
         <div>
           <h3 id="linked-library-documents-title">Gekoppelde bibliotheekdocumenten</h3>
@@ -19,7 +19,7 @@ export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
           Naar bibliotheek
         </Link>
       </div>
-      <div className="saved-records manager-list">
+      <div className="saved-records mt-0.5">
         {documents.map((document) => (
           <article className="excerpt-row" key={document.id}>
             <div>

@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
@@ -118,7 +119,7 @@ export function EmergencyInfoManager() {
         : "Contacten, nummers en medische notities blijven uitsluitend voor jou zichtbaar.");
 
   return (
-    <section className="card manager" aria-labelledby="emergency-info-title">
+    <section className="travel-card manager" aria-labelledby="emergency-info-title">
       <div className="capture-heading">
         <div>
           <h3 id="emergency-info-title">Noodinformatie</h3>
@@ -126,18 +127,18 @@ export function EmergencyInfoManager() {
             Contacten, relevante nummers en beknopte medische of hulpverlenersnotities, los van één specifieke reis.
           </p>
         </div>
-        <button className="secondary compact" type="button" onClick={create}>
+        <Button className="secondary compact" type="button" onClick={create}>
           Nieuwe invoer
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {message}
       </p>
       {entries.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {entries.map((entry) => (
-            <article className="excerpt-row stacked" key={entry.id}>
-              <button
+            <article className="excerpt-row" data-stacked="" key={entry.id}>
+              <Button
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(entry.id)}
@@ -148,15 +149,15 @@ export function EmergencyInfoManager() {
                   {KIND_LABELS[entry.kind]} · {entry.value}
                   {entry.notes ? ` · ${entry.notes_text ?? entry.notes}` : ""}
                 </span>
-              </button>
+              </Button>
               <div className="button-row">
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => void togglePin(entry).catch(fail("Offline bewaren is mislukt."))}
                 >
                   {offline.isPinned("emergency_info", entry.id) ? "Offline verwijderen" : "Offline bewaren"}
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -181,12 +182,12 @@ export function EmergencyInfoManager() {
               <Markdown html={selected.notes_html} text={selected.notes} />
             </div>
             <div className="button-row">
-              <button type="button" onClick={() => edit(selected)}>
+              <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
-              </button>
-              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              </Button>
+              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation

@@ -1,3 +1,5 @@
+import { Input } from "@base-ui/react/input";
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
@@ -125,24 +127,24 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
           : "Upload een privédocument wanneer je het wilt bewaren.");
 
   return (
-    <section className="card manager" aria-labelledby="documents-title">
+    <section className="travel-card manager" aria-labelledby="documents-title">
       <div className="capture-heading">
         <div>
           <h3 id="documents-title">Documenten</h3>
           <p>Documenten blijven altijd privé en worden nooit met bezoekers gedeeld.</p>
         </div>
-        <button className="secondary compact" type="button" onClick={create}>
+        <Button className="secondary compact" type="button" onClick={create}>
           Nieuw document
-        </button>
+        </Button>
       </div>
       <p className="help" role="status">
         {message}
       </p>
       {documents.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {documents.map((document) => (
-            <article className="excerpt-row stacked" key={document.id}>
-              <button
+            <article className="excerpt-row" data-stacked="" key={document.id}>
+              <Button
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(document.id)}
@@ -152,22 +154,22 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                 <span>
                   {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}
                 </span>
-              </button>
+              </Button>
               <div className="button-row">
-                <button
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}
                 >
                   Origineel bekijken
-                </button>
-                <button
+                </Button>
+                <Button
                   className="secondary compact"
                   type="button"
                   onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}
                 >
                   {offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -188,9 +190,9 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
               </p>
             </div>
             <div className="button-row">
-              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
@@ -227,7 +229,7 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
             <div className="field">
               <label>
                 Privébestand
-                <input
+                <Input
                   key={inputKey}
                   required
                   type="file"

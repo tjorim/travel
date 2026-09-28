@@ -143,7 +143,9 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
   fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), { target: { value: "2054-11-21" } });
   fireEvent.change(screen.getByLabelText("Begintijd (optioneel)"), { target: { value: "18:30" } });
   fireEvent.change(screen.getByLabelText("Eindtijd (optioneel)"), { target: { value: "21:00" } });
-  expect((screen.getByLabelText(/Toon de tijd aan bezoekers/) as HTMLInputElement).checked).toBe(false);
+  expect(screen.getByRole("checkbox", { name: /Toon de tijd aan bezoekers/ }).getAttribute("aria-checked")).toBe(
+    "false",
+  );
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await screen.findByRole("button", { name: "Bezoek Warme bron bekijken" });
   expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
@@ -166,7 +168,7 @@ it("chooses to show the time to visitors", async () => {
   fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), { target: { value: "2054-11-21" } });
   fireEvent.change(screen.getByLabelText("Begintijd (optioneel)"), { target: { value: "10:00" } });
   chooseOption("Datums voor bezoekers", "Volledige datums");
-  fireEvent.click(screen.getByLabelText(/Toon de tijd aan bezoekers/));
+  fireEvent.click(screen.getByRole("checkbox", { name: /Toon de tijd aan bezoekers/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await waitFor(() =>
     expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({

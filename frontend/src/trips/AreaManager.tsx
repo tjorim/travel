@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { RecordForm, requiredText, TextField } from "../forms/fields";
@@ -156,7 +157,7 @@ export function AreaManager({
   const { selected, editing, editingId } = dialog;
 
   return (
-    <section className="card manager" id="areas" aria-labelledby="areas-title">
+    <section className="travel-card manager" id="areas" aria-labelledby="areas-title">
       <span id="locations" />
       <div className="capture-heading">
         <div>
@@ -167,12 +168,12 @@ export function AreaManager({
           </p>
         </div>
         <div className="button-row">
-          <button className="secondary compact" type="button" onClick={create}>
+          <Button className="secondary compact" type="button" onClick={create}>
             Gebied toevoegen
-          </button>
-          <button className="secondary compact" type="button" onClick={() => requestLocation()}>
+          </Button>
+          <Button className="secondary compact" type="button" onClick={() => requestLocation()}>
             Locatie toevoegen
-          </button>
+          </Button>
         </div>
       </div>
       <p className="help" role="status">
@@ -183,11 +184,11 @@ export function AreaManager({
       )}
       {locationsQuery.isPending && <p role="status">Locaties laden…</p>}
       {areas.length ? (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {areas.map((area) => (
-            <article className="area-group" key={area.id}>
-              <div className="capture-heading">
-                <button
+            <article className="grid gap-2.5 rounded-xl border border-travel-divider bg-white p-4" key={area.id}>
+              <div className="capture-heading m-0 items-center max-[620px]:flex-col max-[620px]:items-stretch">
+                <Button
                   className="document-select"
                   type="button"
                   onClick={() => dialog.inspect(area.id)}
@@ -197,17 +198,17 @@ export function AreaManager({
                   <span>
                     {summary(area)} · {visibilityLabel(area.visibility)}
                   </span>
-                </button>
-                <button className="secondary compact" type="button" onClick={() => requestLocation(undefined, area.id)}>
+                </Button>
+                <Button className="secondary compact" type="button" onClick={() => requestLocation(undefined, area.id)}>
                   Locatie toevoegen
-                </button>
+                </Button>
               </div>
               {!locationsQuery.isPending && !locationsQuery.error && (
-                <div className="saved-records">
+                <div className="saved-records ml-4 border-l-2 border-travel-divider pl-4 max-[620px]:ml-1 max-[620px]:pl-3">
                   {locations
                     .filter((place) => place.area_id === area.id)
                     .map((place) => (
-                      <button
+                      <Button
                         className="document-select"
                         key={place.id}
                         type="button"
@@ -219,7 +220,7 @@ export function AreaManager({
                             .filter(Boolean)
                             .join(" · ")}
                         </span>
-                      </button>
+                      </Button>
                     ))}
                   {!locations.some((place) => place.area_id === area.id) && (
                     <p className="help">Nog geen locaties in dit gebied.</p>
@@ -279,12 +280,12 @@ export function AreaManager({
               name={selected.label}
             />
             <div className="button-row">
-              <button type="button" onClick={() => edit(selected)}>
+              <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
-              </button>
-              <button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              </Button>
+              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 Verwijderen
-              </button>
+              </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation

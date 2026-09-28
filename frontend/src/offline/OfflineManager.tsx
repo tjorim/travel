@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
 import { useConfirmation } from "../forms/useConfirmation";
@@ -73,16 +74,16 @@ export function OfflineManager() {
   const totalBytes = offline.copies.reduce((sum, copy) => sum + copy.byteSize, 0);
 
   return (
-    <section className="card manager" aria-labelledby="offline-title">
+    <section className="travel-card manager" aria-labelledby="offline-title">
       <div className="capture-heading">
         <div>
           <h3 id="offline-title">Offline</h3>
           <p>Bewust bewaarde kopieën blijven alleen op dit toestel en verdwijnen bij afmelden.</p>
         </div>
         {offline.copies.length > 0 && (
-          <button className="danger compact" type="button" onClick={clearAll}>
+          <Button className="danger compact" type="button" onClick={clearAll}>
             Alles wissen
-          </button>
+          </Button>
         )}
       </div>
       <p className="help" role="status">
@@ -112,7 +113,7 @@ export function OfflineManager() {
         </p>
       )}
       {offline.copies.length > 0 && (
-        <div className="saved-records manager-list">
+        <div className="saved-records mt-0.5">
           {offline.copies.map((copy) => (
             <article className="excerpt-row" key={copy.id}>
               <div>
@@ -123,36 +124,36 @@ export function OfflineManager() {
                 </span>
               </div>
               <div className="button-row">
-                <button className="secondary compact" type="button" onClick={() => void view(copy)}>
+                <Button className="secondary compact" type="button" onClick={() => void view(copy)}>
                   Bekijken
-                </button>
-                <button className="danger compact" type="button" onClick={() => remove(copy)}>
+                </Button>
+                <Button className="danger compact" type="button" onClick={() => remove(copy)}>
                   Verwijderen
-                </button>
+                </Button>
               </div>
             </article>
           ))}
         </div>
       )}
       {viewingText && (
-        <div className="card manager-subsection">
+        <div className="travel-card manager-subsection">
           <div className="capture-heading">
             <div>
               <h3>{viewingText.title}</h3>
             </div>
           </div>
           <pre>{viewingText.text}</pre>
-          <button className="secondary compact" type="button" onClick={() => setViewingText(null)}>
+          <Button className="secondary compact" type="button" onClick={() => setViewingText(null)}>
             Sluiten
-          </button>
+          </Button>
         </div>
       )}
       {viewingPacking && offline.copies.some((copy) => copy.id === viewingPacking.id) && (
         <div className="rounded-xl border p-4">
           <PackingOfflineView copy={viewingPacking} open={offline.open} />
-          <button className="secondary compact mt-3" type="button" onClick={() => setViewingPacking(null)}>
+          <Button className="secondary compact mt-3" type="button" onClick={() => setViewingPacking(null)}>
             Sluiten
-          </button>
+          </Button>
         </div>
       )}
       {confirmation.dialog}

@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useId } from "react";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
@@ -34,7 +35,7 @@ export function ChoiceGroup<T extends string>({
             value={choice.value}
             aria-label={choice.label}
             nativeButton
-            render={<button type="button" />}
+            render={<Button type="button" />}
             className="min-h-11 rounded-lg bg-travel-paper! px-3 text-sm font-medium text-travel-ink! data-checked:bg-travel-forest! data-checked:text-travel-paper!"
           >
             {choice.label}

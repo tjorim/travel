@@ -118,7 +118,10 @@ export function LocalTimes({
   }
   if (!lines.length) return null;
   return (
-    <p className="local-times" aria-live="polite">
+    <p
+      className="m-0 grid gap-0.5 text-travel-muted [&_span:first-child]:font-bold [&_span:first-child]:text-travel-ink"
+      aria-live="polite"
+    >
       {lines.map((line) => (
         <span key={line}>{line}</span>
       ))}
@@ -152,9 +155,9 @@ export function TripOverview({ trip }: { trip: Trip }) {
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
   if (!trip.starts_on && !badges.length && !stays.length && !routes.length) return null;
   return (
-    <section className="card trip-overview" aria-label="Reisoverzicht">
+    <section className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0" aria-label="Reisoverzicht">
       {trip.starts_on && (
-        <p className="eyebrow">
+        <p className="travel-eyebrow">
           {formatDay(trip.starts_on, "D MMMM")}
           {trip.ends_on ? ` — ${formatDay(trip.ends_on, "D MMMM YYYY")}` : ""}
           {nights ? ` · ${nights} ${nights === 1 ? "nacht" : "nachten"}` : ""}
@@ -162,10 +165,19 @@ export function TripOverview({ trip }: { trip: Trip }) {
       )}
       {localTimes}
       {badges.length > 0 && (
-        <ul className="status-badges">
+        <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
           {badges.map((badge) => (
-            <li key={badge.label} className={badge.done ? "done" : undefined}>
-              <span>{badge.label}</span> <strong>{badge.value}</strong>
+            <li
+              key={badge.label}
+              className="inline-flex items-center gap-1.5 rounded-full border border-travel-card-border bg-travel-surface px-3 py-1.5 text-sm text-travel-muted"
+            >
+              <span
+                aria-hidden="true"
+                className={
+                  badge.done ? "size-2 rounded-full bg-travel-link" : "size-2 rounded-full bg-travel-status-pending"
+                }
+              />
+              <span>{badge.label}</span> <strong className="text-travel-ink">{badge.value}</strong>
             </li>
           ))}
         </ul>

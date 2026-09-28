@@ -1,3 +1,6 @@
+import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { Input } from "@base-ui/react/input";
+import { Button } from "@base-ui/react/button";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -345,14 +348,14 @@ export function CaptureDialog({
         <>
           {draft.updateId && (
             <div className="capture-heading">
-              <p className="eyebrow">Mobiel vastleggen</p>
+              <p className="travel-eyebrow">Mobiel vastleggen</p>
               <div className="button-row">
-                <button className="secondary compact" type="button" onClick={startNew}>
+                <Button className="secondary compact" type="button" onClick={startNew}>
                   Nieuwe reisupdate
-                </button>
-                <button className="danger compact" type="button" onClick={removeUpdate}>
+                </Button>
+                <Button className="danger compact" type="button" onClick={removeUpdate}>
                   Verwijderen
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -363,7 +366,7 @@ export function CaptureDialog({
           </p>
           <form
             ref={record.formRef}
-            className="capture-form"
+            className="grid gap-4.5 rounded-travel-card border border-travel-card-border bg-travel-surface p-5 shadow-travel-card"
             noValidate
             onSubmit={(event) => {
               event.preventDefault();
@@ -371,7 +374,7 @@ export function CaptureDialog({
             }}
           >
             {lockedTrip ? (
-              <p className="capture-trip-context">
+              <p className="m-0 font-bold text-travel-forest">
                 Reis: <strong>{lockedTrip.title}</strong>
               </p>
             ) : (
@@ -450,11 +453,13 @@ export function CaptureDialog({
                 {mediaState}
               </p>
               {media.map((asset) => (
-                <label className="media-choice" key={asset.id}>
-                  <input
-                    type="checkbox"
+                <label
+                  className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold"
+                  key={asset.id}
+                >
+                  <TravelCheckbox
                     checked={draft.mediaAssetIds.includes(asset.id)}
-                    onChange={() => toggleMedia(asset.id)}
+                    onCheckedChange={() => toggleMedia(asset.id)}
                   />
                   {asset.original_filename ?? "Naamloze foto"}
                   {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
@@ -464,12 +469,15 @@ export function CaptureDialog({
                 (asset) =>
                   !dismissedSuggestions.includes(asset.id) &&
                   (asset.captured_at || asset.gps) && (
-                    <aside className="exif-suggestion" key={`suggestion-${asset.id}`}>
+                    <aside
+                      className="grid gap-2 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.25 text-sm leading-normal text-travel-warning-ink [&_span]:text-travel-warning-muted"
+                      key={`suggestion-${asset.id}`}
+                    >
                       <strong>Voorstel uit {asset.original_filename ?? "deze foto"}</strong>
                       {asset.captured_at && <span>Opname: {timestamp(asset.captured_at)}.</span>}
                       <div className="button-row">
                         {asset.captured_at && (
-                          <button
+                          <Button
                             className="secondary compact"
                             type="button"
                             onClick={() => {
@@ -478,24 +486,24 @@ export function CaptureDialog({
                             }}
                           >
                             Gebruik opnamedatum
-                          </button>
+                          </Button>
                         )}
                         {asset.gps && (
-                          <button
+                          <Button
                             className="secondary compact"
                             type="button"
                             onClick={() => reverseGeocode(asset.gps!)}
                           >
                             Zoek plaats bij foto
-                          </button>
+                          </Button>
                         )}
-                        <button
+                        <Button
                           className="secondary compact"
                           type="button"
                           onClick={() => setDismissedSuggestions((current) => [...current, asset.id])}
                         >
                           Voorstel negeren
-                        </button>
+                        </Button>
                       </div>
                     </aside>
                   ),
@@ -513,41 +521,41 @@ export function CaptureDialog({
                 Zoek en kies een locatie. Deze wordt pas samen met jouw opgeslagen reisupdate als privélocatie gemaakt.
               </p>
               {candidateGps && (
-                <aside className="exif-suggestion">
+                <aside className="grid gap-2 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.25 text-sm leading-normal text-travel-warning-ink [&_span]:text-travel-warning-muted">
                   <strong>Gekozen locatie uit kandidaat</strong>
                   <span>Deze EXIF-coördinaat blijft privé en is nog niet opgezocht of opgeslagen.</span>
                   <div className="button-row">
-                    <button className="secondary compact" type="button" onClick={() => reverseGeocode(candidateGps)}>
+                    <Button className="secondary compact" type="button" onClick={() => reverseGeocode(candidateGps)}>
                       Zoek deze kandidaatplaats
-                    </button>
-                    <button className="secondary compact" type="button" onClick={() => setCandidateGps(null)}>
+                    </Button>
+                    <Button className="secondary compact" type="button" onClick={() => setCandidateGps(null)}>
                       Locatie negeren
-                    </button>
+                    </Button>
                   </div>
                 </aside>
               )}
               <div className="field-row">
                 <label>
                   Zoek locatie
-                  <input
+                  <Input
                     value={placeQuery}
                     onChange={(event) => setPlaceQuery(event.target.value)}
                     placeholder="Bijvoorbeeld: Taipei Main Station"
                   />
                 </label>
-                <div className="button-field">
-                  <button className="secondary" type="button" onClick={searchPlace}>
+                <div className="flex items-end">
+                  <Button className="secondary" type="button" onClick={searchPlace}>
                     Zoeken
-                  </button>
+                  </Button>
                 </div>
               </div>
               {draft.location && (
-                <p className="selected-place">
+                <p className="flex flex-wrap items-center gap-2">
                   <strong>Gekozen locatie:</strong>{" "}
                   {draft.location.display_name ?? draft.location.locality ?? "Naamloze locatie"}{" "}
-                  <button className="secondary compact" type="button" onClick={() => updateDraft({ location: null })}>
+                  <Button className="secondary compact" type="button" onClick={() => updateDraft({ location: null })}>
                     Verwijderen
-                  </button>
+                  </Button>
                 </p>
               )}
               {placeState && (
@@ -556,16 +564,16 @@ export function CaptureDialog({
                 </p>
               )}
               {placeResults && (
-                <div className="place-results">
+                <div className="grid gap-1.75">
                   {placeResults.results.map((result) => (
-                    <button
-                      className="place-result"
+                    <Button
+                      className="w-full border border-travel-border bg-white text-left font-semibold text-travel-ink"
                       type="button"
                       key={`${result.osm_element_type}-${result.osm_element_id}`}
                       onClick={() => selectPlace(result)}
                     >
                       {result.display_name}
-                    </button>
+                    </Button>
                   ))}
                   <p className="help">
                     Zoekresultaten:{" "}
@@ -576,10 +584,10 @@ export function CaptureDialog({
                 </div>
               )}
             </fieldset>
-            <div className="save-row">
-              <button type="submit" disabled={record.pending}>
+            <div className="flex flex-wrap items-center gap-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
+              <Button type="submit" disabled={record.pending}>
                 {draft.updateId ? "Wijzigingen opslaan" : "Reisupdate opslaan"}
-              </button>
+              </Button>
               <span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span>
             </div>
           </form>
@@ -590,13 +598,18 @@ export function CaptureDialog({
                 .slice()
                 .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
                 .map((update) => (
-                  <button className="update-row" type="button" key={update.id} onClick={() => editUpdate(update)}>
+                  <Button
+                    className="grid w-full gap-0.75 border border-travel-card-border bg-travel-surface p-3.5 text-left text-travel-ink shadow-sm [&_span]:text-sm [&_span]:font-medium [&_span]:text-travel-muted"
+                    type="button"
+                    key={update.id}
+                    onClick={() => editUpdate(update)}
+                  >
                     <strong>{update.title}</strong>
                     <span>
                       {timestamp(update.occurred_at)}
                       {update.location ? ` · ${update.location.display_name}` : " · zonder locatie"}
                     </span>
-                  </button>
+                  </Button>
                 ))}
             </section>
           )}

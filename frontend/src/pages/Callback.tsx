@@ -1,3 +1,4 @@
+import { Button } from "@base-ui/react/button";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -23,14 +24,14 @@ export function Callback() {
   }, [navigate, setSession]);
 
   return (
-    <main className="shell">
-      <section className="card">
+    <main className="travel-shell">
+      <section className="travel-card">
         <h1>Aanmelden</h1>
         <p>{message}</p>
         {failed && (
-          <button type="button" onClick={() => void beginSignIn("/")}>
+          <Button type="button" onClick={() => void beginSignIn("/")}>
             Opnieuw aanmelden
-          </button>
+          </Button>
         )}
       </section>
     </main>
