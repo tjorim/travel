@@ -77,7 +77,7 @@ utility classes. Existing rules in `frontend/src/styles.css` remain while
 affected views migrate; do not extend that file for new styling. The frontend
 lint command checks new utility classes and permits only legacy classes
 defined in that stylesheet. The existing native `RecordDialog` remains until
-the dialog migration in #264; use Radix Dialog and Alert Dialog for that work
+the dialog migration in #264; use Base UI Dialog and Alert Dialog for that work
 while preserving its current dismissal and focus behavior.
 Use Oxfmt for frontend formatting with `pnpm format`, and run
 `pnpm format:check` before submitting changes.

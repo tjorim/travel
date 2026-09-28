@@ -443,13 +443,15 @@ Polarsteps-like features require a fresh product and privacy decision.
       whether and how to move old `dist/` content out of Git. It is not a
       dependency of the fresh application launch or a source of URL aliases.
 - [x] [#229](https://github.com/tjorim/travel/issues/229) Adopt Tailwind CSS
-      and Radix UI primitives as the styling/behavior stack shared with
+      and Base UI primitives as the styling/behavior stack shared with
       `bordertax`, `champagnefestival`, `daynest` and `worktime`, alongside
       `cn` and a shared Tailwind lint config. This repo has no Bootstrap to
       remove. The owner later revisited the native-dialog convention; #264
-      tracks migration of existing dialogs to Radix Dialog and Alert Dialog.
+      tracks migration of existing dialogs to Base UI Dialog and Alert Dialog.
+      Equivalent app work is tracked in bordertax#248,
+      champagnefestival#1103, daynest#933 and worktime#1376.
 - [ ] [#264](https://github.com/tjorim/travel/issues/264) Migrate existing
-      frontend styling to Tailwind CSS and record dialogs to Radix primitives,
+      frontend styling to Tailwind CSS and record dialogs to Base UI primitives,
       preserving the current visual identity and interaction safeguards.
 - [x] Generalized the Taiwan-only local SVG route map into a reusable,
       data-driven component with selectable route stops. ([#3](https://github.com/tjorim/travel/issues/3))

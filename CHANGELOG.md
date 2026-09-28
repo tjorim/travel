@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added a private Inpakken workspace tab with bag and category grouping,
+  Base UI view controls, visual progress and weight summaries, direct packed
+  toggles, bag/item editing, bulk actions, and item moves through editing or
+  bulk selection. Item rows show only packing and editing controls; order
+  buttons were removed after owner feedback. Packing selectors use the shared
+  `react-select` control used by other owner forms.
+  Failed toggles remain visible for retry.
+  ([#261](https://github.com/tjorim/travel/issues/261))
+
 - Owner-only packing lists now contain ordered bags and packable items, with
   bulk creation, packed state, reassignment, optional gram weights and bag
   limits. Deleting a bag leaves its items unassigned. The owner API and typed

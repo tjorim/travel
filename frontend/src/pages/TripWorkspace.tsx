@@ -2,7 +2,7 @@ import { Navigate, useParams } from "@tanstack/react-router";
 
 import { Trips, type TripWorkspaceSection } from "./Trips";
 
-const sections = new Set<TripWorkspaceSection>(["overview", "plan", "story", "media", "sharing"]);
+const sections = new Set<TripWorkspaceSection>(["overview", "plan", "packing", "story", "media", "sharing"]);
 
 export function TripWorkspace() {
   const { tripId, section } = useParams({ strict: false });

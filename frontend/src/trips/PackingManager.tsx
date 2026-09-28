@@ -1,0 +1,801 @@
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { RecordDialog, DeleteConfirmation } from "../RecordDialog";
+import { useOwner, tripPath } from "../query/owner-queries";
+import { ownerRequest, errorMessage } from "../query/api";
+import type { Trip } from "../tracker-model";
+import { ChoiceGroup } from "../ui/ChoiceGroup";
+import { SearchSelect } from "../forms/fields";
+
+type PackingList = { id: string; name: string };
+type Bag = { id: string; name: string; type: string | null; position: number; weight_limit_g: number | null };
+type Item = {
+  id: string;
+  label: string;
+  quantity: number;
+  category: string | null;
+  bag_id: string | null;
+  position: number;
+  packed: boolean;
+  weight_g: number | null;
+  notes: string | null;
+  essential: boolean;
+  valuable: boolean;
+  cabin_only: boolean;
+  checked_only: boolean;
+};
+type ItemDraft = Omit<Item, "id" | "position" | "packed">;
+type BagDraft = Pick<Bag, "name" | "type" | "weight_limit_g">;
+type Group = "bag" | "category";
+type Filter = "all" | "unpacked" | "packed";
+const emptyItem = (bag_id: string | null): ItemDraft => ({
+  label: "",
+  quantity: 1,
+  category: null,
+  bag_id,
+  weight_g: null,
+  notes: null,
+  essential: false,
+  valuable: false,
+  cabin_only: false,
+  checked_only: false,
+});
+const emptyBag = (): BagDraft => ({ name: "", type: null, weight_limit_g: null });
+const ordered = <T extends { position: number; id: string }>(rows: T[]) =>
+  [...rows].sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
+const grams = (value: number) =>
+  value >= 1000 ? `${(value / 1000).toLocaleString("nl-BE", { maximumFractionDigits: 2 })} kg` : `${value} g`;
+const count = (rows: Item[]) => `${rows.filter((item) => item.packed).length}/${rows.length} ingepakt`;
+function PackingProgress({ rows, label }: { rows: Item[]; label: string }) {
+  return (
+    <progress
+      aria-label={label}
+      value={rows.filter((item) => item.packed).length}
+      max={Math.max(rows.length, 1)}
+      className="h-2 w-full overflow-hidden rounded-full accent-travel-forest"
+    />
+  );
+}
+const BAG_TYPES = [
+  ["cabin", "🧳 Handbagage"],
+  ["checked", "🧳 Ruimbagage"],
+  ["day", "🎒 Dag- of overnachtingstas"],
+  ["person", "👤 Op persoon"],
+  ["other", "📦 Overig"],
+] as const;
+
+export function PackingManager({ trip }: { trip: Trip }) {
+  const owner = useOwner();
+  const client = useQueryClient();
+  const base = tripPath(trip.id, "packing-lists");
+  const key = ["owner", owner?.subject, "trip", trip.id, "packing"];
+  const listsQuery = useQuery({
+    queryKey: [...key, "lists"],
+    enabled: !!owner,
+    queryFn: () => ownerRequest<PackingList[]>(owner!.session, base, "Paklijsten laden mislukt."),
+  });
+  const [chosenList, setChosenList] = useState<string | null>(null);
+  const list = listsQuery.data?.find((row) => row.id === chosenList) ?? listsQuery.data?.[0] ?? null;
+  const path = list ? `${base}/${encodeURIComponent(list.id)}` : "";
+  const bagsQuery = useQuery({
+    queryKey: [...key, list?.id, "bags"],
+    enabled: !!owner && !!list,
+    queryFn: () => ownerRequest<Bag[]>(owner!.session, `${path}/bags`, "Tassen laden mislukt."),
+  });
+  const itemsQuery = useQuery({
+    queryKey: [...key, list?.id, "items"],
+    enabled: !!owner && !!list,
+    queryFn: () => ownerRequest<Item[]>(owner!.session, `${path}/items`, "Inpakitems laden mislukt."),
+  });
+  const [group, setGroup] = useState<Group>("bag");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [search, setSearch] = useState("");
+  const [itemDialog, setItemDialog] = useState<string | "new" | null>(null);
+  const [bagDialog, setBagDialog] = useState<string | "new" | null>(null);
+  const [itemDraft, setItemDraft] = useState<ItemDraft>(emptyItem(null));
+  const [bagDraft, setBagDraft] = useState<BagDraft>(emptyBag);
+  const [confirm, setConfirm] = useState<{ kind: "item" | "bag"; id: string } | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [selecting, setSelecting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  // Failed toggles remain visible at the requested state until the owner retries or reloads.
+  const [unsaved, setUnsaved] = useState<Record<string, boolean>>({});
+  const [savingIds, setSavingIds] = useState<string[]>([]);
+  const bags = ordered(bagsQuery.data ?? []);
+  const serverItems = itemsQuery.data ?? [];
+  const items = serverItems.map((item) => (item.id in unsaved ? { ...item, packed: unsaved[item.id] } : item));
+  const visible = ordered(items).filter(
+    (item) =>
+      (filter === "all" || item.packed === (filter === "packed")) &&
+      `${item.label} ${item.category ?? ""} ${item.notes ?? ""}`
+        .toLocaleLowerCase()
+        .includes(search.toLocaleLowerCase()),
+  );
+  const refresh = async () => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: [...key, "lists"] }),
+      client.invalidateQueries({ queryKey: [...key, list?.id, "bags"] }),
+      client.invalidateQueries({ queryKey: [...key, list?.id, "items"] }),
+    ]);
+  };
+  const request = <T,>(url: string, method: "POST" | "PATCH" | "DELETE", body?: unknown) =>
+    ownerRequest<T>(owner!.session, url, "Opslaan mislukt.", { method, body });
+  async function save(action: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    setNotice("");
+    try {
+      await action();
+      await refresh();
+      setNotice(success);
+      return true;
+    } catch (error) {
+      // A multi-item action may have saved some rows before one request failed.
+      await refresh().catch(() => undefined);
+      setNotice(errorMessage(error, "Opslaan mislukt. Probeer opnieuw."));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function toggle(item: Item, packed = !item.packed) {
+    if (savingIds.includes(item.id)) return;
+    setUnsaved((current) => ({ ...current, [item.id]: packed }));
+    setSavingIds((current) => [...current, item.id]);
+    setNotice("");
+    try {
+      const saved = await request<Item>(`${path}/items/${encodeURIComponent(item.id)}`, "PATCH", { packed });
+      client.setQueryData<Item[]>([...key, list?.id, "items"], (rows) =>
+        rows?.map((row) => (row.id === item.id ? saved : row)),
+      );
+      setUnsaved((current) => {
+        const next = { ...current };
+        delete next[item.id];
+        return next;
+      });
+    } catch (error) {
+      setNotice(`${errorMessage(error, "Afvinken mislukt.")} Je keuze blijft zichtbaar; kies Opnieuw proberen.`);
+    } finally {
+      setSavingIds((current) => current.filter((id) => id !== item.id));
+    }
+  }
+  const startItem = (item?: Item, bagId: string | null = null) => {
+    setItemDraft(
+      item
+        ? {
+            label: item.label,
+            quantity: item.quantity,
+            category: item.category,
+            bag_id: item.bag_id,
+            weight_g: item.weight_g,
+            notes: item.notes,
+            essential: item.essential,
+            valuable: item.valuable,
+            cabin_only: item.cabin_only,
+            checked_only: item.checked_only,
+          }
+        : emptyItem(bagId),
+    );
+    setItemDialog(item?.id ?? "new");
+  };
+  const startBag = (bag?: Bag) => {
+    setBagDraft(bag ? { name: bag.name, type: bag.type, weight_limit_g: bag.weight_limit_g } : emptyBag());
+    setBagDialog(bag?.id ?? "new");
+  };
+  async function bulk(packed?: boolean, bagId?: string | null, all = false) {
+    const targets = items.filter((item) => all || selected.includes(item.id));
+    if (!targets.length) return;
+    const ok = await save(async () => {
+      for (const item of targets)
+        await request(
+          `${path}/items/${encodeURIComponent(item.id)}`,
+          "PATCH",
+          packed === undefined ? { bag_id: bagId } : { packed },
+        );
+    }, `${targets.length} items bijgewerkt.`);
+    if (ok) setSelected([]);
+  }
+  const sections =
+    group === "bag"
+      ? [
+          ...bags.map((bag) => ({ id: bag.id, title: bag.name, bag })),
+          { id: "unassigned", title: "Niet toegewezen", bag: null },
+        ]
+      : [...new Set(visible.map((item) => item.category?.trim() || "Zonder categorie"))]
+          .sort((a, b) => a.localeCompare(b, "nl"))
+          .map((title) => ({ id: title, title, bag: null }));
+
+  if (listsQuery.isPending)
+    return (
+      <section className="rounded-xl border p-5" role="status">
+        Paklijsten laden…
+      </section>
+    );
+  if (listsQuery.isError)
+    return (
+      <section className="rounded-xl border p-5" role="alert">
+        {errorMessage(listsQuery.error, "Paklijsten laden mislukt.")}{" "}
+        <button type="button" onClick={() => void listsQuery.refetch()}>
+          Opnieuw proberen
+        </button>
+      </section>
+    );
+  return (
+    <section className="space-y-5" aria-labelledby="packing-title">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 id="packing-title" className="text-2xl font-semibold">
+            Inpakken
+          </h3>
+          <p className="text-sm">Alleen voor jou · {count(items)}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {list && (
+            <button className="secondary compact" type="button" onClick={() => startBag()}>
+              Tas toevoegen
+            </button>
+          )}
+          {list && (
+            <button type="button" onClick={() => startItem()}>
+              Item toevoegen
+            </button>
+          )}
+        </div>
+      </div>
+      {!list ? (
+        <div className="rounded-xl border p-5">
+          <p>Nog geen paklijst voor deze reis.</p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void save(() => request(base, "POST", { name: "Paklijst" }), "Paklijst aangemaakt.")}
+          >
+            Paklijst maken
+          </button>
+        </div>
+      ) : (
+        <>
+          {(listsQuery.data?.length ?? 0) > 1 && (
+            <label className="block">
+              Paklijst{" "}
+              <SearchSelect
+                ariaLabel="Paklijst"
+                value={list.id}
+                onChange={(value) => {
+                  setChosenList(value);
+                  setSelected([]);
+                  setSelecting(false);
+                  setUnsaved({});
+                }}
+              >
+                {listsQuery.data?.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
+              </SearchSelect>
+            </label>
+          )}
+          {bagsQuery.isPending || itemsQuery.isPending ? (
+            <p role="status">Inpaklijst laden…</p>
+          ) : bagsQuery.isError || itemsQuery.isError ? (
+            <div role="alert">
+              Inpaklijst laden mislukt.{" "}
+              <button type="button" onClick={() => void refresh()}>
+                Opnieuw proberen
+              </button>
+            </div>
+          ) : (
+            <>
+              <PackingProgress rows={items} label="Totale inpakvoortgang" />
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label="Voortgang per tas">
+                {bags.map((bag) => {
+                  const rows = items.filter((item) => item.bag_id === bag.id);
+                  const known = rows.reduce((sum, item) => sum + (item.weight_g ?? 0) * item.quantity, 0);
+                  const unknown = rows.some((item) => item.weight_g === null);
+                  return (
+                    <div key={bag.id} className="rounded-xl border p-3">
+                      <strong>{bag.name}</strong>
+                      {bag.type && (
+                        <p className="text-sm">{BAG_TYPES.find(([type]) => type === bag.type)?.[1] ?? bag.type}</p>
+                      )}
+                      <p>{count(rows)}</p>
+                      <PackingProgress rows={rows} label={`Inpakvoortgang ${bag.name}`} />
+                      <p>
+                        {grams(known)} bekend{unknown ? " · gewicht niet volledig" : ""}
+                        {bag.weight_limit_g ? ` / ${grams(bag.weight_limit_g)} limiet` : ""}
+                      </p>
+                      {bag.weight_limit_g !== null && known > bag.weight_limit_g && (
+                        <p role="alert" className="font-semibold text-travel-ink">
+                          Over de gewichtslimiet
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap gap-3 rounded-xl border p-3">
+                <ChoiceGroup<Group>
+                  label="Groeperen"
+                  value={group}
+                  choices={[
+                    { value: "bag", label: "Per tas" },
+                    { value: "category", label: "Per categorie" },
+                  ]}
+                  onChange={setGroup}
+                />
+                <ChoiceGroup<Filter>
+                  label="Toon"
+                  value={filter}
+                  choices={[
+                    { value: "all", label: "Alles" },
+                    { value: "unpacked", label: "Niet ingepakt" },
+                    { value: "packed", label: "Ingepakt" },
+                  ]}
+                  onChange={setFilter}
+                />
+                <label>
+                  Zoeken{" "}
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="rounded border p-2"
+                  />
+                </label>
+              </div>
+              {selecting && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
+                  <span>{selected.length} geselecteerd</span>
+                  <button type="button" disabled={busy || !selected.length} onClick={() => void bulk(true)}>
+                    Inpakken
+                  </button>
+                  <button type="button" disabled={busy || !selected.length} onClick={() => void bulk(false)}>
+                    Uitpakken
+                  </button>
+                  <label>
+                    Verplaatsen naar{" "}
+                    <SearchSelect
+                      ariaLabel="Geselecteerde items verplaatsen naar"
+                      value=""
+                      isDisabled={busy || !selected.length}
+                      onChange={(value) => {
+                        if (value) void bulk(undefined, value === "unassigned" ? null : value);
+                      }}
+                    >
+                      <option value="">Kies tas…</option>
+                      <option value="unassigned">Niet toegewezen</option>
+                      {bags.map((bag) => (
+                        <option key={bag.id} value={bag.id}>
+                          {bag.name}
+                        </option>
+                      ))}
+                    </SearchSelect>
+                  </label>
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    onClick={() => {
+                      setSelected([]);
+                      setSelecting(false);
+                    }}
+                  >
+                    Klaar
+                  </button>
+                </div>
+              )}
+              {!!items.length && (
+                <div className="flex flex-wrap gap-2">
+                  {!selecting && (
+                    <button type="button" className="secondary compact" onClick={() => setSelecting(true)}>
+                      Items selecteren
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    disabled={busy}
+                    onClick={() => void bulk(true, undefined, true)}
+                  >
+                    Alles inpakken
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    disabled={busy}
+                    onClick={() => void bulk(false, undefined, true)}
+                  >
+                    Alles uitpakken
+                  </button>
+                </div>
+              )}
+              {notice && (
+                <p role="status" className="rounded border p-3">
+                  {notice}
+                </p>
+              )}
+              {!items.length && <p>Nog geen items. Voeg je eerste item toe.</p>}
+              {items.length > 0 && !visible.length && <p>Geen items voor deze filter.</p>}
+              <div className="space-y-4">
+                {sections.map((section) => {
+                  const sectionRows = visible.filter((item) =>
+                    group === "bag"
+                      ? item.bag_id === (section.bag?.id ?? null)
+                      : (item.category?.trim() || "Zonder categorie") === section.id,
+                  );
+                  const allRows = items.filter((item) =>
+                    group === "bag"
+                      ? item.bag_id === (section.bag?.id ?? null)
+                      : (item.category?.trim() || "Zonder categorie") === section.id,
+                  );
+                  if (group === "category" && !sectionRows.length) return null;
+                  return (
+                    <section key={section.id} className="rounded-xl border p-3 sm:p-4" aria-label={section.title}>
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h4 className="text-lg font-semibold">{section.title}</h4>
+                          <p className="text-sm">{count(allRows)}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {group === "bag" && (
+                            <>
+                              <button
+                                type="button"
+                                className="secondary compact"
+                                onClick={() => startItem(undefined, section.bag?.id ?? null)}
+                              >
+                                Snel toevoegen
+                              </button>
+                              {section.bag && (
+                                <button
+                                  type="button"
+                                  className="secondary compact"
+                                  onClick={() => startBag(section.bag!)}
+                                >
+                                  Tas bewerken
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {!sectionRows.length ? (
+                        <p className="text-sm">Geen items hier.</p>
+                      ) : (
+                        <ul className="m-0 list-none divide-y p-0">
+                          {sectionRows.map((item) => (
+                            <li key={item.id} className="py-3 first:pt-0 last:pb-0">
+                              <div className="flex items-start gap-3">
+                                {selecting ? (
+                                  <label className="flex size-11 shrink-0 items-center justify-center">
+                                    <span className="sr-only">Selecteer {item.label}</span>
+                                    <input
+                                      type="checkbox"
+                                      className="size-6! p-0! accent-travel-forest"
+                                      checked={selected.includes(item.id)}
+                                      onChange={(event) =>
+                                        setSelected((current) =>
+                                          event.target.checked
+                                            ? [...current, item.id]
+                                            : current.filter((id) => id !== item.id),
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                ) : (
+                                  <label className="flex size-11 shrink-0 items-center justify-center">
+                                    <span className="sr-only">
+                                      {item.quantity > 1 ? `${item.quantity} × ` : ""}
+                                      {item.label} ingepakt
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      className="size-6! p-0! accent-travel-forest"
+                                      checked={item.packed}
+                                      disabled={savingIds.includes(item.id)}
+                                      onChange={() => void toggle(item)}
+                                    />
+                                  </label>
+                                )}
+                                <div className="min-w-0 flex-1 pt-1">
+                                  <strong className={item.packed ? "line-through opacity-60" : ""}>
+                                    {item.quantity > 1 ? `${item.quantity} × ` : ""}
+                                    {item.label}
+                                  </strong>
+                                  <p className="text-sm opacity-70">
+                                    {[
+                                      item.category || "Zonder categorie",
+                                      group === "category"
+                                        ? (bags.find((bag) => bag.id === item.bag_id)?.name ?? "Niet toegewezen")
+                                        : null,
+                                      item.weight_g !== null ? `${grams(item.weight_g)} per stuk` : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </p>
+                                  {(item.essential || item.valuable || item.cabin_only || item.checked_only) && (
+                                    <p className="text-xs opacity-70">
+                                      {[
+                                        item.essential && "Essentieel",
+                                        item.valuable && "Waardevol",
+                                        item.cabin_only && "Alleen handbagage",
+                                        item.checked_only && "Alleen ruimbagage",
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </p>
+                                  )}
+                                  {item.notes && <p className="mt-1 text-sm">{item.notes}</p>}
+                                  {item.id in unsaved && !savingIds.includes(item.id) && (
+                                    <button type="button" onClick={() => void toggle(item, unsaved[item.id])}>
+                                      Opnieuw proberen: {item.label}
+                                    </button>
+                                  )}
+                                </div>
+                                {!selecting && (
+                                  <button
+                                    type="button"
+                                    className="secondary compact shrink-0"
+                                    aria-label={`${item.label} bewerken`}
+                                    onClick={() => startItem(item)}
+                                  >
+                                    Bewerken
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+      <RecordDialog
+        open={itemDialog !== null}
+        title={itemDialog === "new" ? "Item toevoegen" : "Item bewerken"}
+        onDismiss={() => setItemDialog(null)}
+      >
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!itemDraft.label.trim() || (itemDraft.cabin_only && itemDraft.checked_only)) return;
+            void save(
+              () =>
+                request(
+                  `${path}/items${itemDialog === "new" ? "" : `/${encodeURIComponent(itemDialog!)}`}`,
+                  itemDialog === "new" ? "POST" : "PATCH",
+                  { ...itemDraft, label: itemDraft.label.trim() },
+                ),
+              "Item opgeslagen.",
+            ).then((ok) => {
+              if (ok) setItemDialog(null);
+            });
+          }}
+        >
+          <label className="block">
+            Naam *
+            <input
+              autoFocus
+              required
+              maxLength={160}
+              value={itemDraft.label}
+              onChange={(event) => setItemDraft({ ...itemDraft, label: event.target.value })}
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <label className="block">
+            Aantal
+            <input
+              type="number"
+              min="1"
+              max="99"
+              required
+              value={itemDraft.quantity}
+              onChange={(event) => setItemDraft({ ...itemDraft, quantity: Number(event.target.value) })}
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <label className="block">
+            Categorie
+            <input
+              maxLength={80}
+              value={itemDraft.category ?? ""}
+              onChange={(event) => setItemDraft({ ...itemDraft, category: event.target.value || null })}
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <label className="block">
+            Tas
+            <SearchSelect
+              ariaLabel="Tas"
+              value={itemDraft.bag_id ?? ""}
+              onChange={(value) => setItemDraft({ ...itemDraft, bag_id: value || null })}
+            >
+              <option value="">Niet toegewezen</option>
+              {bags.map((bag) => (
+                <option key={bag.id} value={bag.id}>
+                  {bag.name}
+                </option>
+              ))}
+            </SearchSelect>
+          </label>
+          <label className="block">
+            Gewicht per stuk (gram)
+            <input
+              type="number"
+              min="0"
+              value={itemDraft.weight_g ?? ""}
+              onChange={(event) =>
+                setItemDraft({ ...itemDraft, weight_g: event.target.value === "" ? null : Number(event.target.value) })
+              }
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <label className="block">
+            Notitie
+            <textarea
+              maxLength={4000}
+              value={itemDraft.notes ?? ""}
+              onChange={(event) => setItemDraft({ ...itemDraft, notes: event.target.value || null })}
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          {(["essential", "valuable", "cabin_only", "checked_only"] as const).map((flag) => (
+            <label key={flag} className="block">
+              <input
+                type="checkbox"
+                className="size-5! p-0! accent-travel-forest"
+                checked={itemDraft[flag]}
+                onChange={(event) => setItemDraft({ ...itemDraft, [flag]: event.target.checked })}
+              />{" "}
+              {
+                {
+                  essential: "Essentieel",
+                  valuable: "Waardevol",
+                  cabin_only: "Alleen handbagage",
+                  checked_only: "Alleen ruimbagage",
+                }[flag]
+              }
+            </label>
+          ))}
+          {itemDraft.cabin_only && itemDraft.checked_only && <p role="alert">Kies maximaal één bagagebeperking.</p>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={busy || (itemDraft.cabin_only && itemDraft.checked_only)}>
+              Opslaan
+            </button>
+            {itemDialog !== "new" && (
+              <button
+                type="button"
+                className="danger compact"
+                onClick={() => setConfirm({ kind: "item", id: itemDialog! })}
+              >
+                Verwijderen
+              </button>
+            )}
+          </div>
+        </form>
+        {confirm?.kind === "item" && (
+          <DeleteConfirmation
+            title="Item verwijderen?"
+            onCancel={() => setConfirm(null)}
+            onConfirm={() => {
+              void save(
+                () => request(`${path}/items/${encodeURIComponent(confirm.id)}`, "DELETE"),
+                "Item verwijderd.",
+              ).then((ok) => {
+                if (ok) {
+                  setItemDialog(null);
+                  setConfirm(null);
+                }
+              });
+            }}
+          />
+        )}
+      </RecordDialog>
+      <RecordDialog
+        open={bagDialog !== null}
+        title={bagDialog === "new" ? "Tas toevoegen" : "Tas bewerken"}
+        onDismiss={() => setBagDialog(null)}
+      >
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!bagDraft.name.trim()) return;
+            void save(
+              () =>
+                request(
+                  `${path}/bags${bagDialog === "new" ? "" : `/${encodeURIComponent(bagDialog!)}`}`,
+                  bagDialog === "new" ? "POST" : "PATCH",
+                  { ...bagDraft, name: bagDraft.name.trim() },
+                ),
+              "Tas opgeslagen.",
+            ).then((ok) => {
+              if (ok) setBagDialog(null);
+            });
+          }}
+        >
+          <label className="block">
+            Naam *
+            <input
+              autoFocus
+              required
+              maxLength={160}
+              value={bagDraft.name}
+              onChange={(event) => setBagDraft({ ...bagDraft, name: event.target.value })}
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <label className="block">
+            Type
+            <SearchSelect
+              ariaLabel="Type"
+              value={bagDraft.type ?? ""}
+              onChange={(value) => setBagDraft({ ...bagDraft, type: value || null })}
+            >
+              <option value="">Geen type</option>
+              {BAG_TYPES.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </SearchSelect>
+          </label>
+          <label className="block">
+            Gewichtslimiet (gram)
+            <input
+              type="number"
+              min="1"
+              value={bagDraft.weight_limit_g ?? ""}
+              onChange={(event) =>
+                setBagDraft({
+                  ...bagDraft,
+                  weight_limit_g: event.target.value === "" ? null : Number(event.target.value),
+                })
+              }
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <div className="flex gap-2">
+            <button type="submit" disabled={busy}>
+              Opslaan
+            </button>
+            {bagDialog !== "new" && (
+              <button
+                type="button"
+                className="danger compact"
+                onClick={() => setConfirm({ kind: "bag", id: bagDialog! })}
+              >
+                Verwijderen
+              </button>
+            )}
+          </div>
+        </form>
+        {confirm?.kind === "bag" && (
+          <DeleteConfirmation
+            title="Tas verwijderen?"
+            description="De items blijven bestaan als Niet toegewezen."
+            onCancel={() => setConfirm(null)}
+            onConfirm={() => {
+              void save(
+                () => request(`${path}/bags/${encodeURIComponent(confirm.id)}`, "DELETE"),
+                "Tas verwijderd; items zijn niet toegewezen.",
+              ).then((ok) => {
+                if (ok) {
+                  setBagDialog(null);
+                  setConfirm(null);
+                }
+              });
+            }}
+          />
+        )}
+      </RecordDialog>
+    </section>
+  );
+}

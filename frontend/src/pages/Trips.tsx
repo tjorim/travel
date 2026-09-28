@@ -17,13 +17,14 @@ import { RouteManager } from "../trips/RouteManager";
 import { TripEditor } from "../trips/TripEditor";
 import { TripOverview } from "../trips/TripOverview";
 import { TripTaskManager } from "../trips/TripTaskManager";
+import { PackingManager } from "../trips/PackingManager";
 import { CaptureDialog } from "../trips/CaptureDialog";
 import { errorMessage } from "../query/api";
 import type { DialogFocusRequest } from "../forms/useRecordDialog";
 import { useTripResource, useTripsQuery } from "../query/owner-queries";
 import { formatInstant, type Trip, type TravelUpdateCandidateIntent } from "../tracker-model";
 
-export type TripWorkspaceSection = "overview" | "plan" | "story" | "media" | "sharing";
+export type TripWorkspaceSection = "overview" | "plan" | "packing" | "story" | "media" | "sharing";
 
 export function Trips({ workspace }: { workspace?: { tripId: string; section: TripWorkspaceSection } } = {}) {
   const { session } = useAuth();
@@ -194,6 +195,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             [
               ["overview", "Overzicht"],
               ["plan", "Plan"],
+              ["packing", "Inpakken"],
               ["story", "Verhaal"],
               ["media", "Media & documenten"],
               ["sharing", "Delen"],
@@ -278,6 +280,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             focusId={recordFocus?.kind === "update" ? recordFocus : null}
           />
         )}
+        {currentSection === "packing" && <PackingManager trip={selectedTrip} />}
         {currentSection === "media" && (
           <>
             <DocumentManager trip={selectedTrip} focusId={recordFocus?.kind === "document" ? recordFocus : null} />

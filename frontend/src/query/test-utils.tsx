@@ -51,13 +51,12 @@ export function restoreObjectUrls() {
   Reflect.deleteProperty(URL, "revokeObjectURL");
 }
 
-/** The visible text of a SearchSelect's current choice (see forms/fields.tsx), by its accessible label. */
+/** The visible text of a search combobox's current choice, by its accessible label. */
 export function selectedOption(label: string): string {
-  const input = screen.getByLabelText(label);
-  return input.closest(".rs__control")?.querySelector(".rs__single-value")?.textContent ?? "";
+  return (screen.getByLabelText(label) as HTMLInputElement).value;
 }
 
-/** Opens the SearchSelect labelled `label` (see forms/fields.tsx) and chooses the option named `optionName`. */
+/** Opens the search combobox labelled `label` and chooses the option named `optionName`. */
 export function chooseOption(label: string, optionName: string | RegExp) {
   fireEvent.keyDown(screen.getByLabelText(label), { key: "ArrowDown" });
   fireEvent.click(screen.getByRole("option", { name: optionName }));

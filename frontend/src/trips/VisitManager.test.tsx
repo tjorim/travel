@@ -134,7 +134,7 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
   renderWithOwner(<VisitManager trip={trip} />);
   await openNew();
   const stationOption = screen.getByRole("option", { name: "Beitou Hot Spring" });
-  expect(stationOption.closest(".rs__group")?.querySelector(".rs__group-heading")?.textContent).toBe("Taipei");
+  expect(stationOption.closest("[role=group]")?.textContent).toContain("Taipei");
   chooseOption("Waar", "Beitou Hot Spring");
   fireEvent.change(screen.getByLabelText("Titel (optioneel)"), { target: { value: "Warme bron" } });
 

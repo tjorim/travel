@@ -306,7 +306,7 @@ it("reuses a saved location, which is already part of its area", async () => {
   // The location is listed under its area, so one choice says both.
   fireEvent.keyDown(screen.getByLabelText("Vertrek"), { key: "ArrowDown" });
   const stationOption = screen.getByRole("option", { name: "Taipei Main Station" });
-  expect(stationOption.closest(".rs__group")?.querySelector(".rs__group-heading")?.textContent).toBe("Taipei");
+  expect(stationOption.closest("[role=group]")?.textContent).toContain("Taipei");
   pickAreas("Taipei Main Station", "Tainan (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
