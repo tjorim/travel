@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner-only packing lists now contain ordered bags and packable items, with
+  bulk creation, packed state, reassignment, optional gram weights and bag
+  limits. Deleting a bag leaves its items unassigned. The owner API and typed
+  MCP tools share the same validation; visitor projections exclude packing.
+  ([#260](https://github.com/tjorim/travel/issues/260))
+
 - Added Tailwind CSS to the owner and visitor builds for new styling, `cn` for
   conditional classes, Oxlint rules for utility classes, and Oxfmt commands
   for frontend formatting. Frontend sources have been formatted with Oxfmt;

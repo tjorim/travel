@@ -52,6 +52,7 @@ from .routers import (
     library,
     locations,
     media,
+    packing,
     places,
     publication,
     routes,
@@ -1208,6 +1209,222 @@ class TravelMcpBackend:
             stay_id,
             trip_id,
             lambda s, sub: stays.delete_stay(trip_id, stay_id, s, sub),
+            lambda _: {"status": "deleted"},
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def list_packing_lists(self, trip_id: str) -> list[dict[str, Any]]:
+        """List the trip's private packing lists."""
+        return self._call(
+            "packing_list.list",
+            "packing_list",
+            None,
+            trip_id,
+            lambda s, sub: packing.list_packing_lists(trip_id, s, sub),
+            lambda x: _models(x, schemas.PackingListResponse),
+        )
+
+    def create_packing_list(self, trip_id: str, payload: schemas.PackingListCreate) -> dict[str, Any]:
+        """Create a private packing list for a trip."""
+        return self._call(
+            "packing_list.create",
+            "packing_list",
+            None,
+            trip_id,
+            lambda s, sub: packing.create_packing_list(trip_id, payload, s, sub),
+            lambda x: _model(x, schemas.PackingListResponse),
+        )
+
+    def get_packing_list(self, trip_id: str, list_id: str) -> dict[str, Any]:
+        """Read one private packing list."""
+        return self._call(
+            "packing_list.get",
+            "packing_list",
+            list_id,
+            trip_id,
+            lambda s, sub: packing.get_packing_list(trip_id, list_id, s, sub),
+            lambda x: _model(x, schemas.PackingListResponse),
+        )
+
+    def update_packing_list(self, trip_id: str, list_id: str, payload: schemas.PackingListUpdate) -> dict[str, Any]:
+        """Rename a private packing list."""
+        return self._call(
+            "packing_list.update",
+            "packing_list",
+            list_id,
+            trip_id,
+            lambda s, sub: packing.update_packing_list(trip_id, list_id, payload, s, sub),
+            lambda x: _model(x, schemas.PackingListResponse),
+        )
+
+    def delete_packing_list(self, trip_id: str, list_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete a list and all its bags and items after explicit confirmation."""
+        return self._call(
+            "packing_list.delete",
+            "packing_list",
+            list_id,
+            trip_id,
+            lambda s, sub: packing.delete_packing_list(trip_id, list_id, s, sub),
+            lambda _: {"status": "deleted"},
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def list_packing_bags(self, trip_id: str, list_id: str) -> list[dict[str, Any]]:
+        """List a packing list's bags in display order."""
+        return self._call(
+            "packing_bag.list",
+            "packing_bag",
+            None,
+            trip_id,
+            lambda s, sub: packing.list_packing_bags(trip_id, list_id, s, sub),
+            lambda x: _models(x, schemas.PackingBagResponse),
+        )
+
+    def get_packing_bag(self, trip_id: str, list_id: str, bag_id: str) -> dict[str, Any]:
+        """Read one bag, including its optional weight limit in grams."""
+        return self._call(
+            "packing_bag.get",
+            "packing_bag",
+            bag_id,
+            trip_id,
+            lambda s, sub: packing.get_packing_bag(trip_id, list_id, bag_id, s, sub),
+            lambda x: _model(x, schemas.PackingBagResponse),
+        )
+
+    def create_packing_bag(self, trip_id: str, list_id: str, payload: schemas.PackingBagCreate) -> dict[str, Any]:
+        """Create and position a bag."""
+        return self._call(
+            "packing_bag.create",
+            "packing_bag",
+            None,
+            trip_id,
+            lambda s, sub: packing.create_packing_bag(trip_id, list_id, payload, s, sub),
+            lambda x: _model(x, schemas.PackingBagResponse),
+        )
+
+    def update_packing_bag(
+        self, trip_id: str, list_id: str, bag_id: str, payload: schemas.PackingBagUpdate
+    ) -> dict[str, Any]:
+        """Update or reorder a bag."""
+        return self._call(
+            "packing_bag.update",
+            "packing_bag",
+            bag_id,
+            trip_id,
+            lambda s, sub: packing.update_packing_bag(trip_id, list_id, bag_id, payload, s, sub),
+            lambda x: _model(x, schemas.PackingBagResponse),
+        )
+
+    def delete_packing_bag(self, trip_id: str, list_id: str, bag_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete a bag after confirmation; its items become unassigned."""
+        return self._call(
+            "packing_bag.delete",
+            "packing_bag",
+            bag_id,
+            trip_id,
+            lambda s, sub: packing.delete_packing_bag(trip_id, list_id, bag_id, s, sub),
+            lambda _: {"status": "deleted"},
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def list_packing_items(self, trip_id: str, list_id: str) -> list[dict[str, Any]]:
+        """List all packed and unpacked items, including unassigned items."""
+        return self._call(
+            "packing_item.list",
+            "packing_item",
+            None,
+            trip_id,
+            lambda s, sub: packing.list_packing_items(trip_id, list_id, s, sub),
+            lambda x: _models(x, schemas.PackingItemResponse),
+        )
+
+    def get_packing_item(self, trip_id: str, list_id: str, item_id: str) -> dict[str, Any]:
+        """Read a packing item."""
+        return self._call(
+            "packing_item.get",
+            "packing_item",
+            item_id,
+            trip_id,
+            lambda s, sub: packing.get_packing_item(trip_id, list_id, item_id, s, sub),
+            lambda x: _model(x, schemas.PackingItemResponse),
+        )
+
+    def create_packing_item(self, trip_id: str, list_id: str, payload: schemas.PackingItemCreate) -> dict[str, Any]:
+        """Create one packing item, optionally assigned to a bag."""
+        return self._call(
+            "packing_item.create",
+            "packing_item",
+            None,
+            trip_id,
+            lambda s, sub: packing.create_packing_item(trip_id, list_id, payload, s, sub),
+            lambda x: _model(x, schemas.PackingItemResponse),
+        )
+
+    def batch_create_packing_items(
+        self, trip_id: str, list_id: str, payload: list[schemas.PackingItemCreate]
+    ) -> list[dict[str, Any]]:
+        """Create up to 100 packing items atomically."""
+        return self._call(
+            "packing_item.batch_create",
+            "packing_item",
+            None,
+            trip_id,
+            lambda s, sub: packing.batch_create_packing_items(trip_id, list_id, payload, s, sub),
+            lambda x: _models(x, schemas.PackingItemResponse),
+        )
+
+    def update_packing_item(
+        self, trip_id: str, list_id: str, item_id: str, payload: schemas.PackingItemUpdate
+    ) -> dict[str, Any]:
+        """Update packed state, bag assignment, order or item details."""
+        return self._call(
+            "packing_item.update",
+            "packing_item",
+            item_id,
+            trip_id,
+            lambda s, sub: packing.update_packing_item(trip_id, list_id, item_id, payload, s, sub),
+            lambda x: _model(x, schemas.PackingItemResponse),
+        )
+
+    def mark_packing_item(self, trip_id: str, list_id: str, item_id: str, packed: bool) -> dict[str, Any]:
+        """Mark one item packed or unpacked."""
+        return self._call(
+            "packing_item.mark",
+            "packing_item",
+            item_id,
+            trip_id,
+            lambda s, sub: packing.update_packing_item(
+                trip_id, list_id, item_id, schemas.PackingItemUpdate(packed=packed), s, sub
+            ),
+            lambda x: _model(x, schemas.PackingItemResponse),
+        )
+
+    def move_packing_item(
+        self, trip_id: str, list_id: str, item_id: str, bag_id: str | None, position: int
+    ) -> dict[str, Any]:
+        """Move an item to a bag or Unassigned at a zero-based position."""
+        return self._call(
+            "packing_item.move",
+            "packing_item",
+            item_id,
+            trip_id,
+            lambda s, sub: packing.update_packing_item(
+                trip_id, list_id, item_id, schemas.PackingItemUpdate(bag_id=bag_id, position=position), s, sub
+            ),
+            lambda x: _model(x, schemas.PackingItemResponse),
+        )
+
+    def delete_packing_item(self, trip_id: str, list_id: str, item_id: str, confirm: bool = False) -> dict[str, str]:
+        """Delete an item after explicit confirmation."""
+        return self._call(
+            "packing_item.delete",
+            "packing_item",
+            item_id,
+            trip_id,
+            lambda s, sub: packing.delete_packing_item(trip_id, list_id, item_id, s, sub),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,

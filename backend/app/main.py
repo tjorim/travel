@@ -20,6 +20,7 @@ from .routers.locations import router as locations_router
 from .routers.markdown import router as markdown_router
 from .routers.media import provider_tokens_router
 from .routers.media import router as media_router
+from .routers.packing import router as packing_router
 from .routers.places import router as places_router
 from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
@@ -60,6 +61,7 @@ app.include_router(publication_delivery_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
 app.include_router(routes_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
+app.include_router(packing_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(library_router, prefix="/api")
 app.include_router(media_router, prefix="/api")

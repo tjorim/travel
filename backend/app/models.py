@@ -323,6 +323,7 @@ class Trip(Base):
     trip_tasks: Mapped[list["TripTask"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="TripTask.created_at"
     )
+    packing_lists: Mapped[list["PackingList"]] = relationship(back_populates="trip", cascade="all, delete-orphan")
     routes: Mapped[list["Route"]] = relationship(
         back_populates="trip",
         cascade="all, delete-orphan",
@@ -609,6 +610,59 @@ class Visit(Base):
     trip: Mapped[Trip] = relationship(back_populates="visits")
     area: Mapped[Area] = relationship(foreign_keys=[area_id])
     location: Mapped[Location | None] = relationship(foreign_keys=[location_id])
+
+
+class PackingList(Base):
+    __tablename__ = "packing_lists"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    trip: Mapped[Trip] = relationship(back_populates="packing_lists")
+    bags: Mapped[list["PackingBag"]] = relationship(back_populates="packing_list", cascade="all, delete-orphan")
+    items: Mapped[list["PackingItem"]] = relationship(back_populates="packing_list", cascade="all, delete-orphan")
+
+
+class PackingBag(Base):
+    __tablename__ = "packing_bags"
+    __table_args__ = (
+        CheckConstraint("weight_limit_g IS NULL OR weight_limit_g > 0", name="ck_packing_bag_weight_limit"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    list_id: Mapped[str] = mapped_column(ForeignKey("packing_lists.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    weight_limit_g: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    packing_list: Mapped[PackingList] = relationship(back_populates="bags")
+
+
+class PackingItem(Base):
+    __tablename__ = "packing_items"
+    __table_args__ = (
+        CheckConstraint("quantity BETWEEN 1 AND 99", name="ck_packing_item_quantity"),
+        CheckConstraint("weight_g IS NULL OR weight_g >= 0", name="ck_packing_item_weight"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    list_id: Mapped[str] = mapped_column(ForeignKey("packing_lists.id", ondelete="CASCADE"), nullable=False, index=True)
+    bag_id: Mapped[str | None] = mapped_column(
+        ForeignKey("packing_bags.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    label: Mapped[str] = mapped_column(String(160), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    category: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    packed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    essential: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    valuable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    cabin_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    checked_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    weight_g: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    packing_list: Mapped[PackingList] = relationship(back_populates="items")
 
 
 class TripTask(Base):

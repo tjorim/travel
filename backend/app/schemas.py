@@ -639,6 +639,100 @@ class StoredTaskLink(TaskLink):
     model_config = ConfigDict(extra="ignore")
 
 
+class PackingListCreate(InputModel):
+    name: str = Field(default="Packing list", min_length=1, max_length=160)
+
+
+class PackingListUpdate(InputModel):
+    name: str = Field(min_length=1, max_length=160)
+
+
+class PackingListResponse(BaseModel):
+    id: str
+    trip_id: str
+    name: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PackingBagCreate(InputModel):
+    name: str = Field(min_length=1, max_length=160)
+    type: str | None = Field(default=None, max_length=80)
+    position: int | None = Field(default=None, ge=0)
+    weight_limit_g: int | None = Field(default=None, gt=0)
+
+
+class PackingBagUpdate(InputModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    type: str | None = Field(default=None, max_length=80)
+    position: int | None = Field(default=None, ge=0)
+    weight_limit_g: int | None = Field(default=None, gt=0)
+
+
+class PackingBagResponse(BaseModel):
+    id: str
+    list_id: str
+    name: str
+    type: str | None
+    position: int
+    weight_limit_g: int | None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PackingItemCreate(InputModel):
+    label: str = Field(min_length=1, max_length=160)
+    quantity: int = Field(default=1, ge=1, le=99)
+    category: str | None = Field(default=None, max_length=80)
+    bag_id: str | None = None
+    position: int | None = Field(default=None, ge=0)
+    packed: bool = False
+    essential: bool = False
+    valuable: bool = False
+    cabin_only: bool = False
+    checked_only: bool = False
+    notes: str | None = Field(default=None, max_length=4000)
+    weight_g: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def one_baggage_constraint(self):
+        if self.cabin_only and self.checked_only:
+            raise ValueError("An item cannot be both cabin-only and checked-only")
+        return self
+
+
+class PackingItemUpdate(InputModel):
+    label: str | None = Field(default=None, min_length=1, max_length=160)
+    quantity: int | None = Field(default=None, ge=1, le=99)
+    category: str | None = Field(default=None, max_length=80)
+    bag_id: str | None = None
+    position: int | None = Field(default=None, ge=0)
+    packed: bool | None = None
+    essential: bool | None = None
+    valuable: bool | None = None
+    cabin_only: bool | None = None
+    checked_only: bool | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+    weight_g: int | None = Field(default=None, ge=0)
+
+
+class PackingItemResponse(BaseModel):
+    id: str
+    list_id: str
+    bag_id: str | None
+    label: str
+    quantity: int
+    category: str | None
+    packed: bool
+    position: int
+    essential: bool
+    valuable: bool
+    cabin_only: bool
+    checked_only: bool
+    notes: str | None
+    weight_g: int | None
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TripTaskCreate(InputModel):
     title: str = Field(min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
