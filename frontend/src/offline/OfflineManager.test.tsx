@@ -119,6 +119,50 @@ it("shows an emergency-info snapshot inline instead of opening a new tab", async
   expect(openSpy).not.toHaveBeenCalled();
 });
 
+it("opens a packing copy as a read-only list", async () => {
+  withSession();
+  stubMetadataFetch();
+  await pinOfflineCopy({
+    subject: SUBJECT,
+    resourceKind: "packing_list",
+    resourceId: "list-1",
+    metadataUrl: "/api/trips/trip-1/packing-lists/list-1",
+    title: "Exampleland · Paklijst",
+    contentType: "application/json",
+    bytes: new TextEncoder().encode(
+      JSON.stringify({
+        list: { id: "list-1", name: "Paklijst" },
+        bags: [{ id: "bag-1", name: "Handbagage", position: 0 }],
+        items: [
+          {
+            id: "item-1",
+            label: "Paspoort",
+            quantity: 1,
+            category: "Documenten",
+            bag_id: "bag-1",
+            position: 0,
+            packed: true,
+            notes: null,
+            last_minute: false,
+          },
+        ],
+        savedAt: Date.now(),
+      }),
+    ).buffer as ArrayBuffer,
+  });
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
+  await screen.findByText("Exampleland · Paklijst");
+  screen.getByRole("button", { name: "Bekijken" }).click();
+  const checkbox = (await screen.findByRole("checkbox", { name: "Paspoort ingepakt" })) as HTMLInputElement;
+  expect(checkbox.checked).toBe(true);
+  expect(checkbox.disabled).toBe(true);
+  expect(screen.getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/)).toBeTruthy();
+});
+
 it("clears every pinned copy on this device after confirmation", async () => {
   withSession();
   stubMetadataFetch();
@@ -152,7 +196,7 @@ it("clears every pinned copy on this device after confirmation", async () => {
   await answerConfirmation("Alles wissen");
   await screen.findByText("Alle offline kopieën op dit toestel zijn verwijderd.");
   await screen.findByText(
-    "Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of bezoek om het hier te laten verschijnen.",
+    "Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart, bezoek of paklijst om het hier te laten verschijnen.",
   );
   expect(screen.queryByText("Insurance policy")).toBeNull();
   expect(screen.queryByText("Mom")).toBeNull();

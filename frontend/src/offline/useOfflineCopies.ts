@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { decodeSubject } from "../auth";
 import { useAuth } from "../auth-context";
@@ -40,27 +40,47 @@ export function useOfflineCopies(): UseOfflineCopies {
   const { session } = useAuth();
   const subject = session ? decodeSubject(session.accessToken) : null;
   const [copies, setCopies] = useState<OfflineCopySummary[]>([]);
+  const [copiesSubject, setCopiesSubject] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [unsupported, setUnsupported] = useState(false);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [disclosure, setDisclosure] = useState<KeyDisclosure | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
+  const mounted = useRef(true);
+  const currentSubject = useRef(subject);
+  currentSubject.current = subject;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!subject) {
-      setCopies([]);
-      setLoaded(true);
+      if (mounted.current && currentSubject.current === subject) {
+        setCopies([]);
+        setCopiesSubject(null);
+        setLoaded(true);
+      }
       return;
     }
     try {
       const loadedCopies = await listOfflineCopies(subject);
-      setCopies(loadedCopies);
-      setDisclosure(await getKeyDisclosure(subject));
-      if (loadedCopies.length > 0) setPersisted(await isStoragePersisted());
+      const disclosure = await getKeyDisclosure(subject);
+      const storage = loadedCopies.length > 0 ? await isStoragePersisted() : null;
+      if (mounted.current && currentSubject.current === subject) {
+        setCopies(loadedCopies);
+        setCopiesSubject(subject);
+        setDisclosure(disclosure);
+        if (loadedCopies.length > 0) setPersisted(storage);
+      }
     } catch (error) {
-      if (error instanceof OfflineUnsupportedError) setUnsupported(true);
+      if (mounted.current && currentSubject.current === subject && error instanceof OfflineUnsupportedError)
+        setUnsupported(true);
     } finally {
-      setLoaded(true);
+      if (mounted.current && currentSubject.current === subject) setLoaded(true);
     }
   }, [subject]);
 
@@ -95,20 +115,25 @@ export function useOfflineCopies(): UseOfflineCopies {
           return new Response(null, { status: error.status });
         },
       );
-    void revalidateOfflineCopies(subject, probe).then(() => refresh());
+    void revalidateOfflineCopies(subject, probe)
+      .then(() => refresh())
+      .catch((error: unknown) => {
+        if (mounted.current && error instanceof OfflineUnsupportedError) setUnsupported(true);
+      });
     // Intentionally re-runs only when connectivity flips back on or the signed-in subject changes.
   }, [subject, online]);
 
+  const visibleCopies = copiesSubject === subject ? copies : [];
   return {
     subject,
-    copies,
+    copies: visibleCopies,
     loaded,
     unsupported,
     online,
     disclosure,
     persisted,
     isPinned: (resourceKind, resourceId) =>
-      copies.some((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId),
+      visibleCopies.some((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId),
     async pin(input) {
       if (!subject) throw new Error("Meld aan om iets offline te bewaren.");
       await pinOfflineCopy({ ...input, subject });
@@ -116,7 +141,7 @@ export function useOfflineCopies(): UseOfflineCopies {
       await refresh();
     },
     async removeByResource(resourceKind, resourceId) {
-      const match = copies.find((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId);
+      const match = visibleCopies.find((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId);
       if (!match) return;
       await removeOfflineCopy(match.id);
       await refresh();

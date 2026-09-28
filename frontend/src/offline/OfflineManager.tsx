@@ -4,6 +4,7 @@ import { useConfirmation } from "../forms/useConfirmation";
 import { bytesLabel, formatInstant, openBlobInNewTab } from "../tracker-model";
 import { useOfflineCopies } from "./useOfflineCopies";
 import type { OfflineCopySummary, OfflineResourceKind } from "./offline-store";
+import { PackingOfflineView } from "../trips/PackingOfflineView";
 
 const KIND_LABELS: Record<OfflineResourceKind, string> = {
   library_document: "Bibliotheekdocument",
@@ -13,6 +14,7 @@ const KIND_LABELS: Record<OfflineResourceKind, string> = {
   media_derivative: "Afgeleide media",
   route_data: "Kaart- en routegegevens",
   visit: "Bezoek",
+  packing_list: "Paklijst",
 };
 
 const formatMoment = formatInstant;
@@ -22,11 +24,16 @@ export function OfflineManager() {
   const offline = useOfflineCopies();
   const [message, setMessage] = useState("");
   const [viewingText, setViewingText] = useState<{ title: string; text: string } | null>(null);
+  const [viewingPacking, setViewingPacking] = useState<OfflineCopySummary | null>(null);
 
   if (!offline.subject) return null;
 
   async function view(copy: OfflineCopySummary) {
     setMessage("");
+    if (copy.resourceKind === "packing_list") {
+      setViewingPacking(copy);
+      return;
+    }
     try {
       const blob = await offline.open(copy.id);
       if (copy.contentType === "application/json") {
@@ -100,8 +107,8 @@ export function OfflineManager() {
       )}
       {!offline.copies.length && offline.loaded && (
         <p>
-          Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart of bezoek om het hier te laten
-          verschijnen.
+          Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart, bezoek of paklijst om het hier te
+          laten verschijnen.
         </p>
       )}
       {offline.copies.length > 0 && (
@@ -136,6 +143,14 @@ export function OfflineManager() {
           </div>
           <pre>{viewingText.text}</pre>
           <button className="secondary compact" type="button" onClick={() => setViewingText(null)}>
+            Sluiten
+          </button>
+        </div>
+      )}
+      {viewingPacking && offline.copies.some((copy) => copy.id === viewingPacking.id) && (
+        <div className="rounded-xl border p-4">
+          <PackingOfflineView copy={viewingPacking} open={offline.open} />
+          <button className="secondary compact mt-3" type="button" onClick={() => setViewingPacking(null)}>
             Sluiten
           </button>
         </div>

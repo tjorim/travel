@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owners can explicitly save, refresh and remove an encrypted, device-scoped
+  packing copy. Its read-only offline view shows the saved time, bags, items,
+  packed states, grouping and filters. Reconnect checks owner access and the
+  existing lease policy; editing still requires a connection.
+  ([#266](https://github.com/tjorim/travel/issues/266))
+
 - Packing lists can be copied from another owned trip or created from one or
   more personal templates, preserving structure while resetting every item to
   unpacked. Owners can mark departure-day items, filter them, review a compact

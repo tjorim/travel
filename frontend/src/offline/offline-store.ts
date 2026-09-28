@@ -14,7 +14,8 @@ export type OfflineResourceKind =
   | "media_asset"
   | "media_derivative"
   | "route_data"
-  | "visit";
+  | "visit"
+  | "packing_list";
 
 export type OfflineCopyRecord = {
   id: string;

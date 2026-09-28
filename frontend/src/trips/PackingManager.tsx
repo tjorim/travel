@@ -6,6 +6,8 @@ import { ownerRequest, errorMessage } from "../query/api";
 import type { Trip } from "../tracker-model";
 import { ChoiceGroup } from "../ui/ChoiceGroup";
 import { SearchSelect } from "../forms/fields";
+import { useOfflineCopies } from "../offline/useOfflineCopies";
+import { PackingOfflineView, type PackingSnapshot } from "./PackingOfflineView";
 
 type PackingList = { id: string; name: string };
 type PackingSource = PackingList & { trip_id: string; trip_title: string };
@@ -80,6 +82,7 @@ const BAG_TYPES = [
 
 export function PackingManager({ trip }: { trip: Trip }) {
   const owner = useOwner();
+  const offline = useOfflineCopies();
   const client = useQueryClient();
   const base = tripPath(trip.id, "packing-lists");
   const key = ["owner", owner?.subject, "trip", trip.id, "packing"];
@@ -263,19 +266,91 @@ export function PackingManager({ trip }: { trip: Trip }) {
         .reduce((sum, item) => sum + (item.weight_g ?? 0) * item.quantity, 0) > bag.weight_limit_g,
   );
 
+  const savedCopies = offline.copies.filter(
+    (copy) => copy.resourceKind === "packing_list" && copy.metadataUrl.startsWith(`${base}/`),
+  );
+  const savedCopy = savedCopies.find((copy) => copy.resourceId === chosenList) ?? savedCopies[0];
+  const showingCopy = !offline.online || listsQuery.isError || (list && (bagsQuery.isError || itemsQuery.isError));
+  async function saveOfflineCopy() {
+    if (!owner || !list || !offline.online) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const [freshList, freshBags, freshItems] = await Promise.all([
+        ownerRequest<PackingList>(owner.session, path, "Paklijst laden mislukt."),
+        ownerRequest<Bag[]>(owner.session, `${path}/bags`, "Tassen laden mislukt."),
+        ownerRequest<Item[]>(owner.session, `${path}/items`, "Inpakitems laden mislukt."),
+      ]);
+      const snapshot: PackingSnapshot = {
+        list: freshList,
+        bags: freshBags,
+        items: freshItems,
+        savedAt: Date.now(),
+      };
+      await offline.pin({
+        resourceKind: "packing_list",
+        resourceId: list.id,
+        metadataUrl: path,
+        title: `${trip.title} · ${freshList.name}`,
+        contentType: "application/json",
+        bytes: new TextEncoder().encode(JSON.stringify(snapshot)).buffer as ArrayBuffer,
+      });
+      setNotice("Paklijst offline bewaard op dit toestel. Wijzigingen vragen een verbinding.");
+    } catch (error) {
+      setNotice(errorMessage(error, "De paklijst kon niet offline worden bewaard."));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function removeOfflineCopy() {
+    if (!list) return;
+    await offline.removeByResource("packing_list", list.id);
+    setNotice("Paklijst is niet langer offline beschikbaar.");
+  }
+
+  if (showingCopy)
+    return (
+      <section className="space-y-4" aria-labelledby="packing-title">
+        <h3 id="packing-title" className="text-2xl font-semibold">
+          Inpakken
+        </h3>
+        {savedCopies.length > 1 && (
+          <label className="block">
+            Offline paklijst{" "}
+            <SearchSelect ariaLabel="Offline paklijst" value={savedCopy?.resourceId ?? ""} onChange={setChosenList}>
+              {savedCopies.map((copy) => (
+                <option key={copy.id} value={copy.resourceId}>
+                  {copy.title}
+                </option>
+              ))}
+            </SearchSelect>
+          </label>
+        )}
+        {savedCopy ? (
+          <PackingOfflineView copy={savedCopy} open={offline.open} />
+        ) : (
+          <p role={offline.online ? "alert" : "status"}>
+            {offline.online && listsQuery.isError
+              ? errorMessage(listsQuery.error, "Paklijsten laden mislukt.")
+              : offline.online && (bagsQuery.isError || itemsQuery.isError)
+                ? "Inpaklijst laden mislukt."
+                : offline.loaded
+                  ? "Geen offline paklijst bewaard voor deze reis. Verbind opnieuw om er een te bewaren."
+                  : "Offline paklijsten laden…"}
+          </p>
+        )}
+        {offline.online && (
+          <button type="button" onClick={() => void refresh()}>
+            Opnieuw proberen
+          </button>
+        )}
+      </section>
+    );
+
   if (listsQuery.isPending)
     return (
       <section className="rounded-xl border p-5" role="status">
         Paklijsten laden…
-      </section>
-    );
-  if (listsQuery.isError)
-    return (
-      <section className="rounded-xl border p-5" role="alert">
-        {errorMessage(listsQuery.error, "Paklijsten laden mislukt.")}{" "}
-        <button type="button" onClick={() => void listsQuery.refetch()}>
-          Opnieuw proberen
-        </button>
       </section>
     );
   return (
@@ -311,8 +386,28 @@ export function PackingManager({ trip }: { trip: Trip }) {
               Suggesties uit eerdere reizen
             </button>
           )}
+          {list && (
+            <button
+              className="secondary compact"
+              type="button"
+              disabled={busy || offline.unsupported || !offline.online}
+              onClick={() => void saveOfflineCopy()}
+            >
+              {offline.isPinned("packing_list", list.id) ? "Offline kopie vernieuwen" : "Offline bewaren"}
+            </button>
+          )}
+          {list && offline.isPinned("packing_list", list.id) && (
+            <button className="secondary compact" type="button" onClick={() => void removeOfflineCopy()}>
+              Offline verwijderen
+            </button>
+          )}
         </div>
       </div>
+      {list && offline.isPinned("packing_list", list.id) && (
+        <p className="text-sm">
+          Een offline kopie is bewaard. Vernieuw na wijzigingen om de laatste stand mee te nemen.
+        </p>
+      )}
       {!list ? (
         <div className="rounded-xl border p-5">
           <p>Nog geen paklijst voor deze reis.</p>

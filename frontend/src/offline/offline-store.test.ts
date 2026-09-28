@@ -79,7 +79,7 @@ it("opens a pinned copy and decrypts its original bytes after a simulated reload
   expect(blob.type).toBe("application/pdf");
 });
 
-it("keeps explicitly pinned media, map data and visits private across a simulated reload", async () => {
+it("keeps explicitly pinned media, map data, visits and packing private across a simulated reload", async () => {
   await pinOfflineCopy(
     pinInput({
       resourceKind: "media_asset",
@@ -109,11 +109,26 @@ it("keeps explicitly pinned media, map data and visits private across a simulate
       bytes: bytesOf('{"title":"Arrival"}'),
     }),
   );
+  await pinOfflineCopy(
+    pinInput({
+      resourceKind: "packing_list",
+      resourceId: "list-1",
+      title: "Exampleland · Paklijst",
+      metadataUrl: "/api/trips/trip-1/packing-lists/list-1",
+      contentType: "application/json",
+      bytes: bytesOf('{"list":{"id":"list-1"},"items":[]}'),
+    }),
+  );
 
   await __resetOfflineStoreForTests();
 
   const copies = await listOfflineCopies(OWNER);
-  expect(copies.map((copy) => copy.resourceKind).sort()).toEqual(["media_asset", "route_data", "visit"]);
+  expect(copies.map((copy) => copy.resourceKind).sort()).toEqual([
+    "media_asset",
+    "packing_list",
+    "route_data",
+    "visit",
+  ]);
   await expect(
     (await openOfflineCopy(OWNER, copies.find((copy) => copy.resourceKind === "media_asset")!.id)).text(),
   ).resolves.toBe("media bytes");
@@ -156,7 +171,13 @@ it("does not let a different subject open or list another owner's pinned copy", 
 });
 
 it("revalidateOfflineCopies removes a copy once the source resource 404s", async () => {
-  await pinOfflineCopy(pinInput());
+  await pinOfflineCopy(
+    pinInput({
+      resourceKind: "packing_list",
+      resourceId: "list-1",
+      metadataUrl: "/api/trips/trip-1/packing-lists/list-1",
+    }),
+  );
   const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
 
   const result = await revalidateOfflineCopies(OWNER, fetchImpl);
@@ -190,7 +211,7 @@ it("blocks opening and purges a copy once its lease has expired", async () => {
   // Mock only Date.now (not fake timers): IndexedDB's own async scheduling
   // must keep running normally for pin/open to resolve.
   const dateSpy = vi.spyOn(Date, "now").mockReturnValue(0);
-  const pinned = await pinOfflineCopy(pinInput());
+  const pinned = await pinOfflineCopy(pinInput({ resourceKind: "packing_list", resourceId: "list-1" }));
   dateSpy.mockReturnValue(OFFLINE_LEASE_MS + 1);
 
   await expect(openOfflineCopy(OWNER, pinned.id)).rejects.toThrow(/verlopen/);

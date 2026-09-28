@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
+import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Trip } from "../tracker-model";
 import { PackingManager } from "./PackingManager";
+import { __resetOfflineStoreForTests, listOfflineCopies } from "../offline/offline-store";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
@@ -77,6 +79,7 @@ beforeEach(() => {
           { label: "Oplader", category: "Elektronica", prior_trips: 3, usually_cabin: true, usually_essential: false },
         ]);
       if (url.endsWith("/packing-lists") && method === "POST") return json({ id: "new-list", name: body.name }, 201);
+      if (url.endsWith("/packing-lists/list") && method === "GET") return json({ id: "list", name: "Paklijst" });
       if (url.endsWith("/bags") && method === "GET") return json(bags);
       if (url.endsWith("/items") && method === "GET") return json(items);
       if (url.endsWith("/bags") && method === "POST") {
@@ -102,9 +105,17 @@ beforeEach(() => {
     }),
   );
 });
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.unstubAllGlobals();
+  Object.defineProperty(window.navigator, "onLine", { value: true, configurable: true });
+  await __resetOfflineStoreForTests();
+  await new Promise<void>((resolve) => {
+    const request = indexedDB.deleteDatabase("travel-offline-v1");
+    request.onsuccess = () => resolve();
+    request.onerror = () => resolve();
+    request.onblocked = () => resolve();
+  });
 });
 
 it("groups canonical items, filters unpacked and shows known weight", async () => {
@@ -235,4 +246,31 @@ it("marks all items unpacked and warns when known weight exceeds a limit", async
   expect(screen.getByText(/gewicht niet volledig/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Alles uitpakken" }));
   await waitFor(() => expect(items.every((row) => !row.packed)).toBe(true));
+});
+
+it("saves a private read-only snapshot and restores its filters offline", async () => {
+  renderWithOwner(<PackingManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Offline bewaren" }));
+  await screen.findByText(/Paklijst offline bewaard op dit toestel/);
+  expect((await listOfflineCopies("owner-1")).map((copy) => copy.resourceKind)).toEqual(["packing_list"]);
+
+  Object.defineProperty(window.navigator, "onLine", { value: false, configurable: true });
+  window.dispatchEvent(new Event("offline"));
+  const offlineView = await screen.findByRole("region", { name: "Offline paklijst Paklijst" });
+  expect(within(offlineView).getByText(/bewaard op/)).toBeTruthy();
+  expect(within(offlineView).getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/)).toBeTruthy();
+  expect((within(offlineView).getByRole("checkbox", { name: "Sokken ingepakt" }) as HTMLInputElement).disabled).toBe(
+    true,
+  );
+  expect(screen.queryByRole("button", { name: "Tas toevoegen" })).toBeNull();
+  fireEvent.click(within(offlineView).getByRole("radio", { name: "Per categorie" }));
+  expect(within(offlineView).getByRole("region", { name: "Kleding" })).toBeTruthy();
+  fireEvent.click(within(offlineView).getByRole("radio", { name: "Ingepakt" }));
+  expect(within(offlineView).queryByText("Sokken")).toBeNull();
+  expect(within(offlineView).getByText("Boek")).toBeTruthy();
+
+  Object.defineProperty(window.navigator, "onLine", { value: true, configurable: true });
+  window.dispatchEvent(new Event("online"));
+  fireEvent.click(await screen.findByRole("button", { name: "Offline verwijderen" }));
+  await waitFor(async () => expect(await listOfflineCopies("owner-1")).toHaveLength(0));
 });
