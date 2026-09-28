@@ -8,10 +8,16 @@ import { PackingManager } from "./PackingManager";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
-const bag = (id: string, name: string, position: number, weight_limit_g: number | null = null) => ({
+const bag = (
+  id: string,
+  name: string,
+  position: number,
+  weight_limit_g: number | null = null,
+  type: string | null = null,
+) => ({
   id,
   name,
-  type: null,
+  type,
   position,
   weight_limit_g,
 });
@@ -32,6 +38,7 @@ const item = (
   weight_g: null,
   notes: null,
   essential: false,
+  last_minute: false,
   valuable: false,
   cabin_only: false,
   checked_only: false,
@@ -62,6 +69,14 @@ beforeEach(() => {
       calls.push({ method, url, body });
       if (url.endsWith("/packing-lists") && method === "GET")
         return failLists ? json({ detail: "Oops" }, 500) : json([{ id: "list", name: "Paklijst" }]);
+      if (url.endsWith("/packing-list-sources") && method === "GET")
+        return json([{ id: "source", name: "Paklijst", trip_id: "other", trip_title: "Japan" }]);
+      if (url.endsWith("/packing-templates") && method === "GET") return json([{ id: "template", name: "Weekend" }]);
+      if (url.endsWith("/suggestions") && method === "GET")
+        return json([
+          { label: "Oplader", category: "Elektronica", prior_trips: 3, usually_cabin: true, usually_essential: false },
+        ]);
+      if (url.endsWith("/packing-lists") && method === "POST") return json({ id: "new-list", name: body.name }, 201);
       if (url.endsWith("/bags") && method === "GET") return json(bags);
       if (url.endsWith("/items") && method === "GET") return json(items);
       if (url.endsWith("/bags") && method === "POST") {
@@ -103,6 +118,42 @@ it("groups canonical items, filters unpacked and shows known weight", async () =
   fireEvent.click(screen.getByRole("radio", { name: "Niet ingepakt" }));
   expect(screen.queryByText("Boek")).toBeNull();
   expect(screen.getByRole("radio", { name: "Niet ingepakt" }).getAttribute("aria-checked")).toBe("true");
+});
+
+it("shows owner-authored departure warnings and filters last-minute items", async () => {
+  bags[1].type = "checked";
+  items[2].last_minute = true;
+  items[2].cabin_only = true;
+  items[2].bag_id = "checked";
+  renderWithOwner(<PackingManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Vertrekcheck" }));
+  const check = screen.getByRole("region", { name: "Vertrekcheck" });
+  expect(within(check).getByText(/Essentieel, nog in te pakken: Paspoort/)).toBeTruthy();
+  expect(within(check).getByText(/Op de vertrekdag: Paspoort/)).toBeTruthy();
+  expect(within(check).getByText(/Controleer je eigen bagagekeuze: Paspoort/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("radio", { name: "Vertrekdag" }));
+  expect(screen.getByRole("region", { name: "Ruimbagage" }).textContent).toContain("Paspoort");
+  expect(screen.queryByText("Boek")).toBeNull();
+});
+
+it("copies a list from another trip with packed state reset", async () => {
+  renderWithOwner(<PackingManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Lijst hergebruiken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Bronpaklijst opties tonen" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Japan · Paklijst" }));
+  fireEvent.click(screen.getByRole("button", { name: "Nieuwe paklijst maken" }));
+  await waitFor(() =>
+    expect(calls.some((call) => call.method === "POST" && call.body.copy_from_list_id === "source")).toBe(true),
+  );
+});
+
+it("keeps history suggestions optional and dismissible", async () => {
+  renderWithOwner(<PackingManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Suggesties uit eerdere reizen" }));
+  const suggestions = await screen.findByRole("region", { name: "Suggesties uit eerdere reizen" });
+  expect(await within(suggestions).findByText(/Oplader · op 3 eerdere reizen/)).toBeTruthy();
+  fireEvent.click(within(suggestions).getByRole("button", { name: "Negeren" }));
+  expect(within(suggestions).queryByText(/Oplader · op 3 eerdere reizen/)).toBeNull();
 });
 
 it("retains a failed toggle for retry", async () => {

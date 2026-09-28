@@ -624,6 +624,16 @@ class PackingList(Base):
     items: Mapped[list["PackingItem"]] = relationship(back_populates="packing_list", cascade="all, delete-orphan")
 
 
+class PackingTemplate(Base):
+    __tablename__ = "packing_templates"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class PackingBag(Base):
     __tablename__ = "packing_bags"
     __table_args__ = (
@@ -657,6 +667,7 @@ class PackingItem(Base):
     packed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     essential: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_minute: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     valuable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     cabin_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     checked_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

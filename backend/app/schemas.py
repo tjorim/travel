@@ -641,6 +641,8 @@ class StoredTaskLink(TaskLink):
 
 class PackingListCreate(InputModel):
     name: str = Field(default="Packing list", min_length=1, max_length=160)
+    copy_from_list_id: str | None = None
+    template_ids: list[str] = Field(default_factory=list, max_length=10)
 
 
 class PackingListUpdate(InputModel):
@@ -650,6 +652,17 @@ class PackingListUpdate(InputModel):
 class PackingListResponse(BaseModel):
     id: str
     trip_id: str
+    name: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PackingTemplateCreate(InputModel):
+    name: str = Field(min_length=1, max_length=160)
+
+
+class PackingTemplateResponse(BaseModel):
+    id: str
     name: str
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
@@ -687,6 +700,7 @@ class PackingItemCreate(InputModel):
     position: int | None = Field(default=None, ge=0)
     packed: bool = False
     essential: bool = False
+    last_minute: bool = False
     valuable: bool = False
     cabin_only: bool = False
     checked_only: bool = False
@@ -708,6 +722,7 @@ class PackingItemUpdate(InputModel):
     position: int | None = Field(default=None, ge=0)
     packed: bool | None = None
     essential: bool | None = None
+    last_minute: bool | None = None
     valuable: bool | None = None
     cabin_only: bool | None = None
     checked_only: bool | None = None
@@ -725,6 +740,7 @@ class PackingItemResponse(BaseModel):
     packed: bool
     position: int
     essential: bool
+    last_minute: bool
     valuable: bool
     cabin_only: bool
     checked_only: bool

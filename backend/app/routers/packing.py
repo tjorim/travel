@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
-from ..models import PackingBag, PackingItem, PackingList
+from ..models import PackingBag, PackingItem, PackingList, PackingTemplate, Trip
 from ..schemas import (
     PackingBagCreate,
     PackingBagResponse,
@@ -19,10 +19,14 @@ from ..schemas import (
     PackingListCreate,
     PackingListResponse,
     PackingListUpdate,
+    PackingTemplateCreate,
+    PackingTemplateResponse,
 )
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}/packing-lists", tags=["packing"])
+templates_router = APIRouter(prefix="/packing-templates", tags=["packing"])
+sources_router = APIRouter(prefix="/packing-list-sources", tags=["packing"])
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 
@@ -81,6 +85,88 @@ def _renumber(rows: list) -> None:
         row.position = index
 
 
+def _snapshot(session: Session, list_id: str) -> dict:
+    bags = _bags(session, list_id)
+    items = list(session.scalars(select(PackingItem).where(PackingItem.list_id == list_id)))
+    return {
+        "bags": [
+            {
+                "id": bag.id,
+                "name": bag.name,
+                "type": bag.type,
+                "position": bag.position,
+                "weight_limit_g": bag.weight_limit_g,
+            }
+            for bag in bags
+        ],
+        "items": [
+            {
+                field: getattr(item, field)
+                for field in (
+                    "bag_id",
+                    "label",
+                    "quantity",
+                    "category",
+                    "position",
+                    "essential",
+                    "last_minute",
+                    "valuable",
+                    "cabin_only",
+                    "checked_only",
+                    "notes",
+                    "weight_g",
+                )
+            }
+            for item in items
+        ],
+    }
+
+
+def _apply_snapshot(session: Session, list_id: str, snapshot: dict, bag_offset: int) -> int:
+    bag_ids = {}
+    for bag in sorted(snapshot["bags"], key=lambda row: row["position"]):
+        copy = PackingBag(
+            list_id=list_id,
+            name=bag["name"],
+            type=bag["type"],
+            position=bag_offset,
+            weight_limit_g=bag["weight_limit_g"],
+        )
+        session.add(copy)
+        session.flush()
+        bag_ids[bag["id"]] = copy.id
+        bag_offset += 1
+    positions: dict[str | None, int] = {None: len(_items(session, list_id, None))}
+    for item in sorted(snapshot["items"], key=lambda row: (row["bag_id"] or "", row["position"])):
+        bag_id = bag_ids.get(item["bag_id"])
+        position = positions.get(bag_id, 0)
+        positions[bag_id] = position + 1
+        session.add(
+            PackingItem(
+                list_id=list_id,
+                bag_id=bag_id,
+                position=position,
+                packed=False,
+                **{
+                    field: item.get(field)
+                    for field in (
+                        "label",
+                        "quantity",
+                        "category",
+                        "essential",
+                        "last_minute",
+                        "valuable",
+                        "cabin_only",
+                        "checked_only",
+                        "notes",
+                        "weight_g",
+                    )
+                },
+            )
+        )
+    return bag_offset
+
+
 @router.get("", response_model=list[PackingListResponse])
 def list_packing_lists(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[PackingList]:
     owned_trip(session, trip_id, subject)
@@ -96,11 +182,124 @@ def create_packing_list(
     trip_id: str, payload: PackingListCreate, session: SessionDep, subject: SubjectDep
 ) -> PackingList:
     owned_trip(session, trip_id, subject)
+    if payload.copy_from_list_id and payload.template_ids:
+        raise HTTPException(422, "Choose a source list or templates")
+    snapshots = []
+    if payload.copy_from_list_id:
+        source = session.scalar(
+            select(PackingList)
+            .join(Trip)
+            .where(PackingList.id == payload.copy_from_list_id, Trip.owner_subject == subject)
+        )
+        if source is None:
+            raise HTTPException(404, "Source packing list not found")
+        snapshots.append(_snapshot(session, source.id))
+    if len(set(payload.template_ids)) != len(payload.template_ids):
+        raise HTTPException(422, "Choose each template once")
+    for template_id in payload.template_ids:
+        template = session.scalar(
+            select(PackingTemplate).where(PackingTemplate.id == template_id, PackingTemplate.owner_subject == subject)
+        )
+        if template is None:
+            raise HTTPException(404, "Packing template not found")
+        snapshots.append(template.snapshot)
     result = PackingList(trip_id=trip_id, name=payload.name)
     session.add(result)
+    session.flush()
+    offset = 0
+    for snapshot in snapshots:
+        offset = _apply_snapshot(session, result.id, snapshot, offset)
     session.commit()
     session.refresh(result)
     return result
+
+
+@router.post("/{list_id}/templates", response_model=PackingTemplateResponse, status_code=201)
+def save_packing_template(
+    trip_id: str, list_id: str, payload: PackingTemplateCreate, session: SessionDep, subject: SubjectDep
+) -> PackingTemplate:
+    owned_list(trip_id, list_id, session, subject)
+    template = PackingTemplate(owner_subject=subject, name=payload.name, snapshot=_snapshot(session, list_id))
+    session.add(template)
+    session.commit()
+    session.refresh(template)
+    return template
+
+
+@templates_router.get("", response_model=list[PackingTemplateResponse])
+def list_packing_templates(session: SessionDep, subject: SubjectDep) -> list[PackingTemplate]:
+    return list(
+        session.scalars(
+            select(PackingTemplate)
+            .where(PackingTemplate.owner_subject == subject)
+            .order_by(PackingTemplate.created_at, PackingTemplate.id)
+        )
+    )
+
+
+@sources_router.get("")
+def list_packing_sources(session: SessionDep, subject: SubjectDep) -> list[dict[str, str]]:
+    rows = session.execute(
+        select(PackingList.id, PackingList.name, Trip.title, Trip.id)
+        .join(Trip)
+        .where(Trip.owner_subject == subject)
+        .order_by(Trip.title, PackingList.name, PackingList.id)
+    )
+    return [
+        {"id": list_id, "name": name, "trip_title": title, "trip_id": trip_id} for list_id, name, title, trip_id in rows
+    ]
+
+
+@router.get("/{list_id}/suggestions")
+def packing_suggestions(trip_id: str, list_id: str, session: SessionDep, subject: SubjectDep) -> list[dict]:
+    owned_list(trip_id, list_id, session, subject)
+    present = {
+        item.label.strip().casefold()
+        for item in session.scalars(select(PackingItem).where(PackingItem.list_id == list_id))
+    }
+    history = session.execute(
+        select(PackingItem, PackingBag.type, PackingList.trip_id)
+        .join(PackingList, PackingItem.list_id == PackingList.id)
+        .join(Trip, PackingList.trip_id == Trip.id)
+        .outerjoin(PackingBag, PackingItem.bag_id == PackingBag.id)
+        .where(Trip.owner_subject == subject, PackingList.trip_id != trip_id)
+    )
+    groups: dict[str, dict] = {}
+    for item, bag_type, prior_trip_id in history:
+        key = item.label.strip().casefold()
+        if not key or key in present:
+            continue
+        group = groups.setdefault(
+            key, {"label": item.label, "trip_ids": set(), "cabin": 0, "essential": 0, "category": item.category}
+        )
+        if prior_trip_id in group["trip_ids"]:
+            continue
+        group["trip_ids"].add(prior_trip_id)
+        group["cabin"] += bag_type == "cabin"
+        group["essential"] += item.essential
+    return [
+        {
+            "label": group["label"],
+            "category": group["category"],
+            "prior_trips": len(group["trip_ids"]),
+            "usually_cabin": group["cabin"] > len(group["trip_ids"]) / 2,
+            "usually_essential": group["essential"] > len(group["trip_ids"]) / 2,
+        }
+        for group in sorted(groups.values(), key=lambda row: (-len(row["trip_ids"]), row["label"]))
+        if len(group["trip_ids"]) >= 3
+    ][:8]
+
+
+@templates_router.delete("/{template_id}", status_code=204)
+def delete_packing_template(template_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+    template = session.scalar(
+        select(PackingTemplate).where(PackingTemplate.id == template_id, PackingTemplate.owner_subject == subject)
+    )
+    if template is None:
+        raise HTTPException(404, "Packing template not found")
+    session.delete(template)
+    session.commit()
+    return Response(status_code=204)
 
 
 @router.get("/{list_id}", response_model=PackingListResponse)
@@ -244,7 +443,7 @@ def update_packing_item(
 ) -> PackingItem:
     result = owned_item(trip_id, list_id, item_id, session, subject)
     values = payload.model_dump(exclude_unset=True, exclude={"bag_id", "position"})
-    for field in ("label", "quantity", "packed", "essential", "valuable", "cabin_only", "checked_only"):
+    for field in ("label", "quantity", "packed", "essential", "last_minute", "valuable", "cabin_only", "checked_only"):
         if field in values and values[field] is None:
             raise HTTPException(422, f"{field} is required")
     if values.get("cabin_only", result.cabin_only) and values.get("checked_only", result.checked_only):

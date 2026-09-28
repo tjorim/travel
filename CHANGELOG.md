@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Packing lists can be copied from another owned trip or created from one or
+  more personal templates, preserving structure while resetting every item to
+  unpacked. Owners can mark departure-day items, filter them, review a compact
+  final check of essentials, assignments, weight limits and bag hints, and
+  optionally add or dismiss suggestions from their own prior trips.
+  ([#262](https://github.com/tjorim/travel/issues/262))
+
 - Added a private Inpakken workspace tab with bag and category grouping,
   Base UI view controls, visual progress and weight summaries, direct packed
   toggles, bag/item editing, bulk actions, and item moves through editing or

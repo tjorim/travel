@@ -8,6 +8,15 @@ import { ChoiceGroup } from "../ui/ChoiceGroup";
 import { SearchSelect } from "../forms/fields";
 
 type PackingList = { id: string; name: string };
+type PackingSource = PackingList & { trip_id: string; trip_title: string };
+type PackingTemplate = PackingList;
+type PackingSuggestion = {
+  label: string;
+  category: string | null;
+  prior_trips: number;
+  usually_cabin: boolean;
+  usually_essential: boolean;
+};
 type Bag = { id: string; name: string; type: string | null; position: number; weight_limit_g: number | null };
 type Item = {
   id: string;
@@ -20,6 +29,7 @@ type Item = {
   weight_g: number | null;
   notes: string | null;
   essential: boolean;
+  last_minute: boolean;
   valuable: boolean;
   cabin_only: boolean;
   checked_only: boolean;
@@ -27,7 +37,7 @@ type Item = {
 type ItemDraft = Omit<Item, "id" | "position" | "packed">;
 type BagDraft = Pick<Bag, "name" | "type" | "weight_limit_g">;
 type Group = "bag" | "category";
-type Filter = "all" | "unpacked" | "packed";
+type Filter = "all" | "unpacked" | "packed" | "last-minute";
 const emptyItem = (bag_id: string | null): ItemDraft => ({
   label: "",
   quantity: 1,
@@ -36,6 +46,7 @@ const emptyItem = (bag_id: string | null): ItemDraft => ({
   weight_g: null,
   notes: null,
   essential: false,
+  last_minute: false,
   valuable: false,
   cabin_only: false,
   checked_only: false,
@@ -45,7 +56,10 @@ const ordered = <T extends { position: number; id: string }>(rows: T[]) =>
   [...rows].sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
 const grams = (value: number) =>
   value >= 1000 ? `${(value / 1000).toLocaleString("nl-BE", { maximumFractionDigits: 2 })} kg` : `${value} g`;
-const count = (rows: Item[]) => `${rows.filter((item) => item.packed).length}/${rows.length} ingepakt`;
+const count = (rows: Item[]) => {
+  const packed = rows.filter((item) => item.packed).length;
+  return `${packed} van ${rows.length} ingepakt · ${rows.length - packed} te gaan`;
+};
 function PackingProgress({ rows, label }: { rows: Item[]; label: string }) {
   return (
     <progress
@@ -99,6 +113,34 @@ export function PackingManager({ trip }: { trip: Trip }) {
   const [selecting, setSelecting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [reuseOpen, setReuseOpen] = useState(false);
+  const [reuseMode, setReuseMode] = useState<"copy" | "templates">("copy");
+  const [sourceId, setSourceId] = useState("");
+  const [templateIds, setTemplateIds] = useState<string[]>([]);
+  const [reuseName, setReuseName] = useState("Paklijst");
+  const [templateName, setTemplateName] = useState<string | null>(null);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
+  const [leavingSoon, setLeavingSoon] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
+  const sourcesQuery = useQuery({
+    queryKey: [...key, "sources"],
+    enabled: !!owner && reuseOpen,
+    queryFn: () =>
+      ownerRequest<PackingSource[]>(owner!.session, "/api/packing-list-sources", "Bronlijsten laden mislukt."),
+  });
+  const templatesQuery = useQuery({
+    queryKey: [...key, "templates"],
+    enabled: !!owner && reuseOpen,
+    queryFn: () =>
+      ownerRequest<PackingTemplate[]>(owner!.session, "/api/packing-templates", "Sjablonen laden mislukt."),
+  });
+  const suggestionsQuery = useQuery({
+    queryKey: [...key, list?.id, "suggestions"],
+    enabled: !!owner && !!list && showSuggestions,
+    queryFn: () =>
+      ownerRequest<PackingSuggestion[]>(owner!.session, `${path}/suggestions`, "Suggesties laden mislukt."),
+  });
   // Failed toggles remain visible at the requested state until the owner retries or reloads.
   const [unsaved, setUnsaved] = useState<Record<string, boolean>>({});
   const [savingIds, setSavingIds] = useState<string[]>([]);
@@ -107,7 +149,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
   const items = serverItems.map((item) => (item.id in unsaved ? { ...item, packed: unsaved[item.id] } : item));
   const visible = ordered(items).filter(
     (item) =>
-      (filter === "all" || item.packed === (filter === "packed")) &&
+      (filter === "all" || (filter === "last-minute" ? item.last_minute : item.packed === (filter === "packed"))) &&
       `${item.label} ${item.category ?? ""} ${item.notes ?? ""}`
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
@@ -117,6 +159,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
       client.invalidateQueries({ queryKey: [...key, "lists"] }),
       client.invalidateQueries({ queryKey: [...key, list?.id, "bags"] }),
       client.invalidateQueries({ queryKey: [...key, list?.id, "items"] }),
+      client.invalidateQueries({ queryKey: [...key, list?.id, "suggestions"] }),
     ]);
   };
   const request = <T,>(url: string, method: "POST" | "PATCH" | "DELETE", body?: unknown) =>
@@ -170,6 +213,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
             weight_g: item.weight_g,
             notes: item.notes,
             essential: item.essential,
+            last_minute: item.last_minute,
             valuable: item.valuable,
             cabin_only: item.cabin_only,
             checked_only: item.checked_only,
@@ -204,6 +248,20 @@ export function PackingManager({ trip }: { trip: Trip }) {
       : [...new Set(visible.map((item) => item.category?.trim() || "Zonder categorie"))]
           .sort((a, b) => a.localeCompare(b, "nl"))
           .map((title) => ({ id: title, title, bag: null }));
+  const unpackedEssentials = items.filter((item) => item.essential && !item.packed);
+  const unpackedLastMinute = items.filter((item) => item.last_minute && !item.packed);
+  const unassigned = items.filter((item) => !item.bag_id);
+  const conflicts = items.filter((item) => {
+    const type = bags.find((bag) => bag.id === item.bag_id)?.type;
+    return (item.cabin_only && type === "checked") || (item.checked_only && type === "cabin");
+  });
+  const overweight = bags.filter(
+    (bag) =>
+      bag.weight_limit_g !== null &&
+      items
+        .filter((item) => item.bag_id === bag.id)
+        .reduce((sum, item) => sum + (item.weight_g ?? 0) * item.quantity, 0) > bag.weight_limit_g,
+  );
 
   if (listsQuery.isPending)
     return (
@@ -238,6 +296,19 @@ export function PackingManager({ trip }: { trip: Trip }) {
           {list && (
             <button type="button" onClick={() => startItem()}>
               Item toevoegen
+            </button>
+          )}
+          <button className="secondary compact" type="button" onClick={() => setReuseOpen(true)}>
+            Lijst hergebruiken
+          </button>
+          {list && (
+            <button className="secondary compact" type="button" onClick={() => setTemplateName(list.name)}>
+              Als sjabloon bewaren
+            </button>
+          )}
+          {list && (
+            <button className="secondary compact" type="button" onClick={() => setShowSuggestions(!showSuggestions)}>
+              Suggesties uit eerdere reizen
             </button>
           )}
         </div>
@@ -288,6 +359,106 @@ export function PackingManager({ trip }: { trip: Trip }) {
           ) : (
             <>
               <PackingProgress rows={items} label="Totale inpakvoortgang" />
+              {showSuggestions && (
+                <section aria-label="Suggesties uit eerdere reizen" className="space-y-2 rounded-xl border p-4">
+                  <h4 className="font-semibold">Misschien nog meenemen</h4>
+                  {suggestionsQuery.isPending && <p>Suggesties laden…</p>}
+                  {suggestionsQuery.isError && (
+                    <p role="alert">
+                      Suggesties laden mislukt.{" "}
+                      <button type="button" onClick={() => void suggestionsQuery.refetch()}>
+                        Opnieuw proberen
+                      </button>
+                    </p>
+                  )}
+                  {suggestionsQuery.data
+                    ?.filter((suggestion) => !dismissedSuggestions.includes(`${list.id}:${suggestion.label}`))
+                    .map((suggestion) => (
+                      <div key={suggestion.label} className="flex flex-wrap items-center gap-2 border-t py-2">
+                        <p className="flex-1">
+                          {suggestion.label} · op {suggestion.prior_trips} eerdere reizen
+                          {suggestion.usually_cabin ? " · meestal in handbagage" : ""}
+                          {suggestion.usually_essential ? " · meestal essentieel" : ""}
+                        </p>
+                        <button
+                          type="button"
+                          className="secondary compact"
+                          onClick={() => {
+                            setItemDraft({
+                              ...emptyItem(null),
+                              label: suggestion.label,
+                              category: suggestion.category,
+                              essential: suggestion.usually_essential,
+                            });
+                            setItemDialog("new");
+                          }}
+                        >
+                          Toevoegen
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary compact"
+                          onClick={() =>
+                            setDismissedSuggestions((current) => [...current, `${list.id}:${suggestion.label}`])
+                          }
+                        >
+                          Negeren
+                        </button>
+                      </div>
+                    ))}
+                  {suggestionsQuery.data?.length === 0 && <p>Nog geen terugkerende items om voor te stellen.</p>}
+                </section>
+              )}
+              <button
+                type="button"
+                className="secondary compact"
+                aria-expanded={leavingSoon}
+                onClick={() => setLeavingSoon(!leavingSoon)}
+              >
+                Vertrekcheck
+              </button>
+              {leavingSoon && (
+                <section aria-label="Vertrekcheck" className="space-y-3 rounded-xl border p-4">
+                  <h4 className="text-lg font-semibold">Vertrekcheck</h4>
+                  <p>{count(items)}</p>
+                  <ul className="space-y-1">
+                    {bags.map((bag) => {
+                      const rows = items.filter((item) => item.bag_id === bag.id);
+                      const known = rows.reduce((sum, item) => sum + (item.weight_g ?? 0) * item.quantity, 0);
+                      return (
+                        <li key={bag.id}>
+                          {bag.name}: {count(rows)} · {grams(known)} bekend
+                          {bag.weight_limit_g ? ` / ${grams(bag.weight_limit_g)} limiet` : ""}
+                          {rows.some((item) => item.weight_g === null) ? " · gewicht niet volledig" : ""}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {items.length > 0 &&
+                    !unpackedEssentials.length &&
+                    !unpackedLastMinute.length &&
+                    !unassigned.length &&
+                    !conflicts.length &&
+                    !overweight.length && <p className="font-semibold">Klaar om te vertrekken</p>}
+                  {!!unpackedEssentials.length && (
+                    <p>Essentieel, nog in te pakken: {unpackedEssentials.map((item) => item.label).join(", ")}</p>
+                  )}
+                  {!!unpackedLastMinute.length && (
+                    <p>Op de vertrekdag: {unpackedLastMinute.map((item) => item.label).join(", ")}</p>
+                  )}
+                  {!!unassigned.length && <p>Nog zonder tas: {unassigned.map((item) => item.label).join(", ")}</p>}
+                  {!!overweight.length && (
+                    <p>
+                      Bekend gewicht boven ingestelde limiet: {overweight.map((bag) => bag.name).join(", ")}. Onbekende
+                      gewichten tellen niet mee.
+                    </p>
+                  )}
+                  {!!conflicts.length && (
+                    <p>Controleer je eigen bagagekeuze: {conflicts.map((item) => item.label).join(", ")}</p>
+                  )}
+                  <p className="text-sm">Bagagevlaggen zijn je eigen notities, geen officiële reisregels.</p>
+                </section>
+              )}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label="Voortgang per tas">
                 {bags.map((bag) => {
                   const rows = items.filter((item) => item.bag_id === bag.id);
@@ -331,6 +502,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                     { value: "all", label: "Alles" },
                     { value: "unpacked", label: "Niet ingepakt" },
                     { value: "packed", label: "Ingepakt" },
+                    { value: "last-minute", label: "Vertrekdag" },
                   ]}
                   onChange={setFilter}
                 />
@@ -513,10 +685,15 @@ export function PackingManager({ trip }: { trip: Trip }) {
                                       .filter(Boolean)
                                       .join(" · ")}
                                   </p>
-                                  {(item.essential || item.valuable || item.cabin_only || item.checked_only) && (
+                                  {(item.essential ||
+                                    item.last_minute ||
+                                    item.valuable ||
+                                    item.cabin_only ||
+                                    item.checked_only) && (
                                     <p className="text-xs opacity-70">
                                       {[
                                         item.essential && "Essentieel",
+                                        item.last_minute && "Vertrekdag",
                                         item.valuable && "Waardevol",
                                         item.cabin_only && "Alleen handbagage",
                                         item.checked_only && "Alleen ruimbagage",
@@ -646,7 +823,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
               className="block w-full rounded border p-2"
             />
           </label>
-          {(["essential", "valuable", "cabin_only", "checked_only"] as const).map((flag) => (
+          {(["essential", "last_minute", "valuable", "cabin_only", "checked_only"] as const).map((flag) => (
             <label key={flag} className="block">
               <input
                 type="checkbox"
@@ -657,6 +834,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
               {
                 {
                   essential: "Essentieel",
+                  last_minute: "Vertrekdag / last-minute",
                   valuable: "Waardevol",
                   cabin_only: "Alleen handbagage",
                   checked_only: "Alleen ruimbagage",
@@ -795,6 +973,149 @@ export function PackingManager({ trip }: { trip: Trip }) {
             }}
           />
         )}
+      </RecordDialog>
+      <RecordDialog open={reuseOpen} title="Paklijst hergebruiken" onDismiss={() => setReuseOpen(false)}>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (reuseMode === "copy" ? !sourceId : !templateIds.length) return;
+            void save(async () => {
+              const created = await request<PackingList>(base, "POST", {
+                name: reuseName.trim(),
+                ...(reuseMode === "copy" ? { copy_from_list_id: sourceId } : { template_ids: templateIds }),
+              });
+              setChosenList(created.id);
+              setUnsaved({});
+            }, "Paklijst hergebruikt; alle items zijn uitgepakt.").then((ok) => {
+              if (ok) setReuseOpen(false);
+            });
+          }}
+        >
+          <ChoiceGroup
+            label="Bron"
+            value={reuseMode}
+            choices={[
+              { value: "copy", label: "Andere paklijst" },
+              { value: "templates", label: "Sjablonen" },
+            ]}
+            onChange={setReuseMode}
+          />
+          {reuseMode === "copy" ? (
+            <label className="block">
+              Paklijst
+              <SearchSelect ariaLabel="Bronpaklijst" value={sourceId} onChange={setSourceId}>
+                <option value="">Kies een paklijst…</option>
+                {sourcesQuery.data
+                  ?.filter((source) => source.trip_id !== trip.id)
+                  .map((source) => (
+                    <option key={source.id} value={source.id}>
+                      {source.trip_title} · {source.name}
+                    </option>
+                  ))}
+              </SearchSelect>
+            </label>
+          ) : (
+            <fieldset className="space-y-2">
+              <legend>Sjablonen kiezen</legend>
+              {templatesQuery.data?.map((template) => (
+                <div key={template.id} className="flex items-center justify-between gap-2">
+                  <label className="block">
+                    <input
+                      type="checkbox"
+                      checked={templateIds.includes(template.id)}
+                      onChange={(event) =>
+                        setTemplateIds((current) =>
+                          event.target.checked ? [...current, template.id] : current.filter((id) => id !== template.id),
+                        )
+                      }
+                    />{" "}
+                    {template.name}
+                  </label>
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    aria-label={`${template.name} verwijderen`}
+                    onClick={() => setTemplateToDelete(template.id)}
+                  >
+                    Verwijderen
+                  </button>
+                </div>
+              ))}
+            </fieldset>
+          )}
+          {(sourcesQuery.isError || templatesQuery.isError) && (
+            <p role="alert">Bronnen laden mislukt. Sluit en open opnieuw om te proberen.</p>
+          )}
+          <label className="block">
+            Naam nieuwe paklijst
+            <input
+              required
+              maxLength={160}
+              value={reuseName}
+              onChange={(event) => setReuseName(event.target.value)}
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <p className="text-sm">
+            Tassen, volgorde, categorieën, aantallen, notities en toewijzingen blijven bewaard. Alle items beginnen
+            uitgepakt.
+          </p>
+          <button
+            type="submit"
+            disabled={busy || !reuseName.trim() || (reuseMode === "copy" ? !sourceId : !templateIds.length)}
+          >
+            Nieuwe paklijst maken
+          </button>
+        </form>
+        {templateToDelete && (
+          <DeleteConfirmation
+            title="Sjabloon verwijderen?"
+            onCancel={() => setTemplateToDelete(null)}
+            onConfirm={() => {
+              void save(
+                () => request(`/api/packing-templates/${encodeURIComponent(templateToDelete)}`, "DELETE"),
+                "Sjabloon verwijderd.",
+              ).then((ok) => {
+                if (ok) {
+                  setTemplateIds((current) => current.filter((id) => id !== templateToDelete));
+                  setTemplateToDelete(null);
+                  void client.invalidateQueries({ queryKey: [...key, "templates"] });
+                }
+              });
+            }}
+          />
+        )}
+      </RecordDialog>
+      <RecordDialog open={templateName !== null} title="Als sjabloon bewaren" onDismiss={() => setTemplateName(null)}>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!templateName?.trim()) return;
+            void save(
+              () => request(`${path}/templates`, "POST", { name: templateName.trim() }),
+              "Sjabloon bewaard.",
+            ).then((ok) => {
+              if (ok) setTemplateName(null);
+            });
+          }}
+        >
+          <label className="block">
+            Naam sjabloon
+            <input
+              autoFocus
+              required
+              maxLength={160}
+              value={templateName ?? ""}
+              onChange={(event) => setTemplateName(event.target.value)}
+              className="block w-full rounded border p-2"
+            />
+          </label>
+          <button type="submit" disabled={busy || !templateName?.trim()}>
+            Bewaren
+          </button>
+        </form>
       </RecordDialog>
     </section>
   );

@@ -176,3 +176,95 @@ def test_mcp_packing_flow_and_payload_free_audit(monkeypatch: pytest.MonkeyPatch
         assert events
         assert all("Private medicine" not in str(event.details) for event in events)
         assert all("Sensitive detail" not in str(event.details) for event in events)
+
+
+def test_copy_and_templates_reset_packed_state_and_keep_owner_isolation() -> None:
+    owner = client_for("owner-1")
+    source_trip = owner.post("/api/trips", json={"title": "Source"}).json()
+    target_trip = owner.post("/api/trips", json={"title": "Target"}).json()
+    source_root = f"/api/trips/{source_trip['id']}/packing-lists"
+    target_root = f"/api/trips/{target_trip['id']}/packing-lists"
+    source = owner.post(source_root, json={"name": "Original"}).json()
+    source_path = f"{source_root}/{source['id']}"
+    bag = owner.post(f"{source_path}/bags", json={"name": "Cabin", "type": "cabin", "weight_limit_g": 5000}).json()
+    owner.post(
+        f"{source_path}/items",
+        json={
+            "label": "Passport",
+            "bag_id": bag["id"],
+            "packed": True,
+            "essential": True,
+            "last_minute": True,
+            "notes": "Check expiry",
+            "category": "Documents",
+            "quantity": 2,
+        },
+    ).json()
+    owner.post(f"{source_path}/items", json={"label": "Keys", "last_minute": True, "packed": True}).json()
+    template = owner.post(f"{source_path}/templates", json={"name": "Personal"})
+    assert template.status_code == 201, template.text
+    template_id = template.json()["id"]
+    assert len(owner.get("/api/packing-templates").json()) == 1
+    assert len(owner.get("/api/packing-list-sources").json()) == 1
+
+    for payload in ({"copy_from_list_id": source["id"]}, {"template_ids": [template_id]}):
+        created = owner.post(target_root, json={"name": "Fresh", **payload})
+        assert created.status_code == 201, created.text
+        copied_path = f"{target_root}/{created.json()['id']}"
+        bags = owner.get(f"{copied_path}/bags").json()
+        items = owner.get(f"{copied_path}/items").json()
+        assert [(row["name"], row["type"], row["weight_limit_g"]) for row in bags] == [("Cabin", "cabin", 5000)]
+        assert all(not row["packed"] for row in items)
+        passport = next(row for row in items if row["label"] == "Passport")
+        assert passport["bag_id"] == bags[0]["id"] != bag["id"]
+        assert (passport["essential"], passport["last_minute"], passport["notes"], passport["quantity"]) == (
+            True,
+            True,
+            "Check expiry",
+            2,
+        )
+
+    stranger = client_for("owner-2")
+    stranger_trip = stranger.post("/api/trips", json={"title": "Stranger"}).json()
+    stranger_root = f"/api/trips/{stranger_trip['id']}/packing-lists"
+    assert stranger.get("/api/packing-templates").json() == []
+    assert stranger.get("/api/packing-list-sources").json() == []
+    assert stranger.post(stranger_root, json={"copy_from_list_id": source["id"]}).status_code == 404
+    assert stranger.post(stranger_root, json={"template_ids": [template_id]}).status_code == 404
+    assert stranger.delete(f"/api/packing-templates/{template_id}").status_code == 404
+
+    owner = client_for("owner-1")
+    second = owner.post(source_root, json={"name": "Other structure"}).json()
+    second_path = f"{source_root}/{second['id']}"
+    second_bag = owner.post(f"{second_path}/bags", json={"name": "Day bag"}).json()
+    owner.post(f"{second_path}/items", json={"label": "Map", "bag_id": second_bag["id"], "packed": True})
+    second_template = owner.post(f"{second_path}/templates", json={"name": "Day"}).json()
+    combined = owner.post(target_root, json={"template_ids": [template_id, second_template["id"]]}).json()
+    combined_path = f"{target_root}/{combined['id']}"
+    assert [row["name"] for row in owner.get(f"{combined_path}/bags").json()] == ["Cabin", "Day bag"]
+    assert all(not row["packed"] for row in owner.get(f"{combined_path}/items").json())
+    assert owner.post(target_root, json={"template_ids": [template_id, template_id]}).status_code == 422
+
+
+def test_suggestions_use_only_owner_history_and_require_three_prior_trips() -> None:
+    owner = client_for("owner-1")
+    target = owner.post("/api/trips", json={"title": "Target"}).json()
+    target_list = owner.post(f"/api/trips/{target['id']}/packing-lists", json={}).json()
+    target_path = f"/api/trips/{target['id']}/packing-lists/{target_list['id']}"
+    for index in range(3):
+        trip = owner.post("/api/trips", json={"title": f"Prior {index}"}).json()
+        packing_list = owner.post(f"/api/trips/{trip['id']}/packing-lists", json={}).json()
+        path = f"/api/trips/{trip['id']}/packing-lists/{packing_list['id']}"
+        bag = owner.post(f"{path}/bags", json={"name": "Cabin", "type": "cabin"}).json()
+        owner.post(f"{path}/items", json={"label": "Charger", "bag_id": bag["id"], "essential": True})
+    stranger = client_for("owner-2")
+    trip = stranger.post("/api/trips", json={"title": "Private"}).json()
+    packing_list = stranger.post(f"/api/trips/{trip['id']}/packing-lists", json={}).json()
+    stranger.post(f"/api/trips/{trip['id']}/packing-lists/{packing_list['id']}/items", json={"label": "Secret"})
+    owner = client_for("owner-1")
+    suggestions = owner.get(f"{target_path}/suggestions").json()
+    assert suggestions == [
+        {"label": "Charger", "category": None, "prior_trips": 3, "usually_cabin": True, "usually_essential": True}
+    ]
+    owner.post(f"{target_path}/items", json={"label": "Charger"})
+    assert owner.get(f"{target_path}/suggestions").json() == []
