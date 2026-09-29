@@ -1,13 +1,14 @@
 import { Button } from "@base-ui/react/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { TravelTextarea } from "../ui/TravelTextarea";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { cn } from "cn";
-import { useContext, useEffect, useId, useRef, useState, type TextareaHTMLAttributes } from "react";
+import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 
 import { Markdown } from "../Markdown";
 import { errorMessage, ownerRequest } from "../query/api";
 import { useOwner } from "../query/owner-queries";
-import { ServerFieldErrors, optionalNote } from "./fields";
+import { optionalNote, useFieldErrors } from "./fields";
 import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";
 
 /** How the server renders the field: long-form Markdown, an inline-only caption, or contact details. */
@@ -98,17 +99,7 @@ export function MarkdownField({
   TextareaHTMLAttributes<HTMLTextAreaElement>,
   "value" | "onChange" | "onBlur" | "name" | "id"
 >) {
-  const server = useContext(ServerFieldErrors)[field.name];
-  const errors = [
-    ...field.state.meta.errors.map((error: unknown) =>
-      typeof error === "string" ? error : ((error as { message?: string } | null)?.message ?? ""),
-    ),
-    server ?? "",
-  ].filter(Boolean);
-  const message = errors[0] ?? null;
-  const id = useId();
-  const describedBy = `${id}-error`;
-  const hint = `${id}-hint`;
+  const { message, invalid } = useFieldErrors(field);
   const [previewing, setPreviewing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const pendingSelection = useRef<[number, number] | null>(null);
@@ -136,11 +127,11 @@ export function MarkdownField({
   };
 
   return (
-    <div className="field">
-      <label htmlFor={id}>
+    <Field name={field.name} invalid={invalid}>
+      <FieldLabel>
         {label}
         {optionalNote(optional)}
-      </label>
+      </FieldLabel>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex flex-wrap gap-1" role="group" aria-label={`Weergave van ${label.toLowerCase()}`}>
           <Button
@@ -184,13 +175,9 @@ export function MarkdownField({
       <TravelTextarea
         {...rest}
         ref={textarea}
-        id={id}
-        name={field.name}
         hidden={previewing}
         value={value}
         aria-required={required || undefined}
-        aria-invalid={message ? true : undefined}
-        aria-describedby={[hint, message ? describedBy : null].filter(Boolean).join(" ")}
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value)}
       />
@@ -202,14 +189,8 @@ export function MarkdownField({
           <MarkdownPreview source={value} format={format} />
         </div>
       )}
-      <span id={hint} className="text-xs text-travel-muted">
-        {HINTS[format]}
-      </span>
-      {message && (
-        <span id={describedBy} className="field-error" role="alert">
-          {message}
-        </span>
-      )}
-    </div>
+      <FieldDescription className="text-xs text-travel-muted">{HINTS[format]}</FieldDescription>
+      <FieldError>{message}</FieldError>
+    </Field>
   );
 }

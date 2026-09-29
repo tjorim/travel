@@ -167,6 +167,12 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Time zone suggestions use a Base UI Autocomplete instead of the browser's
+  `<datalist>`; typing any zone still works. Form labels, errors and
+  fieldsets use Base UI-backed `Field` and `FieldSet` components, so labels,
+  error messages and validity are wired to their controls.
+  ([#264](https://github.com/tjorim/travel/issues/264))
+
 - Owner, public and unlisted views now use Tailwind utilities and named Travel
   theme tokens for their application styling. The legacy class allowlist is
   removed; Tailwind's base layer handles document and form defaults, and the

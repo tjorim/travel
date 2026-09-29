@@ -77,7 +77,11 @@ utility classes. Keep reusable design values in named Tailwind theme tokens.
 Tailwind's base layer holds document and form defaults;
 `frontend/src/styles.css` holds only sanitized Markdown styling. Use Base UI
 Button, Input, Checkbox, Collapsible and Progress for matching controls; render
-textareas through Base UI Field.Control. Shared record editors use Base UI
+textareas through Base UI Field.Control. Label, describe and validate controls
+with the Base UI-backed `Field`, `FieldLabel`, `FieldError`, `FieldSet` and
+`FieldLegend` components in `frontend/src/ui/field.tsx` instead of raw
+`<label>` and `<fieldset>`. Offer free-text suggestions with `SuggestInput`
+(Base UI Autocomplete), never `<datalist>`. Shared record editors use Base UI
 Dialog and Alert Dialog with guarded dismissal and focus return.
 The frontend lint command checks utility classes without a legacy-class
 allowlist.

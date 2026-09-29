@@ -1,4 +1,5 @@
 import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { Field, FieldError, FieldLabel } from "../ui/field";
 import { TravelTextarea } from "../ui/TravelTextarea";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
@@ -6,7 +7,6 @@ import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   createContext,
   useContext,
-  useId,
   type ComponentProps,
   type InputHTMLAttributes,
   type ReactNode,
@@ -14,8 +14,12 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { SearchSelect } from "../ui/SearchCombobox";
+import { SuggestInput } from "../ui/SuggestInput";
+import { timeZoneOptions } from "../tracker-model";
 export { SearchSelect, AsyncSearchSelect } from "../ui/SearchCombobox";
 export type { SearchSelectOption, SearchSelectGroup } from "../ui/SearchCombobox";
+
+const timeZones = timeZoneOptions();
 
 type ServerErrors = Record<string, string>;
 export const ServerFieldErrors = createContext<ServerErrors>({});
@@ -75,7 +79,7 @@ export function RecordForm({
   );
 }
 
-function useFieldErrors(field: AnyFieldApi) {
+export function useFieldErrors(field: AnyFieldApi) {
   const server = useContext(ServerFieldErrors)[field.name];
   const errors = [
     ...field.state.meta.errors.map((error: unknown) =>
@@ -83,8 +87,7 @@ function useFieldErrors(field: AnyFieldApi) {
     ),
     server ?? "",
   ].filter(Boolean);
-  const describedBy = useId();
-  return { message: errors[0] ?? null, invalid: errors.length > 0, describedBy };
+  return { message: errors[0] ?? null, invalid: errors.length > 0 };
 }
 
 type Common = { field: AnyFieldApi; label: string; optional?: string | boolean };
@@ -105,30 +108,51 @@ export function TextField({
   optional,
   ...input
 }: Common & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "name">) {
-  const { message, invalid, describedBy } = useFieldErrors(field);
+  const { message, invalid } = useFieldErrors(field);
   const { required, ...rest } = input;
   return (
-    <div className="field">
-      <label>
+    <Field name={field.name} invalid={invalid}>
+      <FieldLabel>
         {label}
         {optionalNote(optional)}
         <Input
           {...rest}
-          name={field.name}
           value={field.state.value ?? ""}
           aria-required={required || undefined}
-          aria-invalid={invalid || undefined}
-          aria-describedby={message ? describedBy : undefined}
           onBlur={field.handleBlur}
           onChange={(event) => field.handleChange(event.target.value)}
         />
-      </label>
-      {message && (
-        <span id={describedBy} className="field-error" role="alert">
-          {message}
-        </span>
-      )}
-    </div>
+      </FieldLabel>
+      <FieldError>{message}</FieldError>
+    </Field>
+  );
+}
+
+/** An IANA time zone typed freely, with the zones the browser knows offered as suggestions. */
+export function TimeZoneField({
+  field,
+  label,
+  optional,
+  ...input
+}: Common & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "name">) {
+  const { message, invalid } = useFieldErrors(field);
+  const { required, ...rest } = input;
+  return (
+    <Field name={field.name} invalid={invalid}>
+      <FieldLabel>
+        {label}
+        {optionalNote(optional)}
+      </FieldLabel>
+      <SuggestInput
+        {...rest}
+        suggestions={timeZones}
+        value={field.state.value ?? ""}
+        aria-required={required || undefined}
+        onBlur={field.handleBlur}
+        onChange={field.handleChange}
+      />
+      <FieldError>{message}</FieldError>
+    </Field>
   );
 }
 
@@ -138,30 +162,23 @@ export function TextAreaField({
   optional,
   ...input
 }: Common & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange" | "onBlur" | "name">) {
-  const { message, invalid, describedBy } = useFieldErrors(field);
+  const { message, invalid } = useFieldErrors(field);
   const { required, ...rest } = input;
   return (
-    <div className="field">
-      <label>
+    <Field name={field.name} invalid={invalid}>
+      <FieldLabel>
         {label}
         {optionalNote(optional)}
         <TravelTextarea
           {...rest}
-          name={field.name}
           value={field.state.value ?? ""}
           aria-required={required || undefined}
-          aria-invalid={invalid || undefined}
-          aria-describedby={message ? describedBy : undefined}
           onBlur={field.handleBlur}
           onChange={(event) => field.handleChange(event.target.value)}
         />
-      </label>
-      {message && (
-        <span id={describedBy} className="field-error" role="alert">
-          {message}
-        </span>
-      )}
-    </div>
+      </FieldLabel>
+      <FieldError>{message}</FieldError>
+    </Field>
   );
 }
 
@@ -172,32 +189,24 @@ export function SelectField({
   children,
   disabled,
 }: Common & { children: ReactNode; disabled?: boolean }) {
-  const { message, invalid, describedBy } = useFieldErrors(field);
-  const controlId = useId();
+  const { message, invalid } = useFieldErrors(field);
   return (
-    <div className="field">
-      <label htmlFor={controlId}>
+    <Field name={field.name} invalid={invalid} disabled={disabled}>
+      <FieldLabel>
         {label}
         {optionalNote(optional)}
-      </label>
+      </FieldLabel>
       <SearchSelect
-        inputId={controlId}
         value={field.state.value ?? ""}
         isDisabled={disabled}
         onChange={field.handleChange}
         onBlur={field.handleBlur}
-        aria-invalid={invalid || undefined}
-        aria-describedby={message ? describedBy : undefined}
         name={field.name}
       >
         {children}
       </SearchSelect>
-      {message && (
-        <span id={describedBy} className="field-error" role="alert">
-          {message}
-        </span>
-      )}
-    </div>
+      <FieldError>{message}</FieldError>
+    </Field>
   );
 }
 
@@ -217,16 +226,16 @@ export function CheckboxField({
   "checked" | "defaultChecked" | "onCheckedChange" | "name" | "children" | "className"
 >) {
   return (
-    <label className={className}>
-      <TravelCheckbox
-        {...input}
-
-        name={field.name}
-        checked={Boolean(field.state.value)}
-        onBlur={field.handleBlur}
-        onCheckedChange={(checked) => field.handleChange(checked)}
-      />
-      {label}
-    </label>
+    <Field name={field.name} className="contents">
+      <FieldLabel className={className}>
+        <TravelCheckbox
+          {...input}
+          checked={Boolean(field.state.value)}
+          onBlur={field.handleBlur}
+          onCheckedChange={(checked) => field.handleChange(checked)}
+        />
+        {label}
+      </FieldLabel>
+    </Field>
   );
 }

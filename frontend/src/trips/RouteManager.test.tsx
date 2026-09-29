@@ -304,7 +304,7 @@ it("reuses a saved location, which is already part of its area", async () => {
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   // The location is listed under its area, so one choice says both.
-  fireEvent.keyDown(screen.getByLabelText("Vertrek"), { key: "ArrowDown" });
+  fireEvent.keyDown(screen.getByRole("combobox", { name: "Vertrek" }), { key: "ArrowDown" });
   const stationOption = screen.getByRole("option", { name: "Taipei Main Station" });
   expect(stationOption.closest("[role=group]")?.textContent).toContain("Taipei");
   pickAreas("Taipei Main Station", "Tainan (heel gebied)");

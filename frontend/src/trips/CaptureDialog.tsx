@@ -27,6 +27,7 @@ import {
   type PlaceSearchResult,
   type TravelUpdateCandidateIntent,
 } from "../tracker-model";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 const timestamp = formatInstant;
 const SAVE_FALLBACK = "De reisupdate kon niet worden opgeslagen. Je lokale concept blijft bewaard.";
@@ -378,8 +379,8 @@ export function CaptureDialog({
                 Reis: <strong>{lockedTrip.title}</strong>
               </p>
             ) : (
-              <label>
-                Reis
+              <Field>
+                <FieldLabel>Reis</FieldLabel>
                 <AsyncSearchSelect
                   ariaLabel="Reis"
                   value={draft.tripId}
@@ -390,7 +391,7 @@ export function CaptureDialog({
                     (await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title }))
                   }
                 />
-              </label>
+              </Field>
             )}
             {selectedTrip && (
               <aside className="publication" aria-label="Delen van deze reisupdate">
@@ -443,8 +444,8 @@ export function CaptureDialog({
                 />
               )}
             </form.Field>
-            <fieldset className="location">
-              <legend>Privéfoto’s koppelen</legend>
+            <FieldSet className="location">
+              <FieldLegend>Privéfoto’s koppelen</FieldLegend>
               <p>
                 Een koppeling is privé. EXIF wordt alleen hieronder als voorstel gebruikt; geen datum of plaats
                 verandert zonder jouw keuze.
@@ -453,17 +454,16 @@ export function CaptureDialog({
                 {mediaState}
               </p>
               {media.map((asset) => (
-                <label
-                  className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold"
-                  key={asset.id}
-                >
-                  <TravelCheckbox
-                    checked={draft.mediaAssetIds.includes(asset.id)}
-                    onCheckedChange={() => toggleMedia(asset.id)}
-                  />
-                  {asset.original_filename ?? "Naamloze foto"}
-                  {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
-                </label>
+                <Field className="contents" key={asset.id}>
+                  <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold">
+                    <TravelCheckbox
+                      checked={draft.mediaAssetIds.includes(asset.id)}
+                      onCheckedChange={() => toggleMedia(asset.id)}
+                    />
+                    {asset.original_filename ?? "Naamloze foto"}
+                    {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
+                  </FieldLabel>
+                </Field>
               ))}
               {attachedMedia.map(
                 (asset) =>
@@ -514,9 +514,9 @@ export function CaptureDialog({
                   kunt die altijd weer aanpassen.
                 </p>
               )}
-            </fieldset>
-            <fieldset className="location">
-              <legend>Locatie — volledig optioneel</legend>
+            </FieldSet>
+            <FieldSet className="location">
+              <FieldLegend>Locatie — volledig optioneel</FieldLegend>
               <p>
                 Zoek en kies een locatie. Deze wordt pas samen met jouw opgeslagen reisupdate als privélocatie gemaakt.
               </p>
@@ -535,14 +535,16 @@ export function CaptureDialog({
                 </aside>
               )}
               <div className="field-row">
-                <label>
-                  Zoek locatie
-                  <Input
-                    value={placeQuery}
-                    onChange={(event) => setPlaceQuery(event.target.value)}
-                    placeholder="Bijvoorbeeld: Taipei Main Station"
-                  />
-                </label>
+                <Field className="contents">
+                  <FieldLabel>
+                    Zoek locatie
+                    <Input
+                      value={placeQuery}
+                      onChange={(event) => setPlaceQuery(event.target.value)}
+                      placeholder="Bijvoorbeeld: Taipei Main Station"
+                    />
+                  </FieldLabel>
+                </Field>
                 <div className="flex items-end">
                   <Button className="secondary" type="button" onClick={searchPlace}>
                     Zoeken
@@ -583,7 +585,7 @@ export function CaptureDialog({
                   </p>
                 </div>
               )}
-            </fieldset>
+            </FieldSet>
             <div className="flex flex-wrap items-center gap-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
               <Button type="submit" disabled={record.pending}>
                 {draft.updateId ? "Wijzigingen opslaan" : "Reisupdate opslaan"}

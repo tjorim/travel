@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChoiceGroup } from "../ui/ChoiceGroup";
 import { formatInstant } from "../tracker-model";
 import type { OfflineCopySummary } from "../offline/offline-store";
+import { Field, FieldLabel } from "../ui/field";
 
 export type PackingSnapshot = {
   list: { id: string; name: string };
@@ -106,15 +107,17 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
           ]}
           onChange={setFilter}
         />
-        <label>
-          Zoeken{" "}
-          <Input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="rounded border p-2"
-          />
-        </label>
+        <Field className="contents">
+          <FieldLabel>
+            Zoeken{" "}
+            <Input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="rounded border p-2"
+            />
+          </FieldLabel>
+        </Field>
       </div>
       {groups.map((section) => {
         const rows = visible
@@ -132,22 +135,24 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
             <ul className="divide-y">
               {rows.map((item) => (
                 <li key={item.id} className="py-2">
-                  <label className="flex items-start gap-2">
-                    <TravelCheckbox checked={item.packed} disabled readOnly aria-label={`${item.label} ingepakt`} />
-                    <span>
-                      <strong className={item.packed ? "line-through opacity-60" : ""}>
-                        {item.quantity > 1 ? `${item.quantity} × ` : ""}
-                        {item.label}
-                      </strong>
-                      <span className="block text-sm opacity-70">
-                        {item.category || "Zonder categorie"}
-                        {group === "category"
-                          ? ` · ${snapshot.bags.find((bag) => bag.id === item.bag_id)?.name ?? "Niet toegewezen"}`
-                          : ""}
+                  <Field className="contents">
+                    <FieldLabel className="flex items-start gap-2">
+                      <TravelCheckbox checked={item.packed} disabled readOnly aria-label={`${item.label} ingepakt`} />
+                      <span>
+                        <strong className={item.packed ? "line-through opacity-60" : ""}>
+                          {item.quantity > 1 ? `${item.quantity} × ` : ""}
+                          {item.label}
+                        </strong>
+                        <span className="block text-sm opacity-70">
+                          {item.category || "Zonder categorie"}
+                          {group === "category"
+                            ? ` · ${snapshot.bags.find((bag) => bag.id === item.bag_id)?.name ?? "Niet toegewezen"}`
+                            : ""}
+                        </span>
+                        {item.notes && <span className="block text-sm">{item.notes}</span>}
                       </span>
-                      {item.notes && <span className="block text-sm">{item.notes}</span>}
-                    </span>
-                  </label>
+                    </FieldLabel>
+                  </Field>
                 </li>
               ))}
             </ul>

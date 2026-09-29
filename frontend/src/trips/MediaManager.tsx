@@ -39,6 +39,7 @@ import {
   type TravelUpdateCandidatesResponse,
   type TravelUpdateCandidateIntent,
 } from "../tracker-model";
+import { Field, FieldLabel } from "../ui/field";
 
 export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = { photo: "Foto", video: "Video" };
 
@@ -152,42 +153,40 @@ function PresentationFields({
       )}
       <record.form.Field name="travelUpdateId">
         {(field) => (
-          <div className="field">
-            <label>
-              Bij reisupdate
-              <AsyncSearchSelect
-                ariaLabel="Bij reisupdate"
-                value={field.state.value}
-                selectedOption={
-                  field.state.value
-                    ? {
-                        value: field.state.value,
-                        label:
-                          foundTitles[field.state.value] ??
-                          updates.find((update) => update.id === field.state.value)?.title ??
-                          field.state.value,
-                      }
-                    : null
-                }
-                defaultOptions={[
+          <Field>
+            <FieldLabel>Bij reisupdate</FieldLabel>
+            <AsyncSearchSelect
+              ariaLabel="Bij reisupdate"
+              value={field.state.value}
+              selectedOption={
+                field.state.value
+                  ? {
+                      value: field.state.value,
+                      label:
+                        foundTitles[field.state.value] ??
+                        updates.find((update) => update.id === field.state.value)?.title ??
+                        field.state.value,
+                    }
+                  : null
+              }
+              defaultOptions={[
+                { value: "", label: "Losse galerijfoto" },
+                ...updates.slice(0, 50).map((update) => ({ value: update.id, label: update.title })),
+              ]}
+              onChange={field.handleChange}
+              loadOptions={async (q) => {
+                const matches = await searchUpdates(q);
+                setFoundTitles((current) => ({
+                  ...current,
+                  ...Object.fromEntries(matches.map((update) => [update.id, update.title])),
+                }));
+                return [
                   { value: "", label: "Losse galerijfoto" },
-                  ...updates.slice(0, 50).map((update) => ({ value: update.id, label: update.title })),
-                ]}
-                onChange={field.handleChange}
-                loadOptions={async (q) => {
-                  const matches = await searchUpdates(q);
-                  setFoundTitles((current) => ({
-                    ...current,
-                    ...Object.fromEntries(matches.map((update) => [update.id, update.title])),
-                  }));
-                  return [
-                    { value: "", label: "Losse galerijfoto" },
-                    ...matches.map((update) => ({ value: update.id, label: update.title })),
-                  ];
-                }}
-              />
-            </label>
-          </div>
+                  ...matches.map((update) => ({ value: update.id, label: update.title })),
+                ];
+              }}
+            />
+          </Field>
         )}
       </record.form.Field>
       <record.form.Field name="caption">
@@ -711,16 +710,18 @@ export function MediaManager({
       >
         {uploading && (
           <form className="stack-form" onSubmit={submitUpload}>
-            <label>
-              Foto of video van dit apparaat
-              <Input
-                key={uploadKey}
-                required
-                type="file"
-                accept="image/*,video/*"
-                onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
-              />
-            </label>
+            <Field className="contents">
+              <FieldLabel>
+                Foto of video van dit apparaat
+                <Input
+                  key={uploadKey}
+                  required
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                />
+              </FieldLabel>
+            </Field>
             <Button type="submit" disabled={upload.isPending}>
               Privémedia uploaden
             </Button>
@@ -808,13 +809,15 @@ export function MediaManager({
                 </div>
               </Button>
               <div className="button-row">
-                <label className="scope-choice">
-                  <TravelCheckbox
-                    checked={reviewSelection.includes(asset.id)}
-                    onCheckedChange={() => toggleReviewSelection(asset.id)}
-                  />
-                  Reisupdates beoordelen
-                </label>
+                <Field className="contents">
+                  <FieldLabel className="scope-choice">
+                    <TravelCheckbox
+                      checked={reviewSelection.includes(asset.id)}
+                      onCheckedChange={() => toggleReviewSelection(asset.id)}
+                    />
+                    Reisupdates beoordelen
+                  </FieldLabel>
+                </Field>
               </div>
             </article>
           ))}
@@ -850,8 +853,8 @@ export function MediaManager({
                   : "Geen opnametijd beschikbaar"}
               </span>
               {candidate.time_options.length > 1 && (
-                <label>
-                  Gebruik opnametijd
+                <Field>
+                  <FieldLabel>Gebruik opnametijd</FieldLabel>
                   <SearchSelect
                     ariaLabel="Gebruik opnametijd"
                     value={candidateTimes[candidate.id] ?? ""}
@@ -864,11 +867,11 @@ export function MediaManager({
                       </option>
                     ))}
                   </SearchSelect>
-                </label>
+                </Field>
               )}
               {candidate.location_options.length > 1 && (
-                <label>
-                  GPS-keuze
+                <Field>
+                  <FieldLabel>GPS-keuze</FieldLabel>
                   <SearchSelect
                     ariaLabel="GPS-keuze"
                     value={candidateLocations[candidate.id] ?? ""}
@@ -881,7 +884,7 @@ export function MediaManager({
                       </option>
                     ))}
                   </SearchSelect>
-                </label>
+                </Field>
               )}
               {candidate.location_options.length === 0 && (
                 <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>
@@ -922,8 +925,8 @@ export function MediaManager({
                 </Button>
                 {
                   <>
-                    <label className="scope-choice">
-                      Koppel aan
+                    <Field>
+                      <FieldLabel className="scope-choice">Koppel aan</FieldLabel>
                       <AsyncSearchSelect
                         ariaLabel="Koppel aan"
                         value={candidateAttachments[candidate.id] ?? ""}
@@ -950,7 +953,7 @@ export function MediaManager({
                           ];
                         }}
                       />
-                    </label>
+                    </Field>
                     <Button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>
                       Aan reisupdate koppelen
                     </Button>
@@ -1102,13 +1105,15 @@ export function MediaManager({
               {selected.media_kind === "video" && (
                 <derivativeRecord.form.Field name="removeAudio">
                   {(field) => (
-                    <label className="scope-choice">
-                      <TravelCheckbox
-                        checked={field.state.value}
-                        onCheckedChange={(checked) => field.handleChange(checked)}
-                      />
-                      Geluid verwijderen
-                    </label>
+                    <Field className="contents">
+                      <FieldLabel className="scope-choice">
+                        <TravelCheckbox
+                          checked={field.state.value}
+                          onCheckedChange={(checked) => field.handleChange(checked)}
+                        />
+                        Geluid verwijderen
+                      </FieldLabel>
+                    </Field>
                   )}
                 </derivativeRecord.form.Field>
               )}

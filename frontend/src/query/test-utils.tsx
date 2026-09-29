@@ -53,12 +53,12 @@ export function restoreObjectUrls() {
 
 /** The visible text of a search combobox's current choice, by its accessible label. */
 export function selectedOption(label: string): string {
-  return (screen.getByLabelText(label) as HTMLInputElement).value;
+  return (screen.getByRole("combobox", { name: label }) as HTMLInputElement).value;
 }
 
 /** Opens the search combobox labelled `label` and chooses the option named `optionName`. */
 export function chooseOption(label: string, optionName: string | RegExp) {
-  fireEvent.keyDown(screen.getByLabelText(label), { key: "ArrowDown" });
+  fireEvent.keyDown(screen.getByRole("combobox", { name: label }), { key: "ArrowDown" });
   fireEvent.click(screen.getByRole("option", { name: optionName }));
 }
 

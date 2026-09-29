@@ -32,6 +32,7 @@ import {
   type OverviewWarning,
   type Visibility,
 } from "../tracker-model";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 type CatalogItem = {
   kind: ShareScopeKind;
@@ -199,23 +200,25 @@ function ScopeGroup({
               data-included={chosen(item) ? "" : undefined}
               key={`${item.kind}-${item.id}`}
             >
-              <label className="scope-choice">
-                <TravelCheckbox
-                  checked={chosen(item)}
-                  disabled={busy}
-                  onCheckedChange={(checked) => void include(item, checked)}
-                />
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.detail}</small>
-                  {item.visibility === "private" && (
-                    <em className="text-xs font-medium not-italic text-travel-muted">
-                      {" "}
-                      · nu privé; aanvinken kiest dit voor dit publiek
-                    </em>
-                  )}
-                </span>
-              </label>
+              <Field className="contents">
+                <FieldLabel className="scope-choice">
+                  <TravelCheckbox
+                    checked={chosen(item)}
+                    disabled={busy}
+                    onCheckedChange={(checked) => void include(item, checked)}
+                  />
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.detail}</small>
+                    {item.visibility === "private" && (
+                      <em className="text-xs font-medium not-italic text-travel-muted">
+                        {" "}
+                        · nu privé; aanvinken kiest dit voor dit publiek
+                      </em>
+                    )}
+                  </span>
+                </FieldLabel>
+              </Field>
             </article>
           ))}
         </div>
@@ -259,29 +262,33 @@ function ScopeEditor({
 }) {
   const groups = groupBy(catalog.filter((item) => item.visibility !== "everyone"));
   return (
-    <fieldset
+    <FieldSet
       className="m-0 grid min-w-0 gap-3 rounded-xl border border-travel-divider p-3.75 [&>legend]:px-1.5 [&>legend]:font-extrabold [&>p]:m-0 [&>p]:text-sm"
       disabled={disabled}
     >
-      <legend>{name}</legend>
+      <FieldLegend>{name}</FieldLegend>
       <p>Kies wat bezoekers mogen zien. Alles wat je niet kiest blijft privé.</p>
       <div className="flex flex-wrap gap-x-3.5 gap-y-2">
-        <label className="scope-choice">
-          <TravelCheckbox
-            checked={scope.trip.title}
-            onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, title: checked } })}
-          />
-          Reistitel
-        </label>
-        <label className="scope-choice">
-          <TravelCheckbox
-            checked={scope.trip.summary}
-            onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, summary: checked } })}
-          />
-          Samenvatting
-        </label>
-        <label>
-          Hoe precies mogen de reisdatums zijn?
+        <Field className="contents">
+          <FieldLabel className="scope-choice">
+            <TravelCheckbox
+              checked={scope.trip.title}
+              onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, title: checked } })}
+            />
+            Reistitel
+          </FieldLabel>
+        </Field>
+        <Field className="contents">
+          <FieldLabel className="scope-choice">
+            <TravelCheckbox
+              checked={scope.trip.summary}
+              onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, summary: checked } })}
+            />
+            Samenvatting
+          </FieldLabel>
+        </Field>
+        <Field>
+          <FieldLabel>Hoe precies mogen de reisdatums zijn?</FieldLabel>
           <SearchSelect
             ariaLabel="Hoe precies mogen de reisdatums zijn?"
             value={scope.trip.dates ?? ""}
@@ -296,7 +303,7 @@ function ScopeEditor({
               </option>
             ))}
           </SearchSelect>
-        </label>
+        </Field>
         {scope.trip.dates === "day" && <small>Bezoekers zien begin- en einddag.</small>}
         {scope.trip.dates === "month" && <small>Bezoekers zien alleen begin- en eindmaand.</small>}
         {scope.trip.dates === "year" && <small>Bezoekers zien alleen het reisjaar.</small>}
@@ -322,7 +329,7 @@ function ScopeEditor({
           reisupdate, gebied of bezoek aan.
         </p>
       )}
-    </fieldset>
+    </FieldSet>
   );
 }
 
@@ -1063,28 +1070,34 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             </RecordForm>
             <div className="publication-panel">
               <div className="field-row">
-                <label>
-                  Geldig gedurende (dagen)
-                  <Input
-                    type="number"
-                    min="1"
-                    max="90"
-                    disabled={expiresInDays === null}
-                    value={expiresInDays ?? 30}
-                    onChange={(event) => setExpiresInDays(Number(event.target.value))}
-                  />
-                </label>
-                <label className="scope-choice">
-                  <TravelCheckbox
-                    checked={expiresInDays === null}
-                    onCheckedChange={(checked) => setExpiresInDays(checked ? null : 30)}
-                  />
-                  Geen vervaldatum
-                </label>
-                <label>
-                  Reden <span className="font-medium text-travel-optional">(optioneel)</span>
-                  <Input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
-                </label>
+                <Field className="contents">
+                  <FieldLabel>
+                    Geldig gedurende (dagen)
+                    <Input
+                      type="number"
+                      min="1"
+                      max="90"
+                      disabled={expiresInDays === null}
+                      value={expiresInDays ?? 30}
+                      onChange={(event) => setExpiresInDays(Number(event.target.value))}
+                    />
+                  </FieldLabel>
+                </Field>
+                <Field className="contents">
+                  <FieldLabel className="scope-choice">
+                    <TravelCheckbox
+                      checked={expiresInDays === null}
+                      onCheckedChange={(checked) => setExpiresInDays(checked ? null : 30)}
+                    />
+                    Geen vervaldatum
+                  </FieldLabel>
+                </Field>
+                <Field className="contents">
+                  <FieldLabel>
+                    Reden <span className="font-medium text-travel-optional">(optioneel)</span>
+                    <Input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+                  </FieldLabel>
+                </Field>
               </div>
               {expiresInDays === null && (
                 <p className="help">Deze link blijft geldig totdat je hem intrekt of roteert.</p>

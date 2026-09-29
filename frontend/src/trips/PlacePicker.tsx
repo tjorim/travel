@@ -13,6 +13,7 @@ import {
   type Visit,
 } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 /**
  * Where something is: a whole area, a location in one, or a new location. A location is always
@@ -183,36 +184,34 @@ export function PlacePicker({
   }
 
   return (
-    <fieldset>
-      <legend>{label}</legend>
-      <div className="field">
-        <label>
-          {label} kiezen
-          <AsyncSearchSelect
-            ariaLabel={label}
-            value={value.choice}
-            selectedOption={selectedOption}
-            defaultOptions={[
-              { value: "", label: "Kies een gebied of een locatie" },
-              ...areas.slice(0, 50).map((area) => ({
-                label: `${area.label}${area.region ? ` · ${area.region}` : ""}`,
-                options: [
-                  { value: `area:${area.id}`, label: `${area.label} (heel gebied)` },
-                  ...locations
-                    .slice(0, 50)
-                    .filter((location) => location.area_id === area.id)
-                    .map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
-                ],
-              })),
-              { value: "new", label: "Nieuwe locatie…" },
-            ]}
-            loadOptions={loadPlaces}
-            onChange={(next) =>
-              onChange(next === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: next })
-            }
-          />
-        </label>
-      </div>
+    <FieldSet>
+      <FieldLegend>{label}</FieldLegend>
+      <Field>
+        <FieldLabel>{label} kiezen</FieldLabel>
+        <AsyncSearchSelect
+          ariaLabel={label}
+          value={value.choice}
+          selectedOption={selectedOption}
+          defaultOptions={[
+            { value: "", label: "Kies een gebied of een locatie" },
+            ...areas.slice(0, 50).map((area) => ({
+              label: `${area.label}${area.region ? ` · ${area.region}` : ""}`,
+              options: [
+                { value: `area:${area.id}`, label: `${area.label} (heel gebied)` },
+                ...locations
+                  .slice(0, 50)
+                  .filter((location) => location.area_id === area.id)
+                  .map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
+              ],
+            })),
+            { value: "new", label: "Nieuwe locatie…" },
+          ]}
+          loadOptions={loadPlaces}
+          onChange={(next) =>
+            onChange(next === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: next })
+          }
+        />
+      </Field>
       {hint && <p className="help">{hint}</p>}
       {value.choice === "new" && (
         <div>
@@ -225,8 +224,8 @@ export function PlacePicker({
             onSelect={(result) => void useResult(result)}
           />
           <div className="field-row">
-            <div className="field">
-              <label>
+            <Field>
+              <FieldLabel>
                 Naam <span className="font-medium text-travel-optional">(optioneel)</span>
                 <Input
                   aria-label={`Naam (${label.toLowerCase()})`}
@@ -234,10 +233,10 @@ export function PlacePicker({
                   maxLength={500}
                   onChange={(event) => onChange({ ...value, newName: event.target.value })}
                 />
-              </label>
-            </div>
-            <div className="field">
-              <label>
+              </FieldLabel>
+            </Field>
+            <Field>
+              <FieldLabel>
                 Plaats <span className="font-medium text-travel-optional">(optioneel)</span>
                 <Input
                   aria-label={`Plaats (${label.toLowerCase()})`}
@@ -245,12 +244,12 @@ export function PlacePicker({
                   maxLength={120}
                   onChange={(event) => onChange({ ...value, newLocality: event.target.value })}
                 />
-              </label>
-            </div>
+              </FieldLabel>
+            </Field>
           </div>
           <div className="field-row">
-            <div className="field">
-              <label>
+            <Field>
+              <FieldLabel>
                 Landcode <span className="font-medium text-travel-optional">(optioneel)</span>
                 <Input
                   aria-label={`Landcode (${label.toLowerCase()})`}
@@ -258,40 +257,40 @@ export function PlacePicker({
                   maxLength={2}
                   onChange={(event) => onChange({ ...value, newCountryCode: event.target.value })}
                 />
-              </label>
-            </div>
-            <div className="field">
-              <label>
+              </FieldLabel>
+            </Field>
+            <Field>
+              <FieldLabel>
                 Gebied <span className="font-medium text-travel-optional">(optioneel)</span>
-                <SearchSelect
-                  ariaLabel={`Gebied van de nieuwe locatie (${label.toLowerCase()})`}
-                  value={value.newAreaId}
-                  onChange={(next) => onChange({ ...value, newAreaId: next })}
-                >
-                  <option value="">
-                    {value.newResult?.latitude != null
-                      ? "Geen voorstel gebruiken (plaatsregel)"
-                      : "Afleiden uit de plaats"}
+              </FieldLabel>
+              <SearchSelect
+                ariaLabel={`Gebied van de nieuwe locatie (${label.toLowerCase()})`}
+                value={value.newAreaId}
+                onChange={(next) => onChange({ ...value, newAreaId: next })}
+              >
+                <option value="">
+                  {value.newResult?.latitude != null
+                    ? "Geen voorstel gebruiken (plaatsregel)"
+                    : "Afleiden uit de plaats"}
+                </option>
+                {value.newAreaCandidate && (
+                  <option value="__new__">
+                    Nieuw gebied: {value.newAreaCandidate.label}
+                    {value.newAreaCandidate.timezone ? ` · ${value.newAreaCandidate.timezone}` : ""}
                   </option>
-                  {value.newAreaCandidate && (
-                    <option value="__new__">
-                      Nieuw gebied: {value.newAreaCandidate.label}
-                      {value.newAreaCandidate.timezone ? ` · ${value.newAreaCandidate.timezone}` : ""}
-                    </option>
-                  )}
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.label}
-                    </option>
-                  ))}
-                </SearchSelect>
-              </label>
-            </div>
+                )}
+                {areas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.label}
+                  </option>
+                ))}
+              </SearchSelect>
+            </Field>
           </div>
           {value.newAreaId === "__new__" && value.newAreaCandidate && (
             <div className="field-row">
-              <div className="field">
-                <label>
+              <Field>
+                <FieldLabel>
                   Naam nieuw gebied
                   <Input
                     value={value.newAreaCandidate.label}
@@ -303,10 +302,10 @@ export function PlacePicker({
                       })
                     }
                   />
-                </label>
-              </div>
-              <div className="field">
-                <label>
+                </FieldLabel>
+              </Field>
+              <Field>
+                <FieldLabel>
                   Tijdzone nieuw gebied
                   <Input
                     value={value.newAreaCandidate.timezone ?? ""}
@@ -318,12 +317,12 @@ export function PlacePicker({
                       })
                     }
                   />
-                </label>
-              </div>
+                </FieldLabel>
+              </Field>
             </div>
           )}
         </div>
       )}
-    </fieldset>
+    </FieldSet>
   );
 }

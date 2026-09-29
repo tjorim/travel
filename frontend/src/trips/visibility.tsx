@@ -5,6 +5,7 @@ import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import type { ShareScopeKind, Visibility } from "../tracker-model";
+import { Field, FieldError, FieldLabel } from "../ui/field";
 
 /** Who receives a record. The same three choices apply to everything that can be shared. */
 export const VISIBILITY_LABELS: Record<Visibility, string> = {
@@ -63,8 +64,8 @@ export function VisibilityControl({
       .catch((failure: unknown) => setError(errorMessage(failure, "De zichtbaarheid kon niet worden bewaard.")));
   }
   return (
-    <div className="field">
-      <label>
+    <Field>
+      <FieldLabel>
         Zichtbaarheid
         <SearchSelect
           ariaLabel={`Zichtbaarheid van ${name}`}
@@ -78,12 +79,8 @@ export function VisibilityControl({
             </option>
           ))}
         </SearchSelect>
-      </label>
-      {error && (
-        <span className="field-error" role="alert">
-          {error}
-        </span>
-      )}
-    </div>
+      </FieldLabel>
+      <FieldError>{error}</FieldError>
+    </Field>
   );
 }

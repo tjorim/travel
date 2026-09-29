@@ -6,6 +6,7 @@ import { AsyncSearchSelect } from "../forms/fields";
 import { errorMessage } from "../query/api";
 import { tripPath, useLocationSearch, useOwnerMutation } from "../query/owner-queries";
 import { locationName, type Location, type PlaceSearchResponse, type PlaceSearchResult } from "../tracker-model";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 /** Owner-only place lookup that never persists a selected result by itself. */
 export function PlaceSearchField({
@@ -73,14 +74,14 @@ export function PlaceSearchField({
     setState("Bestaande locatie gekozen; er wordt geen kopie gemaakt.");
   }
   return (
-    <fieldset className="m-0 grid gap-2.5 rounded-travel-media border border-travel-divider p-3 [&>p]:m-0 [&>p]:text-sm [&>p]:leading-normal [&>p]:text-travel-muted">
-      <legend>
+    <FieldSet className="m-0 grid gap-2.5 rounded-travel-media border border-travel-divider p-3 [&>p]:m-0 [&>p]:text-sm [&>p]:leading-normal [&>p]:text-travel-muted">
+      <FieldLegend>
         {legend} <span className="font-medium text-travel-optional">(optioneel)</span>
-      </legend>
+      </FieldLegend>
       <p>{help}</p>
       {allowExisting && (
-        <label>
-          Gebruik een bestaande locatie
+        <Field>
+          <FieldLabel>Gebruik een bestaande locatie</FieldLabel>
           <AsyncSearchSelect
             ariaLabel="Gebruik een bestaande locatie"
             value={existingChoice}
@@ -99,13 +100,15 @@ export function PlaceSearchField({
             }}
           />
           <small className="help">Typ een naam om opgeslagen locaties te zoeken.</small>
-        </label>
+        </Field>
       )}
       <div className="field-row">
-        <label>
-          {inputLabel}
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} />
-        </label>
+        <Field className="contents">
+          <FieldLabel>
+            {inputLabel}
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} />
+          </FieldLabel>
+        </Field>
         <div className="flex items-end">
           <Button className="secondary" type="button" onClick={find}>
             Zoeken
@@ -137,6 +140,6 @@ export function PlaceSearchField({
           </p>
         </div>
       )}
-    </fieldset>
+    </FieldSet>
   );
 }

@@ -11,6 +11,7 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
+import { Field, FieldLabel } from "../ui/field";
 
 export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string> = {
   booking: "Boeking",
@@ -226,8 +227,8 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                 )}
               </uploadRecord.form.Field>
             </div>
-            <div className="field">
-              <label>
+            <Field>
+              <FieldLabel>
                 Privébestand
                 <Input
                   key={inputKey}
@@ -235,8 +236,8 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                   type="file"
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
-              </label>
-            </div>
+              </FieldLabel>
+            </Field>
           </RecordForm>
         )}
       </RecordDialog>

@@ -13,6 +13,7 @@ import { ChoiceGroup } from "../ui/ChoiceGroup";
 import { SearchSelect } from "../forms/fields";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { PackingOfflineView, type PackingSnapshot } from "./PackingOfflineView";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 type PackingList = { id: string; name: string };
 type PackingSource = PackingList & { trip_id: string; trip_title: string };
@@ -324,8 +325,8 @@ export function PackingManager({ trip }: { trip: Trip }) {
           Inpakken
         </h3>
         {savedCopies.length > 1 && (
-          <label className="block">
-            Offline paklijst{" "}
+          <Field>
+            <FieldLabel className="block">Offline paklijst </FieldLabel>
             <SearchSelect ariaLabel="Offline paklijst" value={savedCopy?.resourceId ?? ""} onChange={setChosenList}>
               {savedCopies.map((copy) => (
                 <option key={copy.id} value={copy.resourceId}>
@@ -333,7 +334,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 </option>
               ))}
             </SearchSelect>
-          </label>
+          </Field>
         )}
         {savedCopy ? (
           <PackingOfflineView copy={savedCopy} open={offline.open} />
@@ -431,8 +432,8 @@ export function PackingManager({ trip }: { trip: Trip }) {
       ) : (
         <>
           {(listsQuery.data?.length ?? 0) > 1 && (
-            <label className="block">
-              Paklijst{" "}
+            <Field>
+              <FieldLabel className="block">Paklijst </FieldLabel>
               <SearchSelect
                 ariaLabel="Paklijst"
                 value={list.id}
@@ -449,7 +450,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                   </option>
                 ))}
               </SearchSelect>
-            </label>
+            </Field>
           )}
           {bagsQuery.isPending || itemsQuery.isPending ? (
             <p role="status">Inpaklijst laden…</p>
@@ -610,15 +611,17 @@ export function PackingManager({ trip }: { trip: Trip }) {
                   ]}
                   onChange={setFilter}
                 />
-                <label>
-                  Zoeken{" "}
-                  <Input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="rounded border p-2"
-                  />
-                </label>
+                <Field className="contents">
+                  <FieldLabel>
+                    Zoeken{" "}
+                    <Input
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      className="rounded border p-2"
+                    />
+                  </FieldLabel>
+                </Field>
               </div>
               {selecting && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
@@ -629,8 +632,8 @@ export function PackingManager({ trip }: { trip: Trip }) {
                   <Button type="button" disabled={busy || !selected.length} onClick={() => void bulk(false)}>
                     Uitpakken
                   </Button>
-                  <label>
-                    Verplaatsen naar{" "}
+                  <Field>
+                    <FieldLabel>Verplaatsen naar </FieldLabel>
                     <SearchSelect
                       ariaLabel="Geselecteerde items verplaatsen naar"
                       value=""
@@ -647,7 +650,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                         </option>
                       ))}
                     </SearchSelect>
-                  </label>
+                  </Field>
                   <Button
                     type="button"
                     className="secondary compact"
@@ -743,31 +746,35 @@ export function PackingManager({ trip }: { trip: Trip }) {
                             <li key={item.id} className="py-3 first:pt-0 last:pb-0">
                               <div className="flex items-start gap-3">
                                 {selecting ? (
-                                  <label className="flex size-11 shrink-0 items-center justify-center">
-                                    <span className="sr-only">Selecteer {item.label}</span>
-                                    <TravelCheckbox
-                                      className="size-6"
-                                      checked={selected.includes(item.id)}
-                                      onCheckedChange={(checked) =>
-                                        setSelected((current) =>
-                                          checked ? [...current, item.id] : current.filter((id) => id !== item.id),
-                                        )
-                                      }
-                                    />
-                                  </label>
+                                  <Field className="contents">
+                                    <FieldLabel className="flex size-11 shrink-0 items-center justify-center">
+                                      <span className="sr-only">Selecteer {item.label}</span>
+                                      <TravelCheckbox
+                                        className="size-6"
+                                        checked={selected.includes(item.id)}
+                                        onCheckedChange={(checked) =>
+                                          setSelected((current) =>
+                                            checked ? [...current, item.id] : current.filter((id) => id !== item.id),
+                                          )
+                                        }
+                                      />
+                                    </FieldLabel>
+                                  </Field>
                                 ) : (
-                                  <label className="flex size-11 shrink-0 items-center justify-center">
-                                    <span className="sr-only">
-                                      {item.quantity > 1 ? `${item.quantity} × ` : ""}
-                                      {item.label} ingepakt
-                                    </span>
-                                    <TravelCheckbox
-                                      className="size-6"
-                                      checked={item.packed}
-                                      disabled={savingIds.includes(item.id)}
-                                      onCheckedChange={() => void toggle(item)}
-                                    />
-                                  </label>
+                                  <Field className="contents">
+                                    <FieldLabel className="flex size-11 shrink-0 items-center justify-center">
+                                      <span className="sr-only">
+                                        {item.quantity > 1 ? `${item.quantity} × ` : ""}
+                                        {item.label} ingepakt
+                                      </span>
+                                      <TravelCheckbox
+                                        className="size-6"
+                                        checked={item.packed}
+                                        disabled={savingIds.includes(item.id)}
+                                        onCheckedChange={() => void toggle(item)}
+                                      />
+                                    </FieldLabel>
+                                  </Field>
                                 )}
                                 <div className="min-w-0 flex-1 pt-1">
                                   <strong className={item.packed ? "line-through opacity-60" : ""}>
@@ -855,40 +862,46 @@ export function PackingManager({ trip }: { trip: Trip }) {
             });
           }}
         >
-          <label className="block">
-            Naam *
-            <Input
-              autoFocus
-              required
-              maxLength={160}
-              value={itemDraft.label}
-              onChange={(event) => setItemDraft({ ...itemDraft, label: event.target.value })}
-              className="block w-full rounded border p-2"
-            />
-          </label>
-          <label className="block">
-            Aantal
-            <Input
-              type="number"
-              min="1"
-              max="99"
-              required
-              value={itemDraft.quantity}
-              onChange={(event) => setItemDraft({ ...itemDraft, quantity: Number(event.target.value) })}
-              className="block w-full rounded border p-2"
-            />
-          </label>
-          <label className="block">
-            Categorie
-            <Input
-              maxLength={80}
-              value={itemDraft.category ?? ""}
-              onChange={(event) => setItemDraft({ ...itemDraft, category: event.target.value || null })}
-              className="block w-full rounded border p-2"
-            />
-          </label>
-          <label className="block">
-            Tas
+          <Field className="contents">
+            <FieldLabel className="block">
+              Naam *
+              <Input
+                autoFocus
+                required
+                maxLength={160}
+                value={itemDraft.label}
+                onChange={(event) => setItemDraft({ ...itemDraft, label: event.target.value })}
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
+          <Field className="contents">
+            <FieldLabel className="block">
+              Aantal
+              <Input
+                type="number"
+                min="1"
+                max="99"
+                required
+                value={itemDraft.quantity}
+                onChange={(event) => setItemDraft({ ...itemDraft, quantity: Number(event.target.value) })}
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
+          <Field className="contents">
+            <FieldLabel className="block">
+              Categorie
+              <Input
+                maxLength={80}
+                value={itemDraft.category ?? ""}
+                onChange={(event) => setItemDraft({ ...itemDraft, category: event.target.value || null })}
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
+          <Field>
+            <FieldLabel className="block">Tas</FieldLabel>
             <SearchSelect
               ariaLabel="Tas"
               value={itemDraft.bag_id ?? ""}
@@ -901,45 +914,54 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 </option>
               ))}
             </SearchSelect>
-          </label>
-          <label className="block">
-            Gewicht per stuk (gram)
-            <Input
-              type="number"
-              min="0"
-              value={itemDraft.weight_g ?? ""}
-              onChange={(event) =>
-                setItemDraft({ ...itemDraft, weight_g: event.target.value === "" ? null : Number(event.target.value) })
-              }
-              className="block w-full rounded border p-2"
-            />
-          </label>
-          <label className="block">
-            Notitie
-            <TravelTextarea
-              maxLength={4000}
-              value={itemDraft.notes ?? ""}
-              onChange={(event) => setItemDraft({ ...itemDraft, notes: event.target.value || null })}
-              className="block w-full rounded border p-2"
-            />
-          </label>
+          </Field>
+          <Field className="contents">
+            <FieldLabel className="block">
+              Gewicht per stuk (gram)
+              <Input
+                type="number"
+                min="0"
+                value={itemDraft.weight_g ?? ""}
+                onChange={(event) =>
+                  setItemDraft({
+                    ...itemDraft,
+                    weight_g: event.target.value === "" ? null : Number(event.target.value),
+                  })
+                }
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
+          <Field className="contents">
+            <FieldLabel className="block">
+              Notitie
+              <TravelTextarea
+                maxLength={4000}
+                value={itemDraft.notes ?? ""}
+                onChange={(event) => setItemDraft({ ...itemDraft, notes: event.target.value || null })}
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
           {(["essential", "last_minute", "valuable", "cabin_only", "checked_only"] as const).map((flag) => (
-            <label key={flag} className="block">
-              <TravelCheckbox
-                className="size-5"
-                checked={itemDraft[flag]}
-                onCheckedChange={(checked) => setItemDraft({ ...itemDraft, [flag]: checked })}
-              />{" "}
-              {
+            <Field className="contents" key={flag}>
+              <FieldLabel className="block">
+                <TravelCheckbox
+                  className="size-5"
+                  checked={itemDraft[flag]}
+                  onCheckedChange={(checked) => setItemDraft({ ...itemDraft, [flag]: checked })}
+                />{" "}
                 {
-                  essential: "Essentieel",
-                  last_minute: "Vertrekdag / last-minute",
-                  valuable: "Waardevol",
-                  cabin_only: "Alleen handbagage",
-                  checked_only: "Alleen ruimbagage",
-                }[flag]
-              }
-            </label>
+                  {
+                    essential: "Essentieel",
+                    last_minute: "Vertrekdag / last-minute",
+                    valuable: "Waardevol",
+                    cabin_only: "Alleen handbagage",
+                    checked_only: "Alleen ruimbagage",
+                  }[flag]
+                }
+              </FieldLabel>
+            </Field>
           ))}
           {itemDraft.cabin_only && itemDraft.checked_only && <p role="alert">Kies maximaal één bagagebeperking.</p>}
           <div className="flex gap-2">
@@ -998,19 +1020,21 @@ export function PackingManager({ trip }: { trip: Trip }) {
             });
           }}
         >
-          <label className="block">
-            Naam *
-            <Input
-              autoFocus
-              required
-              maxLength={160}
-              value={bagDraft.name}
-              onChange={(event) => setBagDraft({ ...bagDraft, name: event.target.value })}
-              className="block w-full rounded border p-2"
-            />
-          </label>
-          <label className="block">
-            Type
+          <Field className="contents">
+            <FieldLabel className="block">
+              Naam *
+              <Input
+                autoFocus
+                required
+                maxLength={160}
+                value={bagDraft.name}
+                onChange={(event) => setBagDraft({ ...bagDraft, name: event.target.value })}
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
+          <Field>
+            <FieldLabel className="block">Type</FieldLabel>
             <SearchSelect
               ariaLabel="Type"
               value={bagDraft.type ?? ""}
@@ -1023,22 +1047,24 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 </option>
               ))}
             </SearchSelect>
-          </label>
-          <label className="block">
-            Gewichtslimiet (gram)
-            <Input
-              type="number"
-              min="1"
-              value={bagDraft.weight_limit_g ?? ""}
-              onChange={(event) =>
-                setBagDraft({
-                  ...bagDraft,
-                  weight_limit_g: event.target.value === "" ? null : Number(event.target.value),
-                })
-              }
-              className="block w-full rounded border p-2"
-            />
-          </label>
+          </Field>
+          <Field className="contents">
+            <FieldLabel className="block">
+              Gewichtslimiet (gram)
+              <Input
+                type="number"
+                min="1"
+                value={bagDraft.weight_limit_g ?? ""}
+                onChange={(event) =>
+                  setBagDraft({
+                    ...bagDraft,
+                    weight_limit_g: event.target.value === "" ? null : Number(event.target.value),
+                  })
+                }
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
           <div className="flex gap-2">
             <Button type="submit" disabled={busy}>
               Opslaan
@@ -1101,8 +1127,8 @@ export function PackingManager({ trip }: { trip: Trip }) {
             onChange={setReuseMode}
           />
           {reuseMode === "copy" ? (
-            <label className="block">
-              Paklijst
+            <Field>
+              <FieldLabel className="block">Paklijst</FieldLabel>
               <SearchSelect ariaLabel="Bronpaklijst" value={sourceId} onChange={setSourceId}>
                 <option value="">Kies een paklijst…</option>
                 {sourcesQuery.data
@@ -1113,23 +1139,25 @@ export function PackingManager({ trip }: { trip: Trip }) {
                     </option>
                   ))}
               </SearchSelect>
-            </label>
+            </Field>
           ) : (
-            <fieldset className="space-y-2">
-              <legend>Sjablonen kiezen</legend>
+            <FieldSet className="space-y-2">
+              <FieldLegend>Sjablonen kiezen</FieldLegend>
               {templatesQuery.data?.map((template) => (
                 <div key={template.id} className="flex items-center justify-between gap-2">
-                  <label className="block">
-                    <TravelCheckbox
-                      checked={templateIds.includes(template.id)}
-                      onCheckedChange={(checked) =>
-                        setTemplateIds((current) =>
-                          checked ? [...current, template.id] : current.filter((id) => id !== template.id),
-                        )
-                      }
-                    />{" "}
-                    {template.name}
-                  </label>
+                  <Field className="contents">
+                    <FieldLabel className="block">
+                      <TravelCheckbox
+                        checked={templateIds.includes(template.id)}
+                        onCheckedChange={(checked) =>
+                          setTemplateIds((current) =>
+                            checked ? [...current, template.id] : current.filter((id) => id !== template.id),
+                          )
+                        }
+                      />{" "}
+                      {template.name}
+                    </FieldLabel>
+                  </Field>
                   <Button
                     type="button"
                     className="secondary compact"
@@ -1140,21 +1168,23 @@ export function PackingManager({ trip }: { trip: Trip }) {
                   </Button>
                 </div>
               ))}
-            </fieldset>
+            </FieldSet>
           )}
           {(sourcesQuery.isError || templatesQuery.isError) && (
             <p role="alert">Bronnen laden mislukt. Sluit en open opnieuw om te proberen.</p>
           )}
-          <label className="block">
-            Naam nieuwe paklijst
-            <Input
-              required
-              maxLength={160}
-              value={reuseName}
-              onChange={(event) => setReuseName(event.target.value)}
-              className="block w-full rounded border p-2"
-            />
-          </label>
+          <Field className="contents">
+            <FieldLabel className="block">
+              Naam nieuwe paklijst
+              <Input
+                required
+                maxLength={160}
+                value={reuseName}
+                onChange={(event) => setReuseName(event.target.value)}
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
           <p className="text-sm">
             Tassen, volgorde, categorieën, aantallen, notities en toewijzingen blijven bewaard. Alle items beginnen
             uitgepakt.
@@ -1199,17 +1229,19 @@ export function PackingManager({ trip }: { trip: Trip }) {
             });
           }}
         >
-          <label className="block">
-            Naam sjabloon
-            <Input
-              autoFocus
-              required
-              maxLength={160}
-              value={templateName ?? ""}
-              onChange={(event) => setTemplateName(event.target.value)}
-              className="block w-full rounded border p-2"
-            />
-          </label>
+          <Field className="contents">
+            <FieldLabel className="block">
+              Naam sjabloon
+              <Input
+                autoFocus
+                required
+                maxLength={160}
+                value={templateName ?? ""}
+                onChange={(event) => setTemplateName(event.target.value)}
+                className="block w-full rounded border p-2"
+              />
+            </FieldLabel>
+          </Field>
           <Button type="submit" disabled={busy || !templateName?.trim()}>
             Bewaren
           </Button>

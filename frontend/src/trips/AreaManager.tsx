@@ -1,14 +1,14 @@
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
-import { RecordForm, requiredText, TextField } from "../forms/fields";
+import { RecordForm, requiredText, TextField, TimeZoneField } from "../forms/fields";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { timeZoneOptions, type Area, type PlaceSearchResult, type Trip } from "../tracker-model";
+import { type Area, type PlaceSearchResult, type Trip } from "../tracker-model";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { PlaceSearchField } from "./PlaceSearchField";
 import { AreaContents } from "./AreaContents";
@@ -327,21 +327,10 @@ export function AreaManager({
               </record.form.Field>
               <record.form.Field name="timezone">
                 {(field) => (
-                  <TextField
-                    field={field}
-                    label="Tijdzone"
-                    optional="(optioneel, privé)"
-                    list="area-time-zones"
-                    maxLength={64}
-                  />
+                  <TimeZoneField field={field} label="Tijdzone" optional="(optioneel, privé)" maxLength={64} />
                 )}
               </record.form.Field>
             </div>
-            <datalist id="area-time-zones">
-              {timeZoneOptions().map((zone) => (
-                <option key={zone} value={zone} />
-              ))}
-            </datalist>
             <div className="field-row">
               <record.form.Field
                 name="latitude"

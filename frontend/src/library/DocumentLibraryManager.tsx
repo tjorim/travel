@@ -18,6 +18,7 @@ import {
 } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type OwnerDocument } from "../tracker-model";
+import { Field, FieldLabel } from "../ui/field";
 
 type Values = { title: string; kind: OwnerDocument["document_kind"]; linkedTripId: string };
 const blank = (): Values => ({ title: "", kind: "other", linkedTripId: "" });
@@ -234,31 +235,31 @@ export function DocumentLibraryManager() {
             </div>
             <record.form.Field name="linkedTripId">
               {(field) => (
-                <div className="field">
-                  <label>
+                <Field>
+                  <FieldLabel>
                     Gekoppelde reis <span className="font-medium text-travel-optional">(optioneel)</span>
-                    <AsyncSearchSelect
-                      ariaLabel="Gekoppelde reis (optioneel)"
-                      value={field.state.value}
-                      selectedOption={
-                        field.state.value ? { value: field.state.value, label: tripTitle(field.state.value) } : null
-                      }
-                      defaultOptions={[
-                        { value: "", label: "Geen koppeling" },
-                        ...trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title })),
-                      ]}
-                      onChange={field.handleChange}
-                      loadOptions={async (q) => [
-                        { value: "", label: "Geen koppeling" },
-                        ...(await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title })),
-                      ]}
-                    />
-                  </label>
-                </div>
+                  </FieldLabel>
+                  <AsyncSearchSelect
+                    ariaLabel="Gekoppelde reis (optioneel)"
+                    value={field.state.value}
+                    selectedOption={
+                      field.state.value ? { value: field.state.value, label: tripTitle(field.state.value) } : null
+                    }
+                    defaultOptions={[
+                      { value: "", label: "Geen koppeling" },
+                      ...trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title })),
+                    ]}
+                    onChange={field.handleChange}
+                    loadOptions={async (q) => [
+                      { value: "", label: "Geen koppeling" },
+                      ...(await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title })),
+                    ]}
+                  />
+                </Field>
               )}
             </record.form.Field>
-            <div className="field">
-              <label>
+            <Field>
+              <FieldLabel>
                 Privébestand
                 <Input
                   key={fileKey}
@@ -266,8 +267,8 @@ export function DocumentLibraryManager() {
                   type="file"
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
-              </label>
-            </div>
+              </FieldLabel>
+            </Field>
           </RecordForm>
         )}
       </RecordDialog>

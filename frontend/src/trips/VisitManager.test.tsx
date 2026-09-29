@@ -105,7 +105,7 @@ afterEach(async () => {
 /** Opens the form once the areas and locations it lists have arrived, leaving "Waar" open on them. */
 const openNew = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw bezoek" }));
-  fireEvent.keyDown(await screen.findByLabelText("Waar"), { key: "ArrowDown" });
+  fireEvent.keyDown(await screen.findByRole("combobox", { name: "Waar" }), { key: "ArrowDown" });
   await screen.findByRole("option", { name: "Tainan (heel gebied)" });
 };
 
@@ -237,7 +237,7 @@ it("rewrites the place only when it changed, and shows where the nights are spen
   expect(screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }).textContent).toContain("Idee · Werk");
   fireEvent.click(screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.keyDown(await screen.findByLabelText("Waar"), { key: "ArrowDown" });
+  fireEvent.keyDown(await screen.findByRole("combobox", { name: "Waar" }), { key: "ArrowDown" });
   await screen.findByRole("option", { name: "Tainan (heel gebied)" });
   expect(selectedOption("Waar")).toBe("Taipei (heel gebied)");
   expect(selectedOption("Status")).toBe("Idee");

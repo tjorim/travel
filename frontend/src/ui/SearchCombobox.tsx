@@ -56,7 +56,6 @@ function findOption(choices: Choice[], value: string): SearchSelectOption | null
 
 function SearchCombobox({
   ariaLabel,
-  inputId,
   value,
   onChange,
   onBlur,
@@ -66,12 +65,9 @@ function SearchCombobox({
   onQueryChange,
   onClose,
   remote = false,
-  invalid,
-  describedBy,
   name,
 }: {
   ariaLabel?: string;
-  inputId?: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -81,8 +77,6 @@ function SearchCombobox({
   onQueryChange?: (query: string) => void;
   onClose?: () => void;
   remote?: boolean;
-  invalid?: boolean;
-  describedBy?: string;
   name?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -121,14 +115,14 @@ function SearchCombobox({
     >
       <Combobox.InputGroup className="relative flex w-full items-stretch">
         <Combobox.Input
-          id={inputId}
           aria-label={ariaLabel}
-          aria-invalid={invalid || undefined}
-          aria-describedby={describedBy}
+          // An explicit accessible name wins over the surrounding Field label.
+          render={(props) => <input {...props} aria-labelledby={ariaLabel ? undefined : props["aria-labelledby"]} />}
           onBlur={onBlur}
           className="min-w-0 flex-1 rounded-r-none! border-r-0!"
         />
         <Combobox.Trigger
+          aria-labelledby=""
           aria-label={`${ariaLabel ?? "Keuze"} opties tonen`}
           className="shrink-0 rounded-l-none! border! border-travel-muted! bg-white! px-3! text-travel-ink!"
         >
@@ -169,37 +163,30 @@ function SearchCombobox({
 
 export function SearchSelect({
   ariaLabel,
-  inputId,
   value,
   onChange,
   onBlur,
   isDisabled,
   children,
-  ...describedProps
+  name,
 }: {
   ariaLabel?: string;
-  inputId?: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
   isDisabled?: boolean;
   children: ReactNode;
-  "aria-invalid"?: boolean;
-  "aria-describedby"?: string;
   name?: string;
 }) {
   return (
     <SearchCombobox
       ariaLabel={ariaLabel}
-      inputId={inputId}
       value={value}
       onChange={onChange}
       onBlur={onBlur}
       isDisabled={isDisabled}
       choices={optionsFromChildren(children)}
-      invalid={describedProps["aria-invalid"]}
-      describedBy={describedProps["aria-describedby"]}
-      name={describedProps.name}
+      name={name}
     />
   );
 }
@@ -207,7 +194,6 @@ export function SearchSelect({
 /** A bounded server search. The selected option stays visible outside the result window. */
 export function AsyncSearchSelect({
   ariaLabel,
-  inputId,
   value,
   selectedOption,
   defaultOptions = [],
@@ -216,7 +202,6 @@ export function AsyncSearchSelect({
   isDisabled,
 }: {
   ariaLabel: string;
-  inputId?: string;
   value: string;
   selectedOption?: SearchSelectOption | null;
   defaultOptions?: Choice[];
@@ -254,7 +239,6 @@ export function AsyncSearchSelect({
   return (
     <SearchCombobox
       ariaLabel={ariaLabel}
-      inputId={inputId}
       value={value}
       selectedOption={selectedOption}
       choices={query ? results : defaultOptions}

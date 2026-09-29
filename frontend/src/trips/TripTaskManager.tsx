@@ -11,6 +11,7 @@ import { ownerKeys } from "../query/keys";
 import { errorMessage } from "../query/api";
 import { tripPath, useMarkAlertRead, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { formatInstant, localDateTime, type TaskLink, type Trip, type TripTask } from "../tracker-model";
+import { FieldSet, FieldLegend } from "../ui/field";
 
 const MAX_LINKS = 5;
 type Values = { title: string; notes: string; dueDate: string; remindAt: string; links: TaskLink[] };
@@ -326,10 +327,10 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
             </record.form.Field>
             <record.form.Field name="links" mode="array">
               {(links) => (
-                <fieldset>
-                  <legend>
+                <FieldSet>
+                  <FieldLegend>
                     Links <span className="font-medium text-travel-optional">(optioneel, https)</span>
-                  </legend>
+                  </FieldLegend>
                   {links.state.value.map((_, index) => (
                     <div className="field-row" key={index}>
                       <record.form.Field
@@ -364,7 +365,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                       Link toevoegen
                     </Button>
                   )}
-                </fieldset>
+                </FieldSet>
               )}
             </record.form.Field>
           </RecordForm>

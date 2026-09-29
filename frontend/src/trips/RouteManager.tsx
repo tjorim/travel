@@ -3,7 +3,7 @@ import { Button } from "@base-ui/react/button";
 import { Collapsible } from "@base-ui/react/collapsible";
 import { useRef, useState } from "react";
 
-import { RecordForm, SelectField, TextAreaField, TextField } from "../forms/fields";
+import { RecordForm, SelectField, TextAreaField, TextField, TimeZoneField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -21,7 +21,6 @@ import {
   localDate,
   locationName,
   routeTitle,
-  timeZoneOptions,
   wallClock,
   type Route,
   type RouteMode,
@@ -31,6 +30,7 @@ import {
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { emptyPlace, hasPlace, PlacePicker, placeFields, placeOf, samePlace, type PlaceValue } from "./PlacePicker";
 import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 export const ROUTE_STATUS_LABELS: Record<Route["status"], string> = {
   planned: "Gepland",
@@ -473,27 +473,21 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
             <record.form.Field name="departsOn">
               {(input) => <TextField field={input} label="Dag van vertrek" optional type="date" />}
             </record.form.Field>
-            <fieldset>
-              <legend>
+            <FieldSet>
+              <FieldLegend>
                 Tijden{" "}
                 <span className="font-medium text-travel-optional">(optioneel, zodra je een verbinding kiest)</span>
-              </legend>
-              <datalist id="route-time-zones">
-                {timeZoneOptions().map((zone) => (
-                  <option key={zone} value={zone} />
-                ))}
-              </datalist>
+              </FieldLegend>
               <div className="field-row">
                 <record.form.Field name="departsAt">
                   {(input) => <TextField field={input} label="Vertrektijd (lokaal)" optional type="datetime-local" />}
                 </record.form.Field>
                 <record.form.Field name="departureTimezone">
                   {(input) => (
-                    <TextField
+                    <TimeZoneField
                       field={input}
                       label="Tijdzone vertrek"
                       optional
-                      list="route-time-zones"
                       maxLength={64}
                       placeholder="Europe/Amsterdam"
                     />
@@ -506,18 +500,17 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 </record.form.Field>
                 <record.form.Field name="arrivalTimezone">
                   {(input) => (
-                    <TextField
+                    <TimeZoneField
                       field={input}
                       label="Tijdzone aankomst"
                       optional
-                      list="route-time-zones"
                       maxLength={64}
                       placeholder="Asia/Taipei"
                     />
                   )}
                 </record.form.Field>
               </div>
-            </fieldset>
+            </FieldSet>
             <Collapsible.Root
               defaultOpen={Boolean(
                 record.form.state.values.carrier ||
@@ -573,29 +566,28 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 {documents.length > 0 && (
                   <record.form.Field name="documentAssetIds">
                     {(input) => (
-                      <fieldset>
-                        <legend>
+                      <FieldSet>
+                        <FieldLegend>
                           Gekoppelde documenten <span className="font-medium text-travel-optional">(optioneel)</span>
-                        </legend>
+                        </FieldLegend>
                         {documents.map((document) => (
-                          <label
-                            className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold"
-                            key={document.id}
-                          >
-                            <TravelCheckbox
-                              checked={input.state.value.includes(document.id)}
-                              onCheckedChange={() =>
-                                input.handleChange(
-                                  input.state.value.includes(document.id)
-                                    ? input.state.value.filter((id) => id !== document.id)
-                                    : [...input.state.value, document.id],
-                                )
-                              }
-                            />
-                            {document.title}
-                          </label>
+                          <Field className="contents" key={document.id}>
+                            <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold">
+                              <TravelCheckbox
+                                checked={input.state.value.includes(document.id)}
+                                onCheckedChange={() =>
+                                  input.handleChange(
+                                    input.state.value.includes(document.id)
+                                      ? input.state.value.filter((id) => id !== document.id)
+                                      : [...input.state.value, document.id],
+                                  )
+                                }
+                              />
+                              {document.title}
+                            </FieldLabel>
+                          </Field>
                         ))}
-                      </fieldset>
+                      </FieldSet>
                     )}
                   </record.form.Field>
                 )}
@@ -603,10 +595,10 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
             </Collapsible.Root>
             <record.form.Field name="coordinates" validators={{ onBlur: validCoordinates, onSubmit: validCoordinates }}>
               {(input) => (
-                <fieldset>
-                  <legend>
+                <FieldSet>
+                  <FieldLegend>
                     Lijn op de kaart <span className="font-medium text-travel-optional">(optioneel)</span>
-                  </legend>
+                  </FieldLegend>
                   <RouteGeometryEditor
                     coordinates={editableCoordinates(input.state.value)}
                     onChange={(coordinates) =>
@@ -630,7 +622,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                       />
                     </Collapsible.Panel>
                   </Collapsible.Root>
-                </fieldset>
+                </FieldSet>
               )}
             </record.form.Field>
           </RecordForm>
