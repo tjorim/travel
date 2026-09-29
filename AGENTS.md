@@ -134,3 +134,8 @@ that only runs on the VPS (a scheduled job, storage provisioning, Caddy or
 Keycloak wiring) belongs in `tjorim/apps` even when the function or code it
 invokes lives here; link back to the originating `tjorim/travel` issue or PR
 for context instead of duplicating that context into the new issue.
+
+GitHub issues are living documents: do not add comments to them. Record
+clarifications, decisions, new sub-issue links and corrections by editing the
+issue body (read it first, keep the original text, and add or adjust a clearly
+headed section). This applies to closed issues too.
