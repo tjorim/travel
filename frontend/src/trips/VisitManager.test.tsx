@@ -88,7 +88,8 @@ function seed(visits: Visit[] = []) {
     })
     .collection("/api/trips/trip/areas", [taipei, tainan])
     .collection("/api/trips/trip/locations", [spring])
-    .collection("/api/trips/trip/stays", [stay]);
+    .collection("/api/trips/trip/stays", [stay])
+    .on("POST", /\/api\/trips\/trip\/visits\/route-check$/, () => []);
 }
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
@@ -177,6 +178,46 @@ it("chooses to show the time to visitors", async () => {
       start_time: "10:00",
     }),
   );
+});
+
+it("hints, without blocking, that a visit restates an existing route", async () => {
+  seed([
+    visit("v1", 0, {
+      title: "Vertrek EX101",
+      starts_on: "2054-11-16",
+      possible_route_duplicates: [{ id: "r1", title: "Schiphol → Taoyuan" }],
+    }),
+    visit("v2", 1, { title: "Lunch", starts_on: "2054-11-16" }),
+  ]);
+  renderWithOwner(<VisitManager trip={trip} />);
+  const notes = await screen.findAllByRole("note");
+  expect(notes).toHaveLength(1);
+  expect(notes[0].textContent).toContain("Schiphol → Taoyuan");
+});
+
+it("warns before saving when the draft visit restates a route, and never blocks the save", async () => {
+  seed();
+  api.on("POST", /\/api\/trips\/trip\/visits\/route-check$/, (body) =>
+    (body as { title: string }).title === "Vertrek EX101" ? [{ id: "r1", title: "Schiphol → Taoyuan" }] : [],
+  );
+  renderWithOwner(<VisitManager trip={trip} />);
+  await openNew();
+  chooseOption("Waar", "Taipei (heel gebied)");
+  fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), { target: { value: "2054-11-16" } });
+  fireEvent.change(screen.getByLabelText("Titel (optioneel)"), { target: { value: "Lunch" } });
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  expect(screen.queryByRole("note")).toBeNull();
+
+  fireEvent.change(screen.getByLabelText("Titel (optioneel)"), { target: { value: "Vertrek EX101" } });
+  expect((await screen.findByRole("note", undefined, { timeout: 2000 })).textContent).toContain("Schiphol → Taoyuan");
+  expect(api.lastBody("POST /api/trips/trip/visits/route-check")).toMatchObject({
+    area_id: "taipei",
+    title: "Vertrek EX101",
+    starts_on: "2054-11-16",
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
+  await waitFor(() => expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({ title: "Vertrek EX101" }));
 });
 
 it("rewrites the place only when it changed, and shows where the nights are spent", async () => {

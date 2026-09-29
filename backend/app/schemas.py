@@ -597,6 +597,22 @@ class VisitUpdate(InputModel):
     share_date_precision: DatePrecision | None = None
 
 
+class RouteReference(BaseModel):
+    id: str
+    title: str
+
+
+class VisitRouteCheck(InputModel):
+    """A visit as it is being typed, before it is saved: enough to tell whether it restates a route."""
+
+    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    location_id: str | None = Field(default=None, min_length=1, max_length=32)
+    title: str | None = Field(default=None, max_length=160)
+    summary: str | None = Field(default=None, max_length=2000)
+    starts_on: date | None = None
+    ends_on: date | None = None
+
+
 class VisitResponse(BaseModel):
     id: str
     position: int
@@ -614,6 +630,9 @@ class VisitResponse(BaseModel):
     visibility: Visibility
     share_time: bool
     share_date_precision: DatePrecision
+    # Routes this visit probably restates (same day and area, and it is about the journey): a
+    # non-blocking hint that the journey belongs in Routes. Filled in by the visits endpoints.
+    possible_route_duplicates: list[RouteReference] = []
     model_config = ConfigDict(from_attributes=True)
 
     @computed_field(description=_html_of("notes"))

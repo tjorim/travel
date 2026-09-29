@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- The trip overview flags a location that only repeats its area: within a kilometre of the area's
+  point and labelled with an airport code or a bare city entry. Name the area after the city or
+  region and keep the location for the exact place. It only warns; nothing is hidden (#274).
+- A visit that restates a route already on the trip (same day and area, at most two days long, and
+  naming the journey through its service number, carrier, route label or a transport word in the
+  title) is flagged, without blocking it: the visit list and detail suggest keeping the journey as
+  a route, and the trip overview reports `visit_restates_route`. The visit form shows the same hint
+  while the visit is being typed, before it is saved (`POST /visits/route-check`). Real stops at an airport or
+  station on a travel day are left alone (#276).
 - Owners can explicitly save, refresh and remove an encrypted, device-scoped
   packing copy. Its read-only offline view shows the saved time, bags, items,
   packed states, grouping and filters. Reconnect checks owner access and the

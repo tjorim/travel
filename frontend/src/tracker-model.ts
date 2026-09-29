@@ -230,6 +230,8 @@ export type Visit = {
   visibility: Visibility;
   share_time: boolean;
   share_date_precision: "day" | "month" | "year";
+  /** Routes this visit probably restates: same day and area, and it is about the journey. */
+  possible_route_duplicates?: { id: string; title: string }[];
 };
 
 /** What a visit is called: its title, else its location, else its area. */

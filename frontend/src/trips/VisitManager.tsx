@@ -34,6 +34,7 @@ import {
   type PlaceValue,
 } from "./PlacePicker";
 import { VisibilityControl, visibilityLabel } from "./visibility";
+import { RestatedRoutesNote, VisitRouteHint } from "./VisitRouteHint";
 
 export const VISIT_KIND_LABELS: Record<VisitKind, string> = { free: "Vrij", work: "Werk" };
 export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
@@ -358,6 +359,7 @@ export function VisitManager({
                 <span>{[dayLine(visit), visitPlace(visit), visibilityLabel(visit.visibility)].join(" · ")}</span>
               </Button>
               {sleeping(visit)}
+              <RestatedRoutesNote routes={visit.possible_route_duplicates ?? []} />
               <div className="button-row">
                 {onShowOnMap && (
                   <Button className="secondary compact" type="button" onClick={() => onShowOnMap(mapPointFor(visit))}>
@@ -414,6 +416,7 @@ export function VisitManager({
                 </>
               )}
               {sleeping(selected)}
+              <RestatedRoutesNote routes={selected.possible_route_duplicates ?? []} />
             </div>
             <div>
               <h4>Alleen voor jou</h4>
@@ -574,6 +577,17 @@ export function VisitManager({
                 />
               )}
             </record.form.Field>
+            <record.form.Subscribe
+              selector={(state) => ({
+                place: state.values.place,
+                title: state.values.title,
+                summary: state.values.summary,
+                startsOn: state.values.startsOn,
+                endsOn: state.values.endsOn,
+              })}
+            >
+              {(draft) => <VisitRouteHint tripId={trip.id} draft={draft} />}
+            </record.form.Subscribe>
             <div className="field-row">
               <record.form.Field name="shareDatePrecision">
                 {(field) => (

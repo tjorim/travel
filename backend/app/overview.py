@@ -5,9 +5,10 @@ visitor see?" (per audience, from the same projection the visitor is served)
 in one read, and flags the easy-to-miss states: an active audience that
 receives nothing, shared trip dates, planning words such as "concept" in a
 visible label, shared records whose map point is withheld because their area
-is not shared, and undated visits that duplicate a dated one.
+is not shared, undated visits that duplicate a dated one, visits that restate a route, and locations that only repeat their area.
 """
 
+import math
 import re
 from collections import Counter
 from typing import Any
@@ -16,8 +17,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .access import COLLECTIONS
-from .models import DocumentAsset, LinkState, MediaAsset, PublicSurface, ShareLink, SurfaceState, Trip
+from .models import DocumentAsset, LinkState, Location, MediaAsset, PublicSurface, ShareLink, SurfaceState, Trip
 from .projection import render_projection
+from .route_overlap import overlapping_routes, route_title
 
 # Words that mark a record as still being planned. Harmless for the owner, but
 # once shared they tell every visitor the trip is not settled.
@@ -149,6 +151,85 @@ def _duplicate_visits(trip: Trip) -> list[dict[str, Any]]:
     ]
 
 
+def _visits_restating_routes(trip: Trip) -> list[dict[str, Any]]:
+    """Visits that repeat a journey already entered as a route: same day and area, and about the journey."""
+    found = []
+    for visit in trip.visits:
+        for route in overlapping_routes(visit, trip.routes):
+            name = visit.title or visit.area.label
+            found.append(
+                {
+                    "code": "visit_restates_route",
+                    "severity": "info",
+                    "audience": None,
+                    "audience_id": None,
+                    "kind": "visit",
+                    "id": visit.id,
+                    "text": name,
+                    "message": f"Visit {name!r} looks like the route {route_title(route)!r} on the same day. "
+                    "Keep the journey as a route and delete the visit, or make the visit about something else.",
+                }
+            )
+    return found
+
+
+# A location this close to its area's point, and only repeating it, reads as the same place.
+_SAME_PLACE_KM = 1.0
+_TRANSPORT_CODE = re.compile(r"^[A-Z]{3}$")
+
+
+def _distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return 6371 * 2 * math.asin(math.sqrt(a))
+
+
+def _only_repeats_its_area(location: Location) -> bool:
+    """A transport-code label (AMS, TPE), or a bare city entry: no OSM object, no address, just the city's name."""
+    if location.label and _TRANSPORT_CODE.match(location.label):
+        return True
+    return (
+        location.osm_element_id is None
+        and not location.address_line1
+        and bool(location.locality)
+        and (location.display_name or location.locality).strip().lower() == location.locality.strip().lower()
+    )
+
+
+def _locations_repeating_areas(trip: Trip) -> list[dict[str, Any]]:
+    """Locations that show up as a second place next to the area they sit in.
+
+    An area is a cluster (a city or region); a station or airport is a location inside it. An area
+    named after one place, with that place as its only content, lists it twice. Only a warning:
+    nothing is hidden or changed, and a hotel near the city centre is not flagged."""
+    areas = {area.id: area for area in trip.areas if area.latitude is not None and area.longitude is not None}
+    found = []
+    for location in trip.locations:
+        area = areas.get(location.area_id)
+        if area is None or location.latitude is None or location.longitude is None:
+            continue
+        if _distance_km(area.latitude, area.longitude, location.latitude, location.longitude) > _SAME_PLACE_KM:
+            continue
+        if not _only_repeats_its_area(location):
+            continue
+        name = location.label or location.display_name or location.locality or "Naamloze locatie"
+        found.append(
+            {
+                "code": "location_repeats_area",
+                "severity": "info",
+                "audience": None,
+                "audience_id": None,
+                "kind": "location",
+                "id": location.id,
+                "text": name,
+                "message": f"Location {name!r} sits at the same place as its area {area.label!r}, so both show as places. "
+                "Name the area after the city or region and keep the location for the exact place, "
+                "or delete or merge the location if the area says enough.",
+            }
+        )
+    return found
+
+
 def trip_overview(session: Session, trip: Trip) -> dict[str, Any]:
     """Counts, per-audience delivery and review warnings for one owned trip. Changes nothing."""
     counts: dict[str, Any] = {f"{kind}s": len(records(trip)) for kind, records in COLLECTIONS.items()}
@@ -199,6 +280,8 @@ def trip_overview(session: Session, trip: Trip) -> dict[str, Any]:
         audiences.append(summary)
         warnings.extend(found)
     warnings.extend(_duplicate_visits(trip))
+    warnings.extend(_visits_restating_routes(trip))
+    warnings.extend(_locations_repeating_areas(trip))
     return {
         "trip_id": trip.id,
         "title": trip.title,
