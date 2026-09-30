@@ -111,9 +111,9 @@ export function PlaceSearchField({
           <small className="help">{m.owner_type_a_name_to_search_saved_locations()}</small>
         </Field>
       )}
-      <div className="field-row">
+      <div className="flex flex-col gap-3 min-[560px]:flex-row min-[560px]:items-end">
         <Field className="contents">
-          <FieldLabel>
+          <FieldLabel className="min-[560px]:flex-1">
             {inputLabel}
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} />
           </FieldLabel>

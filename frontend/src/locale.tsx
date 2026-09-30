@@ -1,7 +1,6 @@
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { defineCustomClientStrategy, setLocale, type Locale } from "./paraglide/runtime.js";
 import { m } from "./paraglide/messages.js";
-import { cn } from "cn";
 import { ChoiceGroup } from "./ui/ChoiceGroup";
 
 export function resolveLocale(stored: unknown, languages: readonly string[]): Locale {
@@ -68,20 +67,18 @@ export function useLocale() {
   useContext(LocaleContext);
   return useSyncExternalStore(subscribe, selectedLocale);
 }
-export function LocaleControl({ embedded = false }: { embedded?: boolean } = {}) {
+export function LocaleControl() {
   const locale = useLocale();
   return (
-    <div className={cn(!embedded && "mx-auto w-travel-index-shell pt-4")}>
-      <ChoiceGroup
-        label={m.language()}
-        value={locale}
-        choices={[
-          { value: "nl", label: "Nederlands" },
-          { value: "en", label: "English" },
-        ]}
-        onChange={changeLocale}
-      />
-    </div>
+    <ChoiceGroup
+      label={m.language()}
+      value={locale}
+      choices={[
+        { value: "nl", label: "Nederlands" },
+        { value: "en", label: "English" },
+      ]}
+      onChange={changeLocale}
+    />
   );
 }
 export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>

@@ -1,6 +1,7 @@
 import { ApiError, apiFailure, errorMessage } from "./query/api";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
+import { Preferences } from "./Preferences";
 import { Button } from "@base-ui/react/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -111,7 +112,8 @@ function TripIndex() {
     return () => controller.abort();
   }, [attempt]);
   return (
-    <main className="travel-shell w-travel-index-shell! [&_h1]:max-w-none [&_section]:mt-10">
+    <main className="travel-shell w-travel-index-shell! pt-6! [&_h1]:max-w-none [&_section]:mt-10">
+      <Preferences />
       <header>
         <p className="travel-eyebrow">Travel</p>
         <h1>{m.on_the_road()}</h1>
@@ -149,7 +151,9 @@ function TripIndex() {
                 >
                   <span className="travel-eyebrow">{tripDates(trip.dates) ?? m.public_trip()}</span>
                   <h2>{trip.title ?? m.published_trip()}</h2>
-                  {(trip.summary_text ?? trip.summary) && <p>{trip.summary_text ?? trip.summary}</p>}
+                  {(trip.summary_text ?? trip.summary) && (
+                    <p className="line-clamp-4">{trip.summary_text ?? trip.summary}</p>
+                  )}
                   <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
                     {m.view_trip()} <span aria-hidden="true">→</span>
                   </span>
@@ -174,7 +178,7 @@ function TripIndex() {
                 >
                   <span className="travel-eyebrow">{m.unlisted_trip()}</span>
                   <h2>{trip.title ?? m.shared_trip()}</h2>
-                  {trip.summary && <p>{trip.summary}</p>}
+                  {trip.summary && <p className="line-clamp-4">{trip.summary}</p>}
                   <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
                     {m.view_trip()} <span aria-hidden="true">→</span>
                   </span>
@@ -244,7 +248,8 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
   return (
-    <main className="travel-shell">
+    <main className="travel-shell pt-6!">
+      <Preferences />
       <header>
         <p className="travel-eyebrow">Travel</p>
         <h1>{state.kind === "ready" && state.projection.title ? state.projection.title : m.shared_trip()}</h1>
@@ -286,7 +291,8 @@ function VisitorRoute({ audience }: { audience: Audience }) {
   return identifier ? (
     <VisitorPage key={`${audience}:${identifier}`} audience={audience} identifier={identifier} />
   ) : (
-    <main className="travel-shell">
+    <main className="travel-shell pt-6!">
+      <Preferences />
       <section className="travel-card" role="status">
         <h1>{m.unavailable_trip()}</h1>
       </section>
@@ -313,7 +319,8 @@ const visitorNotFoundRoute = createRoute({
   component: () => {
     useLocale();
     return (
-      <main className="travel-shell">
+      <main className="travel-shell pt-6!">
+        <Preferences />
         <section className="travel-card" role="status">
           <h1>{m.page_unavailable()}</h1>
         </section>

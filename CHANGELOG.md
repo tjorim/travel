@@ -219,6 +219,17 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Final layout pass over the owner PWA and the public and unlisted views at
+  1280 px and 390 px, with the Taiwan import, an empty trip, long titles and
+  dark theme (#292). Language and appearance now share one row inside each page
+  shell, aligned with the content instead of a 1000 px strip above it. The phone
+  navigation links are full-height touch targets, Settings uses the same page
+  header as the other owner pages, fieldset titles read like field labels, the
+  native file picker and packing inputs use the standard controls, route
+  summaries stay left-aligned on phones, destructive triggers are outlined so
+  only their confirmation is solid, and unbroken long words in titles wrap
+  instead of scrolling the page sideways.
+
 - Video derivative jobs now run one at a time, so the worst case is a single
   ffmpeg process plus the API inside the container's memory limit. Queued jobs
   stay "processing" without being expired as stalled; the stalled clock starts

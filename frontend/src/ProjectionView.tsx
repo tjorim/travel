@@ -456,7 +456,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
               <Dialog.Title>{alt}</Dialog.Title>
               <Dialog.Close>{m.visitor_close_image()}</Dialog.Close>
             </div>
-            <LocaleControl embedded />
+            <LocaleControl />
             <figure className="m-0">
               {image(true)}
               {failure}

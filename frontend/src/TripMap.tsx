@@ -688,7 +688,7 @@ export function TripMap({
             {lines.map((line) => (
               <li key={line.id}>
                 <Button
-                  className="secondary compact"
+                  className="secondary compact text-left"
                   type="button"
                   aria-pressed={selectedKind === "line" && selected === line.id}
                   onClick={() => selectLine(line)}

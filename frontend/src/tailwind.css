@@ -6,7 +6,7 @@
 @theme {
   --max-height-travel-lightbox: 70dvh;
   --font-travel-sans: Inter, ui-sans-serif, system-ui, sans-serif;
-  --text-travel-title: clamp(2.8rem, 12vw, 5.8rem);
+  --text-travel-title: clamp(2.2rem, 9vw, 5.8rem);
   --text-travel-form-label: 0.9rem;
   --leading-travel-title: 0.9;
   --tracking-travel-title: -0.07em;
@@ -185,9 +185,11 @@
   }
   body {
     @apply m-0 min-w-80;
+    /* An unbroken word in an authored title or name wraps instead of widening the page. */
+    overflow-wrap: anywhere;
   }
   h1 {
-    @apply m-0 max-w-travel-title text-travel-title leading-travel-title tracking-travel-title;
+    @apply m-0 max-w-none text-travel-title min-[680px]:max-w-travel-title leading-travel-title tracking-travel-title;
   }
   button {
     @apply cursor-pointer rounded-travel-control border-0 bg-travel-forest px-3.75 py-2.75 font-bold text-travel-on-action;
@@ -202,6 +204,10 @@
   fieldset {
     @apply m-0 min-w-0 rounded-travel-media border border-travel-divider p-3;
   }
+  /* A fieldset title reads like a field label, not like default body text cut into the border. */
+  legend {
+    @apply px-1.5 text-travel-form-label font-extrabold text-travel-label;
+  }
   label {
     @apply grid gap-1.75 text-travel-form-label font-extrabold text-travel-label;
   }
@@ -213,6 +219,15 @@
   }
   textarea {
     @apply min-h-34 resize-y;
+  }
+  /* The native file picker keeps its system button, so it is given the secondary button look. */
+  input[type="file"] {
+    @apply cursor-pointer text-sm text-travel-muted;
+  }
+  input[type="file"]::file-selector-button {
+    @apply mr-3 cursor-pointer rounded-travel-control border border-travel-control-border bg-transparent px-3 py-1.5 font-bold text-travel-forest;
+    font: inherit;
+    font-weight: 700;
   }
 }
 
@@ -237,8 +252,9 @@
   @apply px-2.75 py-2 text-sm;
 }
 
+/* A destructive trigger is outlined so it never outweighs the main action; only its confirmation is solid. */
 @utility danger {
-  @apply bg-travel-danger;
+  @apply border border-travel-danger bg-transparent text-travel-danger;
 }
 
 @utility action-link {

@@ -125,12 +125,7 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
         <Field className="contents">
           <FieldLabel>
             {m.owner_search()}{" "}
-            <Input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="rounded border p-2"
-            />
+            <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
           </FieldLabel>
         </Field>
       </div>

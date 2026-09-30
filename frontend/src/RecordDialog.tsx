@@ -91,7 +91,7 @@ export function RecordDialog({
               </Dialog.Close>
             </div>
             <div className="mb-4">
-              <LocaleControl embedded />
+              <LocaleControl />
             </div>
             {error && (
               <p className="form-error mb-4" role="alert">

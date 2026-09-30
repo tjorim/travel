@@ -176,13 +176,13 @@ export function AgendaView({
           {[...days].map(([day, entries]) => (
             <article className="excerpt-row" data-stacked="" key={day}>
               <strong>{formatDayRange(day, null)}</strong>
-              <ul>{entries.map(row)}</ul>
+              <ul className="m-0 grid gap-1.5 pl-5">{entries.map(row)}</ul>
             </article>
           ))}
           {undated.length > 0 && (
             <article className="excerpt-row" data-stacked="">
               <strong>{m.owner_no_day_yet()}</strong>
-              <ul>{undated.map(row)}</ul>
+              <ul className="m-0 grid gap-1.5 pl-5">{undated.map(row)}</ul>
             </article>
           )}
         </div>

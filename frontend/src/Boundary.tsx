@@ -1,9 +1,10 @@
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
+import { Preferences } from "./Preferences";
 import { Button } from "@base-ui/react/button";
 import { Collapsible } from "@base-ui/react/collapsible";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
@@ -22,6 +23,27 @@ export function Boundary({ children }: { children: ReactNode }) {
 
   const { session } = useAuth();
   const queryClient = useQueryClient();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const accountTrigger = useRef<HTMLButtonElement>(null);
+
+  // The account menu is a popup, not a section: Escape or a click elsewhere closes it, and Escape returns focus.
+  useEffect(() => {
+    if (!accountOpen) return;
+    const dismiss = (event: Event) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== "Escape") return;
+        accountTrigger.current?.focus();
+      } else if (accountRef.current?.contains(event.target as Node)) return;
+      setAccountOpen(false);
+    };
+    document.addEventListener("keydown", dismiss);
+    document.addEventListener("pointerdown", dismiss);
+    return () => {
+      document.removeEventListener("keydown", dismiss);
+      document.removeEventListener("pointerdown", dismiss);
+    };
+  }, [accountOpen]);
 
   function signIn() {
     void beginSignIn(window.location.pathname.replace(/^\/admin(?=\/|$)/, "") || "/");
@@ -37,7 +59,8 @@ export function Boundary({ children }: { children: ReactNode }) {
 
   if (!session) {
     return (
-      <main className="travel-shell min-[960px]:w-travel-owner-shell [&>header]:max-w-180">
+      <main className="travel-shell pt-6! min-[960px]:w-travel-owner-shell [&>header]:max-w-180">
+        <Preferences />
         <header>
           <p className="travel-eyebrow">{m.private_default()}</p>
           <h1>{m.welcome()}</h1>
@@ -53,14 +76,15 @@ export function Boundary({ children }: { children: ReactNode }) {
 
   return (
     <main className="travel-shell pt-6! min-[960px]:w-travel-owner-shell">
+      <Preferences />
       <header className="mb-6 flex items-center justify-between gap-4">
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 flex justify-between gap-1 border-t border-travel-card-border bg-travel-surface/95 px-2.5 py-3.5 backdrop-blur-md min-[680px]:static min-[680px]:z-auto min-[680px]:mt-7 min-[680px]:justify-start min-[680px]:gap-10 min-[680px]:border-0 min-[680px]:bg-transparent min-[680px]:p-0 min-[680px]:backdrop-blur-none"
+          className="fixed inset-x-0 bottom-0 z-20 flex justify-between border-t border-travel-card-border bg-travel-surface/95 px-1 backdrop-blur-md min-[680px]:static min-[680px]:z-auto min-[680px]:mt-7 min-[680px]:justify-start min-[680px]:gap-10 min-[680px]:border-0 min-[680px]:bg-transparent min-[680px]:p-0 min-[680px]:backdrop-blur-none"
           aria-label={m.navigation()}
         >
           {navigation.map(([to, label]) => (
             <Link
-              className="whitespace-nowrap text-xs font-bold text-travel-muted no-underline aria-[current=page]:text-travel-forest min-[680px]:text-sm"
+              className="flex min-h-11 flex-1 items-center justify-center whitespace-nowrap text-xs font-bold text-travel-muted no-underline aria-[current=page]:text-travel-forest min-[680px]:min-h-0 min-[680px]:flex-none min-[680px]:text-sm"
               key={to}
               to={to}
               activeOptions={{ exact: to === "/", includeSearch: false }}
@@ -69,8 +93,14 @@ export function Boundary({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <Collapsible.Root className="relative ml-auto shrink-0">
+        <Collapsible.Root
+          className="relative ml-auto shrink-0"
+          open={accountOpen}
+          onOpenChange={setAccountOpen}
+          ref={accountRef}
+        >
           <Collapsible.Trigger
+            ref={accountTrigger}
             className="rounded-lg border border-travel-control-border bg-transparent px-3.5 py-2.25 font-bold text-travel-forest"
             aria-haspopup="menu"
           >

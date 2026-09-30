@@ -663,12 +663,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 <Field className="contents">
                   <FieldLabel>
                     {m.owner_search()}{" "}
-                    <Input
-                      type="search"
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      className="rounded border p-2"
-                    />
+                    <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
                   </FieldLabel>
                 </Field>
               </div>
@@ -922,7 +917,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 maxLength={160}
                 value={itemDraft.label}
                 onChange={(event) => setItemDraft({ ...itemDraft, label: event.target.value })}
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -936,7 +930,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 required
                 value={itemDraft.quantity}
                 onChange={(event) => setItemDraft({ ...itemDraft, quantity: Number(event.target.value) })}
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -947,7 +940,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 maxLength={80}
                 value={itemDraft.category ?? ""}
                 onChange={(event) => setItemDraft({ ...itemDraft, category: event.target.value || null })}
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -979,7 +971,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                     weight_g: event.target.value === "" ? null : Number(event.target.value),
                   })
                 }
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -990,7 +981,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 maxLength={4000}
                 value={itemDraft.notes ?? ""}
                 onChange={(event) => setItemDraft({ ...itemDraft, notes: event.target.value || null })}
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -1082,7 +1072,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 maxLength={160}
                 value={bagDraft.name}
                 onChange={(event) => setBagDraft({ ...bagDraft, name: event.target.value })}
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -1114,7 +1103,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                     weight_limit_g: event.target.value === "" ? null : Number(event.target.value),
                   })
                 }
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -1237,7 +1225,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 maxLength={160}
                 value={reuseName}
                 onChange={(event) => setReuseName(event.target.value)}
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>
@@ -1297,7 +1284,6 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 maxLength={160}
                 value={templateName ?? ""}
                 onChange={(event) => setTemplateName(event.target.value)}
-                className="block w-full rounded border p-2"
               />
             </FieldLabel>
           </Field>

@@ -21,17 +21,15 @@ export function AppearanceControl() {
     () => (document.documentElement.dataset.appearance ?? "auto") as Appearance,
   );
   return (
-    <div className="mx-auto w-travel-index-shell pt-4">
-      <ChoiceGroup
-        label={m.appearance()}
-        value={value}
-        choices={[
-          { value: "light", label: m.light() },
-          { value: "dark", label: m.dark() },
-          { value: "auto", label: m.auto() },
-        ]}
-        onChange={(next) => window.dispatchEvent(new CustomEvent("travel-appearance-set", { detail: next }))}
-      />
-    </div>
+    <ChoiceGroup
+      label={m.appearance()}
+      value={value}
+      choices={[
+        { value: "light", label: m.light() },
+        { value: "dark", label: m.dark() },
+        { value: "auto", label: m.auto() },
+      ]}
+      onChange={(next) => window.dispatchEvent(new CustomEvent("travel-appearance-set", { detail: next }))}
+    />
   );
 }

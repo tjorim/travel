@@ -118,7 +118,7 @@ export function Settings() {
   if (!session) return <EmptyState title={m.settings()}>{m.settings_signed_out()}</EmptyState>;
 
   return (
-    <section className="travel-card manager" aria-labelledby="settings-title">
+    <section className="grid gap-4.5" aria-labelledby="settings-title">
       <div>
         <p className="travel-eyebrow">{m.private_settings()}</p>
         <h2 id="settings-title">{m.settings()}</h2>
@@ -128,7 +128,7 @@ export function Settings() {
         {message}
       </p>
       {noProvidersAvailable ? null : (
-        <div className="saved-records mt-0.5">
+        <div className="saved-records">
           {providers.map((provider) => (
             <article
               className="grid gap-3 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 shadow-sm [&>div:first-child]:grid [&>div:first-child]:gap-1"
