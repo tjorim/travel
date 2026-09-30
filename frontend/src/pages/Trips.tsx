@@ -87,7 +87,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   );
   const areas = useTripResource(selectedId, "areas").data ?? [];
   // A page we were sent here from (a deleted trip) can leave a message behind.
-  const arrivalNotice = location.state.notice;
+  const arrivalNotice = location.state.notice === "trip_deleted" ? m.owner_trip_deleted() : undefined;
   const message =
     notice ??
     arrivalNotice ??
@@ -184,7 +184,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           open={editing}
           onClose={() => setEditing(false)}
           onSaved={() => undefined}
-          onDeleted={() => void navigate({ to: "/trips", state: { notice: m.owner_trip_deleted() } })}
+          onDeleted={() => void navigate({ to: "/trips", state: { notice: "trip_deleted" } })}
           onNotice={setNotice}
         />
         <CaptureDialog

@@ -132,3 +132,51 @@ describe("locale foundation", () => {
     expect(formatNumber(1.5)).toBe("1,5");
   });
 });
+
+it("evaluates every catalogue plural at zero, one and multiple with authored interpolation intact", () => {
+  for (const locale of ["nl", "en"] as const) {
+    act(() => changeLocale(locale));
+    const catalogue = locale === "nl" ? nl : en;
+    for (const [key, message] of Object.entries(catalogue)) {
+      if (!Array.isArray(message)) continue;
+      for (const variant of message) {
+        if (!variant.declarations.some((declaration) => declaration.includes(": plural"))) continue;
+        for (const count of [0, 1, 4]) {
+          const inputs = Object.fromEntries(
+            variant.declarations
+              .filter((item) => item.startsWith("input "))
+              .map((item) => [item.slice(6), item === "input count" ? count : "Authored <é> {text}"]),
+          );
+          const renderMessage = m[key as keyof typeof m] as (inputs: Record<string, string | number>) => string;
+          const selector = count === 1 ? "countPlural=one" : "countPlural=other";
+          const pattern = variant.match[selector as keyof typeof variant.match];
+          expect(renderMessage(inputs)).toBe(pattern.replace(/\{(\w+)\}/g, (_, input) => String(inputs[input])));
+        }
+      }
+    }
+  }
+});
+
+it("keeps install-time metadata and machine routing fixed across runtime switches", async () => {
+  const manifest = (await import("../public/manifest.webmanifest?raw")).default;
+  const before = JSON.parse(manifest);
+  act(() => changeLocale("en"));
+  expect(JSON.parse(manifest)).toEqual(before);
+  expect(before).toMatchObject({ name: "Travel", short_name: "Travel", start_url: "/admin/", scope: "/admin/" });
+  for (const html of [indexHtml, landingHtml, publicHtml, shareHtml]) {
+    expect(html).toContain('lang="nl"');
+    expect(html).toContain("/locale.js");
+  }
+});
+
+// Checked by tsc in CI: generated declarations must reject incorrect message calls.
+function messageTypeContract() {
+  m.disconnect_title({ provider: "Authored" });
+  // @ts-expect-error A required interpolation cannot be omitted.
+  m.disconnect_title({});
+  // @ts-expect-error Unknown interpolations are not part of the contract.
+  m.disconnect_title({ provider: "Authored", extra: "value" });
+  // @ts-expect-error Misspelled catalogue keys cannot compile.
+  m.nonexistent_interface_message();
+}
+void messageTypeContract;

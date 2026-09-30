@@ -87,17 +87,17 @@ const addressProjection = (value: Values | Location) => {
         };
   return Object.fromEntries(Object.entries(fields).filter(([, field]) => field?.trim()));
 };
-const PROJECTION_LABELS: Record<string, string> = {
-  line1: "adresregel 1",
-  line2: "adresregel 2",
-  postal_code: "postcode",
-  locality: "plaats",
-  admin_area: "regio",
+const PROJECTION_LABELS: Record<string, () => string> = {
+  line1: m.owner_address_line_1,
+  line2: m.owner_address_line_2,
+  postal_code: m.owner_postal_code,
+  locality: m.owner_city,
+  admin_area: m.owner_region,
 };
 /** The address field visitors would receive, as words rather than the API's JSON. */
 const projectionText = (projection: Record<string, string | null | undefined>) =>
   Object.entries(projection)
-    .map(([key, field]) => `${PROJECTION_LABELS[key] ?? key}: ${field?.trim()}`)
+    .map(([key, field]) => `${PROJECTION_LABELS[key]?.() ?? key}: ${field?.trim()}`)
     .join("; ");
 function recipients(
   place: Location,

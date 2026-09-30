@@ -248,13 +248,13 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
         throw new FeedbackError(() => m.owner_enter_both_the_departure_and_arrival_time_zones());
       // A departure time fixes the day: its local date there.
       if (values.departsAt && values.departsOn && values.departsAt.slice(0, 10) !== values.departsOn)
-        throw new Error(
+        throw new FeedbackError(() =>
           m.owner_the_departure_time_falls_on_not_on_the_selected_day_change_the_day_or_ti({
             p0: formatDay(values.departsAt.slice(0, 10)),
           }),
         );
       const line = values.coordinates.trim() ? parseCoordinates(values.coordinates) : null;
-      if (typeof line === "string") throw new Error(line);
+      if (typeof line === "string") throw new FeedbackError(() => parseCoordinates(values.coordinates) as string);
       await save.mutateAsync({
         id,
         payload: {

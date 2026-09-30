@@ -106,13 +106,15 @@ const alert = (now: Date) => ({
 function inboxApi(patch: () => Response) {
   const now = new Date();
   let current = alert(now);
+  // Keep the trip active without making the overview enumerate a millennium of nights.
+  const day = (offset: number) => new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
   return vi.fn((url: string, init: RequestInit = {}) => {
     if (init.method === "PATCH") {
       const response = patch();
       if (response.ok) current = { ...current, read_at: now.toISOString() };
       return Promise.resolve(response);
     }
-    if (url === "/api/trips") return Promise.resolve(json([trip("active", "Exampleland", "2000-01-01", "2999-01-01")]));
+    if (url === "/api/trips") return Promise.resolve(json([trip("active", "Exampleland", day(-1), day(1))]));
     if (url.includes("task-alerts")) return Promise.resolve(json([current]));
     return Promise.resolve(json([]));
   });

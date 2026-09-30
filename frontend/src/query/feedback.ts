@@ -28,10 +28,4 @@ export function useFeedback<T extends string | null>(
   return [typeof value === "object" && value !== null ? (noticeMessage(value) as T) : (value as T), setValue];
 }
 
-/** Compose a local message without freezing the language at mutation time. */
-export class FeedbackError extends Error {
-  constructor(describe: () => string) {
-    super();
-    Object.defineProperty(this, "message", { get: describe });
-  }
-}
+export { FeedbackError } from "./FeedbackError";

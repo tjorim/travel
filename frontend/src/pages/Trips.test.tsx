@@ -7,6 +7,7 @@ import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { parseFlagParam } from "../router/search-params";
 import type { Trip } from "../tracker-model";
 import { TripWorkspace } from "./TripWorkspace";
+import { changeLocale } from "../locale";
 import { Trips } from "./Trips";
 
 const rootRoute = createRootRoute();
@@ -116,6 +117,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  act(() => changeLocale("nl"));
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -244,4 +246,16 @@ it("explains a failed trip load without hiding the retry path", async () => {
   );
   renderTrips();
   expect((await screen.findAllByText("Je reizen konden niet worden geladen.")).length).toBeGreaterThan(0);
+});
+
+it("retranslates a retained navigation notice without changing the route", async () => {
+  const { router } = renderRoutesWithOwner(routeTree, ["/trips"]);
+  await act(async () => {
+    await router.navigate({ to: "/trips", state: { notice: "trip_deleted" } });
+  });
+  expect(await screen.findByText("Reis verwijderd.")).toBeTruthy();
+  act(() => changeLocale("en"));
+  expect(screen.getByText("Trip deleted.")).toBeTruthy();
+  expect(router.state.location.pathname).toBe("/trips");
+  expect(router.state.location.state.notice).toBe("trip_deleted");
 });

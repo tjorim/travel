@@ -3,8 +3,8 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, expect, it } from "vitest";
 import { changeLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { ApiError, apiFailure } from "./api";
-import { errorNotice, useFeedback } from "./feedback";
+import { ApiError, apiFailure, errorMessage } from "./api";
+import { errorNotice, useFeedback, FeedbackError } from "./feedback";
 import { useRecordForm } from "../forms/useRecordForm";
 
 afterEach(() => {
@@ -107,4 +107,17 @@ it("uses a typed operation fallback for an unknown response, reevaluated in the 
   expect(error.message).toContain("Je lokale concept blijft bewaard.");
   act(() => changeLocale("en"));
   expect(error.message).toContain("Your local draft is kept.");
+});
+
+it("uses a current-locale fallback for unexpected diagnostics and preserves explicit local feedback", () => {
+  const remote = new Error("Remote diagnostic: Authored confidential input");
+  const local = new FeedbackError(() => m.owner_also_enter_a_start_time());
+  for (const locale of ["nl", "en"] as const) {
+    act(() => changeLocale(locale));
+    expect(errorMessage(remote, m.api_operation_failed)).toBe(m.api_operation_failed());
+    expect(errorMessage(local, m.api_operation_failed)).toBe(m.owner_also_enter_a_start_time());
+    expect(errorMessage(new ApiError(m.retry_description, 409, [descriptor("future_code")]), m.retry_description)).toBe(
+      m.retry_description(),
+    );
+  }
 });

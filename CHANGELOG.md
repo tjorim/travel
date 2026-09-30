@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Completed the Dutch/English interface audit, with repeatable source/catalogue
+  checks, generated message typing and frontend regression tests enforced in CI.
+  Address previews, retained route validation and trip-deletion notices now
+  translate in place; unexpected diagnostics use localized operation fallbacks.
+  Added contributor guidance (#289).
+
 - Completed Dutch/English visitor stories, timelines, galleries, route summaries
   and shared map links, including owner rendered previews. Dates retain the
   delivered precision and timezone; authored content, anchors and capability
@@ -34,8 +40,7 @@ All notable changes to the travel hub are documented here.
 
 - Added the Dutch/English Paraglide locale foundation, device-local language
   selectors and translated owner/visitor shells, Settings and appearance controls.
-  Switching preserves router, cache, dirty editors and uploads; remaining screens
-  follow the ordered translation slices (#284).
+  Switching preserves router, cache, dirty editors and uploads (#284).
 
 - Owner and visitor views offer device-local light, dark and automatic appearance,
   applied before first paint, with themed maps, Markdown and controls (#278).
@@ -44,8 +49,7 @@ All notable changes to the travel hub are documented here.
   workflow and existing shared-control decisions (#279).
 - Recorded the Dutch/English Paraglide translation plan, source inventory,
   preference/editor-state/formatting/error decisions and ordered implementation
-  issues #284–#289, including the final coverage audit (#281). UI translation
-  delivery remains in those implementation issues.
+  issues #284–#289, including the final coverage audit (#281).
 
 - The trip overview flags a location that only repeats its area: within a kilometre of the area's
   point and labelled with an airport code or a bare city entry. Name the area after the city or

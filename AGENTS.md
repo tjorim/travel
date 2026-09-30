@@ -114,7 +114,7 @@ Follow the existing short, imperative, Title Case commit style, for example
 `Add reusable travel maps and document previews`. Keep each commit focused.
 Reference a relevant GitHub issue for substantive work and update `PLAN.md`
 when its order changes. Pull requests should state the affected public/private
-routes, include screenshots for visual changes, and note the manual checks run.
+routes, describe visual checks, and note the manual checks run.
 
 ## Deferred work and repo scope
 
@@ -158,5 +158,12 @@ with `useLocale()`; retain message descriptors/functions for stored notices.
 Never translate authored content or match server prose. `pnpm paraglide:compile`
 generates ignored code before check/test/build. Use selected-locale formatting
 from `src/locale.tsx` and the configured `dayjs.ts`; preserve ISO dates, timezones
-and numeric input/payload values. See `docs/decisions/281-interface-translations.md`
-for extraction ownership and the remaining slices.
+and numeric input/payload values. Store message functions/descriptors for async
+feedback and serializable message codes in browser history; never store a translated UI snapshot. Unknown API errors
+use a translated operation fallback, never server prose or submitted input. New
+application copy must pass `pnpm locale:audit`, `pnpm check` and `pnpm test` in
+addition to lint/format/build. Review both locales/themes, narrow layouts, accessible
+names, and dirty editor/upload/focus preservation. See
+`docs/interface-translations.md` for the repeatable audit and exclusions, and
+`docs/decisions/281-interface-translations.md` for translation decisions and
+source audit coverage.

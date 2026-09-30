@@ -30,7 +30,7 @@ The frontend retains descriptors, separate diagnostic detail and status in
 codes, malformed descriptors, old detail-only responses and non-JSON failures
 use a localized operation fallback; a typed fallback function can supply
 operation-specific context. Existing string fallbacks use the generic operation
-message until their owning extraction slice migrates them to message functions.
+message. New application fallbacks must retain typed message functions.
 Network failures and stale authentication have dedicated messages in the
 client. Server field mapping uses full dot-separated paths. Shared forms,
 record dialogs, mutation notices, protected file downloads and owner previews
@@ -65,22 +65,3 @@ exercise the unchanged access and projection behavior. Frontend tests cover
 mapped fields, known/unknown descriptors, transport and non-JSON failures,
 authentication, retained mutation/form errors and locale switches, including
 0/1/multiple dependency and selection counts.
-
-Remaining application-copy extraction is already tracked by #286 (owner
-workspaces/editors), #287 (private assets/publication/offline) and #288 (visitor
-presentation), followed by #289's full coverage audit. These slices use this
-contract and must retain message functions for new notices and fallbacks.
-
-
-## Verification
-
-The locked backend suite passes 260 tests and Ruff. With Node 24.14.0 and
-pnpm 10.28.2, frontend lint, format:check, all 311 tests and the production build
-pass. No migration is introduced. The build retains the existing chunk-size
-warning for the app/map bundles.
-
-A local browser failure fixture exercised a rejected new-trip save at
-1280×800 and 390×844. Switching Dutch/English and light/dark while the error was
-visible retained the dialog and authored draft; the narrow layout had no
-horizontal overflow. Screenshots capture both languages in both themes. This
-review concerns API feedback; editor-label extraction remains in #286.

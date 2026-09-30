@@ -78,22 +78,6 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#284](https://github.com/tjorim/travel/issues/284) Add the Paraglide
-      locale foundation and bounded Dutch/English shared-shell slice; coordinate
-      early preferences with #278 and Base UI controls with #279.
-- [x] [#285](https://github.com/tjorim/travel/issues/285) Add stable API error
-      codes and render-time localized feedback before completing extraction.
-- [x] [#286](https://github.com/tjorim/travel/issues/286) Translate owner trip
-      workspaces, shared editors, capture and map controls.
-- [x] [#287](https://github.com/tjorim/travel/issues/287) Translate private
-      assets, publication, library and offline packing workflows.
-- [x] [#288](https://github.com/tjorim/travel/issues/288) Complete public and
-      unlisted visitor presentation in Dutch and English.
-- [ ] [#289](https://github.com/tjorim/travel/issues/289) Audit full extraction,
-      editor-state preservation, formatting and route/privacy regressions after
-      all translation slices. Decisions and source inventory:
-      [translation plan](docs/decisions/281-interface-translations.md) (#281).
-
 - [ ] [#148](https://github.com/tjorim/travel/issues/148) Add generic
       owner-inbox and email reminders for trip tasks; a due date alone
       schedules nothing. Implementation is ready locally.
@@ -171,10 +155,21 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
-- [x] [#281](https://github.com/tjorim/travel/issues/281) Recorded Dutch/English
-      translation decisions and the source inventory, with ordered implementation
-      issues #284–#289 and an explicit final extraction audit. Translation delivery
-      remains in those issues; routes and publication scopes stay unchanged.
+- [x] [#284](https://github.com/tjorim/travel/issues/284) Added the Dutch/English
+      locale foundation and shared shell.
+- [x] [#285](https://github.com/tjorim/travel/issues/285) Added stable API error
+      codes and render-time localized feedback.
+- [x] [#286](https://github.com/tjorim/travel/issues/286) Translated owner
+      workspaces, shared editors, capture and map controls.
+- [x] [#287](https://github.com/tjorim/travel/issues/287) Translated private
+      assets, publication, library and offline packing workflows.
+- [x] [#288](https://github.com/tjorim/travel/issues/288) Completed public and
+      unlisted visitor presentation in Dutch and English.
+- [x] [#289](https://github.com/tjorim/travel/issues/289) Completed extraction
+      and locale regressions, with CI catalogue, type and string audit gates.
+- [x] [#281](https://github.com/tjorim/travel/issues/281) Recorded the
+      [interface translation decisions](docs/decisions/281-interface-translations.md)
+      and delivered the implementation sequence above.
 
 - [x] [#264](https://github.com/tjorim/travel/issues/264) Migrated owner,
       public and unlisted presentation to Tailwind utilities and named theme

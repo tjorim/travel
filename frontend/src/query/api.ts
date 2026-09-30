@@ -1,3 +1,4 @@
+import { FeedbackError } from "./FeedbackError";
 import type { TrackerSession } from "../auth";
 import { openBlobInNewTab } from "../tracker-model";
 
@@ -172,7 +173,7 @@ export async function openOwnerFile(session: TrackerSession, url: string, fallba
 export function errorMessage(error: unknown, fallback: ErrorFallback): string {
   return error instanceof ApiError
     ? error.localizedMessage(fallback)
-    : error instanceof Error && error.message
+    : error instanceof FeedbackError
       ? error.message
       : typeof fallback === "function"
         ? fallback()

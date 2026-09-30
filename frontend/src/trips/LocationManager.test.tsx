@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Area, Location, Trip } from "../tracker-model";
+import { changeLocale } from "../locale";
 import { LocationManager } from "./LocationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -51,6 +52,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  act(() => changeLocale("nl"));
   vi.unstubAllGlobals();
   expect(api.unexpected).toEqual([]);
 });
@@ -128,11 +130,11 @@ it("previews only projected address fields and names the live recipients", async
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(
     screen.getByText(
-      /Exact adresveld voor bezoekers als Adres delen aanstaat: adresregel 1: 12 Guangming Road; plaats: Taipei/,
+      /Exact adresveld voor bezoekers als Adres delen aanstaat: Adresregel 1: 12 Guangming Road; Plaats: Taipei/,
     ),
   ).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Adresregel 2 (optioneel)"), { target: { value: "Floor 4" } });
-  expect(screen.getByText(/adresregel 2: Floor 4/)).toBeTruthy();
+  expect(screen.getByText(/Adresregel 2: Floor 4/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Annuleren" }));
   expect(api.count("PATCH /api/trips/trip/locations/e1")).toBe(0);
 });
@@ -217,7 +219,10 @@ it("describes the shareable address in words, never as raw JSON", async () => {
     <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
   );
   await screen.findByText(/Opgeslagen adres: 12 Guangming Road/);
-  expect(screen.getByText(/adresregel 1: 12 Guangming Road; plaats: Taipei/)).toBeTruthy();
+  expect(screen.getByText(/Adresregel 1: 12 Guangming Road; Plaats: Taipei/)).toBeTruthy();
+  act(() => changeLocale("en"));
+  expect(screen.getByText(/Address line 1: 12 Guangming Road; City: Taipei/)).toBeTruthy();
+  expect(screen.queryByText(/Adresregel 1:/)).toBeNull();
   expect(document.body.textContent).not.toContain('"line1"');
 });
 

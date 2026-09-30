@@ -113,6 +113,12 @@ jobs:
         run: pnpm lint
       - name: Check frontend formatting
         run: pnpm format:check
+      - name: Audit interface strings and catalogues
+        run: pnpm locale:audit
+      - name: Check generated message types
+        run: pnpm check
+      - name: Test frontend regressions
+        run: pnpm test --maxWorkers=2
       - name: Build
         run: pnpm build
 

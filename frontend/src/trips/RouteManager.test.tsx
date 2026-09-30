@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { Area, DocumentAsset, Location, Route, Trip } from "../tracker-model";
+import { changeLocale } from "../locale";
 import { RouteManager } from "./RouteManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -109,6 +110,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  act(() => changeLocale("nl"));
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   expect(api.unexpected).toEqual([]);
@@ -199,6 +201,9 @@ it("takes a day first, and times only on that day", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByText(/De vertrektijd valt op .*, niet op de gekozen dag/);
   expect(api.count("POST /api/trips/trip/routes")).toBe(0);
+  act(() => changeLocale("en"));
+  expect(screen.getByText(/The departure time falls on .*not on the selected day/)).toBeTruthy();
+  act(() => changeLocale("nl"));
 
   // "Kaohsiung → Taipei on 5 December, no train yet": the day alone.
   fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), { target: { value: "" } });

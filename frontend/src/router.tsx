@@ -18,8 +18,8 @@ declare module "@tanstack/react-router" {
   interface HistoryState {
     /** Set by "Toon op kaart" so the trip overview's map can focus that point on arrival. */
     mapFocus?: string;
-    /** A message left behind for the page navigated to, e.g. after deleting a trip. */
-    notice?: string;
+    /** A serializable message code evaluated by the destination in its current locale. */
+    notice?: "trip_deleted";
     /** Set by the private overview so the matching manager opens that record's dialog on arrival. */
     openRecord?: {
       kind: "stay" | "route" | "visit" | "area" | "location" | "task" | "update" | "document" | "media";
