@@ -514,6 +514,17 @@
   .maplibregl-ctrl-attrib a {
     @apply text-travel-ink!;
   }
+  /* On a phone every button and map control meets the 44 px touch size; the desktop look is unchanged. */
+  @media (max-width: 679px) {
+    button:not([role="checkbox"]):not([role="radio"]),
+    input[type="file"]::file-selector-button {
+      min-height: 2.75rem;
+    }
+    .maplibregl-ctrl-group button {
+      width: 2.75rem !important;
+      height: 2.75rem !important;
+    }
+  }
   :root[data-theme="dark"] .maplibregl-ctrl-icon {
     filter: invert(1);
   }

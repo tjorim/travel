@@ -124,9 +124,16 @@ export function Settings() {
         <h2 id="settings-title">{m.settings()}</h2>
         <p>{noProvidersAvailable ? m.no_providers() : m.provider_intro()}</p>
       </div>
-      <p className="help" role="status" hidden={!message}>
-        {message}
-      </p>
+      <div className="flex flex-wrap items-center gap-2.25" hidden={!message}>
+        <p className="help" role="status">
+          {message}
+        </p>
+        {providersQuery.isError && !notice ? (
+          <Button type="button" className="compact" onClick={() => void providersQuery.refetch()}>
+            {m.retry()}
+          </Button>
+        ) : null}
+      </div>
       {noProvidersAvailable ? null : (
         <div className="saved-records">
           {providers.map((provider) => (

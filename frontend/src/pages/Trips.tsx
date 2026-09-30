@@ -146,7 +146,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     return (
       <section className="grid gap-4.5" aria-labelledby="trip-detail-title" key={selectedTrip.id}>
         <Link
-          className="justify-self-start py-1 font-bold text-travel-muted no-underline hover:underline focus-visible:underline"
+          className="inline-flex min-h-11 items-center justify-self-start font-bold text-travel-muted no-underline hover:underline focus-visible:underline"
           to="/trips"
         >
           {m.owner_all_trips()}
@@ -209,7 +209,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             ] as const
           ).map(([section, label]) => (
             <Link
-              className="shrink-0 rounded-t-lg px-2.5 py-2 text-sm font-bold text-travel-muted no-underline aria-[current=page]:bg-travel-selected-bg aria-[current=page]:text-travel-forest"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-t-lg px-2.5 text-sm font-bold text-travel-muted no-underline aria-[current=page]:bg-travel-selected-bg aria-[current=page]:text-travel-forest"
               key={section}
               to={sectionUrl(section)}
               activeOptions={{ exact: section === "overview" }}
@@ -257,7 +257,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         {currentSection === "plan" && (
           <>
             <nav
-              className="flex flex-wrap gap-1.5 [&_a]:rounded-full [&_a]:border [&_a]:border-travel-card-border [&_a]:bg-travel-surface [&_a]:px-2.5 [&_a]:py-1.5 [&_a]:text-sm [&_a]:font-bold [&_a]:text-travel-muted [&_a]:no-underline [&_a:hover]:bg-travel-selected-bg [&_a:focus-visible]:bg-travel-selected-bg"
+              className="flex flex-wrap gap-1.5 [&_a]:inline-flex max-[679px]:[&_a]:min-h-11 [&_a]:items-center [&_a]:rounded-full [&_a]:border [&_a]:border-travel-card-border [&_a]:bg-travel-surface [&_a]:px-2.5 [&_a]:py-1.5 [&_a]:text-sm [&_a]:font-bold [&_a]:text-travel-muted [&_a]:no-underline [&_a:hover]:bg-travel-selected-bg [&_a:focus-visible]:bg-travel-selected-bg"
               aria-label={m.owner_planning_sections()}
             >
               <a href="#agenda">{m.owner_agenda()}</a>

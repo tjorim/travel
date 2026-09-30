@@ -233,7 +233,7 @@ export function MarkdownField({
                   key={snippet}
                   type="button"
                   className={cn(
-                    "compact secondary min-w-9",
+                    "compact secondary min-w-9 max-[679px]:min-w-11",
                     snippet === "bold" && "font-extrabold",
                     snippet === "italic" && "italic",
                   )}

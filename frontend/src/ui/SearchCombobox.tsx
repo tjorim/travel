@@ -127,7 +127,7 @@ function SearchCombobox({
         <Combobox.Trigger
           aria-labelledby=""
           aria-label={m.owner_show_options_for({ p0: ariaLabel ?? m.owner_selection() })}
-          className="shrink-0 rounded-l-none! border! border-travel-muted! bg-travel-surface! px-3! text-travel-ink!"
+          className="min-w-11 shrink-0 rounded-l-none! border! border-travel-muted! bg-travel-surface! px-3! text-travel-ink!"
         >
           <span aria-hidden="true">▾</span>
         </Combobox.Trigger>

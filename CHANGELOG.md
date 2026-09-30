@@ -219,6 +219,13 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Third and last pass of the final layout check (#292). On a phone, every
+  button, trip section tab, planning jump link, editor toolbar button, combobox
+  toggle and map zoom control is now at least 44 px, dialog buttons included;
+  desktop sizes are unchanged. A failed provider status on the Settings page
+  offers a Try again button. The trip, emergency-information and packing
+  template delete confirmations were opened and checked on a phone.
+
 - Second pass of the final layout check (#292) in Dutch and English at 390 px
   and 1280 px, with a 23-route, 18-visit trip, a packing list, a published
   trip and a share link. Long trip titles on the public and unlisted pages now

@@ -127,3 +127,18 @@ it("retranslates an open confirmation and an existing failure without refetching
   expect(screen.queryByText("Sensitive provider diagnostic")).toBeNull();
   expect(api.requests.filter((request) => request === "GET /api/provider-tokens")).toHaveLength(1);
 });
+
+it("offers a retry when the provider status cannot be loaded", async () => {
+  let failing = true;
+  api.on("GET", /^\/api\/provider-tokens$/, () => {
+    if (failing) throw new Error("offline");
+    return providers;
+  });
+  renderWithOwner(<Settings />);
+  await screen.findByText("De providerstatus kon niet worden geladen.");
+  failing = false;
+  fireEvent.click(screen.getByRole("button", { name: "Opnieuw proberen" }));
+  await screen.findByText("Google Photos");
+  expect(screen.queryByText("De providerstatus kon niet worden geladen.")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Opnieuw proberen" })).toBeNull();
+});
