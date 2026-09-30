@@ -1049,9 +1049,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                     {m.assets_expires_line({
                       p0: LINK_STATE_LABELS[current.state],
                       p1: dateLabel(current.expires_at),
-                      p2: history.length
-                        ? m.assets_previous({ p0: history.length, p1: history.length === 1 ? "versie" : "versies" })
-                        : "",
+                      p2: history.length ? m.assets_previous({ count: history.length }) : "",
                     })}
                   </span>
                 </Button>

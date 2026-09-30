@@ -81,6 +81,16 @@
   "sign_in_workspace": "Sign in to open your private travel workspace.",
   "sign_in_trips": "Sign in to load your private trips.",
   "owner_trips_error": "Your trips could not be loaded.",
+  "owner_travel_update_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} travel update",
+        "countPlural=other": "{count} travel updates"
+      }
+    }
+  ],
   "owner_trips_loading": "Loading your trips…",
   "owner_offline": "You are offline. Reconnect to load your current travel workspace.",
   "owner_load_error": "Your trips could not be loaded. Check your connection and try again.",
@@ -1298,7 +1308,16 @@
   "assets_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated": "Each link has its own live scope and can later be revoked or rotated.",
   "assets_new_link": "New link",
   "assets_expires": "· expires",
-  "assets_previous": " · {p0} previous {p1}",
+  "assets_previous": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": " · {count} previous version",
+        "countPlural=other": " · {count} previous versions"
+      }
+    }
+  ],
   "assets_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_": "No share links yet. Choose “New link” to create a hidden link with its own scope.",
   "assets_edit_share_link": "Edit share link",
   "assets_add_share_link": "Add share link",

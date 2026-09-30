@@ -81,6 +81,16 @@
   "sign_in_workspace": "Meld aan om je private reiswerkruimte te openen.",
   "sign_in_trips": "Meld aan om je private reizen te laden.",
   "owner_trips_error": "Je reizen konden niet worden geladen.",
+  "owner_travel_update_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} reisupdate",
+        "countPlural=other": "{count} reisupdates"
+      }
+    }
+  ],
   "owner_trips_loading": "Je reizen laden…",
   "owner_offline": "Je bent offline. Maak opnieuw verbinding om je actuele reiswerkruimte te laden.",
   "owner_load_error": "Je reizen konden niet worden geladen. Controleer je verbinding en probeer opnieuw.",
@@ -1298,7 +1308,16 @@
   "assets_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated": "Elke link heeft een eigen live scope en kan later worden ingetrokken of geroteerd.",
   "assets_new_link": "Nieuwe link",
   "assets_expires": "· verloopt",
-  "assets_previous": " · {p0} eerdere {p1}",
+  "assets_previous": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": " · {count} eerdere versie",
+        "countPlural=other": " · {count} eerdere versies"
+      }
+    }
+  ],
   "assets_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_": "Nog geen deellinks. Kies “Nieuwe link” om een verborgen link met een eigen scope te maken.",
   "assets_edit_share_link": "Deellink bewerken",
   "assets_add_share_link": "Deellink toevoegen",

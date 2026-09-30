@@ -986,7 +986,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </Field>
           {(["essential", "last_minute", "valuable", "cabin_only", "checked_only"] as const).map((flag) => (
             <Field className="contents" key={flag}>
-              <FieldLabel className="block">
+              <FieldLabel className="flex min-h-11 items-center gap-2">
                 <TravelCheckbox
                   className="size-5"
                   checked={itemDraft[flag]}
@@ -1190,7 +1190,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
               {templatesQuery.data?.map((template) => (
                 <div key={template.id} className="flex items-center justify-between gap-2">
                   <Field className="contents">
-                    <FieldLabel className="block">
+                    <FieldLabel className="flex min-h-11 items-center gap-2">
                       <TravelCheckbox
                         checked={templateIds.includes(template.id)}
                         onCheckedChange={(checked) =>

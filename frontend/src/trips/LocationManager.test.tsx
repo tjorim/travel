@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
+import { answerConfirmation } from "../test-confirm";
 import type { Area, Location, Trip } from "../tracker-model";
 import { changeLocale } from "../locale";
 import { LocationManager } from "./LocationManager";
@@ -135,7 +136,8 @@ it("previews only projected address fields and names the live recipients", async
   ).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Adresregel 2 (optioneel)"), { target: { value: "Floor 4" } });
   expect(screen.getByText(/Adresregel 2: Floor 4/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Annuleren" }));
+  fireEvent.click(screen.getByRole("button", { name: /Locatie bewerken sluiten/ }));
+  await answerConfirmation("Wijzigingen verwerpen");
   expect(api.count("PATCH /api/trips/trip/locations/e1")).toBe(0);
 });
 

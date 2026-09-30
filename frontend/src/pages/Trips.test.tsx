@@ -246,6 +246,22 @@ it("explains a failed trip load without hiding the retry path", async () => {
   );
   renderTrips();
   expect((await screen.findAllByText("Je reizen konden niet worden geladen.")).length).toBeGreaterThan(0);
+  // An empty-list hint would claim the account has no trips, which a failed load cannot know.
+  expect(screen.queryByText("Je eerste reis blijft privé totdat je iets deelt.")).toBeNull();
+});
+
+it("counts travel updates in the selected language, in the list and in the workspace", async () => {
+  trips = [
+    trip("t1", "Exampleland", { travel_updates: [{ id: "u1" } as Trip["travel_updates"][number]] }),
+    trip("t2", "IJsland"),
+  ];
+  renderTrips();
+  fireEvent.click(await screen.findByRole("button", { name: /Exampleland/ }));
+  expect(await screen.findByText("1 reisupdate")).toBeTruthy();
+  act(() => changeLocale("en"));
+  expect(screen.getByText("1 travel update")).toBeTruthy();
+  fireEvent.click(screen.getByRole("link", { name: "← All trips" }));
+  expect(await screen.findByText("0 travel updates")).toBeTruthy();
 });
 
 it("retranslates a retained navigation notice without changing the route", async () => {

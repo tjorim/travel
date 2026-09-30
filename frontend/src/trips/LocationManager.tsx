@@ -415,11 +415,6 @@ export function LocationManager({
                 !record.values.addressLine1.trim() &&
                 !record.values.locality.trim())
             }
-            actions={
-              <Button className="secondary" type="button" onClick={close}>
-                {m.owner_cancel()}
-              </Button>
-            }
           >
             {!areas.length && <p>{m.owner_create_an_area_first_your_location_draft_is_kept()}</p>}
             {!areas.length && (

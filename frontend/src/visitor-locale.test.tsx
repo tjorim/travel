@@ -137,6 +137,24 @@ it("reports denied saved-link storage without losing the trip or refetching on a
   expect(fetcher.mock.calls[0]?.[0]).toBe(`/api/shared/${token}`);
 });
 
+it("sets a long authored trip title in a smaller, looser heading than a short one", async () => {
+  const short = projection();
+  const long = { ...projection(), title: "Een reis met een bijzonder lange titel die over meerdere regels moet lopen" };
+  for (const [data, looser] of [
+    [short, false],
+    [long, true],
+  ] as const) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(data))),
+    );
+    const view = render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading.classList.contains("text-travel-title-long")).toBe(looser);
+    view.unmount();
+  }
+});
+
 it("uses the same translated projection in owner previews without visitor resource requests", async () => {
   act(() => changeLocale("en"));
   const data = projection();

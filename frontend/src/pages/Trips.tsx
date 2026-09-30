@@ -160,7 +160,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
                 selectedTrip.starts_on && selectedTrip.ends_on
                   ? `${formatDay(selectedTrip.starts_on, "D MMM YYYY")} — ${formatDay(selectedTrip.ends_on, "D MMM YYYY")}`
                   : null,
-                `${selectedTrip.travel_updates.length} ${selectedTrip.travel_updates.length === 1 ? "reisupdate" : "reisupdates"}`,
+                m.owner_travel_update_count({ count: selectedTrip.travel_updates.length }),
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -336,12 +336,12 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             onClick={() => openTrip(trip)}
           >
             <strong>{trip.title}</strong>
-            <span>
-              {trip.travel_updates.length} {trip.travel_updates.length === 1 ? "reisupdate" : "reisupdates"}
-            </span>
+            <span>{m.owner_travel_update_count({ count: trip.travel_updates.length })}</span>
           </Button>
         ))}
-        {!trips.length && <p>{m.owner_your_first_trip_stays_private_until_you_share_something()}</p>}
+        {tripsQuery.isSuccess && !trips.length && (
+          <p>{m.owner_your_first_trip_stays_private_until_you_share_something()}</p>
+        )}
       </section>
       <TripEditor
         key="new"

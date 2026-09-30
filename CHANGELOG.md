@@ -219,6 +219,16 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Second pass of the final layout check (#292) in Dutch and English at 390 px
+  and 1280 px, with a 23-route, 18-visit trip, a packing list, a published
+  trip and a share link. Long trip titles on the public and unlisted pages now
+  use a smaller, looser heading instead of filling the first screen with tight
+  display lines. Travel update counts and the share link history label follow
+  the selected language instead of always reading Dutch, a failed trip list no
+  longer claims the account has no trips, the location editor no longer has a
+  Cancel button that skipped the discard prompt every other editor shows, and
+  the packing flag and template checkboxes are full-height rows on a phone.
+
 - Final layout pass over the owner PWA and the public and unlisted views at
   1280 px and 390 px, with the Taiwan import, an empty trip, long titles and
   dark theme (#292). Language and appearance now share one row inside each page
