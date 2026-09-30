@@ -53,6 +53,7 @@ bodies, codes and privacy headers. Byte-range rejections retain Content-Range.
 | `access.py`, `projection.py` | Sharing blockers and scope selection | Typed blocker causes; existing diagnostic string API preserved |
 | `document/service.py`, `library/service.py`, `media/service.py` | Upload, size, integrity, expiry, unavailable originals and derivative constraints | Typed ingestion causes; stored import failure_code now contains the cause code rather than truncated prose |
 | `media/providers.py`, `media/oauth.py` | Provider connection, authorization, lifecycle, remote HTTP and malformed response failures | Typed safe diagnostics, never remote exception text, tokens, provider URLs or item capabilities |
+| `translation.py`, `routers/translation.py` | Missing configuration, unreachable or malformed translation service, equal languages | 503 for the service, 422 for the request; never the submitted text, service URL or remote body |
 | `places/search.py` | Provider configuration, HTTP/JSON failure, malformed results | Typed safe diagnostics with existing unavailable status |
 | `media/ranges.py` | Status-only unsatisfiable range | 416 with existing range/cache/privacy headers and range_unsatisfiable code |
 | `routers/publication.py` delivery and preview routes | Public/share unavailable projection, file and navigation targets | Uniform not_found code; existing diagnostic and privacy-header distinctions preserved |

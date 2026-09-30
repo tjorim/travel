@@ -326,6 +326,123 @@ def test_stalled_video_job_becomes_retryable(tmp_path: Path) -> None:
         assert session.get(MediaDerivative, derivative_id).object_id is None
 
 
+def _queue_video(session: Session, tmp_path: Path, trip_id: str, *, filename: str = "clip.mov"):
+    from app.media import service
+    from app.models import DerivativePurpose
+
+    asset, _ = direct_upload(
+        session,
+        LocalObjectStorage(root=str(tmp_path)),
+        trip_id=trip_id,
+        filename=filename,
+        content_type="video/quicktime",
+        data=video_with_telemetry(tmp_path),
+    )
+    return service.queue_video_derivative(
+        session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=False
+    )
+
+
+def test_video_jobs_run_one_at_a_time(tmp_path: Path, monkeypatch) -> None:
+    import threading
+    import time
+
+    from app.media import service
+
+    client = client_for("owner-1", tmp_path)
+    trip = create_trip(client)
+    with TestingSessionLocal() as session:
+        ids = [_queue_video(session, tmp_path, trip["id"], filename=f"clip-{n}.mov").id for n in range(3)]
+
+    lock = threading.Lock()
+    running = peak = 0
+    order: list[str] = []
+
+    def fake_transform(session, storage, *, derivative_id):
+        nonlocal running, peak
+        with lock:
+            running += 1
+            peak = max(peak, running)
+            order.append(derivative_id)
+        time.sleep(0.05)
+        with lock:
+            running -= 1
+
+    monkeypatch.setattr(service, "_process_video_derivative", fake_transform)
+    threads = [
+        threading.Thread(target=service.process_video_derivative, args=(None, None), kwargs={"derivative_id": item})
+        for item in ids
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert peak == 1 and sorted(order) == sorted(ids)
+    assert not service._waiting_video_ids
+
+
+def test_queued_video_job_is_not_expired_while_it_waits_for_a_slot(tmp_path: Path, monkeypatch) -> None:
+    import threading
+    import time
+
+    from app.media import service
+    from app.models import DerivativeProcessingState, MediaDerivative
+
+    client = client_for("owner-1", tmp_path)
+    trip = create_trip(client)
+    with TestingSessionLocal() as session:
+        derivative = _queue_video(session, tmp_path, trip["id"])
+        derivative_id, asset_id = derivative.id, derivative.media_asset_id
+        derivative.processing_started_at = datetime.now(UTC) - timedelta(
+            seconds=service.VIDEO_STALLED_AFTER_SECONDS + 1
+        )
+        session.commit()
+
+    done = threading.Event()
+    monkeypatch.setattr(service, "_process_video_derivative", lambda *args, **kwargs: done.set())
+    path = f"/api/trips/{trip['id']}/media/{asset_id}/derivatives"
+    with service._video_slots:
+        thread = threading.Thread(
+            target=service.process_video_derivative, args=(None, None), kwargs={"derivative_id": derivative_id}
+        )
+        thread.start()
+        deadline = time.monotonic() + 5
+        while derivative_id not in service._waiting_video_ids and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert derivative_id in service._waiting_video_ids and not done.is_set()
+        assert client.get(path).json()[0]["processing_state"] == "processing"
+    thread.join(timeout=5)
+    assert done.is_set()
+
+    # A job lost with its process is not waiting any more, so it still expires.
+    assert client.get(path).json()[0]["processing_state"] == "failed"
+    with TestingSessionLocal() as session:
+        assert session.get(MediaDerivative, derivative_id).processing_state == DerivativeProcessingState.FAILED
+
+
+def test_stalled_clock_starts_when_the_job_gets_its_slot(tmp_path: Path, monkeypatch) -> None:
+    from app.media import service
+    from app.models import MediaDerivative
+
+    client = client_for("owner-1", tmp_path)
+    trip = create_trip(client)
+    with TestingSessionLocal() as session:
+        derivative = _queue_video(session, tmp_path, trip["id"])
+        derivative_id = derivative.id
+        derivative.processing_started_at = datetime.now(UTC) - timedelta(minutes=30)
+        session.commit()
+
+    def refuse(*args, **kwargs):
+        raise service.MediaImportError("Stop here", code="stop_here")
+
+    monkeypatch.setattr(service, "_copy_bounded", refuse)
+    with TestingSessionLocal() as session:
+        service.process_video_derivative(session, LocalObjectStorage(root=str(tmp_path)), derivative_id=derivative_id)
+    with TestingSessionLocal() as session:
+        started = session.get(MediaDerivative, derivative_id).processing_started_at
+        assert datetime.now(UTC) - service._aware_utc(started) < timedelta(minutes=1)
+
+
 # --- Fake providers: no test ever makes a real network call -----------------------
 
 

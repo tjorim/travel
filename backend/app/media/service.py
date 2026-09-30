@@ -16,6 +16,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
@@ -452,6 +453,9 @@ VIDEO_MAX_DIMENSION = 1280
 VIDEO_MAX_DURATION_SECONDS = 90
 VIDEO_PROCESS_TIMEOUT_SECONDS = 300
 VIDEO_STALLED_AFTER_SECONDS = VIDEO_PROCESS_TIMEOUT_SECONDS + 60
+# One ffmpeg process at a time keeps the worst case at a single transcode plus the
+# API inside the container's memory limit. Further jobs wait for the slot.
+VIDEO_CONCURRENCY = 1
 VIDEO_MAX_INPUT_BYTES = 200 * 1024 * 1024
 # ffmpeg shares the host with every other app: cap decoder and encoder threads
 # and run at a lower priority so a transcode never starves the other services.
@@ -523,11 +527,35 @@ def _copy_bounded(storage: ObjectStorage, key: str, target: Path) -> None:
             destination.write(chunk)
 
 
+_video_slots = threading.BoundedSemaphore(VIDEO_CONCURRENCY)
+# Jobs of this process that are waiting for a slot. They are still PROCESSING and
+# must not be expired as stalled; after a restart the set is empty, so a job that
+# was lost with the process does expire and becomes retryable.
+_waiting_video_ids: set[str] = set()
+_waiting_video_lock = threading.Lock()
+
+
 def process_video_derivative(session: Session, storage: ObjectStorage, *, derivative_id: str) -> None:
-    """Process one queued video. The row remains retryable after a failed transform."""
+    """Process one queued video once a slot is free. The row remains retryable after a failed transform."""
+    with _waiting_video_lock:
+        _waiting_video_ids.add(derivative_id)
+    try:
+        with _video_slots:
+            with _waiting_video_lock:
+                _waiting_video_ids.discard(derivative_id)
+            _process_video_derivative(session, storage, derivative_id=derivative_id)
+    finally:
+        with _waiting_video_lock:
+            _waiting_video_ids.discard(derivative_id)
+
+
+def _process_video_derivative(session: Session, storage: ObjectStorage, *, derivative_id: str) -> None:
     derivative = session.get(MediaDerivative, derivative_id)
     if derivative is None or derivative.processing_state != DerivativeProcessingState.PROCESSING:
         return
+    # The stalled clock measures the transform, not the wait for the slot.
+    derivative.processing_started_at = datetime.now(UTC)
+    session.commit()
     try:
         asset = derivative.media_asset
         if asset.deleted_at is not None or asset.original_object.byte_size > VIDEO_MAX_INPUT_BYTES:
@@ -672,10 +700,13 @@ def process_video_derivative(session: Session, storage: ObjectStorage, *, deriva
 
 def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDerivative]) -> None:
     cutoff = datetime.now(UTC) - timedelta(seconds=VIDEO_STALLED_AFTER_SECONDS)
+    with _waiting_video_lock:
+        waiting = set(_waiting_video_ids)
     stale = [
         item
         for item in derivatives
         if item.processing_state == DerivativeProcessingState.PROCESSING
+        and item.id not in waiting
         and item.processing_started_at is not None
         and _aware_utc(item.processing_started_at) < cutoff
     ]

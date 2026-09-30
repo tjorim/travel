@@ -123,6 +123,14 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_place_search_provider_returned_an_invalid_response();
     case "place_search_provider_is_unavailable":
       return m.api_place_search_provider_is_unavailable();
+    case "translation_is_not_configured":
+      return m.api_translation_is_not_configured();
+    case "translation_service_is_unavailable":
+      return m.api_translation_service_is_unavailable();
+    case "translation_service_returned_an_invalid_response":
+      return m.api_translation_service_returned_an_invalid_response();
+    case "translation_languages_must_differ":
+      return m.api_translation_languages_must_differ();
     case "not_found":
       return m.api_not_found();
     case "a_content_type_is_required":

@@ -13,6 +13,7 @@ import { ownerRequest } from "../query/api";
 import { useOwner } from "../query/owner-queries";
 import { optionalNote, useFieldErrors } from "./fields";
 import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";
+import { TranslationDraft } from "./TranslationDraft";
 
 /** How the server renders the field: long-form Markdown, an inline-only caption, or contact details. */
 export type MarkdownFormat = "markdown" | "inline" | "contact";
@@ -198,72 +199,81 @@ export function MarkdownField({
   };
 
   return (
-    <Field name={field.name} invalid={invalid}>
-      <FieldLabel>
-        <span>
-          {label}
-          {optionalNote(optional)}
-        </span>
-      </FieldLabel>
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <div className="flex flex-wrap gap-1" role="group" aria-label={m.owner_view_for({ p0: label })}>
-          <Button
-            type="button"
-            className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
-            aria-pressed={!previewing}
-            onClick={() => setPreviewing(false)}
-          >
-            {m.owner_write()}
-          </Button>
-          <Button
-            type="button"
-            className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
-            aria-pressed={previewing}
-            onClick={() => setPreviewing(true)}
-          >
-            {m.owner_preview()}
-          </Button>
+    <>
+      <Field name={field.name} invalid={invalid}>
+        <FieldLabel>
+          <span>
+            {label}
+            {optionalNote(optional)}
+          </span>
+        </FieldLabel>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div className="flex flex-wrap gap-1" role="group" aria-label={m.owner_view_for({ p0: label })}>
+            <Button
+              type="button"
+              className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
+              aria-pressed={!previewing}
+              onClick={() => setPreviewing(false)}
+            >
+              {m.owner_write()}
+            </Button>
+            <Button
+              type="button"
+              className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
+              aria-pressed={previewing}
+              onClick={() => setPreviewing(true)}
+            >
+              {m.owner_preview()}
+            </Button>
+          </div>
+          {!previewing && SNIPPETS[format].length > 0 && (
+            <div className="flex flex-wrap gap-1" role="toolbar" aria-label={m.owner_formatting_for({ p0: label })}>
+              {SNIPPETS[format].map(({ snippet, label: name, text }) => (
+                <Button
+                  key={snippet}
+                  type="button"
+                  className={cn(
+                    "compact secondary min-w-9",
+                    snippet === "bold" && "font-extrabold",
+                    snippet === "italic" && "italic",
+                  )}
+                  aria-label={name}
+                  title={name}
+                  onClick={() => apply(snippet)}
+                >
+                  {text}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
-        {!previewing && SNIPPETS[format].length > 0 && (
-          <div className="flex flex-wrap gap-1" role="toolbar" aria-label={m.owner_formatting_for({ p0: label })}>
-            {SNIPPETS[format].map(({ snippet, label: name, text }) => (
-              <Button
-                key={snippet}
-                type="button"
-                className={cn(
-                  "compact secondary min-w-9",
-                  snippet === "bold" && "font-extrabold",
-                  snippet === "italic" && "italic",
-                )}
-                aria-label={name}
-                title={name}
-                onClick={() => apply(snippet)}
-              >
-                {text}
-              </Button>
-            ))}
+        <TravelTextarea
+          {...rest}
+          ref={textarea}
+          hidden={previewing}
+          value={value}
+          aria-required={required || undefined}
+          onBlur={field.handleBlur}
+          onChange={(event) => field.handleChange(event.target.value)}
+        />
+        {previewing && (
+          <div
+            className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-travel-surface px-3 py-2.75"
+            aria-live="polite"
+          >
+            <MarkdownPreview source={value} format={format} />
           </div>
         )}
-      </div>
-      <TravelTextarea
-        {...rest}
-        ref={textarea}
-        hidden={previewing}
-        value={value}
-        aria-required={required || undefined}
-        onBlur={field.handleBlur}
-        onChange={(event) => field.handleChange(event.target.value)}
-      />
-      {previewing && (
-        <div
-          className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-travel-surface px-3 py-2.75"
-          aria-live="polite"
-        >
-          <MarkdownPreview source={value} format={format} />
-        </div>
+        <FieldDescription className="text-xs text-travel-muted">{HINTS[format]}</FieldDescription>
+        <FieldError>{message}</FieldError>
+      </Field>
+      {format === "markdown" && (
+        <TranslationDraft
+          label={label}
+          value={value}
+          onAppend={(draft) => field.handleChange(value.trim() ? `${value.replace(/\s+$/, "")}\n\n${draft}` : draft)}
+        />
       )}
-      <FieldDescription className="text-xs text-travel-muted">{HINTS[format]}</FieldDescription>
-      <FieldError>{message}</FieldError>
-    </Field>
+    </>
   );
 }

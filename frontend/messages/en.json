@@ -1729,5 +1729,18 @@
   "visitor_image_failed": "This image is unavailable.",
   "visitor_video_failed": "This video is unavailable.",
   "visitor_storage_failed": "The shared link could not be saved or removed on this device.",
-  "visitor_video_loading": "Video loading or unavailable."
+  "visitor_video_loading": "Video loading or unavailable.",
+  "api_translation_is_not_configured": "Translation is not set up.",
+  "api_translation_service_is_unavailable": "The translation service is unavailable. Try again shortly.",
+  "api_translation_service_returned_an_invalid_response": "The translation service returned an invalid response. Try again later.",
+  "api_translation_languages_must_differ": "Choose two different languages.",
+  "owner_translate_to_english": "Translate to English",
+  "owner_translate_to_dutch": "Translate to Dutch",
+  "owner_translating_this_can_take_a_while_the_first_time": "Translating… this can take up to a minute the first time.",
+  "owner_the_translation_could_not_be_made_your_text_is_unchanged": "The translation could not be made. Your text is unchanged.",
+  "owner_machine_translated_draft": "Machine-translated draft",
+  "owner_check_names_of_places_and_dishes_and_expressions_before_using_the_draft": "Names of places and dishes and expressions may be wrong. Check and edit the draft before you use it.",
+  "owner_translation_draft_for": "Translation draft for {p0}",
+  "owner_add_below_the_text": "Add below the text",
+  "owner_discard_draft": "Discard draft"
 }

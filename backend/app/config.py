@@ -67,6 +67,16 @@ class Settings(BaseSettings):
     osm_place_search_cache_ttl_seconds: int = 300
     osm_place_search_cache_max_entries: int = 100
 
+    # Base URL of the self-hosted LibreTranslate instance (tjorim/apps#252),
+    # reached only over the internal network. Unset disables draft translation.
+    # The service starts on demand, so the timeout must cover a cold start
+    # (about 15-30 s) plus the translation of one paragraph-sized request.
+    translation_api_base: str | None = None
+    translation_timeout_seconds: float = 120.0
+    # One owner request is sent to the CPU-bound service in requests of about
+    # this many characters, one at a time.
+    translation_segment_characters: int = 1000
+
     model_config = SettingsConfigDict(env_prefix="TRAVEL_", case_sensitive=False)
 
     @model_validator(mode="after")

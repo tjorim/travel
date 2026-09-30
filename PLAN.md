@@ -155,6 +155,12 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#305](https://github.com/tjorim/travel/issues/305) Capped concurrent
+      video derivative jobs and added explicit, reviewable Dutch/English draft
+      translation of owner text on the on-demand service from
+      [apps#250](https://github.com/tjorim/apps/issues/250) and apps#252. See
+      [translation drafts](docs/translation-drafts.md).
+
 - [x] [#284](https://github.com/tjorim/travel/issues/284) Added the Dutch/English
       locale foundation and shared shell.
 - [x] [#285](https://github.com/tjorim/travel/issues/285) Added stable API error

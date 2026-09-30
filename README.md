@@ -110,3 +110,8 @@ startup refuses it outside `TRAVEL_ENVIRONMENT=development`. Apply schema change
 `uv run alembic upgrade head`. Central deployment, PostgreSQL credentials,
 backup coverage, media storage and Caddy routing live in the `apps` repository
 (apps#215, apps#219 and apps#220).
+
+Draft translation between Dutch and English is off until
+`TRAVEL_TRANSLATION_API_BASE` names the internal, on-demand LibreTranslate
+service from apps#252 (for example `http://translation-proxy:5000`). See
+[docs/translation-drafts.md](docs/translation-drafts.md).

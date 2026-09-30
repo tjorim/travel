@@ -32,6 +32,7 @@ from .routers.publication import router as publication_router
 from .routers.routes import router as routes_router
 from .routers.stays import router as stays_router
 from .routers.tasks import router as tasks_router
+from .routers.translation import router as translation_router
 from .routers.trips import router as trips_router
 from .routers.visibility import router as visibility_router
 from .routers.visits import router as visits_router
@@ -79,6 +80,7 @@ app.include_router(places_router, prefix="/api")
 app.include_router(areas_router, prefix="/api")
 app.include_router(locations_router, prefix="/api")
 app.include_router(markdown_router, prefix="/api")
+app.include_router(translation_router, prefix="/api")
 app.include_router(provider_tokens_router, prefix="/api")
 
 if _mcp_app is not None:

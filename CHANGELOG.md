@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added explicit Dutch/English draft translation for long-form owner text. A
+  translate action in the Markdown editor sends the field's text to a
+  self-hosted, on-demand LibreTranslate service (apps#250, apps#252) and shows an
+  editable, machine-translated draft that is only added below the authored text
+  on request. Requests go out paragraph by paragraph, one at a time; unreachable
+  or unconfigured service failures leave the text untouched (#305).
+
 - Completed the Dutch/English interface audit, with repeatable source/catalogue
   checks, generated message typing and frontend regression tests enforced in CI.
   Address previews, retained route validation and trip-deletion notices now
@@ -211,6 +218,11 @@ All notable changes to the travel hub are documented here.
   `provider_secrets` table is created by the not-yet-deployed revision 001.
 
 ### Changed
+
+- Video derivative jobs now run one at a time, so the worst case is a single
+  ffmpeg process plus the API inside the container's memory limit. Queued jobs
+  stay "processing" without being expired as stalled; the stalled clock starts
+  when a job gets its slot (#305).
 
 - Time zone suggestions use a Base UI Autocomplete instead of the browser's
   `<datalist>`; typing any zone still works. Form labels, errors and
