@@ -78,6 +78,22 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
+- [ ] [#284](https://github.com/tjorim/travel/issues/284) Add the Paraglide
+      locale foundation and bounded Dutch/English shared-shell slice; coordinate
+      early preferences with #278 and Base UI controls with #279.
+- [ ] [#285](https://github.com/tjorim/travel/issues/285) Add stable API error
+      codes and render-time localized feedback before completing extraction.
+- [ ] [#286](https://github.com/tjorim/travel/issues/286) Translate owner trip
+      workspaces, shared editors, capture and map controls.
+- [ ] [#287](https://github.com/tjorim/travel/issues/287) Translate private
+      assets, publication, library and offline packing workflows.
+- [ ] [#288](https://github.com/tjorim/travel/issues/288) Complete public and
+      unlisted visitor presentation in Dutch and English.
+- [ ] [#289](https://github.com/tjorim/travel/issues/289) Audit full extraction,
+      editor-state preservation, formatting and route/privacy regressions after
+      all translation slices. Decisions and source inventory:
+      [translation plan](docs/decisions/281-interface-translations.md) (#281).
+
 - [ ] [#148](https://github.com/tjorim/travel/issues/148) Add generic
       owner-inbox and email reminders for trip tasks; a due date alone
       schedules nothing. Implementation is ready locally.
@@ -154,6 +170,11 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#281](https://github.com/tjorim/travel/issues/281) Recorded Dutch/English
+      translation decisions and the source inventory, with ordered implementation
+      issues #284–#289 and an explicit final extraction audit. Translation delivery
+      remains in those issues; routes and publication scopes stay unchanged.
 
 - [x] [#264](https://github.com/tjorim/travel/issues/264) Migrated owner,
       public and unlisted presentation to Tailwind utilities and named theme

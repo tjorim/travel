@@ -11,6 +11,10 @@ All notable changes to the travel hub are documented here.
 - Adopted the Base UI shadcn generator with Lucide, Travel semantic theme
   tokens and an app-owned generated checkbox; documented the generation
   workflow and existing shared-control decisions (#279).
+- Recorded the Dutch/English Paraglide translation plan, source inventory,
+  preference/editor-state/formatting/error decisions and ordered implementation
+  issues #284–#289, including the final coverage audit (#281). UI translation
+  delivery remains in those implementation issues.
 
 - The trip overview flags a location that only repeats its area: within a kilometre of the area's
   point and labelled with an airport code or a bare city entry. Name the area after the city or
