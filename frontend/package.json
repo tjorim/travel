@@ -21,6 +21,7 @@
     "@vitejs/plugin-react": "latest",
     "cn": "^0.4.0",
     "dayjs": "^1.11.23",
+    "lucide-react": "^1.48.0",
     "maplibre-gl": "6.10.0",
     "react": "latest",
     "react-dom": "latest",

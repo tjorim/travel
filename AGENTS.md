@@ -72,6 +72,16 @@ Use two-space indentation in TypeScript, CSS and JSON, and match the
 surrounding code. Keep Python to the Ruff configuration in
 `backend/pyproject.toml`.
 
+Generate new UI primitives on demand from `frontend/` with
+`pnpm dlx shadcn@4.21.0 add <component> --yes`, then own and restyle the
+copied source. `components.json` pins Base UI (`base-nova`), Lucide and
+Tailwind v4. Initial setup used `pnpm dlx shadcn@4.21.0 init --base base
+--preset nova --yes --no-monorepo --no-reinstall`. Do not bulk-generate or
+overwrite app controls without reviewing their behaviour. Use the existing
+`cn` package; `src/lib/utils.ts` re-exports it for generated imports. Map
+semantic colours to Travel tokens and keep all four lint rules green.
+See `docs/ui-components.md` for existing controls’ keep/replace decisions.
+
 Use Tailwind utilities for new frontend styling and `cn` for conditional
 utility classes. Keep reusable design values in named Tailwind theme tokens.
 Tailwind's base layer holds document and form defaults;

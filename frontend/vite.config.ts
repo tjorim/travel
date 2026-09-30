@@ -69,6 +69,7 @@ function devSession(): Plugin {
 
 export default defineConfig({
   base: "/admin/",
+  resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   test: { setupFiles: ["./src/test-setup.ts"] },
   plugins: [react(), tailwindcss(), visitorRoutes(), ...(devBypassToken ? [devSession()] : [])],
   // Mirrors Caddy's `/api/*` route so `pnpm dev` reaches a locally running API.

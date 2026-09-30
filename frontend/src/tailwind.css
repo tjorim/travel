@@ -138,6 +138,32 @@
   color-scheme: dark;
 }
 
+/* Semantic generator tokens inherit Travel’s palette, including root theme overrides (#278). */
+@theme inline {
+  --color-background: var(--color-travel-paper);
+  --color-foreground: var(--color-travel-ink);
+  --color-card: var(--color-travel-surface);
+  --color-card-foreground: var(--color-travel-ink);
+  --color-popover: var(--color-travel-surface);
+  --color-popover-foreground: var(--color-travel-ink);
+  --color-primary: var(--color-travel-forest);
+  --color-primary-foreground: var(--color-travel-on-action);
+  --color-secondary: var(--color-travel-tint);
+  --color-secondary-foreground: var(--color-travel-forest);
+  --color-muted: var(--color-travel-tint);
+  --color-muted-foreground: var(--color-travel-muted);
+  --color-accent: var(--color-travel-selected-bg);
+  --color-accent-foreground: var(--color-travel-ink);
+  --color-destructive: var(--color-travel-danger);
+  --color-border: var(--color-travel-border);
+  --color-input: var(--color-travel-input-border);
+  --color-ring: var(--color-travel-focus);
+  --radius-sm: var(--radius-travel-control);
+  --radius-md: var(--radius-travel-control);
+  --radius-lg: var(--radius-travel-card);
+  --radius-xl: var(--radius-travel-card);
+}
+
 @layer base {
   :root {
     @apply bg-travel-paper font-travel-sans text-travel-ink;
