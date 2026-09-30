@@ -6,8 +6,8 @@ The stable API error contract (#285) now ships; see [API error descriptors](../a
 The owner record slice (#286) now ships for the inventoried owner pages, shared
 editors, itinerary, places, routes, stays, updates, tasks and map controls.
 Shared visibility controls and the `location_repeats_area` / `visit_restates_route`
-warning messages are included because record editors use them. The owner asset/publication/offline slice (#287) now ships; visitor projection
-and its formatting stay tracked by #288. The final inventory audit remains #289.
+warning messages are included because record editors use them. The owner asset/publication/offline slice (#287) now ships; the visitor projection
+and its formatting now ship in #288. The final inventory audit remains #289.
 
 Owner record verification covers live client validation and success notices,
 dirty dialog dismissal, focus and control identity, pending-save payloads,
@@ -208,5 +208,34 @@ Existing owner/projection/privacy, encryption, revalidation and sign-out wipe
 regressions remain in the frontend suite. Browser screenshots use fictional data
 in both languages and light/dark themes, with 375 px layout checks; see
 [owner asset screenshots](../screenshots/287-owner-assets/README.md).
-Shared visitor content rendered inside previews remains the #288 slice. Full
+Shared visitor content rendered inside previews is delivered by #288. Full
 cross-surface extraction and browser regression review remain tracked by #289.
+
+## Visitor presentation delivery (#288)
+
+Visitor story, timeline, gallery, route summaries, precision labels, navigation
+and map record links use typed Dutch/English messages. Map projection data is
+recomputed on locale switches so fallback labels, record links and dates update
+without changing the selected record or camera. Shared Markdown has no additional
+application chrome; its sanitized HTML and source remain authored. The existing
+public index, saved-link controls and uniform unavailable/error/retry states use
+the shared catalogue. Storage write failures now produce retained render-time
+feedback while the trip remains readable.
+
+Year/month/day formatting stays at delivered precision and UTC date-only
+interpretation; transport instants retain their endpoint timezone. Route enum
+labels are evaluated during render rather than captured in a module-level spread.
+Visit viewer-time messages include the full local/viewer interpolation and day
+shift. Slugs, capabilities, file/navigation URLs and story anchors are unchanged.
+
+The shared gallery adds a Base UI Dialog lightbox with keyboard entry, focus
+containment, Escape/close and focus return, plus an embedded locale selector.
+Authored alt text and captions remain unchanged. Image/video failures translate
+in place; an image retry only remounts that resource. Owner previews use the same
+components with authenticated blob URLs and owner navigation callbacks.
+
+Verification includes 343 frontend tests, lint/format/build, 61 locked backend
+publication/media tests (fixed projection fields, capability lifecycle and
+privacy headers), and browser keyboard/locale/375 px layout checks. Screenshots
+use fictional content in both languages and themes; see
+[visitor screenshots](../screenshots/288-visitor/README.md).

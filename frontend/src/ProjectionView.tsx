@@ -1,5 +1,8 @@
+import { m } from "./paraglide/messages.js";
+import { LocaleControl, selectedLocale, useLocale } from "./locale";
+import { Dialog } from "@base-ui/react/dialog";
 import { Button } from "@base-ui/react/button";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { cn } from "cn";
 import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
@@ -73,11 +76,11 @@ function place(value: unknown): string | null {
 function precision(item: ProjectionItem): string | null {
   const value = text(item, "date_precision");
   return value === "day"
-    ? "Dagprecisie"
+    ? m.visitor_day_precision()
     : value === "month"
-      ? "Maandprecisie"
+      ? m.visitor_month_precision()
       : value === "year"
-        ? "Jaarprecisie"
+        ? m.visitor_year_precision()
         : null;
 }
 
@@ -97,19 +100,20 @@ function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"):
   try {
     return dayjs(value)
       .tz(timeZone ?? undefined)
+      .locale(selectedLocale())
       .format("D MMM YYYY, HH:mm");
   } catch {
-    return dayjs(value).format("D MMM YYYY, HH:mm");
+    return dayjs(value).locale(selectedLocale()).format("D MMM YYYY, HH:mm");
   }
 }
 
-const transportKinds: Record<string, string> = { ...ROUTE_MODE_LABELS, other: "Vervoer" };
-const transportStatuses: Record<string, string> = {
-  planned: "Gepland",
-  booked: "Geboekt",
-  confirmed: "Bevestigd",
-  cancelled: "Geannuleerd",
-};
+const transportKinds = (): Record<string, string> => ({ ...ROUTE_MODE_LABELS, other: m.visitor_transport() });
+const transportStatuses = (): Record<string, string> => ({
+  planned: m.visitor_planned(),
+  booked: m.visitor_booked(),
+  confirmed: m.visitor_confirmed(),
+  cancelled: m.visitor_cancelled(),
+});
 
 function storyDate(item: ProjectionItem, field = "story_date"): string | null {
   const value = text(item, field);
@@ -127,7 +131,7 @@ function storyDate(item: ProjectionItem, field = "story_date"): string | null {
   if (month && (month < 1 || month > 12)) return null;
   const yearMonth = dayjs.utc(`${year}-${String(month ?? 1).padStart(2, "0")}-01`);
   if (day && (day < 1 || day > yearMonth.daysInMonth())) return null;
-  const date = day ? yearMonth.date(day) : yearMonth;
+  const date = (day ? yearMonth.date(day) : yearMonth).locale(selectedLocale());
   return precisionValue === "year"
     ? date.format("YYYY")
     : precisionValue === "month"
@@ -153,8 +157,12 @@ export function visitTimes(item: ProjectionItem): string | null {
   const there = zone && date ? timeForViewer(date, start, zone) : null;
   if (!there) return local;
   const thereEnd = end && zone && date ? timeForViewer(date, end, zone) : null;
-  const day = there.days === 1 ? " (volgende dag)" : there.days === -1 ? " (vorige dag)" : "";
-  return `${local} · bij jou ${there.time}${thereEnd ? `–${thereEnd.time}` : ""}${day}`;
+  const viewer = `${there.time}${thereEnd ? `–${thereEnd.time}` : ""}`;
+  return there.days === 1
+    ? m.visitor_time_next({ local, viewer })
+    : there.days === -1
+      ? m.visitor_time_previous({ local, viewer })
+      : m.visitor_time_same({ local, viewer });
 }
 
 function positiveSize(item: ProjectionItem, field: "width" | "height"): number | undefined {
@@ -185,6 +193,7 @@ function ResourceSection({
   render: (item: ProjectionItem) => ReactNode;
   anchor: string;
 }) {
+  useLocale();
   if (!items.length) return null;
   return (
     <section className="travel-card" aria-label={title}>
@@ -208,40 +217,41 @@ function routeHeading(item: ProjectionItem): string {
   return (
     text(item, "label") ??
     ([text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ") ||
-      transportKinds[text(item, "mode") ?? ""] ||
-      "Route")
+      transportKinds()[text(item, "mode") ?? ""] ||
+      m.visitor_route())
   );
 }
 
 function RouteSummary({ item }: { item: ProjectionItem }) {
+  useLocale();
   const departure = transportPlace(item.departure);
   const arrival = transportPlace(item.arrival);
   const departsAt = transportTime(item, "departure");
   const arrivesAt = transportTime(item, "arrival");
   // A route with a day but no times yet.
   const departsOn = storyDate({ ...item, date_precision: "day" }, "departs_on");
-  const mode = transportKinds[text(item, "mode") ?? ""];
+  const mode = transportKinds()[text(item, "mode") ?? ""];
   const carrier = [text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ");
   return (
     <article>
       <h3>{routeHeading(item)}</h3>
       {(departure || arrival) && (
         <p>
-          {departure ?? "Vertrek onbekend"} → {arrival ?? "Aankomst onbekend"}
+          {departure ?? m.visitor_departure_unknown()} → {arrival ?? m.visitor_arrival_unknown()}
         </p>
       )}
       <p>
         {[
           mode,
           carrier || null,
-          text(item, "status") ? (transportStatuses[text(item, "status")!] ?? text(item, "status")) : null,
+          text(item, "status") ? (transportStatuses()[text(item, "status")!] ?? text(item, "status")) : null,
         ]
           .filter(Boolean)
           .join(" · ")}
       </p>
       {departsAt || arrivesAt ? (
         <p>
-          {departsAt ?? "Vertrektijd onbekend"} → {arrivesAt ?? "Aankomsttijd onbekend"}
+          {departsAt ?? m.visitor_departure_time_unknown()} → {arrivesAt ?? m.visitor_arrival_time_unknown()}
         </p>
       ) : (
         departsOn && <p>{departsOn}</p>
@@ -339,7 +349,7 @@ export function projectionMapPoints(projection: Projection): MapPoint[] {
     return [
       {
         id: item.id,
-        label: text(item, "label") ?? (typeof values.label === "string" ? values.label : "Locatie"),
+        label: text(item, "label") ?? (typeof values.label === "string" ? values.label : m.visitor_location()),
         coordinates: [longitude, latitude],
       },
     ];
@@ -382,22 +392,115 @@ function routeLocationPoint(item: ProjectionItem, endpoint: "departure" | "arriv
       typeof values.label === "string" && values.label
         ? values.label
         : endpoint === "departure"
-          ? "Vertrekpunt"
-          : "Aankomstpunt",
+          ? m.visitor_departure_point()
+          : m.visitor_arrival_point(),
     coordinates: [longitude, latitude],
     kind: values.kind === "airport" ? "airport" : "place",
   };
 }
 
+function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
+  useLocale();
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const alt = text(item, "alt_text") ?? m.visitor_shared_image();
+  const image = (expanded: boolean) => (
+    <img
+      key={`${url}:${attempt}:${expanded}`}
+      className={
+        expanded
+          ? "max-h-travel-lightbox w-full object-contain"
+          : "block aspect-4/3 h-auto max-h-90 w-full rounded-travel-media bg-travel-tint object-cover"
+      }
+      src={url}
+      alt={alt}
+      width={positiveSize(item, "width")}
+      height={positiveSize(item, "height")}
+      style={expanded ? undefined : { objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }}
+      loading={expanded ? "eager" : "lazy"}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      hidden={failed}
+    />
+  );
+  const failure = failed && (
+    <div role="status">
+      <p>{m.visitor_image_failed()}</p>
+      <Button
+        type="button"
+        onClick={() => {
+          setFailed(false);
+          setAttempt((value) => value + 1);
+        }}
+      >
+        {m.retry()}
+      </Button>
+    </div>
+  );
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger
+        className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+        aria-label={m.visitor_open_image({ title: alt })}
+      >
+        {image(false)}
+        {failed && m.visitor_image_failed()}
+      </Dialog.Trigger>
+      {failure}
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-travel-backdrop/50" />
+        <Dialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <Dialog.Popup className="max-h-dvh w-full max-w-250 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-4 text-travel-ink shadow-2xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <Dialog.Title>{alt}</Dialog.Title>
+              <Dialog.Close>{m.visitor_close_image()}</Dialog.Close>
+            </div>
+            <LocaleControl embedded />
+            <figure className="m-0">
+              {image(true)}
+              {failure}
+              <Markdown as="figcaption" html={text(item, "caption_html")} text={text(item, "caption")} />
+            </figure>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function SharedVideo({ item, url, poster }: { item: ProjectionItem; url: string; poster?: string }) {
+  useLocale();
+  const [failed, setFailed] = useState(false);
+  return (
+    <>
+      <video
+        controls
+        preload="none"
+        playsInline
+        poster={poster}
+        aria-label={text(item, "alt_text") ?? m.visitor_shared_video()}
+        width={positiveSize(item, "width")}
+        height={positiveSize(item, "height")}
+        onError={() => setFailed(true)}
+      >
+        <source src={url} type="video/mp4" onError={() => setFailed(true)} />
+      </video>
+      {failed && <p role="status">{m.visitor_video_failed()}</p>}
+    </>
+  );
+}
+
 function Gallery({
   items,
   fileUrl,
-  title = "Galerij",
+  title = m.visitor_gallery(),
 }: {
   items: ProjectionItem[];
   fileUrl: (item: ProjectionItem) => string | null;
   title?: string;
 }) {
+  useLocale();
   if (!items.length) return null;
   return (
     <section className="mt-4.5 min-w-0" aria-label={title}>
@@ -408,33 +511,18 @@ function Gallery({
             <figure className="m-0">
               {hasFileMarker(item, "image") &&
                 (fileUrl(item) ? (
-                  <img
-                    className="block aspect-4/3 h-auto max-h-90 w-full rounded-travel-media bg-travel-tint object-cover"
-                    src={fileUrl(item)!}
-                    alt={text(item, "alt_text") ?? "Gedeelde afbeelding"}
-                    width={positiveSize(item, "width")}
-                    height={positiveSize(item, "height")}
-                    style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }}
-                    loading="lazy"
-                    decoding="async"
-                    referrerPolicy="no-referrer"
-                  />
+                  <SharedImage item={item} url={fileUrl(item)!} />
                 ) : (
-                  <p role="status">Afbeelding laden of niet beschikbaar.</p>
+                  <p role="status">{m.visitor_image_loading()}</p>
                 ))}
               {hasFileMarker(item, "video") && fileUrl(item) && (
-                <video
-                  controls
-                  preload="none"
-                  playsInline
+                <SharedVideo
+                  item={item}
+                  url={fileUrl(item)!}
                   poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined}
-                  aria-label={text(item, "alt_text") ?? "Gedeelde video"}
-                  width={positiveSize(item, "width") ?? undefined}
-                  height={positiveSize(item, "height") ?? undefined}
-                >
-                  <source src={fileUrl(item)!} type="video/mp4" />
-                </video>
+                />
               )}
+              {hasFileMarker(item, "video") && !fileUrl(item) && <p role="status">{m.visitor_video_loading()}</p>}
               <Markdown
                 as="figcaption"
                 className="mt-1.75 wrap-anywhere leading-normal text-travel-muted"
@@ -458,11 +546,12 @@ function Updates({
   media: ProjectionItem[];
   fileUrl: (item: ProjectionItem) => string | null;
 }) {
+  useLocale();
   if (!updates.length) return null;
   return (
-    <section className="travel-card" aria-label="Reisupdates">
-      <h2 className="mb-4.5">Reisupdates</h2>
-      <nav aria-label="Updates in dit verhaal">
+    <section className="travel-card" aria-label={m.visitor_updates()}>
+      <h2 className="mb-4.5">{m.visitor_updates()}</h2>
+      <nav aria-label={m.visitor_story_navigation()}>
         <ol className="m-0 mb-6 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
           {updates.map((item) => (
             <li key={item.id}>
@@ -470,14 +559,14 @@ function Updates({
                 className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
                 href={`#${item.id}`}
               >
-                {text(item, "title") ?? storyDate(item) ?? "Update"}
+                {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
               </a>
             </li>
           ))}
         </ol>
       </nav>
       <ol
-        aria-label="Reisupdates tijdlijn"
+        aria-label={m.visitor_timeline()}
         className="m-0 grid list-none gap-6 border-l-2 border-travel-border py-0 pr-0 pl-5.5"
       >
         {updates.map((item) => (
@@ -492,12 +581,12 @@ function Updates({
                 ) : null}
                 {place(item.place) && <span>{place(item.place)}</span>}
               </div>
-              <h3 className="my-1.5 text-xl">{text(item, "title") ?? "Update"}</h3>
+              <h3 className="my-1.5 text-xl">{text(item, "title") ?? m.visitor_update()}</h3>
               <Markdown html={text(item, "body_html")} text={text(item, "body")} />
               <Gallery
                 items={media.filter((image) => image.update === item.id)}
                 fileUrl={fileUrl}
-                title="Media bij deze update"
+                title={m.visitor_update_media()}
               />
             </article>
           </li>
@@ -518,6 +607,7 @@ export function ProjectionView({
   identifier: string;
   previewResources?: PreviewResources;
 }) {
+  const locale = useLocale();
   const mapLines = useMemo(
     () =>
       projectionMapLines(projection).map((line) => {
@@ -534,10 +624,10 @@ export function ProjectionView({
             ]
               .filter(Boolean)
               .join(" → ") || undefined,
-          links: [{ label: "Route bekijken", href: `#route-${route.id}` }],
+          links: [{ label: m.visitor_view_route(), href: `#route-${route.id}` }],
         };
       }),
-    [projection],
+    [projection, locale],
   );
   const mapPoints = useMemo(
     () =>
@@ -558,20 +648,20 @@ export function ProjectionView({
         );
         const relatedUpdates = projection.updates.filter((item) => matchingPlace(item.place));
         const links = [
-          ...(placeItem ? [{ label: "Locatie bekijken", href: `#place-${placeItem.id}` }] : []),
+          ...(placeItem ? [{ label: m.visitor_view_location(), href: `#place-${placeItem.id}` }] : []),
           ...relatedVisits.map((item) => ({
-            label: `Bezoek: ${text(item, "title") ?? "Bezoek"}`,
+            label: m.visitor_visit_link({ title: text(item, "title") ?? m.visitor_visit() }),
             href: `#visit-${item.id}`,
           })),
           ...relatedUpdates.map((item) => ({
-            label: `Update: ${text(item, "title") ?? "Update"}`,
+            label: m.visitor_update_link({ title: text(item, "title") ?? m.visitor_update() }),
             href: `#${item.id}`,
           })),
-          ...(route ? [{ label: "Route bekijken", href: `#route-${route.id}` }] : []),
+          ...(route ? [{ label: m.visitor_view_route(), href: `#route-${route.id}` }] : []),
         ];
         return { ...point, dates: visit ? (tripDates(visit) ?? undefined) : undefined, links };
       }),
-    [projection],
+    [projection, locale],
   );
   useEffect(() => {
     if (previewResources) return;
@@ -592,7 +682,7 @@ export function ProjectionView({
           type="button"
           onClick={() => previewResources.openNavigation(item.id)}
         >
-          Routebeschrijving
+          {m.visitor_directions()}
         </Button>
       );
     const base = audience === "public" ? "/api/public/trips" : "/api/shared";
@@ -602,7 +692,7 @@ export function ProjectionView({
         referrerPolicy="no-referrer"
         rel="noreferrer"
       >
-        Routebeschrijving
+        {m.visitor_directions()}
       </a>
     );
   };
@@ -617,8 +707,8 @@ export function ProjectionView({
   if (empty && !projection.summary && !dates)
     return (
       <section className="travel-card" role="status">
-        <h2>Nog geen gedeelde inhoud</h2>
-        <p>Voor deze reis is nog geen inhoud geselecteerd.</p>
+        <h2>{m.visitor_no_content()}</h2>
+        <p>{m.visitor_no_content_description()}</p>
       </section>
     );
 
@@ -626,7 +716,7 @@ export function ProjectionView({
     <div className={cn("grid gap-4.5", previewResources ? "mt-5" : "mt-7.5")}>
       {(projection.summary || dates) && (
         <section className="travel-card">
-          <h2>Reisoverzicht</h2>
+          <h2>{m.visitor_overview()}</h2>
           {dates && <p className="travel-eyebrow">{dates}</p>}
           <Markdown html={projection.summary_html} text={projection.summary} />
         </section>
@@ -634,17 +724,17 @@ export function ProjectionView({
       {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
       {empty && (
         <section className="travel-card" role="status">
-          <h2>Nog geen gedeeld verhaal of foto’s</h2>
-          <p>Er zijn nog geen reisupdates of foto’s gedeeld.</p>
+          <h2>{m.visitor_no_story()}</h2>
+          <p>{m.visitor_no_story_description()}</p>
         </section>
       )}
       <ResourceSection
-        title="Bezoeken"
+        title={m.visitor_visits()}
         anchor="visit"
         items={projection.visits}
         render={(item) => (
           <article>
-            <h3>{text(item, "title") ?? "Bezoek"}</h3>
+            <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
             {tripDates(item) && <p>{tripDates(item)}</p>}
             {visitTimes(item) && <p>{visitTimes(item)}</p>}
             <Markdown html={text(item, "summary_html")} text={text(item, "summary")} />
@@ -653,12 +743,12 @@ export function ProjectionView({
         )}
       />
       <ResourceSection
-        title="Gebieden en locaties"
+        title={m.visitor_places()}
         anchor="place"
         items={projection.places}
         render={(item) => (
           <article>
-            <h3>{text(item, "label") ?? "Locatie"}</h3>
+            <h3>{text(item, "label") ?? m.visitor_location()}</h3>
             {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
               <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>
             )}
@@ -668,12 +758,12 @@ export function ProjectionView({
       />
       <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
       <ResourceSection
-        title="Verblijven"
+        title={m.visitor_stays()}
         anchor="stay"
         items={projection.stays}
         render={(item) => (
           <article>
-            <h3>{text(item, "title") ?? "Verblijf"}</h3>
+            <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
             {tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}
             {place(item.place) && <p>{place(item.place)}</p>}
             {navigationLink(item)}
@@ -681,25 +771,25 @@ export function ProjectionView({
         )}
       />
       <ResourceSection
-        title="Routes"
+        title={m.visitor_routes()}
         anchor="route"
         items={projection.routes}
         render={(item) => <RouteSummary item={item} />}
       />
       {looseMedia.length > 0 && (
         <section className="travel-card">
-          <h2 className="mb-4.5">Galerij</h2>
-          <Gallery items={looseMedia} fileUrl={fileUrl} title="Gedeelde foto’s" />
+          <h2 className="mb-4.5">{m.visitor_gallery()}</h2>
+          <Gallery items={looseMedia} fileUrl={fileUrl} title={m.visitor_shared_photos()} />
         </section>
       )}
       {projection.navigation.some((item) => !displayed.has(item.id)) && (
         <ResourceSection
-          title="Navigatie"
+          title={m.visitor_navigation()}
           anchor="navigation"
           items={projection.navigation.filter((item) => !displayed.has(item.id))}
           render={(item) => (
             <article>
-              <h3>Bestemming</h3>
+              <h3>{m.visitor_destination()}</h3>
               {navigationLink(item)}
             </article>
           )}

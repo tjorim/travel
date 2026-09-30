@@ -4,6 +4,7 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 @theme {
+  --max-height-travel-lightbox: 70dvh;
   --font-travel-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --text-travel-title: clamp(2.8rem, 12vw, 5.8rem);
   --text-travel-form-label: 0.9rem;

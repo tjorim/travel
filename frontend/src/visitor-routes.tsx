@@ -78,10 +78,11 @@ function TripIndex() {
   useLocale();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<IndexState>({ kind: "loading" });
+  const [storageFailed, setStorageFailed] = useState(false);
   const [savedTrips, setSavedTrips] = useState<SavedSharedTrip[]>(() => readSavedSharedTrips());
 
   function forget(token: string) {
-    forgetSharedTrip(token);
+    setStorageFailed(!forgetSharedTrip(token));
     setSavedTrips(readSavedSharedTrips());
   }
   useEffect(() => {
@@ -158,6 +159,7 @@ function TripIndex() {
           </ul>
         )}
       </section>
+      {storageFailed && <p role="status">{m.visitor_storage_failed()}</p>}
       {savedTrips.length > 0 && (
         <section aria-label={m.saved_trips_label()}>
           <h2>{m.saved_trips()}</h2>
@@ -193,11 +195,13 @@ function TripIndex() {
 function VisitorPage({ audience, identifier }: { audience: Audience; identifier: string }) {
   useLocale();
   const [attempt, setAttempt] = useState(0);
+  const [storageFailed, setStorageFailed] = useState(false);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
     setState({ kind: "loading" });
+    setStorageFailed(false);
     const path =
       audience === "public"
         ? `/api/public/trips/${encodeURIComponent(identifier)}`
@@ -214,7 +218,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           signal: controller.signal,
         });
         if (response.status === 404 || response.status === 403) {
-          if (audience === "share") forgetSharedTrip(identifier);
+          if (audience === "share") setStorageFailed(!forgetSharedTrip(identifier));
           setState({ kind: "unavailable" });
         } else if (!response.ok) {
           setState({ kind: "error", failure: await apiFailure(response, m.trip_error) });
@@ -222,7 +226,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           const data: unknown = await response.json();
           if (!controller.signal.aborted) {
             if (isProjection(data, audience)) {
-              if (audience === "share") rememberSharedTrip(identifier, data);
+              if (audience === "share") setStorageFailed(!rememberSharedTrip(identifier, data));
               setState({ kind: "ready", projection: data });
             } else {
               setState({ kind: "error" });
@@ -266,6 +270,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           </Button>
         </section>
       )}
+      {storageFailed && <p role="status">{m.visitor_storage_failed()}</p>}
       {state.kind === "ready" && (
         <ProjectionView projection={state.projection} audience={audience} identifier={identifier} />
       )}

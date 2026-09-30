@@ -37,18 +37,20 @@ export function readSavedSharedTrips(): SavedSharedTrip[] {
   }
 }
 
-function writeSavedSharedTrips(trips: SavedSharedTrip[]): void {
+function writeSavedSharedTrips(trips: SavedSharedTrip[]): boolean {
   try {
     localStorage.setItem(storageKey, JSON.stringify(trips.slice(0, maximumSavedTrips)));
+    return true;
   } catch {
     // Saving a convenience shortcut must never prevent the shared trip itself
     // from rendering (storage can be disabled or full).
+    return false;
   }
 }
 
 /** Saves a valid unlisted capability only in this browser's local storage. */
-export function rememberSharedTrip(token: string, projection: Projection): void {
-  if (token.length < 20 || token.length > 512) return;
+export function rememberSharedTrip(token: string, projection: Projection): boolean {
+  if (token.length < 20 || token.length > 512) return false;
   const current: SavedSharedTrip = {
     token,
     title: projection.title,
@@ -56,9 +58,9 @@ export function rememberSharedTrip(token: string, projection: Projection): void 
     summary: projection.summary_text ?? projection.summary,
     lastVisitedAt: new Date().toISOString(),
   };
-  writeSavedSharedTrips([current, ...readSavedSharedTrips().filter((trip) => trip.token !== token)]);
+  return writeSavedSharedTrips([current, ...readSavedSharedTrips().filter((trip) => trip.token !== token)]);
 }
 
-export function forgetSharedTrip(token: string): void {
-  writeSavedSharedTrips(readSavedSharedTrips().filter((trip) => trip.token !== token));
+export function forgetSharedTrip(token: string): boolean {
+  return writeSavedSharedTrips(readSavedSharedTrips().filter((trip) => trip.token !== token));
 }

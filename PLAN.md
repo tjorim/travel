@@ -87,7 +87,7 @@ archive-content import in #40.
       workspaces, shared editors, capture and map controls.
 - [x] [#287](https://github.com/tjorim/travel/issues/287) Translate private
       assets, publication, library and offline packing workflows.
-- [ ] [#288](https://github.com/tjorim/travel/issues/288) Complete public and
+- [x] [#288](https://github.com/tjorim/travel/issues/288) Complete public and
       unlisted visitor presentation in Dutch and English.
 - [ ] [#289](https://github.com/tjorim/travel/issues/289) Audit full extraction,
       editor-state preservation, formatting and route/privacy regressions after

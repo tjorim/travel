@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Completed Dutch/English visitor stories, timelines, galleries, route summaries
+  and shared map links, including owner rendered previews. Dates retain the
+  delivered precision and timezone; authored content, anchors and capability
+  paths remain unchanged. Galleries offer a keyboard-accessible lightbox with
+  focus return, translated media failures/retry and saved-link storage feedback
+  (#288).
+
 - Translated private documents, library/emergency information, media imports and
   derivatives, publication controls, preview chrome, packing and offline copies
   into Dutch and English. Language switches preserve selected uploads, dirty
