@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
 import { useCallback, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -165,6 +167,7 @@ const SECTIONS: { id: string; label: string }[] = [
 ];
 
 export function TripDetail() {
+  useLocale();
   const navigate = useNavigate();
   const { tripId } = useParams({ strict: false });
   const openMapRecord = useCallback(
@@ -218,14 +221,10 @@ export function TripDetail() {
     mediaQuery,
   ].find((query) => query.isError)?.error;
 
-  if (!session) return <EmptyState title="Private reis">Meld aan om private reisdetails te bekijken.</EmptyState>;
-  if (!tripId) return <EmptyState title="Reis niet gevonden">Deze reis heeft geen geldige identificatie.</EmptyState>;
+  if (!session) return <EmptyState title={m.private_trip()}>{m.sign_in_details()}</EmptyState>;
+  if (!tripId) return <EmptyState title={m.trip_not_found()}>{m.invalid_trip_id()}</EmptyState>;
   if (tripsQuery.isSuccess && !trip)
-    return (
-      <EmptyState title="Reis niet gevonden">
-        Deze private reis bestaat niet of is niet beschikbaar voor jouw account.
-      </EmptyState>
-    );
+    return <EmptyState title={m.trip_not_found()}>{m.owner_trip_unavailable()}</EmptyState>;
   // The page shows a whole trip or nothing: a partial page would read as if records were missing.
   if (
     !trip ||
@@ -241,8 +240,8 @@ export function TripDetail() {
   ) {
     return (
       <section className="travel-card" role={readError ? "alert" : "status"}>
-        <h2>Private reis</h2>
-        <p>{readError ? "De private reis kon niet volledig worden geladen." : "Private reis laden…"}</p>
+        <h2>{m.private_trip()}</h2>
+        <p>{readError ? m.private_trip_error() : m.private_trip_loading()}</p>
       </section>
     );
   }

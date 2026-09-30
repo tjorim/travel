@@ -1,3 +1,4 @@
+import { LocaleBoundary, LocaleControl } from "./locale";
 import { AppearanceControl } from "./appearance";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -8,7 +9,10 @@ import "./tailwind.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppearanceControl />
-    <VisitorRoutes />
+    <LocaleBoundary>
+      <LocaleControl />
+      <AppearanceControl />
+      <VisitorRoutes />
+    </LocaleBoundary>
   </StrictMode>,
 );

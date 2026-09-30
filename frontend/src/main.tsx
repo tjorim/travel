@@ -1,3 +1,4 @@
+import { LocaleBoundary, LocaleControl } from "./locale";
 import { AppearanceControl } from "./appearance";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -12,7 +13,10 @@ if ("serviceWorker" in navigator) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppearanceControl />
-    <App />
+    <LocaleBoundary>
+      <LocaleControl />
+      <AppearanceControl />
+      <App />
+    </LocaleBoundary>
   </StrictMode>,
 );

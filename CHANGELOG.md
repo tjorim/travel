@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added the Dutch/English Paraglide locale foundation, device-local language
+  selectors and translated owner/visitor shells, Settings and appearance controls.
+  Switching preserves router, cache, dirty editors and uploads; remaining screens
+  follow the ordered translation slices (#284).
+
 - Owner and visitor views offer device-local light, dark and automatic appearance,
   applied before first paint, with themed maps, Markdown and controls (#278).
 - Adopted the Base UI shadcn generator with Lucide, Travel semantic theme

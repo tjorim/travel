@@ -1,3 +1,5 @@
+import { m } from "./paraglide/messages.js";
+import { useLocale } from "./locale";
 import { useSyncExternalStore } from "react";
 import { ChoiceGroup } from "./ui/ChoiceGroup";
 
@@ -13,6 +15,7 @@ export function themeColor(token: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(`--color-travel-${token}`).trim();
 }
 export function AppearanceControl() {
+  useLocale();
   const value = useSyncExternalStore(
     subscribe,
     () => (document.documentElement.dataset.appearance ?? "auto") as Appearance,
@@ -20,12 +23,12 @@ export function AppearanceControl() {
   return (
     <div className="mx-auto w-travel-index-shell pt-4">
       <ChoiceGroup
-        label="Weergave"
+        label={m.appearance()}
         value={value}
         choices={[
-          { value: "light", label: "Licht" },
-          { value: "dark", label: "Donker" },
-          { value: "auto", label: "Automatisch" },
+          { value: "light", label: m.light() },
+          { value: "dark", label: m.dark() },
+          { value: "auto", label: m.auto() },
         ]}
         onChange={(next) => window.dispatchEvent(new CustomEvent("travel-appearance-set", { detail: next }))}
       />

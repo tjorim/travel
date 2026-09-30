@@ -1,3 +1,5 @@
+import { m } from "./paraglide/messages.js";
+import { useLocale } from "./locale";
 import { Button } from "@base-ui/react/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -54,6 +56,7 @@ function isPublicTripCards(value: unknown): value is PublicTripCard[] {
 }
 
 function OwnerLink() {
+  useLocale();
   return (
     <footer className="mt-10.5">
       <a
@@ -61,13 +64,14 @@ function OwnerLink() {
         href="/admin/"
         referrerPolicy="no-referrer"
       >
-        Mijn reizen beheren
+        {m.manage_trips()}
       </a>
     </footer>
   );
 }
 
 function TripIndex() {
+  useLocale();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<IndexState>({ kind: "loading" });
   const [savedTrips, setSavedTrips] = useState<SavedSharedTrip[]>(() => readSavedSharedTrips());
@@ -104,29 +108,29 @@ function TripIndex() {
     <main className="travel-shell w-travel-index-shell! [&_h1]:max-w-none [&_section]:mt-10">
       <header>
         <p className="travel-eyebrow">Travel</p>
-        <h1>Op reis</h1>
-        <p className="max-w-145 leading-relaxed text-travel-muted">Ontdek de reizen die hier publiek gedeeld worden.</p>
+        <h1>{m.on_the_road()}</h1>
+        <p className="max-w-145 leading-relaxed text-travel-muted">{m.public_intro()}</p>
       </header>
-      <section aria-label="Publieke reizen" aria-live="polite">
+      <section aria-label={m.public_trips()} aria-live="polite">
         {state.kind === "loading" && (
           <div className="travel-card" role="status">
-            <h2>Reizen laden</h2>
-            <p>Een ogenblik geduld.</p>
+            <h2>{m.loading_trips()}</h2>
+            <p>{m.wait()}</p>
           </div>
         )}
         {state.kind === "error" && (
           <div className="travel-card" role="alert">
-            <h2>Reizen kunnen niet worden geladen</h2>
-            <p>Probeer het opnieuw wanneer de verbinding werkt.</p>
+            <h2>{m.trips_error()}</h2>
+            <p>{m.retry_description()}</p>
             <Button type="button" onClick={() => setAttempt((current) => current + 1)}>
-              Opnieuw proberen
+              {m.retry()}
             </Button>
           </div>
         )}
         {state.kind === "ready" && state.trips.length === 0 && (
           <div className="travel-card" role="status">
-            <h2>Nog geen publieke reizen</h2>
-            <p>Kom later terug om nieuwe reizen te ontdekken.</p>
+            <h2>{m.no_public_trips()}</h2>
+            <p>{m.come_back()}</p>
           </div>
         )}
         {state.kind === "ready" && state.trips.length > 0 && (
@@ -137,11 +141,11 @@ function TripIndex() {
                   className="travel-card flex h-full flex-col text-inherit no-underline transition-all hover:-translate-y-0.75 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus [&_h2]:mb-3 [&_h2]:text-2xl [&_p]:wrap-anywhere"
                   to={`/trips/${encodeURIComponent(trip.slug)}`}
                 >
-                  <span className="travel-eyebrow">{tripDates(trip.dates) ?? "Publieke reis"}</span>
-                  <h2>{trip.title ?? "Gepubliceerde reis"}</h2>
+                  <span className="travel-eyebrow">{tripDates(trip.dates) ?? m.public_trip()}</span>
+                  <h2>{trip.title ?? m.published_trip()}</h2>
                   {(trip.summary_text ?? trip.summary) && <p>{trip.summary_text ?? trip.summary}</p>}
                   <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
-                    Bekijk reis <span aria-hidden="true">→</span>
+                    {m.view_trip()} <span aria-hidden="true">→</span>
                   </span>
                 </Link>
               </li>
@@ -150,11 +154,10 @@ function TripIndex() {
         )}
       </section>
       {savedTrips.length > 0 && (
-        <section aria-label="Op dit apparaat bewaarde verborgen reizen">
-          <h2>Eerder bekeken verborgen reizen</h2>
-          <p className="max-w-145 leading-relaxed text-travel-muted">
-            Alleen in deze browser bewaard. Wie dit apparaat gebruikt, kan deze links openen.
-          </p>
+        <section aria-label={m.saved_trips_label()}>
+          <h2>{m.saved_trips()}</h2>
+          <p>{m.saved_trip_count({ count: savedTrips.length })}</p>
+          <p className="max-w-145 leading-relaxed text-travel-muted">{m.saved_notice()}</p>
           <ul className="m-0 grid list-none grid-cols-1 gap-4.5 p-0 min-[620px]:grid-cols-2 min-[960px]:grid-cols-3">
             {savedTrips.map((trip) => (
               <li key={trip.token} className="grid gap-2 [&>button]:justify-self-start">
@@ -162,15 +165,15 @@ function TripIndex() {
                   className="travel-card flex h-full flex-col text-inherit no-underline transition-all hover:-translate-y-0.75 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus [&_h2]:mb-3 [&_h2]:text-2xl [&_p]:wrap-anywhere"
                   to={`/share/${encodeURIComponent(trip.token)}`}
                 >
-                  <span className="travel-eyebrow">Verborgen reis</span>
-                  <h2>{trip.title ?? "Gedeelde reis"}</h2>
+                  <span className="travel-eyebrow">{m.unlisted_trip()}</span>
+                  <h2>{trip.title ?? m.shared_trip()}</h2>
                   {trip.summary && <p>{trip.summary}</p>}
                   <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
-                    Bekijk reis <span aria-hidden="true">→</span>
+                    {m.view_trip()} <span aria-hidden="true">→</span>
                   </span>
                 </Link>
                 <Button className="secondary compact" type="button" onClick={() => forget(trip.token)}>
-                  Verwijderen van dit apparaat
+                  {m.forget_trip()}
                 </Button>
               </li>
             ))}
@@ -183,6 +186,7 @@ function TripIndex() {
 }
 
 function VisitorPage({ audience, identifier }: { audience: Audience; identifier: string }) {
+  useLocale();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
@@ -233,26 +237,26 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
     <main className="travel-shell">
       <header>
         <p className="travel-eyebrow">Travel</p>
-        <h1>{state.kind === "ready" && state.projection.title ? state.projection.title : "Gedeelde reis"}</h1>
+        <h1>{state.kind === "ready" && state.projection.title ? state.projection.title : m.shared_trip()}</h1>
       </header>
       {state.kind === "loading" && (
         <section className="travel-card" role="status" aria-live="polite">
-          <h2>Reis laden</h2>
-          <p>Een ogenblik geduld.</p>
+          <h2>{m.loading_trip()}</h2>
+          <p>{m.wait()}</p>
         </section>
       )}
       {state.kind === "unavailable" && (
         <section className="travel-card" role="status">
-          <h2>Reis niet beschikbaar</h2>
-          <p>Deze reis is niet beschikbaar.</p>
+          <h2>{m.unavailable_trip()}</h2>
+          <p>{m.unavailable_description()}</p>
         </section>
       )}
       {state.kind === "error" && (
         <section className="travel-card" role="alert">
-          <h2>Reis kan niet worden geladen</h2>
-          <p>Probeer het opnieuw wanneer de verbinding werkt.</p>
+          <h2>{m.trip_error()}</h2>
+          <p>{m.retry_description()}</p>
           <Button type="button" onClick={retry}>
-            Opnieuw proberen
+            {m.retry()}
           </Button>
         </section>
       )}
@@ -265,6 +269,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
 }
 
 function VisitorRoute({ audience }: { audience: Audience }) {
+  useLocale();
   const { slug, token } = useParams({ strict: false });
   const identifier = audience === "public" ? slug : token;
   return identifier ? (
@@ -272,7 +277,7 @@ function VisitorRoute({ audience }: { audience: Audience }) {
   ) : (
     <main className="travel-shell">
       <section className="travel-card" role="status">
-        <h1>Reis niet beschikbaar</h1>
+        <h1>{m.unavailable_trip()}</h1>
       </section>
     </main>
   );
@@ -294,13 +299,16 @@ const visitorShareRoute = createRoute({
 const visitorNotFoundRoute = createRoute({
   getParentRoute: () => visitorRootRoute,
   path: "$",
-  component: () => (
-    <main className="travel-shell">
-      <section className="travel-card" role="status">
-        <h1>Pagina niet beschikbaar</h1>
-      </section>
-    </main>
-  ),
+  component: () => {
+    useLocale();
+    return (
+      <main className="travel-shell">
+        <section className="travel-card" role="status">
+          <h1>{m.page_unavailable()}</h1>
+        </section>
+      </main>
+    );
+  },
 });
 
 export const visitorRouteTree = visitorRootRoute.addChildren([

@@ -1,6 +1,7 @@
 import type { ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -71,7 +72,18 @@ export default defineConfig({
   base: "/admin/",
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   test: { setupFiles: ["./src/test-setup.ts"] },
-  plugins: [react(), tailwindcss(), visitorRoutes(), ...(devBypassToken ? [devSession()] : [])],
+  plugins: [
+    paraglideVitePlugin({
+      project: "./project.inlang",
+      outdir: "./src/paraglide",
+      strategy: ["custom-travel", "baseLocale"],
+      emitTsDeclarations: true,
+    }),
+    react(),
+    tailwindcss(),
+    visitorRoutes(),
+    ...(devBypassToken ? [devSession()] : []),
+  ],
   // Mirrors Caddy's `/api/*` route so `pnpm dev` reaches a locally running API.
   server: {
     proxy: {

@@ -3,9 +3,9 @@ import { useState, type ReactNode } from "react";
 import { DeleteConfirmation } from "../RecordDialog";
 
 export type ConfirmationRequest = {
-  title: string;
-  description?: string;
-  confirmLabel?: string;
+  title: string | (() => string);
+  description?: string | (() => string);
+  confirmLabel?: string | (() => string);
   onConfirm: () => void;
 };
 
@@ -21,9 +21,9 @@ export function useConfirmation(): { ask: (request: ConfirmationRequest) => void
     ask: setRequest,
     dialog: request && (
       <DeleteConfirmation
-        title={request.title}
-        description={request.description}
-        confirmLabel={request.confirmLabel}
+        title={typeof request.title === "function" ? request.title() : request.title}
+        description={typeof request.description === "function" ? request.description() : request.description}
+        confirmLabel={typeof request.confirmLabel === "function" ? request.confirmLabel() : request.confirmLabel}
         onCancel={close}
         onConfirm={() => {
           close();

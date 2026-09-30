@@ -1,7 +1,7 @@
 # Interface translation plan (#281)
 
 Planning inventory audited against this checkout on 2026-09-29. This records
-implementation decisions; it does not claim that translations are shipped.
+implementation decisions; the foundation slice (#284) now ships shared-shell translations.
 The retired `dist/` archive is excluded. Catalogues contain application copy only.
 
 ## Decisions
@@ -126,3 +126,33 @@ It proves dirty editor/upload/focus preservation, existing-error retranslation,
 storage-denial fallback, date-only/timezone/input invariance, unchanged projection
 allowlists and share privacy headers. New interface copy must enter catalogues;
 update contributor guidance when the foundation is available.
+
+## Foundation delivery (#284)
+
+Paraglide v2 compiles Dutch/English catalogues before check, test and build; Vite
+regenerates them during development. Generated declarations/output are ignored.
+The pinned Inlang message-format plugin keeps catalogue compilation reproducible.
+All four documents run the blocking device-locale bootstrap before React, next
+to the appearance bootstrap. The custom `custom-travel` strategy persists a
+validated choice and retains it in memory when storage is denied.
+
+`LocaleBoundary` publishes a changing context without keys or recreated providers;
+message-rendering components subscribe with `useLocale()`. Call `changeLocale()`
+for in-place switching (`setLocale(next, { reload: false })`), document metadata
+and Day.js updates. `LocaleControl` uses the shared Base UI ChoiceGroup, including
+an embedded selector inside record dialogs so modal focus containment permits
+switching while editing. Intl display helpers receive the selected locale.
+Settings stores render-time message functions, including confirmation copy, and
+uses localized operation fallbacks rather than exposing provider diagnostics.
+Stable structured API error extraction remains tracked by #285.
+
+Delivered copy covers Boundary/navigation/account, Settings/provider feedback,
+appearance controls, generic owner sign-in/loading/unavailable states and
+visitor shell/index/loading/error/empty/not-found/saved
+link controls. Authored trip fields remain unchanged. Owner page workflows and
+full visitor projections remain owned by #286–#288; #289 audits final coverage.
+
+Regression tests cover regional preference resolution, invalid and denied storage,
+all HTML entry points, key/placeholder parity and 0/1/multiple plurals, dirty
+dialog text/upload/focus/cache/URL preservation, and date-only/timezone/numeric
+formatting invariance. The offline shell caches the bootstrap alongside appearance.

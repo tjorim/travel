@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -5,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { decodeSubject } from "../auth";
 import { useAuth } from "../auth-context";
 import { useConfirmation } from "../forms/useConfirmation";
-import { errorMessage, ownerRequest } from "../query/api";
+import { ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { useOwnerMutation, useProviderConnections } from "../query/owner-queries";
 import { EmptyState } from "../tracker-routes";
@@ -17,16 +19,17 @@ const providerPath = (provider: Provider) => `/api/provider-tokens/${provider}`;
 const refreshProviders = (subject: string) => [ownerKeys.providers(subject)];
 
 export function Settings() {
+  useLocale();
   const confirmation = useConfirmation();
   const { session } = useAuth();
   const providersQuery = useProviderConnections();
   const queryClient = useQueryClient();
   const providers = (providersQuery.data ?? []).filter((item) => item.available);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<(() => string) | null>(null);
   const [connecting, setConnecting] = useState(false);
   const completed = useRef(false);
   const revoke = useOwnerMutation<Provider>({
-    fallback: "De provider kon niet worden losgekoppeld.",
+    fallback: m.provider_revoke_error(),
     request: (provider) => ({ path: providerPath(provider), method: "DELETE" }),
     invalidate: refreshProviders,
   });
@@ -38,20 +41,20 @@ export function Settings() {
     completed.current = true;
     window.history.replaceState(null, "", window.location.pathname);
     if (params.get("error")) {
-      setNotice("Google Photos heeft de verbinding niet toegestaan.");
+      setNotice(() => () => m.provider_denied());
       return;
     }
     const code = params.get("code");
     const state = params.get("state");
     if (!code || !state) {
-      setNotice("De Google Photos-verbinding is onvolledig.");
+      setNotice(() => () => m.provider_incomplete());
       return;
     }
     setConnecting(true);
     void ownerRequest<void>(
       session,
       "/api/provider-tokens/google_photos_picker/oauth/complete",
-      "Google Photos kon niet worden verbonden.",
+      m.provider_connect_error(),
       {
         method: "POST",
         body: { code, state },
@@ -59,13 +62,13 @@ export function Settings() {
     )
       .then(
         () => {
-          setNotice("Google Photos is verbonden voor private imports.");
+          setNotice(() => () => m.provider_connected_notice());
           const key = ownerKeys.providers(decodeSubject(session.accessToken) ?? "");
           void queryClient
             .cancelQueries({ queryKey: key })
             .then(() => queryClient.invalidateQueries({ queryKey: key }));
         },
-        (error: unknown) => setNotice(errorMessage(error, "Google Photos kon niet worden verbonden.")),
+        () => setNotice(() => () => m.provider_connect_error()),
       )
       .finally(() => setConnecting(false));
   }, [session, queryClient]);
@@ -77,25 +80,25 @@ export function Settings() {
       const result = await ownerRequest<{ authorization_url: string }>(
         session,
         "/api/provider-tokens/google_photos_picker/oauth/start",
-        "Google Photos kon niet worden gestart.",
+        m.provider_start_error(),
         { method: "POST" },
       );
       window.location.assign(result.authorization_url);
-    } catch (error) {
-      setNotice(errorMessage(error, "Google Photos kon niet worden gestart."));
+    } catch {
+      setNotice(() => () => m.provider_start_error());
       setConnecting(false);
     }
   }
 
   function disconnect(provider: Provider) {
     confirmation.ask({
-      title: `${labels[provider]} loskoppelen?`,
-      description: "Bestaande geïmporteerde media blijven privé beschikbaar.",
-      confirmLabel: "Loskoppelen",
+      title: () => m.disconnect_title({ provider: labels[provider] }),
+      description: () => m.disconnect_description(),
+      confirmLabel: () => m.disconnect(),
       onConfirm: () => {
         revoke.mutateAsync(provider).then(
-          () => setNotice(`${labels[provider]} is losgekoppeld.`),
-          (error: unknown) => setNotice(errorMessage(error, "De provider kon niet worden losgekoppeld.")),
+          () => setNotice(() => () => m.disconnected_notice({ provider: labels[provider] })),
+          () => setNotice(() => () => m.provider_revoke_error()),
         );
       },
     });
@@ -104,29 +107,22 @@ export function Settings() {
   const noProvidersAvailable = providersQuery.isSuccess && providers.length === 0;
   // With nothing to connect, the intro already explains why, so the status line stays empty unless there is news.
   const message =
-    notice ??
+    notice?.() ??
     (providersQuery.error
-      ? errorMessage(providersQuery.error, "De providerstatus kon niet worden geladen.")
+      ? m.provider_status_error()
       : providersQuery.isPending
-        ? "Laad providerstatus…"
+        ? m.provider_loading()
         : noProvidersAvailable
           ? ""
-          : "Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
-  if (!session)
-    return (
-      <EmptyState title="Instellingen">Meld aan om de status van je private mediaproviders te bekijken.</EmptyState>
-    );
+          : m.provider_privacy());
+  if (!session) return <EmptyState title={m.settings()}>{m.settings_signed_out()}</EmptyState>;
 
   return (
     <section className="travel-card manager" aria-labelledby="settings-title">
       <div>
-        <p className="travel-eyebrow">Private accountinstellingen</p>
-        <h2 id="settings-title">Instellingen</h2>
-        <p>
-          {noProvidersAvailable
-            ? "Er is geen mediaprovider geconfigureerd op deze server, dus er is niets te verbinden. Gebruik direct uploaden op de Media-pagina van een reis om privémedia toe te voegen."
-            : "Verbind Google Photos om geselecteerde media privé te importeren."}
-        </p>
+        <p className="travel-eyebrow">{m.private_settings()}</p>
+        <h2 id="settings-title">{m.settings()}</h2>
+        <p>{noProvidersAvailable ? m.no_providers() : m.provider_intro()}</p>
       </div>
       <p className="help" role="status" hidden={!message}>
         {message}
@@ -141,20 +137,20 @@ export function Settings() {
               <div>
                 <strong>{labels[provider.provider]}</strong>
                 <span className="text-sm font-medium text-travel-muted">
-                  {provider.connected ? "Verbonden voor private import" : "Niet verbonden"}
+                  {provider.connected ? m.connected_import() : m.not_connected()}
                 </span>
               </div>
               <div className="flex flex-wrap items-end gap-2.25">
                 <span className="provider-status" data-connected={provider.connected ? "" : undefined}>
-                  {provider.connected ? "Verbonden" : "Niet verbonden"}
+                  {provider.connected ? m.connected() : m.not_connected()}
                 </span>
                 {provider.connected ? (
                   <Button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>
-                    Loskoppelen
+                    {m.disconnect()}
                   </Button>
                 ) : provider.provider === "google_photos_picker" ? (
                   <Button type="button" disabled={connecting} onClick={() => void connectGoogle()}>
-                    {connecting ? "Verbinden…" : "Verbinden met Google"}
+                    {connecting ? m.connecting() : m.connect_google()}
                   </Button>
                 ) : null}
               </div>

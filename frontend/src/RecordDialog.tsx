@@ -1,3 +1,5 @@
+import { m } from "./paraglide/messages.js";
+import { LocaleControl, useLocale } from "./locale";
 import { Button } from "@base-ui/react/button";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
@@ -87,6 +89,9 @@ export function RecordDialog({
                 Sluiten
               </Dialog.Close>
             </div>
+            <div className="mb-4">
+              <LocaleControl embedded />
+            </div>
             {error && (
               <p className="form-error mb-4" role="alert">
                 {error}
@@ -148,6 +153,7 @@ export function DeleteConfirmation({
   onCancel,
   onConfirm,
 }: DeleteConfirmationProps) {
+  useLocale();
   const cancel = useRef<HTMLButtonElement>(null);
   return (
     <AlertDialog.Root open onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
@@ -162,7 +168,7 @@ export function DeleteConfirmation({
                 {confirmLabel}
               </Button>
               <AlertDialog.Close className={cn(compactButton, secondaryButton)} ref={cancel}>
-                Annuleren
+                {m.cancel()}
               </AlertDialog.Close>
             </div>
           </AlertDialog.Popup>

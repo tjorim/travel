@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
+import { changeLocale } from "../locale";
 import { Settings } from "./Settings";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -34,6 +35,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  act(() => changeLocale("nl"));
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   expect(api.unexpected).toEqual([]);
@@ -106,6 +108,22 @@ it("keeps the connection when revocation fails", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Loskoppelen" }));
   api.failNext = { status: 502, body: { detail: "Loskoppelen mislukt." } };
   await answerConfirmation("Loskoppelen");
-  await screen.findByText("Loskoppelen mislukt.");
+  await screen.findByText("De provider kon niet worden losgekoppeld.");
   expect(screen.getByRole("button", { name: "Loskoppelen" })).toBeTruthy();
+});
+
+it("retranslates an open confirmation and an existing failure without refetching provider status", async () => {
+  providers[0].connected = true;
+  renderWithOwner(<Settings />);
+  fireEvent.click(await screen.findByRole("button", { name: "Loskoppelen" }));
+  act(() => changeLocale("en"));
+  expect(screen.getByText("Disconnect Google Photos?")).toBeTruthy();
+  expect(screen.getByText("Previously imported media remain privately available.")).toBeTruthy();
+  api.failNext = { status: 502, body: { detail: "Sensitive provider diagnostic" } };
+  await answerConfirmation("Disconnect");
+  await screen.findByText("The provider could not be disconnected.");
+  act(() => changeLocale("nl"));
+  expect(screen.getByText("De provider kon niet worden losgekoppeld.")).toBeTruthy();
+  expect(screen.queryByText("Sensitive provider diagnostic")).toBeNull();
+  expect(api.requests.filter((request) => request === "GET /api/provider-tokens")).toHaveLength(1);
 });

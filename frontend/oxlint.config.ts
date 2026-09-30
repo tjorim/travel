@@ -1,6 +1,7 @@
 import { defineConfig } from "oxlint";
 
 export default defineConfig({
+  ignorePatterns: ["src/paraglide/**"],
   jsPlugins: ["@shadcn/lint"],
   rules: {
     "shadcn/no-arbitrary-values": "error",

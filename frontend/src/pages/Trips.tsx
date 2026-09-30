@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
@@ -28,6 +30,7 @@ import { formatDay, formatInstant, type Trip, type TravelUpdateCandidateIntent }
 export type TripWorkspaceSection = "overview" | "plan" | "packing" | "story" | "media" | "sharing";
 
 export function Trips({ workspace }: { workspace?: { tripId: string; section: TripWorkspaceSection } } = {}) {
+  useLocale();
   const { session } = useAuth();
   const navigate = useNavigate();
   const tripsQuery = useTripsQuery();
@@ -88,11 +91,11 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     notice ??
     arrivalNotice ??
     (!session
-      ? "Meld aan om je private reizen te laden."
+      ? m.sign_in_trips()
       : tripsQuery.isError
-        ? errorMessage(tripsQuery.error, "Je reizen konden niet worden geladen.")
+        ? errorMessage(tripsQuery.error, m.owner_trips_error())
         : tripsQuery.isPending
-          ? "Je reizen laden…"
+          ? m.owner_trips_loading()
           : trips.length
             ? "Kies een reis om de private details te beheren."
             : "Nog geen reizen. Maak je eerste private reis aan.");
@@ -126,15 +129,11 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     setCaptureCandidate(null);
   }
 
-  if (!session) return <EmptyState title="Reizen">{message}</EmptyState>;
+  if (!session) return <EmptyState title={m.trips()}>{message}</EmptyState>;
   if (workspace && !selectedTrip) {
-    if (tripsQuery.isPending) return <EmptyState title="Reis laden">{message}</EmptyState>;
-    if (tripsQuery.isError) return <EmptyState title="Reis niet beschikbaar">{message}</EmptyState>;
-    return (
-      <EmptyState title="Reis niet gevonden">
-        Deze private reis bestaat niet of is niet beschikbaar voor jouw account.
-      </EmptyState>
-    );
+    if (tripsQuery.isPending) return <EmptyState title={m.loading_trip()}>{message}</EmptyState>;
+    if (tripsQuery.isError) return <EmptyState title={m.unavailable_trip()}>{message}</EmptyState>;
+    return <EmptyState title={m.trip_not_found()}>{m.owner_trip_unavailable()}</EmptyState>;
   }
 
   const currentSection = workspace?.section ?? "overview";
@@ -153,7 +152,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         </Link>
         <header className="flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch [&_h1]:m-0 [&_h2]:m-0 [&_h1]:text-2xl [&_h2]:text-2xl [&_p]:mt-1.5 [&_p]:mb-0 [&_p]:text-travel-muted">
           <div>
-            <p className="travel-eyebrow">Private reis</p>
+            <p className="travel-eyebrow">{m.private_trip()}</p>
             <h2 id="trip-detail-title">{selectedTrip.title}</h2>
             <p>
               {[
@@ -315,7 +314,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       <div className="capture-heading">
         <div>
           <p className="travel-eyebrow">Private reisbeheer</p>
-          <h2 id="trips-title">Reizen</h2>
+          <h2 id="trips-title">{m.trips()}</h2>
         </div>
         <Button className="secondary compact" type="button" onClick={newTrip}>
           Nieuwe reis
@@ -326,7 +325,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
       </p>
       <section
         className="grid content-start gap-2 [&>p]:m-0 [&>p]:leading-normal [&>p]:text-travel-muted"
-        aria-label="Jouw reizen"
+        aria-label={m.your_trips()}
       >
         {trips.map((trip) => (
           <Button

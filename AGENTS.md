@@ -149,3 +149,14 @@ GitHub issues are living documents: do not add comments to them. Record
 clarifications, decisions, new sub-issue links and corrections by editing the
 issue body (read it first, keep the original text, and add or adjust a clearly
 headed section). This applies to closed issues too.
+
+## Interface messages
+
+Frontend application copy belongs in `frontend/messages/nl.json` and `en.json`.
+Use typed whole-message functions from `src/paraglide/messages.js` during render
+with `useLocale()`; retain message descriptors/functions for stored notices.
+Never translate authored content or match server prose. `pnpm paraglide:compile`
+generates ignored code before check/test/build. Use selected-locale formatting
+from `src/locale.tsx` and the configured `dayjs.ts`; preserve ISO dates, timezones
+and numeric input/payload values. See `docs/decisions/281-interface-translations.md`
+for extraction ownership and the remaining slices.

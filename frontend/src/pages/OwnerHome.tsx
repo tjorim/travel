@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
 import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -71,6 +73,7 @@ function orderedTrips(trips: Trip[], day: string): Trip[] {
 }
 
 export function OwnerHome() {
+  useLocale();
   const { session } = useAuth();
   const owner = useOwner();
   const tripsQuery = useTripsQuery();
@@ -128,15 +131,15 @@ export function OwnerHome() {
     notice ??
     (state === "error"
       ? !online
-        ? "Je bent offline. Maak opnieuw verbinding om je actuele reiswerkruimte te laden."
-        : "Je reizen konden niet worden geladen. Controleer je verbinding en probeer opnieuw."
+        ? m.owner_offline()
+        : m.owner_load_error()
       : state === "loading"
-        ? "Je reiswerkruimte laden…"
+        ? m.workspace_loading()
         : partial
-          ? "Een deel van je reisoverzicht kon niet worden geladen."
+          ? m.workspace_partial()
           : trips.length
             ? ""
-            : "Nog geen reizen. Begin met een reis die privé blijft totdat jij anders kiest.");
+            : m.owner_no_trips());
 
   const day = today();
   const visibleTrips = useMemo(
@@ -159,11 +162,11 @@ export function OwnerHome() {
     [trips],
   );
 
-  if (!session) return <EmptyState title="Jouw reizen">Meld aan om je private reiswerkruimte te openen.</EmptyState>;
+  if (!session) return <EmptyState title={m.your_trips()}>{m.sign_in_workspace()}</EmptyState>;
   if (state === "loading")
     return (
       <section className="travel-card" role="status">
-        <h2>Jouw reizen</h2>
+        <h2>{m.your_trips()}</h2>
         <p>{message}</p>
       </section>
     );
