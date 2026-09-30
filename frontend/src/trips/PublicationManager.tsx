@@ -1,5 +1,7 @@
+import type { ErrorFallback } from "../query/api";
+import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { errorNotice, useFeedback, FeedbackError } from "../query/feedback";
+import { errorNotice, useFeedback, FeedbackError, textNotice } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
@@ -46,26 +48,54 @@ type CatalogItem = {
 };
 
 const LINK_STATE_LABELS: Record<ShareLink["state"], string> = {
-  draft: "concept",
-  active: "actief",
-  revoked: "ingetrokken",
-  expired: "verlopen",
+  get draft() {
+    return m.assets_draft();
+  },
+  get active() {
+    return m.assets_active();
+  },
+  get revoked() {
+    return m.assets_revoked();
+  },
+  get expired() {
+    return m.assets_expired();
+  },
 };
 
 const GROUP_TITLES: Record<ShareScopeKind, string> = {
-  travel_update: "Reisupdates",
-  visit: "Bezoeken",
-  area: "Gebieden",
-  location: "Locaties",
-  route: "Routes",
-  stay: "Verblijven",
-  media_derivative: "Foto’s en video’s",
+  get travel_update() {
+    return m.owner_travel_updates();
+  },
+  get visit() {
+    return m.owner_visits();
+  },
+  get area() {
+    return m.owner_areas();
+  },
+  get location() {
+    return m.owner_locations();
+  },
+  get route() {
+    return m.owner_routes();
+  },
+  get stay() {
+    return m.owner_stays();
+  },
+  get media_derivative() {
+    return m.assets_photos_and_videos();
+  },
 };
 
 const DATE_PRECISIONS = {
-  day: "Volledige datums",
-  month: "Alleen maanden",
-  year: "Alleen het jaar",
+  get day() {
+    return m.owner_full_dates();
+  },
+  get month() {
+    return m.owner_months_only();
+  },
+  get year() {
+    return m.owner_year_only();
+  },
 } as const;
 
 const emptyScope = (): ShareScope => ({
@@ -105,7 +135,12 @@ function projectionSummary(document: ProjectionDocument): string {
     document.stays.length +
     document.media.length +
     document.routes.length;
-  return `${count} gekozen onderdelen · ${document.title ? "titel" : "geen titel"} · ${document.summary ? "samenvatting" : "geen samenvatting"} · ${document.dates ? "reisdatums" : "geen reisdatums"}`;
+  return m.assets_projection_summary({
+    count,
+    title: document.title ? m.assets_title() : m.assets_no_title(),
+    summary: document.summary ? m.assets_summary() : m.assets_no_summary(),
+    dates: document.dates ? m.assets_dates() : m.assets_no_travel_dates(),
+  });
 }
 
 function updateItem(scope: ShareScope, item: CatalogItem, included: boolean): ShareScope {
@@ -144,6 +179,7 @@ function ScopeGroup({
   tripId: string;
   onError: (error: unknown) => void;
 }) {
+  useLocale();
   const setVisibility = useSetVisibility(tripId);
   const [busy, setBusy] = useState(false);
   const chosen = (item: CatalogItem) => scope.items.some((value) => value.kind === item.kind && value.id === item.id);
@@ -194,9 +230,7 @@ function ScopeGroup({
     <Collapsible.Root className="scope-group" data-disclosure="">
       <Collapsible.Trigger>
         <strong>{GROUP_TITLES[kind]}</strong>
-        <span>
-          {count} van {items.length} gekozen
-        </span>
+        <span>{m.assets_of_selected_line({ p0: count, p1: items.length })}</span>
       </Collapsible.Trigger>
       <Collapsible.Panel keepMounted className="grid gap-2.5 px-3.25 pt-0 pb-3.25">
         <div className="button-row">
@@ -206,7 +240,7 @@ function ScopeGroup({
             disabled={busy || count === items.length}
             onClick={() => void chooseAll()}
           >
-            Alles kiezen
+            {m.assets_select_all()}
           </Button>
           <Button
             className="secondary compact"
@@ -214,7 +248,7 @@ function ScopeGroup({
             disabled={busy || count === 0}
             onClick={() => setScope(items.reduce((current, item) => updateItem(current, item, false), scope))}
           >
-            Niets kiezen
+            {m.assets_select_none()}
           </Button>
         </div>
         <div className="grid gap-2">
@@ -237,7 +271,7 @@ function ScopeGroup({
                     {item.visibility === "private" && (
                       <em className="text-xs font-medium not-italic text-travel-muted">
                         {" "}
-                        · nu privé; aanvinken kiest dit voor dit publiek
+                        {m.assets_currently_private_selecting_includes_this_for_this_audience()}
                       </em>
                     )}
                   </span>
@@ -253,14 +287,17 @@ function ScopeGroup({
 
 /** What every audience gets without being chosen: the same setting as on each record, kept out of the lists below. */
 function VisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
+  useLocale();
   const own = catalog.filter((item) => !item.followsUpdate);
   if (!own.length) return null;
   const everyone = own.filter((item) => item.visibility === "everyone").length;
   const privateCount = own.filter((item) => item.visibility === "private").length;
   return (
     <p className="help">
-      {everyone} voor iedereen verschijnt hier altijd; {privateCount} privé kun je hieronder aanvinken om het voor dit
-      publiek te kiezen, wat het automatisch op “Zelf kiezen in Delen” zet.
+      {m.assets_for_everyone_always_appears_here_you_can_select_private_items_bel_line({
+        p0: everyone,
+        p1: privateCount,
+      })}
     </p>
   );
 }
@@ -284,6 +321,7 @@ function ScopeEditor({
   onError: (error: unknown) => void;
   disabled?: boolean;
 }) {
+  useLocale();
   const groups = groupBy(catalog.filter((item) => item.visibility !== "everyone"));
   return (
     <FieldSet
@@ -291,7 +329,7 @@ function ScopeEditor({
       disabled={disabled}
     >
       <FieldLegend>{name}</FieldLegend>
-      <p>Kies wat bezoekers mogen zien. Alles wat je niet kiest blijft privé.</p>
+      <p>{m.assets_choose_what_visitors_can_see_everything_you_do_not_select_stays_private()}</p>
       <div className="flex flex-wrap gap-x-3.5 gap-y-2">
         <Field className="contents">
           <FieldLabel className="scope-choice">
@@ -299,7 +337,7 @@ function ScopeEditor({
               checked={scope.trip.title}
               onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, title: checked } })}
             />
-            Reistitel
+            {m.assets_trip_title()}
           </FieldLabel>
         </Field>
         <Field className="contents">
@@ -308,19 +346,19 @@ function ScopeEditor({
               checked={scope.trip.summary}
               onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, summary: checked } })}
             />
-            Samenvatting
+            {m.owner_summary()}
           </FieldLabel>
         </Field>
         <Field>
-          <FieldLabel>Hoe precies mogen de reisdatums zijn?</FieldLabel>
+          <FieldLabel>{m.assets_how_precise_can_the_travel_dates_be()}</FieldLabel>
           <SearchSelect
-            ariaLabel="Hoe precies mogen de reisdatums zijn?"
+            ariaLabel={m.assets_how_precise_can_the_travel_dates_be()}
             value={scope.trip.dates ?? ""}
             onChange={(value) =>
               setScope({ ...scope, trip: { ...scope.trip, dates: (value || null) as ShareScope["trip"]["dates"] } })
             }
           >
-            <option value="">Niet tonen</option>
+            <option value="">{m.assets_hide()}</option>
             {Object.entries(DATE_PRECISIONS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -328,10 +366,10 @@ function ScopeEditor({
             ))}
           </SearchSelect>
         </Field>
-        {scope.trip.dates === "day" && <small>Bezoekers zien begin- en einddag.</small>}
-        {scope.trip.dates === "month" && <small>Bezoekers zien alleen begin- en eindmaand.</small>}
-        {scope.trip.dates === "year" && <small>Bezoekers zien alleen het reisjaar.</small>}
-        {scope.trip.dates && !hasDates && <small>Deze reis heeft nog geen reisdatums.</small>}
+        {scope.trip.dates === "day" && <small>{m.assets_visitors_see_the_start_and_end_day()}</small>}
+        {scope.trip.dates === "month" && <small>{m.assets_visitors_see_only_the_start_and_end_month()}</small>}
+        {scope.trip.dates === "year" && <small>{m.assets_visitors_see_only_the_travel_year()}</small>}
+        {scope.trip.dates && !hasDates && <small>{m.assets_this_trip_has_no_travel_dates_yet()}</small>}
       </div>
       <VisibilityNote catalog={catalog} />
       <div className="grid gap-2">
@@ -348,56 +386,59 @@ function ScopeEditor({
         ))}
       </div>
       {!groups.size && (
-        <p className="help">
-          Er is nog niets om te kiezen. Onderdelen die al op “Iedereen” staan verschijnen hier altijd; maak eerst een
-          reisupdate, gebied of bezoek aan.
-        </p>
+        <p className="help">{m.assets_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}</p>
       )}
     </FieldSet>
   );
 }
 
 /** Every shareable record with the same control as in its own editor; both write one field. */
-const MAP_KINDS: Record<keyof OverviewAudience["without_map_point"], [string, string]> = {
-  visits: ["bezoek", "bezoeken"],
-  stays: ["verblijf", "verblijven"],
-  updates: ["reisupdate", "reisupdates"],
-};
+const MAP_KINDS = { visits: m.assets_count_visits, stays: m.assets_count_stays, updates: m.assets_count_updates };
 
-/** A warning in Dutch; the API's English ``message`` is for API and MCP clients. */
+/** Describe canonical warning codes; server prose is diagnostic only. */
 function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): string {
-  const name = warning.audience_id === null ? "De pagina voor iedereen" : `Link “${warning.audience}”`;
+  const name =
+    warning.audience_id === null ? m.assets_the_page_for_everyone() : m.assets_link({ p0: warning.audience ?? "" });
   switch (warning.code) {
     case "location_repeats_area":
       return m.owner_location_repeats_area({ name: warning.text ?? "" });
     case "visit_restates_route":
       return m.owner_visit_restates_route({ name: warning.text ?? "" });
     case "live_audience_receives_nothing":
-      return `${name} is actief maar krijgt geen enkel onderdeel. Zet onderdelen op “Iedereen”, of kies ze voor dit publiek.`;
+      return m.assets_is_active_but_receives_no_items_set_items_to_everyone_or_select_them_for({ p0: name });
     case "trip_dates_shared":
-      return `${name} toont de reisdatums (${DATE_PRECISIONS[warning.text as keyof typeof DATE_PRECISIONS]?.toLowerCase() ?? warning.text}).`;
+      return m.assets_shows_the_travel_dates({
+        p0: name,
+        p1: DATE_PRECISIONS[warning.text as keyof typeof DATE_PRECISIONS]?.toLowerCase() ?? warning.text ?? "",
+      });
     case "planning_marker_visible":
-      return `${name} toont “${warning.text}”, met een planningswoord erin. Geef het een andere naam; de status hoort bij het onderdeel zelf.`;
+      return m.assets_shows_with_a_planning_word_in_its_name_rename_it_the_status_belongs_to_t({
+        p0: name,
+        p1: warning.text ?? "",
+      });
     case "map_point_withheld": {
       const audience = audiences.find((item) => item.id === warning.audience_id);
-      if (!audience) return warning.message;
-      const counts = (Object.entries(MAP_KINDS) as [keyof typeof MAP_KINDS, [string, string]][])
-        .filter(([kind]) => audience.without_map_point[kind] > 0)
-        .map(
-          ([kind, [one, many]]) =>
-            `${audience.without_map_point[kind]} ${audience.without_map_point[kind] === 1 ? one : many}`,
-        );
-      return `${name} krijgt ${counts.join(", ")} zonder kaartpunt, omdat hun gebied niet gedeeld is of geen punt heeft.`;
+      if (!audience) return m.assets_unknown_warning();
+      const counts = (Object.keys(MAP_KINDS) as (keyof typeof MAP_KINDS)[])
+        .filter((kind) => audience.without_map_point[kind] > 0)
+        .map((kind) => MAP_KINDS[kind]({ count: audience.without_map_point[kind] }));
+      return m.assets_receives_without_a_map_point_because_their_area_is_not_shared_or_has_no_({
+        p0: name,
+        p1: counts.join(", "),
+      });
     }
     case "undated_visit_duplicates_dated":
-      return `Het bezoek “${warning.text}” heeft geen datum, maar zijn gebied heeft al een bezoek met datum. Geef het een datum, voeg het samen of verwijder het.`;
+      return m.assets_visit_has_no_date_but_its_area_already_has_a_dated_visit_give_it_a_date_({
+        p0: warning.text ?? "",
+      });
     default:
-      return warning.message;
+      return m.assets_unknown_warning();
   }
 }
 
 /** What to check before sharing, from the same projection visitors receive. */
 function SharingReview({ overview }: { overview: TripOverview | undefined }) {
+  useLocale();
   if (!overview) return null;
   const warnings = [...overview.warnings].sort((a, b) =>
     a.severity === b.severity ? 0 : a.severity === "warning" ? -1 : 1,
@@ -406,19 +447,31 @@ function SharingReview({ overview }: { overview: TripOverview | undefined }) {
     <div className="manager-subsection">
       <div className="capture-heading">
         <div>
-          <h3>Controle voor het delen</h3>
-          <p>Wat elk actief of ontworpen publiek nu krijgt, en wat je best nakijkt.</p>
+          <h3>{m.assets_sharing_check()}</h3>
+          <p>{m.assets_what_each_active_or_draft_audience_currently_receives_and_what_you_shoul()}</p>
         </div>
       </div>
-      <ul className="m-0 grid gap-1.5 pl-5 leading-normal text-travel-positive" aria-label="Controle voor het delen">
+      <ul className="m-0 grid gap-1.5 pl-5 leading-normal text-travel-positive" aria-label={m.assets_sharing_check()}>
         {overview.audiences.map((audience) => {
           const delivered = audience.delivered;
           return (
             <li key={audience.id ?? "public"}>
-              <strong>{audience.kind === "public" ? "Voor iedereen" : audience.label}</strong> ·{" "}
-              {audience.live ? "actief" : audience.kind === "public" ? "niet gedeeld" : "concept"} · {delivered.visits}{" "}
-              bezoeken, {delivered.stays} verblijven, {delivered.routes} routes, {delivered.updates} reisupdates,{" "}
-              {delivered.places} plaatsen, {delivered.media} media
+              <strong>{audience.kind === "public" ? m.assets_for_everyone() : audience.label}</strong> ·{" "}
+              {m.assets_audience_summary({
+                state: audience.live
+                  ? m.assets_active()
+                  : audience.kind === "public"
+                    ? m.assets_not_shared()
+                    : m.assets_draft(),
+                counts: [
+                  m.assets_count_visits({ count: delivered.visits }),
+                  m.assets_count_stays({ count: delivered.stays }),
+                  m.assets_count_routes({ count: delivered.routes }),
+                  m.assets_count_updates({ count: delivered.updates }),
+                  m.assets_count_places({ count: delivered.places }),
+                  m.assets_count_media({ count: delivered.media }),
+                ].join(", "),
+              })}
             </li>
           );
         })}
@@ -430,19 +483,18 @@ function SharingReview({ overview }: { overview: TripOverview | undefined }) {
             {reviewText(warning, overview.audiences)}
           </li>
         ))}
-        {warnings.length === 0 && <li>Niets om na te kijken.</li>}
+        {warnings.length === 0 && <li>{m.assets_nothing_to_review()}</li>}
       </ul>
     </div>
   );
 }
 
 function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: CatalogItem[] }) {
+  useLocale();
   const groups = groupBy(catalog);
   if (!groups.size)
     return (
-      <p className="help">
-        Er zijn nog geen onderdelen die je kunt delen. Maak bijvoorbeeld een reisupdate, gebied of bezoek.
-      </p>
+      <p className="help">{m.assets_there_are_no_items_to_share_yet_create_a_travel_update_area_or_visit_for()}</p>
     );
   return (
     <div className="grid gap-2">
@@ -451,8 +503,10 @@ function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: Cata
           <Collapsible.Trigger>
             <strong>{GROUP_TITLES[kind]}</strong>
             <span>
-              {items.filter((item) => item.visibility !== "private" || item.followsUpdate).length} van {items.length}{" "}
-              staat op “Iedereen” of “Zelf kiezen”
+              {m.assets_of_is_set_to_everyone_or_choose_in_sharing_line({
+                p0: items.filter((item) => item.visibility !== "private" || item.followsUpdate).length,
+                p1: items.length,
+              })}
             </span>
           </Collapsible.Trigger>
           <Collapsible.Panel keepMounted className="grid gap-2 px-3.25 pt-0 pb-3.25">
@@ -485,7 +539,7 @@ function combineDerivatives<T>(results: { data: T | undefined; error: Error | nu
 
 type PublicValues = { scope: ShareScope };
 type LinkValues = { label: string; scope: ShareScope };
-type Preview = { name: string; audience: "public" | "share"; linkId?: string; document: Projection };
+type Preview = { name: string | (() => string); audience: "public" | "share"; linkId?: string; document: Projection };
 type LinkAction = {
   link: ShareLink;
   action: "activate" | "rotate";
@@ -495,6 +549,7 @@ type LinkAction = {
 type LinkSeries = { id: string; current: ShareLink; history: ShareLink[] };
 
 export function PublicationManager({ trip }: { trip: Trip }) {
+  const locale = useLocale();
   const confirmation = useConfirmation();
   const owner = useOwner();
   const statusQuery = useTripResource(trip.id, "public-projection");
@@ -544,19 +599,19 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   ];
 
   const savePublic = useOwnerMutation<ShareScope, PublicProjectionStatus>({
-    fallback: "De publieke scope kon niet worden opgeslagen.",
+    fallback: m.assets_the_public_scope_could_not_be_saved,
     request: (scope) => ({ path, method: "PUT", body: scope }),
     invalidate: refreshStatus,
   });
   const previewPublicScope = useOwnerMutation<void, ProjectionDocument>({
-    fallback: "De publieke preview kon niet worden geladen.",
+    fallback: m.assets_the_public_preview_could_not_be_loaded,
     request: () => ({ path: `${path}/preview`, method: "POST" }),
     invalidate: () => [],
     // A preview is shown once and not kept.
     gcTime: 0,
   });
   const togglePublic = useOwnerMutation<{ publish: boolean; reason: string | null }, PublicProjectionStatus>({
-    fallback: "De publicatiestatus kon niet worden gewijzigd.",
+    fallback: m.assets_the_publication_status_could_not_be_changed,
     request: ({ publish, reason: why }) => ({
       path: `${path}/${publish ? "publish" : "unpublish"}`,
       method: "POST",
@@ -565,7 +620,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     invalidate: (subject) => [...refreshStatus(subject), ownerKeys.trips(subject)],
   });
   const saveLink = useOwnerMutation<{ id: string | null; label: string; scope: ShareScope }, ShareLink>({
-    fallback: "De deellink kon niet worden opgeslagen.",
+    fallback: m.assets_the_share_link_could_not_be_saved,
     request: ({ id, label, scope }) => ({
       path: id ? `${linksPath}/${id}` : linksPath,
       method: id ? "PATCH" : "POST",
@@ -574,7 +629,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     invalidate: refreshLinks,
   });
   const previewLinkScope = useOwnerMutation<ShareLink, ProjectionDocument>({
-    fallback: "De linkpreview kon niet worden geladen.",
+    fallback: m.assets_the_link_preview_could_not_be_loaded,
     request: (link) => ({ path: `${linksPath}/${link.id}/preview`, method: "POST" }),
     invalidate: () => [],
     gcTime: 0,
@@ -582,7 +637,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   // The owner-managed URL remains in the owner-only in-memory cache; the PWA
   // never persists it locally.
   const activate = useOwnerMutation<LinkAction, ShareLink>({
-    fallback: "De veilige link kon niet worden gemaakt.",
+    fallback: m.assets_the_secure_link_could_not_be_created,
     request: ({ link, action, expiresInDays: days, reason: why }) => ({
       path: `${linksPath}/${link.id}/${action}`,
       method: "POST",
@@ -592,7 +647,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     gcTime: 0,
   });
   const revoke = useOwnerMutation<{ link: ShareLink; reason: string | null }, ShareLink>({
-    fallback: "De link kon niet worden ingetrokken.",
+    fallback: m.assets_the_link_could_not_be_revoked,
     request: ({ link, reason: why }) => ({
       path: `${linksPath}/${link.id}/revoke`,
       method: "POST",
@@ -606,16 +661,16 @@ export function PublicationManager({ trip }: { trip: Trip }) {
 
   const publicRecord = useRecordForm<PublicValues, PublicProjectionStatus>({
     defaultValues: { scope: emptyScope() },
-    fallback: "De publieke scope kon niet worden opgeslagen.",
+    fallback: m.assets_the_public_scope_could_not_be_saved,
     submit: (values) => savePublic.mutateAsync(values.scope),
     onSuccess: (saved) => {
       publicRecord.load({ scope: cloneScope(saved.scope) });
-      setNotice("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
+      setNotice(textNotice(() => m.assets_selection_saved_unselected_content_stays_private()));
     },
   });
   const linkRecord = useRecordForm<LinkValues, ShareLink>({
     defaultValues: { label: "", scope: emptyScope() },
-    fallback: "De deellink kon niet worden opgeslagen.",
+    fallback: m.assets_the_share_link_could_not_be_saved,
     serverFields: { label: "label" },
     // Saving never activates: a new link is created as a draft the owner can preview, then activate explicitly.
     submit: (values) => saveLink.mutateAsync({ id: editingLinkId, label: values.label.trim(), scope: values.scope }),
@@ -623,9 +678,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       const wasNew = editingLinkId === null;
       loadLink(saved);
       setNotice(
-        wasNew
-          ? "Concept opgeslagen. Bekijk het voorbeeld en activeer de link zodra je tevreden bent."
-          : "Deellink en scope opgeslagen.",
+        textNotice(() =>
+          wasNew
+            ? m.assets_draft_saved_view_the_preview_and_activate_the_link_when_you_are_satisfie()
+            : m.assets_share_link_and_scope_saved(),
+        ),
       );
     },
   });
@@ -660,9 +717,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     const open = () => (next ? loadLink(next) : loadNewLink());
     if (linkRecord.dirty) {
       confirmation.ask({
-        title: "Niet-opgeslagen linkwijzigingen verwerpen?",
-        description: "De naam en scope die je hebt aangepast worden niet opgeslagen.",
-        confirmLabel: "Wijzigingen verwerpen",
+        title: () => m.assets_discard_unsaved_link_changes(),
+        description: () => m.assets_the_name_and_scope_you_edited_will_not_be_saved(),
+        confirmLabel: () => m.owner_discard_changes_2(),
         onConfirm: open,
       });
       return;
@@ -676,14 +733,14 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     linkRecord.load({ label: "", scope: emptyScope() });
   }
 
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
 
   async function previewPublic() {
     const values = publicRecord.form.state.values;
     const saved = await savePublic.mutateAsync(values.scope);
     publicRecord.load({ scope: cloneScope(saved.scope) });
     const document = await previewPublicScope.mutateAsync();
-    setPreview({ name: "Publieke preview", audience: "public", document: document as Projection });
+    setPreview({ name: m.assets_public_preview, audience: "public", document: document as Projection });
   }
 
   function toggle() {
@@ -691,8 +748,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     const publish = publicStatus.surface_state !== "published";
     togglePublic.mutateAsync({ publish, reason: reason.trim() || null }).then(() => {
       setReason("");
-      setNotice(publish ? "Publieke pagina gepubliceerd." : "Publieke pagina ingetrokken.");
-    }, fail("De publicatiestatus kon niet worden gewijzigd."));
+      setNotice(textNotice(() => (publish ? m.assets_public_page_published() : m.assets_public_page_withdrawn())));
+    }, fail(m.assets_the_publication_status_could_not_be_changed));
   }
 
   async function previewLink() {
@@ -705,7 +762,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     const document = await previewLinkScope.mutateAsync(target);
     setLinkEditor(null);
     setPreview({
-      name: `Preview van ${target.label}`,
+      name: () => m.assets_preview_of({ p0: target.label }),
       audience: "share",
       linkId: target.id,
       document: document as Projection,
@@ -720,13 +777,13 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         activate.reset();
         loadLink(result);
         if (!result.token) {
-          setNotice("De link kon niet worden aangemaakt.");
+          setNotice(textNotice(() => m.assets_the_link_could_not_be_created()));
           return;
         }
         setRevealedLink({ label: result.label, url: shareUrl(result.token) });
         setLinkEditor(null);
-        setNotice("De link is actief en kan later opnieuw worden gekopieerd.");
-      }, fail("De veilige link kon niet worden gemaakt."));
+        setNotice(textNotice(() => m.assets_the_link_is_active_and_can_be_copied_again_later()));
+      }, fail(m.assets_the_secure_link_could_not_be_created));
   }
 
   function revealCurrentLink() {
@@ -738,27 +795,27 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   function revokeLink() {
     if (!selectedLink) return;
     confirmation.ask({
-      title: "Deellink “" + selectedLink.label + "” intrekken?",
-      description: "Wie de huidige veilige link heeft, kan de verborgen pagina daarna niet meer openen.",
-      confirmLabel: "Link intrekken",
+      title: () => m.assets_revoke_named_link({ name: selectedLink.label }),
+      description: () => m.assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      confirmLabel: () => m.assets_revoke_link(),
       onConfirm: () =>
         revoke.mutateAsync({ link: selectedLink, reason: reason.trim() || null }).then((saved) => {
           loadLink(saved);
-          setNotice("Deellink ingetrokken.");
-        }, fail("De link kon niet worden ingetrokken.")),
+          setNotice(textNotice(() => m.assets_share_link_revoked()));
+        }, fail(m.assets_the_link_could_not_be_revoked)),
     });
   }
 
   async function copyLink() {
     if (!revealedLink) return;
     await navigator.clipboard.writeText(revealedLink.url);
-    setNotice("Link gekopieerd.");
+    setNotice(textNotice(() => m.assets_link_copied()));
   }
 
   async function copyPublicLink() {
     if (!publicStatus?.slug) return;
     await navigator.clipboard.writeText(publicUrl(publicStatus.slug));
-    setNotice("Publieke link gekopieerd.");
+    setNotice(textNotice(() => m.assets_public_link_copied()));
   }
 
   const catalog = useMemo<CatalogItem[]>(() => {
@@ -770,21 +827,21 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         kind: "travel_update" as const,
         id: item.id,
         label: item.title,
-        detail: "Reisupdate",
+        detail: m.owner_travel_update(),
         visibility: item.visibility,
       })),
       ...(visitsQuery.data ?? []).map((item) => ({
         kind: "visit" as const,
         id: item.id,
         label: visitTitle(item),
-        detail: "Bezoek: de plek, de tekst voor bezoekers en de datum; de tijd alleen als je die deelt",
+        detail: m.assets_visit_the_place_visitor_text_and_date_the_time_only_if_you_share_it(),
         visibility: item.visibility,
       })),
       ...(placesQuery.data ?? []).map((item) => ({
         kind: "area" as const,
         id: item.id,
         label: item.label,
-        detail: "Gebied",
+        detail: m.owner_area(),
         visibility: item.visibility,
       })),
       // Only locations the owner has named or shared: most locations are hotels and endpoints that stay private.
@@ -793,23 +850,22 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         .map((item) => ({
           kind: "location" as const,
           id: item.id,
-          label: item.label ?? "Locatie zonder publieke naam",
-          detail: "Locatie: alleen naam, gebied en ligging",
+          label: item.label ?? m.assets_location_without_a_public_name(),
+          detail: m.assets_location_name_area_and_position_only(),
           visibility: item.visibility,
         })),
       ...(routesQuery.data ?? []).map((item) => ({
         kind: "route" as const,
         id: item.id,
         label: `${ROUTE_MODE_LABELS[item.mode]}: ${routeTitle(item)}`,
-        detail:
-          "Bezoekers zien de gebieden, het vervoermiddel en de lijn, nooit boekingscode, reisklasse, notities of documenten",
+        detail: m.assets_visitors_see_the_areas_transport_mode_and_line_never_the_booking_code_tr(),
         visibility: item.visibility,
       })),
       ...(staysQuery.data ?? []).map((item) => ({
         kind: "stay" as const,
         id: item.id,
         label: stayLabel(item),
-        detail: `Bezoekers zien alleen ${item.area?.label ?? "(nog geen gebied gekozen)"} en de nachten`,
+        detail: m.assets_visitors_see_only_and_the_nights({ p0: item.area?.label ?? m.assets_no_area_selected_yet() }),
         visibility: item.visibility,
       })),
       ...media.flatMap((asset, index) =>
@@ -818,14 +874,15 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           .map((item) => ({
             kind: "media_derivative" as const,
             id: item.id,
-            label: asset.original_filename ?? "Goedgekeurd medium",
-            detail: asset.media_kind === "video" ? "Goedgekeurde video" : "Goedgekeurde foto",
+            label: asset.original_filename ?? m.assets_approved_media_item(),
+            detail: asset.media_kind === "video" ? m.assets_approved_video() : m.assets_approved_photo(),
             visibility: item.visibility,
             followsUpdate: updateTitles.get(item.travel_update_id ?? ""),
           })),
       ),
     ];
   }, [
+    locale,
     trip,
     placesQuery.data,
     locationsQuery.data,
@@ -843,43 +900,37 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const message =
     notice ??
     (readError
-      ? errorMessage(readError, "Je publicaties konden niet worden geladen.")
+      ? errorMessage(readError, m.assets_your_publications_could_not_be_loaded)
       : statusQuery.isPending
-        ? "Laad je publicaties…"
-        : "Kies per onderdeel wie het ziet. Nieuwe onderdelen zijn privé.");
+        ? m.assets_loading_your_publications()
+        : m.assets_choose_who_sees_each_item_new_items_are_private());
   const isPublished = publicStatus?.surface_state === "published";
 
   return (
     <section className="travel-card manager gap-4.5" aria-labelledby="publication-manager-title">
       <div className="capture-heading">
         <div>
-          <h3 id="publication-manager-title">Delen</h3>
-          <p>
-            Elk onderdeel heeft dezelfde keuze: privé, iedereen, of zelf kiezen per publiek. Hier stel je dat in voor
-            alles tegelijk, of per publiek voor wat op “Zelf kiezen” staat.
-          </p>
+          <h3 id="publication-manager-title">{m.owner_sharing()}</h3>
+          <p>{m.assets_each_item_has_the_same_choice_private_everyone_or_select_per_audience_he()}</p>
         </div>
       </div>
       <p className="help" role="status">
         {message}
       </p>
       {revealedLink && (
-        <RecordDialog open title="Deellink" onDismiss={() => setRevealedLink(null)}>
+        <RecordDialog open title={m.assets_share_link_2()} onDismiss={() => setRevealedLink(null)}>
           <section
             className="grid gap-2.5 rounded-xl border-2 border-travel-warning bg-travel-warning-surface p-4 text-travel-warning-dark [&_p]:m-0 [&_p]:text-travel-warning-dark! [&_code]:block [&_code]:wrap-anywhere [&_code]:rounded-lg [&_code]:bg-travel-surface [&_code]:p-2.5 [&_code]:text-sm [&_code]:text-travel-ink [&_button]:w-fit"
             aria-live="assertive"
           >
             <strong>{revealedLink.label}</strong>
-            <p>
-              Wie deze link heeft, kan de actieve verborgen pagina openen. Je kunt hem later opnieuw kopiëren zolang de
-              link actief blijft.
-            </p>
+            <p>{m.assets_anyone_with_this_link_can_open_the_active_hidden_page_you_can_copy_it_ag()}</p>
             <code>{revealedLink.url}</code>
-            <Button type="button" onClick={() => void copyLink().catch(fail("Kopiëren lukte niet."))}>
-              Link kopiëren
+            <Button type="button" onClick={() => void copyLink().catch(fail(m.assets_copying_failed))}>
+              {m.assets_copy_link()}
             </Button>
             <Button className="secondary compact" type="button" onClick={() => setRevealedLink(null)}>
-              Sluiten
+              {m.owner_close_2()}
             </Button>
           </section>
         </RecordDialog>
@@ -888,11 +939,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       <div className="manager-subsection">
         <div className="capture-heading">
           <div>
-            <h3>Zichtbaarheid per onderdeel</h3>
-            <p>
-              Dezelfde keuze als in de editor van elk onderdeel. Dit toont een instelling, niet wie het al daadwerkelijk
-              ontvangt — dat zie je bij “Controle voor het delen” hierboven.
-            </p>
+            <h3>{m.assets_visibility_per_item()}</h3>
+            <p>{m.assets_the_same_choice_as_in_each_items_editor_this_shows_a_setting_not_who_act()}</p>
           </div>
         </div>
         <VisibilityOverview tripId={trip.id} catalog={catalog} />
@@ -900,11 +948,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       <div className="manager-subsection">
         <div className="capture-heading">
           <div>
-            <h3>Voor iedereen</h3>
+            <h3>{m.assets_for_everyone()}</h3>
             <p>
               {isPublished
-                ? "Deze pagina is voor iedereen bereikbaar."
-                : "Deze pagina is nog niet bereikbaar voor bezoekers."}
+                ? m.assets_this_page_is_accessible_to_everyone()
+                : m.assets_this_page_is_not_accessible_to_visitors_yet()}
             </p>
           </div>
         </div>
@@ -917,8 +965,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         )}
         <RecordForm
           record={publicRecord}
-          submitLabel="Keuze bewaren"
-          pendingLabel="Bewaren…"
+          submitLabel={m.assets_save_selection()}
+          pendingLabel={m.assets_saving()}
           actions={
             <>
               {isPublished && publicStatus?.slug && (
@@ -928,24 +976,24 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open publieke pagina
+                  {m.assets_open_public_page()}
                 </a>
               )}
               {isPublished && publicStatus?.slug && (
                 <Button
                   className="secondary"
                   type="button"
-                  onClick={() => void copyPublicLink().catch(fail("Kopiëren lukte niet."))}
+                  onClick={() => void copyPublicLink().catch(fail(m.assets_copying_failed))}
                 >
-                  Kopieer link
+                  {m.assets_copy_link_2()}
                 </Button>
               )}
               <Button
                 className="secondary"
                 type="button"
-                onClick={() => void previewPublic().catch(fail("Voorbeeld laden lukte niet."))}
+                onClick={() => void previewPublic().catch(fail(m.assets_the_preview_could_not_be_loaded_2))}
               >
-                Bekijk als bezoeker
+                {m.assets_view_as_visitor()}
               </Button>
               <Button
                 className={isPublished ? "danger" : ""}
@@ -953,7 +1001,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 disabled={!publicStatus || togglePublic.isPending}
                 onClick={toggle}
               >
-                {isPublished ? "Niet meer met iedereen delen" : "Met iedereen delen"}
+                {isPublished ? m.assets_stop_sharing_with_everyone() : m.assets_share_with_everyone()}
               </Button>
             </>
           }
@@ -961,7 +1009,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           <publicRecord.form.Field name="scope">
             {(field) => (
               <ScopeEditor
-                name="Wat iedereen mag zien"
+                name={m.assets_what_everyone_can_see()}
                 scope={field.state.value}
                 setScope={(scope) => {
                   field.handleChange(scope);
@@ -970,7 +1018,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 catalog={catalog}
                 hasDates={Boolean(trip.starts_on)}
                 tripId={trip.id}
-                onError={fail("De zichtbaarheid kon niet worden bewaard.")}
+                onError={fail(m.owner_visibility_save_failed)}
               />
             )}
           </publicRecord.form.Field>
@@ -979,11 +1027,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       <div className="manager-subsection">
         <div className="capture-heading">
           <div>
-            <h3>Verborgen deellinks</h3>
-            <p>Elke link heeft een eigen live scope en kan later worden ingetrokken of geroteerd.</p>
+            <h3>{m.assets_hidden_share_links()}</h3>
+            <p>{m.assets_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated()}</p>
           </div>
           <Button className="secondary compact" type="button" onClick={() => switchLinkEditor(null)}>
-            Nieuwe link
+            {m.assets_new_link()}
           </Button>
         </div>
         {linkSeries.length > 0 && (
@@ -998,16 +1046,22 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 >
                   <strong>{current.label}</strong>
                   <span>
-                    {LINK_STATE_LABELS[current.state]} · verloopt {dateLabel(current.expires_at)}
-                    {history.length
-                      ? ` · ${history.length} eerdere ${history.length === 1 ? "versie" : "versies"}`
-                      : ""}
+                    {m.assets_expires_line({
+                      p0: LINK_STATE_LABELS[current.state],
+                      p1: dateLabel(current.expires_at),
+                      p2: history.length
+                        ? m.assets_previous({ p0: history.length, p1: history.length === 1 ? "versie" : "versies" })
+                        : "",
+                    })}
                   </span>
                 </Button>
                 {history.length > 0 && (
                   <Collapsible.Root className="border-l-2 border-travel-divider pl-3">
                     <Collapsible.Trigger className="bg-transparent p-0 text-left text-sm font-bold text-travel-muted">
-                      {history.length} eerdere {history.length === 1 ? "versie" : "versies"} bekijken
+                      {m.assets_previous_view_line({
+                        p0: history.length,
+                        p1: history.length === 1 ? "versie" : "versies",
+                      })}
                     </Collapsible.Trigger>
                     <Collapsible.Panel keepMounted className="mt-2 grid gap-2">
                       {history.map((link) => (
@@ -1032,12 +1086,12 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           </div>
         )}
         {links.length === 0 && !linksQuery.isPending && (
-          <p>Nog geen deellinks. Kies “Nieuwe link” om een verborgen link met een eigen scope te maken.</p>
+          <p>{m.assets_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_()}</p>
         )}
       </div>
       <RecordDialog
         open={linkEditor !== null}
-        title={editingLinkId ? "Deellink bewerken" : "Deellink toevoegen"}
+        title={editingLinkId ? m.assets_edit_share_link() : m.assets_add_share_link()}
         dirty={linkRecord.dirty}
         onDismiss={closeLinkEditor}
       >
@@ -1045,17 +1099,17 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           <div className="publication-panel">
             <RecordForm
               record={linkRecord}
-              submitLabel={selectedLink ? "Link opslaan" : "Concept opslaan"}
-              pendingLabel="Opslaan…"
+              submitLabel={selectedLink ? m.assets_save_link() : m.assets_save_draft()}
+              pendingLabel={m.owner_saving()}
               disabled={lockedLink}
               actions={
                 <Button
                   className="secondary"
                   type="button"
                   disabled={lockedLink || !linkRecord.values.label.trim()}
-                  onClick={() => void previewLink().catch(fail("Voorbeeld laden lukte niet."))}
+                  onClick={() => void previewLink().catch(fail(m.assets_the_preview_could_not_be_loaded_2))}
                 >
-                  Voorbeeld bekijken
+                  {m.assets_view_preview()}
                 </Button>
               }
             >
@@ -1063,25 +1117,25 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 name="label"
                 listeners={{ onChange: () => setPreview(null) }}
                 validators={{
-                  onChange: requiredText("Geef de link een naam."),
-                  onSubmit: requiredText("Geef de link een naam."),
+                  onChange: requiredText(m.owner_give_the_link_a_name),
+                  onSubmit: requiredText(m.owner_give_the_link_a_name),
                 }}
               >
                 {(field) => (
                   <TextField
                     field={field}
-                    label="Naam van de link"
+                    label={m.assets_link_name()}
                     required
                     maxLength={120}
                     disabled={lockedLink}
-                    placeholder="Bijvoorbeeld: familie"
+                    placeholder={m.assets_for_example_family()}
                   />
                 )}
               </linkRecord.form.Field>
               <linkRecord.form.Field name="scope">
                 {(field) => (
                   <ScopeEditor
-                    name="Scope voor verborgen link"
+                    name={m.assets_scope_for_hidden_link()}
                     scope={field.state.value}
                     setScope={(scope) => {
                       field.handleChange(scope);
@@ -1090,7 +1144,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                     catalog={catalog}
                     hasDates={Boolean(trip.starts_on)}
                     tripId={trip.id}
-                    onError={fail("De zichtbaarheid kon niet worden bewaard.")}
+                    onError={fail(m.owner_visibility_save_failed)}
                     disabled={lockedLink}
                   />
                 )}
@@ -1100,7 +1154,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
               <div className="field-row">
                 <Field className="contents">
                   <FieldLabel>
-                    Geldig gedurende (dagen)
+                    {m.assets_valid_for_days()}
                     <Input
                       type="number"
                       min="1"
@@ -1117,28 +1171,28 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                       checked={expiresInDays === null}
                       onCheckedChange={(checked) => setExpiresInDays(checked ? null : 30)}
                     />
-                    Geen vervaldatum
+                    {m.assets_no_expiry_date()}
                   </FieldLabel>
                 </Field>
                 <Field className="contents">
                   <FieldLabel>
-                    Reden <span className="font-medium text-travel-optional">(optioneel)</span>
+                    {m.assets_reason()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                     <Input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
                   </FieldLabel>
                 </Field>
               </div>
               {expiresInDays === null && (
-                <p className="help">Deze link blijft geldig totdat je hem intrekt of roteert.</p>
+                <p className="help">{m.assets_this_link_remains_valid_until_you_revoke_or_rotate_it()}</p>
               )}
               {selectedLink?.state === "draft" && (
                 <p className="help">
-                  Dit concept is nog niet actief. Bekijk het voorbeeld en klik op “Activeren” zodra je tevreden bent.
+                  {m.assets_this_draft_is_not_active_yet_view_the_preview_and_click_activate_when_yo()}
                 </p>
               )}
               <div className="button-row">
                 {selectedLink?.state === "draft" && (
                   <Button type="button" onClick={() => activateLink("activate")}>
-                    Activeren
+                    {m.assets_activate()}
                   </Button>
                 )}
                 {selectedLink?.state === "active" && (
@@ -1149,21 +1203,20 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                       disabled={!selectedLink.token}
                       onClick={revealCurrentLink}
                     >
-                      Link tonen
+                      {m.assets_show_link()}
                     </Button>
                     <Button className="danger" type="button" onClick={revokeLink}>
-                      Link intrekken
+                      {m.assets_revoke_link()}
                     </Button>
                     <Button type="button" onClick={() => activateLink("rotate")}>
-                      Roteren en nieuwe link tonen
+                      {m.assets_rotate_and_show_new_link()}
                     </Button>
                   </>
                 )}
               </div>
               {selectedLink?.state === "active" && !selectedLink.token && (
                 <p className="help">
-                  Deze oudere link is nog actief, maar de URL is niet bewaard. Roteer hem één keer om hem voortaan te
-                  kunnen kopiëren.
+                  {m.assets_this_older_link_is_still_active_but_its_url_was_not_saved_rotate_it_once()}
                 </p>
               )}
             </div>
@@ -1171,26 +1224,30 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         )}
       </RecordDialog>
       {preview && owner && (
-        <RecordDialog open title={preview.name} className="max-w-280" onDismiss={() => setPreview(null)}>
+        <RecordDialog
+          open
+          title={typeof preview.name === "function" ? preview.name() : preview.name}
+          className="max-w-280"
+          onDismiss={() => setPreview(null)}
+        >
           <section
             className="publication-panel [&_h3]:m-0 [&_p]:m-0 [&_pre]:max-h-80 [&_pre]:overflow-auto [&_pre]:rounded-lg [&_pre]:bg-travel-ink [&_pre]:p-3 [&_pre]:text-xs [&_pre]:text-travel-tint"
             aria-live="polite"
           >
             <p>
               {preview.audience === "public"
-                ? "Doelgroep: iedereen"
-                : "Doelgroep: alleen wie de actieve verborgen link heeft"}{" "}
+                ? m.assets_audience_everyone()
+                : m.assets_audience_only_people_with_the_active_hidden_link()}{" "}
               ·{" "}
               {preview.audience === "public"
                 ? isPublished
-                  ? "nu gedeeld"
-                  : "nog niet gedeeld"
-                : (links.find((link) => link.id === preview.linkId)?.state ?? "concept")}
+                  ? m.assets_currently_shared()
+                  : m.assets_not_shared_yet()
+                : LINK_STATE_LABELS[links.find((link) => link.id === preview.linkId)?.state ?? "draft"]}
             </p>
             <p>{projectionSummary(preview.document)}</p>
             <p className="help">
-              Alleen geselecteerde velden verschijnen hieronder. Privégegevens, boekingen en andere niet-geselecteerde
-              velden blijven verborgen. Dit voorbeeld deelt niets en maakt geen toegangscode aan.
+              {m.assets_only_selected_fields_appear_below_private_data_bookings_and_other_unsele()}
             </p>
             <RenderedPreview
               projection={preview.document}
@@ -1201,7 +1258,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             />
             <Collapsible.Root>
               <Collapsible.Trigger className="bg-transparent p-0 text-left font-bold text-travel-forest">
-                Geleverde velden inspecteren
+                {m.assets_inspect_delivered_fields()}
               </Collapsible.Trigger>
               <Collapsible.Panel keepMounted>
                 <pre>{JSON.stringify(preview.document, null, 2)}</pre>

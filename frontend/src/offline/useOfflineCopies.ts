@@ -1,3 +1,5 @@
+import { FeedbackError } from "../query/feedback";
+import { m } from "../paraglide/messages.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { decodeSubject } from "../auth";
@@ -107,7 +109,7 @@ export function useOfflineCopies(): UseOfflineCopies {
     if (!subject || !session || !online) return;
     // Only the status matters: a refused or missing record removes its copy, an unreachable server leaves it.
     const probe = (url: string) =>
-      ownerRequest(session, url, "De offline kopie kon niet worden gecontroleerd.").then(
+      ownerRequest(session, url, m.assets_the_offline_copy_could_not_be_checked).then(
         () => new Response(null, { status: 200 }),
         (error: unknown) => {
           if (!(error instanceof ApiError)) return new Response(null, { status: 200 });
@@ -135,7 +137,7 @@ export function useOfflineCopies(): UseOfflineCopies {
     isPinned: (resourceKind, resourceId) =>
       visibleCopies.some((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId),
     async pin(input) {
-      if (!subject) throw new Error("Meld aan om iets offline te bewaren.");
+      if (!subject) throw new FeedbackError(() => m.assets_sign_in_to_save_something_offline());
       await pinOfflineCopy({ ...input, subject });
       setPersisted(await requestPersistentStorage());
       await refresh();
@@ -156,7 +158,7 @@ export function useOfflineCopies(): UseOfflineCopies {
       await refresh();
     },
     async open(id) {
-      if (!subject) throw new Error("Meld aan om een offline kopie te openen.");
+      if (!subject) throw new FeedbackError(() => m.assets_sign_in_to_open_an_offline_copy());
       return openOfflineCopy(subject, id);
     },
   };

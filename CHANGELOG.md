@@ -6,6 +6,14 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Translated private documents, library/emergency information, media imports and
+  derivatives, publication controls, preview chrome, packing and offline copies
+  into Dutch and English. Language switches preserve selected uploads, dirty
+  sharing scopes, pending toggles and confirmations. New packing defaults use
+  the creation locale; saved names and integer grams remain unchanged. Offline
+  snapshots retain canonical codes, render legacy emergency/map labels safely,
+  and hide open copies on expiry or account changes (#287).
+
 - Translated owner trip workspaces, record managers, shared dialogs, Markdown
   editing and map controls into Dutch and English. Notices, validation and enum
   labels update in place; dirty values, pending saves and authored content are

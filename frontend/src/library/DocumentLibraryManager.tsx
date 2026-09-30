@@ -1,4 +1,7 @@
-import { errorNotice, useFeedback } from "../query/feedback";
+import type { ErrorFallback } from "../query/api";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { errorNotice, useFeedback, textNotice, FeedbackError } from "../query/feedback";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
@@ -25,6 +28,7 @@ type Values = { title: string; kind: OwnerDocument["document_kind"]; linkedTripI
 const blank = (): Values => ({ title: "", kind: "other", linkedTripId: "" });
 
 export function DocumentLibraryManager() {
+  useLocale();
   const owner = useOwner();
   const offline = useOfflineCopies();
   const documentsQuery = useLibrary("documents");
@@ -42,22 +46,22 @@ export function DocumentLibraryManager() {
   const refresh = (subject: string) => [ownerKeys.library(subject, "documents")];
 
   const upload = useOwnerMutation<FormData, OwnerDocument>({
-    fallback: "Het document kon niet worden geüpload.",
+    fallback: m.assets_the_document_could_not_be_uploaded,
     request: (body) => ({ path: `${libraryPath("documents")}/uploads`, method: "POST", body }),
     invalidate: refresh,
   });
   const remove = useOwnerMutation<OwnerDocument>({
-    fallback: "Het document kon niet worden verwijderd.",
+    fallback: m.assets_the_document_could_not_be_deleted,
     request: (document) => ({ path: `${libraryPath("documents")}/${document.id}`, method: "DELETE" }),
     invalidate: refresh,
   });
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: "Het document kon niet worden geüpload.",
+    fallback: m.assets_the_document_could_not_be_uploaded,
     serverFields: { title: "title", document_kind: "kind", linked_trip_id: "linkedTripId" },
     submit: async (values) => {
-      if (!file) throw new Error("Kies een bestand om te uploaden.");
+      if (!file) throw new FeedbackError(() => m.assets_choose_a_file_to_upload());
       const data = new FormData();
       data.set("title", values.title.trim());
       data.set("document_kind", values.kind);
@@ -67,16 +71,16 @@ export function DocumentLibraryManager() {
     },
     onSuccess: () => {
       close();
-      setNotice("Document toegevoegd aan je bibliotheek.");
+      setNotice(textNotice(() => m.assets_document_added_to_your_library()));
     },
   });
 
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
-  const failInDialog = (fallback: string) => (error: unknown) => {
+  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const failInDialog = (fallback: ErrorFallback) => (error: unknown) => {
     dialog.setConfirmDelete(false);
     dialog.setError(errorNotice(error, fallback));
   };
-  const tripTitle = (tripId: string) => trips.find((trip) => trip.id === tripId)?.title ?? "verwijderde reis";
+  const tripTitle = (tripId: string) => trips.find((trip) => trip.id === tripId)?.title ?? m.assets_deleted_trip();
 
   function close() {
     dialog.close();
@@ -93,21 +97,21 @@ export function DocumentLibraryManager() {
     remove.mutateAsync(document).then(async () => {
       await offline.removeByResource("library_document", document.id);
       close();
-      setNotice("Document verwijderd.");
-    }, failInDialog("Het document kon niet worden verwijderd."));
+      setNotice(textNotice(() => m.assets_document_deleted()));
+    }, failInDialog(m.assets_the_document_could_not_be_deleted));
   }
 
   async function togglePin(document: OwnerDocument) {
     if (!owner) return;
     if (offline.isPinned("library_document", document.id)) {
       await offline.removeByResource("library_document", document.id);
-      setNotice(`“${document.title}” is niet langer offline beschikbaar.`);
+      setNotice(textNotice(() => m.owner_is_no_longer_available_offline({ p0: document.title })));
       return;
     }
     const blob = await ownerFile(
       owner.session,
       document.file_url,
-      "Het document kon niet worden opgehaald voor offline gebruik.",
+      m.assets_the_document_could_not_be_retrieved_for_offline_use,
     );
     await offline.pin({
       resourceKind: "library_document",
@@ -117,30 +121,30 @@ export function DocumentLibraryManager() {
       contentType: blob.type || document.content_type,
       bytes: await blob.arrayBuffer(),
     });
-    setNotice(`“${document.title}” is offline bewaard op dit toestel.`);
+    setNotice(textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: document.title })));
   }
 
   const readError = documentsQuery.error ?? tripsQuery.error;
   const message =
     notice ??
     (readError
-      ? errorMessage(readError, "Je bibliotheek kon niet worden geladen.")
+      ? errorMessage(readError, m.assets_your_library_could_not_be_loaded)
       : documentsQuery.isPending
-        ? "Laad je bibliotheek…"
-        : "Reisessentials blijven uitsluitend in je private bibliotheek, los van één specifieke reis.");
+        ? m.assets_loading_your_library()
+        : m.assets_travel_essentials_stay_in_your_private_library_separate_from_any_specifi());
 
   const summary = (document: OwnerDocument) =>
-    `${document.original_filename ?? "Naamloos bestand"} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
+    `${document.original_filename ?? m.owner_unnamed_file()} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
 
   return (
     <section className="travel-card manager" aria-labelledby="library-documents-title">
       <div className="capture-heading">
         <div>
-          <h3 id="library-documents-title">Documenten</h3>
-          <p>Herbruikbare essentials zoals een verzekeringspolis of identiteitskopie, los van één specifieke reis.</p>
+          <h3 id="library-documents-title">{m.assets_documents()}</h3>
+          <p>{m.assets_reusable_essentials_such_as_an_insurance_policy_or_identity_copy_separat()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          Nieuw document
+          {m.assets_new_document()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -154,7 +158,7 @@ export function DocumentLibraryManager() {
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(document.id)}
-                aria-label={`Document ${document.title} bekijken`}
+                aria-label={m.assets_view_document({ p0: document.title })}
               >
                 <strong>{document.title}</strong>
                 <span>{summary(document)}</span>
@@ -168,18 +172,20 @@ export function DocumentLibraryManager() {
                       openOwnerFile(
                         owner.session,
                         document.file_url,
-                        "Het private origineel kon niet worden geopend.",
-                      ).catch(fail("Het private origineel kon niet worden geopend."));
+                        m.assets_the_private_original_could_not_be_opened,
+                      ).catch(fail(m.assets_the_private_original_could_not_be_opened));
                   }}
                 >
-                  Bekijken
+                  {m.assets_view()}
                 </Button>
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}
+                  onClick={() => void togglePin(document).catch(fail(m.assets_saving_offline_failed))}
                 >
-                  {offline.isPinned("library_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}
+                  {offline.isPinned("library_document", document.id)
+                    ? m.owner_remove_offline_copy()
+                    : m.owner_save_offline()}
                 </Button>
               </div>
             </article>
@@ -187,11 +193,11 @@ export function DocumentLibraryManager() {
         </div>
       )}
       {!documents.length && !documentsQuery.isPending && (
-        <p>Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.</p>
+        <p>{m.assets_no_documents_yet_upload_a_private_file_when_you_want_to_keep_it()}</p>
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? "Document uploaden" : "Document"}
+        title={editing ? m.assets_upload_document() : m.assets_document()}
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -204,12 +210,12 @@ export function DocumentLibraryManager() {
             </div>
             <div className="button-row">
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={`Document “${selected.title}” verwijderen?`}
+                title={m.assets_delete_document({ p0: selected.title })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -217,24 +223,24 @@ export function DocumentLibraryManager() {
           </div>
         )}
         {editing && (
-          <RecordForm record={record} submitLabel="Document uploaden" pendingLabel="Uploaden…">
+          <RecordForm record={record} submitLabel={m.assets_upload_document()} pendingLabel={m.assets_uploading()}>
             <div className="field-row">
               <record.form.Field
                 name="title"
                 validators={{
-                  onChange: requiredText("Geef het document een titel."),
-                  onSubmit: requiredText("Geef het document een titel."),
+                  onChange: requiredText(m.assets_give_the_document_a_title),
+                  onSubmit: requiredText(m.assets_give_the_document_a_title),
                 }}
               >
-                {(field) => <TextField field={field} label="Titel" required maxLength={160} />}
+                {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
               </record.form.Field>
               <record.form.Field name="kind">
                 {(field) => (
-                  <SelectField field={field} label="Soort">
-                    <option value="booking">Boeking</option>
-                    <option value="itinerary">Routeplan</option>
-                    <option value="receipt">Bon</option>
-                    <option value="other">Anders</option>
+                  <SelectField field={field} label={m.assets_kind()}>
+                    <option value="booking">{m.assets_booking()}</option>
+                    <option value="itinerary">{m.assets_itinerary()}</option>
+                    <option value="receipt">{m.assets_receipt()}</option>
+                    <option value="other">{m.owner_other()}</option>
                   </SelectField>
                 )}
               </record.form.Field>
@@ -243,21 +249,22 @@ export function DocumentLibraryManager() {
               {(field) => (
                 <Field>
                   <FieldLabel>
-                    Gekoppelde reis <span className="font-medium text-travel-optional">(optioneel)</span>
+                    {m.assets_linked_trip()}{" "}
+                    <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                   </FieldLabel>
                   <AsyncSearchSelect
-                    ariaLabel="Gekoppelde reis (optioneel)"
+                    ariaLabel={m.assets_linked_trip_optional()}
                     value={field.state.value}
                     selectedOption={
                       field.state.value ? { value: field.state.value, label: tripTitle(field.state.value) } : null
                     }
                     defaultOptions={[
-                      { value: "", label: "Geen koppeling" },
+                      { value: "", label: m.assets_no_link() },
                       ...trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title })),
                     ]}
                     onChange={field.handleChange}
                     loadOptions={async (q) => [
-                      { value: "", label: "Geen koppeling" },
+                      { value: "", label: m.assets_no_link() },
                       ...(await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title })),
                     ]}
                   />
@@ -266,7 +273,7 @@ export function DocumentLibraryManager() {
             </record.form.Field>
             <Field>
               <FieldLabel>
-                Privébestand
+                {m.assets_private_file()}
                 <Input
                   key={fileKey}
                   required

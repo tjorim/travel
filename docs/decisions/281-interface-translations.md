@@ -6,9 +6,8 @@ The stable API error contract (#285) now ships; see [API error descriptors](../a
 The owner record slice (#286) now ships for the inventoried owner pages, shared
 editors, itinerary, places, routes, stays, updates, tasks and map controls.
 Shared visibility controls and the `location_repeats_area` / `visit_restates_route`
-warning messages are included because record editors use them. The remaining
-asset/publication/offline surfaces stay tracked by #287; visitor projection and
-its formatting stay tracked by #288. The final inventory audit remains #289.
+warning messages are included because record editors use them. The owner asset/publication/offline slice (#287) now ships; visitor projection
+and its formatting stay tracked by #288. The final inventory audit remains #289.
 
 Owner record verification covers live client validation and success notices,
 dirty dialog dismissal, focus and control identity, pending-save payloads,
@@ -171,3 +170,43 @@ Regression tests cover regional preference resolution, invalid and denied storag
 all HTML entry points, key/placeholder parity and 0/1/multiple plurals, dirty
 dialog text/upload/focus/cache/URL preservation, and date-only/timezone/numeric
 formatting invariance. The offline shell caches the bootstrap alongside appearance.
+
+
+## Owner assets and offline delivery (#287)
+
+Library documents, emergency information, trip documents, private media/imports,
+derivative review and presentation, publication/scopes/link lifecycle, preview
+chrome, packing and offline storage feedback use typed Dutch/English messages.
+Retained success/error notices, client validators and open confirmations evaluate
+in the current locale. Queries retain operation message functions, including
+cached failures. Publication catalogues refresh translated details without
+resetting an edited scope; previews retain message functions for their titles.
+
+Packing category group identifiers come from canonical authored categories,
+including an empty identifier for the UI fallback. An authored “Zonder categorie”
+therefore remains a separate group. New list/reuse defaults use the language at
+creation/opening; saved backend “Packing list”, bag/item/category names, copies
+and personal templates are never matched or relabelled. Display weights use the
+selected locale; requests still carry integer grams.
+
+Emergency snapshots now store kind codes. Older snapshots with a Dutch kind
+label use an explicit schema-enum compatibility map at render time; authored
+labels, values and notes are untouched. Map snapshots v2 omit serialized action
+labels and the derived-point description, rebuilding that chrome from canonical
+kinds on reopening. Older map snapshots keep authored point/route labels and
+rebuild derived descriptions; serialized actions are not reopened. Visit and
+packing snapshots keep canonical enum values and authored text. Snapshots still
+use the same subject-scoped encryption, schema envelope and leases. Open text
+copies hide on removal/account changes/expiry; read-only packing views clear at
+lease expiry and render the retained expiry message in the selected language.
+
+Verification covers upload/file/control/focus preservation, dirty share editors
+and confirmations, pending packing toggles and canonical payloads, retained
+errors, category fallback collisions, legacy emergency/map snapshots, read-only
+packing reopening, account changes, lease expiry and 0/1/multiple plurals.
+Existing owner/projection/privacy, encryption, revalidation and sign-out wipe
+regressions remain in the frontend suite. Browser screenshots use fictional data
+in both languages and light/dark themes, with 375 px layout checks; see
+[owner asset screenshots](../screenshots/287-owner-assets/README.md).
+Shared visitor content rendered inside previews remains the #288 slice. Full
+cross-surface extraction and browser regression review remain tracked by #289.

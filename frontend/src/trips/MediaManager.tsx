@@ -1,4 +1,7 @@
-import { errorNotice, useFeedback } from "../query/feedback";
+import type { ErrorFallback } from "../query/api";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { errorNotice, useFeedback, textNotice } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
@@ -42,7 +45,14 @@ import {
 } from "../tracker-model";
 import { Field, FieldLabel } from "../ui/field";
 
-export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = { photo: "Foto", video: "Video" };
+export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = {
+  get photo() {
+    return m.assets_photo();
+  },
+  get video() {
+    return m.assets_video();
+  },
+};
 
 const providerLabel = {
   google_photos_picker: "Google Photos",
@@ -50,9 +60,15 @@ const providerLabel = {
 } as const;
 
 const purposeLabel = {
-  share: "Delen",
-  static_export: "Statisch archief",
-  owner_preview: "Private voorvertoning",
+  get share() {
+    return m.owner_sharing();
+  },
+  get static_export() {
+    return m.assets_static_archive();
+  },
+  get owner_preview() {
+    return m.assets_private_preview();
+  },
 } as const;
 
 /** Fetches a private, authenticated image as a blob and renders it inline, revoking the object URL on cleanup. */
@@ -67,12 +83,13 @@ export function OwnerImage({
   alt: string;
   className?: string;
 }) {
+  useLocale();
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     let objectUrl: string | null = null;
     setSrc(null);
-    ownerFile(session, url, "Voorvertoning kon niet worden geladen.", { cache: "no-store", signal: controller.signal })
+    ownerFile(session, url, m.assets_the_preview_could_not_be_loaded, { cache: "no-store", signal: controller.signal })
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob);
         setSrc(objectUrl);
@@ -95,7 +112,7 @@ const dimensionInRange = ({ value }: { value: string }) => {
   const size = Number(value);
   return value.trim() && Number.isInteger(size) && size >= 64 && size <= 4000
     ? undefined
-    : "Kies een maximale zijde tussen 64 en 4000 px.";
+    : m.assets_choose_a_maximum_side_between_64_and_4000_px;
 };
 
 type PresentationValues = { travelUpdateId: string; caption: string; altText: string; focalX: string; focalY: string };
@@ -114,7 +131,7 @@ const fromDerivative = (derivative: MediaDerivative): PresentationValues => ({
   focalY: derivative.focal_y?.toString() ?? "",
 });
 const percentage = ({ value }: { value: string }) =>
-  value === "" || (Number(value) >= 0 && Number(value) <= 100) ? undefined : "Kies een waarde tussen 0 en 100.";
+  value === "" || (Number(value) >= 0 && Number(value) <= 100) ? undefined : m.assets_choose_a_value_between_0_and_100;
 
 /** The copy's presentation fields, with a live focal-point preview when the copy can be shown inline. */
 function PresentationFields({
@@ -130,6 +147,7 @@ function PresentationFields({
   previewUrl: string | null;
   session: TrackerSession | null;
 }) {
+  useLocale();
   const focalX = record.values.focalX === "" ? 50 : Number(record.values.focalX);
   const focalY = record.values.focalY === "" ? 50 : Number(record.values.focalY);
   const searchUpdates = useTravelUpdateSearch(tripId);
@@ -141,7 +159,7 @@ function PresentationFields({
           <OwnerImage
             session={session}
             url={previewUrl}
-            alt="Voorvertoning van de kopie"
+            alt={m.assets_preview_of_the_copy()}
             className="block max-h-55 w-full rounded-travel-media bg-travel-media-bg object-contain"
           />
           <span
@@ -155,9 +173,9 @@ function PresentationFields({
       <record.form.Field name="travelUpdateId">
         {(field) => (
           <Field>
-            <FieldLabel>Bij reisupdate</FieldLabel>
+            <FieldLabel>{m.assets_with_travel_update()}</FieldLabel>
             <AsyncSearchSelect
-              ariaLabel="Bij reisupdate"
+              ariaLabel={m.assets_with_travel_update()}
               value={field.state.value}
               selectedOption={
                 field.state.value
@@ -171,7 +189,7 @@ function PresentationFields({
                   : null
               }
               defaultOptions={[
-                { value: "", label: "Losse galerijfoto" },
+                { value: "", label: m.assets_standalone_gallery_photo() },
                 ...updates.slice(0, 50).map((update) => ({ value: update.id, label: update.title })),
               ]}
               onChange={field.handleChange}
@@ -182,7 +200,7 @@ function PresentationFields({
                   ...Object.fromEntries(matches.map((update) => [update.id, update.title])),
                 }));
                 return [
-                  { value: "", label: "Losse galerijfoto" },
+                  { value: "", label: m.assets_standalone_gallery_photo() },
                   ...matches.map((update) => ({ value: update.id, label: update.title })),
                 ];
               }}
@@ -191,17 +209,17 @@ function PresentationFields({
         )}
       </record.form.Field>
       <record.form.Field name="caption">
-        {(field) => <MarkdownField field={field} format="inline" label="Bijschrift" maxLength={500} rows={2} />}
+        {(field) => <MarkdownField field={field} format="inline" label={m.assets_caption()} maxLength={500} rows={2} />}
       </record.form.Field>
       <record.form.Field name="altText">
-        {(field) => <TextField field={field} label="Alternatieve tekst" maxLength={300} />}
+        {(field) => <TextField field={field} label={m.assets_alternative_text()} maxLength={300} />}
       </record.form.Field>
       <div className="field-row">
         <record.form.Field name="focalX" validators={{ onChange: percentage, onSubmit: percentage }}>
-          {(field) => <TextField field={field} label="Focus horizontaal (%)" type="number" min="0" max="100" />}
+          {(field) => <TextField field={field} label={m.assets_horizontal_focus()} type="number" min="0" max="100" />}
         </record.form.Field>
         <record.form.Field name="focalY" validators={{ onChange: percentage, onSubmit: percentage }}>
-          {(field) => <TextField field={field} label="Focus verticaal (%)" type="number" min="0" max="100" />}
+          {(field) => <TextField field={field} label={m.assets_vertical_focus()} type="number" min="0" max="100" />}
         </record.form.Field>
       </div>
     </>
@@ -220,6 +238,7 @@ export function MediaManager({
   onStartCaptureFromCandidate: (candidate: TravelUpdateCandidateIntent) => void;
   focusId?: DialogFocusRequest | null;
 }) {
+  useLocale();
   const owner = useOwner();
   const offline = useOfflineCopies();
   const mediaQuery = useTripResource(trip.id, "media");
@@ -265,12 +284,12 @@ export function MediaManager({
   ];
 
   const upload = useOwnerMutation<FormData, MediaAsset>({
-    fallback: "De media konden niet worden geüpload.",
+    fallback: m.assets_the_media_could_not_be_uploaded,
     request: (body) => ({ path: `${mediaPath}/uploads`, method: "POST", body }),
     invalidate: refreshMedia,
   });
   const remove = useOwnerMutation<MediaAsset>({
-    fallback: "De media konden niet worden verwijderd.",
+    fallback: m.assets_the_media_could_not_be_deleted,
     request: (asset) => ({ path: `${mediaPath}/${asset.id}`, method: "DELETE" }),
     // The server also drops the deleted asset from the reisupdates that used it.
     invalidate: (subject) => [...refreshMedia(subject), ownerKeys.trips(subject)],
@@ -279,7 +298,7 @@ export function MediaManager({
     { assetId: string; purpose: MediaDerivative["purpose"]; maxDimension: number; removeAudio: boolean },
     MediaDerivative
   >({
-    fallback: "De kopie kon niet worden gemaakt.",
+    fallback: m.assets_the_copy_could_not_be_created,
     request: ({ assetId, purpose, maxDimension, removeAudio }) => ({
       path: `${mediaPath}/${assetId}/derivatives`,
       method: "POST",
@@ -292,7 +311,7 @@ export function MediaManager({
     invalidate: refreshDerivatives,
   });
   const approve = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>({
-    fallback: "De kopie kon niet worden goedgekeurd.",
+    fallback: m.assets_the_copy_could_not_be_approved,
     request: ({ assetId, derivative }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/approve`,
       method: "POST",
@@ -300,7 +319,7 @@ export function MediaManager({
     invalidate: refreshDerivatives,
   });
   const retry = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>({
-    fallback: "De video kon niet opnieuw worden verwerkt.",
+    fallback: m.assets_the_video_could_not_be_processed_again,
     request: ({ assetId, derivative }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/retry`,
       method: "POST",
@@ -311,7 +330,7 @@ export function MediaManager({
     { assetId: string; derivative: MediaDerivative; values: Record<string, unknown> },
     MediaDerivative
   >({
-    fallback: "De presentatie kon niet worden opgeslagen.",
+    fallback: m.assets_the_presentation_could_not_be_saved,
     request: ({ assetId, derivative, values }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/presentation`,
       method: "PATCH",
@@ -320,7 +339,7 @@ export function MediaManager({
     invalidate: refreshDerivatives,
   });
   const removeDerivative = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }>({
-    fallback: "De kopie kon niet worden verwijderd.",
+    fallback: m.assets_the_copy_could_not_be_deleted,
     request: ({ assetId, derivative }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}`,
       method: "DELETE",
@@ -328,12 +347,12 @@ export function MediaManager({
     invalidate: refreshDerivatives,
   });
   const startImport = useOwnerMutation<ImportSession["provider"], ImportSession>({
-    fallback: "De importsessie kon niet worden gestart.",
+    fallback: m.assets_the_import_session_could_not_be_started,
     request: (provider) => ({ path: `${mediaPath}/imports/${provider}/sessions`, method: "POST" }),
     invalidate: () => [],
   });
   const completeImport = useOwnerMutation<ImportSession, ImportCompleteResult>({
-    fallback: "De importsessie kon niet worden voltooid.",
+    fallback: m.assets_the_import_session_could_not_be_completed,
     request: (session) => ({
       path: `${mediaPath}/imports/${session.provider}/sessions/${session.id}/complete`,
       method: "POST",
@@ -341,7 +360,7 @@ export function MediaManager({
     invalidate: (subject, _session, result) => (result?.ready ? refreshMedia(subject) : []),
   });
   const reviewCandidates = useOwnerMutation<string[], TravelUpdateCandidatesResponse>({
-    fallback: "De mogelijke reisupdates konden niet worden berekend.",
+    fallback: m.assets_the_possible_travel_updates_could_not_be_calculated,
     request: (mediaAssetIds) => ({
       path: `${mediaPath}/travel-update-candidates`,
       method: "POST",
@@ -351,13 +370,13 @@ export function MediaManager({
     invalidate: () => [],
   });
   const suggestArea = useOwnerMutation<{ latitude: number; longitude: number }, AreaSuggestion>({
-    fallback: "Gebied kon niet worden voorgesteld.",
+    fallback: m.owner_an_area_could_not_be_suggested,
     request: (body) => ({ path: tripPath(trip.id, "areas/suggest"), method: "POST", body }),
     invalidate: () => [],
     gcTime: 0,
   });
   const attach = useOwnerMutation<{ updateId: string; mediaAssetIds: string[] }>({
-    fallback: "De private media konden niet aan de reisupdate worden gekoppeld.",
+    fallback: m.assets_the_private_media_could_not_be_linked_to_the_travel_update,
     request: ({ updateId, mediaAssetIds }) => ({
       path: tripPath(trip.id, `travel-updates/${updateId}`),
       method: "PATCH",
@@ -368,7 +387,7 @@ export function MediaManager({
 
   const derivativeRecord = useRecordForm<DerivativeValues>({
     defaultValues: blankDerivative(),
-    fallback: "De kopie kon niet worden gemaakt.",
+    fallback: m.assets_the_copy_could_not_be_created,
     serverFields: { purpose: "purpose", max_dimension: "maxDimension" },
     submit: async (values) => {
       if (selected)
@@ -381,12 +400,12 @@ export function MediaManager({
     },
     onSuccess: () => {
       setView({ kind: "asset" });
-      setNotice("Kopie gestart. Controleer de kopie en keur hem daarna expliciet goed.");
+      setNotice(textNotice(() => m.assets_copy_started_check_the_copy_and_then_explicitly_approve_it()));
     },
   });
   const presentationRecord = useRecordForm<PresentationValues>({
     defaultValues: blankPresentation(),
-    fallback: "De presentatie kon niet worden opgeslagen.",
+    fallback: m.assets_the_presentation_could_not_be_saved,
     serverFields: {
       travel_update_id: "travelUpdateId",
       caption: "caption",
@@ -410,7 +429,7 @@ export function MediaManager({
     },
     onSuccess: () => {
       setView({ kind: "asset" });
-      setNotice("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
+      setNotice(textNotice(() => m.assets_presentation_saved_only_fields_selected_in_a_sharing_scope_become_visibl()));
     },
   });
 
@@ -422,8 +441,8 @@ export function MediaManager({
     return () => window.clearInterval(timer);
   }, [derivatives, derivativesQuery]);
 
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
-  const failInDialog = (fallback: string) => (error: unknown) => {
+  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const failInDialog = (fallback: ErrorFallback) => (error: unknown) => {
     setConfirmDeleteAsset(false);
     setConfirmDeleteCopy(false);
     assetDialog.setError(errorNotice(error, fallback));
@@ -446,22 +465,22 @@ export function MediaManager({
   function submitUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!uploadFile) {
-      setUploadError("Kies eerst een foto of video.");
+      setUploadError(textNotice(() => m.assets_choose_a_photo_or_video_first()));
       return;
     }
     setUploadError(null);
     const data = new FormData();
     data.set("file", uploadFile);
-    setNotice("Privémedia uploaden…");
+    setNotice(textNotice(() => m.assets_uploading_private_media()));
     upload.mutateAsync(data).then(
       (saved) => {
         closeUpload();
         inspectAsset(saved.id);
-        setNotice("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.");
+        setNotice(textNotice(() => m.assets_private_media_uploaded_you_can_now_link_them_to_a_travel_update()));
       },
       (error: unknown) => {
         setNotice("");
-        setUploadError(errorNotice(error, "De media konden niet worden geüpload."));
+        setUploadError(errorNotice(error, m.assets_the_media_could_not_be_uploaded));
       },
     );
   }
@@ -511,11 +530,11 @@ export function MediaManager({
         await offline.removeByResource("media_asset", asset.id);
         closeAsset();
         setDeletingId(null);
-        setNotice("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.");
+        setNotice(textNotice(() => m.assets_private_media_deleted_links_to_travel_updates_have_also_been_removed()));
       },
       (error: unknown) => {
         setDeletingId(null);
-        failInDialog("De media konden niet worden verwijderd.")(error);
+        failInDialog(m.assets_the_media_could_not_be_deleted)(error);
       },
     );
   }
@@ -524,24 +543,37 @@ export function MediaManager({
     if (!owner) return;
     if (offline.isPinned("media_asset", asset.id)) {
       await offline.removeByResource("media_asset", asset.id);
-      setNotice(`“${asset.original_filename ?? "Dit medium"}” is niet langer offline beschikbaar.`);
+      setNotice(
+        textNotice(() =>
+          m.owner_is_no_longer_available_offline({ p0: asset.original_filename ?? m.assets_this_media_item() }),
+        ),
+      );
       return;
     }
-    const blob = await ownerFile(owner.session, asset.file_url, "Het private medium kon niet offline worden bewaard.", {
-      cache: "no-store",
-    });
+    const blob = await ownerFile(
+      owner.session,
+      asset.file_url,
+      m.assets_the_private_media_item_could_not_be_saved_offline,
+      {
+        cache: "no-store",
+      },
+    );
     await offline.pin({
       resourceKind: "media_asset",
       resourceId: asset.id,
       metadataUrl: `${mediaPath}/${asset.id}`,
-      title: asset.original_filename ?? "Naamloos medium",
+      title: asset.original_filename ?? m.owner_unnamed_media_item(),
       contentType: asset.content_type,
       bytes: await blob.arrayBuffer(),
     });
-    setNotice(`“${asset.original_filename ?? "Dit medium"}” is offline bewaard op dit toestel.`);
+    setNotice(
+      textNotice(() =>
+        m.owner_is_saved_offline_on_this_device({ p0: asset.original_filename ?? m.assets_this_media_item() }),
+      ),
+    );
   }
 
-  function open(url: string, fallback: string) {
+  function open(url: string, fallback: ErrorFallback) {
     if (owner) openOwnerFile(owner.session, url, fallback).catch(fail(fallback));
   }
 
@@ -549,52 +581,62 @@ export function MediaManager({
     if (!owner || !selected) return;
     if (offline.isPinned("media_derivative", derivative.id)) {
       await offline.removeByResource("media_derivative", derivative.id);
-      setNotice("De kopie is offline verwijderd.");
+      setNotice(textNotice(() => m.assets_the_offline_copy_has_been_removed()));
       return;
     }
-    const blob = await ownerFile(owner.session, derivative.file_url, "De kopie kon niet offline worden bewaard.", {
+    const blob = await ownerFile(owner.session, derivative.file_url, m.assets_the_copy_could_not_be_saved_offline, {
       cache: "no-store",
     });
     await offline.pin({
       resourceKind: "media_derivative",
       resourceId: derivative.id,
       metadataUrl: `${mediaPath}/${selected.id}/derivatives/${derivative.id}`,
-      title: selected.original_filename ?? "Kopie van media",
+      title: selected.original_filename ?? m.assets_media_copy(),
       contentType: blob.type,
       bytes: await blob.arrayBuffer(),
     });
-    setNotice("De kopie is offline bewaard op dit toestel.");
+    setNotice(textNotice(() => m.assets_the_copy_has_been_saved_offline_on_this_device()));
   }
 
   function performEraseDerivative(asset: MediaAsset, derivative: MediaDerivative) {
     removeDerivative.mutateAsync({ assetId: asset.id, derivative }).then(async () => {
       await offline.removeByResource("media_derivative", derivative.id);
       backToAsset();
-      setNotice("Kopie verwijderd en uit eventuele deelscopes gehaald.");
-    }, failInDialog("De kopie kon niet worden verwijderd."));
+      setNotice(textNotice(() => m.assets_copy_deleted_and_removed_from_any_sharing_scopes()));
+    }, failInDialog(m.assets_the_copy_could_not_be_deleted));
   }
 
   function startProvider(provider: ImportSession["provider"]) {
-    setNotice(`${providerLabel[provider]}-selectie starten…`);
+    setNotice(textNotice(() => m.assets_starting_selection({ p0: providerLabel[provider] })));
     startImport.mutateAsync(provider).then((created) => {
       setImportSession(created);
-      setNotice(`Kies media in ${providerLabel[provider]} en kom daarna hier terug om je selectie te importeren.`);
-    }, fail("De importsessie kon niet worden gestart."));
+      setNotice(
+        textNotice(() =>
+          m.assets_choose_media_in_then_return_here_to_import_your_selection({ p0: providerLabel[provider] }),
+        ),
+      );
+    }, fail(m.assets_the_import_session_could_not_be_started));
   }
 
   function finishImport() {
     if (!importSession) return;
-    setNotice("Geselecteerde media veilig kopiëren naar je private reis…");
+    setNotice(textNotice(() => m.assets_safely_copying_selected_media_to_your_private_trip()));
     completeImport.mutateAsync(importSession).then((outcome) => {
       if (!outcome.ready) {
-        setNotice("Je selectie is nog niet klaar bij de provider. Probeer opnieuw wanneer je klaar bent.");
+        setNotice(
+          textNotice(() => m.assets_your_selection_is_not_ready_at_the_provider_yet_try_again_when_you_are_d()),
+        );
         return;
       }
       if (outcome.imported[0]) inspectAsset(outcome.imported[0].id);
       setNotice(
-        `${outcome.imported.length} item(s) geïmporteerd${outcome.failed.length ? `; ${outcome.failed.length} kon(den) niet worden gekopieerd.` : "."}`,
+        textNotice(
+          () =>
+            m.assets_imported_count({ count: outcome.imported.length }) +
+            (outcome.failed.length ? m.assets_import_failed_count({ count: outcome.failed.length }) : "."),
+        ),
       );
-    }, fail("De importsessie kon niet worden voltooid."));
+    }, fail(m.assets_the_import_session_could_not_be_completed));
   }
 
   function toggleReviewSelection(assetId: string) {
@@ -607,7 +649,7 @@ export function MediaManager({
 
   function review() {
     if (reviewSelection.length === 0) {
-      setNotice("Kies eerst private media om als mogelijke reisupdates te bekijken.");
+      setNotice(textNotice(() => m.assets_choose_private_media_first_to_review_possible_travel_updates()));
       return;
     }
     reviewCandidates.mutateAsync(reviewSelection).then((result) => {
@@ -617,23 +659,25 @@ export function MediaManager({
       setCandidateAttachments({});
       setCandidateAreas({});
       setNotice(
-        result.candidates.length
-          ? "Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen."
-          : "Deze selectie bevat geen bruikbare opname- of locatiegegevens.",
+        textNotice(() =>
+          result.candidates.length
+            ? m.assets_candidates_were_calculated_for_this_private_review_only_nothing_has_been()
+            : m.assets_this_selection_has_no_usable_capture_or_location_data(),
+        ),
       );
-    }, fail("De mogelijke reisupdates konden niet worden berekend."));
+    }, fail(m.assets_the_possible_travel_updates_could_not_be_calculated));
   }
 
   function candidateAssetNames(candidate: TravelUpdateCandidate) {
     return candidate.media_asset_ids
-      .map((id) => assets.find((asset) => asset.id === id)?.original_filename ?? "naamloos medium")
+      .map((id) => assets.find((asset) => asset.id === id)?.original_filename ?? m.assets_unnamed_media_item())
       .join(", ");
   }
 
   function suggestCandidateArea(candidate: TravelUpdateCandidate) {
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.location_options.length > 1 && locationIndex === undefined) {
-      setNotice("Kies eerst een GPS-optie.");
+      setNotice(textNotice(() => m.assets_choose_a_gps_option_first()));
       return;
     }
     const location = candidate.location_options[locationIndex === undefined ? 0 : Number(locationIndex)];
@@ -642,7 +686,7 @@ export function MediaManager({
       .mutateAsync({ latitude: location.latitude, longitude: location.longitude })
       .then(
         (suggestion) => setCandidateAreas((current) => ({ ...current, [candidate.id]: suggestion })),
-        fail("Gebied kon niet worden voorgesteld."),
+        fail(m.owner_an_area_could_not_be_suggested),
       );
   }
 
@@ -652,11 +696,11 @@ export function MediaManager({
       (candidate.time_options.length === 1 ? candidate.time_options[0].captured_at : "");
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.time_options.length > 1 && !time) {
-      setNotice("Kies eerst welke opnametijd je voor dit kandidaatbezoek wilt gebruiken.");
+      setNotice(textNotice(() => m.assets_choose_which_capture_time_to_use_for_this_candidate_visit_first()));
       return;
     }
     if (candidate.location_options.length > 1 && locationIndex === undefined) {
-      setNotice("De GPS-metagegevens verschillen. Kies eerst zelf een locatieoptie, of negeer de locatie.");
+      setNotice(textNotice(() => m.assets_the_gps_metadata_differs_choose_a_location_option_yourself_first_or_igno()));
       return;
     }
     const selectedLocation =
@@ -674,36 +718,40 @@ export function MediaManager({
   function attachCandidate(candidate: TravelUpdateCandidate) {
     const update = foundUpdates[candidateAttachments[candidate.id]];
     if (!update) {
-      setNotice("Kies eerst een bestaande reisupdate om de private media aan te koppelen.");
+      setNotice(textNotice(() => m.assets_choose_an_existing_travel_update_to_link_the_private_media_to_first()));
       return;
     }
     const mediaAssetIds = [...new Set([...update.media_asset_ids, ...candidate.media_asset_ids])];
     attach.mutateAsync({ updateId: update.id, mediaAssetIds }).then(() => {
       setFoundUpdates((current) => ({ ...current, [update.id]: { ...update, media_asset_ids: mediaAssetIds } }));
-      setNotice(`Private media gekoppeld aan “${update.title}”. Er is geen locatie of deelbare inhoud gemaakt.`);
-    }, fail("De private media konden niet aan de reisupdate worden gekoppeld."));
+      setNotice(
+        textNotice(() =>
+          m.assets_private_media_linked_to_no_location_or_shareable_content_was_created({ p0: update.title }),
+        ),
+      );
+    }, fail(m.assets_the_private_media_could_not_be_linked_to_the_travel_update));
   }
 
   const readError = mediaQuery.error ?? derivativesQuery.error;
   const message =
     notice ??
     (readError
-      ? errorMessage(readError, "Je media konden niet worden geladen.")
+      ? errorMessage(readError, m.owner_your_media_could_not_be_loaded)
       : mediaQuery.isPending
-        ? "Laad je private media…"
+        ? m.assets_loading_your_private_media()
         : assets.length
-          ? "Originelen, EXIF en koppelingen blijven alleen in je private tracker."
-          : "Upload foto’s of video’s vanaf dit apparaat, of importeer je geselecteerde media.");
+          ? m.assets_originals_exif_and_links_stay_in_your_private_tracker()
+          : m.assets_upload_photos_or_videos_from_this_device_or_import_your_selected_media());
 
   const dialogOpen = selected !== null;
   const dialogTitle =
     view.kind === "create"
-      ? "Kopie maken om te delen"
+      ? m.assets_create_a_copy_to_share()
       : view.kind === "copy"
         ? view.edit
-          ? "Presentatie bewerken"
-          : "Kopie"
-        : (selected?.original_filename ?? "Naamloos medium");
+          ? m.assets_edit_presentation()
+          : m.assets_copy()
+        : (selected?.original_filename ?? m.owner_unnamed_media_item());
   const dialogDirty =
     view.kind === "create"
       ? derivativeRecord.dirty
@@ -712,7 +760,7 @@ export function MediaManager({
         : false;
   const cancelAction = (
     <Button className="secondary" type="button" onClick={backToAsset}>
-      Terug naar het medium
+      {m.assets_back_to_the_media_item()}
     </Button>
   );
 
@@ -720,14 +768,11 @@ export function MediaManager({
     <section className="travel-card manager" aria-labelledby="media-title">
       <div className="capture-heading">
         <div>
-          <h3 id="media-title">Mediabibliotheek</h3>
-          <p>
-            Originelen en metadata blijven privé. Alleen een aparte, metadata-vrije en goedgekeurde kopie kan later
-            bewust worden gedeeld.
-          </p>
+          <h3 id="media-title">{m.assets_media_library()}</h3>
+          <p>{m.assets_originals_and_metadata_stay_private_only_a_separate_metadatafree_and_app()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={openUpload}>
-          Media uploaden
+          {m.assets_upload_media()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -735,7 +780,7 @@ export function MediaManager({
       </p>
       <RecordDialog
         open={uploading}
-        title="Media uploaden"
+        title={m.assets_upload_media()}
         dirty={uploading && uploadFile !== null}
         error={uploadError}
         onDismiss={closeUpload}
@@ -744,7 +789,7 @@ export function MediaManager({
           <form className="stack-form" onSubmit={submitUpload}>
             <Field className="contents">
               <FieldLabel>
-                Foto of video van dit apparaat
+                {m.assets_photo_or_video_from_this_device()}
                 <Input
                   key={uploadKey}
                   required
@@ -755,7 +800,7 @@ export function MediaManager({
               </FieldLabel>
             </Field>
             <Button type="submit" disabled={upload.isPending}>
-              Privémedia uploaden
+              {m.assets_upload_private_media()}
             </Button>
           </form>
         )}
@@ -768,7 +813,7 @@ export function MediaManager({
                 className="document-select flex items-center gap-3"
                 type="button"
                 onClick={() => inspectAsset(asset.id)}
-                aria-label={`${asset.original_filename ?? "Naamloos medium"} bekijken`}
+                aria-label={m.assets_view_2({ p0: asset.original_filename ?? m.owner_unnamed_media_item() })}
               >
                 {asset.thumbnail_url && owner ? (
                   <OwnerImage
@@ -786,9 +831,9 @@ export function MediaManager({
                   </span>
                 )}
                 <div className="min-w-0">
-                  <strong>{asset.original_filename ?? "Naamloos medium"}</strong>
+                  <strong>{asset.original_filename ?? m.owner_unnamed_media_item()}</strong>
                   <span>
-                    {asset.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(asset.byte_size)}
+                    {asset.media_kind === "photo" ? m.assets_photo() : m.assets_video()} · {bytesLabel(asset.byte_size)}
                     {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
                   </span>
                 </div>
@@ -800,7 +845,7 @@ export function MediaManager({
                       checked={reviewSelection.includes(asset.id)}
                       onCheckedChange={() => toggleReviewSelection(asset.id)}
                     />
-                    Reisupdates beoordelen
+                    {m.assets_review_travel_updates()}
                   </FieldLabel>
                 </Field>
               </div>
@@ -811,15 +856,14 @@ export function MediaManager({
       <div className="manager-subsection">
         <div className="capture-heading">
           <div>
-            <h3>Importeren</h3>
+            <h3>{m.assets_import()}</h3>
             <p>
               {providers.length > 0 ? (
                 <>
-                  Verbind je provider in <Link to="/settings">Instellingen</Link> en kies daarna de media die je wilt
-                  importeren.
+                  {m.assets_provider_settings()} <Link to="/settings">{m.settings()}</Link>
                 </>
               ) : (
-                "Providerimport is op deze server nog niet beschikbaar. Je kunt media vanaf dit apparaat uploaden."
+                m.assets_provider_import_is_not_available_on_this_server_yet_you_can_upload_media()
               )}
             </p>
           </div>
@@ -832,25 +876,25 @@ export function MediaManager({
                 className="secondary"
                 type="button"
                 disabled={!item.connected}
-                title={item.connected ? undefined : "Verbind eerst in Instellingen"}
+                title={item.connected ? undefined : m.assets_connect_in_settings_first()}
                 onClick={() => startProvider(item.provider)}
               >
-                Kies in {providerLabel[item.provider]}
+                {m.assets_choose_in_line({ p0: providerLabel[item.provider] })}
               </Button>
             ))}
           </div>
         )}
         {importSession && (
           <aside className="grid gap-2.25 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.5 text-sm leading-normal text-travel-warning-ink [&_.action-link]:w-fit [&_button]:w-fit">
-            <strong>{providerLabel[importSession.provider]}-selectie</strong>
-            <span>Kies eerst alleen de media die je naar deze private reis wilt kopiëren.</span>
+            <strong>{m.assets_selection_line({ p0: providerLabel[importSession.provider] })}</strong>
+            <span>{m.assets_first_choose_only_the_media_you_want_to_copy_to_this_private_trip()}</span>
             {importSession.picker_uri && (
               <a className="action-link" href={importSession.picker_uri} target="_blank" rel="noreferrer">
-                Selectie openen
+                {m.assets_open_selection()}
               </a>
             )}
             <Button type="button" onClick={finishImport}>
-              Selectie importeren
+              {m.assets_import_selection()}
             </Button>
           </aside>
         )}
@@ -859,21 +903,20 @@ export function MediaManager({
         <div className="manager-subsection">
           <div className="capture-heading">
             <div>
-              <h3>Mogelijke reisupdates beoordelen</h3>
+              <h3>{m.assets_review_possible_travel_updates()}</h3>
               <p>
-                Kies hierboven private media. Kandidaten gebruiken een venster van twee uur en houden GPS-punten die
-                meer dan {candidateReview?.gps_agreement_metres ?? 500} meter verschillen als afzonderlijke keuzes. Ze
-                worden nooit automatisch opgeslagen.
+                {m.assets_choose_private_media_above_candidates_use_a_twohour_window_and_ke_line({
+                  p0: candidateReview?.gps_agreement_metres ?? 500,
+                })}
               </p>
             </div>
           </div>
           <Button className="w-fit" type="button" onClick={review}>
-            Geselecteerde media beoordelen
+            {m.assets_review_selected_media()}
           </Button>
           {candidateReview?.unavailable_media_asset_ids.length ? (
             <p className="help">
-              {candidateReview.unavailable_media_asset_ids.length} geselecteerd medium heeft geen bruikbare opname- of
-              GPS-metadata en is niet gegokt in een kandidaat.
+              {m.assets_metadata_unavailable({ count: candidateReview.unavailable_media_asset_ids.length })}
             </p>
           ) : null}
           {candidateReview?.candidates.map((candidate) => (
@@ -882,17 +925,17 @@ export function MediaManager({
               <span>
                 {candidate.starts_at
                   ? `${timestamp(candidate.starts_at)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${dayjs(candidate.ends_at).format("HH:mm")}` : ""}`
-                  : "Geen opnametijd beschikbaar"}
+                  : m.assets_no_capture_time_available()}
               </span>
               {candidate.time_options.length > 1 && (
                 <Field>
-                  <FieldLabel>Gebruik opnametijd</FieldLabel>
+                  <FieldLabel>{m.assets_use_capture_time()}</FieldLabel>
                   <SearchSelect
-                    ariaLabel="Gebruik opnametijd"
+                    ariaLabel={m.assets_use_capture_time()}
                     value={candidateTimes[candidate.id] ?? ""}
                     onChange={(value) => setCandidateTimes((current) => ({ ...current, [candidate.id]: value }))}
                   >
-                    <option value="">Kies zelf een tijd</option>
+                    <option value="">{m.assets_choose_a_time_yourself()}</option>
                     {candidate.time_options.map((option) => (
                       <option key={option.media_asset_id} value={option.captured_at}>
                         {timestamp(option.captured_at)}
@@ -903,64 +946,68 @@ export function MediaManager({
               )}
               {candidate.location_options.length > 1 && (
                 <Field>
-                  <FieldLabel>GPS-keuze</FieldLabel>
+                  <FieldLabel>{m.assets_gps_choice()}</FieldLabel>
                   <SearchSelect
-                    ariaLabel="GPS-keuze"
+                    ariaLabel={m.assets_gps_choice()}
                     value={candidateLocations[candidate.id] ?? ""}
                     onChange={(value) => setCandidateLocations((current) => ({ ...current, [candidate.id]: value }))}
                   >
-                    <option value="">Locatie negeren</option>
+                    <option value="">{m.owner_dismiss_location()}</option>
                     {candidate.location_options.map((option, index) => (
                       <option key={option.media_asset_ids.join("-")} value={index}>
-                        Locatie uit {option.media_asset_ids.length} medium/media
+                        {m.assets_location_from_media_items_line({ p0: option.media_asset_ids.length })}
                       </option>
                     ))}
                   </SearchSelect>
                 </Field>
               )}
               {candidate.location_options.length === 0 && (
-                <p className="help">Geen GPS beschikbaar; er wordt geen plaats voorgesteld.</p>
+                <p className="help">{m.assets_no_gps_available_no_place_will_be_suggested()}</p>
               )}
               {candidate.location_options.length > 1 && (
                 <p className="help">
-                  De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.
+                  {m.assets_the_gps_metadata_conflicts_choose_at_most_one_option_nothing_will_be_mer()}
                 </p>
               )}
               {candidate.location_options.length > 0 && (
                 <Button className="secondary compact" type="button" onClick={() => suggestCandidateArea(candidate)}>
-                  Gebied en bezoek voorstellen
+                  {m.assets_suggest_area_and_visit()}
                 </Button>
               )}
               {candidateAreas[candidate.id] && (
                 <p className="help">
-                  {candidateAreas[candidate.id].existing_area_id
-                    ? `Bestaand gebied: ${candidateAreas[candidate.id].area.label}`
-                    : `Nieuw gebied mogelijk: ${candidateAreas[candidate.id].area.label} (${candidateAreas[candidate.id].area.timezone ?? "tijdzone onbekend"})`}
-                  .{" "}
-                  {visits
-                    .filter(
-                      (visit) =>
-                        visit.area.id === candidateAreas[candidate.id].existing_area_id &&
-                        candidate.starts_at &&
-                        visit.starts_on &&
-                        candidate.starts_at.slice(0, 10) >= visit.starts_on &&
-                        candidate.starts_at.slice(0, 10) <= (visit.ends_on ?? visit.starts_on),
-                    )
-                    .map((visit) => visitTitle(visit))
-                    .join(", ") || "Nieuw bezoek mogelijk"}
-                  . Dit voorstel is niet opgeslagen.
+                  {m.assets_this_suggestion_has_not_been_saved_line({
+                    p0: candidateAreas[candidate.id].existing_area_id
+                      ? m.assets_existing_area({ p0: candidateAreas[candidate.id].area.label })
+                      : m.assets_new_area_possible({
+                          p0: candidateAreas[candidate.id].area.label,
+                          p1: candidateAreas[candidate.id].area.timezone ?? m.assets_unknown_timezone(),
+                        }),
+                    p1:
+                      visits
+                        .filter(
+                          (visit) =>
+                            visit.area.id === candidateAreas[candidate.id].existing_area_id &&
+                            candidate.starts_at &&
+                            visit.starts_on &&
+                            candidate.starts_at.slice(0, 10) >= visit.starts_on &&
+                            candidate.starts_at.slice(0, 10) <= (visit.ends_on ?? visit.starts_on),
+                        )
+                        .map((visit) => visitTitle(visit))
+                        .join(", ") || m.assets_new_visit_possible(),
+                  })}
                 </p>
               )}
               <div className="button-row">
                 <Button type="button" onClick={() => startCandidateUpdate(candidate)}>
-                  Als nieuwe reisupdate openen
+                  {m.assets_open_as_a_new_travel_update()}
                 </Button>
                 {
                   <>
                     <Field>
-                      <FieldLabel className="scope-choice">Koppel aan</FieldLabel>
+                      <FieldLabel className="scope-choice">{m.assets_link_to()}</FieldLabel>
                       <AsyncSearchSelect
-                        ariaLabel="Koppel aan"
+                        ariaLabel={m.assets_link_to()}
                         value={candidateAttachments[candidate.id] ?? ""}
                         selectedOption={
                           foundUpdates[candidateAttachments[candidate.id]]
@@ -980,14 +1027,14 @@ export function MediaManager({
                             ...Object.fromEntries(updates.map((update) => [update.id, update])),
                           }));
                           return [
-                            { value: "", label: "Kies bestaande reisupdate" },
+                            { value: "", label: m.assets_choose_existing_travel_update() },
                             ...updates.map((update) => ({ value: update.id, label: update.title })),
                           ];
                         }}
                       />
                     </Field>
                     <Button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>
-                      Aan reisupdate koppelen
+                      {m.assets_link_to_travel_update()}
                     </Button>
                   </>
                 }
@@ -1014,9 +1061,10 @@ export function MediaManager({
                   className="mb-1 block max-h-65 max-w-65 rounded-travel-media bg-travel-media-bg object-contain"
                 />
               ) : null}
-              <h3>{selected.original_filename ?? "Naamloos medium"}</h3>
+              <h3>{selected.original_filename ?? m.owner_unnamed_media_item()}</h3>
               <p>
-                {selected.media_kind === "photo" ? "Foto" : "Video"} · {bytesLabel(selected.byte_size)}
+                {selected.media_kind === "photo" ? m.assets_photo() : m.assets_video()} ·{" "}
+                {bytesLabel(selected.byte_size)}
                 {selected.captured_at ? ` · ${timestamp(selected.captured_at)}` : ""}
               </p>
             </div>
@@ -1024,27 +1072,29 @@ export function MediaManager({
               <Button
                 className="secondary compact"
                 type="button"
-                onClick={() => open(selected.file_url, "Het private origineel kon niet worden geopend.")}
+                onClick={() => open(selected.file_url, m.assets_the_private_original_could_not_be_opened)}
               >
-                Origineel bekijken
+                {m.assets_view_original()}
               </Button>
               <Button
                 className="secondary compact"
                 type="button"
                 onClick={() =>
-                  void toggleOffline(selected).catch(fail("Het private medium kon niet offline worden bewaard."))
+                  void toggleOffline(selected).catch(fail(m.assets_the_private_media_item_could_not_be_saved_offline))
                 }
               >
-                {offline.isPinned("media_asset", selected.id) ? "Offline verwijderen" : "Offline bewaren"}
+                {offline.isPinned("media_asset", selected.id) ? m.owner_remove_offline_copy() : m.owner_save_offline()}
               </Button>
               <Button className="danger compact" type="button" onClick={() => setConfirmDeleteAsset(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {confirmDeleteAsset && (
               <DeleteConfirmation
-                title={`“${selected.original_filename ?? "dit medium"}” uit deze reis verwijderen?`}
-                description="Eventuele koppelingen aan reisupdates worden ook weggehaald."
+                title={m.assets_delete_from_this_trip({
+                  p0: selected.original_filename ?? m.assets_this_media_item_2(),
+                })}
+                description={m.assets_links_to_travel_updates_will_also_be_removed()}
                 onCancel={() => setConfirmDeleteAsset(false)}
                 onConfirm={() => performEraseAsset(selected)}
               />
@@ -1052,11 +1102,11 @@ export function MediaManager({
             <div className="manager-subsection">
               <div className="capture-heading">
                 <div>
-                  <h4>Kopieën om te delen</h4>
-                  <p>Een nieuwe kopie vereist altijd expliciete goedkeuring.</p>
+                  <h4>{m.assets_copies_to_share()}</h4>
+                  <p>{m.assets_a_new_copy_always_requires_explicit_approval()}</p>
                 </div>
                 <Button className="secondary compact" type="button" onClick={startCreateCopy}>
-                  Kopie maken
+                  {m.assets_create_copy()}
                 </Button>
               </div>
               {derivatives.length > 0 ? (
@@ -1070,7 +1120,7 @@ export function MediaManager({
                           className="document-select flex items-center gap-3"
                           type="button"
                           onClick={() => viewCopy(item.id)}
-                          aria-label={`Kopie ${purposeLabel[item.purpose]} bekijken`}
+                          aria-label={m.assets_view_copy({ p0: purposeLabel[item.purpose] })}
                         >
                           {canPreview && previewUrl && owner ? (
                             <OwnerImage
@@ -1090,16 +1140,18 @@ export function MediaManager({
                           <div className="min-w-0">
                             <strong>
                               {item.processing_state === "processing"
-                                ? "Wordt verwerkt…"
+                                ? m.assets_processing()
                                 : item.processing_state === "failed"
-                                  ? "Verwerking mislukt"
+                                  ? m.assets_processing_failed()
                                   : item.review_state === "approved"
-                                    ? "Goedgekeurd"
-                                    : "Wacht op goedkeuring"}
+                                    ? m.assets_approved()
+                                    : m.assets_awaiting_approval()}
                             </strong>
                             <span>
                               {purposeLabel[item.purpose]} ·{" "}
-                              {item.width && item.height ? `${item.width} × ${item.height}` : "afmetingen onbekend"}
+                              {item.width && item.height
+                                ? `${item.width} × ${item.height}`
+                                : m.assets_unknown_dimensions()}
                             </span>
                           </div>
                         </Button>
@@ -1108,7 +1160,7 @@ export function MediaManager({
                   })}
                 </div>
               ) : (
-                <p className="help">Nog geen kopieën voor dit medium.</p>
+                <p className="help">{m.assets_no_copies_for_this_media_item_yet()}</p>
               )}
             </div>
           </div>
@@ -1116,17 +1168,19 @@ export function MediaManager({
         {selected && view.kind === "create" && (
           <RecordForm
             record={derivativeRecord}
-            submitLabel={selected.media_kind === "video" ? "Veilige videokopie maken" : "Metadata-vrije kopie maken"}
-            pendingLabel="Kopie maken…"
+            submitLabel={
+              selected.media_kind === "video" ? m.assets_create_safe_video_copy() : m.assets_create_metadatafree_copy()
+            }
+            pendingLabel={m.assets_creating_copy()}
             actions={cancelAction}
           >
             <div className="field-row">
               <derivativeRecord.form.Field name="purpose">
                 {(field) => (
-                  <SelectField field={field} label="Doel">
-                    <option value="share">Delen</option>
-                    <option value="static_export">Statisch archief</option>
-                    <option value="owner_preview">Private voorvertoning</option>
+                  <SelectField field={field} label={m.assets_purpose()}>
+                    <option value="share">{m.owner_sharing()}</option>
+                    <option value="static_export">{m.assets_static_archive()}</option>
+                    <option value="owner_preview">{m.assets_private_preview()}</option>
                   </SelectField>
                 )}
               </derivativeRecord.form.Field>
@@ -1136,7 +1190,14 @@ export function MediaManager({
                   validators={{ onChange: dimensionInRange, onSubmit: dimensionInRange }}
                 >
                   {(field) => (
-                    <TextField field={field} label="Maximale zijde (px)" required min={64} max={4000} type="number" />
+                    <TextField
+                      field={field}
+                      label={m.assets_maximum_side_px()}
+                      required
+                      min={64}
+                      max={4000}
+                      type="number"
+                    />
                   )}
                 </derivativeRecord.form.Field>
               )}
@@ -1149,7 +1210,7 @@ export function MediaManager({
                           checked={field.state.value}
                           onCheckedChange={(checked) => field.handleChange(checked)}
                         />
-                        Geluid verwijderen
+                        {m.assets_remove_audio()}
                       </FieldLabel>
                     </Field>
                   )}
@@ -1175,27 +1236,29 @@ export function MediaManager({
                   <OwnerImage
                     session={owner.session}
                     url={previewUrl}
-                    alt={`Voorvertoning van de kopie van ${selected.original_filename ?? "dit medium"}`}
+                    alt={m.assets_preview_of_the_copy_of({
+                      p0: selected.original_filename ?? m.assets_this_media_item_2(),
+                    })}
                     className="mb-1 block max-h-65 max-w-65 rounded-travel-media bg-travel-media-bg object-contain"
                   />
                 )}
                 <div>
                   <strong>
                     {selectedDerivative.processing_state === "processing"
-                      ? "Video wordt verwerkt…"
+                      ? m.assets_video_is_being_processed()
                       : selectedDerivative.processing_state === "failed"
-                        ? "Verwerking mislukt"
+                        ? m.assets_processing_failed()
                         : selectedDerivative.review_state === "approved"
-                          ? "Goedgekeurde kopie"
-                          : "Wacht op goedkeuring"}
+                          ? m.assets_approved_copy()
+                          : m.assets_awaiting_approval()}
                   </strong>
                   <p>
                     {purposeLabel[selectedDerivative.purpose]} ·{" "}
                     {selectedDerivative.width && selectedDerivative.height
                       ? `${selectedDerivative.width} × ${selectedDerivative.height}`
-                      : "afmetingen onbekend"}
+                      : m.assets_unknown_dimensions()}
                     {selectedDerivative.media_kind === "video" &&
-                      ` · ${selectedDerivative.duration_seconds?.toFixed(1) ?? "?"} s · ${selectedDerivative.remove_audio ? "zonder geluid" : "met geluid"}`}
+                      ` · ${selectedDerivative.duration_seconds?.toFixed(1) ?? "?"} s · ${selectedDerivative.remove_audio ? m.assets_without_audio() : m.assets_with_audio()}`}
                   </p>
                 </div>
                 {selectedDerivative.review_state === "approved" &&
@@ -1206,7 +1269,7 @@ export function MediaManager({
                       kind="media_derivative"
                       id={selectedDerivative.id}
                       value={selectedDerivative.visibility}
-                      name={`kopie van ${selected.original_filename ?? "foto"}`}
+                      name={m.assets_copy_of({ p0: selected.original_filename ?? "foto" })}
                       followsUpdate={
                         trip.travel_updates.find((update) => update.id === selectedDerivative.travel_update_id)?.title
                       }
@@ -1217,9 +1280,9 @@ export function MediaManager({
                     <Button
                       className="secondary compact"
                       type="button"
-                      onClick={() => open(selectedDerivative.file_url, "De private kopie kon niet worden geopend.")}
+                      onClick={() => open(selectedDerivative.file_url, m.assets_the_private_copy_could_not_be_opened)}
                     >
-                      {selectedDerivative.media_kind === "video" ? "Video en geluid controleren" : "Bekijken"}
+                      {selectedDerivative.media_kind === "video" ? m.assets_check_video_and_audio() : m.assets_view()}
                     </Button>
                   )}
                   {canPreview && (
@@ -1228,13 +1291,13 @@ export function MediaManager({
                       type="button"
                       onClick={() =>
                         void toggleDerivativeOffline(selectedDerivative).catch(
-                          fail("De kopie kon niet offline worden bewaard."),
+                          fail(m.assets_the_copy_could_not_be_saved_offline),
                         )
                       }
                     >
                       {offline.isPinned("media_derivative", selectedDerivative.id)
-                        ? "Offline verwijderen"
-                        : `Offline bewaren (${bytesLabel(selectedDerivative.byte_size ?? 0)})`}
+                        ? m.owner_remove_offline_copy()
+                        : m.assets_save_offline({ p0: bytesLabel(selectedDerivative.byte_size ?? 0) })}
                     </Button>
                   )}
                   {selectedDerivative.processing_state === "failed" && (
@@ -1244,10 +1307,10 @@ export function MediaManager({
                       onClick={() =>
                         retry
                           .mutateAsync({ assetId: selected.id, derivative: selectedDerivative })
-                          .catch(fail("De video kon niet opnieuw worden verwerkt."))
+                          .catch(fail(m.assets_the_video_could_not_be_processed_again))
                       }
                     >
-                      Opnieuw proberen
+                      {m.retry()}
                     </Button>
                   )}
                   {selectedDerivative.review_state === "pending" && canPreview && (
@@ -1258,27 +1321,30 @@ export function MediaManager({
                         approve
                           .mutateAsync({ assetId: selected.id, derivative: selectedDerivative })
                           .then(
-                            () => setNotice("Kopie expliciet goedgekeurd. Kies nu wie hem mag zien."),
-                            fail("De kopie kon niet worden goedgekeurd."),
+                            () =>
+                              setNotice(
+                                textNotice(() => m.assets_copy_explicitly_approved_now_choose_who_can_see_it()),
+                              ),
+                            fail(m.assets_the_copy_could_not_be_approved),
                           )
                       }
                     >
-                      Expliciet goedkeuren
+                      {m.assets_explicitly_approve()}
                     </Button>
                   )}
                   {selectedDerivative.purpose === "share" && selectedDerivative.processing_state !== "processing" && (
                     <Button className="secondary compact" type="button" onClick={() => editCopy(selectedDerivative)}>
-                      Presentatie bewerken
+                      {m.assets_edit_presentation()}
                     </Button>
                   )}
                   <Button className="danger compact" type="button" onClick={() => setConfirmDeleteCopy(true)}>
-                    Verwijderen
+                    {m.owner_delete()}
                   </Button>
                 </div>
                 {confirmDeleteCopy && (
                   <DeleteConfirmation
-                    title="Deze kopie verwijderen?"
-                    description="Hij wordt direct uit eventuele deelscopes gehaald."
+                    title={m.assets_delete_this_copy()}
+                    description={m.assets_it_will_immediately_be_removed_from_any_sharing_scopes()}
                     onCancel={() => setConfirmDeleteCopy(false)}
                     onConfirm={() => performEraseDerivative(selected, selectedDerivative)}
                   />
@@ -1290,8 +1356,8 @@ export function MediaManager({
         {selected && view.kind === "copy" && selectedDerivative && view.edit && (
           <RecordForm
             record={presentationRecord}
-            submitLabel="Presentatie opslaan"
-            pendingLabel="Opslaan…"
+            submitLabel={m.assets_save_presentation()}
+            pendingLabel={m.owner_saving()}
             actions={cancelAction}
           >
             <PresentationFields

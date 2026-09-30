@@ -85,7 +85,7 @@ archive-content import in #40.
       codes and render-time localized feedback before completing extraction.
 - [x] [#286](https://github.com/tjorim/travel/issues/286) Translate owner trip
       workspaces, shared editors, capture and map controls.
-- [ ] [#287](https://github.com/tjorim/travel/issues/287) Translate private
+- [x] [#287](https://github.com/tjorim/travel/issues/287) Translate private
       assets, publication, library and offline packing workflows.
 - [ ] [#288](https://github.com/tjorim/travel/issues/288) Complete public and
       unlisted visitor presentation in Dutch and English.

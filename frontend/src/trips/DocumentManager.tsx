@@ -1,4 +1,7 @@
-import { errorNotice, useFeedback } from "../query/feedback";
+import type { ErrorFallback } from "../query/api";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { errorNotice, useFeedback, textNotice, FeedbackError } from "../query/feedback";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
@@ -15,16 +18,25 @@ import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
 import { Field, FieldLabel } from "../ui/field";
 
 export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string> = {
-  booking: "Boeking",
-  itinerary: "Routeplan",
-  receipt: "Bon",
-  other: "Anders",
+  get booking() {
+    return m.assets_booking();
+  },
+  get itinerary() {
+    return m.assets_itinerary();
+  },
+  get receipt() {
+    return m.assets_receipt();
+  },
+  get other() {
+    return m.owner_other();
+  },
 };
 
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
 
 export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
+  useLocale();
   const owner = useOwner();
   const offline = useOfflineCopies();
   const documentsQuery = useTripResource(trip.id, "documents");
@@ -38,12 +50,12 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   const [inputKey, setInputKey] = useState(0);
 
   const upload = useOwnerMutation<FormData, DocumentAsset>({
-    fallback: "Het document kon niet worden geüpload.",
+    fallback: m.assets_the_document_could_not_be_uploaded,
     request: (body) => ({ path: `${tripPath(trip.id, "documents")}/uploads`, method: "POST", body }),
     invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "documents")],
   });
   const remove = useOwnerMutation<DocumentAsset>({
-    fallback: "Het document kon niet worden verwijderd.",
+    fallback: m.assets_the_document_could_not_be_deleted,
     request: (document) => ({ path: `${tripPath(trip.id, "documents")}/${document.id}`, method: "DELETE" }),
     // A route drops the link to a deleted document on the server.
     invalidate: (subject) => [
@@ -53,10 +65,10 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   });
   const uploadRecord = useRecordForm<UploadValues>({
     defaultValues: blankUpload(),
-    fallback: "Het document kon niet worden geüpload.",
+    fallback: m.assets_the_document_could_not_be_uploaded,
     serverFields: { title: "title", document_kind: "kind" },
     submit: async (values) => {
-      if (!file) throw new Error("Kies een bestand om te uploaden.");
+      if (!file) throw new FeedbackError(() => m.assets_choose_a_file_to_upload());
       const body = new FormData();
       body.set("title", values.title.trim());
       body.set("document_kind", values.kind);
@@ -65,12 +77,12 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     },
     onSuccess: () => {
       close();
-      setNotice("Privédocument geüpload.");
+      setNotice(textNotice(() => m.assets_private_document_uploaded()));
     },
   });
 
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
-  const failInDialog = (fallback: string) => (error: unknown) => {
+  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const failInDialog = (fallback: ErrorFallback) => (error: unknown) => {
     dialog.setConfirmDelete(false);
     dialog.setError(errorNotice(error, fallback));
   };
@@ -90,21 +102,21 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     remove.mutateAsync(document).then(async () => {
       await offline.removeByResource("trip_document", document.id);
       close();
-      setNotice("Privédocument verwijderd.");
-    }, failInDialog("Het document kon niet worden verwijderd."));
+      setNotice(textNotice(() => m.assets_private_document_deleted()));
+    }, failInDialog(m.assets_the_document_could_not_be_deleted));
   }
 
   async function togglePin(document: DocumentAsset) {
     if (!owner) return;
     if (offline.isPinned("trip_document", document.id)) {
       await offline.removeByResource("trip_document", document.id);
-      setNotice(`“${document.title}” is niet langer offline beschikbaar.`);
+      setNotice(textNotice(() => m.owner_is_no_longer_available_offline({ p0: document.title })));
       return;
     }
     const blob = await ownerFile(
       owner.session,
       document.file_url,
-      "Het document kon niet worden opgehaald voor offline gebruik.",
+      m.assets_the_document_could_not_be_retrieved_for_offline_use,
     );
     await offline.pin({
       resourceKind: "trip_document",
@@ -114,10 +126,10 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       contentType: blob.type || document.content_type,
       bytes: await blob.arrayBuffer(),
     });
-    setNotice(`“${document.title}” is offline bewaard op dit toestel.`);
+    setNotice(textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: document.title })));
   }
 
-  function open(url: string, fallback: string) {
+  function open(url: string, fallback: ErrorFallback) {
     if (owner) openOwnerFile(owner.session, url, fallback).catch(fail(fallback));
   }
 
@@ -125,22 +137,22 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   const message =
     notice ??
     (readError
-      ? errorMessage(readError, "Je documenten konden niet worden geladen.")
+      ? errorMessage(readError, m.assets_your_documents_could_not_be_loaded)
       : documentsQuery.isPending
-        ? "Laad je private documenten…"
+        ? m.assets_loading_your_private_documents()
         : documents.length
-          ? "Documenten en originelen blijven uitsluitend in je private tracker."
-          : "Upload een privédocument wanneer je het wilt bewaren.");
+          ? m.assets_documents_and_originals_stay_in_your_private_tracker()
+          : m.assets_upload_a_private_document_when_you_want_to_keep_it());
 
   return (
     <section className="travel-card manager" aria-labelledby="documents-title">
       <div className="capture-heading">
         <div>
-          <h3 id="documents-title">Documenten</h3>
-          <p>Documenten blijven altijd privé en worden nooit met bezoekers gedeeld.</p>
+          <h3 id="documents-title">{m.assets_documents()}</h3>
+          <p>{m.assets_documents_always_stay_private_and_are_never_shared_with_visitors()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          Nieuw document
+          {m.assets_new_document()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -154,27 +166,29 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(document.id)}
-                aria-label={`Document ${document.title} bekijken`}
+                aria-label={m.assets_view_document({ p0: document.title })}
               >
                 <strong>{document.title}</strong>
                 <span>
-                  {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}
+                  {document.original_filename ?? m.owner_unnamed_file()} · {bytesLabel(document.byte_size)}
                 </span>
               </Button>
               <div className="button-row">
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => open(document.file_url, "Het private origineel kon niet worden geopend.")}
+                  onClick={() => open(document.file_url, m.assets_the_private_original_could_not_be_opened)}
                 >
-                  Origineel bekijken
+                  {m.assets_view_original()}
                 </Button>
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => void togglePin(document).catch(fail("Offline bewaren is mislukt."))}
+                  onClick={() => void togglePin(document).catch(fail(m.assets_saving_offline_failed))}
                 >
-                  {offline.isPinned("trip_document", document.id) ? "Offline verwijderen" : "Offline bewaren"}
+                  {offline.isPinned("trip_document", document.id)
+                    ? m.owner_remove_offline_copy()
+                    : m.owner_save_offline()}
                 </Button>
               </div>
             </article>
@@ -183,7 +197,7 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? "Document uploaden" : "Document"}
+        title={editing ? m.assets_upload_document() : m.assets_document()}
         dirty={editing && uploadRecord.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -193,17 +207,17 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
             <div>
               <h3>{selected.title}</h3>
               <p>
-                {selected.original_filename ?? "Naamloos bestand"} · {bytesLabel(selected.byte_size)}
+                {selected.original_filename ?? m.owner_unnamed_file()} · {bytesLabel(selected.byte_size)}
               </p>
             </div>
             <div className="button-row">
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={`Document “${selected.title}” verwijderen?`}
+                title={m.assets_delete_document({ p0: selected.title })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -211,31 +225,35 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
           </div>
         )}
         {editing && (
-          <RecordForm record={uploadRecord} submitLabel="Document uploaden" pendingLabel="Uploaden…">
+          <RecordForm
+            record={uploadRecord}
+            submitLabel={m.assets_upload_document()}
+            pendingLabel={m.assets_uploading()}
+          >
             <div className="field-row">
               <uploadRecord.form.Field
                 name="title"
                 validators={{
-                  onChange: requiredText("Geef het document een titel."),
-                  onSubmit: requiredText("Geef het document een titel."),
+                  onChange: requiredText(m.assets_give_the_document_a_title),
+                  onSubmit: requiredText(m.assets_give_the_document_a_title),
                 }}
               >
-                {(field) => <TextField field={field} label="Titel" required maxLength={160} />}
+                {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
               </uploadRecord.form.Field>
               <uploadRecord.form.Field name="kind">
                 {(field) => (
-                  <SelectField field={field} label="Soort">
-                    <option value="booking">Boeking</option>
-                    <option value="itinerary">Routeplan</option>
-                    <option value="receipt">Bon</option>
-                    <option value="other">Anders</option>
+                  <SelectField field={field} label={m.assets_kind()}>
+                    <option value="booking">{m.assets_booking()}</option>
+                    <option value="itinerary">{m.assets_itinerary()}</option>
+                    <option value="receipt">{m.assets_receipt()}</option>
+                    <option value="other">{m.owner_other()}</option>
                   </SelectField>
                 )}
               </uploadRecord.form.Field>
             </div>
             <Field>
               <FieldLabel>
-                Privébestand
+                {m.assets_private_file()}
                 <Input
                   key={inputKey}
                   required

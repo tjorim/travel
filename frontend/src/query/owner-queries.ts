@@ -1,3 +1,4 @@
+import { m } from "../paraglide/messages.js";
 import { onlineManager, useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -62,19 +63,19 @@ type TripResourceData = {
   overview: TripOverview;
 };
 
-const resourceFailure: Record<TripResource, string> = {
-  stays: "Je verblijven konden niet worden geladen.",
-  "trip-tasks": "Je taken konden niet worden geladen.",
-  "task-alerts": "Je meldingen konden niet worden geladen.",
-  areas: "Je gebieden konden niet worden geladen.",
-  locations: "Je locaties konden niet worden geladen.",
-  routes: "Je routes konden niet worden geladen.",
-  visits: "Je bezoeken konden niet worden geladen.",
-  documents: "Je documenten konden niet worden geladen.",
-  media: "Je media konden niet worden geladen.",
-  "public-projection": "De publieke publicatie kon niet worden geladen.",
-  "share-links": "De deellinks konden niet worden geladen.",
-  overview: "De controle voor het delen kon niet worden geladen.",
+const resourceFailure: Record<TripResource, ErrorFallback> = {
+  stays: m.owner_your_stays_could_not_be_loaded,
+  "trip-tasks": m.owner_your_tasks_could_not_be_loaded,
+  "task-alerts": m.owner_your_notifications_could_not_be_loaded,
+  areas: m.owner_your_areas_could_not_be_loaded,
+  locations: m.owner_your_locations_could_not_be_loaded,
+  routes: m.owner_your_routes_could_not_be_loaded,
+  visits: m.owner_your_visits_could_not_be_loaded,
+  documents: m.assets_your_documents_could_not_be_loaded,
+  media: m.owner_your_media_could_not_be_loaded,
+  "public-projection": m.assets_the_public_publication_could_not_be_loaded,
+  "share-links": m.assets_the_share_links_could_not_be_loaded,
+  overview: m.assets_the_sharing_check_could_not_be_loaded,
 };
 
 export const tripPath = (tripId: string, resource?: string) =>
@@ -86,7 +87,7 @@ export function tripsQueryOptions(owner: Owner | null) {
     queryKey: ownerKeys.trips(owner?.subject ?? ""),
     enabled: owner !== null,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<Trip[]>(owner!.session, "/api/trips", "Je reizen konden niet worden geladen.", { signal }),
+      ownerRequest<Trip[]>(owner!.session, "/api/trips", m.owner_trips_error, { signal }),
   };
 }
 
@@ -137,7 +138,7 @@ export function useAreaSearch(tripId: string) {
   return useOwnerSearch<Area>(
     (q) => tripPath(tripId, `areas${searchParams(q)}`),
     (subject, q) => [...ownerKeys.tripResource(subject, tripId, "areas"), "search", q],
-    "Je gebieden konden niet worden doorzocht.",
+    m.assets_your_areas_could_not_be_searched(),
   );
 }
 
@@ -145,7 +146,7 @@ export function useLocationSearch(tripId: string) {
   return useOwnerSearch<Location>(
     (q) => tripPath(tripId, `locations${searchParams(q)}`),
     (subject, q) => [...ownerKeys.tripResource(subject, tripId, "locations"), "search", q],
-    "Je locaties konden niet worden doorzocht.",
+    m.assets_your_locations_could_not_be_searched(),
   );
 }
 
@@ -153,7 +154,7 @@ export function useTripSearch() {
   return useOwnerSearch<Trip>(
     (q) => `/api/trips${searchParams(q)}`,
     (subject, q) => [...ownerKeys.trips(subject), "search", q],
-    "Je reizen konden niet worden doorzocht.",
+    m.assets_your_trips_could_not_be_searched(),
   );
 }
 
@@ -161,13 +162,13 @@ export function useTravelUpdateSearch(tripId: string) {
   return useOwnerSearch<TravelUpdate>(
     (q) => tripPath(tripId, `travel-updates${searchParams(q)}`),
     (subject, q) => [...ownerKeys.trip(subject, tripId), "travel-updates", "search", q],
-    "Je reisupdates konden niet worden doorzocht.",
+    m.assets_your_travel_updates_could_not_be_searched(),
   );
 }
 
 type DerivativeData = { media: MediaDerivative[] };
-const derivativeFailure: Record<DerivativeParent, string> = {
-  media: "De afgeleiden konden niet worden geladen.",
+const derivativeFailure: Record<DerivativeParent, ErrorFallback> = {
+  media: m.assets_the_media_copies_could_not_be_loaded,
 };
 
 /** The generated copies of one media asset; nothing is read until an asset is chosen. */
@@ -195,9 +196,9 @@ export function useDerivatives<K extends DerivativeParent>(tripId: string | null
 }
 
 type LibraryData = { documents: OwnerDocument[]; "emergency-info": EmergencyInfoEntry[] };
-const libraryFailure: Record<LibraryResource, string> = {
-  documents: "Je bibliotheek kon niet worden geladen.",
-  "emergency-info": "Je noodinformatie kon niet worden geladen.",
+const libraryFailure: Record<LibraryResource, ErrorFallback> = {
+  documents: m.assets_your_library_could_not_be_loaded,
+  "emergency-info": m.assets_your_emergency_information_could_not_be_loaded,
 };
 
 export const libraryPath = (resource: LibraryResource) => `/api/library/${resource}`;
@@ -222,7 +223,7 @@ export function useLinkedLibraryDocuments(tripId: string | null) {
       ownerRequest<OwnerDocument[]>(
         owner!.session,
         `${libraryPath("documents")}?linked_trip_id=${encodeURIComponent(tripId!)}`,
-        "Gekoppelde bibliotheekdocumenten konden niet worden geladen.",
+        m.assets_linked_library_documents_could_not_be_loaded,
         { signal },
       ),
   });
@@ -235,12 +236,9 @@ export function useProviderConnections() {
     queryKey: ownerKeys.providers(owner?.subject ?? ""),
     enabled: owner !== null,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<ProviderConnectionStatus[]>(
-        owner!.session,
-        "/api/provider-tokens",
-        "De providerstatus kon niet worden geladen.",
-        { signal },
-      ),
+      ownerRequest<ProviderConnectionStatus[]>(owner!.session, "/api/provider-tokens", m.provider_status_error, {
+        signal,
+      }),
   });
 }
 
@@ -277,7 +275,7 @@ export function useOwnerMutation<V, R = unknown>({
   return useMutation<R, Error, V, { key: QueryKey; previous: unknown } | undefined>({
     ...(gcTime === undefined ? {} : { gcTime }),
     mutationFn: (variables) => {
-      if (!owner) throw new ApiError("Meld aan om je private reizen te wijzigen.", 401);
+      if (!owner) throw new ApiError(m.assets_sign_in_to_change_your_private_trips, 401);
       const { path, ...options } = request(variables);
       return ownerRequest<R>(owner.session, path, fallback, options);
     },
@@ -329,7 +327,7 @@ export type MarkAlertRead = { tripId: string; alertId: string };
 /** Marks a reminder read at once, restoring it if the server refuses. */
 export function useMarkAlertRead() {
   return useOwnerMutation<MarkAlertRead, TripTaskAlert>({
-    fallback: "De melding kon niet als gelezen worden gemarkeerd.",
+    fallback: m.assets_the_notification_could_not_be_marked_as_read,
     request: ({ tripId, alertId }) => ({
       path: `${tripPath(tripId, "task-alerts")}/${encodeURIComponent(alertId)}/read`,
       method: "PATCH",

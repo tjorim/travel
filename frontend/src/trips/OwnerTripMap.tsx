@@ -183,7 +183,7 @@ export function OwnerTripMap({
           from: route?.departure_area.label ?? line.from,
           to: route?.arrival_area.label ?? line.to,
           dates: route?.departs_on ?? line.dates,
-          links: route ? [{ label: m.owner_open_route(), onOpen: () => openRecord?.("route", route.id) }] : line.links,
+          links: route ? [{ label: m.owner_open_route(), onOpen: () => openRecord?.("route", route.id) }] : [],
           transport: route?.mode ?? line.transport,
         };
       }),
@@ -202,8 +202,17 @@ export function OwnerTripMap({
       metadataUrl: `/api/trips/${trip.id}/offline-map`,
       title: m.owner_map_and_route({ p0: trip.title }),
       contentType: "application/json",
-      bytes: new TextEncoder().encode(JSON.stringify({ version: 1, trip_id: trip.id, points: displayedPoints, lines }))
-        .buffer as ArrayBuffer,
+      bytes: new TextEncoder().encode(
+        JSON.stringify({
+          version: 2,
+          trip_id: trip.id,
+          points: points.map(({ links: _links, detail, ...point }) => ({
+            ...point,
+            ...(point.kind === "derived" ? {} : { detail }),
+          })),
+          lines: lines.map(({ links: _links, ...line }) => line),
+        }),
+      ).buffer as ArrayBuffer,
     });
     setNotice(textNotice(() => m.owner_map_and_route_data_are_saved_offline_on_this_device_map_tiles_are_not_co()));
   }
@@ -222,7 +231,7 @@ export function OwnerTripMap({
       <TripMap
         points={displayedPoints}
         lines={lines}
-        owner
+        owner={!snapshot && !unavailable}
         focus={focus}
         onUseDerived={(point) =>
           void savePoint

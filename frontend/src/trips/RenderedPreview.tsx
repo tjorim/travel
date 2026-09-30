@@ -1,4 +1,5 @@
-import { errorNotice, useFeedback } from "../query/feedback";
+import { useLocale } from "../locale";
+import { errorNotice, useFeedback, textNotice, FeedbackError } from "../query/feedback";
 import { m } from "../paraglide/messages.js";
 import { useEffect, useState } from "react";
 
@@ -19,6 +20,7 @@ export function RenderedPreview({
   linkId?: string;
   session: TrackerSession;
 }) {
+  useLocale();
   const [images, setImages] = useState<Record<string, string>>({});
   const [error, setError] = useFeedback<string>("");
   const base = `/api/trips/${encodeURIComponent(tripId)}/${audience === "public" ? "public-projection" : `share-links/${encodeURIComponent(linkId ?? "")}`}/preview`;
@@ -34,7 +36,7 @@ export function RenderedPreview({
           : [],
       );
       for (const id of ids)
-        void ownerFile(session, `${base}/files/${encodeURIComponent(id)}`, "Media niet beschikbaar.", {
+        void ownerFile(session, `${base}/files/${encodeURIComponent(id)}`, m.assets_media_unavailable, {
           cache: "no-store",
           credentials: "omit",
           signal: controller.signal,
@@ -49,7 +51,7 @@ export function RenderedPreview({
             setImages((current) => ({ ...current, [id]: url }));
           })
           .catch((failure: unknown) => {
-            if (!controller.signal.aborted) setError(errorNotice(failure, m.api_visitor_file()));
+            if (!controller.signal.aborted) setError(errorNotice(failure, m.api_visitor_file));
           });
     }
     return () => {
@@ -60,7 +62,7 @@ export function RenderedPreview({
 
   async function openFile(id: string) {
     try {
-      const blob = await ownerFile(session, `${base}/files/${encodeURIComponent(id)}`, "Document niet beschikbaar.", {
+      const blob = await ownerFile(session, `${base}/files/${encodeURIComponent(id)}`, m.assets_document_unavailable, {
         cache: "no-store",
         credentials: "omit",
       });
@@ -74,11 +76,11 @@ export function RenderedPreview({
           >
         )[blob.type.split(";")[0]] ?? "";
       anchor.href = url;
-      anchor.download = `gedeeld-document${extension}`;
+      anchor.download = `${m.assets_shared_document_filename()}${extension}`;
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (failure) {
-      setError(errorNotice(failure, m.api_visitor_file()));
+      setError(errorNotice(failure, m.api_visitor_file));
     }
   }
 
@@ -89,26 +91,27 @@ export function RenderedPreview({
       const target = await ownerRequest<unknown>(
         session,
         `${base}/navigation/${encodeURIComponent(id)}`,
-        "Navigatie niet beschikbaar.",
+        m.assets_navigation_unavailable,
         { cache: "no-store", credentials: "omit" },
       );
       const url = (target as { url?: unknown }).url;
       if (typeof url !== "string" || !url.startsWith("https://www.google.com/maps/dir/?"))
-        throw new Error("Ongeldige navigatie.");
+        throw new FeedbackError(() => m.assets_invalid_navigation());
       if (tab) tab.location.href = url;
-      else setError("Sta pop-ups toe om de routebeschrijving te openen.");
+      else setError(textNotice(() => m.assets_allow_popups_to_open_directions()));
     } catch (failure) {
       tab?.close();
-      setError(errorNotice(failure, m.api_visitor_navigation()));
+      setError(errorNotice(failure, m.api_visitor_navigation));
     }
   }
 
-  if (!isProjection(projection, audience)) return <p role="alert">De preview kon niet veilig worden weergegeven.</p>;
+  if (!isProjection(projection, audience))
+    return <p role="alert">{m.assets_the_preview_could_not_be_displayed_safely()}</p>;
   return (
     <div className="rounded-xl border border-travel-card-border bg-travel-paper p-5">
       <header>
-        <p className="travel-eyebrow">Travel · Voorvertoning</p>
-        <h2 className="m-0 text-3xl leading-none tracking-tight">{projection.title || "Gedeelde reis"}</h2>
+        <p className="travel-eyebrow">{m.assets_travel_preview()}</p>
+        <h2 className="m-0 text-3xl leading-none tracking-tight">{projection.title || m.shared_trip()}</h2>
       </header>
       {error && <p role="alert">{error}</p>}
       <ProjectionView

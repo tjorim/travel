@@ -14,12 +14,9 @@ export function Library() {
   return (
     <section className="grid gap-4.5" aria-labelledby="library-title">
       <div>
-        <p className="travel-eyebrow">Los van je reizen</p>
+        <p className="travel-eyebrow">{m.assets_separate_from_your_trips()}</p>
         <h2 id="library-title">{m.library()}</h2>
-        <p>
-          Reisdocumenten en noodinformatie die niet aan één specifieke reis vastzitten. Koppel een document optioneel
-          aan een reis vanuit de bibliotheek zelf.
-        </p>
+        <p>{m.assets_travel_documents_and_emergency_information_that_belong_to_no_specific_tr()}</p>
       </div>
       <DocumentLibraryManager />
       <EmergencyInfoManager />

@@ -1,3 +1,12 @@
+import { FeedbackError } from "../query/feedback";
+import { m } from "../paraglide/messages.js";
+/** Keep native storage diagnostics separate from the localized operation message. */
+function storageFailure(describe: () => string, cause?: unknown): FeedbackError {
+  const error = new FeedbackError(describe);
+  error.cause = cause;
+  return error;
+}
+
 const DB_NAME = "travel-offline-v1";
 const DB_VERSION = 1;
 const KEYS_STORE = "keys";
@@ -48,9 +57,9 @@ export type PinInput = {
 
 export type KeyDisclosure = { subject: string; exportable: boolean; createdAt: number };
 
-export class OfflineUnsupportedError extends Error {
+export class OfflineUnsupportedError extends FeedbackError {
   constructor() {
-    super("Offline opslag wordt niet ondersteund in deze browser.");
+    super(() => m.assets_offline_storage_is_not_supported_in_this_browser());
     this.name = "OfflineUnsupportedError";
   }
 }
@@ -101,7 +110,7 @@ function openDb(): Promise<IDBDatabase> {
         }
       };
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error("De offline database kon niet worden geopend."));
+      request.onerror = () => reject(storageFailure(m.assets_the_offline_database_could_not_be_opened, request.error));
     });
   }
   return dbPromise;
@@ -126,15 +135,15 @@ export async function __resetOfflineStoreForTests(): Promise<void> {
 function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("De offline actie is mislukt."));
+    request.onerror = () => reject(storageFailure(m.assets_the_offline_action_failed, request.error));
   });
 }
 
 function promisifyTransaction(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error("De offline actie is mislukt."));
-    transaction.onabort = () => reject(transaction.error ?? new Error("De offline actie is afgebroken."));
+    transaction.onerror = () => reject(storageFailure(m.assets_the_offline_action_failed, transaction.error));
+    transaction.onabort = () => reject(storageFailure(m.assets_the_offline_action_was_aborted, transaction.error));
   });
 }
 
@@ -235,7 +244,9 @@ export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummar
   const db = await openDb();
   const { key } = await getOrCreateDeviceKey(input.subject);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, input.bytes);
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, input.bytes).catch((cause: unknown) => {
+    throw storageFailure(m.assets_the_offline_action_failed, cause);
+  });
   const now = Date.now();
   const existing = await findPinnedCopy(input.subject, input.resourceKind, input.resourceId);
   const record: OfflineCopyRecord = {
@@ -294,19 +305,17 @@ export async function openOfflineCopy(subject: string, id: string): Promise<Blob
   const db = await openDb();
   const record = await getCopy(db, id);
   if (!record || record.subject !== subject)
-    throw new Error("Deze offline kopie is niet beschikbaar voor dit account.");
+    throw new FeedbackError(() => m.assets_this_offline_copy_is_not_available_for_this_account());
   if (record.leaseExpiresAt <= Date.now()) {
     await deleteCopy(db, id);
-    throw new Error(
-      "De offline geldigheidsperiode van deze kopie is verlopen. Verbind opnieuw met internet om ze te vernieuwen.",
-    );
+    throw new FeedbackError(() => m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in());
   }
   const { key } = await getOrCreateDeviceKey(subject);
-  const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: record.iv as BufferSource },
-    key,
-    record.ciphertext,
-  );
+  const plaintext = await crypto.subtle
+    .decrypt({ name: "AES-GCM", iv: record.iv as BufferSource }, key, record.ciphertext)
+    .catch((cause: unknown) => {
+      throw storageFailure(m.assets_the_offline_copy_could_not_be_opened, cause);
+    });
   return new Blob([plaintext], { type: record.contentType });
 }
 

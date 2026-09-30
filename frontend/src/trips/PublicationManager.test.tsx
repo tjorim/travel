@@ -529,7 +529,7 @@ it("shows what each audience receives and words the review warnings in Dutch", a
   };
   renderWithOwner(<PublicationManager trip={trip} />);
   const review = within(await screen.findByRole("list", { name: "Controle voor het delen" }));
-  expect(review.getByText(/7 bezoeken, 0 verblijven, 2 routes, 1 reisupdates/)).toBeTruthy();
+  expect(review.getByText(/7 bezoeken, 0 verblijven, 2 routes, 1 reisupdate/)).toBeTruthy();
   expect(
     review.getByText(
       "De pagina voor iedereen krijgt 7 bezoeken, 1 reisupdate zonder kaartpunt, omdat hun gebied niet gedeeld is of geen punt heeft.",
