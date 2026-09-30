@@ -6,6 +6,9 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Owner and visitor views offer device-local light, dark and automatic appearance,
+  applied before first paint, with themed maps, Markdown and controls (#278).
+
 - The trip overview flags a location that only repeats its area: within a kilometre of the area's
   point and labelled with an airport code or a bare city entry. Name the area after the city or
   region and keep the location for the exact place. It only warns; nothing is hidden (#274).

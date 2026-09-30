@@ -227,7 +227,7 @@ export const requiredText =
 export function CheckboxField({
   field,
   label,
-  className = "flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold",
+  className = "flex items-center gap-2 rounded-lg border border-travel-divider bg-travel-surface px-2.75 py-2.5 font-semibold",
   ...input
 }: { field: AnyFieldApi; label: ReactNode; className?: string } & Omit<
   ComponentProps<typeof TravelCheckbox>,

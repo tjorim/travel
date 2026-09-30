@@ -11,9 +11,17 @@ const numericFilters: Record<string, string> = {
 };
 
 /** Loads the default style defensively: a few upstream filters require numeric properties. */
-export async function loadMapStyle(styleUrl: string, signal: AbortSignal): Promise<string | StyleSpecification> {
-  if (styleUrl !== defaultStyleUrl) return styleUrl;
-  const response = await fetch(styleUrl, { signal, referrerPolicy: "no-referrer", credentials: "omit" });
+export async function loadMapStyle(
+  styleUrl: string,
+  signal: AbortSignal,
+  theme = "light",
+): Promise<string | StyleSpecification> {
+  if (styleUrl !== defaultStyleUrl || import.meta.env.VITE_MAP_STYLE_URL) return styleUrl;
+  const response = await fetch(theme === "dark" ? "https://tiles.openfreemap.org/styles/dark" : styleUrl, {
+    signal,
+    referrerPolicy: "no-referrer",
+    credentials: "omit",
+  });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const style = (await response.json()) as StyleSpecification;
   for (const layer of style.layers ?? []) {

@@ -185,7 +185,7 @@ export function MarkdownField({
       />
       {previewing && (
         <div
-          className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-white px-3 py-2.75"
+          className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-travel-surface px-3 py-2.75"
           aria-live="polite"
         >
           <MarkdownPreview source={value} format={format} />

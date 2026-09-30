@@ -1,3 +1,4 @@
+import { themeColor, useTheme } from "./appearance";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
@@ -90,6 +91,7 @@ export function TripMap({
   focus?: { id: string; request: number } | null;
   onUseDerived?: (point: MapPoint) => void;
 }) {
+  const theme = useTheme();
   const canvas = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -128,7 +130,7 @@ export function TripMap({
       setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden.");
       return;
     }
-    void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal)])
+    void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal, theme)])
       .then(([maplibregl, style]) => {
         if (disposed || !canvas.current) return;
         maplibregl.setWorkerUrl(mapWorkerUrl);
@@ -164,14 +166,14 @@ export function TripMap({
           instance.addSource("routes", { type: "geojson", data: routeData });
           instance.addSource("stops", { type: "geojson", data: pointData });
           const routeStyles: Record<RouteMode, { color: string; width: number; dash?: number[] }> = {
-            flight: { color: "#ff7a59", width: 3, dash: [2, 2] },
-            train: { color: "#63b3ff", width: 4, dash: [2, 1.4] },
-            bus: { color: "#d4a017", width: 4 },
-            car: { color: "#e37749", width: 4 },
-            ferry: { color: "#3aa6b9", width: 4, dash: [3, 1.5] },
-            bike: { color: "#0f7760", width: 4, dash: [1.5, 1.2] },
-            walk: { color: "#7a8f3a", width: 3, dash: [0.6, 1.6] },
-            other: { color: "#9aa5b1", width: 3 },
+            flight: { color: themeColor("map-marker"), width: 3, dash: [2, 2] },
+            train: { color: themeColor("map-blue"), width: 4, dash: [2, 1.4] },
+            bus: { color: themeColor("map-gold"), width: 4 },
+            car: { color: themeColor("map-orange"), width: 4 },
+            ferry: { color: themeColor("map-cyan"), width: 4, dash: [3, 1.5] },
+            bike: { color: themeColor("link"), width: 4, dash: [1.5, 1.2] },
+            walk: { color: themeColor("map-olive"), width: 3, dash: [0.6, 1.6] },
+            other: { color: themeColor("map-grey"), width: 3 },
           };
           for (const [transport, routeStyle] of Object.entries(routeStyles)) {
             instance.addLayer({
@@ -191,14 +193,14 @@ export function TripMap({
             id: "route-hit",
             type: "line",
             source: "routes",
-            paint: { "line-color": "#000000", "line-width": 22, "line-opacity": 0 },
+            paint: { "line-color": themeColor("ink"), "line-width": 22, "line-opacity": 0 },
           });
           instance.addLayer({
             id: "stop-halo",
             type: "circle",
             source: "stops",
             filter: ["!=", ["get", "kind"], "location"],
-            paint: { "circle-radius": 12, "circle-color": "#63b3ff", "circle-opacity": 0.22 },
+            paint: { "circle-radius": 12, "circle-color": themeColor("map-blue"), "circle-opacity": 0.22 },
           });
           instance.addLayer({
             id: "stops",
@@ -210,19 +212,19 @@ export function TripMap({
                 "match",
                 ["get", "kind"],
                 "mountain",
-                "#6ee7c7",
+                themeColor("map-mint"),
                 "stay",
-                "#63b3ff",
+                themeColor("map-blue"),
                 "airport",
-                "#ffd166",
+                themeColor("map-yellow"),
                 "area",
-                "#ff7a59",
+                themeColor("map-marker"),
                 "derived",
-                "#ffffff",
-                "#ff7a59",
+                themeColor("surface"),
+                themeColor("map-marker"),
               ],
               "circle-radius": 8,
-              "circle-stroke-color": "#19342d",
+              "circle-stroke-color": themeColor("ink"),
               "circle-stroke-width": ["match", ["get", "kind"], "derived", 3, 2],
             },
           });
@@ -234,8 +236,8 @@ export function TripMap({
             minzoom: 9,
             paint: {
               "circle-radius": 5,
-              "circle-color": "#63b3ff",
-              "circle-stroke-color": "#19342d",
+              "circle-color": themeColor("map-blue"),
+              "circle-stroke-color": themeColor("ink"),
               "circle-stroke-width": 1,
             },
           });
@@ -247,8 +249,8 @@ export function TripMap({
             maxzoom: 9,
             paint: {
               "circle-radius": 5,
-              "circle-color": "#63b3ff",
-              "circle-stroke-color": "#19342d",
+              "circle-color": themeColor("map-blue"),
+              "circle-stroke-color": themeColor("ink"),
               "circle-stroke-width": 1,
             },
           });
@@ -264,7 +266,7 @@ export function TripMap({
               "text-offset": [0, 1.3],
               "text-anchor": "top",
             },
-            paint: { "text-color": "#19342d", "text-halo-color": "#ffffff", "text-halo-width": 2 },
+            paint: { "text-color": themeColor("ink"), "text-halo-color": themeColor("surface"), "text-halo-width": 2 },
           });
           instance.addLayer(
             {
@@ -272,7 +274,7 @@ export function TripMap({
               type: "line",
               source: "routes",
               filter: ["==", ["get", "id"], ""],
-              paint: { "line-color": "#19342d", "line-width": 10, "line-opacity": 0.65 },
+              paint: { "line-color": themeColor("ink"), "line-width": 10, "line-opacity": 0.65 },
               layout: { "line-cap": "round", "line-join": "round" },
             },
             "stop-halo",
@@ -284,10 +286,10 @@ export function TripMap({
             filter: ["==", ["get", "id"], ""],
             paint: {
               "circle-radius": 15,
-              "circle-color": "#ffd166",
+              "circle-color": themeColor("map-yellow"),
               "circle-opacity": 0.32,
               "circle-stroke-width": 2,
-              "circle-stroke-color": "#ffd166",
+              "circle-stroke-color": themeColor("map-yellow"),
             },
           });
           fitToData(instance, maplibregl.LngLatBounds, points, lines);
@@ -353,7 +355,7 @@ export function TripMap({
       instance?.remove();
       map.current = null;
     };
-  }, [points, lines, hasGeometry, styleUrl]);
+  }, [points, lines, hasGeometry, styleUrl, theme]);
 
   useEffect(() => {
     if (ready && map.current?.getLayer("selected-stop"))
@@ -567,7 +569,7 @@ export function TripMap({
         <Button
           className={cn(
             "secondary compact",
-            terrain && "border-travel-forest! bg-travel-forest! text-travel-surface! inset-shadow-sm",
+            terrain && "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
           )}
           type="button"
           aria-pressed={terrain}
@@ -580,7 +582,7 @@ export function TripMap({
         <Button
           className={cn(
             "secondary compact",
-            satellite && "border-travel-forest! bg-travel-forest! text-travel-surface! inset-shadow-sm",
+            satellite && "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
           )}
           type="button"
           aria-pressed={satellite}

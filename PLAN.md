@@ -444,6 +444,10 @@ Polarsteps-like features require a fresh product and privacy decision.
       preparation workflow. ([#9](https://github.com/tjorim/travel/issues/9))
 
 ## Later
+- [ ] [#281](https://github.com/tjorim/travel/issues/281) Plan Dutch and English
+      interface translations with Paraglide/Inlang, following Bordertax,
+      Champagnefestival and Worktime. Record locale selection, unsaved-editor
+      behavior, formatting and API-error boundaries before splitting implementation.
 - [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
       whether and how to move old `dist/` content out of Git. It is not a
       dependency of the fresh application launch or a source of URL aliases.

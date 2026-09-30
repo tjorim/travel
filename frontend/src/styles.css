@@ -20,7 +20,7 @@
   font-size: 1rem;
 }
 .markdown h6 {
-  color: #4d665e;
+  color: var(--color-travel-muted);
 }
 .markdown ul,
 .markdown ol {
@@ -40,13 +40,13 @@
 .markdown blockquote {
   margin: 0 0 0.7em;
   padding-left: 12px;
-  border-left: 3px solid #cbd7ce;
-  color: #4d665e;
+  border-left: 3px solid var(--color-travel-card-border);
+  color: var(--color-travel-muted);
 }
 .markdown code {
   padding: 1px 4px;
   border-radius: 4px;
-  background: #eef5ef;
+  background: var(--color-travel-tint);
   font-size: 0.9em;
 }
 .markdown pre {
@@ -54,7 +54,7 @@
   margin: 0 0 0.7em;
   padding: 10px 12px;
   border-radius: 9px;
-  background: #eef5ef;
+  background: var(--color-travel-tint);
 }
 .markdown pre code {
   padding: 0;
@@ -62,10 +62,10 @@
 }
 .markdown hr {
   border: 0;
-  border-top: 1px solid #cbd7ce;
+  border-top: 1px solid var(--color-travel-card-border);
 }
 .markdown a {
-  color: #0f493b;
+  color: var(--color-travel-forest);
   text-underline-offset: 3px;
 }
 /* Tables scroll sideways inside their own box, so a wide itinerary never widens the page on a phone. */
@@ -81,19 +81,19 @@
 .markdown th,
 .markdown td {
   padding: 6px 10px;
-  border: 1px solid #cbd7ce;
+  border: 1px solid var(--color-travel-card-border);
   text-align: left;
   vertical-align: top;
   overflow-wrap: normal;
   min-width: 5em;
 }
 .markdown th {
-  background: #eef5ef;
+  background: var(--color-travel-tint);
   font-weight: 700;
   white-space: nowrap;
 }
 .markdown tbody tr:nth-child(even) td {
-  background: #f7faf7;
+  background: var(--color-travel-hover);
 }
 figcaption.markdown {
   line-height: 1.45;

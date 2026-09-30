@@ -1,3 +1,4 @@
+import { themeColor, useTheme } from "../appearance";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
@@ -38,6 +39,7 @@ export function RouteGeometryEditor({
   mode?: "edit" | "preview";
 }) {
   const preview = mode === "preview";
+  const theme = useTheme();
   const canvas = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const mapLibrary = useRef<typeof import("maplibre-gl") | null>(null);
@@ -94,7 +96,7 @@ export function RouteGeometryEditor({
       setError("De kaarteditor is niet beschikbaar. Je kunt hieronder nog coördinaten als JSON plakken.");
       return;
     }
-    void Promise.all([import("maplibre-gl"), loadMapStyle(configuredMapStyleUrl, controller.signal)])
+    void Promise.all([import("maplibre-gl"), loadMapStyle(configuredMapStyleUrl, controller.signal, theme)])
       .then(([maplibregl, style]) => {
         if (disposed || !canvas.current) return;
         maplibregl.setWorkerUrl(mapWorkerUrl);
@@ -117,7 +119,7 @@ export function RouteGeometryEditor({
             id: "route-editor-line",
             type: "line",
             source: "route-editor-line",
-            paint: { "line-color": "#a63b32", "line-width": 4 },
+            paint: { "line-color": themeColor("danger"), "line-width": 4 },
             layout: { "line-cap": "round", "line-join": "round" },
           });
           refreshMarkers(coordinatesRef.current);
@@ -159,7 +161,7 @@ export function RouteGeometryEditor({
       map.current = null;
       mapLibrary.current = null;
     };
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     if (!ready || !map.current) return;

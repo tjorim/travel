@@ -68,6 +68,7 @@ afterEach(() => {
 it("supplies custom and derived area names to the visible label layer after map updates", async () => {
   Object.defineProperty(window, "WebGLRenderingContext", { configurable: true, value: class {} });
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({} as WebGLRenderingContext);
+  document.documentElement.style.setProperty("--color-travel-surface", "#fffdf8");
   const points: MapPoint[] = [
     { id: "custom", label: "My Secret Base Camp", coordinates: [121, 25], kind: "area" },
     { id: "derived", label: "Morning Walks", coordinates: [121.1, 25.1], kind: "derived" },
@@ -89,7 +90,7 @@ it("supplies custom and derived area names to the visible label layer after map 
   // Labels use a font the style's own glyph server hosts, never MapLibre's built-in default.
   expect(labels.layout?.["text-font"]).toEqual(["Style Sans Regular"]);
   expect(labels.layout?.["text-allow-overlap"]).not.toBe(true);
-  expect(labels.paint?.["text-halo-color"]).toBe("#ffffff");
+  expect(labels.paint?.["text-halo-color"]).toBe("#fffdf8");
   expect(labels.paint?.["text-halo-width"]).toBe(2);
 
   rerender(<TripMap owner points={[{ ...points[0], label: "Renamed Base Camp" }, points[1]]} lines={[]} />);

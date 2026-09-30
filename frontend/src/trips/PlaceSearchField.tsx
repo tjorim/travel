@@ -127,7 +127,7 @@ export function PlaceSearchField({
         <div className="grid gap-1.75">
           {results.results.map((result) => (
             <Button
-              className="w-full border border-travel-border bg-white text-left font-semibold text-travel-ink"
+              className="w-full border border-travel-border bg-travel-surface text-left font-semibold text-travel-ink"
               type="button"
               key={`${result.osm_element_type}-${result.osm_element_id}`}
               onClick={() => choose(result)}

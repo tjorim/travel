@@ -124,12 +124,12 @@ function SearchCombobox({
         <Combobox.Trigger
           aria-labelledby=""
           aria-label={`${ariaLabel ?? "Keuze"} opties tonen`}
-          className="shrink-0 rounded-l-none! border! border-travel-muted! bg-white! px-3! text-travel-ink!"
+          className="shrink-0 rounded-l-none! border! border-travel-muted! bg-travel-surface! px-3! text-travel-ink!"
         >
           <span aria-hidden="true">▾</span>
         </Combobox.Trigger>
         {open && (
-          <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border bg-white p-1 text-travel-ink shadow-lg">
+          <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border bg-travel-surface p-1 text-travel-ink shadow-lg">
             <Combobox.Empty className="p-2 text-sm">Geen resultaten</Combobox.Empty>
             <Combobox.List>
               {(group: DisplayGroup) => (
@@ -145,7 +145,7 @@ function SearchCombobox({
                         key={option.value}
                         value={option}
                         disabled={option.isDisabled}
-                        className="cursor-pointer rounded-md px-2 py-2 text-sm data-highlighted:bg-travel-paper data-selected:bg-travel-forest data-selected:text-white"
+                        className="cursor-pointer rounded-md px-2 py-2 text-sm data-highlighted:bg-travel-paper data-selected:bg-travel-forest data-selected:text-travel-on-action"
                       >
                         {option.label}
                       </Combobox.Item>

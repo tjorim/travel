@@ -206,7 +206,10 @@ export function AreaManager({
       {areas.length ? (
         <div className="saved-records mt-0.5">
           {areas.map((area) => (
-            <article className="grid gap-2.5 rounded-xl border border-travel-divider bg-white p-4" key={area.id}>
+            <article
+              className="grid gap-2.5 rounded-xl border border-travel-divider bg-travel-surface p-4"
+              key={area.id}
+            >
               <div className="capture-heading m-0 items-center max-[620px]:flex-col max-[620px]:items-stretch">
                 <Button
                   className="document-select"

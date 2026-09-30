@@ -16,14 +16,14 @@ type RecordDialogProps = {
   onAfterClose?: () => void;
 };
 
-const backdrop = "fixed inset-0 bg-travel-ink/50";
+const backdrop = "fixed inset-0 bg-travel-backdrop/50";
 const viewport = "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto max-[620px]:items-end";
 const popup =
   "box-border mx-4 max-h-dvh w-full max-w-170 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-5.5 text-travel-ink shadow-2xl max-[620px]:mb-0 max-[620px]:max-w-none max-[620px]:rounded-b-none max-[620px]:p-4.5";
 const confirmation = "grid gap-3 rounded-xl border-2 border-travel-warning bg-travel-warning-surface p-4";
 const compactButton = "cursor-pointer rounded-lg px-3 py-2 text-sm font-bold";
 const secondaryButton = "border border-travel-control-border bg-transparent text-travel-forest";
-const dangerButton = "border-0 bg-travel-danger text-travel-surface";
+const dangerButton = "border-0 bg-travel-danger text-travel-on-action";
 const buttonRow = "flex flex-wrap gap-2";
 
 /** Shared owner editor with guarded dismissal and focus return. */

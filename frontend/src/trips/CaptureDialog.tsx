@@ -457,7 +457,7 @@ export function CaptureDialog({
               </p>
               {media.map((asset) => (
                 <Field className="contents" key={asset.id}>
-                  <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold">
+                  <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-travel-surface px-2.75 py-2.5 font-semibold">
                     <TravelCheckbox
                       checked={draft.mediaAssetIds.includes(asset.id)}
                       onCheckedChange={() => toggleMedia(asset.id)}
@@ -571,7 +571,7 @@ export function CaptureDialog({
                 <div className="grid gap-1.75">
                   {placeResults.results.map((result) => (
                     <Button
-                      className="w-full border border-travel-border bg-white text-left font-semibold text-travel-ink"
+                      className="w-full border border-travel-border bg-travel-surface text-left font-semibold text-travel-ink"
                       type="button"
                       key={`${result.osm_element_type}-${result.osm_element_id}`}
                       onClick={() => selectPlace(result)}

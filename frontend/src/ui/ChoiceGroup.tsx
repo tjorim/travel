@@ -36,7 +36,7 @@ export function ChoiceGroup<T extends string>({
             aria-label={choice.label}
             nativeButton
             render={<Button type="button" />}
-            className="min-h-11 rounded-lg bg-travel-paper! px-3 text-sm font-medium text-travel-ink! data-checked:bg-travel-forest! data-checked:text-travel-paper!"
+            className="min-h-11 rounded-lg bg-travel-paper! px-3 text-sm font-medium text-travel-ink! data-checked:bg-travel-forest! data-checked:text-travel-on-action!"
           >
             {choice.label}
           </Radio.Root>

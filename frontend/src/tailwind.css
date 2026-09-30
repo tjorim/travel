@@ -23,13 +23,15 @@
   --radius-travel-media: 10px;
   --radius-travel-control: 9px;
   --radius-travel-card: 18px;
+  --color-travel-backdrop: #19342d;
+  --color-travel-on-action: #fffdf8;
   --color-travel-ink: #19342d;
   --color-travel-label: #27483e;
   --color-travel-input-border: #9eb4aa;
   --color-travel-paper: #f5f0e8;
   --color-travel-forest: #0f493b;
   --color-travel-muted: #4d665e;
-  --color-travel-focus: #e3a91c;
+  --color-travel-focus: #946900;
   --color-travel-surface: #fffdf8;
   --color-travel-border: #b7c9be;
   --color-travel-control-border: #87a096;
@@ -67,7 +69,73 @@
   --color-travel-error-ink: #8a2e27;
   --color-travel-warning: #b68110;
   --color-travel-warning-surface: #fff6d9;
+  --color-travel-map-blue: #63b3ff;
+  --color-travel-map-gold: #d4a017;
+  --color-travel-map-orange: #e37749;
+  --color-travel-map-cyan: #3aa6b9;
+  --color-travel-map-olive: #7a8f3a;
+  --color-travel-map-grey: #9aa5b1;
+  --color-travel-map-mint: #6ee7c7;
+  --color-travel-map-yellow: #ffd166;
   --shadow-travel-card: 0 12px 35px #19342d12;
+}
+
+:root[data-theme="dark"] {
+  --color-travel-ink: #e0ece6;
+  --color-travel-label: #d3e5dc;
+  --color-travel-input-border: #819b90;
+  --color-travel-paper: #101c18;
+  --color-travel-forest: #99d7bd;
+  --color-travel-muted: #b0c4ba;
+  --color-travel-focus: #ffd166;
+  --color-travel-surface: #182923;
+  --color-travel-border: #647e71;
+  --color-travel-control-border: #819b90;
+  --color-travel-danger: #ffaaa1;
+  --color-travel-divider: #3e594c;
+  --color-travel-tint: #213b2e;
+  --color-travel-map-bg: #182923;
+  --color-travel-map-detail: #213b2e;
+  --color-travel-map-marker: #ff977e;
+  --color-travel-card-border: #496657;
+  --color-travel-detail-border: #496657;
+  --color-travel-detail-muted: #b0c4ba;
+  --color-travel-media-bg: #213b2e;
+  --color-travel-warning-border: #a48a47;
+  --color-travel-warning-ink: #f5dfa3;
+  --color-travel-warning-muted: #f5dfa3;
+  --color-travel-optional: #b0c4ba;
+  --color-travel-online-surface: #213d2e;
+  --color-travel-online-ink: #b1e7c5;
+  --color-travel-offline-surface: #42321e;
+  --color-travel-offline-ink: #f4d19b;
+  --color-travel-link: #99d7bd;
+  --color-travel-status-pending: #ffd166;
+  --color-travel-review-warning: #ffc5a6;
+  --color-travel-selected-bg: #294837;
+  --color-travel-focal-marker: #ffaaa1;
+  --color-travel-panel: #1c3027;
+  --color-travel-disconnected-surface: #293c32;
+  --color-travel-disconnected-ink: #c0d1c7;
+  --color-travel-warning-dark: #f5dfa3;
+  --color-travel-eyebrow: #99d7bd;
+  --color-travel-positive: #b1e7c5;
+  --color-travel-hover: #253d31;
+  --color-travel-error-surface: #462923;
+  --color-travel-error-ink: #ffbbb3;
+  --color-travel-warning: #ffd166;
+  --color-travel-warning-surface: #42371e;
+  --color-travel-backdrop: #080f0c;
+  --color-travel-on-action: #101c18;
+  --color-travel-map-blue: #63b3ff;
+  --color-travel-map-gold: #d4a017;
+  --color-travel-map-orange: #e37749;
+  --color-travel-map-cyan: #3aa6b9;
+  --color-travel-map-olive: #7a8f3a;
+  --color-travel-map-grey: #9aa5b1;
+  --color-travel-map-mint: #6ee7c7;
+  --color-travel-map-yellow: #ffd166;
+  color-scheme: dark;
 }
 
 @layer base {
@@ -95,7 +163,7 @@
     @apply m-0 max-w-travel-title text-travel-title leading-travel-title tracking-travel-title;
   }
   button {
-    @apply cursor-pointer rounded-travel-control border-0 bg-travel-forest px-3.75 py-2.75 font-bold text-travel-surface;
+    @apply cursor-pointer rounded-travel-control border-0 bg-travel-forest px-3.75 py-2.75 font-bold text-travel-on-action;
     font: inherit;
     font-weight: 700;
   }
@@ -112,7 +180,7 @@
   }
   input,
   textarea {
-    @apply w-full rounded-travel-control border border-travel-input-border bg-white px-3 py-2.75 font-normal text-travel-ink;
+    @apply w-full rounded-travel-control border border-travel-input-border bg-travel-surface px-3 py-2.75 font-normal text-travel-ink;
     font: inherit;
     font-weight: 400;
   }
@@ -147,7 +215,7 @@
 }
 
 @utility action-link {
-  @apply inline-block rounded-lg bg-travel-forest px-3.25 py-2.5 font-bold text-travel-surface no-underline;
+  @apply inline-block rounded-lg bg-travel-forest px-3.25 py-2.5 font-bold text-travel-on-action no-underline;
   &.secondary {
     @apply border border-travel-control-border bg-transparent text-travel-forest;
   }
@@ -319,7 +387,7 @@
 }
 
 @utility scope-group {
-  @apply rounded-travel-media border border-travel-divider bg-white;
+  @apply rounded-travel-media border border-travel-divider bg-travel-surface;
   & > button {
     @apply flex w-full items-center justify-between gap-3 rounded-none bg-transparent px-3.25 py-2.75 text-left text-travel-ink;
     &::before {
@@ -350,7 +418,7 @@
 }
 
 @utility scope-item {
-  @apply grid gap-2.5 rounded-travel-media border border-travel-divider bg-white p-2.75;
+  @apply grid gap-2.5 rounded-travel-media border border-travel-divider bg-travel-surface p-2.75;
   &[data-included] {
     @apply border-travel-forest bg-travel-hover;
   }
@@ -385,5 +453,22 @@
   }
   & p {
     @apply mb-0 leading-relaxed text-travel-muted;
+  }
+}
+
+@layer base {
+  a:focus-visible,
+  [role="radio"]:focus-visible {
+    @apply outline-3 outline-offset-2 outline-travel-focus;
+  }
+  .maplibregl-ctrl-group,
+  .maplibregl-ctrl-attrib {
+    @apply bg-travel-surface! text-travel-ink!;
+  }
+  .maplibregl-ctrl-attrib a {
+    @apply text-travel-ink!;
+  }
+  :root[data-theme="dark"] .maplibregl-ctrl-icon {
+    filter: invert(1);
   }
 }

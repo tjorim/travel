@@ -587,7 +587,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                         </FieldLegend>
                         {documents.map((document) => (
                           <Field className="contents" key={document.id}>
-                            <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-white px-2.75 py-2.5 font-semibold">
+                            <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-travel-surface px-2.75 py-2.5 font-semibold">
                               <TravelCheckbox
                                 checked={input.state.value.includes(document.id)}
                                 onCheckedChange={() =>
