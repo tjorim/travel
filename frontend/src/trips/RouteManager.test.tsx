@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { setDateTime, shownDateTime } from "../test-dates";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -163,17 +164,13 @@ it("takes both times or neither", async () => {
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas();
-  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), {
-    target: { value: "2054-11-16T10:40" },
-  });
+  setDateTime("Vertrektijd (lokaal)", "2054-11-16T10:40");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByText("Geef zowel de vertrek- als de aankomsttijd op, of geen van beide.");
   expect(api.count("POST /api/trips/trip/routes")).toBe(0);
 
   fireEvent.change(screen.getByLabelText("Tijdzone vertrek (optioneel)"), { target: { value: "Europe/Amsterdam" } });
-  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), {
-    target: { value: "2054-11-17T06:25" },
-  });
+  setDateTime("Aankomsttijd (lokaal)", "2054-11-17T06:25");
   fireEvent.change(screen.getByLabelText("Tijdzone aankomst (optioneel)"), { target: { value: "Asia/Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -192,12 +189,8 @@ it("takes a day first, and times only on that day", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas();
   fireEvent.change(screen.getByLabelText("Dag van vertrek (optioneel)"), { target: { value: "2054-12-05" } });
-  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), {
-    target: { value: "2054-12-06T08:00" },
-  });
-  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), {
-    target: { value: "2054-12-06T10:00" },
-  });
+  setDateTime("Vertrektijd (lokaal)", "2054-12-06T08:00");
+  setDateTime("Aankomsttijd (lokaal)", "2054-12-06T10:00");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByText(/De vertrektijd valt op .*, niet op de gekozen dag/);
   expect(api.count("POST /api/trips/trip/routes")).toBe(0);
@@ -206,8 +199,8 @@ it("takes a day first, and times only on that day", async () => {
   act(() => changeLocale("nl"));
 
   // "Kaohsiung → Taipei on 5 December, no train yet": the day alone.
-  fireEvent.change(screen.getByLabelText("Vertrektijd (lokaal) (optioneel)"), { target: { value: "" } });
-  fireEvent.change(screen.getByLabelText("Aankomsttijd (lokaal) (optioneel)"), { target: { value: "" } });
+  setDateTime("Vertrektijd (lokaal)", "");
+  setDateTime("Aankomsttijd (lokaal)", "");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
@@ -224,7 +217,7 @@ it("shows a route's day while it has no times", async () => {
   expect(row.textContent).toContain("5 dec");
   fireEvent.click(row);
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  expect((screen.getByLabelText("Dag van vertrek (optioneel)") as HTMLInputElement).value).toBe("2054-12-05");
+  expect((screen.getByLabelText("Dag van vertrek (optioneel)") as HTMLInputElement).value).toBe("5 dec 2054");
 });
 
 it("opens a route in detail before its editor, prefilled with its bookings and times", async () => {
@@ -238,9 +231,7 @@ it("opens a route in detail before its editor, prefilled with its bookings and t
   expect(selectedOption("Aankomst")).toBe("Taoyuan (heel gebied)");
   expect((screen.getByLabelText("Boekingsreferentie (optioneel)") as HTMLInputElement).value).toBe("REF");
   expect((screen.getByLabelText("Tijdzone vertrek (optioneel)") as HTMLInputElement).value).toBe("Europe/Amsterdam");
-  expect((screen.getByLabelText("Vertrektijd (lokaal) (optioneel)") as HTMLInputElement).value).toBe(
-    "2054-11-16T10:40",
-  );
+  expect(shownDateTime("Vertrektijd (lokaal)")).toBe("16 nov 2054 10:40");
 });
 
 it("files a new location under the chosen area", async () => {

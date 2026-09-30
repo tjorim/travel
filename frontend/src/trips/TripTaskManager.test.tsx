@@ -124,7 +124,7 @@ it("opens the editor with the saved task instead of a blank form", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Visum regelen");
   expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe("Bij de ambassade");
-  expect((screen.getByLabelText("Deadline (optioneel)") as HTMLInputElement).value).toBe("2054-10-01");
+  expect((screen.getByLabelText("Deadline (optioneel)") as HTMLInputElement).value).toBe("1 okt 2054");
   expect((screen.getByLabelText("Adres") as HTMLInputElement).value).toBe("https://example.test");
 });
 

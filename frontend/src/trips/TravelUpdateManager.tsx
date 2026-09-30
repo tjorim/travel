@@ -3,6 +3,7 @@ import { m } from "../paraglide/messages.js";
 import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 
+import { DateTimeField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
@@ -306,7 +307,7 @@ export function TravelUpdateManager({
                   onSubmit: requiredText(m.owner_enter_the_date_and_time),
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_date_and_time()} required type="datetime-local" />}
+                {(field) => <DateTimeField field={field} label={m.owner_date_and_time()} required />}
               </record.form.Field>
               <record.form.Field name="datePrecision">
                 {(field) => (

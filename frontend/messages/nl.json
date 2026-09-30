@@ -1761,5 +1761,13 @@
   "owner_check_names_of_places_and_dishes_and_expressions_before_using_the_draft": "Namen van plaatsen en gerechten en uitdrukkingen kunnen fout zijn. Controleer en pas het concept aan voordat je het gebruikt.",
   "owner_translation_draft_for": "Vertaalconcept voor {p0}",
   "owner_add_below_the_text": "Onder de tekst toevoegen",
-  "owner_discard_draft": "Concept verwerpen"
+  "owner_discard_draft": "Concept verwerpen",
+  "owner_date_placeholder": "16 nov 2026",
+  "owner_time_placeholder": "uu:mm",
+  "owner_date_unreadable": "Vul een datum in, bijvoorbeeld 16 nov 2026 of 16-11-2026.",
+  "owner_time_unreadable": "Vul een tijd in van 00:00 tot 23:59, bijvoorbeeld 18:30.",
+  "owner_date_and_time_both": "Vul zowel een datum als een tijd in, of laat beide leeg.",
+  "owner_choose_date_in_calendar": "{label}: kies in de kalender",
+  "owner_label_date": "{label}, datum",
+  "owner_label_time": "{label}, tijd"
 }

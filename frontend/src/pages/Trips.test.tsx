@@ -148,7 +148,9 @@ it("keeps the editor closed in the workspace until asked, then opens the trip wi
   await waitFor(() =>
     expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"),
   );
-  expect((editor("Reisgegevens").getByLabelText(/Eerste reisdag/) as HTMLInputElement).value).toBe("2054-11-16");
+  expect((editor("Reisgegevens").getByLabelText("Eerste reisdag (optioneel)") as HTMLInputElement).value).toBe(
+    "16 nov 2054",
+  );
 });
 
 it("shows the renamed trip in the workspace after saving, with one refreshed read", async () => {
@@ -200,7 +202,9 @@ it("rejects an end date before the start date without calling the server", async
   await waitFor(() =>
     expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"),
   );
-  fireEvent.change(editor("Reisgegevens").getByLabelText(/Laatste reisdag/), { target: { value: "2054-11-01" } });
+  fireEvent.change(editor("Reisgegevens").getByLabelText("Laatste reisdag (optioneel)"), {
+    target: { value: "2054-11-01" },
+  });
   fireEvent.click(editor("Reisgegevens").getByRole("button", { name: "Reis opslaan" }));
   await screen.findByText("De laatste reisdag ligt vóór de eerste.");
   expect(requests.some((request) => request.startsWith("PATCH"))).toBe(false);

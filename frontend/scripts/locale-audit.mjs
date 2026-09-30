@@ -71,6 +71,14 @@ const exclusions = {
     "Asia/Taipei": "IANA input example",
     "BR-087": "service reference input example",
   },
+  "ui/calendar.tsx": {
+    "absolute inset-x-0 top-0 flex items-center justify-between": "CSS class list",
+    "text-sm font-extrabold text-travel-ink capitalize": "CSS class list",
+    "size-11 p-0 text-xs font-bold text-travel-muted capitalize sm:size-9": "CSS class list",
+    "[&>button]:bg-primary [&>button]:font-bold [&>button]:text-primary-foreground [&>button]:hover:bg-primary":
+      "CSS class list",
+    "[&>button]:ring-2 [&>button]:ring-travel-forest [&>button]:ring-inset": "CSS class list",
+  },
   "trips/StayManager.tsx": { TW: "ISO country input example", "https://": "URL input example" },
 };
 const copyAttribute = /^(?:aria-label|aria-description|title|label|ariaLabel|placeholder|alt|description)$/;

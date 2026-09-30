@@ -9,7 +9,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../auth-context";
 import { AsyncSearchSelect, requiredText, TextField } from "../forms/fields";
+import { DateTimeField } from "../forms/DateTimeFields";
 import { MarkdownField } from "../forms/MarkdownField";
+import { blockUnreadableEntries } from "../forms/unreadable-entry";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
@@ -383,6 +385,7 @@ export function CaptureDialog({
             noValidate
             onSubmit={(event) => {
               event.preventDefault();
+              if (blockUnreadableEntries(record.formRef.current)) return;
               void form.handleSubmit();
             }}
           >
@@ -420,7 +423,7 @@ export function CaptureDialog({
                   onSubmit: requiredText(m.owner_enter_the_date_and_time),
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_date_and_time()} required type="datetime-local" />}
+                {(field) => <DateTimeField field={field} label={m.owner_date_and_time()} required />}
               </form.Field>
               <form.Field
                 name="title"

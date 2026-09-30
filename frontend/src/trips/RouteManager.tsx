@@ -6,6 +6,7 @@ import { Button } from "@base-ui/react/button";
 import { Collapsible } from "@base-ui/react/collapsible";
 import { useRef, useState } from "react";
 
+import { DateField, DateTimeField } from "../forms/DateTimeFields";
 import { RecordForm, SelectField, TextAreaField, TextField, TimeZoneField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
@@ -504,7 +505,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               )}
             </record.form.Field>
             <record.form.Field name="departsOn">
-              {(input) => <TextField field={input} label={m.owner_departure_day()} optional type="date" />}
+              {(input) => <DateField field={input} label={m.owner_departure_day()} optional />}
             </record.form.Field>
             <FieldSet className="grid gap-3">
               <FieldLegend>
@@ -515,9 +516,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               </FieldLegend>
               <div className="field-row">
                 <record.form.Field name="departsAt">
-                  {(input) => (
-                    <TextField field={input} label={m.owner_departure_time_local()} optional type="datetime-local" />
-                  )}
+                  {(input) => <DateTimeField field={input} label={m.owner_departure_time_local()} optional />}
                 </record.form.Field>
                 <record.form.Field name="departureTimezone">
                   {(input) => (
@@ -533,9 +532,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               </div>
               <div className="field-row">
                 <record.form.Field name="arrivesAt">
-                  {(input) => (
-                    <TextField field={input} label={m.owner_arrival_time_local()} optional type="datetime-local" />
-                  )}
+                  {(input) => <DateTimeField field={input} label={m.owner_arrival_time_local()} optional />}
                 </record.form.Field>
                 <record.form.Field name="arrivalTimezone">
                   {(input) => (

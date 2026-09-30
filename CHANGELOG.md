@@ -4,6 +4,17 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Replaced the native date, time and date-time inputs in the owner PWA with
+  locale-aware fields. A date is typed as "16 nov 2026" (or "16-11-2026" or ISO)
+  and picked from a keyboard-accessible calendar (react-day-picker through the
+  shadcn CLI); a time is a 24-hour text field; a date-time is a date and a time
+  side by side. The visible format follows the interface language instead of the
+  browser's, while forms and the API keep `YYYY-MM-DD`, `HH:mm` and
+  `YYYY-MM-DDTHH:mm`. Unreadable text and half-filled date-times block a save and
+  say why (#293).
+
 ### Added
 
 - Added explicit Dutch/English draft translation for long-form owner text. A

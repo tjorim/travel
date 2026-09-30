@@ -18,6 +18,7 @@ import {
 import { SearchSelect } from "../ui/SearchCombobox";
 import { SuggestInput } from "../ui/SuggestInput";
 import { timeZoneOptions } from "../tracker-model";
+import { blockUnreadableEntries } from "./unreadable-entry";
 export { SearchSelect, AsyncSearchSelect } from "../ui/SearchCombobox";
 export type { SearchSelectOption, SearchSelectGroup } from "../ui/SearchCombobox";
 
@@ -61,6 +62,7 @@ export function RecordForm({
         onSubmit={(event) => {
           event.preventDefault();
           event.stopPropagation();
+          if (blockUnreadableEntries(formRef.current)) return;
           void form.handleSubmit();
         }}
       >

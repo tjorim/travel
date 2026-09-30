@@ -5,6 +5,7 @@ import { Button } from "@base-ui/react/button";
 import { useMemo, useRef } from "react";
 
 import { CheckboxField, RecordForm, SelectField, TextField } from "../forms/fields";
+import { DateField, TimeField } from "../forms/DateTimeFields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -531,7 +532,7 @@ export function VisitManager({
             </record.form.Field>
             <div className="field-row">
               <record.form.Field name="startsOn">
-                {(field) => <TextField field={field} label={m.owner_first_day()} optional type="date" />}
+                {(field) => <DateField field={field} label={m.owner_first_day()} optional />}
               </record.form.Field>
               <record.form.Subscribe selector={(state) => state.values.startsOn}>
                 {(startsOn) => (
@@ -540,11 +541,10 @@ export function VisitManager({
                     validators={{ onChangeListenTo: ["startsOn"], onChange: lastDay, onSubmit: lastDay }}
                   >
                     {(field) => (
-                      <TextField
+                      <DateField
                         field={field}
                         label={m.owner_last_day()}
                         optional
-                        type="date"
                         min={startsOn || undefined}
                         disabled={!startsOn}
                       />
@@ -557,14 +557,10 @@ export function VisitManager({
               {(startsOn) => (
                 <div className="field-row">
                   <record.form.Field name="startTime">
-                    {(field) => (
-                      <TextField field={field} label={m.owner_start_time()} optional type="time" disabled={!startsOn} />
-                    )}
+                    {(field) => <TimeField field={field} label={m.owner_start_time()} optional disabled={!startsOn} />}
                   </record.form.Field>
                   <record.form.Field name="endTime">
-                    {(field) => (
-                      <TextField field={field} label={m.owner_end_time()} optional type="time" disabled={!startsOn} />
-                    )}
+                    {(field) => <TimeField field={field} label={m.owner_end_time()} optional disabled={!startsOn} />}
                   </record.form.Field>
                 </div>
               )}

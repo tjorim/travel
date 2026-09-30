@@ -1761,5 +1761,13 @@
   "owner_check_names_of_places_and_dishes_and_expressions_before_using_the_draft": "Names of places and dishes and expressions may be wrong. Check and edit the draft before you use it.",
   "owner_translation_draft_for": "Translation draft for {p0}",
   "owner_add_below_the_text": "Add below the text",
-  "owner_discard_draft": "Discard draft"
+  "owner_discard_draft": "Discard draft",
+  "owner_date_placeholder": "16 Nov 2026",
+  "owner_time_placeholder": "hh:mm",
+  "owner_date_unreadable": "Enter a date, for example 16 Nov 2026 or 16-11-2026.",
+  "owner_time_unreadable": "Enter a time from 00:00 to 23:59, for example 18:30.",
+  "owner_date_and_time_both": "Enter both a date and a time, or leave both empty.",
+  "owner_choose_date_in_calendar": "{label}: choose in the calendar",
+  "owner_label_date": "{label}, date",
+  "owner_label_time": "{label}, time"
 }

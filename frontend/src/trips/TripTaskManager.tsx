@@ -4,6 +4,7 @@ import { textNotice, errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
+import { DateField, DateTimeField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, type DialogFocusRequest } from "../forms/useRecordDialog";
@@ -330,11 +331,11 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                 {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
               </record.form.Field>
               <record.form.Field name="dueDate">
-                {(field) => <TextField field={field} label={m.owner_deadline()} optional type="date" />}
+                {(field) => <DateField field={field} label={m.owner_deadline()} optional />}
               </record.form.Field>
             </div>
             <record.form.Field name="remindAt">
-              {(field) => <TextField field={field} label={m.owner_reminder_3()} optional type="datetime-local" />}
+              {(field) => <DateTimeField field={field} label={m.owner_reminder_3()} optional />}
             </record.form.Field>
             <record.form.Field name="notes">
               {(field) => <MarkdownField field={field} label={m.owner_notes()} optional maxLength={4000} rows={3} />}

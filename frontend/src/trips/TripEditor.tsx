@@ -4,6 +4,7 @@ import { textNotice, errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
+import { DateField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -137,7 +138,7 @@ export function TripEditor({
           </form.Field>
           <div className="field-row">
             <form.Field name="startsOn">
-              {(field) => <TextField field={field} label={m.owner_first_travel_day()} optional type="date" />}
+              {(field) => <DateField field={field} label={m.owner_first_travel_day()} optional />}
             </form.Field>
             <form.Field
               name="endsOn"
@@ -153,7 +154,7 @@ export function TripEditor({
                     : undefined,
               }}
             >
-              {(field) => <TextField field={field} label={m.owner_last_travel_day()} optional type="date" />}
+              {(field) => <DateField field={field} label={m.owner_last_travel_day()} optional />}
             </form.Field>
           </div>
         </RecordForm>

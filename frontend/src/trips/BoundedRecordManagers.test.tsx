@@ -327,7 +327,7 @@ it("opens a stay in private detail before editing, prefilled", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(screen.getByRole("heading", { name: "Verblijf bewerken" })).toBeTruthy();
   expect((screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)") as HTMLInputElement).value).toBe("Hotel");
-  expect((screen.getByLabelText("Eerste nacht (inchecken)") as HTMLInputElement).value).toBe("2054-11-16");
+  expect((screen.getByLabelText("Eerste nacht (inchecken)") as HTMLInputElement).value).toBe("16 nov 2054");
   expect((screen.getByLabelText("Boekingsreferentie (optioneel)") as HTMLInputElement).value).toBe("ABC");
 });
 
@@ -374,7 +374,7 @@ it("keeps check-out after check-in and moves it along with the first night", asy
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
   fireEvent.change(screen.getByLabelText("Eerste nacht (inchecken)"), { target: { value: "2054-11-20" } });
   await waitFor(() =>
-    expect((screen.getByLabelText("Uitchecken (ochtend)") as HTMLInputElement).value).toBe("2054-11-21"),
+    expect((screen.getByLabelText("Uitchecken (ochtend)") as HTMLInputElement).value).toBe("21 nov 2054"),
   );
   fireEvent.change(screen.getByLabelText("Uitchecken (ochtend)"), { target: { value: "2054-11-19" } });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));

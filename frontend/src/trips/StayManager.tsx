@@ -4,6 +4,7 @@ import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useRef, useState } from "react";
 
+import { DateField, TimeField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
@@ -430,7 +431,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                   },
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_first_night_check_in()} required type="date" />}
+                {(field) => <DateField field={field} label={m.owner_first_night_check_in()} required />}
               </stayRecord.form.Field>
               <stayRecord.form.Field
                 name="checkOutDate"
@@ -440,7 +441,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                   onSubmit: checkOutAfterCheckIn,
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_check_out_morning()} required type="date" />}
+                {(field) => <DateField field={field} label={m.owner_check_out_morning()} required />}
               </stayRecord.form.Field>
             </div>
             <stayRecord.form.Subscribe
@@ -477,10 +478,10 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
             </stayRecord.form.Subscribe>
             <div className="field-row">
               <stayRecord.form.Field name="checkInTime">
-                {(field) => <TextField field={field} label={m.owner_check_in_time()} optional type="time" />}
+                {(field) => <TimeField field={field} label={m.owner_check_in_time()} optional />}
               </stayRecord.form.Field>
               <stayRecord.form.Field name="checkOutTime">
-                {(field) => <TextField field={field} label={m.owner_check_out_time()} optional type="time" />}
+                {(field) => <TimeField field={field} label={m.owner_check_out_time()} optional />}
               </stayRecord.form.Field>
             </div>
             <div className="field-row">

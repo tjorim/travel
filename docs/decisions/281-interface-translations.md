@@ -34,7 +34,9 @@ Catalogues contain application copy only; authored content and the retired
 - Day.js display locale follows the interface; Intl receives the selected
   locale explicitly. Preserve each display's existing timezone, UTC date-only
   interpretation and precision. Do not localize machine ISO values or alter
-  datetime-local/number inputs, validation parsing, integer grams or payloads.
+  number inputs, validation parsing, integer grams or payloads. (Date, time and
+  date-time inputs were later replaced by locale-aware fields: see
+  [#293](293-locale-aware-date-time-fields.md).)
 - Backend errors use stable codes, safe structured parameters and field paths,
   retaining diagnostic detail/status/headers for compatibility. Pydantic
   validation uses type/loc and safe constraint parameters, never submitted

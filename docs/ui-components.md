@@ -19,6 +19,7 @@ and build. Do not bulk-generate or blindly overwrite wrappers.
 | SuggestInput | Keep | Free-text Autocomplete and application event handling differ from selection-only combobox behaviour. |
 | TravelTextarea | Keep | Field.Control supplies field validation and ref integration rather than a plain textarea. |
 | ChoiceGroup | Keep | Typed compact radio-button choices preserve labelled arrow-key navigation and the view-change API. |
+| Date, time and date-time inputs | Replace with `DateField`, `TimeField`, `DateTimeField` | Native inputs draw in the browser's locale. The fields use generated Popover and Calendar (react-day-picker), restyled with Travel tokens; see decision 293. |
 | RecordDialog (Dialog and Alert Dialog) | Keep | Dirty-dismissal confirmation, async submission, nested dialogs and focus return are application behaviour beyond generated presentation shells. |
 
 ## Theme coordination
