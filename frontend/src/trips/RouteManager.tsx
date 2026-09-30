@@ -168,6 +168,23 @@ const serverFields = {
   geometry: "coordinates",
 };
 
+const departureChosen = ({ value }: { value: PlaceValue }) =>
+  hasPlace(value) ? undefined : "Kies waar de route begint: een gebied of een locatie.";
+const arrivalChosen = ({
+  value,
+  fieldApi,
+}: {
+  value: PlaceValue;
+  fieldApi: { form: { getFieldValue: (name: never) => unknown } };
+}) => {
+  if (!hasPlace(value)) return "Kies waar de route eindigt: een gebied of een locatie.";
+  const departure = fieldApi.form.getFieldValue("departure" as never) as PlaceValue | undefined;
+  // A route between the very same area or location goes nowhere; "new" places are compared by the fields behind them.
+  return departure && value.choice !== "new" && departure.choice === value.choice
+    ? "Kies twee verschillende plaatsen: vertrek en aankomst zijn hetzelfde."
+    : undefined;
+};
+
 export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
   const routesQuery = useTripResource(trip.id, "routes");
   const areasQuery = useTripResource(trip.id, "areas");
@@ -213,8 +230,6 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
     serverFields,
     submit: async (values) => {
       const id = dialog.editingId ?? null;
-      if (!hasPlace(values.departure)) throw new Error("Kies waar de route begint: een gebied of een locatie.");
-      if (!hasPlace(values.arrival)) throw new Error("Kies waar de route eindigt: een gebied of een locatie.");
       if (Boolean(values.departsAt) !== Boolean(values.arrivesAt))
         throw new Error("Geef zowel de vertrek- als de aankomsttijd op, of geen van beide.");
       if (values.departsAt && (!values.departureTimezone || !values.arrivalTimezone))
@@ -260,8 +275,11 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
     },
   });
 
+  // Booking details start open only for a route that already has some; the owner's own toggling wins after that.
+  const [bookingOpen, setBookingOpen] = useState(false);
   function load(values: Values) {
     baseline.current = values;
+    setBookingOpen(Boolean(values.carrier || values.bookingReference || values.notes));
     record.load(values);
   }
   function close() {
@@ -285,7 +303,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        setMessage(errorMessage(error, "De route kon niet worden verwijderd."));
+        dialog.setError(errorMessage(error, "De route kon niet worden verwijderd."));
       },
     );
   }
@@ -363,6 +381,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
         open={editing || selected !== null}
         title={editing ? (editingId ? "Route bewerken" : "Route toevoegen") : "Route"}
         dirty={editing && record.dirty}
+        error={dialog.error}
         onDismiss={close}
       >
         {!editing && selected && (
@@ -450,30 +469,32 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 />
               )}
             </record.form.Field>
-            <record.form.Field name="departure">
+            <record.form.Field name="departure" validators={{ onSubmit: departureChosen }}>
               {(input) => (
                 <PlacePicker
                   tripId={trip.id}
                   label="Vertrek"
                   value={input.state.value}
                   onChange={(value) => input.handleChange(value)}
+                  error={input.state.meta.errors.find((error) => typeof error === "string")}
                 />
               )}
             </record.form.Field>
-            <record.form.Field name="arrival">
+            <record.form.Field name="arrival" validators={{ onSubmit: arrivalChosen }}>
               {(input) => (
                 <PlacePicker
                   tripId={trip.id}
                   label="Aankomst"
                   value={input.state.value}
                   onChange={(value) => input.handleChange(value)}
+                  error={input.state.meta.errors.find((error) => typeof error === "string")}
                 />
               )}
             </record.form.Field>
             <record.form.Field name="departsOn">
               {(input) => <TextField field={input} label="Dag van vertrek" optional type="date" />}
             </record.form.Field>
-            <FieldSet>
+            <FieldSet className="grid gap-3">
               <FieldLegend>
                 Tijden{" "}
                 <span className="font-medium text-travel-optional">(optioneel, zodra je een verbinding kiest)</span>
@@ -511,17 +532,11 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 </record.form.Field>
               </div>
             </FieldSet>
-            <Collapsible.Root
-              defaultOpen={Boolean(
-                record.form.state.values.carrier ||
-                record.form.state.values.bookingReference ||
-                record.form.state.values.notes,
-              )}
-            >
-              <Collapsible.Trigger className="w-full bg-transparent px-0 text-left text-travel-forest">
+            <Collapsible.Root open={bookingOpen} onOpenChange={setBookingOpen}>
+              <Collapsible.Trigger className="disclosure-trigger">
                 Boekingsdetails (optioneel, privé)
               </Collapsible.Trigger>
-              <Collapsible.Panel keepMounted className="grid gap-3">
+              <Collapsible.Panel keepMounted className="mt-2.5 grid gap-3">
                 <div className="field-row">
                   <record.form.Field name="carrier">
                     {(input) => (
@@ -566,7 +581,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 {documents.length > 0 && (
                   <record.form.Field name="documentAssetIds">
                     {(input) => (
-                      <FieldSet>
+                      <FieldSet className="grid gap-2">
                         <FieldLegend>
                           Gekoppelde documenten <span className="font-medium text-travel-optional">(optioneel)</span>
                         </FieldLegend>
@@ -610,7 +625,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                     ]}
                   />
                   <Collapsible.Root className="border-t border-travel-divider pt-2.5">
-                    <Collapsible.Trigger className="w-full bg-transparent p-0 text-left font-bold text-travel-forest">
+                    <Collapsible.Trigger className="disclosure-trigger">
                       Geavanceerd: coördinaten als JSON plakken
                     </Collapsible.Trigger>
                     <Collapsible.Panel keepMounted className="mt-2.5">
@@ -651,9 +666,6 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
-              </Button>
-              <Button className="danger compact" type="button" onClick={() => setDeleteTarget(route)}>
-                Verwijderen
               </Button>
             </article>
           ))}

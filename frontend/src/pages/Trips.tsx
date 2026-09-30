@@ -23,7 +23,7 @@ import { CaptureDialog } from "../trips/CaptureDialog";
 import { errorMessage } from "../query/api";
 import type { DialogFocusRequest } from "../forms/useRecordDialog";
 import { useTripResource, useTripsQuery } from "../query/owner-queries";
-import { formatInstant, type Trip, type TravelUpdateCandidateIntent } from "../tracker-model";
+import { formatDay, formatInstant, type Trip, type TravelUpdateCandidateIntent } from "../tracker-model";
 
 export type TripWorkspaceSection = "overview" | "plan" | "packing" | "story" | "media" | "sharing";
 
@@ -158,7 +158,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             <p>
               {[
                 selectedTrip.starts_on && selectedTrip.ends_on
-                  ? `${selectedTrip.starts_on} — ${selectedTrip.ends_on}`
+                  ? `${formatDay(selectedTrip.starts_on, "D MMM YYYY")} — ${formatDay(selectedTrip.ends_on, "D MMM YYYY")}`
                   : null,
                 `${selectedTrip.travel_updates.length} ${selectedTrip.travel_updates.length === 1 ? "reisupdate" : "reisupdates"}`,
               ]
@@ -194,7 +194,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           open={capturing}
           onDismiss={closeCapture}
         />
-        <nav className="flex gap-1.5 overflow-x-auto border-b border-travel-divider pb-0.5" aria-label="Reisonderdelen">
+        <nav
+          className="flex gap-1.5 overflow-x-auto border-b border-travel-divider pb-0.5 scrollbar-thin"
+          aria-label="Reisonderdelen"
+        >
           {(
             [
               ["overview", "Overzicht"],
@@ -226,7 +229,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             <TripOverview trip={selectedTrip} />
             <OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} onOpenRecord={openMapRecord} />
             <div className="grid gap-4.5 min-[680px]:grid-cols-2">
-              <section className="travel-card">
+              <section className="travel-card grid content-start gap-4.5 [&_h3]:m-0 [&_p]:m-0">
                 <h3>Reisupdates</h3>
                 {selectedTrip.travel_updates.length ? (
                   <div className="saved-records">

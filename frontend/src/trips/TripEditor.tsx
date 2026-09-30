@@ -41,6 +41,7 @@ export function TripEditor({
   onNotice: (message: string) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const refresh = useRefreshTrip();
   const save = useOwnerMutation<Values, Trip>({
     fallback: "De reis kon niet worden opgeslagen.",
@@ -77,6 +78,7 @@ export function TripEditor({
   const { form } = record;
   function close() {
     setConfirmDelete(false);
+    setDeleteError(null);
     record.load(trip ? fromTrip(trip) : blank());
     onClose();
   }
@@ -89,7 +91,10 @@ export function TripEditor({
         onDeleted();
         onNotice("Reis verwijderd.");
       },
-      (error: unknown) => onNotice(errorMessage(error, "De reis kon niet worden verwijderd.")),
+      (error: unknown) => {
+        setConfirmDelete(false);
+        setDeleteError(errorMessage(error, "De reis kon niet worden verwijderd."));
+      },
     );
   }
 
@@ -98,6 +103,7 @@ export function TripEditor({
       open={open}
       title={trip ? "Reisgegevens" : "Nieuwe reis"}
       dirty={open && record.dirty}
+      error={deleteError}
       onDismiss={close}
     >
       {open && (

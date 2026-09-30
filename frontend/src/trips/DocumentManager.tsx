@@ -69,6 +69,10 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   });
 
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const failInDialog = (fallback: string) => (error: unknown) => {
+    dialog.setConfirmDelete(false);
+    dialog.setError(errorMessage(error, fallback));
+  };
 
   function close() {
     dialog.close();
@@ -86,7 +90,7 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       await offline.removeByResource("trip_document", document.id);
       close();
       setNotice("Privédocument verwijderd.");
-    }, fail("Het document kon niet worden verwijderd."));
+    }, failInDialog("Het document kon niet worden verwijderd."));
   }
 
   async function togglePin(document: DocumentAsset) {
@@ -180,6 +184,7 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         open={editing || selected !== null}
         title={editing ? "Document uploaden" : "Document"}
         dirty={editing && uploadRecord.dirty}
+        error={dialog.error}
         onDismiss={close}
       >
         {!editing && selected && (

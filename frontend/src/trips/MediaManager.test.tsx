@@ -137,9 +137,13 @@ it("removes a deleted photo and its copies from the screen", async () => {
   renderMedia();
   await screen.findByText("kust.jpg");
   fireEvent.click(screen.getByRole("button", { name: "kust.jpg bekijken" }));
+  await screen.findByText("Wacht op goedkeuring");
+  const copyReads = api.count("GET /api/trips/trip/media/p1/derivatives");
   fireEvent.click(await screen.findByRole("button", { name: "Verwijderen" }));
   await answerConfirmation();
   await waitFor(() => expect(screen.queryByText("kust.jpg")).toBeNull());
+  // The deleted medium's copies are not asked for again while the list refreshes (that read would be a 404).
+  expect(api.count("GET /api/trips/trip/media/p1/derivatives")).toBe(copyReads);
   expect(screen.getByText("markt.jpg")).toBeTruthy();
   expect(
     screen.getByText("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald."),

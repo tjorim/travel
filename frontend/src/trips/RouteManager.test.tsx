@@ -146,6 +146,16 @@ it("needs only a mode and two areas", async () => {
   expect(screen.getByText("Route opgeslagen.")).toBeTruthy();
 });
 
+it("refuses a route that starts and ends at the same place", async () => {
+  seed();
+  renderWithOwner(<RouteManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  pickAreas("Taipei (heel gebied)", "Taipei (heel gebied)");
+  fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
+  await screen.findByText("Kies twee verschillende plaatsen: vertrek en aankomst zijn hetzelfde.");
+  expect(api.count("POST /api/trips/trip/routes")).toBe(0);
+});
+
 it("takes both times or neither", async () => {
   seed();
   renderWithOwner(<RouteManager trip={trip} />);
@@ -348,7 +358,7 @@ it("offers the areas' points to a drawn line, and shows a saved line in its edit
   expect(screen.getByText("2 algemene punten in deze route.")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(screen.getByRole("heading", { name: "Route tekenen op kaart" })).toBeTruthy();
-  expect(screen.getByText("2 punten · minstens twee punten zijn nodig.")).toBeTruthy();
+  expect(screen.getByText("2 algemene punten in deze route.")).toBeTruthy();
   fireEvent.click(screen.getByText("Geavanceerd: coördinaten als JSON plakken"));
   expect((screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)") as HTMLTextAreaElement).value).toBe(
     "[[121.5,25],[121.6,25.1]]",
@@ -410,7 +420,8 @@ it("links documents to a route and forgets a deleted one after the in-app confir
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("PATCH /api/trips/trip/routes/r-flight")).toMatchObject({ document_asset_ids: ["d1"] });
 
-  fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[1]);
+  fireEvent.click(await screen.findByRole("button", { name: /Route Oostkust/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
   await waitFor(() => expect(screen.queryByRole("button", { name: /Oostkust/ })).toBeNull());
   expect(screen.getByRole("button", { name: /Amsterdam → Taoyuan/ })).toBeTruthy();

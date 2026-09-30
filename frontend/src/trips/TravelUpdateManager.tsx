@@ -155,7 +155,10 @@ export function TravelUpdateManager({
         close();
         setMessage("Reisupdate verwijderd.");
       },
-      (error: unknown) => setMessage(errorMessage(error, "De reisupdate kon niet worden verwijderd.")),
+      (error: unknown) => {
+        dialog.setConfirmDelete(false);
+        dialog.setError(errorMessage(error, "De reisupdate kon niet worden verwijderd."));
+      },
     );
   }
   const { selected, editing, editingId } = dialog;
@@ -201,6 +204,7 @@ export function TravelUpdateManager({
         open={editing || selected !== null}
         title={editing ? (editingId ? "Reisupdate bewerken" : "Reisupdate maken") : "Reisupdate"}
         dirty={editing && record.dirty}
+        error={dialog.error}
         onDismiss={close}
       >
         {!editing && selected && (

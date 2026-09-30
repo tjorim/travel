@@ -128,3 +128,31 @@ def test_library_document_cannot_be_linked_to_another_owners_trip(tmp_path: Path
     document = upload_library_document(owner)
     relink = owner.patch(f"/api/library/documents/{document['id']}", json={"linked_trip_id": other_trip["id"]})
     assert relink.status_code == 404
+
+
+def test_library_uploads_respect_the_size_limit_and_refuse_empty_files(tmp_path: Path, monkeypatch) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "media_max_upload_bytes", 10)
+    owner = client_for("owner-1", tmp_path)
+    data = {"title": "Too big", "document_kind": "other"}
+
+    big = owner.post("/api/library/documents/uploads", data=data, files={"file": ("big.txt", b"x" * 11, "text/plain")})
+    assert big.status_code == 422
+    assert "groter dan de toegestane" in big.json()["detail"]
+    empty = owner.post("/api/library/documents/uploads", data=data, files={"file": ("e.txt", b"", "text/plain")})
+    assert empty.status_code == 422
+    assert owner.get("/api/library/documents").json() == []
+
+
+def test_library_originals_are_never_sniffed_and_svg_downloads(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    svg = owner.post(
+        "/api/library/documents/uploads",
+        data={"title": "Logo", "document_kind": "other"},
+        files={"file": ("logo.svg", b"<svg onload='alert(1)'/>", "image/svg+xml")},
+    ).json()
+
+    response = owner.get(svg["file_url"])
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["content-disposition"] == "attachment"

@@ -72,7 +72,7 @@ def _media_kind_for(content_type: str) -> MediaKind:
         return MediaKind.PHOTO
     if content_type.startswith("video/"):
         return MediaKind.VIDEO
-    raise MediaImportError(f"Unsupported media content type: {content_type}")
+    raise MediaImportError(f"Dit bestandstype ({content_type}) wordt niet ondersteund; kies een foto of video.")
 
 
 _EXIF_MAKE = 271
@@ -80,6 +80,7 @@ _EXIF_MODEL = 272
 _EXIF_DATETIME_ORIGINAL = 36867
 _EXIF_OFFSET_TIME_ORIGINAL = 36881
 _EXIF_GPS_IFD = 0x8825
+_EXIF_SUB_IFD = 0x8769  # where cameras store DateTimeOriginal and its offset
 
 
 def _dms_to_decimal(dms: tuple | None, ref: str | None) -> float | None:
@@ -135,7 +136,8 @@ def extract_exif_metadata(data: bytes) -> dict:
                 metadata["camera_make"] = str(make).strip("\x00 ")
             if model:
                 metadata["camera_model"] = str(model).strip("\x00 ")
-            captured_at = _exif_captured_at(exif)
+            # Cameras keep the capture time in the Exif sub-IFD, not beside Make and Model.
+            captured_at = _exif_captured_at({**exif, **exif.get_ifd(_EXIF_SUB_IFD)})
             if captured_at is not None:
                 metadata["captured_at"] = captured_at
             gps_ifd = exif.get_ifd(_EXIF_GPS_IFD)
@@ -206,9 +208,11 @@ def store_uploaded_object(
     resource only after this function returns an available object.
     """
     if not data:
-        raise MediaImportError("File must not be empty")
+        raise MediaImportError("Het bestand is leeg.")
     if len(data) > settings.media_max_upload_bytes:
-        raise MediaImportError("File exceeds the maximum upload size")
+        raise MediaImportError(
+            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB."
+        )
     return _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=content_type)
 
 

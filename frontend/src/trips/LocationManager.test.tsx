@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
@@ -128,11 +128,11 @@ it("previews only projected address fields and names the live recipients", async
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(
     screen.getByText(
-      /Exact adresveld voor bezoekers als Adres delen aanstaat: {"line1":"12 Guangming Road","locality":"Taipei"}/,
+      /Exact adresveld voor bezoekers als Adres delen aanstaat: adresregel 1: 12 Guangming Road; plaats: Taipei/,
     ),
   ).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Adresregel 2 (optioneel)"), { target: { value: "Floor 4" } });
-  expect(screen.getByText(/"line2":"Floor 4"/)).toBeTruthy();
+  expect(screen.getByText(/adresregel 2: Floor 4/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Annuleren" }));
   expect(api.count("PATCH /api/trips/trip/locations/e1")).toBe(0);
 });
@@ -210,4 +210,37 @@ it("reviews and corrects an OSM snapshot without changing its saved point", asyn
       admin_area: "Taipei City",
     }),
   );
+});
+
+it("describes the shareable address in words, never as raw JSON", async () => {
+  renderWithOwner(
+    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
+  );
+  await screen.findByText(/Opgeslagen adres: 12 Guangming Road/);
+  expect(screen.getByText(/adresregel 1: 12 Guangming Road; plaats: Taipei/)).toBeTruthy();
+  expect(document.body.textContent).not.toContain('"line1"');
+});
+
+it("deletes an unused location after confirmation", async () => {
+  renderWithOwner(
+    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
+  );
+  await screen.findByText(/Opgeslagen adres/);
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  const confirmation = await screen.findByRole("alertdialog");
+  fireEvent.click(within(confirmation).getByRole("button", { name: "Verwijderen" }));
+  await waitFor(() => expect(api.count("DELETE /api/trips/trip/locations/e1")).toBe(1));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+it("keeps a location that is still in use and shows why", async () => {
+  renderWithOwner(
+    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
+  );
+  await screen.findByText(/Opgeslagen adres/);
+  api.failNext = { status: 409, body: { detail: "Deze locatie wordt nog gebruikt door: 1 bezoek." } };
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+  expect(await screen.findByText("Deze locatie wordt nog gebruikt door: 1 bezoek.")).toBeTruthy();
+  expect(screen.getByRole("dialog")).toBeTruthy();
 });

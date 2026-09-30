@@ -77,3 +77,45 @@ def test_document_upload_list_and_delete_are_owner_only(tmp_path: Path) -> None:
     assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
     with TestingSessionLocal() as session:
         assert session.query(StoredObject).count() == 0
+
+
+def test_oversized_or_empty_document_uploads_are_refused_with_a_readable_reason(tmp_path: Path, monkeypatch) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "media_max_upload_bytes", 10)
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    url = f"/api/trips/{trip['id']}/documents/uploads"
+    data = {"title": "Too big", "document_kind": "other"}
+
+    big = owner.post(url, data=data, files={"file": ("big.txt", b"x" * 11, "text/plain")})
+    assert big.status_code == 422
+    assert "groter dan de toegestane" in big.json()["detail"]
+    empty = owner.post(url, data=data, files={"file": ("empty.txt", b"", "text/plain")})
+    assert empty.status_code == 422
+    assert empty.json()["detail"] == "Het bestand is leeg."
+    assert owner.get(f"/api/trips/{trip['id']}/documents").json() == []
+
+
+def test_originals_are_never_sniffed_and_unsafe_types_download_instead_of_rendering(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    url = f"/api/trips/{trip['id']}/documents/uploads"
+    html = owner.post(
+        url,
+        data={"title": "Page", "document_kind": "other"},
+        files={"file": ("page.html", b"<script>alert(1)</script>", "text/html")},
+    ).json()
+    pdf = owner.post(
+        url,
+        data={"title": "Ticket", "document_kind": "booking"},
+        files={"file": ("ticket.pdf", b"%PDF-1.4", "application/pdf")},
+    ).json()
+
+    unsafe = owner.get(html["file_url"])
+    assert unsafe.headers["x-content-type-options"] == "nosniff"
+    assert unsafe.headers["content-disposition"] == "attachment"
+    assert unsafe.headers["cache-control"] == "no-store"
+    safe = owner.get(pdf["file_url"])
+    assert safe.headers["x-content-type-options"] == "nosniff"
+    assert "content-disposition" not in safe.headers

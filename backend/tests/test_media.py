@@ -87,7 +87,8 @@ def jpeg_bytes(
         exif[271] = "ExampleCam"  # Make
         exif[272] = "ExampleModel"  # Model
         if captured_at:
-            exif[36867] = captured_at  # DateTimeOriginal, "YYYY:MM:DD HH:MM:SS"
+            # DateTimeOriginal, "YYYY:MM:DD HH:MM:SS", in the Exif sub-IFD where cameras write it.
+            exif.get_ifd(0x8769)[36867] = captured_at
         if with_gps:
             gps = exif.get_ifd(0x8825)
             gps[1] = "N"

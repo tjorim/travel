@@ -83,13 +83,17 @@ export function EmergencyInfoManager() {
     dialog.edit(entry.id);
   }
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const failInDialog = (fallback: string) => (error: unknown) => {
+    dialog.setConfirmDelete(false);
+    dialog.setError(errorMessage(error, fallback));
+  };
 
   function erase(entry: EmergencyInfoEntry) {
     remove.mutateAsync(entry).then(async () => {
       await offline.removeByResource("emergency_info", entry.id);
       close();
       setNotice("Noodinformatie verwijderd.");
-    }, fail("De noodinformatie kon niet worden verwijderd."));
+    }, failInDialog("De noodinformatie kon niet worden verwijderd."));
   }
 
   async function togglePin(entry: EmergencyInfoEntry) {
@@ -170,6 +174,7 @@ export function EmergencyInfoManager() {
         open={editing || selected !== null}
         title={editing ? (editingId ? "Noodinformatie bewerken" : "Noodinformatie toevoegen") : "Noodinformatie"}
         dirty={editing && record.dirty}
+        error={dialog.error}
         onDismiss={close}
       >
         {!editing && selected && (

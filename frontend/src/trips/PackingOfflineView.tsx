@@ -132,7 +132,7 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
           <section key={section.id} className="rounded-xl border p-3" aria-label={section.title}>
             <h4 className="font-semibold">{section.title}</h4>
             {!rows.length && <p>Geen items hier.</p>}
-            <ul className="divide-y">
+            <ul className="m-0 list-none divide-y p-0">
               {rows.map((item) => (
                 <li key={item.id} className="py-2">
                   <Field className="contents">

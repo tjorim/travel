@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
-from ..document.service import DocumentError, delete_document_asset, direct_upload
+from ..document.service import delete_document_asset, direct_upload
+from ..media.ranges import private_original_headers
+from ..media.service import MediaImportError
 from ..models import DocumentAsset, DocumentKind
 from ..schemas import DocumentAssetResponse
 from ..storage import ObjectStorage, get_storage
@@ -76,7 +78,7 @@ def upload_document(
             document_kind=document_kind,
             title=title,
         )
-    except DocumentError as error:
+    except MediaImportError as error:  # includes DocumentError
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return _asset_response(asset, trip_id)
@@ -114,5 +116,5 @@ def get_document_original(
     return StreamingResponse(
         iter([storage.get(original.object_key)]),
         media_type=original.content_type,
-        headers={"Cache-Control": "no-store"},
+        headers=private_original_headers(original.content_type),
     )

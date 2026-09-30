@@ -10,6 +10,8 @@ type RecordDialogProps = {
   children: ReactNode;
   className?: string;
   dirty?: boolean;
+  /** A failure to report inside the dialog, where the owner is looking, such as a refused delete. */
+  error?: string | null;
   onDismiss: () => void;
   onAfterClose?: () => void;
 };
@@ -31,6 +33,7 @@ export function RecordDialog({
   children,
   className,
   dirty = false,
+  error,
   onDismiss,
   onAfterClose,
 }: RecordDialogProps) {
@@ -84,6 +87,11 @@ export function RecordDialog({
                 Sluiten
               </Dialog.Close>
             </div>
+            {error && (
+              <p className="form-error mb-4" role="alert">
+                {error}
+              </p>
+            )}
             {children}
             <AlertDialog.Root
               open={confirmDiscard}

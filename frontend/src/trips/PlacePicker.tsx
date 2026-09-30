@@ -13,7 +13,7 @@ import {
   type Visit,
 } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
-import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
+import { Field, FieldError, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 /**
  * Where something is: a whole area, a location in one, or a new location. A location is always
@@ -91,12 +91,15 @@ export function PlacePicker({
   value,
   onChange,
   hint,
+  error,
 }: {
   tripId: string;
   label: string;
   value: PlaceValue;
   onChange: (value: PlaceValue) => void;
   hint?: string;
+  /** Why the chosen place cannot be used yet, shown under the picker. */
+  error?: string | null;
 }) {
   const currentValue = useRef(value);
   currentValue.current = value;
@@ -186,7 +189,7 @@ export function PlacePicker({
   return (
     <FieldSet>
       <FieldLegend>{label}</FieldLegend>
-      <Field>
+      <Field invalid={Boolean(error)}>
         <FieldLabel>{label} kiezen</FieldLabel>
         <AsyncSearchSelect
           ariaLabel={label}
@@ -211,6 +214,7 @@ export function PlacePicker({
             onChange(next === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: next })
           }
         />
+        <FieldError>{error}</FieldError>
       </Field>
       {hint && <p className="help">{hint}</p>}
       {value.choice === "new" && (

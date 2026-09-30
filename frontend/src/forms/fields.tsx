@@ -113,8 +113,10 @@ export function TextField({
   return (
     <Field name={field.name} invalid={invalid}>
       <FieldLabel>
-        {label}
-        {optionalNote(optional)}
+        <span>
+          {label}
+          {optionalNote(optional)}
+        </span>
         <Input
           {...rest}
           value={field.state.value ?? ""}
@@ -140,8 +142,10 @@ export function TimeZoneField({
   return (
     <Field name={field.name} invalid={invalid}>
       <FieldLabel>
-        {label}
-        {optionalNote(optional)}
+        <span>
+          {label}
+          {optionalNote(optional)}
+        </span>
       </FieldLabel>
       <SuggestInput
         {...rest}
@@ -167,8 +171,10 @@ export function TextAreaField({
   return (
     <Field name={field.name} invalid={invalid}>
       <FieldLabel>
-        {label}
-        {optionalNote(optional)}
+        <span>
+          {label}
+          {optionalNote(optional)}
+        </span>
         <TravelTextarea
           {...rest}
           value={field.state.value ?? ""}
@@ -193,8 +199,10 @@ export function SelectField({
   return (
     <Field name={field.name} invalid={invalid} disabled={disabled}>
       <FieldLabel>
-        {label}
-        {optionalNote(optional)}
+        <span>
+          {label}
+          {optionalNote(optional)}
+        </span>
       </FieldLabel>
       <SearchSelect
         value={field.state.value ?? ""}

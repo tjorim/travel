@@ -17,6 +17,7 @@ export function PlaceSearchField({
   help,
   onSelect,
   allowExisting = false,
+  current,
 }: {
   tripId: string;
   legend: string;
@@ -27,6 +28,8 @@ export function PlaceSearchField({
   onSelect: (result: PlaceSearchResult, existingPlace?: Location) => void;
   /** Location-based editors may reuse a saved private location; area search must not. */
   allowExisting?: boolean;
+  /** Names the place the record is already linked to, shown until a new one is chosen. */
+  current?: string;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResponse | null>(null);
@@ -115,9 +118,9 @@ export function PlaceSearchField({
           </Button>
         </div>
       </div>
-      {state && (
+      {(state || current) && (
         <p className="help" role="status">
-          {state}
+          {state || current}
         </p>
       )}
       {results && (

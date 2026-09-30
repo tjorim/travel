@@ -5,7 +5,7 @@ import type { FeatureCollection, LineString, Point } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { configuredMapStyleUrl, loadMapStyle } from "./map-style";
+import { configuredMapStyleUrl, loadMapStyle, styleLabelFont } from "./map-style";
 import { ROUTE_MODE_LABELS, type RouteMode } from "./tracker-model";
 
 export type MapLink = { label: string; href?: string; onOpen?: () => void };
@@ -257,7 +257,13 @@ export function TripMap({
             type: "symbol",
             source: "stops",
             filter: ["in", ["get", "kind"], ["literal", ["area", "derived"]]],
-            layout: { "text-field": ["get", "label"], "text-size": 13, "text-offset": [0, 1.3], "text-anchor": "top" },
+            layout: {
+              "text-field": ["get", "label"],
+              "text-font": styleLabelFont(instance.getStyle()),
+              "text-size": 13,
+              "text-offset": [0, 1.3],
+              "text-anchor": "top",
+            },
             paint: { "text-color": "#19342d", "text-halo-color": "#ffffff", "text-halo-width": 2 },
           });
           instance.addLayer(

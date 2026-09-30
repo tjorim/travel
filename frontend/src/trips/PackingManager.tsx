@@ -364,7 +364,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
       </section>
     );
   return (
-    <section className="space-y-5" aria-labelledby="packing-title">
+    <section className="travel-card space-y-5" aria-labelledby="packing-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id="packing-title" className="text-2xl font-semibold">
@@ -379,7 +379,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
             </Button>
           )}
           {list && (
-            <Button type="button" onClick={() => startItem()}>
+            <Button className="compact" type="button" onClick={() => startItem()}>
               Item toevoegen
             </Button>
           )}
@@ -526,7 +526,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 <section aria-label="Vertrekcheck" className="space-y-3 rounded-xl border p-4">
                   <h4 className="text-lg font-semibold">Vertrekcheck</h4>
                   <p>{count(items)}</p>
-                  <ul className="space-y-1">
+                  <ul className="m-0 list-none space-y-1 p-0">
                     {bags.map((bag) => {
                       const rows = items.filter((item) => item.bag_id === bag.id);
                       const known = rows.reduce((sum, item) => sum + (item.weight_g ?? 0) * item.quantity, 0);
@@ -582,7 +582,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                         {bag.weight_limit_g ? ` / ${grams(bag.weight_limit_g)} limiet` : ""}
                       </p>
                       {bag.weight_limit_g !== null && known > bag.weight_limit_g && (
-                        <p role="alert" className="font-semibold text-travel-ink">
+                        <p role="alert" className="font-bold text-travel-danger!">
                           Over de gewichtslimiet
                         </p>
                       )}
@@ -689,7 +689,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 </div>
               )}
               {notice && (
-                <p role="status" className="rounded border p-3">
+                <p role="status" className="help">
                   {notice}
                 </p>
               )}
@@ -864,7 +864,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
         >
           <Field className="contents">
             <FieldLabel className="block">
-              Naam *
+              Naam
               <Input
                 autoFocus
                 required
@@ -1022,7 +1022,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
         >
           <Field className="contents">
             <FieldLabel className="block">
-              Naam *
+              Naam
               <Input
                 autoFocus
                 required

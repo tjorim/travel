@@ -43,6 +43,13 @@ type CatalogItem = {
   /** A photo attached to a reisupdate is shared with it, so it has no choice of its own. */ followsUpdate?: string;
 };
 
+const LINK_STATE_LABELS: Record<ShareLink["state"], string> = {
+  draft: "concept",
+  active: "actief",
+  revoked: "ingetrokken",
+  expired: "verlopen",
+};
+
 const GROUP_TITLES: Record<ShareScopeKind, string> = {
   travel_update: "Reisupdates",
   visit: "Bezoeken",
@@ -140,30 +147,43 @@ function ScopeGroup({
   const chosen = (item: CatalogItem) => scope.items.some((value) => value.kind === item.kind && value.id === item.id);
   const count = items.filter(chosen).length;
 
-  async function promote(toPromote: CatalogItem[]): Promise<boolean> {
-    if (!toPromote.length) return true;
+  /** Promotes each record on its own, so one that cannot be shared yet does not hold back the rest. */
+  async function promote(toPromote: CatalogItem[]): Promise<CatalogItem[]> {
+    if (!toPromote.length) return [];
     setBusy(true);
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         toPromote.map((item) => setVisibility.mutateAsync({ kind: item.kind, id: item.id, visibility: "custom" })),
       );
-      return true;
-    } catch (error) {
-      onError(error);
-      return false;
+      const failed = results.flatMap((result, index) =>
+        result.status === "rejected" ? [{ item: toPromote[index]!, reason: result.reason as unknown }] : [],
+      );
+      if (failed.length)
+        onError(
+          new Error(
+            `${failed.length === 1 ? "1 onderdeel is" : `${failed.length} onderdelen zijn`} niet gekozen: ${failed
+              .map(({ item }) => `“${item.label}”`)
+              .join(", ")}. ${errorMessage(failed[0]!.reason, "")}`.trim(),
+          ),
+        );
+      return toPromote.filter((_, index) => results[index]!.status === "fulfilled");
     } finally {
       setBusy(false);
     }
   }
 
   async function include(item: CatalogItem, checked: boolean) {
-    if (checked && item.visibility === "private" && !(await promote([item]))) return;
+    if (checked && item.visibility === "private" && !(await promote([item])).length) return;
     setScope(updateItem(scope, item, checked));
   }
 
   async function chooseAll() {
-    if (!(await promote(items.filter((item) => item.visibility === "private" && !chosen(item))))) return;
-    setScope(items.reduce((current, item) => updateItem(current, item, true), scope));
+    const promoted = await promote(items.filter((item) => item.visibility === "private" && !chosen(item)));
+    setScope(
+      items
+        .filter((item) => item.visibility !== "private" || chosen(item) || promoted.includes(item))
+        .reduce((current, item) => updateItem(current, item, true), scope),
+    );
   }
 
   return (
@@ -970,7 +990,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 >
                   <strong>{current.label}</strong>
                   <span>
-                    {current.state} · verloopt {dateLabel(current.expires_at)}
+                    {LINK_STATE_LABELS[current.state]} · verloopt {dateLabel(current.expires_at)}
                     {history.length
                       ? ` · ${history.length} eerdere ${history.length === 1 ? "versie" : "versies"}`
                       : ""}
@@ -992,7 +1012,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                         >
                           <strong>{link.label}</strong>
                           <span>
-                            {link.state} · verlopen {dateLabel(link.revoked_at ?? link.expires_at)}
+                            {LINK_STATE_LABELS[link.state]} {dateLabel(link.revoked_at ?? link.expires_at)}
                           </span>
                         </Button>
                       ))}

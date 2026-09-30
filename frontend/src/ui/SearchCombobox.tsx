@@ -95,7 +95,7 @@ function SearchCombobox({
       value={selected}
       isItemEqualToValue={(item, chosen) => item.value === chosen.value}
       itemToStringLabel={(item) => labelText(item.label)}
-      itemToStringValue={(item) => labelText(item.label)}
+      itemToStringValue={(item) => item.value}
       onValueChange={(next) => onChange(next?.value ?? "")}
       onInputValueChange={(query, details) => {
         if (

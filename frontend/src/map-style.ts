@@ -23,3 +23,21 @@ export async function loadMapStyle(styleUrl: string, signal: AbortSignal): Promi
   }
   return style;
 }
+
+/** The stack OpenFreeMap's Liberty style labels with; used when a style names no font of its own. */
+const FALLBACK_LABEL_FONT = ["Noto Sans Regular"];
+
+/**
+ * A font stack the loaded style's glyph server actually has. A symbol layer without `text-font` makes MapLibre ask
+ * for its own default ("Open Sans Regular", "Arial Unicode MS Regular"), which most tile servers do not host, so the
+ * labels are drawn from the style's own fonts instead, preferring a plain weight.
+ */
+export function styleLabelFont(style: Pick<StyleSpecification, "layers"> | undefined): string[] {
+  const stacks = (style?.layers ?? []).flatMap((layer) => {
+    const font = layer.type === "symbol" ? layer.layout?.["text-font"] : undefined;
+    return Array.isArray(font) && font.length > 0 && font.every((name) => typeof name === "string")
+      ? [font as string[]]
+      : [];
+  });
+  return stacks.find((stack) => !/bold|italic|oblique/i.test(stack.join(" "))) ?? stacks[0] ?? FALLBACK_LABEL_FONT;
+}

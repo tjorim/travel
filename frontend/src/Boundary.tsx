@@ -52,10 +52,10 @@ export function Boundary({ children }: { children: ReactNode }) {
   }
 
   return (
-    <main className="travel-shell pt-6! min-[960px]:w-travel-owner-shell [&>header]:max-w-180">
+    <main className="travel-shell pt-6! min-[960px]:w-travel-owner-shell">
       <header className="mb-6 flex items-center justify-between gap-4">
         <nav
-          className="fixed inset-x-0 bottom-0 flex justify-between gap-1 border-t border-travel-card-border bg-travel-surface/95 px-2.5 py-3.5 backdrop-blur-md min-[680px]:static min-[680px]:mt-7 min-[680px]:justify-start min-[680px]:gap-10 min-[680px]:border-0 min-[680px]:bg-transparent min-[680px]:p-0 min-[680px]:backdrop-blur-none"
+          className="fixed inset-x-0 bottom-0 z-20 flex justify-between gap-1 border-t border-travel-card-border bg-travel-surface/95 px-2.5 py-3.5 backdrop-blur-md min-[680px]:static min-[680px]:z-auto min-[680px]:mt-7 min-[680px]:justify-start min-[680px]:gap-10 min-[680px]:border-0 min-[680px]:bg-transparent min-[680px]:p-0 min-[680px]:backdrop-blur-none"
           aria-label="App navigatie"
         >
           {navigation.map(([to, label]) => (
@@ -69,7 +69,7 @@ export function Boundary({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <Collapsible.Root className="relative shrink-0">
+        <Collapsible.Root className="relative ml-auto shrink-0">
           <Collapsible.Trigger
             className="rounded-lg border border-travel-control-border bg-transparent px-3.5 py-2.25 font-bold text-travel-forest"
             aria-haspopup="menu"

@@ -50,6 +50,23 @@ const bothCoordinates = ({
   (value === "") !== (String(fieldApi.form.getFieldValue("longitude" as never) ?? "") === "")
     ? "Vul beide kaartcoördinaten in of laat beide leeg."
     : undefined;
+const withinRange =
+  (min: number, max: number, name: string) =>
+  ({ value }: { value: string }) =>
+    value !== "" && !(Number(value) >= min && Number(value) <= max)
+      ? `${name} ligt tussen ${min} en ${max} graden.`
+      : undefined;
+const latitudeRange = withinRange(-90, 90, "De breedtegraad");
+const longitudeRange = withinRange(-180, 180, "De lengtegraad");
+const knownTimeZone = ({ value }: { value: string }) => {
+  if (!value.trim()) return undefined;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value.trim() });
+    return undefined;
+  } catch {
+    return "Onbekende tijdzone; kies er een uit de suggesties.";
+  }
+};
 const areaCoordinate = (value: number) => (Math.round(value * 100) / 100).toString();
 
 export function AreaManager({
@@ -136,7 +153,10 @@ export function AreaManager({
         close();
         setMessage("Gebied verwijderd.");
       },
-      (error: unknown) => setMessage(errorMessage(error, "Het gebied kon niet worden verwijderd.")),
+      (error: unknown) => {
+        dialog.setConfirmDelete(false);
+        dialog.setError(errorMessage(error, "Het gebied kon niet worden verwijderd."));
+      },
     );
   }
   function useSearchResult(result: PlaceSearchResult) {
@@ -248,6 +268,7 @@ export function AreaManager({
         open={editing || selected !== null}
         title={editing ? (editingId ? "Gebied bewerken" : "Gebied toevoegen") : "Gebied"}
         dirty={editing && record.dirty}
+        error={dialog.error}
         onDismiss={() => {
           close();
           setResumeLocation(false);
@@ -325,7 +346,7 @@ export function AreaManager({
               <record.form.Field name="region">
                 {(field) => <TextField field={field} label="Regio" optional maxLength={120} />}
               </record.form.Field>
-              <record.form.Field name="timezone">
+              <record.form.Field name="timezone" validators={{ onBlur: knownTimeZone, onSubmit: knownTimeZone }}>
                 {(field) => (
                   <TimeZoneField field={field} label="Tijdzone" optional="(optioneel, privé)" maxLength={64} />
                 )}
@@ -334,13 +355,17 @@ export function AreaManager({
             <div className="field-row">
               <record.form.Field
                 name="latitude"
-                validators={{ onChangeListenTo: ["longitude"], onChange: bothCoordinates, onSubmit: bothCoordinates }}
+                validators={{
+                  onChangeListenTo: ["longitude"],
+                  onChange: (props) => bothCoordinates(props) ?? latitudeRange(props),
+                  onSubmit: (props) => bothCoordinates(props) ?? latitudeRange(props),
+                }}
               >
                 {(field) => (
                   <TextField field={field} label="Breedtegraad" optional type="number" min={-90} max={90} step="any" />
                 )}
               </record.form.Field>
-              <record.form.Field name="longitude">
+              <record.form.Field name="longitude" validators={{ onChange: longitudeRange, onSubmit: longitudeRange }}>
                 {(field) => (
                   <TextField field={field} label="Lengtegraad" optional type="number" min={-180} max={180} step="any" />
                 )}

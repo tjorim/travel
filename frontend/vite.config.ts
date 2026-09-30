@@ -1,22 +1,29 @@
+import type { ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+// What Caddy sends for `/share/*` (Caddyfile.example): the capability route is never cached, indexed or sent on as a
+// referrer. Vite's own HTML middleware would otherwise replace Cache-Control with `no-cache`.
+const shareHeaders = {
+  "Cache-Control": "no-store, private",
+  "Referrer-Policy": "no-referrer",
+  "X-Robots-Tag": "noindex, noarchive",
+};
+
 function visitorRoutes(): Plugin {
-  const rewrite = (
-    request: { url?: string },
-    response: { setHeader(name: string, value: string): void },
-    next: () => void,
-  ) => {
+  const rewrite = (request: { url?: string }, response: ServerResponse, next: () => void) => {
     const path = request.url?.split("?", 1)[0] ?? "";
     if (path === "/") request.url = "/admin/landing.html";
     if (/^\/trips(?:\/|$)/.test(path)) request.url = "/admin/public.html";
     if (/^\/share(?:\/|$)/.test(path)) {
       request.url = "/admin/share.html";
-      response.setHeader("Cache-Control", "no-store, private");
-      response.setHeader("Referrer-Policy", "no-referrer");
-      response.setHeader("X-Robots-Tag", "noindex, noarchive");
+      const pinned = new Set(Object.keys(shareHeaders).map((name) => name.toLowerCase()));
+      const setHeader = response.setHeader.bind(response);
+      for (const [name, value] of Object.entries(shareHeaders)) setHeader(name, value);
+      // Later middleware may not override these.
+      response.setHeader = (name, value) => (pinned.has(name.toLowerCase()) ? response : setHeader(name, value));
     }
     next();
   };

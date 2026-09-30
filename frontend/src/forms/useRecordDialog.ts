@@ -14,31 +14,39 @@ export function useRecordDialog<T extends { id: string }>(items: readonly T[]) {
   // undefined: not editing; null: a new record; a string: the record being edited.
   const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // A failure that belongs to the open record, such as a refused delete; shown inside the dialog, not behind it.
+  const [error, setError] = useState<string | null>(null);
   return {
     selected: items.find((item) => item.id === selectedId) ?? null,
     editing: editingId !== undefined,
     editingId,
     confirmDelete,
     setConfirmDelete,
+    error,
+    setError,
     create() {
       setSelectedId(null);
       setEditingId(null);
       setConfirmDelete(false);
+      setError(null);
     },
     edit(id: string) {
       setSelectedId(id);
       setEditingId(id);
       setConfirmDelete(false);
+      setError(null);
     },
     inspect(id: string) {
       setSelectedId(id);
       setEditingId(undefined);
       setConfirmDelete(false);
+      setError(null);
     },
     close() {
       setSelectedId(null);
       setEditingId(undefined);
       setConfirmDelete(false);
+      setError(null);
     },
   };
 }

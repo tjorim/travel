@@ -11,7 +11,7 @@ from ..database import get_session
 from ..media import oauth
 from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_travel_update_candidates
 from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver, provider_available
-from ..media.ranges import media_response
+from ..media.ranges import media_response, private_original_headers
 from ..media.service import (
     CreatedImportSession,
     ImportOutcome,
@@ -268,7 +268,9 @@ def get_media_original(
     asset = owned_media_asset(session, trip_id, subject, media_id)
     original = asset.original_object
     data = storage.get(original.object_key)
-    return StreamingResponse(iter([data]), media_type=original.content_type, headers={"Cache-Control": "no-store"})
+    return StreamingResponse(
+        iter([data]), media_type=original.content_type, headers=private_original_headers(original.content_type)
+    )
 
 
 @router.get("/{media_id}/thumbnail")

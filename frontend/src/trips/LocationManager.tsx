@@ -6,7 +6,8 @@ import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../for
 import { useRecordForm } from "../forms/useRecordForm";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
-import { RecordDialog } from "../RecordDialog";
+import { errorMessage } from "../query/api";
+import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import {
   locationName,
   type Area,
@@ -83,6 +84,18 @@ const addressProjection = (value: Values | Location) => {
         };
   return Object.fromEntries(Object.entries(fields).filter(([, field]) => field?.trim()));
 };
+const PROJECTION_LABELS: Record<string, string> = {
+  line1: "adresregel 1",
+  line2: "adresregel 2",
+  postal_code: "postcode",
+  locality: "plaats",
+  admin_area: "regio",
+};
+/** The address field visitors would receive, as words rather than the API's JSON. */
+const projectionText = (projection: Record<string, string | null | undefined>) =>
+  Object.entries(projection)
+    .map(([key, field]) => `${PROJECTION_LABELS[key] ?? key}: ${field?.trim()}`)
+    .join("; ");
 function recipients(
   place: Location,
   status: PublicProjectionStatus | undefined,
@@ -166,6 +179,11 @@ export function LocationManager({
     }),
     invalidate: (subject) => [ownerKeys.trip(subject, trip.id), ownerKeys.trips(subject)],
   });
+  const remove = useOwnerMutation<Location>({
+    fallback: "De locatie kon niet worden verwijderd.",
+    request: (place) => ({ path: `${tripPath(trip.id, "locations")}/${place.id}`, method: "DELETE" }),
+    invalidate: (subject) => [ownerKeys.trip(subject, trip.id), ownerKeys.trips(subject)],
+  });
   const record = useRecordForm<Values, Location>({
     defaultValues: blank(),
     fallback: "De locatie kon niet worden opgeslagen.",
@@ -228,6 +246,19 @@ export function LocationManager({
     setNotice("");
     dialog.create();
   }
+  function erase(place: Location) {
+    remove.mutateAsync(place).then(
+      () => {
+        close();
+        setNotice("Locatie verwijderd.");
+        onSaved?.();
+      },
+      (error: unknown) => {
+        dialog.setConfirmDelete(false);
+        dialog.setError(errorMessage(error, "De locatie kon niet worden verwijderd."));
+      },
+    );
+  }
   function edit(place: Location) {
     record.load(fromPlace(place));
     setSuggestion(null);
@@ -280,50 +311,53 @@ export function LocationManager({
         open={editing || selected !== null}
         title={editing ? (editingId ? "Locatie bewerken" : "Locatie toevoegen") : "Locatie"}
         dirty={editing && record.dirty}
+        error={dialog.error}
         onDismiss={close}
       >
         {!editing && selected && (
           <div className="stack-form">
-            <h3>{ownerLocationName(selected)}</h3>
-            <p>Eigen naam: {selected.display_name || "Geen eigen naam"}</p>
-            <p>
-              Gebied: {areas.find((area) => area.id === selected.area_id)?.label ?? "Onbekend gebied"} ·{" "}
-              {visibilityLabel(selected.visibility)}
-            </p>
-            <p>Publieke naam: {selected.label || "Nog geen publieke naam"}</p>
-            <p>
-              Opgeslagen adres: {address(selected) || "Geen adres vastgelegd"}
-              {address(selected) && selected.country_code ? `, ${selected.country_code}` : ""}
-            </p>
-            {!address(selected) && selected.country_code && <p>Landcode: {selected.country_code}</p>}
-            {selected.notes && <p>Privénotities: {selected.notes}</p>}
-            {mapTarget(selected.latitude, selected.longitude)}
-            {selected.osm_url && (
-              <p className="help">
-                Providerlocatie:{" "}
-                <a href={selected.osm_url} target="_blank" rel="noreferrer">
-                  {selected.osm_element_type} {selected.osm_element_id}
-                </a>
-                . Een adrescorrectie verplaatst dit kaartpunt of navigatiedoel niet.
+            <div>
+              <h3>{ownerLocationName(selected)}</h3>
+              <p>Eigen naam: {selected.display_name || "Geen eigen naam"}</p>
+              <p>
+                Gebied: {areas.find((area) => area.id === selected.area_id)?.label ?? "Onbekend gebied"} ·{" "}
+                {visibilityLabel(selected.visibility)}
               </p>
-            )}
-            <p>
-              {statusQuery.isPending || linksQuery.isPending
-                ? "Ontvangers worden geladen."
-                : statusQuery.isError || linksQuery.isError
-                  ? "Ontvangers konden niet worden gecontroleerd."
-                  : currentRecipients.length
-                    ? `Bereikt momenteel: ${currentRecipients.join(", ")}.`
-                    : "Deze locatie bereikt momenteel geen bezoekers."}{" "}
-              Adres delen verandert de zichtbaarheid of ontvangers niet.
-            </p>
-            <p>
-              {selected.share_address ? "Adres delen staat aan." : "Adres delen staat uit."}{" "}
-              {shareableAddress(selected)
-                ? `Adresveld voor bezoekers als Adres delen aanstaat en deze locatie hen bereikt: ${JSON.stringify(addressProjection(selected))}.`
-                : "Geen deelbaar adres."}{" "}
-              De eigen naam en privénotities worden niet getoond.
-            </p>
+              <p>Publieke naam: {selected.label || "Nog geen publieke naam"}</p>
+              <p>
+                Opgeslagen adres: {address(selected) || "Geen adres vastgelegd"}
+                {address(selected) && selected.country_code ? `, ${selected.country_code}` : ""}
+              </p>
+              {!address(selected) && selected.country_code && <p>Landcode: {selected.country_code}</p>}
+              {selected.notes && <p>Privénotities: {selected.notes}</p>}
+              {mapTarget(selected.latitude, selected.longitude)}
+              {selected.osm_url && (
+                <p className="help">
+                  Providerlocatie:{" "}
+                  <a href={selected.osm_url} target="_blank" rel="noreferrer">
+                    {selected.osm_element_type} {selected.osm_element_id}
+                  </a>
+                  . Een adrescorrectie verplaatst dit kaartpunt of navigatiedoel niet.
+                </p>
+              )}
+              <p>
+                {statusQuery.isPending || linksQuery.isPending
+                  ? "Ontvangers worden geladen."
+                  : statusQuery.isError || linksQuery.isError
+                    ? "Ontvangers konden niet worden gecontroleerd."
+                    : currentRecipients.length
+                      ? `Bereikt momenteel: ${currentRecipients.join(", ")}.`
+                      : "Deze locatie bereikt momenteel geen bezoekers."}{" "}
+                Adres delen verandert de zichtbaarheid of ontvangers niet.
+              </p>
+              <p>
+                {selected.share_address ? "Adres delen staat aan." : "Adres delen staat uit."}{" "}
+                {shareableAddress(selected)
+                  ? `Adresveld voor bezoekers als Adres delen aanstaat en deze locatie hen bereikt: ${projectionText(addressProjection(selected))}.`
+                  : "Geen deelbaar adres."}{" "}
+                De eigen naam en privénotities worden niet getoond.
+              </p>
+            </div>
             <VisibilityControl
               tripId={trip.id}
               kind="location"
@@ -336,7 +370,18 @@ export function LocationManager({
               <Button type="button" onClick={() => edit(selected)}>
                 Bewerken
               </Button>
+              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+                Verwijderen
+              </Button>
             </div>
+            {dialog.confirmDelete && (
+              <DeleteConfirmation
+                title={`Locatie “${ownerLocationName(selected)}” verwijderen?`}
+                description="Dit kan alleen wanneer de locatie niet meer in een bezoek, verblijf, route of reisupdate wordt gebruikt. Wil je duplicaten opruimen, voeg ze dan samen."
+                onCancel={() => dialog.setConfirmDelete(false)}
+                onConfirm={() => erase(selected)}
+              />
+            )}
           </div>
         )}
         {editing && (
@@ -468,7 +513,7 @@ export function LocationManager({
                 </record.form.Field>
                 <p className="help">
                   {canShareAddress
-                    ? `Exact adresveld voor bezoekers als Adres delen aanstaat: ${JSON.stringify(addressPreview)}.`
+                    ? `Exact adresveld voor bezoekers als Adres delen aanstaat: ${projectionText(addressPreview)}.`
                     : "Geen deelbaar adres. Vul eerst een adresveld in om Adres delen aan te zetten."}{" "}
                   Landcode: {record.values.countryCode || "geen"}; publieke naam: {record.values.label || "geen"}. Deze
                   staan los van het adresveld. Eigen naam en privénotities blijven privé.

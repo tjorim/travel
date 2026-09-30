@@ -63,12 +63,14 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const selected = tasks.find((task) => task.id === selectedId) ?? null;
   const editing = editingId !== undefined;
   useDialogFocus(focusId, (id) => {
     setSelectedId(id);
     setEditingId(undefined);
     setConfirmDelete(false);
+    setDeleteError(null);
   });
 
   const taskKeys = (subject: string) => [
@@ -140,6 +142,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     setSelectedId(null);
     setEditingId(undefined);
     setConfirmDelete(false);
+    setDeleteError(null);
     record.load(blank());
   }
   function create() {
@@ -179,10 +182,16 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     }, fail("De taak kon niet worden bijgewerkt."));
   }
   function remove(task: TripTask) {
-    deleteTask.mutateAsync(task).then(() => {
-      close();
-      setNotice("Taak verwijderd.");
-    }, fail("De taak kon niet worden verwijderd."));
+    deleteTask.mutateAsync(task).then(
+      () => {
+        close();
+        setNotice("Taak verwijderd.");
+      },
+      (error: unknown) => {
+        setConfirmDelete(false);
+        setDeleteError(errorMessage(error, "De taak kon niet worden verwijderd."));
+      },
+    );
   }
 
   const row = (task: TripTask) => (
@@ -273,6 +282,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         open={editing || selected !== null}
         title={editing ? (editingId ? "Taak bewerken" : "Taak toevoegen") : "Taak"}
         dirty={editing && record.dirty}
+        error={deleteError}
         onDismiss={close}
       >
         {!editing && selected && (

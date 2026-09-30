@@ -689,8 +689,14 @@ export function bytesLabel(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} kB`;
 }
 
+// Types a browser shows without running anything from the file.
+const DISPLAYED_INLINE = /^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm)|application\/pdf|text\/plain)(;|$)/i;
+
 export function openBlobInNewTab(blob: Blob): void {
-  const objectUrl = URL.createObjectURL(blob);
+  // A private file shares the app's origin once opened as a blob, so anything that could run (HTML, SVG, scripts)
+  // is handed over as an untyped download instead of being rendered.
+  const shown = DISPLAYED_INLINE.test(blob.type) ? blob : new Blob([blob], { type: "application/octet-stream" });
+  const objectUrl = URL.createObjectURL(shown);
   const preview = window.open(objectUrl, "_blank", "noopener");
   if (!preview) {
     URL.revokeObjectURL(objectUrl);

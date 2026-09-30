@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { ApiError, apiFailure, ownerFile, ownerRequest } from "./api";
+import { ApiError, apiFailure, ownerFile, ownerRequest, translateApiMessage } from "./api";
 import { shouldRetryQuery } from "./client";
 import { ownerKeys } from "./keys";
 
@@ -37,7 +37,14 @@ it("maps server detail, validation issues and 401 to owner-facing messages", asy
   );
   expect(invalid.message).toBe("Te lang. Ongeldig.");
   expect(invalid.fieldErrors).toEqual({ title: "Te lang." });
-  expect((await apiFailure(new Response("oops", { status: 500 }), "Mislukt.")).message).toBe("Mislukt.");
+  // A server error with no detail names what failed and that the server is at fault; a 4xx keeps the plain fallback.
+  expect((await apiFailure(new Response("oops", { status: 500 }), "Mislukt.")).message).toBe(
+    "Mislukt. De server reageert niet goed. Probeer het later opnieuw.",
+  );
+  expect((await apiFailure(new Response("oops", { status: 404 }), "Mislukt.")).message).toBe("Mislukt.");
+  expect(
+    (await apiFailure(new Response(JSON.stringify({ detail: "kapot" }), { status: 500 }), "Mislukt.")).message,
+  ).toBe("kapot");
   const expired = await apiFailure(
     new Response(JSON.stringify({ detail: "Not authenticated" }), { status: 401 }),
     "fallback",
@@ -124,4 +131,28 @@ it("scopes every owner key by subject", () => {
   expect(ownerKeys.tripResource("a", "t", "stays").slice(0, ownerKeys.trip("a", "t").length)).toEqual(
     ownerKeys.trip("a", "t"),
   );
+});
+
+it("translates the API messages an owner can reach, and leaves Dutch text alone", () => {
+  expect(translateApiMessage("Write the text for visitors before sharing this update")).toBe(
+    "Schrijf eerst de tekst voor bezoekers voordat je deze reisupdate deelt.",
+  );
+  expect(translateApiMessage("Value error, Arrival must be after departure")).toBe(
+    "De aankomst moet na het vertrek liggen.",
+  );
+  expect(translateApiMessage("Input should be less than or equal to 90")).toBe("Kies een waarde van 90 of minder.");
+  expect(translateApiMessage("String should have at most 120 characters")).toBe("Gebruik maximaal 120 tekens.");
+  expect(translateApiMessage("Deze locatie wordt nog gebruikt door: 1 verblijf.")).toBe(
+    "Deze locatie wordt nog gebruikt door: 1 verblijf.",
+  );
+});
+
+it("translates both the summary and the per-field messages of a validation failure", async () => {
+  const response = new Response(
+    JSON.stringify({ detail: [{ loc: ["body", "label"], msg: "Field required", type: "missing" }] }),
+    { status: 422 },
+  );
+  const failure = await apiFailure(response, "mislukt");
+  expect(failure.message).toBe("Dit veld is verplicht.");
+  expect(failure.fieldErrors).toEqual({ label: "Dit veld is verplicht." });
 });

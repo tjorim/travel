@@ -9,6 +9,7 @@ touches the trip-scoped media/document pipeline in ``app.media.service``.
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..media.service import MediaImportError
 from ..models import DocumentKind, ObjectState, OwnerDocument, OwnerStoredObject, opaque_id
 from ..storage import ObjectStorage, sha256_hex
@@ -23,7 +24,11 @@ def _store_owner_bytes(
     session: Session, storage: ObjectStorage, *, owner_subject: str, data: bytes, content_type: str
 ) -> OwnerStoredObject:
     if not data:
-        raise LibraryError("File must not be empty")
+        raise LibraryError("Het bestand is leeg.")
+    if len(data) > settings.media_max_upload_bytes:
+        raise LibraryError(
+            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB."
+        )
 
     digest = sha256_hex(data)
     existing = session.scalar(

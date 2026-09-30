@@ -78,6 +78,16 @@
   * {
     box-sizing: border-box;
   }
+  /* Preflight is not imported, so a bare `border` utility would otherwise draw in the text colour. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-travel-divider);
+  }
+  /* Preflight is not imported, so utilities such as `grid` would otherwise override the hidden attribute. */
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
   body {
     @apply m-0 min-w-80;
   }
@@ -93,6 +103,9 @@
   input:focus-visible,
   textarea:focus-visible {
     @apply outline-3 outline-offset-2 outline-travel-focus;
+  }
+  fieldset {
+    @apply m-0 min-w-0 rounded-travel-media border border-travel-divider p-3;
   }
   label {
     @apply grid gap-1.75 text-travel-form-label font-extrabold text-travel-label;
@@ -142,6 +155,14 @@
 
 @utility help {
   @apply m-0 rounded-lg bg-travel-tint px-2.75 py-2.25 text-sm leading-normal text-travel-positive;
+  /* A status line with nothing to say stays in the page for screen readers but takes no space. */
+  &:empty {
+    @apply bg-transparent p-0;
+  }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
 }
 
 @utility button-row {
@@ -150,6 +171,11 @@
 
 @utility capture-heading {
   @apply flex items-end justify-between gap-4.5;
+  /* The action beside a heading keeps its label on one line however long the description is. */
+  & > button,
+  & > a {
+    @apply shrink-0 whitespace-nowrap;
+  }
 }
 
 @utility saved-records {
@@ -308,6 +334,17 @@
     }
   }
   & > button[data-panel-open]::before {
+    @apply rotate-90;
+  }
+}
+
+@utility disclosure-trigger {
+  @apply flex w-full items-center gap-2 bg-transparent p-0 text-left font-bold text-travel-forest;
+  &::before {
+    content: "▸";
+    @apply text-travel-muted transition-transform;
+  }
+  &[data-panel-open]::before {
     @apply rotate-90;
   }
 }

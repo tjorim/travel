@@ -60,7 +60,7 @@ it("hides Google when the server lacks its OAuth credentials", async () => {
     { provider: "gopro_cloud", available: false, connected: false },
   ];
   renderWithOwner(<Settings />);
-  await screen.findByText("Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
+  await screen.findByText(/Er is geen mediaprovider geconfigureerd op deze server/);
   expect(screen.queryByText("Google Photos")).toBeNull();
   expect(screen.queryByText("GoPro Cloud")).toBeNull();
 });
@@ -71,8 +71,10 @@ it("explains that provider import is unavailable when no provider is configured"
     { provider: "gopro_cloud", available: false, connected: false },
   ];
   renderWithOwner(<Settings />);
-  await screen.findByText("Providerimport is op deze server nog niet beschikbaar.");
-  expect(screen.getByText(/Er is geen mediaprovider geconfigureerd op deze server/)).toBeTruthy();
+  // One explanation, not the same news repeated as intro, status line and note.
+  await screen.findByText(/Er is geen mediaprovider geconfigureerd op deze server/);
+  expect(screen.queryByText(/Providerimport is op deze server nog niet beschikbaar/)).toBeNull();
+  expect(screen.queryByText(/Alleen de verbindingstoestand is zichtbaar/)).toBeNull();
   expect(screen.queryByRole("button", { name: "Verbinden met Google" })).toBeNull();
 });
 

@@ -71,6 +71,10 @@ export function DocumentLibraryManager() {
   });
 
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const failInDialog = (fallback: string) => (error: unknown) => {
+    dialog.setConfirmDelete(false);
+    dialog.setError(errorMessage(error, fallback));
+  };
   const tripTitle = (tripId: string) => trips.find((trip) => trip.id === tripId)?.title ?? "verwijderde reis";
 
   function close() {
@@ -89,7 +93,7 @@ export function DocumentLibraryManager() {
       await offline.removeByResource("library_document", document.id);
       close();
       setNotice("Document verwijderd.");
-    }, fail("Het document kon niet worden verwijderd."));
+    }, failInDialog("Het document kon niet worden verwijderd."));
   }
 
   async function togglePin(document: OwnerDocument) {
@@ -188,6 +192,7 @@ export function DocumentLibraryManager() {
         open={editing || selected !== null}
         title={editing ? "Document uploaden" : "Document"}
         dirty={editing && record.dirty}
+        error={dialog.error}
         onDismiss={close}
       >
         {!editing && selected && (

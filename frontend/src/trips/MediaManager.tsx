@@ -231,10 +231,18 @@ export function MediaManager({
   const [view, setView] = useState<CopyView>({ kind: "asset" });
   const [confirmDeleteAsset, setConfirmDeleteAsset] = useState(false);
   const [confirmDeleteCopy, setConfirmDeleteCopy] = useState(false);
-  const derivativesQuery = useDerivatives(trip.id, "media", selected?.id ?? null);
+  // The asset being deleted stops being read, so the refresh after the delete does not ask for the copies of a
+  // medium that no longer exists (a 404 for every deletion).
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const derivativesQuery = useDerivatives(
+    trip.id,
+    "media",
+    selected && selected.id !== deletingId ? selected.id : null,
+  );
   const derivatives = derivativesQuery.data ?? [];
   const selectedDerivative = view.kind === "copy" ? (derivatives.find((item) => item.id === view.id) ?? null) : null;
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadKey, setUploadKey] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [importSession, setImportSession] = useState<ImportSession | null>(null);
@@ -414,14 +422,21 @@ export function MediaManager({
   }, [derivatives, derivativesQuery]);
 
   const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const failInDialog = (fallback: string) => (error: unknown) => {
+    setConfirmDeleteAsset(false);
+    setConfirmDeleteCopy(false);
+    assetDialog.setError(errorMessage(error, fallback));
+  };
   const timestamp = formatInstant;
 
   function openUpload() {
+    setUploadError(null);
     setUploadFile(null);
     setUploadKey((current) => current + 1);
     setUploading(true);
   }
   function closeUpload() {
+    setUploadError(null);
     setUploading(false);
     setUploadFile(null);
     setUploadKey((current) => current + 1);
@@ -430,17 +445,24 @@ export function MediaManager({
   function submitUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!uploadFile) {
-      setNotice("Kies eerst een foto of video.");
+      setUploadError("Kies eerst een foto of video.");
       return;
     }
+    setUploadError(null);
     const data = new FormData();
     data.set("file", uploadFile);
     setNotice("Privémedia uploaden…");
-    upload.mutateAsync(data).then((saved) => {
-      closeUpload();
-      inspectAsset(saved.id);
-      setNotice("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.");
-    }, fail("De media konden niet worden geüpload."));
+    upload.mutateAsync(data).then(
+      (saved) => {
+        closeUpload();
+        inspectAsset(saved.id);
+        setNotice("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.");
+      },
+      (error: unknown) => {
+        setNotice("");
+        setUploadError(errorMessage(error, "De media konden niet worden geüpload."));
+      },
+    );
   }
 
   function inspectAsset(id: string) {
@@ -482,11 +504,19 @@ export function MediaManager({
   }
 
   function performEraseAsset(asset: MediaAsset) {
-    remove.mutateAsync(asset).then(async () => {
-      await offline.removeByResource("media_asset", asset.id);
-      closeAsset();
-      setNotice("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.");
-    }, fail("De media konden niet worden verwijderd."));
+    setDeletingId(asset.id);
+    remove.mutateAsync(asset).then(
+      async () => {
+        await offline.removeByResource("media_asset", asset.id);
+        closeAsset();
+        setDeletingId(null);
+        setNotice("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.");
+      },
+      (error: unknown) => {
+        setDeletingId(null);
+        failInDialog("De media konden niet worden verwijderd.")(error);
+      },
+    );
   }
 
   async function toggleOffline(asset: MediaAsset) {
@@ -540,7 +570,7 @@ export function MediaManager({
       await offline.removeByResource("media_derivative", derivative.id);
       backToAsset();
       setNotice("Kopie verwijderd en uit eventuele deelscopes gehaald.");
-    }, fail("De kopie kon niet worden verwijderd."));
+    }, failInDialog("De kopie kon niet worden verwijderd."));
   }
 
   function startProvider(provider: ImportSession["provider"]) {
@@ -706,6 +736,7 @@ export function MediaManager({
         open={uploading}
         title="Media uploaden"
         dirty={uploading && uploadFile !== null}
+        error={uploadError}
         onDismiss={closeUpload}
       >
         {uploading && (
@@ -728,53 +759,6 @@ export function MediaManager({
           </form>
         )}
       </RecordDialog>
-      <div className="manager-subsection">
-        <div className="capture-heading">
-          <div>
-            <h3>Importeren</h3>
-            <p>
-              {providers.length > 0 ? (
-                <>
-                  Verbind je provider in <Link to="/settings">Instellingen</Link> en kies daarna de media die je wilt
-                  importeren.
-                </>
-              ) : (
-                "Providerimport is op deze server nog niet beschikbaar. Je kunt media vanaf dit apparaat uploaden."
-              )}
-            </p>
-          </div>
-        </div>
-        {providers.length > 0 && (
-          <div className="button-row">
-            {providers.map((item) => (
-              <Button
-                key={item.provider}
-                className="secondary"
-                type="button"
-                disabled={!item.connected}
-                title={item.connected ? undefined : "Verbind eerst in Instellingen"}
-                onClick={() => startProvider(item.provider)}
-              >
-                Kies in {providerLabel[item.provider]}
-              </Button>
-            ))}
-          </div>
-        )}
-        {importSession && (
-          <aside className="grid gap-2.25 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.5 text-sm leading-normal text-travel-warning-ink [&_.action-link]:w-fit [&_button]:w-fit">
-            <strong>{providerLabel[importSession.provider]}-selectie</strong>
-            <span>Kies eerst alleen de media die je naar deze private reis wilt kopiëren.</span>
-            {importSession.picker_uri && (
-              <a className="action-link" href={importSession.picker_uri} target="_blank" rel="noreferrer">
-                Selectie openen
-              </a>
-            )}
-            <Button type="button" onClick={finishImport}>
-              Selectie importeren
-            </Button>
-          </aside>
-        )}
-      </div>
       {assets.length > 0 && (
         <div className="saved-records mt-0.5">
           {assets.map((asset) => (
@@ -823,6 +807,53 @@ export function MediaManager({
           ))}
         </div>
       )}
+      <div className="manager-subsection">
+        <div className="capture-heading">
+          <div>
+            <h3>Importeren</h3>
+            <p>
+              {providers.length > 0 ? (
+                <>
+                  Verbind je provider in <Link to="/settings">Instellingen</Link> en kies daarna de media die je wilt
+                  importeren.
+                </>
+              ) : (
+                "Providerimport is op deze server nog niet beschikbaar. Je kunt media vanaf dit apparaat uploaden."
+              )}
+            </p>
+          </div>
+        </div>
+        {providers.length > 0 && (
+          <div className="button-row">
+            {providers.map((item) => (
+              <Button
+                key={item.provider}
+                className="secondary"
+                type="button"
+                disabled={!item.connected}
+                title={item.connected ? undefined : "Verbind eerst in Instellingen"}
+                onClick={() => startProvider(item.provider)}
+              >
+                Kies in {providerLabel[item.provider]}
+              </Button>
+            ))}
+          </div>
+        )}
+        {importSession && (
+          <aside className="grid gap-2.25 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.5 text-sm leading-normal text-travel-warning-ink [&_.action-link]:w-fit [&_button]:w-fit">
+            <strong>{providerLabel[importSession.provider]}-selectie</strong>
+            <span>Kies eerst alleen de media die je naar deze private reis wilt kopiëren.</span>
+            {importSession.picker_uri && (
+              <a className="action-link" href={importSession.picker_uri} target="_blank" rel="noreferrer">
+                Selectie openen
+              </a>
+            )}
+            <Button type="button" onClick={finishImport}>
+              Selectie importeren
+            </Button>
+          </aside>
+        )}
+      </div>
       {assets.length > 0 && (
         <div className="manager-subsection">
           <div className="capture-heading">
@@ -835,7 +866,7 @@ export function MediaManager({
               </p>
             </div>
           </div>
-          <Button type="button" onClick={review}>
+          <Button className="w-fit" type="button" onClick={review}>
             Geselecteerde media beoordelen
           </Button>
           {candidateReview?.unavailable_media_asset_ids.length ? (
@@ -964,7 +995,13 @@ export function MediaManager({
           ))}
         </div>
       )}
-      <RecordDialog open={dialogOpen} title={dialogTitle} dirty={dialogDirty} onDismiss={closeAsset}>
+      <RecordDialog
+        open={dialogOpen}
+        title={dialogTitle}
+        dirty={dialogDirty}
+        error={assetDialog.error}
+        onDismiss={closeAsset}
+      >
         {selected && view.kind === "asset" && (
           <div className="stack-form">
             <div>

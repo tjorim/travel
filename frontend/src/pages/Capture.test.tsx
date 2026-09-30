@@ -147,7 +147,9 @@ it("keeps the typed update and says the local draft is safe when the server refu
   fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), { target: { value: "Pindakaas-ijs" } });
   api.failNext = { status: 500, body: {} };
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
-  await screen.findByText("De reisupdate kon niet worden opgeslagen. Je lokale concept blijft bewaard.");
+  await screen.findByText(
+    "De reisupdate kon niet worden opgeslagen. Je lokale concept blijft bewaard. De server reageert niet goed. Probeer het later opnieuw.",
+  );
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Nachtmarkt");
   expect(readDraft("trip")?.title).toBe("Nachtmarkt");
 });

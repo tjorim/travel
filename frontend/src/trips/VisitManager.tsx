@@ -258,6 +258,10 @@ export function VisitManager({
     dialog.edit(visit.id);
   }
   const fail = (fallback: string) => (error: unknown) => setMessage(errorMessage(error, fallback));
+  const failInDialog = (fallback: string) => (error: unknown) => {
+    dialog.setConfirmDelete(false);
+    dialog.setError(errorMessage(error, fallback));
+  };
 
   /** The map point for a visit: its location when that has a point, else its area. */
   const mapPointFor = (visit: Visit): string => (visit.location?.latitude != null ? visit.location.id : visit.area.id);
@@ -275,7 +279,7 @@ export function VisitManager({
       await offline.removeByResource("visit", visit.id);
       close();
       setMessage("Bezoek verwijderd.");
-    }, fail("Het bezoek kon niet worden verwijderd."));
+    }, failInDialog("Het bezoek kon niet worden verwijderd."));
   }
 
   async function toggleOffline(visit: Visit) {
@@ -362,7 +366,12 @@ export function VisitManager({
               <RestatedRoutesNote routes={visit.possible_route_duplicates ?? []} />
               <div className="button-row">
                 {onShowOnMap && (
-                  <Button className="secondary compact" type="button" onClick={() => onShowOnMap(mapPointFor(visit))}>
+                  <Button
+                    className="secondary compact"
+                    type="button"
+                    onClick={() => onShowOnMap(mapPointFor(visit))}
+                    aria-label={`Toon op kaart: ${visitTitle(visit)}`}
+                  >
                     Toon op kaart
                   </Button>
                 )}
@@ -370,6 +379,7 @@ export function VisitManager({
                   className="secondary compact"
                   type="button"
                   onClick={() => void toggleOffline(visit).catch(fail("Het bezoek kon niet offline worden bewaard."))}
+                  aria-label={`${offline.isPinned("visit", visit.id) ? "Offline verwijderen" : "Offline bewaren"}: ${visitTitle(visit)}`}
                 >
                   {offline.isPinned("visit", visit.id) ? "Offline verwijderen" : "Offline bewaren"}
                 </Button>
@@ -378,6 +388,7 @@ export function VisitManager({
                   type="button"
                   disabled={index === 0}
                   onClick={() => shift(visit, -1)}
+                  aria-label={`Omhoog: ${visitTitle(visit)}`}
                 >
                   Omhoog
                 </Button>
@@ -386,6 +397,7 @@ export function VisitManager({
                   type="button"
                   disabled={index === visits.length - 1}
                   onClick={() => shift(visit, 1)}
+                  aria-label={`Omlaag: ${visitTitle(visit)}`}
                 >
                   Omlaag
                 </Button>
@@ -401,6 +413,7 @@ export function VisitManager({
         open={editing || selected !== null}
         title={editing ? (editingId ? "Bezoek bewerken" : "Bezoek toevoegen") : "Bezoek"}
         dirty={editing && record.dirty}
+        error={dialog.error}
         onDismiss={close}
       >
         {!editing && selected && (

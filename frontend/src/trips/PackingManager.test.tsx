@@ -184,14 +184,14 @@ it("moves items through edit and quick adds into a bag without order controls", 
   fireEvent.click(screen.getByRole("option", { name: "Handbagage" }));
   fireEvent.click(screen.getByRole("button", { name: "Opslaan" }));
   await waitFor(() => expect(items.find((row) => row.id === "c")?.bag_id).toBe("cabin"));
-  await waitFor(() => expect(screen.queryByRole("textbox", { name: "Naam *" })).toBeNull());
+  await waitFor(() => expect(screen.queryByRole("textbox", { name: "Naam" })).toBeNull());
   expect(screen.queryByText("Verplaatsen")).toBeNull();
   expect(screen.queryByRole("button", { name: "Paspoort omhoog" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Handbagage omhoog" })).toBeNull();
   fireEvent.click(
     within(screen.getByRole("region", { name: "Handbagage" })).getByRole("button", { name: "Snel toevoegen" }),
   );
-  fireEvent.change(screen.getByRole("textbox", { name: "Naam *" }), { target: { value: "Camera" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Naam" }), { target: { value: "Camera" } });
   fireEvent.click(screen.getByRole("button", { name: "Opslaan" }));
   await waitFor(() =>
     expect(
@@ -234,7 +234,7 @@ it("shows loading and empty states, then adds a bag without navigation", async (
   expect(screen.getByRole("status").textContent).toContain("Paklijsten laden");
   expect(await screen.findByText("Nog geen items. Voeg je eerste item toe.")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Tas toevoegen" }));
-  fireEvent.change(screen.getByRole("textbox", { name: "Naam *" }), { target: { value: "Overnachtingstas" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Naam" }), { target: { value: "Overnachtingstas" } });
   fireEvent.click(screen.getByRole("button", { name: "Opslaan" }));
   expect(await screen.findByRole("region", { name: "Overnachtingstas" })).toBeTruthy();
 });

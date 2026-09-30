@@ -26,20 +26,64 @@ export class ApiError extends Error {
 }
 
 const offlineMessage = "Geen verbinding met de server. Controleer je verbinding en probeer opnieuw.";
+const serverMessage = "De server reageert niet goed. Probeer het later opnieuw.";
 const unauthorizedMessage = "Je aanmelding is verlopen. Meld opnieuw aan om verder te gaan.";
 
 type ValidationIssue = { loc?: unknown[]; msg?: string };
 
+/** The API answers in English; these are the messages an owner can reach from the app. */
+const KNOWN_MESSAGES: Record<string, string> = {
+  "Write the text for visitors before sharing this update":
+    "Schrijf eerst de tekst voor bezoekers voordat je deze reisupdate deelt.",
+  "Give this location a public name before sharing it":
+    "Geef deze locatie eerst een publieke naam voordat je haar deelt.",
+  "Wait for this copy to finish processing": "Wacht tot deze kopie klaar is met verwerken.",
+  "Add an address before sharing it": "Voeg eerst een adres toe voordat je het deelt.",
+  "This trip is not published": "Deze reis is niet gepubliceerd.",
+  "Only a draft link can be activated": "Alleen een conceptlink kan worden geactiveerd.",
+  "Only an active link can be revoked": "Alleen een actieve link kan worden ingetrokken.",
+  "Only an active link can be rotated": "Alleen een actieve link kan worden geroteerd.",
+  "Share link not found": "Deze deellink bestaat niet meer.",
+  "Record not found": "Dit onderdeel bestaat niet meer.",
+  "Arrival must be after departure": "De aankomst moet na het vertrek liggen.",
+  "Give both the departure and the arrival time, or neither":
+    "Geef zowel de vertrek- als de aankomsttijd op, of geen van beide.",
+  "One or more documents are unavailable for this trip": "Een of meer documenten zijn niet beschikbaar voor deze reis.",
+  "One or more media assets are unavailable for this trip": "Een of meer media zijn niet beschikbaar voor deze reis.",
+  "Field required": "Dit veld is verplicht.",
+};
+
+const MESSAGE_PATTERNS: [RegExp, (match: RegExpMatchArray) => string][] = [
+  [/^String should have at most (\d+) characters?$/, (m) => `Gebruik maximaal ${m[1]} tekens.`],
+  [/^String should have at least (\d+) characters?$/, (m) => `Gebruik minstens ${m[1]} tekens.`],
+  [/^Input should be greater than or equal to (.+)$/, (m) => `Kies een waarde van ${m[1]} of meer.`],
+  [/^Input should be less than or equal to (.+)$/, (m) => `Kies een waarde van ${m[1]} of minder.`],
+  [/^Input should be a valid .+$/, () => "Deze invoer is niet geldig."],
+];
+
+/** Dutch text for a known API message; anything else (including messages already in Dutch) is left as it is. */
+export function translateApiMessage(message: string): string {
+  const text = message.replace(/^Value error, /, "");
+  const known = KNOWN_MESSAGES[text];
+  if (known) return known;
+  for (const [pattern, translate] of MESSAGE_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) return translate(match);
+  }
+  return message;
+}
+
 function detailMessage(detail: unknown): { message: string | null; fields: Record<string, string> } {
-  if (typeof detail === "string") return { message: detail, fields: {} };
+  if (typeof detail === "string") return { message: translateApiMessage(detail), fields: {} };
   if (!Array.isArray(detail)) return { message: null, fields: {} };
   const fields: Record<string, string> = {};
   const messages: string[] = [];
   for (const issue of detail as ValidationIssue[]) {
     if (typeof issue?.msg !== "string") continue;
-    messages.push(issue.msg);
+    const translated = translateApiMessage(issue.msg);
+    messages.push(translated);
     const field = issue.loc?.at(-1);
-    if (typeof field === "string" && field !== "body") fields[field] = issue.msg;
+    if (typeof field === "string" && field !== "body") fields[field] = translated;
   }
   return { message: messages.join(" ") || null, fields };
 }
@@ -48,7 +92,12 @@ function detailMessage(detail: unknown): { message: string | null; fields: Recor
 export async function apiFailure(response: Response, fallback: string): Promise<ApiError> {
   const body = (await response.json().catch(() => null)) as { detail?: unknown } | null;
   const { message, fields } = detailMessage(body?.detail);
-  return new ApiError(response.status === 401 ? unauthorizedMessage : message || fallback, response.status, fields);
+  // A server error with nothing to say (a proxy's 502, a crash) is not the owner's mistake; say so, after what failed.
+  const text =
+    response.status === 401
+      ? unauthorizedMessage
+      : message || (response.status >= 500 ? `${fallback} ${serverMessage}` : fallback);
+  return new ApiError(text, response.status, fields);
 }
 
 export type OwnerRequest = {

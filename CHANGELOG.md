@@ -969,6 +969,50 @@ All notable changes to the travel hub are documented here.
 - Document listings now display the document's trip association alongside its
   type, validity date and description.
 
+### Fixed
+
+- The owner Account menu no longer shows open on every page: Tailwind's preflight is not imported, so
+  utilities such as `grid` overrode the `hidden` attribute of closed collapsible panels. It also sits
+  at the right edge of the header instead of mid-page or, on phones, at the left.
+- The trip header shows dates like "16 nov 2026" instead of ISO dates. Optional-field hints sit beside
+  their label, so mixed required and optional fields line up, and the Reisupdates and Nog te regelen
+  cards align. Plain fieldsets get the rounded, light border used elsewhere.
+- A stay needing a place reports it on the Plaats field, which takes focus, instead of a banner at the
+  foot of the form. The stay editor names the location a stay is already linked to and warns, without
+  blocking, when the nights overlap another stay. A stay without a street address no longer shows a
+  stray leading dot in its detail.
+- Stays and routes no longer carry a red delete button on every row; deleting stays in the detail
+  dialog, as with visits. The visit row actions (map, offline, up, down) carry the visit's name for
+  assistive technology.
+- The Settings page states once that no media provider is configured, and `/capture` opens over the
+  trips overview instead of a blank page.
+- Media review: the photo and capture time of a candidate are carried into "Als nieuwe reisupdate
+  openen" (the already-mounted capture dialog ignored the hand-off). Capture times are read from the Exif
+  sub-IFD where cameras write them, so real photos now yield candidates; the old lookup only worked for
+  files written by test tooling.
+- Uploads: an oversized document no longer ends in a server error. Trip documents, library documents and
+  media answer 422 with a Dutch reason; the owner library now enforces the same size limit. Upload failures
+  show inside the open dialog instead of behind it, as do refused deletes of every record type.
+- Private originals are sent with `nosniff` and, unless the type is safe to display, as a download; the
+  owner UI no longer renders an HTML or SVG file on the app's origin when opening it.
+- Locations can be deleted (refused with the reason while a visit, stay, route or reisupdate still uses
+  one), and the address that would be shared reads as words instead of raw JSON. Areas validate
+  coordinates and time zones with Dutch messages.
+- Routes report a missing or identical departure and arrival on the field, show a chevron on their
+  disclosures, no longer print "minstens twee punten" for a line that has them, and no longer warn about
+  duplicate option keys or a changing `defaultOpen`.
+- The map labels areas in the style's own font (taken from the loaded style, Noto Sans by default) instead of
+  MapLibre's built-in default, which the glyph server does not host and answered with a 404 on every load.
+- Deleting a medium no longer triggers a read of its (now missing) copies, which answered 404 every time. A
+  server error without a message now says the server is at fault, after naming what failed, instead of only
+  the operation's fallback. The local dev server sends the same `/share/*` headers as Caddy (`no-store,
+  private`, `no-referrer`, `noindex`); production Caddy in `tjorim/apps` already matched.
+- Delen: "Alles kiezen" chooses every record that can be shared and names the ones that cannot, share
+  links show their state in Dutch, and known API messages are translated.
+- Packing lists sit in a card, use soft borders and a red over-limit warning, and the offline view has no
+  stray bullets. Colourless `border` utilities use the divider colour, and the phone navigation stays above
+  page content.
+
 ## 2026-09-21
 
 ### Added

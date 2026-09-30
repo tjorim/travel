@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_subject
 from ..database import get_session
 from ..library.service import LibraryError, delete_owner_document, direct_upload
+from ..media.ranges import private_original_headers
 from ..models import DocumentKind, EmergencyInfoEntry, OwnerDocument
 from ..schemas import (
     EmergencyInfoEntryCreate,
@@ -152,7 +153,7 @@ def get_library_document_original(
     return StreamingResponse(
         iter([storage.get(original.object_key)]),
         media_type=original.content_type,
-        headers={"Cache-Control": "no-store"},
+        headers=private_original_headers(original.content_type),
     )
 
 

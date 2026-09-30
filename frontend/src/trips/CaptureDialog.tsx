@@ -183,7 +183,9 @@ export function CaptureDialog({
   // Loads the right trip's draft (or the candidate handed off from media review) exactly once trips are known —
   // never before, so an empty baseline is never mistaken for "no draft" and saved over a real one.
   useEffect(() => {
-    if (initialized.current || trips.length === 0) return;
+    // A candidate is a deliberate handoff, so it is taken even when the dialog — mounted closed over the trip
+    // workspace — has already loaded a stored draft; only the stored-draft path runs once.
+    if ((initialized.current && !candidate) || trips.length === 0) return;
     const tripId = lockedTripId ?? candidate?.tripId ?? trips[0].id;
     if (!trips.some((trip) => trip.id === tripId)) return;
     initialized.current = true;

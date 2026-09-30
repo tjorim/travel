@@ -15,6 +15,7 @@ import {
   daysBetween,
   formatDay,
   stayLabel,
+  locationName,
   type Area,
   type LocationInput,
   type PlaceSearchResult,
@@ -122,8 +123,14 @@ const checkOutAfterCheckIn = ({
   value && value <= String(fieldApi.form.getFieldValue("checkInDate" as never) ?? "")
     ? "Uitchecken gebeurt ten vroegste de ochtend na de eerste nacht."
     : undefined;
+const PLACE_REQUIRED = "Kies waar je verblijft: zoek een locatie, of vul een adres of plaats in.";
 const httpsOnly = ({ value }: { value: string }) =>
   value.trim() && !value.trim().startsWith("https://") ? "Gebruik een https-adres." : undefined;
+
+const locationLine = (place: Stay["location"] | undefined) =>
+  place ? [...new Set([locationName(place), place.locality].filter(Boolean))].join(" · ") : "";
+const overlapLabel = (stay: Stay) =>
+  `${stayLabel(stay)} (${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)})`;
 
 export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; focusId?: DialogFocusRequest | null }) {
   const staysQuery = useTripResource(trip.id, "stays");
@@ -166,13 +173,8 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
     serverFields: stayFields,
     submit: async (values) => {
       const propertyName = values.propertyName.trim();
-      const hasPlace = Boolean(
-        values.location?.existing_location_id || propertyName || values.address.trim() || values.locality.trim(),
-      );
       const placeChanged = PLACE_FIELDS.some((name) => values[name] !== baseline.current[name]);
       const id = stayDialog.editingId ?? null;
-      if ((!id || placeChanged) && !hasPlace)
-        throw new Error("Kies waar je verblijft: zoek een locatie, of vul een adres of plaats in.");
       await saveStay.mutateAsync({
         id,
         payload: {
@@ -208,6 +210,18 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
       setMessage("Privéverblijf opgeslagen.");
     },
   });
+  // Only a new stay, or one whose place fields were edited, needs a place to send; the message sits on the Plaats field.
+  function placeRequired({ fieldApi }: { fieldApi: { form: { state: { values: StayValues } } } }) {
+    const values = fieldApi.form.state.values;
+    const hasPlace = Boolean(
+      values.location?.existing_location_id ||
+      values.propertyName.trim() ||
+      values.address.trim() ||
+      values.locality.trim(),
+    );
+    const placeChanged = PLACE_FIELDS.some((name) => values[name] !== baseline.current[name]);
+    return (!stayDialog.editingId || placeChanged) && !hasPlace ? PLACE_REQUIRED : undefined;
+  }
   function loadStay(values: StayValues) {
     baseline.current = values;
     stayRecord.load(values);
@@ -242,13 +256,14 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        setMessage(errorMessage(error, "Het verblijf kon niet worden verwijderd."));
+        stayDialog.setError(errorMessage(error, "Het verblijf kon niet worden verwijderd."));
       },
     );
   }
 
   const { selected: selectedStay, editing: editingStay, editingId: editingStayId } = stayDialog;
   const readError = staysQuery.error;
+  const currentPlace = locationLine(stays.find((stay) => stay.id === editingStayId)?.location);
 
   return (
     <section className="travel-card manager" id="stays" aria-labelledby="stays-title">
@@ -291,9 +306,6 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                       .join(" · ")}
                   </span>
                 </Button>
-                <Button className="danger compact" type="button" onClick={() => setDeleteTarget(stay)}>
-                  Verwijderen
-                </Button>
               </article>
             );
           })}
@@ -303,16 +315,18 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
         open={editingStay || selectedStay !== null}
         title={editingStay ? (editingStayId ? "Verblijf bewerken" : "Verblijf toevoegen") : "Verblijf"}
         dirty={editingStay && stayRecord.dirty}
+        error={stayDialog.error}
         onDismiss={closeStay}
       >
         {!editingStay && selectedStay && (
           <div className="stack-form">
             <div>
               <h3>{stayLabel(selectedStay)}</h3>
-              <p>
-                {selectedStay.location?.address_line1}
-                {selectedStay.location?.locality ? ` · ${selectedStay.location.locality}` : ""}
-              </p>
+              {(selectedStay.location?.address_line1 || selectedStay.location?.locality) && (
+                <p>
+                  {[selectedStay.location.address_line1, selectedStay.location.locality].filter(Boolean).join(" · ")}
+                </p>
+              )}
               <p>
                 {selectedStay.booking_reference
                   ? `Boekingsreferentie: ${selectedStay.booking_reference}`
@@ -382,6 +396,11 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               help="Een verblijf heeft altijd een locatie: zoek er een, of vul hieronder een adres of plaats in. De locatie bepaalt automatisch het gebied en blijft privé, ook als je het verblijf deelt."
               onSelect={usePlaceResult}
               allowExisting
+              current={
+                currentPlace
+                  ? `Gekoppelde locatie: ${currentPlace}. Kies of zoek hieronder een andere om die te vervangen.`
+                  : undefined
+              }
             />
             <div className="field-row">
               <stayRecord.form.Field
@@ -415,13 +434,30 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
             >
               {([checkIn, checkOut]) => {
                 const nights = checkIn && checkOut ? daysBetween(checkIn, checkOut) : 0;
+                const overlapping =
+                  nights > 0
+                    ? stays.filter(
+                        (other) =>
+                          other.id !== editingStayId &&
+                          other.check_in_date < checkOut &&
+                          checkIn < other.check_out_date,
+                      )
+                    : [];
                 return (
-                  <p className="help">
-                    {nights > 0
-                      ? `${nights} ${nights === 1 ? "nacht" : "nachten"}`
-                      : "Kies een uitcheckdatum na de eerste nacht."}{" "}
-                    · lokale datums bij het verblijf
-                  </p>
+                  <>
+                    <p className="help">
+                      {nights > 0
+                        ? `${nights} ${nights === 1 ? "nacht" : "nachten"}`
+                        : "Kies een uitcheckdatum na de eerste nacht."}{" "}
+                      · lokale datums bij het verblijf
+                    </p>
+                    {overlapping.length > 0 && (
+                      <p className="help font-bold text-travel-warning-dark" role="status">
+                        Deze nachten overlappen met {overlapping.map(overlapLabel).join(", ")}. Dat mag, maar controleer
+                        of je niet dubbel boekt.
+                      </p>
+                    )}
+                  </>
                 );
               }}
             </stayRecord.form.Subscribe>
@@ -437,7 +473,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               <stayRecord.form.Field name="address">
                 {(field) => <TextField field={field} label="Adres" optional maxLength={160} />}
               </stayRecord.form.Field>
-              <stayRecord.form.Field name="locality">
+              <stayRecord.form.Field name="locality" validators={{ onSubmit: placeRequired }}>
                 {(field) => <TextField field={field} label="Plaats" optional maxLength={120} />}
               </stayRecord.form.Field>
             </div>

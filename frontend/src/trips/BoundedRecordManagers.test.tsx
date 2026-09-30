@@ -346,7 +346,8 @@ it("shows an edited stay and removes a deleted one without a reload", async () =
   expect(screen.queryByRole("button", { name: /^Hotel · / })).toBeNull();
   expect(screen.getByText("Privéverblijf opgeslagen.")).toBeTruthy();
 
-  fireEvent.click(screen.getAllByRole("button", { name: "Verwijderen" })[1]);
+  fireEvent.click(screen.getByRole("button", { name: /Hostel/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   confirmDelete();
   await waitFor(() => expect(screen.queryByRole("button", { name: /Hostel/ })).toBeNull());
   expect(screen.getByRole("button", { name: /Hotel Royal/ })).toBeTruthy();
@@ -414,6 +415,9 @@ it("refuses a stay without a location, but accepts a city on its own", async () 
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await screen.findByText("Kies waar je verblijft: zoek een locatie, of vul een adres of plaats in.");
+  // The message belongs to the Plaats field, which takes focus, rather than a banner at the foot of the form.
+  expect(screen.getByLabelText("Plaats (optioneel)").getAttribute("aria-invalid")).toBe("true");
+  expect(document.activeElement).toBe(screen.getByLabelText("Plaats (optioneel)"));
   expect(api.count("POST /api/trips/trip/stays")).toBe(0);
 
   fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Alishan" } });
@@ -421,4 +425,50 @@ it("refuses a stay without a location, but accepts a city on its own", async () 
   await waitFor(() =>
     expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ location: { locality: "Alishan" } }),
   );
+});
+
+it("warns, without blocking, when a stay's nights overlap another stay", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
+  expect(screen.getByText(/Deze nachten overlappen met Hotel/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Eerste nacht (inchecken)"), { target: { value: "2054-11-18" } });
+  await waitFor(() => expect(screen.queryByText(/Deze nachten overlappen/)).toBeNull());
+});
+
+it("names the location a stay is already linked to when editing it", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [{ ...stay("s1", "Hotel"), location: savedLocation }])
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  expect(screen.getByText(/Gekoppelde locatie: Brussels Airport · Zaventem/)).toBeTruthy();
+});
+
+it("reports a refused area delete inside the dialog, where the owner is looking", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
+  api.failNext = { status: 409, body: { detail: "Dit gebied wordt nog gebruikt door: 2 bezoeken." } };
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  confirmDelete();
+  const reason = await screen.findByText("Dit gebied wordt nog gebruikt door: 2 bezoeken.");
+  expect(reason.getAttribute("role")).toBe("alert");
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect((await screen.findByRole("dialog")).contains(reason)).toBe(true);
 });

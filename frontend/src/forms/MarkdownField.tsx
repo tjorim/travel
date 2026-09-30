@@ -129,8 +129,10 @@ export function MarkdownField({
   return (
     <Field name={field.name} invalid={invalid}>
       <FieldLabel>
-        {label}
-        {optionalNote(optional)}
+        <span>
+          {label}
+          {optionalNote(optional)}
+        </span>
       </FieldLabel>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex flex-wrap gap-1" role="group" aria-label={`Weergave van ${label.toLowerCase()}`}>

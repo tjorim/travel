@@ -15,6 +15,7 @@ const maps = vi.hoisted(() => [] as CapturedMap[]);
 vi.mock("./map-style", () => ({
   configuredMapStyleUrl: "test-style",
   loadMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+  styleLabelFont: () => ["Style Sans Regular"],
 }));
 vi.mock("maplibre-gl", () => ({
   setWorkerUrl: () => {},
@@ -40,6 +41,9 @@ vi.mock("maplibre-gl", () => ({
     }
     addLayer(layer: SymbolLayerSpecification) {
       this.layers.push(layer);
+    }
+    getStyle() {
+      return { version: 8, sources: {}, layers: [] };
     }
     getLayer(id: string) {
       return this.layers.find((layer) => layer.id === id);
@@ -82,6 +86,8 @@ it("supplies custom and derived area names to the visible label layer after map 
   expect(labels.source).toBe("stops");
   expect(labels.filter).toEqual(["in", ["get", "kind"], ["literal", ["area", "derived"]]]);
   expect(labels.layout?.["text-field"]).toEqual(["get", "label"]);
+  // Labels use a font the style's own glyph server hosts, never MapLibre's built-in default.
+  expect(labels.layout?.["text-font"]).toEqual(["Style Sans Regular"]);
   expect(labels.layout?.["text-allow-overlap"]).not.toBe(true);
   expect(labels.paint?.["text-halo-color"]).toBe("#ffffff");
   expect(labels.paint?.["text-halo-width"]).toBe(2);

@@ -101,18 +101,21 @@ export function Settings() {
     });
   }
 
+  const noProvidersAvailable = providersQuery.isSuccess && providers.length === 0;
+  // With nothing to connect, the intro already explains why, so the status line stays empty unless there is news.
   const message =
     notice ??
     (providersQuery.error
       ? errorMessage(providersQuery.error, "De providerstatus kon niet worden geladen.")
       : providersQuery.isPending
         ? "Laad providerstatus…"
-        : "Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
+        : noProvidersAvailable
+          ? ""
+          : "Alleen de verbindingstoestand is zichtbaar; tokens worden nooit teruggestuurd.");
   if (!session)
     return (
       <EmptyState title="Instellingen">Meld aan om de status van je private mediaproviders te bekijken.</EmptyState>
     );
-  const noProvidersAvailable = providersQuery.isSuccess && providers.length === 0;
 
   return (
     <section className="travel-card manager" aria-labelledby="settings-title">
@@ -121,19 +124,14 @@ export function Settings() {
         <h2 id="settings-title">Instellingen</h2>
         <p>
           {noProvidersAvailable
-            ? "Providerimport is op deze server nog niet beschikbaar."
+            ? "Er is geen mediaprovider geconfigureerd op deze server, dus er is niets te verbinden. Gebruik direct uploaden op de Media-pagina van een reis om privémedia toe te voegen."
             : "Verbind Google Photos om geselecteerde media privé te importeren."}
         </p>
       </div>
-      <p className="help" role="status">
+      <p className="help" role="status" hidden={!message}>
         {message}
       </p>
-      {noProvidersAvailable ? (
-        <p className="help">
-          Er is geen mediaprovider geconfigureerd op deze server, dus er is niets te verbinden. Gebruik direct uploaden
-          op de Media-pagina van een reis om privémedia toe te voegen.
-        </p>
-      ) : (
+      {noProvidersAvailable ? null : (
         <div className="saved-records mt-0.5">
           {providers.map((provider) => (
             <article

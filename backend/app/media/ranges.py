@@ -18,6 +18,29 @@ from ..storage import ObjectStorage
 CHUNK_BYTES = 64 * 1024
 
 
+# Types a browser can show without running anything of the owner's file.
+_DISPLAYED_INLINE = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+    "video/mp4",
+    "video/webm",
+    "application/pdf",
+    "text/plain",
+}
+
+
+def private_original_headers(content_type: str) -> dict[str, str]:
+    """Headers for an owner-only original: never cached, never sniffed into another type, and offered as a
+    download unless the type is safe to display. An uploaded HTML or SVG file must not run as part of the app."""
+    headers = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
+    if content_type.split(";")[0].strip().lower() not in _DISPLAYED_INLINE:
+        headers["Content-Disposition"] = "attachment"
+    return headers
+
+
 def _chunks(handle: BinaryIO, start: int, length: int) -> Iterator[bytes]:
     with handle:
         handle.seek(start)

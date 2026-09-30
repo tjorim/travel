@@ -255,7 +255,7 @@ it("reorders and deletes visits after the in-app confirmation", async () => {
   seed([visit("v1", 0, { title: "Eerste" }), visit("v2", 1, { title: "Tweede" })]);
   renderWithOwner(<VisitManager trip={trip} />);
   await screen.findByRole("button", { name: "Bezoek Eerste bekijken" });
-  fireEvent.click(screen.getAllByRole("button", { name: "Omlaag" })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: /^Omlaag:/ })[0]);
   await waitFor(() => expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toEqual({ position: 1 }));
 
   fireEvent.click(screen.getByRole("button", { name: "Bezoek Tweede bekijken" }));

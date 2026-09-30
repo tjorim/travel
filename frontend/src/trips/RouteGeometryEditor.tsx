@@ -307,9 +307,9 @@ export function RouteGeometryEditor({
       <p className="help" aria-live="polite">
         {editorCoordinates.length === 0
           ? "Nog geen punten. Zoom naar de regio en klik het eerste algemene punt."
-          : preview
+          : preview || editorCoordinates.length >= 2
             ? `${editorCoordinates.length} algemene punten in deze route.`
-            : `${editorCoordinates.length} ${editorCoordinates.length === 1 ? "punt" : "punten"} · minstens twee punten zijn nodig.`}
+            : `${editorCoordinates.length} punt · minstens twee punten zijn nodig.`}
       </p>
       {!preview && editorCoordinates.length > 0 && (
         <ol
