@@ -239,7 +239,9 @@ it("shows a loading state, then an error rather than half a trip when one read f
   );
   renderDetail();
   expect(await screen.findByText("Private reis laden…")).toBeTruthy();
-  await screen.findByText("De private reis kon niet volledig worden geladen.");
+  await screen.findByText(
+    "De private reis kon niet volledig worden geladen. De server reageert niet goed. Probeer het later opnieuw.",
+  );
   expect(screen.queryByRole("heading", { name: "Exampleland" })).toBeNull();
 });
 
@@ -303,6 +305,6 @@ it("reports a document that cannot be opened without leaving the page", async ()
   );
   renderDetail();
   fireEvent.click(await screen.findByRole("button", { name: "Document openen" }));
-  await screen.findByText("Bestand ontbreekt.");
+  await screen.findByText("Dit kon niet worden uitgevoerd. Probeer opnieuw.");
   expect(screen.getByRole("heading", { name: "Exampleland" })).toBeTruthy();
 });

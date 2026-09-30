@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { errorNotice, useFeedback } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { TravelTextarea } from "../ui/TravelTextarea";
 import { Input } from "@base-ui/react/input";
@@ -125,7 +127,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [selecting, setSelecting] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useFeedback<string>("");
   const [reuseOpen, setReuseOpen] = useState(false);
   const [reuseMode, setReuseMode] = useState<"copy" | "templates">("copy");
   const [sourceId, setSourceId] = useState("");
@@ -188,7 +190,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
     } catch (error) {
       // A multi-item action may have saved some rows before one request failed.
       await refresh().catch(() => undefined);
-      setNotice(errorMessage(error, "Opslaan mislukt. Probeer opnieuw."));
+      setNotice(errorNotice(error, "Opslaan mislukt. Probeer opnieuw."));
       return false;
     } finally {
       setBusy(false);
@@ -210,7 +212,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
         return next;
       });
     } catch (error) {
-      setNotice(`${errorMessage(error, "Afvinken mislukt.")} Je keuze blijft zichtbaar; kies Opnieuw proberen.`);
+      setNotice(errorNotice(error, "Afvinken mislukt.", () => m.api_packing_retry()));
     } finally {
       setSavingIds((current) => current.filter((id) => id !== item.id));
     }
@@ -307,7 +309,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
       });
       setNotice("Paklijst offline bewaard op dit toestel. Wijzigingen vragen een verbinding.");
     } catch (error) {
-      setNotice(errorMessage(error, "De paklijst kon niet offline worden bewaard."));
+      setNotice(errorNotice(error, "De paklijst kon niet offline worden bewaard."));
     } finally {
       setBusy(false);
     }

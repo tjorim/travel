@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_subject
 from ..database import get_session
 from ..document.service import delete_document_asset, direct_upload
+from ..errors import ApiException, service_exception
 from ..media.ranges import private_original_headers
 from ..media.service import MediaImportError
 from ..models import DocumentAsset, DocumentKind
@@ -49,7 +50,7 @@ def owned_document_asset(session: Session, trip_id: str, subject: str, document_
         )
     )
     if asset is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found", code="not_found")
     return asset
 
 
@@ -66,7 +67,11 @@ def upload_document(
 ) -> DocumentAssetResponse:
     owned_trip(session, trip_id, subject)
     if not file.content_type:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A content type is required")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A content type is required",
+            code="a_content_type_is_required",
+        )
     try:
         asset, created = direct_upload(
             session,
@@ -79,7 +84,7 @@ def upload_document(
             title=title,
         )
     except MediaImportError as error:  # includes DocumentError
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return _asset_response(asset, trip_id)
 

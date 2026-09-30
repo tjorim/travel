@@ -12,12 +12,13 @@ from datetime import UTC, date, datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException
 from ..models import DocumentAsset, Location, Route, RouteDocumentAsset, Trip
 from ..schemas import RouteCreate, RouteResponse, RouteUpdate
 from .placement import resolve_place, selected_area
@@ -42,7 +43,7 @@ def _route_query():
 def owned_route(trip: Trip, route_id: str) -> Route:
     route = next((item for item in trip.routes if item.id == route_id), None)
     if route is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found", code="not_found")
     return route
 
 
@@ -53,9 +54,10 @@ def validate_route_times(departs_at: datetime, arrives_at: datetime) -> None:
     comparable_departure = departs_at if departs_at.tzinfo is not None else departs_at.replace(tzinfo=UTC)
     comparable_arrival = arrives_at if arrives_at.tzinfo is not None else arrives_at.replace(tzinfo=UTC)
     if comparable_arrival <= comparable_departure:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Arrival must be after departure",
+            code="arrival_must_be_after_departure",
         )
 
 
@@ -69,9 +71,10 @@ def endpoint_instant(value: datetime, zone: str | None) -> datetime:
     """
     if value.tzinfo is None:
         if zone is None:
-            raise HTTPException(
+            raise ApiException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="A time without an offset needs the end's time zone",
+                code="a_time_without_an_offset_needs_the_end_s_time_zone",
             )
         value = value.replace(tzinfo=ZoneInfo(zone))
     return value.astimezone(UTC)
@@ -100,9 +103,10 @@ def settle_departure_day(route: Route, requested: date | None, given: bool) -> N
             route.departs_on = requested
         return
     if given and requested != local:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"The departure day must be the local date of the departure time ({local.isoformat()})",
+            code="departure_day_mismatch",
         )
     route.departs_on = local
 
@@ -124,9 +128,10 @@ def document_links_from_ids(session: Session, trip_id: str, document_asset_ids: 
         )
     )
     if len(assets) != len(document_asset_ids):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="One or more documents are unavailable for this trip",
+            code="one_or_more_documents_are_unavailable_for_this_trip",
         )
     by_id = {asset.id: asset for asset in assets}
     return [RouteDocumentAsset(document_asset=by_id[asset_id]) for asset_id in document_asset_ids]
@@ -201,7 +206,11 @@ def _update_end(session: Session, trip: Trip, route: Route, payload: RouteUpdate
     elif f"{end}_location" in fields:  # cleared: keep the area
         area, location = getattr(route, f"{end}_area"), None
     else:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A route needs both its areas")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A route needs both its areas",
+            code="a_route_needs_both_its_areas",
+        )
     setattr(route, f"{end}_area", area)
     setattr(route, f"{end}_location", location)
 
@@ -230,13 +239,19 @@ def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: Ses
         route.geometry = payload.geometry.model_dump() if payload.geometry is not None else None
     for required in ("mode", "status"):
         if required in values and values[required] is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"{required} is required",
+                code="missing",
+                field=required,
+            )
     if {"departs_at", "arrives_at"} & values.keys():
         departs_at, arrives_at = values.get("departs_at", route.departs_at), values.get("arrives_at", route.arrives_at)
         if (departs_at is None) != (arrives_at is None):
-            raise HTTPException(
+            raise ApiException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Give both the departure and the arrival time, or neither",
+                code="give_both_the_departure_and_the_arrival_time_or_neither",
             )
         if departs_at is not None and arrives_at is not None:
             if "departs_at" in values:

@@ -23,7 +23,7 @@ import type {
   TripTask,
   TripTaskAlert,
 } from "../tracker-model";
-import { ApiError, ownerRequest, type OwnerRequest } from "./api";
+import { ApiError, ownerRequest, type OwnerRequest, type ErrorFallback } from "./api";
 import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
 
 export type Owner = { session: TrackerSession; subject: string };
@@ -117,7 +117,7 @@ export function useTripResource<R extends TripResource>(tripId: string | null, r
 function useOwnerSearch<T>(
   path: (query: string) => string,
   key: (subject: string, query: string) => readonly unknown[],
-  fallback: string,
+  fallback: ErrorFallback,
 ) {
   const owner = useOwner();
   const client = useQueryClient();
@@ -247,7 +247,7 @@ export function useProviderConnections() {
 type Invalidation = readonly QueryKey[];
 
 type MutationSpec<V, R> = {
-  fallback: string;
+  fallback: ErrorFallback;
   /** A `FormData` body is sent as an upload. */
   request: (variables: V) => { path: string } & Pick<OwnerRequest, "method" | "body">;
   /** Queries a successful write makes stale; they are refetched before the write settles. */

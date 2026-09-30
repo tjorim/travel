@@ -1,11 +1,14 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, status
+from fastapi.exceptions import RequestValidationError
 from fastmcp.utilities.lifespan import combine_lifespans
 from sqlalchemy import text
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .database import SessionLocal
+from .errors import ApiException, http_error_handler, validation_error_handler
 from .mcp_server import (
     MCP_CAPABILITY_CONTRACT_VERSION,
     MCP_TOOL_CAPABILITIES,
@@ -55,6 +58,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=_lifespan,
 )
+app.add_exception_handler(StarletteHTTPException, http_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")
 app.include_router(visits_router, prefix="/api")
@@ -111,5 +117,7 @@ def health() -> dict[str, str]:
         with SessionLocal() as session:
             session.execute(text("SELECT 1"))
     except Exception as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable") from error
+        raise ApiException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable", code="database_unavailable"
+        ) from error
     return {"status": "ok"}

@@ -1,7 +1,8 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { dayjs } from "../dayjs";
@@ -195,7 +196,7 @@ export function TripDetail() {
   const documentsQuery = useTripResource(id, "documents");
   const libraryDocumentsQuery = useLinkedLibraryDocuments(id);
   const mediaQuery = useTripResource(id, "media");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useFeedback<string>("");
 
   const places = placesQuery.data;
   const areas = areasQuery.data;
@@ -241,14 +242,14 @@ export function TripDetail() {
     return (
       <section className="travel-card" role={readError ? "alert" : "status"}>
         <h2>{m.private_trip()}</h2>
-        <p>{readError ? m.private_trip_error() : m.private_trip_loading()}</p>
+        <p>{readError ? errorMessage(readError, m.private_trip_error) : m.private_trip_loading()}</p>
       </section>
     );
   }
 
   const openFile = (url: string, fallback: string) => {
     if (owner)
-      openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorMessage(error, fallback)));
+      openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorNotice(error, fallback)));
   };
   return (
     <main className="grid gap-4.5" aria-labelledby="admin-trip-title">

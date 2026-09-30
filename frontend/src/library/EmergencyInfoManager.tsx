@@ -1,5 +1,5 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
-import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
@@ -34,7 +34,7 @@ export function EmergencyInfoManager() {
   const entries = entriesQuery.data ?? [];
   const dialog = useRecordDialog(entries);
   const { selected, editing, editingId } = dialog;
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFeedback<string | null>(null);
   const path = libraryPath("emergency-info");
   const refresh = (subject: string) => [ownerKeys.library(subject, "emergency-info")];
 
@@ -82,10 +82,10 @@ export function EmergencyInfoManager() {
     record.load(fromEntry(entry));
     dialog.edit(entry.id);
   }
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
   const failInDialog = (fallback: string) => (error: unknown) => {
     dialog.setConfirmDelete(false);
-    dialog.setError(errorMessage(error, fallback));
+    dialog.setError(errorNotice(error, fallback));
   };
 
   function erase(entry: EmergencyInfoEntry) {

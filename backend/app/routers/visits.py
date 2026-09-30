@@ -2,13 +2,14 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException, service_exception
 from ..models import Location, Trip, Visit
 from ..route_overlap import overlapping_routes, route_title
 from ..schemas import RouteReference, VisitCreate, VisitResponse, VisitRouteCheck, VisitUpdate, require_visit_times
@@ -28,7 +29,7 @@ def _visit_query():
 def owned_visit(trip: Trip, visit_id: str) -> Visit:
     visit = next((item for item in trip.visits if item.id == visit_id), None)
     if visit is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found", code="not_found")
     return visit
 
 
@@ -45,7 +46,9 @@ def commit_or_conflict(session: Session) -> None:
         session.commit()
     except IntegrityError as error:
         session.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Conflicting visit position") from error
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT, detail="Conflicting visit position", code="conflicting_visit_position"
+        ) from error
 
 
 def _renumber(session: Session, ordered: list[Visit]) -> None:
@@ -104,13 +107,15 @@ def check_visit_against_routes(
     if payload.location_id is not None:
         location = session.get(Location, payload.location_id)
         if location is None or location.trip_id != trip.id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+            raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found", code="not_found")
         area_id = location.area_id
     elif payload.area_id is not None:
         area_id = selected_area(session, trip.id, payload.area_id).id
     else:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Say where: an area or a location"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Say where: an area or a location",
+            code="say_where_an_area_or_a_location",
         )
     draft = Visit(
         area_id=area_id,
@@ -144,7 +149,11 @@ def _update_place(session: Session, trip: Trip, visit: Visit, payload: VisitUpda
     elif "location" in fields:  # cleared: keep the area
         area, location = visit.area, None
     else:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A visit needs an area")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A visit needs an area",
+            code="a_visit_needs_an_area",
+        )
     visit.area = area
     visit.location = location
 
@@ -157,7 +166,12 @@ def update_visit(trip_id: str, visit_id: str, payload: VisitUpdate, session: Ses
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "position"})
     for required in ("status", "share_time", "share_date_precision"):
         if required in values and values[required] is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"{required} is required",
+                code="missing",
+                field=required,
+            )
     try:
         require_visit_times(
             values.get("starts_on", visit.starts_on),
@@ -166,7 +180,7 @@ def update_visit(trip_id: str, visit_id: str, payload: VisitUpdate, session: Ses
             values.get("end_time", visit.end_time),
         )
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     for field, value in values.items():
         setattr(visit, field, value)
     if payload.position is not None and payload.position != visit.position:

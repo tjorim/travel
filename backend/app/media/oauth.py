@@ -29,7 +29,9 @@ def configured() -> bool:
 
 def begin(subject: str, store: SecretStore) -> str:
     if not configured():
-        raise ProviderUnavailableError("Google Photos connection is not configured")
+        raise ProviderUnavailableError(
+            "Google Photos connection is not configured", code="google_photos_connection_is_not_configured"
+        )
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
@@ -55,25 +57,44 @@ def _post_token(data: dict[str, str]) -> dict:
         with httpx.Client(timeout=15) as client:
             response = client.post(TOKEN_URL, data=data)
             response.raise_for_status()
-            return response.json()
+            body = response.json()
+            if not isinstance(body, dict):
+                raise ValueError("Invalid token response")
+            return body
     except (httpx.HTTPError, ValueError) as error:
         # Provider responses may contain credentials; never include them in errors.
-        raise ProviderUnavailableError("Google authorization failed; reconnect in Settings") from error
+        raise ProviderUnavailableError(
+            "Google authorization failed; reconnect in Settings",
+            code="google_authorization_failed_reconnect_in_settings",
+        ) from error
 
 
 def _credential(body: dict, refresh_token: str | None = None) -> Credential:
     if not body.get("access_token") or not (body.get("refresh_token") or refresh_token):
-        raise ProviderUnavailableError("Google did not grant offline access; reconnect in Settings")
-    expires = datetime.now(UTC) + timedelta(seconds=max(int(body.get("expires_in", 3600)) - 60, 0))
+        raise ProviderUnavailableError(
+            "Google did not grant offline access; reconnect in Settings",
+            code="google_did_not_grant_offline_access_reconnect_in_settings",
+        )
+    try:
+        expires = datetime.now(UTC) + timedelta(seconds=max(int(body.get("expires_in", 3600)) - 60, 0))
+    except (ValueError, TypeError, OverflowError) as error:
+        raise ProviderUnavailableError(
+            "Media provider returned an invalid response", code="provider_invalid_response"
+        ) from error
     return Credential(body["access_token"], body.get("refresh_token") or refresh_token, expires.isoformat())
 
 
 def complete(subject: str, store: SecretStore, code: str, state: str) -> None:
     if not configured():
-        raise ProviderUnavailableError("Google Photos connection is not configured")
+        raise ProviderUnavailableError(
+            "Google Photos connection is not configured", code="google_photos_connection_is_not_configured"
+        )
     verifier = store.pop_pending(subject=subject, provider=GOOGLE, state=state)
     if not verifier:
-        raise ProviderUnavailableError("Authorization expired or did not match this owner")
+        raise ProviderUnavailableError(
+            "Authorization expired or did not match this owner",
+            code="authorization_expired_or_did_not_match_this_owner",
+        )
     body = _post_token(
         {
             "client_id": settings.google_oauth_client_id or "",
@@ -90,11 +111,16 @@ def complete(subject: str, store: SecretStore, code: str, state: str) -> None:
 def access_token(subject: str, provider: str, store: SecretStore) -> str:
     credential = store.get_credential(subject=subject, provider=provider)
     if credential is None:
-        raise ProviderUnavailableError("The owner has not connected this provider")
+        raise ProviderUnavailableError(
+            "The owner has not connected this provider", code="the_owner_has_not_connected_this_provider"
+        )
     if not credential.expired():
         return credential.access_token
     if provider != GOOGLE or not credential.refresh_token or not configured():
-        raise ProviderUnavailableError("Provider connection expired; reconnect in Settings")
+        raise ProviderUnavailableError(
+            "Provider connection expired; reconnect in Settings",
+            code="provider_connection_expired_reconnect_in_settings",
+        )
     body = _post_token(
         {
             "client_id": settings.google_oauth_client_id or "",
@@ -125,5 +151,7 @@ def revoke(subject: str, provider: str, store: SecretStore) -> None:
                 else:
                     response.raise_for_status()
         except httpx.HTTPError as error:
-            raise ProviderUnavailableError("Google did not confirm revocation; try again") from error
+            raise ProviderUnavailableError(
+                "Google did not confirm revocation; try again", code="google_did_not_confirm_revocation_try_again"
+            ) from error
     store.revoke_token(subject=subject, provider=provider)

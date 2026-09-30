@@ -1,3 +1,4 @@
+import { ApiError, apiFailure, errorMessage } from "./query/api";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
 import { Button } from "@base-ui/react/button";
@@ -26,7 +27,7 @@ type LoadState =
   | { kind: "loading" }
   | { kind: "ready"; projection: Projection }
   | { kind: "unavailable" }
-  | { kind: "error" };
+  | { kind: "error"; failure?: ApiError };
 
 /** `summary` is Markdown; a card shows its one-line plain-text `summary_text` instead. */
 type PublicTripCard = {
@@ -36,7 +37,10 @@ type PublicTripCard = {
   summary_text?: string | null;
   dates?: ProjectionItem | null;
 };
-type IndexState = { kind: "loading" } | { kind: "ready"; trips: PublicTripCard[] } | { kind: "error" };
+type IndexState =
+  | { kind: "loading" }
+  | { kind: "ready"; trips: PublicTripCard[] }
+  | { kind: "error"; failure?: ApiError };
 
 function isPublicTripCards(value: unknown): value is PublicTripCard[] {
   return (
@@ -93,12 +97,13 @@ function TripIndex() {
           referrerPolicy: "no-referrer",
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error("Listing unavailable");
+        if (!response.ok) throw await apiFailure(response, m.trips_error);
         const data: unknown = await response.json();
         if (!controller.signal.aborted)
           setState(isPublicTripCards(data) ? { kind: "ready", trips: data } : { kind: "error" });
-      } catch {
-        if (!controller.signal.aborted) setState({ kind: "error" });
+      } catch (failure) {
+        if (!controller.signal.aborted)
+          setState({ kind: "error", ...(failure instanceof ApiError ? { failure } : {}) });
       }
     }
     void load();
@@ -121,7 +126,7 @@ function TripIndex() {
         {state.kind === "error" && (
           <div className="travel-card" role="alert">
             <h2>{m.trips_error()}</h2>
-            <p>{m.retry_description()}</p>
+            <p>{state.failure ? errorMessage(state.failure, m.retry_description) : m.retry_description()}</p>
             <Button type="button" onClick={() => setAttempt((current) => current + 1)}>
               {m.retry()}
             </Button>
@@ -212,7 +217,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           if (audience === "share") forgetSharedTrip(identifier);
           setState({ kind: "unavailable" });
         } else if (!response.ok) {
-          setState({ kind: "error" });
+          setState({ kind: "error", failure: await apiFailure(response, m.trip_error) });
         } else {
           const data: unknown = await response.json();
           if (!controller.signal.aborted) {
@@ -224,8 +229,9 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
             }
           }
         }
-      } catch {
-        if (!controller.signal.aborted) setState({ kind: "error" });
+      } catch (failure) {
+        if (!controller.signal.aborted)
+          setState({ kind: "error", ...(failure instanceof ApiError ? { failure } : {}) });
       }
     }
     void load();
@@ -254,7 +260,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
       {state.kind === "error" && (
         <section className="travel-card" role="alert">
           <h2>{m.trip_error()}</h2>
-          <p>{m.retry_description()}</p>
+          <p>{state.failure ? errorMessage(state.failure, m.retry_description) : m.retry_description()}</p>
           <Button type="button" onClick={retry}>
             {m.retry()}
           </Button>

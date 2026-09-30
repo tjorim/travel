@@ -896,6 +896,7 @@ def test_unavailable_capabilities_have_one_visitor_response_contract() -> None:
     headers = ("cache-control", "x-robots-tag", "referrer-policy")
     responses = [anonymous.get(f"/api/shared/{token}") for token in ("unknown-token", *tokens)]
     assert all(response.status_code == 404 for response in responses)
+    assert responses[0].json()["errors"] == [{"code": "not_found", "params": {}, "path": []}]
     assert len({response.text for response in responses}) == 1
     assert len({tuple(response.headers[name] for name in headers) for response in responses}) == 1
     assert tuple(responses[0].headers[name] for name in headers) == (

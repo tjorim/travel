@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
@@ -5,7 +6,7 @@ import { RecordForm, requiredText, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useRecordForm } from "../forms/useRecordForm";
 import { ownerKeys } from "../query/keys";
-import { errorMessage } from "../query/api";
+
 import { useOwnerMutation, useRefreshTrip } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import type { Trip } from "../tracker-model";
@@ -41,7 +42,7 @@ export function TripEditor({
   onNotice: (message: string) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useFeedback<string | null>(null);
   const refresh = useRefreshTrip();
   const save = useOwnerMutation<Values, Trip>({
     fallback: "De reis kon niet worden opgeslagen.",
@@ -93,7 +94,7 @@ export function TripEditor({
       },
       (error: unknown) => {
         setConfirmDelete(false);
-        setDeleteError(errorMessage(error, "De reis kon niet worden verwijderd."));
+        setDeleteError(errorNotice(error, "De reis kon niet worden verwijderd."));
       },
     );
   }

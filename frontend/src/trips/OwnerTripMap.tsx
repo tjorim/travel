@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -26,7 +27,7 @@ export function OwnerTripMap({
   const placesQuery = useTripResource(trip.id, "locations");
   const visitsQuery = useTripResource(trip.id, "visits");
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useFeedback<string>("");
   const savePoint = useOwnerMutation<{ id: string; latitude: number; longitude: number }, Area>({
     fallback: "Het gebiedspunt kon niet worden opgeslagen.",
     request: ({ id, latitude, longitude }) => ({
@@ -219,7 +220,7 @@ export function OwnerTripMap({
             .mutateAsync({ id: point.id, latitude: point.coordinates[1], longitude: point.coordinates[0] })
             .then(
               () => setNotice("Gebiedspunt opgeslagen."),
-              (error: unknown) => setNotice(errorMessage(error, "Het gebiedspunt kon niet worden opgeslagen.")),
+              (error: unknown) => setNotice(errorNotice(error, "Het gebiedspunt kon niet worden opgeslagen.")),
             )
         }
       />
@@ -230,7 +231,7 @@ export function OwnerTripMap({
           disabled={displayedPoints.length === 0 && lines.length === 0}
           onClick={() =>
             void toggleOffline().catch((error: unknown) =>
-              setNotice(errorMessage(error, "De kaartgegevens konden niet offline worden bewaard.")),
+              setNotice(errorNotice(error, "De kaartgegevens konden niet offline worden bewaard.")),
             )
           }
         >

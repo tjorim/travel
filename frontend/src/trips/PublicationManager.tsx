@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { errorNotice, useFeedback, FeedbackError } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
@@ -160,10 +162,12 @@ function ScopeGroup({
       );
       if (failed.length)
         onError(
-          new Error(
-            `${failed.length === 1 ? "1 onderdeel is" : `${failed.length} onderdelen zijn`} niet gekozen: ${failed
-              .map(({ item }) => `“${item.label}”`)
-              .join(", ")}. ${errorMessage(failed[0]!.reason, "")}`.trim(),
+          new FeedbackError(() =>
+            m.api_selection_failed({
+              count: failed.length,
+              labels: failed.map(({ item }) => `“${item.label}”`).join(", "),
+              reason: errorMessage(failed[0]!.reason, m.api_operation_failed()),
+            }),
           ),
         );
       return toPromote.filter((_, index) => results[index]!.status === "fulfilled");
@@ -519,7 +523,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   // null: no link editor; `{ linkId: null }`: a new link is being drafted; otherwise the chosen link.
   const [linkEditor, setLinkEditor] = useState<{ linkId: string | null } | null>(null);
   const editingLinkId = linkEditor?.linkId ?? null;
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFeedback<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [revealedLink, setRevealedLink] = useState<{ label: string; url: string } | null>(null);
   const [expiresInDays, setExpiresInDays] = useState<number | null>(30);
@@ -668,7 +672,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     linkRecord.load({ label: "", scope: emptyScope() });
   }
 
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
 
   async function previewPublic() {
     const values = publicRecord.form.state.values;

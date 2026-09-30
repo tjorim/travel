@@ -295,7 +295,10 @@ it("chooses what it can when one record cannot be shared yet, and says which one
   const updates = await openPublicGroup("Reisupdates");
   api.failNext = {
     status: 422,
-    body: { detail: "Write the text for visitors before sharing this update" },
+    body: {
+      detail: "sharing diagnostic",
+      errors: [{ code: "write_the_text_for_visitors_before_sharing_this_update", path: [], params: {} }],
+    },
   };
   fireEvent.click(updates.getByRole("button", { name: "Alles kiezen" }));
   await waitFor(() => expect(updates.getByText("1 van 2 gekozen")).toBeTruthy());

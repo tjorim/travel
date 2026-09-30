@@ -12,12 +12,13 @@ from datetime import date, datetime, time
 from typing import Any
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
+from .errors import ServiceError
 from .markdown import markdown_text, render_inline, render_markdown
 from .models import Area, Location, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
 
 
-class ScopeError(ValueError):
+class ScopeError(ServiceError):
     """The scope is not safe to render for this trip."""
 
 
@@ -166,20 +167,25 @@ def validate_scope(trip: Trip, scope: dict) -> None:
     for item in scope.get("items", []):
         kind, record_id = item.get("kind"), item.get("id", "")
         if kind not in COLLECTIONS:
-            raise ScopeError(f"Resource kind {kind} is not allowed in a share scope")
+            raise ScopeError(f"Resource kind {kind} is not allowed in a share scope", code="scope_kind_invalid")
         if (kind, record_id) in seen:
-            raise ScopeError(f"{kind.replace('_', ' ').capitalize()} {record_id} is selected more than once")
+            raise ScopeError(
+                f"{kind.replace('_', ' ').capitalize()} {record_id} is selected more than once", code="scope_duplicate"
+            )
         seen.add((kind, record_id))
         record = find_record(trip, kind, record_id)
         if record is None:
-            raise ScopeError(f"{kind.replace('_', ' ').capitalize()} {record_id} is not part of this trip")
+            raise ScopeError(
+                f"{kind.replace('_', ' ').capitalize()} {record_id} is not part of this trip", code="scope_unavailable"
+            )
         if record.visibility != Visibility.CUSTOM:
             raise ScopeError(
                 f"{kind.replace('_', ' ').capitalize()} {record_id} is {record.visibility.value}; "
-                "only a record set to custom can be chosen per audience"
+                "only a record set to custom can be chosen per audience",
+                code="scope_requires_custom",
             )
         if blocker := sharing_blocker(kind, record):
-            raise ScopeError(blocker)
+            raise ScopeError(str(blocker), code=blocker.code)
 
 
 def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> dict[str, Any]:

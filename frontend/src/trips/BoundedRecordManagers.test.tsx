@@ -464,10 +464,16 @@ it("reports a refused area delete inside the dialog, where the owner is looking"
     .value("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
-  api.failNext = { status: 409, body: { detail: "Dit gebied wordt nog gebruikt door: 2 bezoeken." } };
+  api.failNext = {
+    status: 409,
+    body: {
+      detail: "dependency diagnostic",
+      errors: [{ code: "resource_in_use", path: [], params: { count: 2, visits: 2 } }],
+    },
+  };
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   confirmDelete();
-  const reason = await screen.findByText("Dit gebied wordt nog gebruikt door: 2 bezoeken.");
+  const reason = await screen.findByText(/wordt nog gebruikt door 2 onderdelen/);
   expect(reason.getAttribute("role")).toBe("alert");
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   expect((await screen.findByRole("dialog")).contains(reason)).toBe(true);

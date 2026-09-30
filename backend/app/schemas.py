@@ -13,6 +13,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic_core import PydanticCustomError
 
 from .markdown import markdown_text, render_contact, render_inline, render_markdown
 from .models import (
@@ -64,7 +65,7 @@ def _html_of(field: str) -> str:
 
 def require_https(value: HttpUrl | None) -> HttpUrl | None:
     if value is not None and value.scheme != "https":
-        raise ValueError("Links must use HTTPS")
+        raise PydanticCustomError("links_must_use_https", "Links must use HTTPS")
     return value
 
 
@@ -75,13 +76,13 @@ def require_timezone(value: str | None) -> str | None:
     try:
         ZoneInfo(value)
     except (ZoneInfoNotFoundError, ValueError) as error:
-        raise ValueError("Unknown time zone") from error
+        raise PydanticCustomError("unknown_time_zone", "Unknown time zone") from error
     return value
 
 
 def require_ordered_dates(start: date | None, end: date | None, message: str) -> None:
     if start is not None and end is not None and end < start:
-        raise ValueError(message)
+        raise PydanticCustomError("dates_out_of_order", message)
 
 
 class InputModel(BaseModel):
@@ -130,7 +131,10 @@ class LocationFields(InputModel):
     def require_osm_id_type_pair(cls, value: str | None, info):
         osm_type = info.data.get("osm_element_type")
         if (value is None) != (osm_type is None):
-            raise ValueError("osm_element_type and osm_element_id must be supplied together")
+            raise PydanticCustomError(
+                "osm_element_type_and_osm_element_id_must_be_supplied_together",
+                "osm_element_type and osm_element_id must be supplied together",
+            )
         return value
 
 
@@ -146,9 +150,12 @@ class LocationInput(LocationFields):
     @model_validator(mode="after")
     def reuse_supplies_nothing_else(self):
         if self.existing_location_id is not None and self.model_fields_set - {"existing_location_id"}:
-            raise ValueError("Supply an existing location on its own, without other location fields")
+            raise PydanticCustomError(
+                "supply_an_existing_location_on_its_own_without_other_location_fields",
+                "Supply an existing location on its own, without other location fields",
+            )
         if self.new_area is not None and self.area_id is not None:
-            raise ValueError("Choose an existing area or a new area")
+            raise PydanticCustomError("choose_an_existing_area_or_a_new_area", "Choose an existing area or a new area")
         return self
 
 
@@ -165,7 +172,10 @@ def require_identified_location(location: "LocationInput | None") -> "LocationIn
         or location.admin_area
         or location.area_id
     ):
-        raise ValueError("Say where this stay is: choose a saved location, or fill in an address, a city or an area")
+        raise PydanticCustomError(
+            "say_where_this_stay_is_choose_a_saved_location_or_fill_in_an_address_a_city_or_an_area",
+            "Say where this stay is: choose a saved location, or fill in an address, a city or an area",
+        )
     return location
 
 
@@ -382,7 +392,7 @@ class TripUpdate(InputModel):
 
 def _require_unique_media_assets(values: list[str] | None) -> list[str] | None:
     if values is not None and len(values) != len(set(values)):
-        raise ValueError("A media asset can only be attached once")
+        raise PydanticCustomError("a_media_asset_can_only_be_attached_once", "A media asset can only be attached once")
     return values
 
 
@@ -473,9 +483,14 @@ class StayCreate(InputModel):
     @model_validator(mode="after")
     def says_where(self):
         if self.location is None and self.area_id is None:
-            raise ValueError("Say where this stay is: an area, or a location")
+            raise PydanticCustomError(
+                "say_where_this_stay_is_an_area_or_a_location", "Say where this stay is: an area, or a location"
+            )
         if self.location is not None and self.area_id is not None:
-            raise ValueError("Give an area or a location, not both; a location names its own area")
+            raise PydanticCustomError(
+                "give_an_area_or_a_location_not_both_a_location_names_its_own_area",
+                "Give an area or a location, not both; a location names its own area",
+            )
         return self
 
 
@@ -539,19 +554,21 @@ def require_visit_times(
 ) -> None:
     """A visit's last day follows its first, and its times sit on a day, start before they end."""
     if ends_on is not None and starts_on is None:
-        raise ValueError("A last day needs a first day")
+        raise PydanticCustomError("a_last_day_needs_a_first_day", "A last day needs a first day")
     require_ordered_dates(starts_on, ends_on, "The last day cannot precede the first day")
     if start_time is not None and starts_on is None:
-        raise ValueError("A time needs a day")
+        raise PydanticCustomError("a_time_needs_a_day", "A time needs a day")
     if end_time is not None and start_time is None:
-        raise ValueError("An end time needs a start time")
+        raise PydanticCustomError("an_end_time_needs_a_start_time", "An end time needs a start time")
     if (
         start_time is not None
         and end_time is not None
         and (ends_on is None or ends_on == starts_on)
         and end_time <= start_time
     ):
-        raise ValueError("The end time must be after the start time")
+        raise PydanticCustomError(
+            "the_end_time_must_be_after_the_start_time", "The end time must be after the start time"
+        )
 
 
 class VisitCreate(InputModel):
@@ -575,7 +592,7 @@ class VisitCreate(InputModel):
     @model_validator(mode="after")
     def valid_visit(self):
         if self.area_id is None and self.location is None:
-            raise ValueError("Say where: an area or a location")
+            raise PydanticCustomError("say_where_an_area_or_a_location", "Say where: an area or a location")
         require_visit_times(self.starts_on, self.ends_on, self.start_time, self.end_time)
         return self
 
@@ -730,7 +747,10 @@ class PackingItemCreate(InputModel):
     @model_validator(mode="after")
     def one_baggage_constraint(self):
         if self.cabin_only and self.checked_only:
-            raise ValueError("An item cannot be both cabin-only and checked-only")
+            raise PydanticCustomError(
+                "an_item_cannot_be_both_cabin_only_and_checked_only",
+                "An item cannot be both cabin-only and checked-only",
+            )
         return self
 
 
@@ -830,7 +850,10 @@ class GeoJsonLineString(InputModel):
     def valid_coordinates(cls, values: list[tuple[float, float]]) -> list[tuple[float, float]]:
         for longitude, latitude in values:
             if not -180 <= longitude <= 180 or not -90 <= latitude <= 90:
-                raise ValueError("Route coordinates must be valid longitude, latitude pairs")
+                raise PydanticCustomError(
+                    "route_coordinates_must_be_valid_longitude_latitude_pairs",
+                    "Route coordinates must be valid longitude, latitude pairs",
+                )
         return values
 
 
@@ -851,7 +874,10 @@ def require_route_ends(model):
     """Each end of a route is an area, given directly or through a location that is filed under one."""
     for end in ("departure", "arrival"):
         if getattr(model, f"{end}_area_id") is None and getattr(model, f"{end}_location") is None:
-            raise ValueError(f"Say where the route {'starts' if end == 'departure' else 'ends'}: an area or a location")
+            raise PydanticCustomError(
+                "route_end_required",
+                f"Say where the route {'starts' if end == 'departure' else 'ends'}: an area or a location",
+            )
     return model
 
 
@@ -888,14 +914,17 @@ class RouteCreate(InputModel):
     @model_validator(mode="after")
     def times_come_as_a_pair(self):
         if (self.departs_at is None) != (self.arrives_at is None):
-            raise ValueError("Give both the departure and the arrival time, or neither")
+            raise PydanticCustomError(
+                "give_both_the_departure_and_the_arrival_time_or_neither",
+                "Give both the departure and the arrival time, or neither",
+            )
         return self
 
     @field_validator("document_asset_ids")
     @classmethod
     def require_unique_documents(cls, values: list[str]) -> list[str]:
         if len(values) != len(set(values)):
-            raise ValueError("A document can only be attached once")
+            raise PydanticCustomError("a_document_can_only_be_attached_once", "A document can only be attached once")
         return values
 
 
@@ -926,7 +955,7 @@ class RouteUpdate(InputModel):
     @classmethod
     def require_unique_documents(cls, values: list[str] | None) -> list[str] | None:
         if values is not None and len(values) != len(set(values)):
-            raise ValueError("A document can only be attached once")
+            raise PydanticCustomError("a_document_can_only_be_attached_once", "A document can only be attached once")
         return values
 
 
@@ -1246,7 +1275,9 @@ class MediaTravelUpdateCandidatesRequest(InputModel):
     @classmethod
     def require_unique_assets(cls, values: list[str]) -> list[str]:
         if len(values) != len(set(values)):
-            raise ValueError("A media asset can only be selected once")
+            raise PydanticCustomError(
+                "a_media_asset_can_only_be_selected_once", "A media asset can only be selected once"
+            )
         return values
 
 

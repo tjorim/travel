@@ -1,13 +1,14 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException, service_exception
 from ..media import oauth
 from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_travel_update_candidates
 from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver, provider_available
@@ -134,7 +135,7 @@ def owned_media_asset(session: Session, trip_id: str, subject: str, media_id: st
         )
     )
     if asset is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Media not found", code="not_found")
     return asset
 
 
@@ -146,7 +147,7 @@ def owned_derivative(
         select(MediaDerivative).where(MediaDerivative.id == derivative_id, MediaDerivative.media_asset_id == asset.id)
     )
     if derivative is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Derivative not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Derivative not found", code="not_found")
     return derivative
 
 
@@ -154,7 +155,7 @@ def owned_import_session(session: Session, trip_id: str, subject: str, session_i
     owned_trip(session, trip_id, subject)
     row = session.scalar(select(ImportSession).where(ImportSession.id == session_id, ImportSession.trip_id == trip_id))
     if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found", code="not_found")
     return row
 
 
@@ -173,7 +174,11 @@ def upload_media(
     owned_trip(session, trip_id, subject)
     data = file.file.read()
     if not file.content_type:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A content type is required")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A content type is required",
+            code="a_content_type_is_required",
+        )
     try:
         asset, created = direct_upload(
             session,
@@ -184,7 +189,7 @@ def upload_media(
             data=data,
         )
     except MediaImportError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return _asset_response(asset, trip_id)
 
@@ -217,8 +222,10 @@ def suggest_travel_update_candidates(
     )
     found_ids = {asset.id for asset in assets}
     if found_ids != set(payload.media_asset_ids):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Selected media must belong to this trip"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Selected media must belong to this trip",
+            code="selected_media_must_belong_to_this_trip",
         )
     candidates, unavailable = build_travel_update_candidates(assets)
     return MediaTravelUpdateCandidatesResponse(
@@ -281,7 +288,7 @@ def get_media_thumbnail(
     try:
         data, content_type = generate_thumbnail(storage, media_asset=asset)
     except MediaImportError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise service_exception(status.HTTP_404_NOT_FOUND, error) from error
     return StreamingResponse(iter([data]), media_type=content_type, headers={"Cache-Control": "no-store"})
 
 
@@ -310,7 +317,7 @@ def add_derivative(
                 session, storage, media_asset=asset, purpose=payload.purpose, max_dimension=payload.max_dimension
             )
     except MediaImportError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     return _derivative_response(derivative, trip_id)
 
 
@@ -334,7 +341,9 @@ def retry_derivative(
         derivative.media_asset.media_kind != MediaKind.VIDEO
         or derivative.processing_state != DerivativeProcessingState.FAILED
     ):
-        raise HTTPException(status_code=409, detail="Only failed videos can be retried")
+        raise ApiException(
+            status_code=409, detail="Only failed videos can be retried", code="only_failed_videos_can_be_retried"
+        )
     derivative.processing_state = DerivativeProcessingState.PROCESSING
     derivative.processing_started_at = datetime.now(UTC)
     session.commit()
@@ -366,7 +375,9 @@ def approve_derivative(
 ) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     if derivative.processing_state != DerivativeProcessingState.READY or derivative.object_id is None:
-        raise HTTPException(status_code=409, detail="Derivative is not ready for review")
+        raise ApiException(
+            status_code=409, detail="Derivative is not ready for review", code="derivative_is_not_ready_for_review"
+        )
     derivative.review_state = DerivativeReviewState.APPROVED
     session.commit()
     return _derivative_response(derivative, trip_id)
@@ -386,7 +397,11 @@ def update_derivative_presentation(
     if values.get("travel_update_id") is not None:
         update = session.get(TravelUpdate, values["travel_update_id"])
         if update is None or update.trip_id != trip_id:
-            raise HTTPException(status_code=422, detail="Travel update is unavailable for this trip")
+            raise ApiException(
+                status_code=422,
+                detail="Travel update is unavailable for this trip",
+                code="travel_update_is_unavailable_for_this_trip",
+            )
     for field, value in values.items():
         setattr(derivative, field, value)
     session.commit()
@@ -414,7 +429,7 @@ def get_derivative_file(
 ) -> Response:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     if derivative.object is None:
-        raise HTTPException(status_code=404, detail="Derivative is not ready")
+        raise ApiException(status_code=404, detail="Derivative is not ready", code="derivative_is_not_ready")
     return media_response(storage, derivative.object, request, {"Cache-Control": "no-store"})
 
 
@@ -430,7 +445,7 @@ def get_derivative_poster(
 ) -> Response:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     if derivative.poster_object is None:
-        raise HTTPException(status_code=404, detail="Poster is not ready")
+        raise ApiException(status_code=404, detail="Poster is not ready", code="poster_is_not_ready")
     return media_response(storage, derivative.poster_object, request, {"Cache-Control": "no-store"})
 
 
@@ -448,17 +463,25 @@ def start_import_session(
 ) -> ImportSessionResponse:
     owned_trip(session, trip_id, subject)
     if provider not in IMPORT_PROVIDERS:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Not an importable provider")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Not an importable provider",
+            code="not_an_importable_provider",
+        )
     if not provider_available(provider):
-        raise HTTPException(status_code=409, detail="Provider connection is not configured")
+        raise ApiException(
+            status_code=409,
+            detail="Provider connection is not configured",
+            code="provider_connection_is_not_configured",
+        )
     try:
         created: CreatedImportSession = create_import_session(
             session, secret_store, resolver, trip_id=trip_id, subject=subject, provider=provider
         )
     except ProviderUnavailableError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+        raise service_exception(status.HTTP_409_CONFLICT, error) from error
     except ProviderError as error:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
+        raise service_exception(status.HTTP_502_BAD_GATEWAY, error) from error
     return ImportSessionResponse(
         id=created.session.id,
         provider=created.session.provider,
@@ -481,15 +504,15 @@ def complete_import(
 ) -> ImportSessionCompleteResponse:
     import_session = owned_import_session(session, trip_id, subject, session_id)
     if import_session.provider != provider:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found", code="not_found")
     try:
         outcome: ImportOutcome = complete_import_session(
             session, storage, secret_store, resolver, trip_id=trip_id, subject=subject, import_session=import_session
         )
     except (ProviderUnavailableError, ImportSessionExpiredError) as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+        raise service_exception(status.HTTP_409_CONFLICT, error) from error
     except (ProviderError, MediaImportError) as error:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
+        raise service_exception(status.HTTP_502_BAD_GATEWAY, error) from error
     return ImportSessionCompleteResponse(
         ready=outcome.ready,
         imported=[_asset_response(asset, trip_id) for asset in outcome.imported],
@@ -520,7 +543,11 @@ def set_provider_token(
     provider: ImportProvider, payload: ProviderTokenSet, subject: SubjectDep, secret_store: SecretStoreDep
 ) -> Response:
     if not provider_available(provider):
-        raise HTTPException(status_code=409, detail="Provider connection is not configured")
+        raise ApiException(
+            status_code=409,
+            detail="Provider connection is not configured",
+            code="provider_connection_is_not_configured",
+        )
     secret_store.set_token(subject=subject, provider=provider.value, token=payload.access_token)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -530,7 +557,7 @@ def revoke_provider_token(provider: ImportProvider, subject: SubjectDep, secret_
     try:
         oauth.revoke(subject, provider.value, secret_store)
     except ProviderUnavailableError as error:
-        raise HTTPException(status_code=502, detail=str(error)) from error
+        raise service_exception(502, error) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -542,16 +569,24 @@ class OAuthComplete(InputModel):
 @provider_tokens_router.post("/google_photos_picker/oauth/start")
 def start_google_oauth(subject: SubjectDep, secret_store: SecretStoreDep) -> dict[str, str]:
     if not provider_available(ImportProvider.GOOGLE_PHOTOS_PICKER):
-        raise HTTPException(status_code=409, detail="Google Photos connection is not configured")
+        raise ApiException(
+            status_code=409,
+            detail="Google Photos connection is not configured",
+            code="google_photos_connection_is_not_configured",
+        )
     return {"authorization_url": oauth.begin(subject, secret_store)}
 
 
 @provider_tokens_router.post("/google_photos_picker/oauth/complete", status_code=204)
 def complete_google_oauth(payload: OAuthComplete, subject: SubjectDep, secret_store: SecretStoreDep) -> Response:
     if not provider_available(ImportProvider.GOOGLE_PHOTOS_PICKER):
-        raise HTTPException(status_code=409, detail="Google Photos connection is not configured")
+        raise ApiException(
+            status_code=409,
+            detail="Google Photos connection is not configured",
+            code="google_photos_connection_is_not_configured",
+        )
     try:
         oauth.complete(subject, secret_store, payload.code, payload.state)
     except ProviderUnavailableError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
+        raise service_exception(409, error) from error
     return Response(status_code=204)

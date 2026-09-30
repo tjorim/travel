@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
@@ -242,7 +243,7 @@ export function MediaManager({
   const derivatives = derivativesQuery.data ?? [];
   const selectedDerivative = view.kind === "copy" ? (derivatives.find((item) => item.id === view.id) ?? null) : null;
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useFeedback<string | null>(null);
   const [uploadKey, setUploadKey] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [importSession, setImportSession] = useState<ImportSession | null>(null);
@@ -256,7 +257,7 @@ export function MediaManager({
   const [candidateAttachments, setCandidateAttachments] = useState<Record<string, string>>({});
   const [foundUpdates, setFoundUpdates] = useState<Record<string, TravelUpdate>>({});
   const [candidateAreas, setCandidateAreas] = useState<Record<string, AreaSuggestion>>({});
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFeedback<string | null>(null);
   const mediaPath = tripPath(trip.id, "media");
   const refreshMedia = (subject: string) => [ownerKeys.tripResource(subject, trip.id, "media")];
   const refreshDerivatives = (subject: string, { assetId }: { assetId: string }) => [
@@ -421,11 +422,11 @@ export function MediaManager({
     return () => window.clearInterval(timer);
   }, [derivatives, derivativesQuery]);
 
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
   const failInDialog = (fallback: string) => (error: unknown) => {
     setConfirmDeleteAsset(false);
     setConfirmDeleteCopy(false);
-    assetDialog.setError(errorMessage(error, fallback));
+    assetDialog.setError(errorNotice(error, fallback));
   };
   const timestamp = formatInstant;
 
@@ -460,7 +461,7 @@ export function MediaManager({
       },
       (error: unknown) => {
         setNotice("");
-        setUploadError(errorMessage(error, "De media konden niet worden geüpload."));
+        setUploadError(errorNotice(error, "De media konden niet worden geüpload."));
       },
     );
   }

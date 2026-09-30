@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { errorNotice, useFeedback } from "../query/feedback";
 
 import { SearchSelect } from "../forms/fields";
-import { errorMessage } from "../query/api";
+
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import type { ShareScopeKind, Visibility } from "../tracker-model";
@@ -54,14 +54,14 @@ export function VisibilityControl({
   followsUpdate?: string;
 }) {
   const save = useSetVisibility(tripId);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useFeedback<string | null>(null);
   if (followsUpdate) return <p className="help">Wordt gedeeld samen met reisupdate “{followsUpdate}”.</p>;
   const shown = save.isPending && save.variables ? save.variables.visibility : value;
   function choose(visibility: Visibility) {
     setError(null);
     save
       .mutateAsync({ kind, id, visibility })
-      .catch((failure: unknown) => setError(errorMessage(failure, "De zichtbaarheid kon niet worden bewaard.")));
+      .catch((failure: unknown) => setError(errorNotice(failure, "De zichtbaarheid kon niet worden bewaard.")));
   }
   return (
     <Field>

@@ -3,12 +3,13 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException
 from ..models import Trip, TripTask, TripTaskAlert
 from ..schemas import TripTaskAlertResponse, TripTaskCreate, TripTaskResponse, TripTaskUpdate
 from .trips import owned_trip
@@ -22,7 +23,7 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 def owned_task(trip: Trip, task_id: str) -> TripTask:
     task = next((item for item in trip.trip_tasks if item.id == task_id), None)
     if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip task not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip task not found", code="not_found")
     return task
 
 
@@ -66,7 +67,9 @@ def update_trip_task(
     if "links" in values and values["links"] is not None:
         values["links"] = payload.model_dump(mode="json", include={"links"})["links"]
     if "title" in values and values["title"] is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="title is required")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="title is required", code="missing", field="title"
+        )
     if "links" in values and values["links"] is None:
         values["links"] = []
     for field, value in values.items():
@@ -106,7 +109,7 @@ def mark_task_alert_read(trip_id: str, alert_id: str, session: SessionDep, subje
         .where(TripTask.trip_id == trip.id, TripTaskAlert.owner_subject == subject, TripTaskAlert.id == alert_id)
     )
     if alert is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task alert not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Task alert not found", code="not_found")
     if alert.read_at is None:
         alert.read_at = datetime.now(UTC)
         session.commit()

@@ -27,6 +27,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..config import settings
+from ..errors import ServiceError
 from ..models import (
     DerivativeProcessingState,
     DerivativePurpose,
@@ -52,7 +53,7 @@ from .providers import MediaProvider, ProviderError
 ProviderResolver = Callable[[ImportProvider], MediaProvider]
 
 
-class MediaImportError(RuntimeError):
+class MediaImportError(ServiceError, RuntimeError):
     """A local (non-provider) ingestion failure: oversized upload, an
     unsupported content type, or a storage checksum mismatch."""
 
@@ -72,7 +73,10 @@ def _media_kind_for(content_type: str) -> MediaKind:
         return MediaKind.PHOTO
     if content_type.startswith("video/"):
         return MediaKind.VIDEO
-    raise MediaImportError(f"Dit bestandstype ({content_type}) wordt niet ondersteund; kies een foto of video.")
+    raise MediaImportError(
+        "Dit bestandstype wordt niet ondersteund; kies een foto of video.",
+        code="unsupported_media_type",
+    )
 
 
 _EXIF_MAKE = 271
@@ -192,7 +196,10 @@ def _store_bytes(
         session.add(obj)
     session.flush()
     if not verified:
-        raise MediaImportError("Stored object failed checksum verification after write")
+        raise MediaImportError(
+            "Stored object failed checksum verification after write",
+            code="stored_object_failed_checksum_verification_after_write",
+        )
     return obj
 
 
@@ -208,10 +215,12 @@ def store_uploaded_object(
     resource only after this function returns an available object.
     """
     if not data:
-        raise MediaImportError("Het bestand is leeg.")
+        raise MediaImportError("Het bestand is leeg.", code="file_empty")
     if len(data) > settings.media_max_upload_bytes:
         raise MediaImportError(
-            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB."
+            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB.",
+            code="file_too_large",
+            params={"max_length": settings.media_max_upload_bytes // (1024 * 1024)},
         )
     return _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=content_type)
 
@@ -287,7 +296,10 @@ def create_import_session(
     provider: ImportProvider,
 ) -> CreatedImportSession:
     if provider == ImportProvider.DIRECT_DEVICE:
-        raise MediaImportError("Direct device upload does not use an import session")
+        raise MediaImportError(
+            "Direct device upload does not use an import session",
+            code="direct_device_upload_does_not_use_an_import_session",
+        )
     token = access_token(subject, provider.value, secret_store)
     media_provider = resolver(provider)
     provider_session = media_provider.create_session(access_token=token)
@@ -327,11 +339,11 @@ def complete_import_session(
     without blocking the rest — a later retry only reattempts the failures.
     """
     if import_session.state == ImportSessionState.EXPIRED:
-        raise ImportSessionExpiredError("This import session has expired")
+        raise ImportSessionExpiredError("This import session has expired", code="this_import_session_has_expired")
     if import_session.expires_at is not None and _aware_utc(import_session.expires_at) <= datetime.now(UTC):
         import_session.state = ImportSessionState.EXPIRED
         session.commit()
-        raise ImportSessionExpiredError("This import session has expired")
+        raise ImportSessionExpiredError("This import session has expired", code="this_import_session_has_expired")
     token = access_token(subject, import_session.provider.value, secret_store)
     media_provider = resolver(import_session.provider)
 
@@ -364,7 +376,9 @@ def complete_import_session(
                 access_token=access_token(subject, import_session.provider.value, secret_store), item=item
             )
             if len(data) > settings.media_max_upload_bytes:
-                raise MediaImportError("Imported item exceeds the maximum size")
+                raise MediaImportError(
+                    "Imported item exceeds the maximum size", code="imported_item_exceeds_the_maximum_size"
+                )
             stored = _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=item.content_type)
             existing_asset = _existing_media_asset_for_object(session, trip_id, stored.id)
             record = existing_record or ImportRecord(
@@ -410,7 +424,7 @@ def complete_import_session(
                     ImportRecord.provider_item_id == item.provider_item_id,
                 )
             )
-            failure_code = str(error)[:120]
+            failure_code = error.code
             if record is None:
                 record = ImportRecord(
                     trip_id=trip_id,
@@ -465,9 +479,11 @@ def queue_video_derivative(
     session: Session, *, media_asset: MediaAsset, purpose: DerivativePurpose, remove_audio: bool
 ) -> MediaDerivative:
     if media_asset.media_kind != MediaKind.VIDEO or media_asset.original_object.state != ObjectState.AVAILABLE:
-        raise MediaImportError("Video original is unavailable")
+        raise MediaImportError("Video original is unavailable", code="video_original_is_unavailable")
     if media_asset.original_object.byte_size > VIDEO_MAX_INPUT_BYTES:
-        raise MediaImportError("Video exceeds the derivative input limit")
+        raise MediaImportError(
+            "Video exceeds the derivative input limit", code="video_exceeds_the_derivative_input_limit"
+        )
     derivative = MediaDerivative(
         trip_id=media_asset.trip_id,
         media_asset_id=media_asset.id,
@@ -501,7 +517,9 @@ def _copy_bounded(storage: ObjectStorage, key: str, target: Path) -> None:
         while chunk := source.read(1024 * 1024):
             written += len(chunk)
             if written > VIDEO_MAX_INPUT_BYTES:
-                raise MediaImportError("Video exceeds the derivative input limit")
+                raise MediaImportError(
+                    "Video exceeds the derivative input limit", code="video_exceeds_the_derivative_input_limit"
+                )
             destination.write(chunk)
 
 
@@ -513,7 +531,9 @@ def process_video_derivative(session: Session, storage: ObjectStorage, *, deriva
     try:
         asset = derivative.media_asset
         if asset.deleted_at is not None or asset.original_object.byte_size > VIDEO_MAX_INPUT_BYTES:
-            raise MediaImportError("Video original is unavailable or too large")
+            raise MediaImportError(
+                "Video original is unavailable or too large", code="video_original_is_unavailable_or_too_large"
+            )
         with tempfile.TemporaryDirectory(prefix="travel-video-") as directory:
             source = Path(directory) / "source"
             output = Path(directory) / "share.mp4"
@@ -608,14 +628,14 @@ def process_video_derivative(session: Session, storage: ObjectStorage, *, deriva
                 stream["codec_type"] not in ({"video"} if derivative.remove_audio else {"video", "audio"})
                 for stream in streams
             ):
-                raise MediaImportError("Unexpected video stream")
+                raise MediaImportError("Unexpected video stream", code="unexpected_video_stream")
             video = next(stream for stream in streams if stream["codec_type"] == "video")
             duration = float(probe["format"]["duration"])
             if (
                 max(video["width"], video["height"]) > VIDEO_MAX_DIMENSION
                 or duration > VIDEO_MAX_DURATION_SECONDS + 0.1
             ):
-                raise MediaImportError("Video transform exceeded limits")
+                raise MediaImportError("Video transform exceeded limits", code="video_transform_exceeded_limits")
             video_bytes, poster_bytes = output.read_bytes(), poster.read_bytes()
         session.expire_all()
         derivative = session.get(MediaDerivative, derivative_id)
@@ -677,10 +697,10 @@ def generate_thumbnail(storage: ObjectStorage, *, media_asset: MediaAsset) -> tu
     thumbnail; a video keeps its filename-only listing until reviewed.
     """
     if media_asset.media_kind != MediaKind.PHOTO:
-        raise MediaImportError("Only photos have thumbnails")
+        raise MediaImportError("Only photos have thumbnails", code="only_photos_have_thumbnails")
     original = media_asset.original_object
     if original.state != ObjectState.AVAILABLE:
-        raise MediaImportError("The original is not available")
+        raise MediaImportError("The original is not available", code="the_original_is_not_available")
 
     data = storage.get(original.object_key)
     with Image.open(io.BytesIO(data)) as opened:
@@ -710,9 +730,9 @@ def create_derivative(
     """
     original = media_asset.original_object
     if original.state != ObjectState.AVAILABLE:
-        raise MediaImportError("The original is not available")
+        raise MediaImportError("The original is not available", code="the_original_is_not_available")
     if media_asset.media_kind != MediaKind.PHOTO:
-        raise MediaImportError("Only photo derivatives are supported")
+        raise MediaImportError("Only photo derivatives are supported", code="only_photo_derivatives_are_supported")
 
     data = storage.get(original.object_key)
     with Image.open(io.BytesIO(data)) as opened:

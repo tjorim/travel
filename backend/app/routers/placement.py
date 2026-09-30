@@ -1,9 +1,10 @@
 """Where a record is: the area, and optionally the location, that a route end or a visit points at."""
 
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..errors import ApiException
 from ..models import Area, Location
 from ..schemas import LocationInput
 
@@ -11,8 +12,10 @@ from ..schemas import LocationInput
 def selected_area(session: Session, trip_id: str, area_id: str) -> Area:
     area = session.scalar(select(Area).where(Area.id == area_id, Area.trip_id == trip_id))
     if area is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Area is unavailable for this trip"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Area is unavailable for this trip",
+            code="area_is_unavailable_for_this_trip",
         )
     return area
 
@@ -100,8 +103,10 @@ def location_from_input(session: Session, trip_id: str, payload: LocationInput) 
             select(Location).where(Location.id == payload.existing_location_id, Location.trip_id == trip_id)
         )
         if existing is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location not found on this trip"
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Location not found on this trip",
+                code="location_not_found_on_this_trip",
             )
         return existing
     location = Location(trip_id=trip_id, **payload.model_dump(exclude={"existing_location_id", "area_id", "new_area"}))
@@ -129,13 +134,17 @@ def resolve_place(
     as well must be that one. Used by routes (each end) and by visits."""
     if location is None:
         if area_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="An area or a location is required"
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="An area or a location is required",
+                code="an_area_or_a_location_is_required",
             )
         return selected_area(session, trip_id, area_id), None
     found = location_from_input(session, trip_id, location)
     if area_id is not None and found.area_id != area_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="That location is not in the chosen area"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="That location is not in the chosen area",
+            code="that_location_is_not_in_the_chosen_area",
         )
     return found.area, found

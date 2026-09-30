@@ -1,3 +1,5 @@
+import { errorNotice, useFeedback } from "../query/feedback";
+import { m } from "../paraglide/messages.js";
 import { useEffect, useState } from "react";
 
 import type { TrackerSession } from "../auth";
@@ -18,7 +20,7 @@ export function RenderedPreview({
   session: TrackerSession;
 }) {
   const [images, setImages] = useState<Record<string, string>>({});
-  const [error, setError] = useState("");
+  const [error, setError] = useFeedback<string>("");
   const base = `/api/trips/${encodeURIComponent(tripId)}/${audience === "public" ? "public-projection" : `share-links/${encodeURIComponent(linkId ?? "")}`}/preview`;
 
   useEffect(() => {
@@ -46,8 +48,8 @@ export function RenderedPreview({
             urls.push(url);
             setImages((current) => ({ ...current, [id]: url }));
           })
-          .catch(() => {
-            if (!controller.signal.aborted) setError("Een medium kon niet worden geladen.");
+          .catch((failure: unknown) => {
+            if (!controller.signal.aborted) setError(errorNotice(failure, m.api_visitor_file()));
           });
     }
     return () => {
@@ -75,8 +77,8 @@ export function RenderedPreview({
       anchor.download = `gedeeld-document${extension}`;
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch {
-      setError("Document niet beschikbaar.");
+    } catch (failure) {
+      setError(errorNotice(failure, m.api_visitor_file()));
     }
   }
 
@@ -95,9 +97,9 @@ export function RenderedPreview({
         throw new Error("Ongeldige navigatie.");
       if (tab) tab.location.href = url;
       else setError("Sta pop-ups toe om de routebeschrijving te openen.");
-    } catch {
+    } catch (failure) {
       tab?.close();
-      setError("Navigatie niet beschikbaar.");
+      setError(errorNotice(failure, m.api_visitor_navigation()));
     }
   }
 

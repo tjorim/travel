@@ -1,3 +1,5 @@
+import { useLocale } from "../locale";
+import { errorNotice, noticeMessage, type ErrorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { TravelTextarea } from "../ui/TravelTextarea";
@@ -6,7 +8,7 @@ import { cn } from "cn";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 
 import { Markdown } from "../Markdown";
-import { errorMessage, ownerRequest } from "../query/api";
+import { ownerRequest } from "../query/api";
 import { useOwner } from "../query/owner-queries";
 import { optionalNote, useFieldErrors } from "./fields";
 import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";
@@ -44,9 +46,10 @@ type RenderResult = { html: string | null; text: string | null };
  * and what visitors see never drift apart.
  */
 function MarkdownPreview({ source, format }: { source: string; format: MarkdownFormat }) {
+  useLocale();
   const owner = useOwner();
   const [state, setState] = useState<
-    { kind: "loading" } | { kind: "ready"; result: RenderResult } | { kind: "error"; message: string }
+    { kind: "loading" } | { kind: "ready"; result: RenderResult } | { kind: "error"; message: string | ErrorNotice }
   >({ kind: "loading" });
 
   useEffect(() => {
@@ -64,7 +67,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
       .then((result) => setState({ kind: "ready", result }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
-          setState({ kind: "error", message: errorMessage(error, "Het voorbeeld kon niet worden geladen.") });
+          setState({ kind: "error", message: errorNotice(error, "Het voorbeeld kon niet worden geladen.") });
       });
     return () => controller.abort();
   }, [owner, source, format]);
@@ -78,7 +81,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
   if (state.kind === "error")
     return (
       <p className="form-error" role="alert">
-        {state.message}
+        {noticeMessage(state.message)}
       </p>
     );
   if (!state.result.html) return <p className="help">Nog niets om te tonen.</p>;

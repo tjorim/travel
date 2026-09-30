@@ -93,7 +93,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     (!session
       ? m.sign_in_trips()
       : tripsQuery.isError
-        ? errorMessage(tripsQuery.error, m.owner_trips_error())
+        ? errorMessage(tripsQuery.error, m.owner_trips_error)
         : tripsQuery.isPending
           ? m.owner_trips_loading()
           : trips.length

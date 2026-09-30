@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
@@ -33,7 +34,7 @@ export function DocumentLibraryManager() {
   const trips = tripsQuery.data ?? [];
   const dialog = useRecordDialog(documents);
   const { selected, editing } = dialog;
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFeedback<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   // Remounts the file input so a finished upload clears the chosen file.
   const [fileKey, setFileKey] = useState(0);
@@ -70,10 +71,10 @@ export function DocumentLibraryManager() {
     },
   });
 
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
   const failInDialog = (fallback: string) => (error: unknown) => {
     dialog.setConfirmDelete(false);
-    dialog.setError(errorMessage(error, fallback));
+    dialog.setError(errorNotice(error, fallback));
   };
   const tripTitle = (tripId: string) => trips.find((trip) => trip.id === tripId)?.title ?? "verwijderde reis";
 

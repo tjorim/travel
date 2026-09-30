@@ -1,3 +1,4 @@
+import { errorNotice } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Button } from "@base-ui/react/button";
 import { Collapsible } from "@base-ui/react/collapsible";
@@ -303,7 +304,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        dialog.setError(errorMessage(error, "De route kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, "De route kon niet worden verwijderd."));
       },
     );
   }

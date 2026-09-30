@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from ..access import receivers, trip_audiences
 from ..audit import record_audit_event
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException
 from ..models import (
     AuditEventKind,
     AuditTargetType,
@@ -43,7 +44,7 @@ def owned_location(session: Session, trip_id: str, subject: str, location_id: st
     owned_trip(session, trip_id, subject)
     location = session.scalar(select(Location).where(Location.id == location_id, Location.trip_id == trip_id))
     if location is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found", code="not_found")
     return location
 
 
@@ -103,8 +104,10 @@ def update_location(
         location.label = payload.label
     if "area_id" in changes:
         if payload.area_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Every location needs an area"
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Every location needs an area",
+                code="every_location_needs_an_area",
             )
         location.area = selected_area(session, trip_id, payload.area_id)
         _carry_links(session, location)
@@ -125,15 +128,17 @@ def update_location(
     if location.share_address and not any(
         (location.address_line1, location.address_line2, location.postal_code, location.locality, location.admin_area)
     ):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Add an address before sharing it",
+            code="add_an_address_before_sharing_it",
         )
     if location.label is None and location.visibility != Visibility.PRIVATE:
         # A shared location cannot lose its public name.
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Give this location a public name before sharing it",
+            code="give_this_location_a_public_name_before_sharing_it",
         )
     session.commit()
     return location
@@ -144,8 +149,10 @@ def owner_navigation(location_id: str, trip_id: str, session: SessionDep, subjec
     location = owned_location(session, trip_id, subject, location_id)
     url = location_navigation_url(location)
     if url is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Location has no navigation target"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Location has no navigation target",
+            code="location_has_no_navigation_target",
         )
     return NavigationResponse(url=url, exact=True)
 
@@ -178,16 +185,22 @@ _REFERENCE_NAMES = {
 def delete_location(trip_id: str, location_id: str, session: SessionDep, subject: SubjectDep) -> Response:
     """Delete an unused location; refuse while any visit, stay, route or reisupdate still points at it."""
     location = owned_location(session, trip_id, subject, location_id)
+    found_by_kind = _referencing(session, trip_id, location.id)
     references = [
         f"{len(found)} {_REFERENCE_NAMES[kind][0] if len(found) == 1 else _REFERENCE_NAMES[kind][1]}"
-        for kind, found in _referencing(session, trip_id, location.id).items()
+        for kind, found in found_by_kind.items()
         if found
     ]
     if references:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Deze locatie wordt nog gebruikt door: {', '.join(references)}. "
             "Pas of verwijder die eerst, of voeg de locatie samen met een andere.",
+            code="resource_in_use",
+            params={
+                **{kind: len(found) for kind, found in found_by_kind.items()},
+                "count": sum(len(found) for found in found_by_kind.values()),
+            },
         )
     session.delete(location)
     session.commit()
@@ -204,8 +217,10 @@ def merge_locations(trip_id: str, payload: MergeRequest, session: Session, subje
     keep = owned_location(session, trip_id, subject, payload.keep_id)
     duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
     if keep.id in duplicate_ids:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="keep_id cannot also be a duplicate"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="keep_id cannot also be a duplicate",
+            code="keep_id_cannot_also_be_a_duplicate",
         )
     duplicates = [owned_location(session, trip_id, subject, duplicate_id) for duplicate_id in duplicate_ids]
     audiences = trip_audiences(session, trip_id)

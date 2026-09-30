@@ -1,3 +1,4 @@
+import { useFeedback } from "../query/feedback";
 import { useEffect, useState } from "react";
 
 /** A request from elsewhere on the page to open a specific record's dialog; the token makes
@@ -15,7 +16,7 @@ export function useRecordDialog<T extends { id: string }>(items: readonly T[]) {
   const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // A failure that belongs to the open record, such as a refused delete; shown inside the dialog, not behind it.
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useFeedback<string | null>(null);
   return {
     selected: items.find((item) => item.id === selectedId) ?? null,
     editing: editingId !== undefined,

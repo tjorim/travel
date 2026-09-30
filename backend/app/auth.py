@@ -2,10 +2,11 @@ import hmac
 from typing import Annotated
 
 import jwt
-from fastapi import HTTPException, Security, status
+from fastapi import Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import settings
+from .errors import ApiException
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -15,11 +16,17 @@ DEV_BYPASS_SUBJECT = "dev-bypass-user"
 
 def current_subject(credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)]) -> str:
     if credentials is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="A bearer token is required")
+        raise ApiException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="A bearer token is required", code="unauthorized"
+        )
     if settings.dev_auth_bypass_token and hmac.compare_digest(credentials.credentials, settings.dev_auth_bypass_token):
         return DEV_BYPASS_SUBJECT
     if not settings.oidc_issuer_url or not settings.oidc_jwks_url:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OIDC validation is not configured")
+        raise ApiException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OIDC validation is not configured",
+            code="oidc_validation_is_not_configured",
+        )
     try:
         signing_key = jwt.PyJWKClient(settings.oidc_jwks_url).get_signing_key_from_jwt(credentials.credentials)
         claims = jwt.decode(
@@ -34,4 +41,6 @@ def current_subject(credentials: Annotated[HTTPAuthorizationCredentials | None, 
             raise jwt.InvalidTokenError("missing subject")
         return subject
     except jwt.PyJWTError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token") from error
+        raise ApiException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token", code="unauthorized"
+        ) from error

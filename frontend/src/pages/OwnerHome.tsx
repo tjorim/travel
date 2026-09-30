@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
@@ -8,6 +9,7 @@ import { Link } from "@tanstack/react-router";
 import { useAuth } from "../auth-context";
 import { dayjs } from "../dayjs";
 import { EmptyState } from "../tracker-routes";
+
 import { errorMessage } from "../query/api";
 import { tripResourceQueryOptions, useMarkAlertRead, useOwner, useTripsQuery } from "../query/owner-queries";
 import {
@@ -86,7 +88,7 @@ export function OwnerHome() {
     ),
   });
   const markAlertRead = useMarkAlertRead();
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFeedback<string | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
 
   useEffect(() => {
@@ -132,7 +134,7 @@ export function OwnerHome() {
     (state === "error"
       ? !online
         ? m.owner_offline()
-        : m.owner_load_error()
+        : errorMessage(tripsQuery.error, m.owner_load_error)
       : state === "loading"
         ? m.workspace_loading()
         : partial
@@ -231,7 +233,7 @@ export function OwnerHome() {
                     markAlertRead
                       .mutateAsync({ tripId: alert.trip.id, alertId: alert.id })
                       .catch((error: unknown) =>
-                        setNotice(errorMessage(error, "De melding kon niet worden bijgewerkt.")),
+                        setNotice(errorNotice(error, "De melding kon niet worden bijgewerkt.")),
                       )
                   }
                 >

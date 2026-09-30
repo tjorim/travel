@@ -143,7 +143,7 @@ it("restores a task when completing it is refused", async () => {
   await screen.findByRole("button", { name: "Taak Visum regelen bekijken" });
   api.failNext = { status: 500, body: { detail: "Opslaan mislukt op de server." } };
   fireEvent.click(screen.getAllByRole("button", { name: "Afvinken" })[0]);
-  await screen.findByText("Opslaan mislukt op de server.");
+  await screen.findByText("De server reageert niet goed. Probeer het later opnieuw.");
   expect(screen.getAllByRole("button", { name: "Afvinken" })).toHaveLength(2);
   expect(screen.queryByRole("button", { name: "Heropenen" })).toBeNull();
 });
@@ -177,15 +177,23 @@ it("validates the form, keeps the editor open on a server error, and resets afte
   fireEvent.change(title, { target: { value: "Vliegtickets" } });
   await waitFor(() => expect(title.getAttribute("aria-invalid")).toBeNull());
 
-  api.failNext = { status: 422, body: { detail: [{ loc: ["body", "title"], msg: "Deze titel bestaat al." }] } };
+  api.failNext = {
+    status: 422,
+    body: {
+      detail: "diagnostic",
+      errors: [{ code: "string_too_long", path: ["body", "title"], params: { max_length: 120 } }],
+    },
+  };
   fireEvent.click(save);
-  await screen.findByText("Deze titel bestaat al.", { selector: ".field-error" });
+  await screen.findByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" });
   expect(screen.getByRole("heading", { name: "Taak toevoegen" })).toBeTruthy();
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Vliegtickets");
   expect(save.disabled).toBe(false);
 
   fireEvent.change(title, { target: { value: "Vliegtickets boeken" } });
-  await waitFor(() => expect(screen.queryByText("Deze titel bestaat al.", { selector: ".field-error" })).toBeNull());
+  await waitFor(() =>
+    expect(screen.queryByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" })).toBeNull(),
+  );
   fireEvent.click(save);
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(screen.getByRole("button", { name: "Taak Vliegtickets boeken bekijken" })).toBeTruthy();

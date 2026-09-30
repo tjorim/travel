@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Input } from "@base-ui/react/input";
 import { useEffect, useRef, useState } from "react";
@@ -27,10 +28,10 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
   const openRef = useRef(open);
   openRef.current = open;
   const [snapshot, setSnapshot] = useState<PackingSnapshot | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useFeedback<string>("");
   const [group, setGroup] = useState<"bag" | "category">("bag");
   const [filter, setFilter] = useState<"all" | "unpacked" | "packed" | "last-minute">("all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useFeedback<string>("");
 
   useEffect(() => {
     let active = true;
@@ -46,12 +47,11 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
           if (active) setSnapshot(value);
         },
         (reason: unknown) => {
-          if (active)
-            setError(reason instanceof Error ? reason.message : "De offline paklijst kon niet worden geopend.");
+          if (active) setError(errorNotice(reason, "De offline paklijst kon niet worden geopend."));
         },
       )
       .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : "De offline paklijst is ongeldig.");
+        if (active) setError(errorNotice(reason, "De offline paklijst is ongeldig."));
       });
     return () => {
       active = false;

@@ -1,12 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..access import set_visibility
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException, service_exception
 from ..models import (
     Location,
     MediaAsset,
@@ -72,9 +73,10 @@ def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[s
         )
     )
     if len(assets) != len(media_asset_ids):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="One or more media assets are unavailable for this trip",
+            code="one_or_more_media_assets_are_unavailable_for_this_trip",
         )
     by_id = {asset.id: asset for asset in assets}
     return [TravelUpdateMediaAsset(media_asset=by_id[asset_id]) for asset_id in media_asset_ids]
@@ -84,7 +86,7 @@ def owned_trip(session: Session, trip_id: str, subject: str, *, load_relations: 
     statement = trip_query() if load_relations else select(Trip)
     trip = session.scalar(statement.where(Trip.id == trip_id, Trip.owner_subject == subject))
     if trip is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found", code="not_found")
     return trip
 
 
@@ -131,8 +133,10 @@ def update_trip(trip_id: str, payload: TripUpdate, session: SessionDep, subject:
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(trip, field, value)
     if trip.starts_on is not None and trip.ends_on is not None and trip.ends_on < trip.starts_on:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="The trip cannot end before it starts"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="The trip cannot end before it starts",
+            code="the_trip_cannot_end_before_it_starts",
         )
     session.commit()
     return owned_trip(session, trip_id, subject)
@@ -191,9 +195,10 @@ def create_travel_update(
     trip = owned_trip(session, trip_id, subject)
     location = location_from_input(session, trip.id, payload.location) if payload.location else None
     if location is not None and payload.area_id is not None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="An update with a location gets its area from that location",
+            code="an_update_with_a_location_gets_its_area_from_that_location",
         )
     update = TravelUpdate(
         trip=trip,
@@ -219,7 +224,7 @@ def create_travel_update(
 def owned_update(trip: Trip, update_id: str) -> TravelUpdate:
     update = next((item for item in trip.travel_updates if item.id == update_id), None)
     if update is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel update not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel update not found", code="not_found")
     return update
 
 
@@ -227,7 +232,7 @@ def _choose_visibility(trip: Trip, update: TravelUpdate, visibility: Visibility)
     try:
         set_visibility(trip, "travel_update", update.id, visibility)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
 
 
 @router.patch("/{trip_id}/travel-updates/{update_id}", response_model=TravelUpdateResponse)
@@ -242,9 +247,10 @@ def update_travel_update(
         update.location = location_from_input(session, trip.id, payload.location) if payload.location else None
     if update.location is not None:
         if "area_id" in payload.model_fields_set and payload.area_id is not None:
-            raise HTTPException(
+            raise ApiException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="An update with a location gets its area from that location",
+                code="an_update_with_a_location_gets_its_area_from_that_location",
             )
         update.area_id = None
     elif "area_id" in payload.model_fields_set:
@@ -254,15 +260,21 @@ def update_travel_update(
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "media_asset_ids", "visibility"})
     for field, value in values.items():
         if value is None and field in {"occurred_at", "date_precision", "title", "body"}:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{field} is required")
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"{field} is required",
+                code="missing",
+                field=field,
+            )
         setattr(update, field, value)
     if payload.visibility is not None:
         _choose_visibility(trip, update, payload.visibility)
     elif update.visibility != Visibility.PRIVATE and not update.body.strip():
         # An update cannot keep reaching visitors once its text is emptied.
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Write the text for visitors before sharing this update",
+            code="write_the_text_for_visitors_before_sharing_this_update",
         )
     session.commit()
     return _loaded(session, update.id)

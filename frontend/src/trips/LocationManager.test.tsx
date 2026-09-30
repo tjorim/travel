@@ -238,9 +238,15 @@ it("keeps a location that is still in use and shows why", async () => {
     <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
   );
   await screen.findByText(/Opgeslagen adres/);
-  api.failNext = { status: 409, body: { detail: "Deze locatie wordt nog gebruikt door: 1 bezoek." } };
+  api.failNext = {
+    status: 409,
+    body: {
+      detail: "dependency diagnostic",
+      errors: [{ code: "resource_in_use", path: [], params: { count: 1, visits: 1 } }],
+    },
+  };
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
-  expect(await screen.findByText("Deze locatie wordt nog gebruikt door: 1 bezoek.")).toBeTruthy();
+  expect(await screen.findByText(/wordt nog gebruikt door 1 onderdeel/)).toBeTruthy();
   expect(screen.getByRole("dialog")).toBeTruthy();
 });

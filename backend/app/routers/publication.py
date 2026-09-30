@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from ..audit import SYSTEM_ACTOR, record_audit_event, scope_fingerprint
 from ..auth import current_subject
 from ..capability import generate_token, verifier_for
 from ..database import get_session
+from ..errors import ApiException, service_exception
 from ..media.ranges import media_response
 from ..models import (
     AuditEvent,
@@ -72,7 +73,7 @@ def _apply_scope(session: Session, trip_id: str, subject: str, scope: ShareScope
     try:
         validate_scope(trip, scope_dict)
     except ScopeError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     return scope_dict
 
 
@@ -154,7 +155,9 @@ def unpublish_public_projection(
     owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
     if surface is None or surface.state != SurfaceState.PUBLISHED:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This trip is not published")
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT, detail="This trip is not published", code="this_trip_is_not_published"
+        )
     surface.state = SurfaceState.UNPUBLISHED
     details: dict = {"scope_version": scope_fingerprint(surface.scope)}
     if payload.reason:
@@ -201,7 +204,7 @@ def owned_link(session: Session, trip_id: str, subject: str, link_id: str) -> Sh
     owned_trip(session, trip_id, subject)
     link = session.scalar(select(ShareLink).where(ShareLink.id == link_id, ShareLink.trip_id == trip_id))
     if link is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Share link not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Share link not found", code="not_found")
     return link
 
 
@@ -252,7 +255,11 @@ def update_share_link(
 ) -> ShareLink:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state not in EDITABLE_LINK_STATES:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A revoked or expired link cannot be edited")
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A revoked or expired link cannot be edited",
+            code="a_revoked_or_expired_link_cannot_be_edited",
+        )
     if payload.label is not None:
         link.label = payload.label
     if payload.scope is not None:
@@ -298,8 +305,11 @@ def preview_share_navigation(
 def _preview_navigation(trip: Trip, scope: dict, local_id: str) -> JSONResponse:
     target = scoped_navigation_url(trip, scope, local_id)
     if target is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Navigation target not found",
+            headers=UNLISTED_HEADERS,
+            code="not_found",
         )
     return JSONResponse({"url": target}, headers=UNLISTED_HEADERS)
 
@@ -321,7 +331,11 @@ def activate_share_link(
 ) -> ShareLinkActivateResponse:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state != LinkState.DRAFT:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only a draft link can be activated")
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only a draft link can be activated",
+            code="only_a_draft_link_can_be_activated",
+        )
     _activate_link(link, payload.expires_in_days)
     details: dict = {
         "scope_version": scope_fingerprint(link.scope),
@@ -348,7 +362,11 @@ def revoke_share_link(
 ) -> ShareLink:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state != LinkState.ACTIVE:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only an active link can be revoked")
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only an active link can be revoked",
+            code="only_an_active_link_can_be_revoked",
+        )
     link.state = LinkState.REVOKED
     link.token = None
     link.revoked_at = datetime.now(UTC)
@@ -374,7 +392,11 @@ def rotate_share_link(
 ) -> ShareLinkActivateResponse:
     old_link = owned_link(session, trip_id, subject, link_id)
     if old_link.state != LinkState.ACTIVE:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only an active link can be rotated")
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only an active link can be rotated",
+            code="only_an_active_link_can_be_rotated",
+        )
     old_link.state = LinkState.REVOKED
     old_link.token = None
     old_link.revoked_at = datetime.now(UTC)
@@ -438,13 +460,19 @@ def list_public_trips(session: SessionDep, response: Response) -> list[PublicTri
 def get_public_trip(slug: str, session: SessionDep, response: Response) -> dict:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found", headers={"Cache-Control": "no-store"}
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Trip not found",
+            headers={"Cache-Control": "no-store"},
+            code="not_found",
         )
     trip = session.scalar(trip_query().where(Trip.id == surface.trip_id))
     if trip is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found", headers={"Cache-Control": "no-store"}
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Trip not found",
+            headers={"Cache-Control": "no-store"},
+            code="not_found",
         )
     # Scope edits and unpublishing must be visible on the next browser load.
     # A public intermediary cache would otherwise keep serving a withdrawn
@@ -457,11 +485,13 @@ def get_public_trip(slug: str, session: SessionDep, response: Response) -> dict:
 def get_public_navigation(slug: str, local_id: str, session: SessionDep) -> RedirectResponse:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found", code="not_found")
     trip = session.scalar(trip_query().where(Trip.id == surface.trip_id))
     target = scoped_navigation_url(trip, surface.scope, local_id) if trip is not None else None
     if target is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found")
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", code="not_found"
+        )
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
 
 
@@ -470,7 +500,9 @@ def _file_response(
 ) -> Response:
     resolved = scoped_file(trip, scope, local_id)
     if resolved is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers, code="not_found"
+        )
     kind, object_row = resolved
     media_type = object_row.content_type
     disposition = (
@@ -486,10 +518,14 @@ def get_public_file(slug: str, local_id: str, session: SessionDep, storage: Stor
     headers = {"Cache-Control": "no-store"}
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers, code="not_found"
+        )
     trip = session.scalar(trip_query().where(Trip.id == surface.trip_id))
     if trip is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers)
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers, code="not_found"
+        )
     return _file_response(trip, surface.scope, local_id, storage, headers, request)
 
 
@@ -499,7 +535,9 @@ def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict
     # path builds its own response and does not carry over `response.headers`
     # mutations, and a not-found/expired/revoked link must be just as
     # uncacheable and unindexable as a valid one.
-    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS)
+    not_found = ApiException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
+    )
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
@@ -526,7 +564,9 @@ def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict
 
 @delivery_router.get("/shared/{token}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
 def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> RedirectResponse:
-    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS)
+    not_found = ApiException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
+    )
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
@@ -546,15 +586,20 @@ def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> Red
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     target = scoped_navigation_url(trip, link.scope, local_id) if trip is not None else None
     if target is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Navigation target not found", headers=UNLISTED_HEADERS
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Navigation target not found",
+            headers=UNLISTED_HEADERS,
+            code="not_found",
         )
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)
 
 
 @delivery_router.get("/shared/{token}/files/{local_id}")
 def get_shared_file(token: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
-    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS)
+    not_found = ApiException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS, code="not_found"
+    )
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found

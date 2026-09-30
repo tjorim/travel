@@ -243,5 +243,5 @@ it("explains a failed trip load without hiding the retry path", async () => {
     vi.fn(() => json({ detail: "Database niet bereikbaar." }, 400)),
   );
   renderTrips();
-  expect((await screen.findAllByText("Database niet bereikbaar.")).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText("Je reizen konden niet worden geladen.")).length).toBeGreaterThan(0);
 });

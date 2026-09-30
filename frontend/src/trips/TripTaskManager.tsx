@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
@@ -59,11 +60,11 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   const alertsQuery = useTripResource(trip.id, "task-alerts");
   const tasks = tasksQuery.data ?? [];
   const alerts = alertsQuery.data ?? [];
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFeedback<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useFeedback<string | null>(null);
   const selected = tasks.find((task) => task.id === selectedId) ?? null;
   const editing = editingId !== undefined;
   useDialogFocus(focusId, (id) => {
@@ -170,7 +171,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         : tasksQuery.isPending
           ? "Laad je private takenlijst…"
           : "Openstaande boekingen en voorbereidingen blijven een private lijst.");
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorMessage(error, fallback));
+  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
   const openTasks = tasks
     .filter((task) => !task.completed_at)
     .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
@@ -189,7 +190,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       },
       (error: unknown) => {
         setConfirmDelete(false);
-        setDeleteError(errorMessage(error, "De taak kon niet worden verwijderd."));
+        setDeleteError(errorNotice(error, "De taak kon niet worden verwijderd."));
       },
     );
   }

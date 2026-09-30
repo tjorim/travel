@@ -9,9 +9,10 @@ import re
 from collections.abc import Iterator
 from typing import BinaryIO
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi.responses import Response, StreamingResponse
 
+from ..errors import ApiException
 from ..models import StoredObject
 from ..storage import ObjectStorage
 
@@ -63,7 +64,9 @@ def media_response(storage: ObjectStorage, stored: StoredObject, request: Reques
             _chunks(handle, 0, size), media_type=content_type, headers={**common, "Content-Length": str(size)}
         )
     match = re.fullmatch(r"bytes=(\d*)-(\d*)", requested)
-    unsatisfiable = HTTPException(status_code=416, headers={**common, "Content-Range": f"bytes */{size}"})
+    unsatisfiable = ApiException(
+        status_code=416, headers={**common, "Content-Range": f"bytes */{size}"}, code="range_unsatisfiable"
+    )
     if not match or not size or not any(match.groups()):
         handle.close()
         raise unsatisfiable

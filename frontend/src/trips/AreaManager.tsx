@@ -1,3 +1,4 @@
+import { errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
@@ -155,7 +156,7 @@ export function AreaManager({
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
-        dialog.setError(errorMessage(error, "Het gebied kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, "Het gebied kon niet worden verwijderd."));
       },
     );
   }

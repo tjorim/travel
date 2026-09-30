@@ -81,7 +81,7 @@ archive-content import in #40.
 - [ ] [#284](https://github.com/tjorim/travel/issues/284) Add the Paraglide
       locale foundation and bounded Dutch/English shared-shell slice; coordinate
       early preferences with #278 and Base UI controls with #279.
-- [ ] [#285](https://github.com/tjorim/travel/issues/285) Add stable API error
+- [x] [#285](https://github.com/tjorim/travel/issues/285) Add stable API error
       codes and render-time localized feedback before completing extraction.
 - [ ] [#286](https://github.com/tjorim/travel/issues/286) Translate owner trip
       workspaces, shared editors, capture and map controls.

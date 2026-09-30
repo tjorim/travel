@@ -193,9 +193,12 @@ it("adds an entry after validating the required fields, and keeps the input when
 
   fireEvent.change(screen.getByLabelText("Label"), { target: { value: "Huisarts" } });
   fireEvent.change(screen.getByLabelText("Waarde"), { target: { value: "+32 3 000 00 00" } });
-  state.failNext = { status: 422, body: { detail: [{ loc: ["body", "value"], msg: "Ongeldig nummer." }] } };
+  state.failNext = {
+    status: 422,
+    body: { detail: "diagnostic", errors: [{ code: "invalid_input", path: ["body", "value"], params: {} }] },
+  };
   fireEvent.click(screen.getByRole("button", { name: "Toevoegen" }));
-  await screen.findByText("Ongeldig nummer.", { selector: ".field-error" });
+  await screen.findByText("Deze invoer is niet geldig.", { selector: ".field-error" });
   expect((screen.getByLabelText("Label") as HTMLInputElement).value).toBe("Huisarts");
 
   fireEvent.click(screen.getByRole("button", { name: "Toevoegen" }));

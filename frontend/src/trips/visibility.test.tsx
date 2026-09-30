@@ -32,7 +32,13 @@ it("offers the same three choices for every kind and saves the chosen one at onc
 
 it("shows the server's reason when a record cannot be shared yet", async () => {
   api.on("PUT", /\/visibility\/location\/e1$/, (body) => body);
-  api.failNext = { status: 422, body: { detail: "Give this location a public name before sharing it" } };
+  api.failNext = {
+    status: 422,
+    body: {
+      detail: "sharing diagnostic",
+      errors: [{ code: "give_this_location_a_public_name_before_sharing_it", path: [], params: {} }],
+    },
+  };
   renderWithOwner(<VisibilityControl tripId="trip" kind="location" id="e1" value="private" name="Hotel" />);
   chooseOption("Zichtbaarheid van Hotel", "Iedereen — alle bezoekers");
   expect(await screen.findByRole("alert")).toBeTruthy();

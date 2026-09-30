@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added stable API error descriptors with safe validation paths/constraints and
+  provider diagnostics. Owner and visitor feedback renders Dutch/English typed
+  messages from retained descriptors, including locale switches while errors
+  remain visible; HTTP statuses and privacy headers are preserved (#285).
+
 - Added the Dutch/English Paraglide locale foundation, device-local language
   selectors and translated owner/visitor shells, Settings and appearance controls.
   Switching preserves router, cache, dirty editors and uploads; remaining screens

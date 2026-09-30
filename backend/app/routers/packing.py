@@ -2,12 +2,13 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException
 from ..models import PackingBag, PackingItem, PackingList, PackingTemplate, Trip
 from ..schemas import (
     PackingBagCreate,
@@ -35,7 +36,7 @@ def owned_list(trip_id: str, list_id: str, session: Session, subject: str) -> Pa
     owned_trip(session, trip_id, subject)
     result = session.scalar(select(PackingList).where(PackingList.id == list_id, PackingList.trip_id == trip_id))
     if result is None:
-        raise HTTPException(404, "Packing list not found")
+        raise ApiException(404, "Packing list not found", code="not_found")
     return result
 
 
@@ -43,7 +44,7 @@ def owned_bag(trip_id: str, list_id: str, bag_id: str, session: Session, subject
     owned_list(trip_id, list_id, session, subject)
     result = session.scalar(select(PackingBag).where(PackingBag.id == bag_id, PackingBag.list_id == list_id))
     if result is None:
-        raise HTTPException(404, "Packing bag not found")
+        raise ApiException(404, "Packing bag not found", code="not_found")
     return result
 
 
@@ -51,7 +52,7 @@ def owned_item(trip_id: str, list_id: str, item_id: str, session: Session, subje
     owned_list(trip_id, list_id, session, subject)
     result = session.scalar(select(PackingItem).where(PackingItem.id == item_id, PackingItem.list_id == list_id))
     if result is None:
-        raise HTTPException(404, "Packing item not found")
+        raise ApiException(404, "Packing item not found", code="not_found")
     return result
 
 
@@ -183,7 +184,7 @@ def create_packing_list(
 ) -> PackingList:
     owned_trip(session, trip_id, subject)
     if payload.copy_from_list_id and payload.template_ids:
-        raise HTTPException(422, "Choose a source list or templates")
+        raise ApiException(422, "Choose a source list or templates", code="choose_a_source_list_or_templates")
     snapshots = []
     if payload.copy_from_list_id:
         source = session.scalar(
@@ -192,16 +193,16 @@ def create_packing_list(
             .where(PackingList.id == payload.copy_from_list_id, Trip.owner_subject == subject)
         )
         if source is None:
-            raise HTTPException(404, "Source packing list not found")
+            raise ApiException(404, "Source packing list not found", code="not_found")
         snapshots.append(_snapshot(session, source.id))
     if len(set(payload.template_ids)) != len(payload.template_ids):
-        raise HTTPException(422, "Choose each template once")
+        raise ApiException(422, "Choose each template once", code="choose_each_template_once")
     for template_id in payload.template_ids:
         template = session.scalar(
             select(PackingTemplate).where(PackingTemplate.id == template_id, PackingTemplate.owner_subject == subject)
         )
         if template is None:
-            raise HTTPException(404, "Packing template not found")
+            raise ApiException(404, "Packing template not found", code="not_found")
         snapshots.append(template.snapshot)
     result = PackingList(trip_id=trip_id, name=payload.name)
     session.add(result)
@@ -296,7 +297,7 @@ def delete_packing_template(template_id: str, session: SessionDep, subject: Subj
         select(PackingTemplate).where(PackingTemplate.id == template_id, PackingTemplate.owner_subject == subject)
     )
     if template is None:
-        raise HTTPException(404, "Packing template not found")
+        raise ApiException(404, "Packing template not found", code="not_found")
     session.delete(template)
     session.commit()
     return Response(status_code=204)
@@ -359,7 +360,7 @@ def update_packing_bag(
     result = owned_bag(trip_id, list_id, bag_id, session, subject)
     values = payload.model_dump(exclude_unset=True, exclude={"position"})
     if values.get("name", result.name) is None:
-        raise HTTPException(422, "name is required")
+        raise ApiException(422, "name is required", code="missing", field="name")
     for field, value in values.items():
         setattr(result, field, value)
     if payload.position is not None:
@@ -401,7 +402,7 @@ def _new_item(list_id: str, payload: PackingItemCreate, session: Session) -> Pac
         and session.scalar(select(PackingBag.id).where(PackingBag.id == payload.bag_id, PackingBag.list_id == list_id))
         is None
     ):
-        raise HTTPException(422, "Bag must belong to this packing list")
+        raise ApiException(422, "Bag must belong to this packing list", code="bag_must_belong_to_this_packing_list")
     values = payload.model_dump(exclude={"position"})
     result = PackingItem(list_id=list_id, position=0, **values)
     session.add(result)
@@ -426,7 +427,7 @@ def batch_create_packing_items(
 ) -> list[PackingItem]:
     owned_list(trip_id, list_id, session, subject)
     if not 1 <= len(payload) <= 100:
-        raise HTTPException(422, "Batch must contain 1 to 100 items")
+        raise ApiException(422, "Batch must contain 1 to 100 items", code="batch_must_contain_1_to_100_items")
     result = [_new_item(list_id, item, session) for item in payload]
     session.commit()
     return result
@@ -445,16 +446,20 @@ def update_packing_item(
     values = payload.model_dump(exclude_unset=True, exclude={"bag_id", "position"})
     for field in ("label", "quantity", "packed", "essential", "last_minute", "valuable", "cabin_only", "checked_only"):
         if field in values and values[field] is None:
-            raise HTTPException(422, f"{field} is required")
+            raise ApiException(422, f"{field} is required", code="missing", field=field)
     if values.get("cabin_only", result.cabin_only) and values.get("checked_only", result.checked_only):
-        raise HTTPException(422, "An item cannot be both cabin-only and checked-only")
+        raise ApiException(
+            422,
+            "An item cannot be both cabin-only and checked-only",
+            code="an_item_cannot_be_both_cabin_only_and_checked_only",
+        )
     target_bag = payload.bag_id if "bag_id" in payload.model_fields_set else result.bag_id
     if (
         target_bag is not None
         and session.scalar(select(PackingBag.id).where(PackingBag.id == target_bag, PackingBag.list_id == list_id))
         is None
     ):
-        raise HTTPException(422, "Bag must belong to this packing list")
+        raise ApiException(422, "Bag must belong to this packing list", code="bag_must_belong_to_this_packing_list")
     if target_bag != result.bag_id:
         previous = _items(session, list_id, result.bag_id)
         result.bag_id = target_bag

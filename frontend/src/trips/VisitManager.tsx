@@ -1,5 +1,6 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 
 import { CheckboxField, RecordForm, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
@@ -175,7 +176,7 @@ export function VisitManager({
   const dialog = useRecordDialog(visits);
   useDialogFocus(focusId, dialog.inspect);
   const { selected, editing, editingId } = dialog;
-  const [message, setMessage] = useState(
+  const [message, setMessage] = useFeedback<string>(
     "Een bezoek is een stop van je reis: een gebied of een locatie, en wanneer. Ze blijft privé tot je kiest wie ze ziet; tijden deel je alleen als je dat zelf aanvinkt.",
   );
   // A place is only rewritten when the editor changed it.
@@ -257,10 +258,10 @@ export function VisitManager({
     load(fromVisit(visit));
     dialog.edit(visit.id);
   }
-  const fail = (fallback: string) => (error: unknown) => setMessage(errorMessage(error, fallback));
+  const fail = (fallback: string) => (error: unknown) => setMessage(errorNotice(error, fallback));
   const failInDialog = (fallback: string) => (error: unknown) => {
     dialog.setConfirmDelete(false);
-    dialog.setError(errorMessage(error, fallback));
+    dialog.setError(errorNotice(error, fallback));
   };
 
   /** The map point for a visit: its location when that has a point, else its area. */

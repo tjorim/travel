@@ -1,9 +1,10 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
 import { useRef, useState } from "react";
 
 import { AsyncSearchSelect } from "../forms/fields";
-import { errorMessage } from "../query/api";
+
 import { tripPath, useLocationSearch, useOwnerMutation } from "../query/owner-queries";
 import { locationName, type Location, type PlaceSearchResponse, type PlaceSearchResult } from "../tracker-model";
 import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
@@ -33,7 +34,7 @@ export function PlaceSearchField({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResponse | null>(null);
-  const [state, setState] = useState("");
+  const [state, setState] = useFeedback<string>("");
   const [existingChoice, setExistingChoice] = useState("");
   const existingResults = useRef(new Map<string, Location>());
   const searchExisting = useLocationSearch(tripId);
@@ -63,7 +64,7 @@ export function PlaceSearchField({
             : "Geen locaties gevonden.",
         );
       },
-      (error: unknown) => setState(errorMessage(error, "Locaties zoeken is mislukt.")),
+      (error: unknown) => setState(errorNotice(error, "Locaties zoeken is mislukt.")),
     );
   }
   function choose(result: PlaceSearchResult) {

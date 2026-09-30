@@ -1,3 +1,4 @@
+import { errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useState } from "react";
 
@@ -6,7 +7,7 @@ import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../for
 import { useRecordForm } from "../forms/useRecordForm";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
-import { errorMessage } from "../query/api";
+
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import {
   locationName,
@@ -255,7 +256,7 @@ export function LocationManager({
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
-        dialog.setError(errorMessage(error, "De locatie kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, "De locatie kon niet worden verwijderd."));
       },
     );
   }

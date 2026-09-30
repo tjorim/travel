@@ -16,13 +16,14 @@ from urllib.parse import urlsplit
 import httpx
 
 from ..config import Settings, settings
+from ..errors import ServiceError
 from ..schemas import PlaceSearchResponse, PlaceSearchResult
 
 NOMINATIM_ATTRIBUTION = "© OpenStreetMap contributors"
 NOMINATIM_ATTRIBUTION_URL = "https://www.openstreetmap.org/copyright"
 
 
-class PlaceSearchError(RuntimeError):
+class PlaceSearchError(ServiceError, RuntimeError):
     """A provider failure that deliberately contains no search query."""
 
 
@@ -64,7 +65,7 @@ class NominatimSearchProvider:
 
     def _request(self, path: str, params: dict[str, str | int | float]) -> object:
         if urlsplit(self.config.osm_place_search_api_base).scheme != "https":
-            raise PlaceSearchError("Place search provider must use HTTPS")
+            raise PlaceSearchError("Place search provider must use HTTPS", code="place_search_provider_must_use_https")
         try:
             response = httpx.get(
                 f"{self.config.osm_place_search_api_base.rstrip('/')}/{path}",
@@ -75,7 +76,9 @@ class NominatimSearchProvider:
             response.raise_for_status()
             return response.json()
         except (httpx.HTTPError, ValueError) as error:
-            raise PlaceSearchError("Place search provider is unavailable") from error
+            raise PlaceSearchError(
+                "Place search provider is unavailable", code="place_search_provider_is_unavailable"
+            ) from error
 
     def _result(self, item: object) -> PlaceSearchResult | None:
         if not isinstance(item, dict) or item.get("osm_type") not in {"node", "way", "relation"}:
@@ -102,7 +105,10 @@ class NominatimSearchProvider:
     def search(self, query: str) -> list[PlaceSearchResult]:
         payload = self._request("search", {"q": query, "limit": 10})
         if not isinstance(payload, list):
-            raise PlaceSearchError("Place search provider returned an invalid response")
+            raise PlaceSearchError(
+                "Place search provider returned an invalid response",
+                code="place_search_provider_returned_an_invalid_response",
+            )
         return [result for item in payload if (result := self._result(item)) is not None]
 
     def reverse(self, latitude: float, longitude: float) -> PlaceSearchResult | None:
@@ -117,10 +123,14 @@ class UnavailablePlaceSearchProvider:
     attribution_url = ""
 
     def search(self, query: str) -> list[PlaceSearchResult]:
-        raise PlaceSearchError("Configured place search provider is unavailable")
+        raise PlaceSearchError(
+            "Configured place search provider is unavailable", code="configured_place_search_provider_is_unavailable"
+        )
 
     def reverse(self, latitude: float, longitude: float) -> PlaceSearchResult | None:
-        raise PlaceSearchError("Configured place search provider is unavailable")
+        raise PlaceSearchError(
+            "Configured place search provider is unavailable", code="configured_place_search_provider_is_unavailable"
+        )
 
 
 @dataclass

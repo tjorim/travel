@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { errorNotice, useFeedback } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
@@ -30,7 +32,7 @@ import {
 import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 const timestamp = formatInstant;
-const SAVE_FALLBACK = "De reisupdate kon niet worden opgeslagen. Je lokale concept blijft bewaard.";
+const SAVE_FALLBACK = m.api_capture_save;
 
 export type CaptureDialogProps = {
   open: boolean;
@@ -59,10 +61,10 @@ export function CaptureDialog({
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const [connection, setConnection] = useState(navigator.onLine);
   const [draftState, setDraftState] = useState("Concept laden…");
-  const [saveState, setSaveState] = useState("");
+  const [saveState, setSaveState] = useFeedback<string>("");
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeResults, setPlaceResults] = useState<PlaceSearchResponse | null>(null);
-  const [placeState, setPlaceState] = useState("");
+  const [placeState, setPlaceState] = useFeedback<string>("");
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
   const [candidateGps, setCandidateGps] = useState<{ latitude: number; longitude: number } | null>(null);
   const initialized = useRef(false);
@@ -285,7 +287,7 @@ export function CaptureDialog({
           result.results.length ? "Kies een resultaat. Er wordt nog niets opgeslagen." : "Geen locaties gevonden.",
         );
       },
-      (error: unknown) => setPlaceState(errorMessage(error, "Locaties zoeken is mislukt.")),
+      (error: unknown) => setPlaceState(errorNotice(error, "Locaties zoeken is mislukt.")),
     );
   }
 
@@ -301,7 +303,7 @@ export function CaptureDialog({
             : "Voor deze fotolocatie is geen plaats gevonden.",
         );
       },
-      (error: unknown) => setPlaceState(errorMessage(error, "Deze fotolocatie kon niet worden opgezocht.")),
+      (error: unknown) => setPlaceState(errorNotice(error, "Deze fotolocatie kon niet worden opgezocht.")),
     );
   }
 
@@ -322,7 +324,7 @@ export function CaptureDialog({
         startNew();
         setDraftState("Reisupdate verwijderd.");
       },
-      (error: unknown) => setSaveState(errorMessage(error, "De reisupdate kon niet worden verwijderd.")),
+      (error: unknown) => setSaveState(errorNotice(error, "De reisupdate kon niet worden verwijderd.")),
     );
   }
 

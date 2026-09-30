@@ -110,9 +110,15 @@ it("keeps the typed update after a rejected save and marks the field", async () 
   expect(screen.getByRole("heading", { name: "Reisupdate maken" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw verhaal" } });
   fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
-  api.failNext = { status: 422, body: { detail: [{ loc: ["body", "title"], msg: "Deze titel bestaat al." }] } };
+  api.failNext = {
+    status: 422,
+    body: {
+      detail: "diagnostic",
+      errors: [{ code: "string_too_long", path: ["body", "title"], params: { max_length: 120 } }],
+    },
+  };
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
-  await screen.findByText("Deze titel bestaat al.", { selector: ".field-error" });
+  await screen.findByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" });
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Nieuw verhaal");
 });
 

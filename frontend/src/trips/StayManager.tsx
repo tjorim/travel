@@ -1,3 +1,4 @@
+import { errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useRef, useState } from "react";
 
@@ -256,7 +257,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        stayDialog.setError(errorMessage(error, "Het verblijf kon niet worden verwijderd."));
+        stayDialog.setError(errorNotice(error, "Het verblijf kon niet worden verwijderd."));
       },
     );
   }

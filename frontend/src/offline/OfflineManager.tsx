@@ -1,3 +1,4 @@
+import { errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
@@ -23,7 +24,7 @@ const formatMoment = formatInstant;
 export function OfflineManager() {
   const confirmation = useConfirmation();
   const offline = useOfflineCopies();
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useFeedback<string>("");
   const [viewingText, setViewingText] = useState<{ title: string; text: string } | null>(null);
   const [viewingPacking, setViewingPacking] = useState<OfflineCopySummary | null>(null);
 
@@ -43,7 +44,7 @@ export function OfflineManager() {
       }
       openBlobInNewTab(blob);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "De offline kopie kon niet worden geopend.");
+      setMessage(errorNotice(error, "De offline kopie kon niet worden geopend."));
     }
   }
 

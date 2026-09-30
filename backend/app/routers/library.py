@@ -8,13 +8,14 @@ public/unlisted trip response.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException, service_exception
 from ..library.service import LibraryError, delete_owner_document, direct_upload
 from ..media.ranges import private_original_headers
 from ..models import DocumentKind, EmergencyInfoEntry, OwnerDocument
@@ -60,7 +61,7 @@ def owned_library_document(session: Session, subject: str, document_id: str) -> 
         )
     )
     if document is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found", code="not_found")
     return document
 
 
@@ -69,7 +70,9 @@ def owned_emergency_entry(session: Session, subject: str, entry_id: str) -> Emer
         select(EmergencyInfoEntry).where(EmergencyInfoEntry.id == entry_id, EmergencyInfoEntry.owner_subject == subject)
     )
     if entry is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emergency info entry not found")
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Emergency info entry not found", code="not_found"
+        )
     return entry
 
 
@@ -87,7 +90,11 @@ def upload_library_document(
     if linked_trip_id:
         owned_trip(session, linked_trip_id, subject)
     if not file.content_type:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A content type is required")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A content type is required",
+            code="a_content_type_is_required",
+        )
     try:
         document, created = direct_upload(
             session,
@@ -101,7 +108,7 @@ def upload_library_document(
             linked_trip_id=linked_trip_id,
         )
     except LibraryError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return _document_response(document)
 

@@ -10,17 +10,20 @@ returns bytes for the service layer to hash, store, and record, so a
 provider URL or token can never become the canonical file reference.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import wraps
 from typing import Protocol
 
 import httpx
 
 from ..config import settings
+from ..errors import ServiceError
 from ..models import ImportProvider
 
 
-class ProviderError(RuntimeError):
+class ProviderError(ServiceError, RuntimeError):
     """One provider call failed. Callers record this on the affected
     `ImportRecord` (or refuse to start a session) rather than raising past a
     whole-session import — a single bad item must not block the rest."""
@@ -66,8 +69,27 @@ class MediaProvider(Protocol):
 
 def _require_token(access_token: str | None) -> str:
     if not access_token:
-        raise ProviderUnavailableError("The owner has not connected this provider")
+        raise ProviderUnavailableError(
+            "The owner has not connected this provider", code="the_owner_has_not_connected_this_provider"
+        )
     return access_token
+
+
+def safe_provider_response[**P, R](call: Callable[P, R]) -> Callable[P, R]:
+    """Malformed remote data is a provider failure, without echoing its contents."""
+
+    @wraps(call)
+    def checked(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return call(*args, **kwargs)
+        except ServiceError:
+            raise
+        except (ValueError, KeyError, TypeError, AttributeError) as error:
+            raise ProviderError(
+                "Media provider returned an invalid response", code="provider_invalid_response"
+            ) from error
+
+    return checked
 
 
 class GooglePhotosPickerProvider:
@@ -90,6 +112,7 @@ class GooglePhotosPickerProvider:
             base_url=self.api_base, headers={"Authorization": f"Bearer {access_token}"}, timeout=30.0
         )
 
+    @safe_provider_response
     def create_session(self, *, access_token: str) -> ProviderSession:
         _require_token(access_token)
         try:
@@ -98,7 +121,7 @@ class GooglePhotosPickerProvider:
                 response.raise_for_status()
                 body = response.json()
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not start a Google Photos Picker session: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
         expires_raw = body.get("expireTime")
         return ProviderSession(
             provider_session_id=body["id"],
@@ -106,6 +129,7 @@ class GooglePhotosPickerProvider:
             expires_at=datetime.fromisoformat(expires_raw.replace("Z", "+00:00")) if expires_raw else None,
         )
 
+    @safe_provider_response
     def poll_session(self, *, access_token: str, provider_session_id: str) -> ProviderSessionStatus:
         _require_token(access_token)
         try:
@@ -114,9 +138,10 @@ class GooglePhotosPickerProvider:
                 response.raise_for_status()
                 body = response.json()
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not check the Google Photos Picker session: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
         return ProviderSessionStatus(ready=bool(body.get("mediaItemsSet", False)))
 
+    @safe_provider_response
     def list_selected_items(self, *, access_token: str, provider_session_id: str) -> list[ProviderMediaItem]:
         _require_token(access_token)
         items: list[ProviderMediaItem] = []
@@ -147,9 +172,10 @@ class GooglePhotosPickerProvider:
                     if not page_token:
                         break
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not list the selected Google Photos items: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
         return items
 
+    @safe_provider_response
     def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> bytes:
         _require_token(access_token)
         # The Picker API media-file record used to build `item` carries a
@@ -163,13 +189,13 @@ class GooglePhotosPickerProvider:
                 response.raise_for_status()
                 base_url = response.json().get("mediaFile", {}).get("baseUrl")
                 if not base_url:
-                    raise ProviderError(f"Google Photos item {item.provider_item_id} has no download URL")
+                    raise ProviderError("Media provider request failed", code="provider_failed")
                 suffix = "=dv" if item.content_type.startswith("video/") else "=d"
                 download = http.get(base_url + suffix)
                 download.raise_for_status()
                 return download.content
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not download Google Photos item {item.provider_item_id}: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
 
 
 class GoProCloudProvider:
@@ -191,13 +217,16 @@ class GoProCloudProvider:
 
     def _ensure_enabled(self) -> None:
         if not settings.gopro_cloud_enabled:
-            raise ProviderUnavailableError("GoPro Cloud import is not enabled")
+            raise ProviderUnavailableError(
+                "GoPro Cloud import is not enabled", code="gopro_cloud_import_is_not_enabled"
+            )
 
     def _http(self, access_token: str) -> httpx.Client:
         return self._client or httpx.Client(
             base_url=self.api_base, headers={"Authorization": f"Bearer {access_token}"}, timeout=30.0
         )
 
+    @safe_provider_response
     def create_session(self, *, access_token: str) -> ProviderSession:
         self._ensure_enabled()
         _require_token(access_token)
@@ -207,7 +236,7 @@ class GoProCloudProvider:
                 response.raise_for_status()
                 body = response.json()
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not start a GoPro Cloud session: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
         expires_raw = body.get("expireTime")
         return ProviderSession(
             provider_session_id=body["id"],
@@ -215,6 +244,7 @@ class GoProCloudProvider:
             expires_at=datetime.fromisoformat(expires_raw.replace("Z", "+00:00")) if expires_raw else None,
         )
 
+    @safe_provider_response
     def poll_session(self, *, access_token: str, provider_session_id: str) -> ProviderSessionStatus:
         self._ensure_enabled()
         _require_token(access_token)
@@ -224,9 +254,10 @@ class GoProCloudProvider:
                 response.raise_for_status()
                 body = response.json()
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not check the GoPro Cloud session: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
         return ProviderSessionStatus(ready=bool(body.get("mediaItemsSet", False)))
 
+    @safe_provider_response
     def list_selected_items(self, *, access_token: str, provider_session_id: str) -> list[ProviderMediaItem]:
         self._ensure_enabled()
         _require_token(access_token)
@@ -236,7 +267,7 @@ class GoProCloudProvider:
                 response.raise_for_status()
                 body = response.json()
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not list the selected GoPro Cloud items: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
         items = []
         for raw in body.get("mediaItems", []):
             create_time = raw.get("createTime")
@@ -250,6 +281,7 @@ class GoProCloudProvider:
             )
         return items
 
+    @safe_provider_response
     def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> bytes:
         self._ensure_enabled()
         _require_token(access_token)
@@ -259,7 +291,7 @@ class GoProCloudProvider:
                 response.raise_for_status()
                 return response.content
         except httpx.HTTPError as error:
-            raise ProviderError(f"Could not download GoPro Cloud item {item.provider_item_id}: {error}") from error
+            raise ProviderError("Media provider request failed", code="provider_failed") from error
 
 
 def provider_available(name: ImportProvider) -> bool:
@@ -280,7 +312,7 @@ def provider_for(name: ImportProvider) -> MediaProvider:
         return GooglePhotosPickerProvider()
     if name == ImportProvider.GOPRO_CLOUD:
         return GoProCloudProvider()
-    raise ValueError(f"{name} is not an importable provider")
+    raise ServiceError("Not an importable provider", code="not_an_importable_provider")
 
 
 def get_provider_resolver():

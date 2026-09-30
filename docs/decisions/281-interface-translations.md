@@ -2,6 +2,7 @@
 
 Planning inventory audited against this checkout on 2026-09-29. This records
 implementation decisions; the foundation slice (#284) now ships shared-shell translations.
+The stable API error contract (#285) now ships; see [API error descriptors](../api-errors.md).
 The retired `dist/` archive is excluded. Catalogues contain application copy only.
 
 ## Decisions

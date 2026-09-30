@@ -3,12 +3,13 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException
 from ..models import Location, Stay, Trip
 from ..schemas import LocationInput, StayCreate, StayResponse, StayUpdate
 from .placement import area_location, location_from_input, selected_area
@@ -27,7 +28,7 @@ def _stay_query():
 def owned_stay(trip: Trip, stay_id: str) -> Stay:
     stay = next((item for item in trip.stays if item.id == stay_id), None)
     if stay is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found", code="not_found")
     return stay
 
 
@@ -40,15 +41,20 @@ def stay_location(session: Session, trip_id: str, area_id: str | None, location:
         return location_from_input(session, trip_id, location)
     area_id = location.area_id if location is not None else area_id
     if area_id is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Say where this stay is")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Say where this stay is",
+            code="say_where_this_stay_is",
+        )
     return area_location(session, trip_id, selected_area(session, trip_id, area_id))
 
 
 def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
     if check_out_date <= check_in_date:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="A stay covers at least one night: check out after the check-in date",
+            code="a_stay_covers_at_least_one_night_check_out_after_the_check_in_date",
         )
 
 
@@ -84,9 +90,10 @@ def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: Sessio
     fields = payload.model_fields_set
     if "location" in fields and payload.location is not None:
         if payload.area_id is not None:
-            raise HTTPException(
+            raise ApiException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Give an area or a location, not both; a location names its own area",
+                code="give_an_area_or_a_location_not_both_a_location_names_its_own_area",
             )
         stay.location = stay_location(session, trip.id, None, payload.location)
     elif "area_id" in fields and payload.area_id is not None:
@@ -95,11 +102,20 @@ def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: Sessio
     elif "location" in fields:  # cleared: keep the area, forget the accommodation
         stay.location = area_location(session, trip.id, stay.location.area)
     elif "area_id" in fields:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="A stay needs an area")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A stay needs an area",
+            code="a_stay_needs_an_area",
+        )
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"})
     for required in ("check_in_date", "check_out_date", "status"):
         if required in values and values[required] is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"{required} is required")
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"{required} is required",
+                code="missing",
+                field=required,
+            )
     if "website_url" in values and values["website_url"] is not None:
         values["website_url"] = str(values["website_url"])
     validate_stay_nights(

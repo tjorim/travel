@@ -3,7 +3,7 @@
 from math import asin, cos, radians, sin, sqrt
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from timezonefinder import TimezoneFinder
@@ -12,6 +12,7 @@ from ..access import receivers, trip_audiences
 from ..audit import record_audit_event
 from ..auth import current_subject
 from ..database import get_session
+from ..errors import ApiException, service_exception
 from ..models import Area, AuditEventKind, AuditTargetType, Location, Route, TravelUpdate, Visit
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
 from ..schemas import (
@@ -62,7 +63,7 @@ def suggest_area(
     try:
         result = service.reverse(payload.latitude, payload.longitude).results
     except PlaceSearchError as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+        raise service_exception(status.HTTP_503_SERVICE_UNAVAILABLE, error) from error
     place = result[0] if result else None
     label = (
         payload.city or (place.locality or place.admin_area if place else None) or "Nieuw gebied"
@@ -89,7 +90,7 @@ def suggest_area_endpoint(
 def owned_area(session: Session, trip_id: str, area_id: str) -> Area:
     area = session.scalar(select(Area).where(Area.id == area_id, Area.trip_id == trip_id))
     if area is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Area not found")
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Area not found", code="not_found")
     return area
 
 
@@ -118,7 +119,9 @@ def save_area(trip_id: str, payload: AreaInput, session: SessionDep, subject: Su
     """Create an owner-selected area without treating it as a visit."""
     trip = owned_trip(session, trip_id, subject)
     if (payload.latitude is None) != (payload.longitude is None):
-        raise HTTPException(status_code=422, detail="Supply both coordinates or neither")
+        raise ApiException(
+            status_code=422, detail="Supply both coordinates or neither", code="supply_both_coordinates_or_neither"
+        )
     area = Area(trip_id=trip.id, **payload.model_dump())
     session.add(area)
     session.commit()
@@ -132,12 +135,16 @@ def update_area(trip_id: str, area_id: str, payload: AreaUpdate, session: Sessio
     area = owned_area(session, trip.id, area_id)
     values = payload.model_dump(exclude_unset=True)
     if "label" in values and values["label"] is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="label is required")
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="label is required", code="missing", field="label"
+        )
     for field, value in values.items():
         setattr(area, field, value)
     if (area.latitude is None) != (area.longitude is None):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Supply both coordinates or neither"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Supply both coordinates or neither",
+            code="supply_both_coordinates_or_neither",
         )
     if area.latitude is not None and area.longitude is not None:
         area.latitude = round(area.latitude, 2)
@@ -146,7 +153,7 @@ def update_area(trip_id: str, area_id: str, payload: AreaUpdate, session: Sessio
     return area
 
 
-def _area_references(session: Session, trip_id: str, area_id: str) -> list[str]:
+def _area_references(session: Session, trip_id: str, area_id: str) -> tuple[list[str], dict[str, int]]:
     """Return the owner-facing records that must be changed before deletion.
 
     An area is deliberately reusable. Deleting it must never silently remove a
@@ -162,7 +169,10 @@ def _area_references(session: Session, trip_id: str, area_id: str) -> list[str]:
         ("locatie", "locaties", count(Location, Location.area_id == area_id)),
         ("route", "routes", count(Route, (Route.departure_area_id == area_id) | (Route.arrival_area_id == area_id))),
     )
-    return [f"{number} {singular if number == 1 else plural}" for singular, plural, number in references if number]
+    counts = dict(zip(("visits", "travel_updates", "locations", "routes"), (row[2] for row in references), strict=True))
+    return [
+        f"{number} {singular if number == 1 else plural}" for singular, plural, number in references if number
+    ], counts
 
 
 @router.delete("/areas/{area_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -170,11 +180,13 @@ def delete_area(trip_id: str, area_id: str, session: SessionDep, subject: Subjec
     """Delete an unused owner-authored area without harming its users."""
     trip = owned_trip(session, trip_id, subject)
     area = owned_area(session, trip.id, area_id)
-    references = _area_references(session, trip.id, area.id)
+    references, counts = _area_references(session, trip.id, area.id)
     if references:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Dit gebied wordt nog gebruikt door: {', '.join(references)}. Pas of verwijder die eerst.",
+            code="resource_in_use",
+            params={**counts, "count": sum(counts.values())},
         )
     session.delete(area)
     session.commit()
@@ -207,8 +219,10 @@ def merge_areas(trip_id: str, payload: MergeRequest, session: Session, subject: 
     keep = owned_area(session, trip.id, payload.keep_id)
     duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
     if keep.id in duplicate_ids:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="keep_id cannot also be a duplicate"
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="keep_id cannot also be a duplicate",
+            code="keep_id_cannot_also_be_a_duplicate",
         )
     duplicates = [owned_area(session, trip.id, duplicate_id) for duplicate_id in duplicate_ids]
     audiences = trip_audiences(session, trip.id)

@@ -24,10 +24,12 @@ def _store_owner_bytes(
     session: Session, storage: ObjectStorage, *, owner_subject: str, data: bytes, content_type: str
 ) -> OwnerStoredObject:
     if not data:
-        raise LibraryError("Het bestand is leeg.")
+        raise LibraryError("Het bestand is leeg.", code="file_empty")
     if len(data) > settings.media_max_upload_bytes:
         raise LibraryError(
-            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB."
+            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB.",
+            code="file_too_large",
+            params={"max_length": settings.media_max_upload_bytes // (1024 * 1024)},
         )
 
     digest = sha256_hex(data)
@@ -60,7 +62,10 @@ def _store_owner_bytes(
         session.add(obj)
     session.flush()
     if not verified:
-        raise LibraryError("Stored object failed checksum verification after write")
+        raise LibraryError(
+            "Stored object failed checksum verification after write",
+            code="stored_object_failed_checksum_verification_after_write",
+        )
     return obj
 
 

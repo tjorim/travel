@@ -1,7 +1,8 @@
+import { useLocale } from "../locale";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ApiError, errorMessage } from "../query/api";
+import { ApiError, errorMessage, type ErrorFallback } from "../query/api";
 
 type RecordFormOptions<TValues, TResult> = {
   defaultValues: TValues;
@@ -10,7 +11,7 @@ type RecordFormOptions<TValues, TResult> = {
   /** Runs after a successful submit, once the form has reset to the saved values. */
   onSuccess?: (result: TResult, values: TValues) => void;
   /** Message for a failure that carries none of its own. */
-  fallback: string;
+  fallback: ErrorFallback;
   /** Maps the server's field names to form field names for `ApiError.fieldErrors`. */
   serverFields?: Record<string, string>;
 };
@@ -33,24 +34,23 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
   // form is untouched. The baseline therefore lives in a ref and is handed back unchanged after each reset, so
   // loading a record into the editor is not undone by the next render.
   const baseline = useRef(defaultValues);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({});
+  useLocale();
+  const [failure, setFailure] = useState<unknown>(null);
+  const serverError = failure ? errorMessage(failure, fallback) : null;
+  const serverFieldErrors: Record<string, string> = {};
+  if (failure instanceof ApiError) {
+    for (const [name, message] of Object.entries(failure.fieldErrors))
+      if (serverFields[name]) serverFieldErrors[serverFields[name]] = message;
+  }
   const form = useForm({
     defaultValues: baseline.current,
     onSubmit: async ({ value, formApi }) => {
-      setServerError(null);
-      setServerFieldErrors({});
+      setFailure(null);
       let result: TResult;
       try {
         result = await submit(value);
       } catch (error) {
-        const fields: Record<string, string> = {};
-        if (error instanceof ApiError) {
-          for (const [name, message] of Object.entries(error.fieldErrors))
-            if (serverFields[name]) fields[serverFields[name]] = message;
-        }
-        setServerFieldErrors(fields);
-        setServerError(errorMessage(error, fallback));
+        setFailure(error);
         return;
       }
       baseline.current = value;
@@ -71,15 +71,13 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
   useEffect(() => {
     if (sent.current === values) return;
     sent.current = values;
-    setServerError(null);
-    setServerFieldErrors({});
+    setFailure(null);
   }, [values]);
 
   /** Loads a record (or a blank one) into the editor and makes it the clean baseline. */
   const load = useCallback(
     (next: TValues) => {
-      setServerError(null);
-      setServerFieldErrors({});
+      setFailure(null);
       baseline.current = next;
       form.reset(next);
     },

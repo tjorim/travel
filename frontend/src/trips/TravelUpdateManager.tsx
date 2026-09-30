@@ -1,3 +1,4 @@
+import { errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
@@ -5,7 +6,7 @@ import { RecordForm, requiredText, SelectField, TextField } from "../forms/field
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
-import { errorMessage } from "../query/api";
+
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
@@ -157,7 +158,7 @@ export function TravelUpdateManager({
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
-        dialog.setError(errorMessage(error, "De reisupdate kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, "De reisupdate kon niet worden verwijderd."));
       },
     );
   }
