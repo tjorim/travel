@@ -1,4 +1,6 @@
-import { errorNotice, useFeedback } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { FeedbackError, textNotice, errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useMemo, useRef } from "react";
 
@@ -37,15 +39,38 @@ import {
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { RestatedRoutesNote, VisitRouteHint } from "./VisitRouteHint";
 
-export const VISIT_KIND_LABELS: Record<VisitKind, string> = { free: "Vrij", work: "Werk" };
+export const VISIT_KIND_LABELS: Record<VisitKind, string> = {
+  get free() {
+    return m.owner_leisure();
+  },
+  get work() {
+    return m.owner_work();
+  },
+};
 export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
-  idea: "Idee",
-  planned: "Gepland",
-  confirmed: "Bevestigd",
+  get idea() {
+    return m.owner_idea();
+  },
+  get planned() {
+    return m.owner_planned();
+  },
+  get confirmed() {
+    return m.owner_confirmed();
+  },
 };
 const KIND_LABELS = VISIT_KIND_LABELS;
 const STATUS_LABELS = VISIT_STATUS_LABELS;
-const PRECISION_LABELS = { day: "Volledige datums", month: "Alleen maanden", year: "Alleen het jaar" } as const;
+const PRECISION_LABELS = {
+  get day() {
+    return m.owner_full_dates();
+  },
+  get month() {
+    return m.owner_months_only();
+  },
+  get year() {
+    return m.owner_year_only();
+  },
+} as const;
 
 type TripDates = Pick<Trip, "starts_on" | "ends_on">;
 
@@ -81,7 +106,7 @@ const clock = (time: string | null): string => (time ? time.slice(0, 5) : "");
 
 /** "21 nov – 22 nov · 18:30–21:00", or "Nog geen dag". */
 export function visitWhen(visit: Pick<Visit, "starts_on" | "ends_on" | "start_time" | "end_time">): string {
-  if (!visit.starts_on) return "Nog geen dag";
+  if (!visit.starts_on) return m.owner_no_day_yet();
   const times = visit.start_time
     ? ` · ${clock(visit.start_time)}${visit.end_time ? `–${clock(visit.end_time)}` : ""}`
     : "";
@@ -153,7 +178,7 @@ type FormContext = { fieldApi: { form: { getFieldValue: (name: never) => unknown
 const lastDay = ({ value, fieldApi }: { value: string } & FormContext) => {
   if (!value) return undefined;
   const first = String(fieldApi.form.getFieldValue("startsOn" as never) ?? "");
-  return !first || value < first ? "De laatste dag volgt op de eerste dag." : undefined;
+  return !first || value < first ? m.owner_the_last_day_must_follow_the_first_day : undefined;
 };
 
 export function VisitManager({
@@ -165,6 +190,7 @@ export function VisitManager({
   onShowOnMap?: (pointId: string) => void;
   focusId?: DialogFocusRequest | null;
 }) {
+  useLocale();
   const offline = useOfflineCopies();
   const visitsQuery = useTripResource(trip.id, "visits");
   const staysQuery = useTripResource(trip.id, "stays");
@@ -177,7 +203,7 @@ export function VisitManager({
   useDialogFocus(focusId, dialog.inspect);
   const { selected, editing, editingId } = dialog;
   const [message, setMessage] = useFeedback<string>(
-    "Een bezoek is een stop van je reis: een gebied of een locatie, en wanneer. Ze blijft privé tot je kiest wie ze ziet; tijden deel je alleen als je dat zelf aanvinkt.",
+    textNotice(() => m.owner_a_visit_is_a_stop_on_your_trip_an_area_or_location_and_when_it_stays_pri()),
   );
   // A place is only rewritten when the editor changed it.
   const baseline = useRef<Values>(blank());
@@ -190,31 +216,32 @@ export function VisitManager({
   ];
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Visit>({
-    fallback: "Het bezoek kon niet worden opgeslagen.",
+    fallback: m.owner_the_visit_could_not_be_saved,
     request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
     invalidate,
   });
   const move = useOwnerMutation<{ visit: Visit; position: number }, Visit>({
-    fallback: "Het bezoek kon niet worden verplaatst.",
+    fallback: m.owner_the_visit_could_not_be_moved,
     request: ({ visit, position }) => ({ path: `${path}/${visit.id}`, method: "PATCH", body: { position } }),
     invalidate,
   });
   const remove = useOwnerMutation<Visit>({
-    fallback: "Het bezoek kon niet worden verwijderd.",
+    fallback: m.owner_the_visit_could_not_be_deleted,
     request: (visit) => ({ path: `${path}/${visit.id}`, method: "DELETE" }),
     invalidate,
   });
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: "Het bezoek kon niet worden opgeslagen.",
+    fallback: m.owner_the_visit_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       const id = dialog.editingId ?? null;
-      if (!hasPlace(values.place)) throw new Error("Kies waar het bezoek is: een gebied of een locatie.");
+      if (!hasPlace(values.place))
+        throw new FeedbackError(() => m.owner_choose_where_the_visit_is_an_area_or_location());
       if (values.startTime && !values.startsOn)
-        throw new Error("Een tijd hoort bij een dag: kies eerst de eerste dag.");
-      if (values.endTime && !values.startTime) throw new Error("Geef ook een begintijd op.");
+        throw new FeedbackError(() => m.owner_a_time_belongs_to_a_day_choose_the_first_day_first());
+      if (values.endTime && !values.startTime) throw new FeedbackError(() => m.owner_also_enter_a_start_time());
       await save.mutateAsync({
         id,
         payload: {
@@ -238,7 +265,7 @@ export function VisitManager({
     },
     onSuccess: () => {
       close();
-      setMessage("Bezoek opgeslagen.");
+      setMessage(textNotice(() => m.owner_visit_saved()));
     },
   });
 
@@ -258,8 +285,9 @@ export function VisitManager({
     load(fromVisit(visit));
     dialog.edit(visit.id);
   }
-  const fail = (fallback: string) => (error: unknown) => setMessage(errorNotice(error, fallback));
-  const failInDialog = (fallback: string) => (error: unknown) => {
+  const fail = (fallback: import("../query/api").ErrorFallback) => (error: unknown) =>
+    setMessage(errorNotice(error, fallback));
+  const failInDialog = (fallback: import("../query/api").ErrorFallback) => (error: unknown) => {
     dialog.setConfirmDelete(false);
     dialog.setError(errorNotice(error, fallback));
   };
@@ -272,21 +300,24 @@ export function VisitManager({
     if (position < 0 || position >= visits.length) return;
     move
       .mutateAsync({ visit, position })
-      .then(() => setMessage("Volgorde van de bezoeken opgeslagen."), fail("Het bezoek kon niet worden verplaatst."));
+      .then(
+        () => setMessage(textNotice(() => m.owner_visit_order_saved())),
+        fail(m.owner_the_visit_could_not_be_moved),
+      );
   }
 
   function erase(visit: Visit) {
     remove.mutateAsync(visit).then(async () => {
       await offline.removeByResource("visit", visit.id);
       close();
-      setMessage("Bezoek verwijderd.");
-    }, failInDialog("Het bezoek kon niet worden verwijderd."));
+      setMessage(textNotice(() => m.owner_visit_deleted()));
+    }, failInDialog(m.owner_the_visit_could_not_be_deleted));
   }
 
   async function toggleOffline(visit: Visit) {
     if (offline.isPinned("visit", visit.id)) {
       await offline.removeByResource("visit", visit.id);
-      setMessage(`“${visitTitle(visit)}” is niet langer offline beschikbaar.`);
+      setMessage(textNotice(() => m.owner_is_no_longer_available_offline({ p0: visitTitle(visit) })));
       return;
     }
     await offline.pin({
@@ -297,7 +328,7 @@ export function VisitManager({
       contentType: "application/json",
       bytes: new TextEncoder().encode(JSON.stringify(visit)).buffer as ArrayBuffer,
     });
-    setMessage(`“${visitTitle(visit)}” is offline bewaard op dit toestel.`);
+    setMessage(textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: visitTitle(visit) })));
   }
 
   const readError = visitsQuery.error ?? staysQuery.error;
@@ -320,10 +351,8 @@ export function VisitManager({
     return (
       <div className="grid gap-0.75">
         <span className="text-sm font-medium text-travel-muted">
-          Overnachting: {sleep.stays.map(stayLabel).join(", ") || "—"}
-          {sleep.uncovered > 0
-            ? ` · nog ${sleep.uncovered} ${sleep.uncovered === 1 ? "nacht" : "nachten"} zonder verblijf`
-            : ""}
+          {m.owner_overnight_stay()} {sleep.stays.map(stayLabel).join(", ") || "—"}
+          {sleep.uncovered > 0 ? m.owner_uncovered_nights({ count: sleep.uncovered }) : ""}
         </span>
       </div>
     );
@@ -333,21 +362,18 @@ export function VisitManager({
     <section className="travel-card manager" id="visits" aria-labelledby="visits-title">
       <div className="capture-heading">
         <div>
-          <h3 id="visits-title">Bezoeken</h3>
-          <p>
-            De stops van je reis: een gebied of een locatie, en wanneer je er bent. Deel ze om bezoekers te laten volgen
-            waar je heen gaat.
-          </p>
+          <h3 id="visits-title">{m.owner_visits()}</h3>
+          <p>{m.owner_stops_on_your_trip_an_area_or_location_and_when_you_are_there_share_them()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          Nieuw bezoek
+          {m.owner_new_visit()}
         </Button>
       </div>
       <p className="help" role="status">
         {readError
-          ? errorMessage(readError, "Je bezoeken konden niet worden geladen.")
+          ? errorMessage(readError, m.owner_your_visits_could_not_be_loaded)
           : visitsQuery.isPending
-            ? "Laad je bezoeken…"
+            ? m.owner_loading_your_visits()
             : message}
       </p>
       {visits.length > 0 && (
@@ -358,7 +384,7 @@ export function VisitManager({
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(visit.id)}
-                aria-label={`Bezoek ${visitTitle(visit)} bekijken`}
+                aria-label={m.owner_view_visit({ p0: visitTitle(visit) })}
               >
                 <strong>{visitTitle(visit)}</strong>
                 <span>{[dayLine(visit), visitPlace(visit), visibilityLabel(visit.visibility)].join(" · ")}</span>
@@ -371,36 +397,40 @@ export function VisitManager({
                     className="secondary compact"
                     type="button"
                     onClick={() => onShowOnMap(mapPointFor(visit))}
-                    aria-label={`Toon op kaart: ${visitTitle(visit)}`}
+                    aria-label={m.owner_show_on_map({ p0: visitTitle(visit) })}
                   >
-                    Toon op kaart
+                    {m.owner_show_on_map_2()}
                   </Button>
                 )}
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => void toggleOffline(visit).catch(fail("Het bezoek kon niet offline worden bewaard."))}
-                  aria-label={`${offline.isPinned("visit", visit.id) ? "Offline verwijderen" : "Offline bewaren"}: ${visitTitle(visit)}`}
+                  onClick={() => void toggleOffline(visit).catch(fail(m.owner_the_visit_could_not_be_saved_offline))}
+                  aria-label={
+                    offline.isPinned("visit", visit.id)
+                      ? m.owner_remove_visit_offline({ name: visitTitle(visit) })
+                      : m.owner_save_visit_offline({ name: visitTitle(visit) })
+                  }
                 >
-                  {offline.isPinned("visit", visit.id) ? "Offline verwijderen" : "Offline bewaren"}
+                  {offline.isPinned("visit", visit.id) ? m.owner_remove_offline_copy() : m.owner_save_offline()}
                 </Button>
                 <Button
                   className="secondary compact"
                   type="button"
                   disabled={index === 0}
                   onClick={() => shift(visit, -1)}
-                  aria-label={`Omhoog: ${visitTitle(visit)}`}
+                  aria-label={m.owner_move_up({ p0: visitTitle(visit) })}
                 >
-                  Omhoog
+                  {m.owner_move_up_2()}
                 </Button>
                 <Button
                   className="secondary compact"
                   type="button"
                   disabled={index === visits.length - 1}
                   onClick={() => shift(visit, 1)}
-                  aria-label={`Omlaag: ${visitTitle(visit)}`}
+                  aria-label={m.owner_move_down({ p0: visitTitle(visit) })}
                 >
-                  Omlaag
+                  {m.owner_move_down_2()}
                 </Button>
               </div>
             </article>
@@ -408,11 +438,11 @@ export function VisitManager({
         </div>
       )}
       {!visitsQuery.isPending && !visitsQuery.error && visits.length === 0 && (
-        <p>Nog geen bezoeken. Voeg er één toe om je reis te ordenen.</p>
+        <p>{m.owner_no_visits_yet_add_one_to_organise_your_trip()}</p>
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? "Bezoek bewerken" : "Bezoek toevoegen") : "Bezoek"}
+        title={editing ? (editingId ? m.owner_edit_visit() : m.owner_add_visit()) : m.owner_visit()}
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -425,7 +455,7 @@ export function VisitManager({
               <p>{visitPlace(selected)}</p>
               {selected.summary && (
                 <>
-                  <p className="markdown-label">Voor bezoekers</p>
+                  <p className="markdown-label">{m.owner_for_visitors()}</p>
                   <Markdown html={selected.summary_html} text={selected.summary} />
                 </>
               )}
@@ -433,11 +463,11 @@ export function VisitManager({
               <RestatedRoutesNote routes={selected.possible_route_duplicates ?? []} />
             </div>
             <div>
-              <h4>Alleen voor jou</h4>
+              <h4>{m.owner_only_for_you()}</h4>
               {selected.notes ? (
                 <Markdown html={selected.notes_html} text={selected.notes} />
               ) : (
-                <p className="help">Geen privénotitie.</p>
+                <p className="help">{m.owner_no_private_note()}</p>
               )}
             </div>
             <VisibilityControl
@@ -450,22 +480,22 @@ export function VisitManager({
             <p className="help">
               {selected.start_time
                 ? selected.share_time
-                  ? "Bezoekers zien ook de tijd, omdat je dat hebt aangevinkt en de datum volledig deelt."
-                  : "De tijd blijft privé."
-                : "Dit bezoek heeft geen tijd."}{" "}
-              Notities blijven altijd privé.
+                  ? m.owner_visitors_also_see_the_time_because_you_selected_it_and_share_the_full_da()
+                  : m.owner_the_time_stays_private()
+                : m.owner_this_visit_has_no_time()}{" "}
+              {m.owner_notes_always_stay_private()}
             </p>
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                Bewerken
+                {m.owner_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={`Bezoek “${visitTitle(selected)}” verwijderen?`}
+                title={m.owner_delete_visit({ p0: visitTitle(selected) })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -475,14 +505,14 @@ export function VisitManager({
         {editing && (
           <RecordForm
             record={record}
-            submitLabel={editingId ? "Bezoek opslaan" : "Bezoek toevoegen"}
-            pendingLabel="Opslaan…"
+            submitLabel={editingId ? m.owner_save_visit() : m.owner_add_visit()}
+            pendingLabel={m.owner_saving()}
           >
             <record.form.Field name="place">
               {(field) => (
                 <PlacePicker
                   tripId={trip.id}
-                  label="Waar"
+                  label={m.owner_where()}
                   value={field.state.value}
                   onChange={(value) => field.handleChange(value)}
                 />
@@ -492,16 +522,16 @@ export function VisitManager({
               {(field) => (
                 <TextField
                   field={field}
-                  label="Titel"
+                  label={m.owner_title()}
                   optional
                   maxLength={160}
-                  placeholder="Zonder titel heet het bezoek naar de plek"
+                  placeholder={m.owner_without_a_title_the_visit_uses_the_place_name()}
                 />
               )}
             </record.form.Field>
             <div className="field-row">
               <record.form.Field name="startsOn">
-                {(field) => <TextField field={field} label="Eerste dag" optional type="date" />}
+                {(field) => <TextField field={field} label={m.owner_first_day()} optional type="date" />}
               </record.form.Field>
               <record.form.Subscribe selector={(state) => state.values.startsOn}>
                 {(startsOn) => (
@@ -512,7 +542,7 @@ export function VisitManager({
                     {(field) => (
                       <TextField
                         field={field}
-                        label="Laatste dag"
+                        label={m.owner_last_day()}
                         optional
                         type="date"
                         min={startsOn || undefined}
@@ -527,22 +557,23 @@ export function VisitManager({
               {(startsOn) => (
                 <div className="field-row">
                   <record.form.Field name="startTime">
-                    {(field) => <TextField field={field} label="Begintijd" optional type="time" disabled={!startsOn} />}
+                    {(field) => (
+                      <TextField field={field} label={m.owner_start_time()} optional type="time" disabled={!startsOn} />
+                    )}
                   </record.form.Field>
                   <record.form.Field name="endTime">
-                    {(field) => <TextField field={field} label="Eindtijd" optional type="time" disabled={!startsOn} />}
+                    {(field) => (
+                      <TextField field={field} label={m.owner_end_time()} optional type="time" disabled={!startsOn} />
+                    )}
                   </record.form.Field>
                 </div>
               )}
             </record.form.Subscribe>
-            <p className="help">
-              Tijden zijn lokaal bij het bezoek, in de tijdzone van het gebied. Bezoekers thuis zien ze erbij
-              omgerekend, als je ze deelt.
-            </p>
+            <p className="help">{m.owner_times_are_local_to_the_visit_in_the_area_s_time_zone_visitors_at_home_al()}</p>
             <div className="field-row">
               <record.form.Field name="status">
                 {(field) => (
-                  <SelectField field={field} label="Status">
+                  <SelectField field={field} label={m.owner_status()}>
                     {Object.entries(STATUS_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -553,8 +584,8 @@ export function VisitManager({
               </record.form.Field>
               <record.form.Field name="kind">
                 {(field) => (
-                  <SelectField field={field} label="Soort dag" optional>
-                    <option value="">Geen soort</option>
+                  <SelectField field={field} label={m.owner_day_type()} optional>
+                    <option value="">{m.owner_no_type()}</option>
                     {Object.entries(KIND_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -564,16 +595,13 @@ export function VisitManager({
                 )}
               </record.form.Field>
             </div>
-            <p className="help">
-              De status is alleen voor jou en wordt nooit gedeeld. Zet “idee” of “concept” dus hier, niet in de titel of
-              de naam van het gebied.
-            </p>
+            <p className="help">{m.owner_the_status_is_only_for_you_and_is_never_shared_put_idea_or_draft_here_ra()}</p>
             <record.form.Field name="notes">
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label="Notities"
-                  optional="(optioneel, altijd privé)"
+                  label={m.owner_notes()}
+                  optional={m.owner_optional_always_private()}
                   maxLength={4000}
                   rows={3}
                 />
@@ -583,11 +611,11 @@ export function VisitManager({
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label="Tekst voor bezoekers"
+                  label={m.owner_text_for_visitors()}
                   optional
                   maxLength={2000}
                   rows={3}
-                  placeholder="Wat mogen bezoekers over dit bezoek lezen?"
+                  placeholder={m.owner_what_may_visitors_read_about_this_visit()}
                 />
               )}
             </record.form.Field>
@@ -605,7 +633,7 @@ export function VisitManager({
             <div className="field-row">
               <record.form.Field name="shareDatePrecision">
                 {(field) => (
-                  <SelectField field={field} label="Datums voor bezoekers">
+                  <SelectField field={field} label={m.owner_dates_for_visitors()}>
                     {Object.entries(PRECISION_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -620,7 +648,7 @@ export function VisitManager({
                     field={field}
                     label={
                       <>
-                        Toon de tijd aan bezoekers <small>Alleen bij volledige datums.</small>
+                        {m.owner_show_the_time_to_visitors()} <small>{m.owner_only_with_full_dates()}</small>
                       </>
                     }
                   />

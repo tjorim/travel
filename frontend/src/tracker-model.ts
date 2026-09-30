@@ -1,3 +1,6 @@
+import { formatNumber } from "./locale";
+import { FeedbackError } from "./query/feedback";
+import { m } from "./paraglide/messages.js";
 /** Who receives a record: nobody, every visitor, or only the audiences that list it in Delen. */
 export type Visibility = "private" | "everyone" | "custom";
 
@@ -39,7 +42,7 @@ export type LocationInput = Partial<Omit<Location, "id" | "visibility" | "area_i
 
 /** What the owner calls a location: the first part of its name, never a full address line. */
 export const locationName = (place: Partial<Pick<Location, "display_name" | "locality" | "label">>): string =>
-  place.label || place.display_name?.split(",")[0]?.trim() || place.locality || "Locatie zonder naam";
+  place.label || place.display_name?.split(",")[0]?.trim() || place.locality || m.owner_unnamed_location_2();
 export type PlaceSearchResult = LocationInput;
 
 export type MediaAsset = {
@@ -83,14 +86,30 @@ export type AreaSuggestion = {
 export type RouteMode = "flight" | "train" | "bus" | "ferry" | "car" | "bike" | "walk" | "other";
 
 export const ROUTE_MODE_LABELS: Record<RouteMode, string> = {
-  flight: "Vlucht",
-  train: "Trein",
-  bus: "Bus",
-  ferry: "Veerboot",
-  car: "Auto",
-  bike: "Fiets",
-  walk: "Te voet",
-  other: "Anders",
+  get flight() {
+    return m.owner_flight();
+  },
+  get train() {
+    return m.owner_train();
+  },
+  get bus() {
+    return m.owner_bus();
+  },
+  get ferry() {
+    return m.owner_ferry();
+  },
+  get car() {
+    return m.owner_car();
+  },
+  get bike() {
+    return m.owner_bike();
+  },
+  get walk() {
+    return m.owner_on_foot();
+  },
+  get other() {
+    return m.owner_other();
+  },
 };
 
 /**
@@ -407,7 +426,9 @@ export type OverviewWarning = {
     | "trip_dates_shared"
     | "planning_marker_visible"
     | "map_point_withheld"
-    | "undated_visit_duplicates_dated";
+    | "undated_visit_duplicates_dated"
+    | "location_repeats_area"
+    | "visit_restates_route";
   severity: "warning" | "info";
   /** English, for API and MCP clients; the PWA words each code itself. */
   message: string;
@@ -494,7 +515,7 @@ export function formatDayRange(first: string, last: string | null): string {
 }
 
 export function stayLabel(stay: Stay): string {
-  return stay.property_name ?? `Nog te kiezen in ${stay.area.label}`;
+  return stay.property_name ?? m.owner_still_to_choose_in({ p0: stay.area.label });
 }
 
 /** An instant as the app displays it everywhere: "16 nov 2026, 14:32". */
@@ -566,11 +587,34 @@ export function utcOffsetMinutes(instant: string, timeZone: string | null): numb
 }
 
 /** "7 u later dan hier", "1 u 30 min eerder dan hier" or "zelfde tijd als hier". */
-export function offsetLabel(minutes: number): string {
-  if (minutes === 0) return "zelfde tijd als hier";
+export function offsetLabel(minutes: number, compact = false): string {
+  if (minutes === 0) return m.owner_same_time_as_here();
   const hours = Math.floor(Math.abs(minutes) / 60),
     rest = Math.abs(minutes) % 60;
-  return `${[hours ? `${hours} u` : "", rest ? `${rest} min` : ""].filter(Boolean).join(" ")} ${minutes > 0 ? "later" : "eerder"} dan hier`;
+  if (compact) {
+    if (minutes > 0)
+      return hours && rest
+        ? m.owner_offset_short_ahead({ hours, minutes: rest })
+        : hours
+          ? m.owner_offset_hours_short_ahead({ hours })
+          : m.owner_offset_minutes_short_ahead({ minutes: rest });
+    return hours && rest
+      ? m.owner_offset_short_behind({ hours, minutes: rest })
+      : hours
+        ? m.owner_offset_hours_short_behind({ hours })
+        : m.owner_offset_minutes_short_behind({ minutes: rest });
+  }
+  if (minutes > 0)
+    return hours && rest
+      ? m.owner_offset_ahead({ hours, minutes: rest })
+      : hours
+        ? m.owner_offset_hours_ahead({ hours })
+        : m.owner_offset_minutes_ahead({ minutes: rest });
+  return hours && rest
+    ? m.owner_offset_behind({ hours, minutes: rest })
+    : hours
+      ? m.owner_offset_hours_behind({ hours })
+      : m.owner_offset_minutes_behind({ minutes: rest });
 }
 
 export type Whereabouts = { kind: "travel" | "stay" | "between" | "home"; zone: string | null; label: string };
@@ -596,13 +640,17 @@ export function whereabouts(instant: string, stays: Stay[], routes: Route[], hom
     ...active.flatMap((route) => [Date.parse(route.departs_at), Date.parse(route.arrives_at)]),
     ...zoned.flatMap((stay) => [midday(stay.check_in_date), midday(stay.check_out_date)]),
   ];
-  const home: Whereabouts = { kind: "home", zone: homeZone, label: "thuis" };
+  const home: Whereabouts = { kind: "home", zone: homeZone, label: m.owner_home() };
   if (!bounds.length || now < Math.min(...bounds) || now >= Math.max(...bounds)) return home;
   const route = active.find(
     (candidate) => Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at),
   );
   if (route)
-    return { kind: "travel", zone: route.arrival_timezone, label: `onderweg naar ${route.arrival_area.label}` };
+    return {
+      kind: "travel",
+      zone: route.arrival_timezone,
+      label: m.owner_on_the_way_to({ p0: route.arrival_area.label }),
+    };
   const current = zoned.find((stay) => stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)));
   if (current) return { kind: "stay", zone: stayZone(current), label: current.area.label };
   const last = [
@@ -622,7 +670,7 @@ export function whereabouts(instant: string, stays: Stay[], routes: Route[], hom
         label: stay.area.label,
       })),
   ].sort((left, right) => right.at - left.at)[0];
-  return last ? { kind: "between", zone: last.zone, label: `tussen verblijven, laatst in ${last.label}` } : home;
+  return last ? { kind: "between", zone: last.zone, label: m.owner_between_stays_last_in({ p0: last.label }) } : home;
 }
 
 export function localDateTime(value = new Date()): string {
@@ -686,7 +734,9 @@ export function saveDraft(draft: UpdateDraft): void {
 }
 
 export function bytesLabel(bytes: number): string {
-  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} kB`;
+  return bytes < 1024
+    ? `${formatNumber(bytes)} B`
+    : `${formatNumber(bytes / 1024, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kB`;
 }
 
 // Types a browser shows without running anything from the file.
@@ -700,7 +750,7 @@ export function openBlobInNewTab(blob: Blob): void {
   const preview = window.open(objectUrl, "_blank", "noopener");
   if (!preview) {
     URL.revokeObjectURL(objectUrl);
-    throw new Error("Je browser blokkeerde het openen van het bestand.");
+    throw new FeedbackError(() => m.owner_your_browser_blocked_opening_the_file());
   }
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }

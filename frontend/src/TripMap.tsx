@@ -1,9 +1,13 @@
+import { mapMessages, useMapMessages } from "./map-messages";
+import { textNotice, useFeedback } from "./query/feedback";
+import { useLocale } from "./locale";
+import { m } from "./paraglide/messages.js";
 import { themeColor, useTheme } from "./appearance";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import type { FeatureCollection, LineString, Point } from "geojson";
-import type { Map as MapLibreMap } from "maplibre-gl";
+import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { configuredMapStyleUrl, loadMapStyle, styleLabelFont } from "./map-style";
@@ -91,11 +95,20 @@ export function TripMap({
   focus?: { id: string; request: number } | null;
   onUseDerived?: (point: MapPoint) => void;
 }) {
+  useLocale();
   const theme = useTheme();
+  const data = useRef({ points, lines });
+  data.current = { points, lines };
+  // Translated chrome and action labels change without rebuilding the map or resetting its camera.
+  const geometryKey = JSON.stringify([
+    points.map(({ id, coordinates, kind, areaId }) => ({ id, coordinates, kind, areaId })),
+    lines.map(({ id, coordinates, transport }) => ({ id, coordinates, transport })),
+  ]);
   const canvas = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
-  const [error, setError] = useState("");
+  useMapMessages(canvas, ready);
+  const [error, setError] = useFeedback<string>("");
   const [terrain, setTerrain] = useState(false);
   const [satellite, setSatellite] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -118,16 +131,16 @@ export function TripMap({
     setSelectedKind(null);
     try {
       if (!window.WebGLRenderingContext) {
-        setError("Deze browser ondersteunt geen WebGL. Gebruik de route in woorden.");
+        setError(textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()));
         return;
       }
       const probe = document.createElement("canvas");
       if (!probe.getContext("webgl2") && !probe.getContext("webgl")) {
-        setError("Deze browser ondersteunt geen WebGL. Gebruik de route in woorden.");
+        setError(textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()));
         return;
       }
     } catch {
-      setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden.");
+      setError(textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()));
       return;
     }
     void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal, theme)])
@@ -135,6 +148,7 @@ export function TripMap({
         if (disposed || !canvas.current) return;
         maplibregl.setWorkerUrl(mapWorkerUrl);
         const created = new maplibregl.Map({
+          locale: mapMessages(),
           container: canvas.current,
           style,
           attributionControl: false,
@@ -294,15 +308,15 @@ export function TripMap({
           });
           fitToData(instance, maplibregl.LngLatBounds, points, lines);
           instance.on("click", "stops", (event) => {
-            const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const point = data.current.points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
             if (point) selectPoint(point);
           });
           instance.on("click", "locations", (event) => {
-            const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const point = data.current.points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
             if (point) selectPoint(point);
           });
           instance.on("click", "focused-locations", (event) => {
-            const point = points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const point = data.current.points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
             if (point) selectPoint(point);
           });
           instance.on("mouseenter", "stops", () => {
@@ -319,11 +333,11 @@ export function TripMap({
                 .length
             )
               return;
-            const line = lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const line = data.current.lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
             if (line) selectLine(line);
           });
           instance.on("mousemove", routeLayers, (event) => {
-            const line = lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const line = data.current.lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
             setHovered(line?.label ?? "");
             if (instance) instance.getCanvas().style.cursor = "pointer";
           });
@@ -340,14 +354,16 @@ export function TripMap({
         created.on("error", () => {
           if (!disposed)
             setError(
-              created.isStyleLoaded()
-                ? "Kaarttegels konden niet volledig worden geladen. De route in woorden blijft beschikbaar."
-                : "De kaartstijl kon niet worden geladen. Gebruik de route in woorden.",
+              textNotice(() =>
+                created.isStyleLoaded()
+                  ? m.owner_map_tiles_could_not_be_fully_loaded_the_route_in_words_remains_available()
+                  : m.owner_the_map_style_could_not_be_loaded_use_the_route_in_words(),
+              ),
             );
         });
       })
       .catch(() => {
-        if (!disposed) setError("De interactieve kaart is niet beschikbaar. Gebruik de route in woorden.");
+        if (!disposed) setError(textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()));
       });
     return () => {
       disposed = true;
@@ -355,7 +371,19 @@ export function TripMap({
       instance?.remove();
       map.current = null;
     };
-  }, [points, lines, hasGeometry, styleUrl, theme]);
+  }, [geometryKey, hasGeometry, styleUrl, theme]);
+
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    (map.current.getSource("stops") as GeoJSONSource | undefined)?.setData({
+      type: "FeatureCollection",
+      features: points.map((point) => ({
+        type: "Feature",
+        properties: { id: point.id, label: point.label, kind: point.kind ?? "place", areaId: point.areaId ?? "" },
+        geometry: { type: "Point", coordinates: point.coordinates },
+      })),
+    });
+  }, [points, ready]);
 
   useEffect(() => {
     if (ready && map.current?.getLayer("selected-stop"))
@@ -387,7 +415,7 @@ export function TripMap({
       setTerrain(!terrain);
       setError("");
     } catch {
-      setError("3D-terrein kon niet worden geladen. De routekaart blijft beschikbaar.");
+      setError(textNotice(() => m.owner_3d_terrain_could_not_be_loaded_the_route_map_remains_available()));
     }
   }
 
@@ -418,7 +446,7 @@ export function TripMap({
       setSatellite(!satellite);
       setError("");
     } catch {
-      setError("Satellietbeelden konden niet worden geladen. De routekaart blijft beschikbaar.");
+      setError(textNotice(() => m.owner_satellite_imagery_could_not_be_loaded_the_route_map_remains_available()));
     }
   }
 
@@ -502,20 +530,20 @@ export function TripMap({
   if (!hasGeometry)
     return (
       <section className="travel-card grid min-w-0 gap-3.5">
-        <h3 className="m-0">Kaart</h3>
-        <p>Voor deze reis zijn nog geen kaartcoördinaten beschikbaar.</p>
+        <h3 className="m-0">{m.owner_map()}</h3>
+        <p>{m.owner_no_map_coordinates_are_available_for_this_trip_yet()}</p>
       </section>
     );
   return (
-    <section className="travel-card grid min-w-0 gap-3.5" aria-label="Reiskaart">
-      <h3 className="m-0">Kaart</h3>
+    <section className="travel-card grid min-w-0 gap-3.5" aria-label={m.owner_trip_map()}>
+      <h3 className="m-0">{m.owner_map()}</h3>
       <div
         className={cn(
           "relative h-map-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
           owner && "min-[960px]:h-map-owner-canvas",
         )}
       >
-        <div ref={canvas} className="size-full" role="img" aria-label="Kaart met punten en routes" />
+        <div ref={canvas} className="size-full" role="img" aria-label={m.owner_map_with_points_and_routes()} />
         {hovered && (
           <span
             className="pointer-events-none absolute top-3 left-3 max-w-full rounded-md bg-travel-surface px-2.25 py-1.25 text-sm text-travel-ink shadow-md"
@@ -526,7 +554,7 @@ export function TripMap({
         )}
         {error && !ready && (
           <p className="absolute inset-0 m-0 grid place-content-center bg-travel-map-bg p-6 text-center text-travel-muted">
-            Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de puntknoppen.
+            {m.owner_interactive_map_unavailable_use_the_route_in_words_and_the_point_buttons()}
           </p>
         )}
         <div className="absolute right-0 bottom-0 z-2 max-w-full bg-travel-surface/90 px-1.5 py-0.75 text-xs text-travel-ink [&_a]:text-inherit">
@@ -564,7 +592,7 @@ export function TripMap({
       )}
       <div className="button-row">
         <Button className="secondary compact" type="button" onClick={resetFocus}>
-          Hele reis tonen
+          {m.owner_show_whole_trip()}
         </Button>
         <Button
           className={cn(
@@ -576,8 +604,8 @@ export function TripMap({
           disabled={!ready}
           onClick={toggleTerrain}
         >
-          {perspective?.label ?? "3D-terrein"}
-          {terrain && " · aan"}
+          {perspective?.label ?? m.owner_3d_terrain()}
+          {terrain && m.owner_on()}
         </Button>
         <Button
           className={cn(
@@ -589,14 +617,14 @@ export function TripMap({
           disabled={!ready}
           onClick={toggleSatellite}
         >
-          Satelliet{satellite && " · aan"}
+          {m.owner_satellite()}
+          {satellite && m.owner_on()}
         </Button>
       </div>
-      {satellite && <p className="help">Zoom in op een stad om de 3D-gebouwen boven de satellietbeelden te zien.</p>}
-      <p className="m-0 text-sm">
-        Kaarttegels tonen de bekeken regio aan OpenFreeMap. 3D-terrein vraagt na inschakeling hoogtegegevens op bij
-        Mapterhorn; satelliet vraagt na inschakeling beelden op bij Esri.
-      </p>
+      {satellite && (
+        <p className="help">{m.owner_zoom_in_on_a_city_to_see_the_3d_buildings_above_the_satellite_imagery()}</p>
+      )}
+      <p className="m-0 text-sm">{m.owner_map_tiles_show_the_viewed_region_to_openfreemap_when_enabled_3d_terrain()}</p>
       {(selectedPoint || selectedLine) && (
         <div
           className="rounded-travel-media border border-travel-border bg-travel-map-detail px-4 py-3.5 [&_a]:font-bold [&_a]:text-travel-forest [&_p]:mt-1.25 [&_p]:mb-0 [&_ul]:mt-2.5 [&_ul]:mb-0 [&_ul]:flex [&_ul]:list-none [&_ul]:flex-wrap [&_ul]:gap-x-4 [&_ul]:gap-y-2 [&_ul]:p-0"
@@ -605,7 +633,7 @@ export function TripMap({
           <strong>{selectedPoint?.label ?? selectedLine?.label}</strong>
           {(selectedLine?.from || selectedLine?.to) && (
             <p>
-              {selectedLine.from ?? "Vertrek onbekend"} → {selectedLine.to ?? "Aankomst onbekend"}
+              {selectedLine.from ?? m.owner_unknown_departure()} → {selectedLine.to ?? m.owner_unknown_arrival()}
             </p>
           )}
           {selectedLine?.transport && <p>{ROUTE_MODE_LABELS[selectedLine.transport]}</p>}
@@ -629,14 +657,14 @@ export function TripMap({
           )}
           {selectedPoint?.kind === "derived" && onUseDerived && (
             <Button className="secondary compact" type="button" onClick={() => onUseDerived(selectedPoint)}>
-              Gebruik als punt
+              {m.owner_use_as_point()}
             </Button>
           )}
         </div>
       )}
       {points.length > 0 && (
         <div>
-          <h4>Punten op de kaart</h4>
+          <h4>{m.owner_points_on_the_map()}</h4>
           <ol className="flex list-none flex-wrap gap-1.75 p-0">
             {points.map((point) => (
               <li key={point.id}>
@@ -655,7 +683,7 @@ export function TripMap({
       )}
       {lines.length > 0 && (
         <div>
-          <h4>Route in woorden</h4>
+          <h4>{m.owner_route_in_words()}</h4>
           <ol className="mb-0 pl-5.5">
             {lines.map((line) => (
               <li key={line.id}>

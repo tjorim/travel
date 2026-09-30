@@ -1,4 +1,6 @@
-import { errorNotice, useFeedback } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { FeedbackError, textNotice, errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -22,6 +24,7 @@ export function OwnerTripMap({
   focus?: { id: string; request: number } | null;
   onOpenRecord?: (kind: "area" | "location" | "visit" | "route" | "update", id: string) => void;
 }) {
+  const locale = useLocale();
   const offline = useOfflineCopies();
   const routesQuery = useTripResource(trip.id, "routes");
   const placesQuery = useTripResource(trip.id, "locations");
@@ -29,7 +32,7 @@ export function OwnerTripMap({
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
   const [notice, setNotice] = useFeedback<string>("");
   const savePoint = useOwnerMutation<{ id: string; latitude: number; longitude: number }, Area>({
-    fallback: "Het gebiedspunt kon niet worden opgeslagen.",
+    fallback: m.owner_the_area_point_could_not_be_saved,
     request: ({ id, latitude, longitude }) => ({
       path: `${tripPath(trip.id, "areas")}/${id}`,
       method: "PATCH",
@@ -59,7 +62,8 @@ export function OwnerTripMap({
       .current(copy.id)
       .then(async (blob) => {
         const data = JSON.parse(await blob.text()) as Partial<OfflineSnapshot>;
-        if (!Array.isArray(data.points) || !Array.isArray(data.lines)) throw new Error("Ongeldige offline kaartkopie.");
+        if (!Array.isArray(data.points) || !Array.isArray(data.lines))
+          throw new FeedbackError(() => m.owner_invalid_offline_map_copy());
         if (!cancelled) setSnapshot({ points: data.points, lines: data.lines });
       })
       .catch(() => {
@@ -93,13 +97,13 @@ export function OwnerTripMap({
                   locations.reduce((total, location) => total + location.latitude!, 0) / locations.length,
                 ],
                 kind: "derived",
-                detail: "Afgeleid uit private locaties",
+                detail: m.owner_derived_from_private_locations(),
               },
             ],
           ];
         }),
       ),
-    [areas, placesQuery.data],
+    [locale, areas, placesQuery.data],
   );
   const points = useMemo<MapPoint[]>(
     () => [
@@ -118,7 +122,7 @@ export function OwnerTripMap({
           : [],
       ),
     ],
-    [placesQuery.data, areaPoints],
+    [locale, placesQuery.data, areaPoints],
   );
   // A route without a drawn line is a straight one between its two areas.
   const liveLines = useMemo<MapLine[]>(
@@ -130,7 +134,7 @@ export function OwnerTripMap({
         const coordinates = route.geometry?.coordinates ?? (ends.length === 2 ? ends : null);
         return coordinates ? [{ id: route.id, label: routeTitle(route), coordinates, transport: route.mode }] : [];
       }),
-    [routesQuery.data, areaPoints],
+    [locale, routesQuery.data, areaPoints],
   );
   const openRecord = onOpenRecord;
   const displayedPoints = useMemo(
@@ -145,23 +149,30 @@ export function OwnerTripMap({
         );
         const links = [
           ...(point.kind === "area" || point.kind === "derived"
-            ? [{ label: "Gebied openen", onOpen: () => openRecord?.("area", point.id) }]
+            ? [{ label: m.owner_open_area(), onOpen: () => openRecord?.("area", point.id) }]
             : []),
           ...(point.kind === "location"
-            ? [{ label: "Locatie openen", onOpen: () => openRecord?.("location", point.id) }]
+            ? [{ label: m.owner_open_location(), onOpen: () => openRecord?.("location", point.id) }]
             : []),
           ...visits.map((visit) => ({
-            label: `Bezoek: ${visit.title ?? visit.area.label}`,
+            label: m.owner_visit_2({ p0: visit.title ?? visit.area.label }),
             onOpen: () => openRecord?.("visit", visit.id),
           })),
           ...updates.map((update) => ({
-            label: `Update: ${update.title}${update.media_asset_ids.length ? ` · ${update.media_asset_ids.length} foto’s/media` : ""}`,
+            label: m.owner_update({
+              p0: update.title,
+              p1: update.media_asset_ids.length ? m.owner_photos_media({ p0: update.media_asset_ids.length }) : "",
+            }),
             onOpen: () => openRecord?.("update", update.id),
           })),
         ];
-        return { ...point, links };
+        return {
+          ...point,
+          detail: point.kind === "derived" ? m.owner_derived_from_private_locations() : point.detail,
+          links,
+        };
       }),
-    [snapshot?.points, points, visitsQuery.data, trip.travel_updates, openRecord],
+    [locale, snapshot?.points, points, visitsQuery.data, trip.travel_updates, openRecord],
   );
   const lines = useMemo(
     () =>
@@ -172,40 +183,38 @@ export function OwnerTripMap({
           from: route?.departure_area.label ?? line.from,
           to: route?.arrival_area.label ?? line.to,
           dates: route?.departs_on ?? line.dates,
-          links: route ? [{ label: "Route openen", onOpen: () => openRecord?.("route", route.id) }] : line.links,
+          links: route ? [{ label: m.owner_open_route(), onOpen: () => openRecord?.("route", route.id) }] : line.links,
           transport: route?.mode ?? line.transport,
         };
       }),
-    [snapshot?.lines, liveLines, routesQuery.data, openRecord],
+    [locale, snapshot?.lines, liveLines, routesQuery.data, openRecord],
   );
 
   async function toggleOffline() {
     if (offline.isPinned("route_data", trip.id)) {
       await offline.removeByResource("route_data", trip.id);
-      setNotice("Kaart- en routegegevens zijn niet langer offline beschikbaar.");
+      setNotice(textNotice(() => m.owner_map_and_route_data_are_no_longer_available_offline()));
       return;
     }
     await offline.pin({
       resourceKind: "route_data",
       resourceId: trip.id,
       metadataUrl: `/api/trips/${trip.id}/offline-map`,
-      title: `${trip.title} · kaart en route`,
+      title: m.owner_map_and_route({ p0: trip.title }),
       contentType: "application/json",
       bytes: new TextEncoder().encode(JSON.stringify({ version: 1, trip_id: trip.id, points: displayedPoints, lines }))
         .buffer as ArrayBuffer,
     });
-    setNotice(
-      "Kaart- en routegegevens zijn offline bewaard op dit toestel. Kaarttegels worden niet gekopieerd; die blijven onder de voorwaarden van de kaartaanbieder vallen.",
-    );
+    setNotice(textNotice(() => m.owner_map_and_route_data_are_saved_offline_on_this_device_map_tiles_are_not_co()));
   }
 
   const readError = queries.find((query) => query.isError)?.error;
   const status =
     notice ||
     (snapshot
-      ? "Je gebruikt de bewust bewaarde offline kaart- en routegegevens. Kaarttegels worden niet offline opgeslagen."
+      ? m.owner_you_are_using_the_deliberately_saved_offline_map_and_route_data_map_tile()
       : unavailable
-        ? errorMessage(readError, "Kaartgegevens konden niet worden geladen.")
+        ? errorMessage(readError, m.owner_map_data_could_not_be_loaded)
         : "");
 
   return (
@@ -219,8 +228,8 @@ export function OwnerTripMap({
           void savePoint
             .mutateAsync({ id: point.id, latitude: point.coordinates[1], longitude: point.coordinates[0] })
             .then(
-              () => setNotice("Gebiedspunt opgeslagen."),
-              (error: unknown) => setNotice(errorNotice(error, "Het gebiedspunt kon niet worden opgeslagen.")),
+              () => setNotice(textNotice(() => m.owner_area_point_saved())),
+              (error: unknown) => setNotice(errorNotice(error, m.owner_the_area_point_could_not_be_saved)),
             )
         }
       />
@@ -231,16 +240,14 @@ export function OwnerTripMap({
           disabled={displayedPoints.length === 0 && lines.length === 0}
           onClick={() =>
             void toggleOffline().catch((error: unknown) =>
-              setNotice(errorNotice(error, "De kaartgegevens konden niet offline worden bewaard.")),
+              setNotice(errorNotice(error, m.owner_the_map_data_could_not_be_saved_offline)),
             )
           }
         >
-          {offline.isPinned("route_data", trip.id) ? "Offline verwijderen" : "Kaart offline bewaren"}
+          {offline.isPinned("route_data", trip.id) ? m.owner_remove_offline_copy() : m.owner_save_map_offline()}
         </Button>
       </div>
-      <p className="help">
-        Alleen de private GeoJSON-kaartgegevens worden bewust bewaard; kaarttegels worden niet offline opgeslagen.
-      </p>
+      <p className="help">{m.owner_only_the_private_geojson_map_data_are_deliberately_saved_map_tiles_are_n()}</p>
       {status && (
         <p className="help" role="status">
           {status}

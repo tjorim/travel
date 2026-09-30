@@ -138,7 +138,9 @@ it("brings a reminder back with a message when marking it read fails", async () 
   );
   renderHome();
   fireEvent.click(await screen.findByRole("button", { name: "Gelezen" }));
-  await screen.findByText("De server reageert niet goed. Probeer het later opnieuw.");
+  await screen.findByText(
+    "De melding kon niet worden bijgewerkt. De server reageert niet goed. Probeer het later opnieuw.",
+  );
   expect(screen.getByText("Check in")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Gelezen" })).toBeTruthy();
 });

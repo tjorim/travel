@@ -38,29 +38,29 @@ function tripState(trip: Trip, day: string): "active" | "upcoming" | "planned" |
 }
 
 function nextAction(trip: Trip, snapshot: TripSnapshot): string {
-  if (!trip.starts_on) return "Kies reisdata en een bestemming om te beginnen met plannen";
+  if (!trip.starts_on) return m.owner_choose_travel_dates_and_a_destination_to_start_planning();
   const openTasks = snapshot.tasks
     .filter((task) => !task.completed_at)
     .sort((left, right) => (left.due_date ?? "9999-12-31").localeCompare(right.due_date ?? "9999-12-31"));
   if (openTasks[0])
     return openTasks[0].due_date
-      ? `Taak: ${openTasks[0].title} · voor ${formatDay(openTasks[0].due_date)}`
-      : `Taak: ${openTasks[0].title}`;
+      ? m.owner_task_due({ p0: openTasks[0].title, p1: formatDay(openTasks[0].due_date) })
+      : m.owner_task({ p0: openTasks[0].title });
 
   if (trip.starts_on && trip.ends_on && trip.ends_on > trip.starts_on) {
     const nights = Array.from({ length: daysBetween(trip.starts_on, trip.ends_on) }, (_, index) =>
       addDays(trip.starts_on!, index),
     );
     const missing = nights.filter((night) => !snapshot.stays.some((stay) => stayCoversNight(stay, night))).length;
-    if (missing) return `${missing} ${missing === 1 ? "nacht heeft" : "nachten hebben"} nog geen verblijf`;
+    if (missing) return m.owner_missing_nights({ count: missing });
   }
 
   const unbookedRoute = snapshot.routes.find(
     (route) => route.status !== "cancelled" && route.status !== "booked" && route.status !== "confirmed",
   );
-  if (unbookedRoute) return "Vervoer moet nog geboekt of bevestigd worden";
-  if (!trip.travel_updates.length) return "Leg een eerste reisupdate vast";
-  return "Open je reisoverzicht";
+  if (unbookedRoute) return m.owner_transport_still_needs_to_be_booked_or_confirmed();
+  if (!trip.travel_updates.length) return m.owner_capture_your_first_travel_update();
+  return m.owner_open_your_trip_overview();
 }
 
 function orderedTrips(trips: Trip[], day: string): Trip[] {
@@ -175,10 +175,10 @@ export function OwnerHome() {
   if (state === "error")
     return (
       <section className="travel-card" role="alert">
-        <h2>Je reiswerkruimte is niet beschikbaar</h2>
+        <h2>{m.owner_your_travel_workspace_is_unavailable()}</h2>
         <p>{message}</p>
         <Button type="button" onClick={() => window.location.reload()}>
-          Opnieuw proberen
+          {m.owner_try_again()}
         </Button>
       </section>
     );
@@ -187,43 +187,41 @@ export function OwnerHome() {
     <main className="grid gap-6.5" aria-labelledby="owner-home-title">
       <header className="capture-heading">
         <div>
-          <p className="travel-eyebrow">Private reiswerkruimte</p>
+          <p className="travel-eyebrow">{m.owner_private_travel_workspace()}</p>
           <h1 className="max-w-travel-home-title" id="owner-home-title">
-            Waar wil je verder?
+            {m.owner_where_would_you_like_to_continue()}
           </h1>
           <p className="max-w-145 leading-relaxed text-travel-muted">
-            Je reizen, aandachtspunten en herinneringen op één rustige plek.
+            {m.owner_your_trips_things_to_arrange_and_memories_in_one_quiet_place()}
           </p>
         </div>
         <div className="button-row">
           <a className="secondary action-link" href="/">
-            Publieke reizen bekijken
+            {m.owner_view_public_trips()}
           </a>
           <Link className="action-link" to="/trips" search={{ new: "1" }}>
-            Nieuwe reis
+            {m.owner_new_trip()}
           </Link>
         </div>
       </header>
       {!online && (
         <p className="connection offline" role="status">
-          Je bent offline. De getoonde gegevens kunnen verouderd zijn.
+          {m.owner_you_are_offline_the_displayed_information_may_be_outdated()}
         </p>
       )}
       {unreadAlerts.length > 0 && (
         <section className="travel-card" aria-labelledby="inbox-title">
           <h2 className="m-0" id="inbox-title">
-            Inbox
+            {m.owner_inbox()}
           </h2>
-          <p>
-            {unreadAlerts.length} {unreadAlerts.length === 1 ? "nieuwe herinnering" : "nieuwe herinneringen"}
-          </p>
+          <p>{m.owner_reminder_count({ count: unreadAlerts.length })}</p>
           <div className="saved-records">
             {unreadAlerts.map((alert) => (
               <article className="excerpt-row" key={alert.id}>
                 <div>
                   <strong>{alert.title}</strong>
                   <span>
-                    {alert.trip.title} · gepland voor {formatInstant(alert.scheduled_for)}
+                    {m.owner_reminder_scheduled({ trip: alert.trip.title, time: formatInstant(alert.scheduled_for) })}
                   </span>
                 </div>
                 <Button
@@ -233,11 +231,11 @@ export function OwnerHome() {
                     markAlertRead
                       .mutateAsync({ tripId: alert.trip.id, alertId: alert.id })
                       .catch((error: unknown) =>
-                        setNotice(errorNotice(error, "De melding kon niet worden bijgewerkt.")),
+                        setNotice(errorNotice(error, m.owner_the_notification_could_not_be_updated)),
                       )
                   }
                 >
-                  Gelezen
+                  {m.owner_read()}
                 </Button>
               </article>
             ))}
@@ -247,10 +245,10 @@ export function OwnerHome() {
       <section aria-labelledby="trip-list-title">
         <div className="mb-3 flex items-baseline justify-between gap-4">
           <h2 className="m-0" id="trip-list-title">
-            Nu en binnenkort
+            {m.owner_now_and_soon()}
           </h2>
           <Link className="font-bold text-travel-forest" to="/trips">
-            Alle reizen beheren
+            {m.owner_manage_all_trips()}
           </Link>
         </div>
         {visibleTrips.length ? (
@@ -261,7 +259,11 @@ export function OwnerHome() {
               return (
                 <article className="travel-card flex flex-col gap-3 [&_h3]:m-0 [&_p]:m-0" key={trip.id}>
                   <p className="travel-eyebrow">
-                    {status === "active" ? "Nu op reis" : status === "upcoming" ? "Binnenkort" : "Nog plannen"}
+                    {status === "active"
+                      ? m.owner_travelling_now()
+                      : status === "upcoming"
+                        ? m.owner_coming_soon()
+                        : m.owner_still_to_plan()}
                   </p>
                   <h3>{trip.title}</h3>
                   {trip.starts_on ? (
@@ -270,14 +272,14 @@ export function OwnerHome() {
                       {trip.ends_on ? ` — ${formatDay(trip.ends_on, "D MMMM YYYY")}` : ""}
                     </p>
                   ) : (
-                    <p>Kies reisdata wanneer je klaar bent om te plannen.</p>
+                    <p>{m.owner_choose_travel_dates_when_you_are_ready_to_plan()}</p>
                   )}
                   <p className="grid gap-0.75 rounded-travel-media bg-travel-tint px-3 py-2.75 text-sm text-travel-positive! [&_strong]:text-travel-ink">
-                    <strong>Volgende stap</strong>
+                    <strong>{m.owner_next_step()}</strong>
                     {nextAction(trip, snapshot)}
                   </p>
                   <Link className="action-link mt-auto w-fit" to={`/trips/${encodeURIComponent(trip.id)}`}>
-                    Open reis
+                    {m.owner_open_trip()}
                   </Link>
                 </article>
               );
@@ -285,10 +287,10 @@ export function OwnerHome() {
           </div>
         ) : (
           <section className="travel-card">
-            <h3>{trips.length ? "Geen actieve of komende reizen" : "Begin met je eerste reis"}</h3>
-            <p>{trips.length ? "Eerdere reizen blijven beschikbaar via beheren." : message}</p>
+            <h3>{trips.length ? m.owner_no_active_or_upcoming_trips() : m.owner_start_your_first_trip()}</h3>
+            <p>{trips.length ? m.owner_past_trips_remain_available_under_manage() : message}</p>
             <Link className="action-link" to="/trips" search={{ new: "1" }}>
-              Nieuwe reis
+              {m.owner_new_trip()}
             </Link>
           </section>
         )}
@@ -296,7 +298,7 @@ export function OwnerHome() {
       {recentUpdates.length > 0 && (
         <section className="travel-card grid gap-3.5" aria-labelledby="activity-title">
           <h2 className="m-0" id="activity-title">
-            Recent vastgelegd
+            {m.owner_recently_captured()}
           </h2>
           <div className="saved-records">
             {recentUpdates.map((update) => (

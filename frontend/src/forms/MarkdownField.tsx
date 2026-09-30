@@ -1,5 +1,6 @@
+import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
-import { errorNotice, noticeMessage, type ErrorNotice } from "../query/feedback";
+import { textNotice, errorNotice, noticeMessage, type ErrorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { TravelTextarea } from "../ui/TravelTextarea";
@@ -18,25 +19,89 @@ export type MarkdownFormat = "markdown" | "inline" | "contact";
 
 const SNIPPETS: Record<MarkdownFormat, { snippet: MarkdownSnippet; label: string; text: string }[]> = {
   markdown: [
-    { snippet: "bold", label: "Vet", text: "B" },
-    { snippet: "italic", label: "Cursief", text: "I" },
-    { snippet: "heading", label: "Kop", text: "H" },
-    { snippet: "list", label: "Lijst", text: "•" },
-    { snippet: "tasks", label: "Takenlijst", text: "☐" },
-    { snippet: "link", label: "Link", text: "Link" },
+    {
+      snippet: "bold",
+      get label() {
+        return m.owner_bold();
+      },
+      text: "B",
+    },
+    {
+      snippet: "italic",
+      get label() {
+        return m.owner_italic();
+      },
+      text: "I",
+    },
+    {
+      snippet: "heading",
+      get label() {
+        return m.owner_heading();
+      },
+      text: "H",
+    },
+    {
+      snippet: "list",
+      get label() {
+        return m.owner_list();
+      },
+      text: "•",
+    },
+    {
+      snippet: "tasks",
+      get label() {
+        return m.owner_task_list();
+      },
+      text: "☐",
+    },
+    {
+      snippet: "link",
+      get label() {
+        return m.owner_link();
+      },
+      get text() {
+        return m.owner_link();
+      },
+    },
   ],
   inline: [
-    { snippet: "bold", label: "Vet", text: "B" },
-    { snippet: "italic", label: "Cursief", text: "I" },
-    { snippet: "link", label: "Link", text: "Link" },
+    {
+      snippet: "bold",
+      get label() {
+        return m.owner_bold();
+      },
+      text: "B",
+    },
+    {
+      snippet: "italic",
+      get label() {
+        return m.owner_italic();
+      },
+      text: "I",
+    },
+    {
+      snippet: "link",
+      get label() {
+        return m.owner_link();
+      },
+      get text() {
+        return m.owner_link();
+      },
+    },
   ],
   contact: [],
 };
 
 const HINTS: Record<MarkdownFormat, string> = {
-  markdown: "Markdown: **vet**, *cursief*, koppen, lijsten, takenlijsten, links en tabellen.",
-  inline: "Alleen **vet**, *cursief* en links.",
-  contact: "Gewone tekst: telefoonnummers, e-mail- en webadressen worden links.",
+  get markdown() {
+    return m.owner_markdown_bold_italic_headings_lists_task_lists_links_and_tables();
+  },
+  get inline() {
+    return m.owner_only_bold_italic_and_links();
+  },
+  get contact() {
+    return m.owner_plain_text_phone_numbers_email_addresses_and_web_addresses_become_links();
+  },
 };
 
 type RenderResult = { html: string | null; text: string | null };
@@ -49,17 +114,19 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
   useLocale();
   const owner = useOwner();
   const [state, setState] = useState<
-    { kind: "loading" } | { kind: "ready"; result: RenderResult } | { kind: "error"; message: string | ErrorNotice }
+    | { kind: "loading" }
+    | { kind: "ready"; result: RenderResult }
+    | { kind: "error"; message: string | ErrorNotice | import("../query/feedback").MessageNotice }
   >({ kind: "loading" });
 
   useEffect(() => {
     if (!owner) {
-      setState({ kind: "error", message: "Meld je aan om een voorbeeld te zien." });
+      setState({ kind: "error", message: textNotice(m.owner_sign_in_to_see_a_preview) });
       return;
     }
     const controller = new AbortController();
     setState({ kind: "loading" });
-    ownerRequest<RenderResult>(owner.session, "/api/markdown/render", "Het voorbeeld kon niet worden geladen.", {
+    ownerRequest<RenderResult>(owner.session, "/api/markdown/render", m.owner_the_preview_could_not_be_loaded, {
       method: "POST",
       body: { source, format },
       signal: controller.signal,
@@ -67,7 +134,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
       .then((result) => setState({ kind: "ready", result }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
-          setState({ kind: "error", message: errorNotice(error, "Het voorbeeld kon niet worden geladen.") });
+          setState({ kind: "error", message: errorNotice(error, m.owner_the_preview_could_not_be_loaded) });
       });
     return () => controller.abort();
   }, [owner, source, format]);
@@ -75,7 +142,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
   if (state.kind === "loading")
     return (
       <p className="help" role="status">
-        Voorbeeld laden…
+        {m.owner_loading_preview()}
       </p>
     );
   if (state.kind === "error")
@@ -84,7 +151,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
         {noticeMessage(state.message)}
       </p>
     );
-  if (!state.result.html) return <p className="help">Nog niets om te tonen.</p>;
+  if (!state.result.html) return <p className="help">{m.owner_nothing_to_show_yet()}</p>;
   return <Markdown html={state.result.html} text={source} />;
 }
 
@@ -102,6 +169,7 @@ export function MarkdownField({
   TextareaHTMLAttributes<HTMLTextAreaElement>,
   "value" | "onChange" | "onBlur" | "name" | "id"
 >) {
+  useLocale();
   const { message, invalid } = useFieldErrors(field);
   const [previewing, setPreviewing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -138,14 +206,14 @@ export function MarkdownField({
         </span>
       </FieldLabel>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <div className="flex flex-wrap gap-1" role="group" aria-label={`Weergave van ${label.toLowerCase()}`}>
+        <div className="flex flex-wrap gap-1" role="group" aria-label={m.owner_view_for({ p0: label })}>
           <Button
             type="button"
             className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
             aria-pressed={!previewing}
             onClick={() => setPreviewing(false)}
           >
-            Schrijven
+            {m.owner_write()}
           </Button>
           <Button
             type="button"
@@ -153,11 +221,11 @@ export function MarkdownField({
             aria-pressed={previewing}
             onClick={() => setPreviewing(true)}
           >
-            Voorbeeld
+            {m.owner_preview()}
           </Button>
         </div>
         {!previewing && SNIPPETS[format].length > 0 && (
-          <div className="flex flex-wrap gap-1" role="toolbar" aria-label={`Opmaak voor ${label.toLowerCase()}`}>
+          <div className="flex flex-wrap gap-1" role="toolbar" aria-label={m.owner_formatting_for({ p0: label })}>
             {SNIPPETS[format].map(({ snippet, label: name, text }) => (
               <Button
                 key={snippet}

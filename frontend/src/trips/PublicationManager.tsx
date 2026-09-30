@@ -368,6 +368,10 @@ const MAP_KINDS: Record<keyof OverviewAudience["without_map_point"], [string, st
 function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): string {
   const name = warning.audience_id === null ? "De pagina voor iedereen" : `Link “${warning.audience}”`;
   switch (warning.code) {
+    case "location_repeats_area":
+      return m.owner_location_repeats_area({ name: warning.text ?? "" });
+    case "visit_restates_route":
+      return m.owner_visit_restates_route({ name: warning.text ?? "" });
     case "live_audience_receives_nothing":
       return `${name} is actief maar krijgt geen enkel onderdeel. Zet onderdelen op “Iedereen”, of kies ze voor dit publiek.`;
     case "trip_dates_shared":

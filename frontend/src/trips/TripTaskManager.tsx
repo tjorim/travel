@@ -1,4 +1,6 @@
-import { errorNotice, useFeedback } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { textNotice, errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
@@ -27,6 +29,7 @@ const fromTask = (task: TripTask): Values => ({
 const serverFields = { title: "title", notes: "notes", due_date: "dueDate", remind_at: "remindAt" };
 
 function TaskLinks({ links }: { links: TaskLink[] }) {
+  useLocale();
   return links.length ? (
     <span className="flex flex-wrap gap-2 [&_a]:font-bold [&_a]:text-travel-link">
       {links.map((link) => (
@@ -44,18 +47,19 @@ const linkNameError = (
   index: number,
 ) =>
   !value.trim() && String(fieldApi.form.getFieldValue(`links[${index}].url` as never) ?? "").trim()
-    ? "Geef de link een naam."
+    ? m.owner_give_the_link_a_name
     : undefined;
 const linkUrlError = (
   { value, fieldApi }: { value: string; fieldApi: { form: { getFieldValue: (name: never) => unknown } } },
   index: number,
 ) => {
   const named = String(fieldApi.form.getFieldValue(`links[${index}].label` as never) ?? "").trim() !== "";
-  if (!value.trim()) return named ? "Geef een https-adres op." : undefined;
-  return isHttps(value) ? undefined : "Gebruik een https-adres.";
+  if (!value.trim()) return named ? m.owner_enter_an_https_address : undefined;
+  return isHttps(value) ? undefined : m.owner_use_an_https_address;
 };
 
 export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
+  useLocale();
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const alertsQuery = useTripResource(trip.id, "task-alerts");
   const tasks = tasksQuery.data ?? [];
@@ -79,7 +83,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     ownerKeys.tripResource(subject, trip.id, "task-alerts"),
   ];
   const saveTask = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, TripTask>({
-    fallback: "De taak kon niet worden opgeslagen.",
+    fallback: m.owner_the_task_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${tripPath(trip.id, "trip-tasks")}/${id}` : tripPath(trip.id, "trip-tasks"),
       method: id ? "PATCH" : "POST",
@@ -88,7 +92,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     invalidate: taskKeys,
   });
   const toggleTask = useOwnerMutation<TripTask, TripTask>({
-    fallback: "De taak kon niet worden bijgewerkt.",
+    fallback: m.owner_the_task_could_not_be_updated,
     request: (task) => ({
       path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`,
       method: "PATCH",
@@ -104,7 +108,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     },
   });
   const deleteTask = useOwnerMutation<TripTask>({
-    fallback: "De taak kon niet worden verwijderd.",
+    fallback: m.owner_the_task_could_not_be_deleted,
     request: (task) => ({ path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`, method: "DELETE" }),
     invalidate: taskKeys,
     optimistic: {
@@ -116,7 +120,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: "De taak kon niet worden opgeslagen.",
+    fallback: m.owner_the_task_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       const links = values.links
@@ -135,7 +139,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     },
     onSuccess: () => {
       close();
-      setNotice("Taak opgeslagen.");
+      setNotice(textNotice(() => m.owner_task_saved()));
     },
   });
 
@@ -165,13 +169,14 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   const message =
     notice ??
     (tasksQuery.error
-      ? errorMessage(tasksQuery.error, "Je taken konden niet worden geladen.")
+      ? errorMessage(tasksQuery.error, m.owner_your_tasks_could_not_be_loaded)
       : alertsQuery.error
-        ? errorMessage(alertsQuery.error, "Je meldingen konden niet worden geladen.")
+        ? errorMessage(alertsQuery.error, m.owner_your_notifications_could_not_be_loaded)
         : tasksQuery.isPending
-          ? "Laad je private takenlijst…"
-          : "Openstaande boekingen en voorbereidingen blijven een private lijst.");
-  const fail = (fallback: string) => (error: unknown) => setNotice(errorNotice(error, fallback));
+          ? m.owner_loading_your_private_task_list()
+          : m.owner_outstanding_bookings_and_preparations_stay_on_a_private_list());
+  const fail = (fallback: import("../query/api").ErrorFallback) => (error: unknown) =>
+    setNotice(errorNotice(error, fallback));
   const openTasks = tasks
     .filter((task) => !task.completed_at)
     .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
@@ -179,18 +184,18 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
 
   function toggle(task: TripTask) {
     toggleTask.mutateAsync(task).then(() => {
-      setNotice(task.completed_at ? "Taak heropend." : "Taak afgevinkt.");
-    }, fail("De taak kon niet worden bijgewerkt."));
+      setNotice(textNotice(() => (task.completed_at ? m.owner_task_reopened() : m.owner_task_checked_off())));
+    }, fail(m.owner_the_task_could_not_be_updated));
   }
   function remove(task: TripTask) {
     deleteTask.mutateAsync(task).then(
       () => {
         close();
-        setNotice("Taak verwijderd.");
+        setNotice(textNotice(() => m.owner_task_deleted()));
       },
       (error: unknown) => {
         setConfirmDelete(false);
-        setDeleteError(errorNotice(error, "De taak kon niet worden verwijderd."));
+        setDeleteError(errorNotice(error, m.owner_the_task_could_not_be_deleted));
       },
     );
   }
@@ -201,18 +206,18 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         className="document-select"
         type="button"
         onClick={() => inspect(task)}
-        aria-label={`Taak ${task.title} bekijken`}
+        aria-label={m.owner_view_task({ p0: task.title })}
       >
         <strong>{task.title}</strong>
         <span>
           {task.completed_at
-            ? `Afgevinkt${task.due_date ? ` · was voor ${task.due_date}` : ""}`
-            : `${task.due_date ? `Voor ${task.due_date}` : "Geen deadline"}${task.remind_at ? ` · Herinnering ${formatInstant(task.remind_at)}` : ""}`}
+            ? m.owner_checked_off({ p0: task.due_date ? m.owner_was_due({ p0: task.due_date }) : "" })
+            : `${task.due_date ? m.owner_due({ p0: task.due_date }) : m.owner_no_deadline()}${task.remind_at ? m.owner_reminder_2({ p0: formatInstant(task.remind_at) }) : ""}`}
         </span>
       </Button>
       <div className="button-row">
         <Button className="secondary compact" type="button" onClick={() => toggle(task)}>
-          {task.completed_at ? "Heropenen" : "Afvinken"}
+          {task.completed_at ? m.owner_reopen() : m.owner_check_off()}
         </Button>
       </div>
     </article>
@@ -222,14 +227,11 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     <section className="travel-card manager" id="tasks" aria-labelledby="tasks-title">
       <div className="capture-heading">
         <div>
-          <h3 id="tasks-title">Nog te regelen</h3>
-          <p>
-            Een deadline sorteert taken. Kies apart een herinnering; meldingen verschijnen hier en worden per e-mail
-            verstuurd zodra de geplande verwerking draait.
-          </p>
+          <h3 id="tasks-title">{m.owner_things_to_arrange()}</h3>
+          <p>{m.owner_a_deadline_sorts_tasks_choose_a_reminder_separately_notifications_appear()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          Nieuwe taak
+          {m.owner_new_task()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -237,19 +239,20 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       </p>
       {alerts.length > 0 && (
         <div className="manager-subsection">
-          <h4>Meldingen</h4>
+          <h4>{m.owner_notifications()}</h4>
           <div className="saved-records mt-0.5">
             {alerts.map((alert) => (
               <article className="excerpt-row" key={alert.id}>
                 <div>
                   <strong>{alert.title}</strong>
                   <span>
-                    Geplande herinnering{alert.read_at ? " · Gelezen" : " · Nieuw"}
+                    {m.owner_scheduled_reminder()}
+                    {alert.read_at ? m.owner_read_2() : m.owner_new()}
                     {alert.email_sent_at
-                      ? " · E-mail verzonden"
+                      ? m.owner_email_sent()
                       : alert.email_attempts >= 5
-                        ? " · E-mailbezorging mislukt"
-                        : " · E-mail nog niet verzonden"}
+                        ? m.owner_email_delivery_failed()
+                        : m.owner_email_not_sent_yet()}
                   </span>
                 </div>
                 {!alert.read_at && (
@@ -259,10 +262,10 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                     onClick={() =>
                       markRead
                         .mutateAsync({ tripId: trip.id, alertId: alert.id })
-                        .catch(fail("De melding kon niet worden bijgewerkt."))
+                        .catch(fail(m.owner_the_notification_could_not_be_updated))
                     }
                   >
-                    Gelezen
+                    {m.owner_read()}
                   </Button>
                 )}
               </article>
@@ -277,11 +280,11 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         </div>
       )}
       {!tasksQuery.isPending && !tasks.length && (
-        <p>Nog geen taken. Voeg er één toe zodra iets nog geboekt of geregeld moet worden.</p>
+        <p>{m.owner_no_tasks_yet_add_one_when_something_needs_to_be_booked_or_arranged()}</p>
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? "Taak bewerken" : "Taak toevoegen") : "Taak"}
+        title={editing ? (editingId ? m.owner_edit_task() : m.owner_add_task()) : m.owner_task_2()}
         dirty={editing && record.dirty}
         error={deleteError}
         onDismiss={close}
@@ -295,15 +298,15 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
             </div>
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                Bewerken
+                {m.owner_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => setConfirmDelete(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {confirmDelete && (
               <DeleteConfirmation
-                title={`Taak “${selected.title}” verwijderen?`}
+                title={m.owner_delete_task({ p0: selected.title })}
                 onCancel={() => setConfirmDelete(false)}
                 onConfirm={() => remove(selected)}
               />
@@ -313,34 +316,35 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         {editing && (
           <RecordForm
             record={record}
-            submitLabel={editingId ? "Taak opslaan" : "Taak toevoegen"}
-            pendingLabel="Opslaan…"
+            submitLabel={editingId ? m.owner_save_task() : m.owner_add_task()}
+            pendingLabel={m.owner_saving()}
           >
             <div className="field-row">
               <record.form.Field
                 name="title"
                 validators={{
-                  onChange: requiredText("Geef de taak een titel."),
-                  onSubmit: requiredText("Geef de taak een titel."),
+                  onChange: requiredText(m.owner_give_the_task_a_title),
+                  onSubmit: requiredText(m.owner_give_the_task_a_title),
                 }}
               >
-                {(field) => <TextField field={field} label="Titel" required maxLength={160} />}
+                {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
               </record.form.Field>
               <record.form.Field name="dueDate">
-                {(field) => <TextField field={field} label="Deadline" optional type="date" />}
+                {(field) => <TextField field={field} label={m.owner_deadline()} optional type="date" />}
               </record.form.Field>
             </div>
             <record.form.Field name="remindAt">
-              {(field) => <TextField field={field} label="Herinnering" optional type="datetime-local" />}
+              {(field) => <TextField field={field} label={m.owner_reminder_3()} optional type="datetime-local" />}
             </record.form.Field>
             <record.form.Field name="notes">
-              {(field) => <MarkdownField field={field} label="Notities" optional maxLength={4000} rows={3} />}
+              {(field) => <MarkdownField field={field} label={m.owner_notes()} optional maxLength={4000} rows={3} />}
             </record.form.Field>
             <record.form.Field name="links" mode="array">
               {(links) => (
                 <FieldSet>
                   <FieldLegend>
-                    Links <span className="font-medium text-travel-optional">(optioneel, https)</span>
+                    {m.owner_links()}{" "}
+                    <span className="font-medium text-travel-optional">{m.owner_optional_https()}</span>
                   </FieldLegend>
                   {links.state.value.map((_, index) => (
                     <div className="field-row" key={index}>
@@ -351,7 +355,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                           onSubmit: (context) => linkNameError(context, index),
                         }}
                       >
-                        {(field) => <TextField field={field} label="Naam" maxLength={80} />}
+                        {(field) => <TextField field={field} label={m.owner_name()} maxLength={80} />}
                       </record.form.Field>
                       <record.form.Field
                         name={`links[${index}].url`}
@@ -360,10 +364,10 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                           onSubmit: (context) => linkUrlError(context, index),
                         }}
                       >
-                        {(field) => <TextField field={field} label="Adres" type="url" maxLength={2048} />}
+                        {(field) => <TextField field={field} label={m.owner_address()} type="url" maxLength={2048} />}
                       </record.form.Field>
                       <Button className="secondary compact" type="button" onClick={() => void links.removeValue(index)}>
-                        Link verwijderen
+                        {m.owner_remove_link()}
                       </Button>
                     </div>
                   ))}
@@ -373,7 +377,7 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                       type="button"
                       onClick={() => void links.pushValue({ label: "", url: "" })}
                     >
-                      Link toevoegen
+                      {m.owner_add_link()}
                     </Button>
                   )}
                 </FieldSet>

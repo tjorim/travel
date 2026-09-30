@@ -1,4 +1,6 @@
-import { errorNotice } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useRef, useState } from "react";
 
@@ -27,15 +29,23 @@ import { PlaceSearchField } from "./PlaceSearchField";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 
 const STATUS_LABELS: Record<Stay["status"], string> = {
-  planned: "Gepland",
-  booked: "Geboekt",
-  confirmed: "Bevestigd",
-  cancelled: "Geannuleerd",
+  get planned() {
+    return m.owner_planned();
+  },
+  get booked() {
+    return m.owner_booked_3();
+  },
+  get confirmed() {
+    return m.owner_confirmed();
+  },
+  get cancelled() {
+    return m.owner_cancelled();
+  },
 };
 
 /** The archive's hotel states: still choosing, proposed, booked. */
 export function stayStateLabel(stay: Stay): string {
-  if (stay.status === "planned") return stay.property_name ? "Voorgesteld" : "Nog kiezen";
+  if (stay.status === "planned") return stay.property_name ? m.owner_suggested() : m.owner_still_to_choose();
   return STATUS_LABELS[stay.status];
 }
 
@@ -122,11 +132,11 @@ const checkOutAfterCheckIn = ({
   fieldApi: { form: { getFieldValue: (name: never) => unknown } };
 }) =>
   value && value <= String(fieldApi.form.getFieldValue("checkInDate" as never) ?? "")
-    ? "Uitchecken gebeurt ten vroegste de ochtend na de eerste nacht."
+    ? m.owner_check_out_is_no_earlier_than_the_morning_after_the_first_night
     : undefined;
-const PLACE_REQUIRED = "Kies waar je verblijft: zoek een locatie, of vul een adres of plaats in.";
+const PLACE_REQUIRED = m.owner_choose_where_you_are_staying_search_for_a_location_or_enter_an_address_o;
 const httpsOnly = ({ value }: { value: string }) =>
-  value.trim() && !value.trim().startsWith("https://") ? "Gebruik een https-adres." : undefined;
+  value.trim() && !value.trim().startsWith("https://") ? m.owner_use_an_https_address : undefined;
 
 const locationLine = (place: Stay["location"] | undefined) =>
   place ? [...new Set([locationName(place), place.locality].filter(Boolean))].join(" · ") : "";
@@ -134,19 +144,20 @@ const overlapLabel = (stay: Stay) =>
   `${stayLabel(stay)} (${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)})`;
 
 export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; focusId?: DialogFocusRequest | null }) {
+  useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const stays = staysQuery.data ?? [];
   const stayDialog = useRecordDialog(stays);
   useDialogFocus(focusId, stayDialog.inspect);
-  const [message, setMessage] = useState(
-    "Een verblijf is privé. Deel je het, dan zien bezoekers alleen de stad of het gebied en de nachten — nooit de accommodatie.",
+  const [message, setMessage] = useFeedback<string>(
+    textNotice(() => m.owner_a_stay_is_private_if_you_share_it_visitors_only_see_the_city_or_area_and()),
   );
   const [deleteTarget, setDeleteTarget] = useState<Stay | null>(null);
   // A stay's place is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<StayValues>(blankStay(trip));
 
   const saveStay = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Stay>({
-    fallback: "Het verblijf kon niet worden opgeslagen.",
+    fallback: m.owner_the_stay_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${tripPath(trip.id, "stays")}/${id}` : tripPath(trip.id, "stays"),
       method: id ? "PATCH" : "POST",
@@ -160,7 +171,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
     ],
   });
   const deleteStay = useOwnerMutation<Stay>({
-    fallback: "Het verblijf kon niet worden verwijderd.",
+    fallback: m.owner_the_stay_could_not_be_deleted,
     request: (stay) => ({ path: `${tripPath(trip.id, "stays")}/${stay.id}`, method: "DELETE" }),
     invalidate: (subject) => [
       ownerKeys.tripResource(subject, trip.id, "stays"),
@@ -170,7 +181,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
   });
   const stayRecord = useRecordForm<StayValues>({
     defaultValues: blankStay(trip),
-    fallback: "Het verblijf kon niet worden opgeslagen.",
+    fallback: m.owner_the_stay_could_not_be_saved,
     serverFields: stayFields,
     submit: async (values) => {
       const propertyName = values.propertyName.trim();
@@ -208,7 +219,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
     },
     onSuccess: () => {
       closeStay();
-      setMessage("Privéverblijf opgeslagen.");
+      setMessage(textNotice(() => m.owner_private_stay_saved()));
     },
   });
   // Only a new stay, or one whose place fields were edited, needs a place to send; the message sits on the Plaats field.
@@ -253,11 +264,11 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
       () => {
         closeStay();
         setDeleteTarget(null);
-        setMessage("Privéverblijf verwijderd.");
+        setMessage(textNotice(() => m.owner_private_stay_deleted()));
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        stayDialog.setError(errorNotice(error, "Het verblijf kon niet worden verwijderd."));
+        stayDialog.setError(errorNotice(error, m.owner_the_stay_could_not_be_deleted));
       },
     );
   }
@@ -270,21 +281,18 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
     <section className="travel-card manager" id="stays" aria-labelledby="stays-title">
       <div className="capture-heading">
         <div>
-          <h3 id="stays-title">Verblijven</h3>
-          <p>
-            Een verblijf is een reeks nachten: inchecken de namiddag van de eerste nacht, uitchecken de ochtend erna.
-            Adressen, boekingen en contactgegevens zijn uitsluitend privé.
-          </p>
+          <h3 id="stays-title">{m.owner_stays()}</h3>
+          <p>{m.owner_a_stay_is_a_series_of_nights_check_in_during_the_afternoon_of_the_first()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={newStay}>
-          Nieuw verblijf
+          {m.owner_new_stay()}
         </Button>
       </div>
       <p className="help" role="status">
         {readError
-          ? errorMessage(readError, "Je verblijven konden niet worden geladen.")
+          ? errorMessage(readError, m.owner_your_stays_could_not_be_loaded)
           : staysQuery.isPending
-            ? "Laad je private verblijven…"
+            ? m.owner_loading_your_private_stays()
             : message}
       </p>
       {stays.length > 0 && (
@@ -299,7 +307,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                     {[
                       stay.area?.label,
                       `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
-                      `${nights} ${nights === 1 ? "nacht" : "nachten"}`,
+                      m.owner_night_count({ count: nights }),
                       stayStateLabel(stay),
                       visibilityLabel(stay.visibility),
                     ]
@@ -314,7 +322,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
       )}
       <RecordDialog
         open={editingStay || selectedStay !== null}
-        title={editingStay ? (editingStayId ? "Verblijf bewerken" : "Verblijf toevoegen") : "Verblijf"}
+        title={editingStay ? (editingStayId ? m.owner_edit_stay() : m.owner_add_stay()) : m.owner_stay()}
         dirty={editingStay && stayRecord.dirty}
         error={stayDialog.error}
         onDismiss={closeStay}
@@ -330,12 +338,12 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               )}
               <p>
                 {selectedStay.booking_reference
-                  ? `Boekingsreferentie: ${selectedStay.booking_reference}`
-                  : "Geen boekingsreferentie"}
+                  ? m.owner_booking_reference_2({ p0: selectedStay.booking_reference })
+                  : m.owner_no_booking_reference()}
               </p>
               {selectedStay.contact_details && (
                 <>
-                  <p className="markdown-label">Contact</p>
+                  <p className="markdown-label">{m.owner_contact()}</p>
                   <Markdown html={selectedStay.contact_details_html} text={selectedStay.contact_details} />
                 </>
               )}
@@ -350,10 +358,10 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
             />
             <div className="button-row">
               <Button type="button" onClick={() => editStay(selectedStay)}>
-                Bewerken
+                {m.owner_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => setDeleteTarget(selectedStay)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
           </div>
@@ -361,12 +369,12 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
         {editingStay && (
           <RecordForm
             record={stayRecord}
-            submitLabel={editingStayId ? "Verblijf opslaan" : "Verblijf toevoegen"}
-            pendingLabel="Opslaan…"
+            submitLabel={editingStayId ? m.owner_save_stay() : m.owner_add_stay()}
+            pendingLabel={m.owner_saving()}
           >
             <stayRecord.form.Field name="status">
               {(field) => (
-                <SelectField field={field} label="Status">
+                <SelectField field={field} label={m.owner_status()}>
                   {Object.entries(STATUS_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
@@ -377,29 +385,34 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
             </stayRecord.form.Field>
             <stayRecord.form.Field name="shareDatePrecision">
               {(field) => (
-                <SelectField field={field} label="Datums voor bezoekers">
-                  <option value="day">Volledige datums</option>
-                  <option value="month">Alleen maanden</option>
-                  <option value="year">Alleen het jaar</option>
+                <SelectField field={field} label={m.owner_dates_for_visitors()}>
+                  <option value="day">{m.owner_full_dates()}</option>
+                  <option value="month">{m.owner_months_only()}</option>
+                  <option value="year">{m.owner_year_only()}</option>
                 </SelectField>
               )}
             </stayRecord.form.Field>
             <stayRecord.form.Field name="propertyName">
               {(field) => (
-                <TextField field={field} label="Accommodatie" optional="(leeg zolang je nog kiest)" maxLength={160} />
+                <TextField
+                  field={field}
+                  label={m.owner_accommodation()}
+                  optional={m.owner_empty_until_chosen()}
+                  maxLength={160}
+                />
               )}
             </stayRecord.form.Field>
             <PlaceSearchField
               tripId={trip.id}
-              legend="Verblijf zoeken"
-              inputLabel="Zoek verblijf of adres"
-              placeholder="Bijvoorbeeld: Central Station Hotel"
-              help="Een verblijf heeft altijd een locatie: zoek er een, of vul hieronder een adres of plaats in. De locatie bepaalt automatisch het gebied en blijft privé, ook als je het verblijf deelt."
+              legend={m.owner_search_stay()}
+              inputLabel={m.owner_search_for_accommodation_or_an_address()}
+              placeholder={m.owner_for_example_citizenm_taipei_north_gate()}
+              help={m.owner_a_stay_always_has_a_location_search_for_one_or_enter_an_address_or_city()}
               onSelect={usePlaceResult}
               allowExisting
               current={
                 currentPlace
-                  ? `Gekoppelde locatie: ${currentPlace}. Kies of zoek hieronder een andere om die te vervangen.`
+                  ? m.owner_linked_location_choose_or_search_for_another_below_to_replace_it({ p0: currentPlace })
                   : undefined
               }
             />
@@ -407,8 +420,8 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               <stayRecord.form.Field
                 name="checkInDate"
                 validators={{
-                  onChange: requiredText("Kies de eerste nacht."),
-                  onSubmit: requiredText("Kies de eerste nacht."),
+                  onChange: requiredText(m.owner_choose_the_first_night),
+                  onSubmit: requiredText(m.owner_choose_the_first_night),
                 }}
                 listeners={{
                   onChange: ({ value }) => {
@@ -417,7 +430,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                   },
                 }}
               >
-                {(field) => <TextField field={field} label="Eerste nacht (inchecken)" required type="date" />}
+                {(field) => <TextField field={field} label={m.owner_first_night_check_in()} required type="date" />}
               </stayRecord.form.Field>
               <stayRecord.form.Field
                 name="checkOutDate"
@@ -427,7 +440,7 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                   onSubmit: checkOutAfterCheckIn,
                 }}
               >
-                {(field) => <TextField field={field} label="Uitchecken (ochtend)" required type="date" />}
+                {(field) => <TextField field={field} label={m.owner_check_out_morning()} required type="date" />}
               </stayRecord.form.Field>
             </div>
             <stayRecord.form.Subscribe
@@ -448,14 +461,14 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                   <>
                     <p className="help">
                       {nights > 0
-                        ? `${nights} ${nights === 1 ? "nacht" : "nachten"}`
-                        : "Kies een uitcheckdatum na de eerste nacht."}{" "}
-                      · lokale datums bij het verblijf
+                        ? m.owner_night_count({ count: nights })
+                        : m.owner_choose_a_check_out_date_after_the_first_night()}{" "}
+                      {m.owner_local_dates_at_the_stay()}
                     </p>
                     {overlapping.length > 0 && (
                       <p className="help font-bold text-travel-warning-dark" role="status">
-                        Deze nachten overlappen met {overlapping.map(overlapLabel).join(", ")}. Dat mag, maar controleer
-                        of je niet dubbel boekt.
+                        {m.owner_these_nights_overlap_with()} {overlapping.map(overlapLabel).join(", ")}
+                        {m.owner_that_is_allowed_but_check_that_you_are_not_booking_twice()}
                       </p>
                     )}
                   </>
@@ -464,30 +477,32 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
             </stayRecord.form.Subscribe>
             <div className="field-row">
               <stayRecord.form.Field name="checkInTime">
-                {(field) => <TextField field={field} label="Inchecktijd" optional type="time" />}
+                {(field) => <TextField field={field} label={m.owner_check_in_time()} optional type="time" />}
               </stayRecord.form.Field>
               <stayRecord.form.Field name="checkOutTime">
-                {(field) => <TextField field={field} label="Uitchecktijd" optional type="time" />}
+                {(field) => <TextField field={field} label={m.owner_check_out_time()} optional type="time" />}
               </stayRecord.form.Field>
             </div>
             <div className="field-row">
               <stayRecord.form.Field name="address">
-                {(field) => <TextField field={field} label="Adres" optional maxLength={160} />}
+                {(field) => <TextField field={field} label={m.owner_address()} optional maxLength={160} />}
               </stayRecord.form.Field>
               <stayRecord.form.Field name="locality" validators={{ onSubmit: placeRequired }}>
-                {(field) => <TextField field={field} label="Plaats" optional maxLength={120} />}
+                {(field) => <TextField field={field} label={m.owner_city()} optional maxLength={120} />}
               </stayRecord.form.Field>
             </div>
             <div className="field-row">
               <stayRecord.form.Field name="countryCode">
-                {(field) => <TextField field={field} label="Landcode" optional maxLength={2} placeholder="TW" />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_country_code()} optional maxLength={2} placeholder="TW" />
+                )}
               </stayRecord.form.Field>
               <stayRecord.form.Field name="websiteUrl" validators={{ onBlur: httpsOnly, onSubmit: httpsOnly }}>
                 {(field) => (
                   <TextField
                     field={field}
-                    label="Website"
-                    optional="(optioneel, https)"
+                    label={m.owner_website()}
+                    optional={m.owner_optional_https()}
                     type="url"
                     maxLength={2048}
                     placeholder="https://"
@@ -496,14 +511,14 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               </stayRecord.form.Field>
             </div>
             <stayRecord.form.Field name="bookingReference">
-              {(field) => <TextField field={field} label="Boekingsreferentie" optional maxLength={255} />}
+              {(field) => <TextField field={field} label={m.owner_booking_reference_3()} optional maxLength={255} />}
             </stayRecord.form.Field>
             <stayRecord.form.Field name="contactDetails">
               {(field) => (
                 <MarkdownField
                   field={field}
                   format="contact"
-                  label="Contactgegevens"
+                  label={m.owner_contact_details()}
                   optional
                   maxLength={2000}
                   rows={3}
@@ -511,14 +526,14 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               )}
             </stayRecord.form.Field>
             <stayRecord.form.Field name="notes">
-              {(field) => <MarkdownField field={field} label="Notities" optional maxLength={4000} rows={3} />}
+              {(field) => <MarkdownField field={field} label={m.owner_notes()} optional maxLength={4000} rows={3} />}
             </stayRecord.form.Field>
           </RecordForm>
         )}
       </RecordDialog>
       {deleteTarget && (
         <DeleteConfirmation
-          title={`“${stayLabel(deleteTarget)}” verwijderen?`}
+          title={m.owner_delete_2({ p0: stayLabel(deleteTarget) })}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
         />

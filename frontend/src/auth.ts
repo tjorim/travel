@@ -1,3 +1,5 @@
+import { FeedbackError } from "./query/feedback";
+import { m } from "./paraglide/messages.js";
 const issuer = "https://auth.tjor.im/realms/travel";
 const clientId = "travel-tracker";
 const storageKey = "travel-tracker-session";
@@ -110,26 +112,27 @@ export async function completeSignIn(search: string): Promise<{ returnPath: stri
   const state = parameters.get("state");
   const stored = sessionStorage.getItem(transactionKey);
   sessionStorage.removeItem(transactionKey);
-  if (!state || !stored) throw new Error("De aanmeldsessie ontbreekt of is verlopen.");
+  if (!state || !stored) throw new FeedbackError(() => m.owner_the_sign_in_session_is_missing_or_has_expired());
 
   let transaction: PkceTransaction;
   try {
     transaction = JSON.parse(stored) as PkceTransaction;
   } catch {
-    throw new Error("De aanmeldsessie is ongeldig.");
+    throw new FeedbackError(() => m.owner_the_sign_in_session_is_invalid());
   }
-  if (transaction.state !== state || !transaction.codeVerifier) throw new Error("De aanmeldsessie komt niet overeen.");
+  if (transaction.state !== state || !transaction.codeVerifier)
+    throw new FeedbackError(() => m.owner_the_sign_in_session_does_not_match());
   if (error) {
     sessionStorage.removeItem(silentRestoreKey);
     if (transaction.silent) {
       // There is no longer a Keycloak SSO session to recover. Do not retry on
       // every rendered route; the owner can choose the normal sign-in action.
       localStorage.removeItem(restoreMarkerKey);
-      throw new Error("Je aanmeldsessie is verlopen. Meld opnieuw aan om verder te gaan.");
+      throw new FeedbackError(() => m.owner_your_sign_in_session_has_expired_sign_in_again_to_continue());
     }
-    throw new Error("Aanmelden is afgebroken of geweigerd.");
+    throw new FeedbackError(() => m.owner_sign_in_was_cancelled_or_denied());
   }
-  if (!code) throw new Error("De aanmeldcode ontbreekt of is verlopen.");
+  if (!code) throw new FeedbackError(() => m.owner_the_sign_in_code_is_missing_or_has_expired());
 
   const response = await fetch(`${issuer}/protocol/openid-connect/token`, {
     method: "POST",
@@ -142,11 +145,11 @@ export async function completeSignIn(search: string): Promise<{ returnPath: stri
       redirect_uri: callbackUrl(),
     }),
   });
-  if (!response.ok) throw new Error("De aanmeldcode kon niet worden ingewisseld.");
+  if (!response.ok) throw new FeedbackError(() => m.owner_the_sign_in_code_could_not_be_exchanged());
 
   const token = (await response.json()) as { access_token?: unknown; expires_in?: unknown; id_token?: unknown };
   if (typeof token.access_token !== "string" || typeof token.expires_in !== "number") {
-    throw new Error("De identiteitsserver gaf geen geldig toegangstoken terug.");
+    throw new FeedbackError(() => m.owner_the_identity_server_did_not_return_a_valid_access_token());
   }
   const session: TrackerSession = {
     accessToken: token.access_token,

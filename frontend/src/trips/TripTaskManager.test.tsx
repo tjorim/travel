@@ -143,7 +143,9 @@ it("restores a task when completing it is refused", async () => {
   await screen.findByRole("button", { name: "Taak Visum regelen bekijken" });
   api.failNext = { status: 500, body: { detail: "Opslaan mislukt op de server." } };
   fireEvent.click(screen.getAllByRole("button", { name: "Afvinken" })[0]);
-  await screen.findByText("De server reageert niet goed. Probeer het later opnieuw.");
+  await screen.findByText(
+    "De taak kon niet worden bijgewerkt. De server reageert niet goed. Probeer het later opnieuw.",
+  );
   expect(screen.getAllByRole("button", { name: "Afvinken" })).toHaveLength(2);
   expect(screen.queryByRole("button", { name: "Heropenen" })).toBeNull();
 });

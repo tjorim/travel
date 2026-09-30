@@ -39,6 +39,7 @@ export function RecordDialog({
   onDismiss,
   onAfterClose,
 }: RecordDialogProps) {
+  useLocale();
   const origin = useRef<HTMLElement | null>(null);
   const scrollPosition = useRef({ x: 0, y: 0 });
   const wasOpen = useRef(false);
@@ -85,8 +86,8 @@ export function RecordDialog({
           <Dialog.Popup className={cn(popup, className)} finalFocus={() => origin.current} aria-label={title}>
             <div className="mb-4.5 flex items-start justify-between gap-4">
               <Dialog.Title className="m-0">{title}</Dialog.Title>
-              <Dialog.Close className={cn(compactButton, secondaryButton)} aria-label={`${title} sluiten`}>
-                Sluiten
+              <Dialog.Close className={cn(compactButton, secondaryButton)} aria-label={m.owner_close({ p0: title })}>
+                {m.owner_close_2()}
               </Dialog.Close>
             </div>
             <div className="mb-4">
@@ -108,9 +109,9 @@ export function RecordDialog({
                 <AlertDialog.Backdrop className={backdrop} />
                 <AlertDialog.Viewport className={viewport}>
                   <AlertDialog.Popup className={cn(popup, confirmation, "max-w-md")} initialFocus={continueEditing}>
-                    <AlertDialog.Title className="m-0">Wijzigingen verwerpen?</AlertDialog.Title>
+                    <AlertDialog.Title className="m-0">{m.owner_discard_changes()}</AlertDialog.Title>
                     <AlertDialog.Description className="m-0">
-                      Je niet-opgeslagen wijzigingen gaan verloren.
+                      {m.owner_your_unsaved_changes_will_be_lost()}
                     </AlertDialog.Description>
                     <div className={buttonRow}>
                       <Button
@@ -121,10 +122,10 @@ export function RecordDialog({
                           onDismiss();
                         }}
                       >
-                        Wijzigingen verwerpen
+                        {m.owner_discard_changes_2()}
                       </Button>
                       <AlertDialog.Close className={cn(compactButton, secondaryButton)} ref={continueEditing}>
-                        Verder bewerken
+                        {m.owner_continue_editing()}
                       </AlertDialog.Close>
                     </div>
                   </AlertDialog.Popup>
@@ -148,8 +149,8 @@ type DeleteConfirmationProps = {
 
 export function DeleteConfirmation({
   title,
-  description = "Deze actie kan niet ongedaan worden gemaakt.",
-  confirmLabel = "Verwijderen",
+  description = m.owner_this_action_cannot_be_undone(),
+  confirmLabel = m.owner_delete(),
   onCancel,
   onConfirm,
 }: DeleteConfirmationProps) {

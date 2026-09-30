@@ -1,5 +1,6 @@
+import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { errorNotice, useFeedback } from "../query/feedback";
+import { textNotice, FeedbackError, errorNotice, useFeedback } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
@@ -54,13 +55,14 @@ export function CaptureDialog({
   onCandidateConsumed,
   onDismiss,
 }: CaptureDialogProps) {
+  useLocale();
   const confirmation = useConfirmation();
   const { session } = useAuth();
   const tripsQuery = useTripsQuery();
   const searchTrips = useTripSearch();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const [connection, setConnection] = useState(navigator.onLine);
-  const [draftState, setDraftState] = useState("Concept laden…");
+  const [draftState, setDraftState] = useFeedback<string>(textNotice(() => m.owner_loading_draft()));
   const [saveState, setSaveState] = useFeedback<string>("");
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeResults, setPlaceResults] = useState<PlaceSearchResponse | null>(null);
@@ -87,19 +89,19 @@ export function CaptureDialog({
     ],
   });
   const deleteUpdate = useOwnerMutation<{ tripId: string; updateId: string }>({
-    fallback: "De reisupdate kon niet worden verwijderd.",
+    fallback: m.owner_the_travel_update_could_not_be_deleted,
     request: ({ tripId, updateId }) => ({ path: tripPath(tripId, `travel-updates/${updateId}`), method: "DELETE" }),
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
   // A search phrase or a photo's coordinates are private: those calls are dropped from the mutation cache once settled.
   const searchPlaces = useOwnerMutation<{ tripId: string; query: string }, PlaceSearchResponse>({
-    fallback: "Locaties zoeken is nu niet beschikbaar.",
+    fallback: m.owner_location_search_is_currently_unavailable,
     request: ({ tripId, query }) => ({ path: tripPath(tripId, "places/search"), method: "POST", body: { query } }),
     invalidate: () => [],
     gcTime: 0,
   });
   const reversePlaces = useOwnerMutation<{ tripId: string; latitude: number; longitude: number }, PlaceSearchResponse>({
-    fallback: "Deze fotolocatie kon niet worden opgezocht.",
+    fallback: m.owner_this_photo_s_location_could_not_be_looked_up,
     request: ({ tripId, latitude, longitude }) => ({
       path: tripPath(tripId, "places/reverse"),
       method: "POST",
@@ -113,12 +115,12 @@ export function CaptureDialog({
     defaultValues: emptyDraft(lockedTripId ?? candidate?.tripId ?? ""),
     fallback: SAVE_FALLBACK,
     submit: async (values) => {
-      if (!session || !values.tripId) throw new Error("Kies eerst een reis en meld aan om op te slaan.");
+      if (!session || !values.tripId) throw new FeedbackError(() => m.owner_choose_a_trip_and_sign_in_first_to_save());
       if (!connection)
-        throw new Error(
-          "Je bent offline. Dit concept blijft alleen lokaal bewaard en wordt niet automatisch verstuurd.",
+        throw new FeedbackError(() =>
+          m.owner_you_are_offline_this_draft_stays_on_this_device_and_is_not_sent_automati(),
         );
-      setSaveState("Opslaan…");
+      setSaveState(textNotice(() => m.owner_saving()));
       // A place that already exists on the server is left as it is: sending it again would make a new one and lose its public name.
       const keepsLocation = Boolean((values.location as { id?: string } | null)?.id);
       return saveUpdate.mutateAsync({
@@ -135,8 +137,8 @@ export function CaptureDialog({
     },
     onSuccess: (_saved, values) => {
       clearDraft(values.tripId);
-      setDraftState("Opgeslagen in je private reis.");
-      setSaveState("Reisupdate opgeslagen.");
+      setDraftState(textNotice(() => m.owner_saved_to_your_private_trip()));
+      setSaveState(textNotice(() => m.owner_travel_update_saved()));
       record.load(emptyDraft(values.tripId));
       resetPlaceSearch();
     },
@@ -165,12 +167,12 @@ export function CaptureDialog({
   const mediaState = !selectedTrip
     ? ""
     : mediaQuery.error
-      ? errorMessage(mediaQuery.error, "Je media konden niet worden geladen.")
+      ? errorMessage(mediaQuery.error, m.owner_your_media_could_not_be_loaded)
       : mediaQuery.isPending
-        ? "Media laden…"
+        ? m.owner_loading_media()
         : mediaQuery.data?.length
-          ? "Kies privéfoto’s om aan deze reisupdate te koppelen."
-          : "Nog geen foto’s in deze reis.";
+          ? m.owner_choose_private_photos_to_link_to_this_travel_update()
+          : m.owner_no_photos_in_this_trip_yet();
 
   useEffect(() => {
     const updateConnection = () => setConnection(navigator.onLine);
@@ -198,13 +200,15 @@ export function CaptureDialog({
         mediaAssetIds: candidate.mediaAssetIds,
       });
       setCandidateGps(candidate.gps ?? null);
-      setDraftState("Kandidaat overgenomen als lokaal concept. Kies zelf een locatie en sla pas op wanneer je wilt.");
+      setDraftState(
+        textNotice(() => m.owner_candidate_copied_into_a_local_draft_choose_a_location_yourself_and_save()),
+      );
       onCandidateConsumed?.();
       return;
     }
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
-    setDraftState(stored ? "Lokaal concept hersteld." : "Nieuw concept.");
+    setDraftState(textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())));
     // `record.load` is a stable identity from `useRecordForm`; only the inputs that decide *which* draft to load matter here.
   }, [lockedTripId, candidate, trips, onCandidateConsumed]);
 
@@ -215,7 +219,7 @@ export function CaptureDialog({
       return;
     }
     saveDraft(draft);
-    setDraftState("Concept lokaal bewaard — nog niet naar je reis gestuurd.");
+    setDraftState(textNotice(() => m.owner_draft_saved_locally_not_sent_to_your_trip_yet()));
   }, [draft]);
 
   function updateDraft(values: Partial<UpdateDraft>) {
@@ -234,7 +238,7 @@ export function CaptureDialog({
   function selectTrip(tripId: string) {
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
-    setDraftState(stored ? "Lokaal concept hersteld." : "Nieuw concept.");
+    setDraftState(textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())));
     resetPlaceSearch();
     setSaveState("");
   }
@@ -256,7 +260,7 @@ export function CaptureDialog({
       mediaAssetIds: update.media_asset_ids,
     });
     resetPlaceSearch();
-    setSaveState("Je bewerkt een opgeslagen reisupdate.");
+    setSaveState(textNotice(() => m.owner_you_are_editing_a_saved_travel_update()));
   }
 
   function toggleMedia(assetId: string) {
@@ -270,40 +274,44 @@ export function CaptureDialog({
 
   function selectPlace(result: PlaceSearchResult) {
     updateDraft({ location: result });
-    setPlaceState("Locatie geselecteerd. Hij wordt pas gemaakt wanneer je de reisupdate opslaat.");
+    setPlaceState(textNotice(() => m.owner_location_selected_it_will_only_be_created_when_you_save_the_travel_updat()));
     setPlaceResults(null);
   }
 
   function searchPlace() {
     if (!session || !selectedTrip || placeQuery.trim().length < 2) {
-      setPlaceState("Vul minstens twee tekens in om een locatie te zoeken.");
+      setPlaceState(textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()));
       return;
     }
-    setPlaceState("Locaties zoeken…");
+    setPlaceState(textNotice(() => m.owner_searching_locations()));
     searchPlaces.mutateAsync({ tripId: selectedTrip.id, query: placeQuery.trim() }).then(
       (result) => {
         setPlaceResults(result);
         setPlaceState(
-          result.results.length ? "Kies een resultaat. Er wordt nog niets opgeslagen." : "Geen locaties gevonden.",
+          textNotice(() =>
+            result.results.length ? m.owner_choose_a_result_nothing_is_saved_yet() : m.owner_no_locations_found(),
+          ),
         );
       },
-      (error: unknown) => setPlaceState(errorNotice(error, "Locaties zoeken is mislukt.")),
+      (error: unknown) => setPlaceState(errorNotice(error, m.owner_location_search_failed)),
     );
   }
 
   function reverseGeocode(gps: { latitude: number; longitude: number }) {
     if (!session || !selectedTrip) return;
-    setPlaceState("De fotolocatie wordt alleen voor jou opgezocht…");
+    setPlaceState(textNotice(() => m.owner_looking_up_the_photo_location_only_for_you()));
     reversePlaces.mutateAsync({ tripId: selectedTrip.id, ...gps }).then(
       (result) => {
         setPlaceResults(result);
         setPlaceState(
-          result.results.length
-            ? "Kies de voorgestelde locatie. Er wordt nog niets opgeslagen."
-            : "Voor deze fotolocatie is geen plaats gevonden.",
+          textNotice(() =>
+            result.results.length
+              ? m.owner_choose_the_suggested_location_nothing_is_saved_yet()
+              : m.owner_no_place_found_for_this_photo_location(),
+          ),
         );
       },
-      (error: unknown) => setPlaceState(errorNotice(error, "Deze fotolocatie kon niet worden opgezocht.")),
+      (error: unknown) => setPlaceState(errorNotice(error, m.owner_this_photo_s_location_could_not_be_looked_up)),
     );
   }
 
@@ -311,63 +319,63 @@ export function CaptureDialog({
     const { updateId } = draft;
     if (!selectedTrip || !updateId) return;
     confirmation.ask({
-      title: `Reisupdate “${draft.title}” verwijderen?`,
+      title: () => m.owner_delete_travel_update({ p0: draft.title }),
       onConfirm: () => performRemoveUpdate(selectedTrip.id, updateId),
     });
   }
 
   function performRemoveUpdate(tripId: string, updateId: string) {
-    setSaveState("Reisupdate verwijderen…");
+    setSaveState(textNotice(() => m.owner_deleting_travel_update()));
     deleteUpdate.mutateAsync({ tripId, updateId }).then(
       () => {
         clearDraft(tripId);
         startNew();
-        setDraftState("Reisupdate verwijderd.");
+        setDraftState(textNotice(() => m.owner_travel_update_deleted()));
       },
-      (error: unknown) => setSaveState(errorNotice(error, "De reisupdate kon niet worden verwijderd.")),
+      (error: unknown) => setSaveState(errorNotice(error, m.owner_the_travel_update_could_not_be_deleted)),
     );
   }
 
   const clearSaveState = { onChange: () => setSaveState("") };
   const dialogTitle = lockedTrip
-    ? `Moment vastleggen — ${lockedTrip.title}`
+    ? m.owner_capture_a_moment_2({ p0: lockedTrip.title })
     : draft.updateId
-      ? "Reisupdate bewerken"
-      : "Nieuwe reisupdate";
+      ? m.owner_edit_travel_update()
+      : m.owner_new_travel_update();
 
   return (
     <RecordDialog open={open} title={dialogTitle} dirty={initialized.current && record.dirty} onDismiss={onDismiss}>
-      {!session && (
-        <p>Meld aan om een concept lokaal te bewaren of een reisupdate aan een private reis toe te voegen.</p>
-      )}
+      {!session && <p>{m.owner_sign_in_to_save_a_draft_locally_or_add_a_travel_update_to_a_private_trip()}</p>}
       {session && tripsQuery.isPending && (
-        <p>{connection ? "Je reizen laden…" : "Je bent offline. Je reizen laden zodra je opnieuw verbinding hebt."}</p>
+        <p>
+          {connection
+            ? m.owner_loading_your_trips()
+            : m.owner_you_are_offline_your_trips_will_load_once_you_reconnect()}
+        </p>
       )}
-      {session && tripsQuery.isError && (
-        <p>{errorMessage(tripsQuery.error, "Je reizen konden niet worden geladen.")}</p>
-      )}
+      {session && tripsQuery.isError && <p>{errorMessage(tripsQuery.error, m.owner_your_trips_could_not_be_loaded)}</p>}
       {session && !tripsQuery.isPending && !tripsQuery.isError && trips.length === 0 && (
-        <p>Maak eerst een private reis aan; daarna kun je hier een reisupdate aan toevoegen.</p>
+        <p>{m.owner_create_a_private_trip_first_then_you_can_add_a_travel_update_here()}</p>
       )}
       {session && trips.length > 0 && (
         <>
           {draft.updateId && (
             <div className="capture-heading">
-              <p className="travel-eyebrow">Mobiel vastleggen</p>
+              <p className="travel-eyebrow">{m.owner_mobile_capture()}</p>
               <div className="button-row">
                 <Button className="secondary compact" type="button" onClick={startNew}>
-                  Nieuwe reisupdate
+                  {m.owner_new_travel_update()}
                 </Button>
                 <Button className="danger compact" type="button" onClick={removeUpdate}>
-                  Verwijderen
+                  {m.owner_delete()}
                 </Button>
               </div>
             </div>
           )}
           <p className={`connection ${connection ? "online" : "offline"}`} role="status">
             {connection
-              ? "Verbonden — je kiest zelf wanneer je opslaat."
-              : "Offline — concepten blijven lokaal; er is geen automatische synchronisatie."}
+              ? m.owner_connected_you_choose_when_to_save()
+              : m.owner_offline_drafts_stay_local_there_is_no_automatic_synchronisation()}
           </p>
           <form
             ref={record.formRef}
@@ -380,13 +388,13 @@ export function CaptureDialog({
           >
             {lockedTrip ? (
               <p className="m-0 font-bold text-travel-forest">
-                Reis: <strong>{lockedTrip.title}</strong>
+                {m.owner_trip()} <strong>{lockedTrip.title}</strong>
               </p>
             ) : (
               <Field>
-                <FieldLabel>Reis</FieldLabel>
+                <FieldLabel>{m.owner_trip_2()}</FieldLabel>
                 <AsyncSearchSelect
-                  ariaLabel="Reis"
+                  ariaLabel={m.owner_trip()}
                   value={draft.tripId}
                   selectedOption={selectedTrip ? { value: selectedTrip.id, label: selectedTrip.title } : null}
                   defaultOptions={trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title }))}
@@ -398,12 +406,9 @@ export function CaptureDialog({
               </Field>
             )}
             {selectedTrip && (
-              <aside className="publication" aria-label="Delen van deze reisupdate">
-                <strong>Voor je opslaat</strong>
-                <span>
-                  Een nieuwe reisupdate is privé. Je notities, locatie en foto’s worden nooit gedeeld; de tekst voor
-                  bezoekers schrijf je later bij Verhaal.
-                </span>
+              <aside className="publication" aria-label={m.owner_sharing_this_travel_update()}>
+                <strong>{m.owner_before_saving()}</strong>
+                <span>{m.owner_a_new_travel_update_is_private_your_notes_location_and_photos_are_never()}</span>
               </aside>
             )}
             <div className="field-row">
@@ -411,27 +416,27 @@ export function CaptureDialog({
                 name="occurredAt"
                 listeners={clearSaveState}
                 validators={{
-                  onChange: requiredText("Geef de datum en tijd op."),
-                  onSubmit: requiredText("Geef de datum en tijd op."),
+                  onChange: requiredText(m.owner_enter_the_date_and_time),
+                  onSubmit: requiredText(m.owner_enter_the_date_and_time),
                 }}
               >
-                {(field) => <TextField field={field} label="Datum en tijd" required type="datetime-local" />}
+                {(field) => <TextField field={field} label={m.owner_date_and_time()} required type="datetime-local" />}
               </form.Field>
               <form.Field
                 name="title"
                 listeners={clearSaveState}
                 validators={{
-                  onChange: requiredText("Geef de reisupdate een titel."),
-                  onSubmit: requiredText("Geef de reisupdate een titel."),
+                  onChange: requiredText(m.owner_give_the_travel_update_a_title),
+                  onSubmit: requiredText(m.owner_give_the_travel_update_a_title),
                 }}
               >
                 {(field) => (
                   <TextField
                     field={field}
-                    label="Titel"
+                    label={m.owner_title()}
                     required
                     maxLength={160}
-                    placeholder="Bijvoorbeeld: eerste avond"
+                    placeholder={m.owner_for_example_first_evening()}
                   />
                 )}
               </form.Field>
@@ -440,20 +445,17 @@ export function CaptureDialog({
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label="Privénotitie"
+                  label={m.owner_private_note()}
                   optional
                   maxLength={10000}
                   rows={6}
-                  placeholder="Wat wil je onthouden? Dit deel je nooit."
+                  placeholder={m.owner_what_do_you_want_to_remember_you_never_share_this()}
                 />
               )}
             </form.Field>
             <FieldSet className="location">
-              <FieldLegend>Privéfoto’s koppelen</FieldLegend>
-              <p>
-                Een koppeling is privé. EXIF wordt alleen hieronder als voorstel gebruikt; geen datum of plaats
-                verandert zonder jouw keuze.
-              </p>
+              <FieldLegend>{m.owner_link_private_photos()}</FieldLegend>
+              <p>{m.owner_a_link_is_private_exif_is_only_used_below_as_a_suggestion_no_date_or_pla()}</p>
               <p className="help" role="status">
                 {mediaState}
               </p>
@@ -464,7 +466,7 @@ export function CaptureDialog({
                       checked={draft.mediaAssetIds.includes(asset.id)}
                       onCheckedChange={() => toggleMedia(asset.id)}
                     />
-                    {asset.original_filename ?? "Naamloze foto"}
+                    {asset.original_filename ?? m.owner_unnamed_photo()}
                     {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
                   </FieldLabel>
                 </Field>
@@ -477,8 +479,14 @@ export function CaptureDialog({
                       className="grid gap-2 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.25 text-sm leading-normal text-travel-warning-ink [&_span]:text-travel-warning-muted"
                       key={`suggestion-${asset.id}`}
                     >
-                      <strong>Voorstel uit {asset.original_filename ?? "deze foto"}</strong>
-                      {asset.captured_at && <span>Opname: {timestamp(asset.captured_at)}.</span>}
+                      <strong>
+                        {m.owner_suggestion_from()} {asset.original_filename ?? m.owner_this_photo()}
+                      </strong>
+                      {asset.captured_at && (
+                        <span>
+                          {m.owner_captured_2()} {timestamp(asset.captured_at)}.
+                        </span>
+                      )}
                       <div className="button-row">
                         {asset.captured_at && (
                           <Button
@@ -486,10 +494,12 @@ export function CaptureDialog({
                             type="button"
                             onClick={() => {
                               updateDraft({ occurredAt: localDateTime(new Date(asset.captured_at!)) });
-                              setSaveState("Opnamedatum als voorstel overgenomen — pas hem gerust aan.");
+                              setSaveState(
+                                textNotice(() => m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it()),
+                              );
                             }}
                           >
-                            Gebruik opnamedatum
+                            {m.owner_use_capture_date()}
                           </Button>
                         )}
                         {asset.gps && (
@@ -498,7 +508,7 @@ export function CaptureDialog({
                             type="button"
                             onClick={() => reverseGeocode(asset.gps!)}
                           >
-                            Zoek plaats bij foto
+                            {m.owner_find_place_for_photo()}
                           </Button>
                         )}
                         <Button
@@ -506,7 +516,7 @@ export function CaptureDialog({
                           type="button"
                           onClick={() => setDismissedSuggestions((current) => [...current, asset.id])}
                         >
-                          Voorstel negeren
+                          {m.owner_dismiss_suggestion()}
                         </Button>
                       </div>
                     </aside>
@@ -514,26 +524,23 @@ export function CaptureDialog({
               )}
               {attachedMedia.filter((asset) => asset.captured_at || asset.gps).length > 1 && (
                 <p className="help">
-                  Foto’s kunnen verschillen. Elk voorstel blijft afzonderlijk zichtbaar; jij kiest er hoogstens één en
-                  kunt die altijd weer aanpassen.
+                  {m.owner_photos_can_differ_each_suggestion_remains_visible_separately_choose_at_m()}
                 </p>
               )}
             </FieldSet>
             <FieldSet className="location">
-              <FieldLegend>Locatie — volledig optioneel</FieldLegend>
-              <p>
-                Zoek en kies een locatie. Deze wordt pas samen met jouw opgeslagen reisupdate als privélocatie gemaakt.
-              </p>
+              <FieldLegend>{m.owner_location_entirely_optional()}</FieldLegend>
+              <p>{m.owner_search_for_and_choose_a_location_it_is_only_created_as_a_private_locatio()}</p>
               {candidateGps && (
                 <aside className="grid gap-2 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.25 text-sm leading-normal text-travel-warning-ink [&_span]:text-travel-warning-muted">
-                  <strong>Gekozen locatie uit kandidaat</strong>
-                  <span>Deze EXIF-coördinaat blijft privé en is nog niet opgezocht of opgeslagen.</span>
+                  <strong>{m.owner_selected_location_from_candidate()}</strong>
+                  <span>{m.owner_this_exif_coordinate_stays_private_and_has_not_been_looked_up_or_saved_y()}</span>
                   <div className="button-row">
                     <Button className="secondary compact" type="button" onClick={() => reverseGeocode(candidateGps)}>
-                      Zoek deze kandidaatplaats
+                      {m.owner_search_this_candidate_place()}
                     </Button>
                     <Button className="secondary compact" type="button" onClick={() => setCandidateGps(null)}>
-                      Locatie negeren
+                      {m.owner_dismiss_location()}
                     </Button>
                   </div>
                 </aside>
@@ -541,26 +548,26 @@ export function CaptureDialog({
               <div className="field-row">
                 <Field className="contents">
                   <FieldLabel>
-                    Zoek locatie
+                    {m.owner_search_for_a_location()}
                     <Input
                       value={placeQuery}
                       onChange={(event) => setPlaceQuery(event.target.value)}
-                      placeholder="Bijvoorbeeld: Taipei Main Station"
+                      placeholder={m.owner_for_example_taipei_main_station()}
                     />
                   </FieldLabel>
                 </Field>
                 <div className="flex items-end">
                   <Button className="secondary" type="button" onClick={searchPlace}>
-                    Zoeken
+                    {m.owner_search()}
                   </Button>
                 </div>
               </div>
               {draft.location && (
                 <p className="flex flex-wrap items-center gap-2">
-                  <strong>Gekozen locatie:</strong>{" "}
-                  {draft.location.display_name ?? draft.location.locality ?? "Naamloze locatie"}{" "}
+                  <strong>{m.owner_selected_location()}</strong>{" "}
+                  {draft.location.display_name ?? draft.location.locality ?? m.owner_unnamed_location()}{" "}
                   <Button className="secondary compact" type="button" onClick={() => updateDraft({ location: null })}>
-                    Verwijderen
+                    {m.owner_delete()}
                   </Button>
                 </p>
               )}
@@ -582,7 +589,7 @@ export function CaptureDialog({
                     </Button>
                   ))}
                   <p className="help">
-                    Zoekresultaten:{" "}
+                    {m.owner_search_results()}{" "}
                     <a href={placeResults.attribution_url} target="_blank" rel="noreferrer">
                       {placeResults.attribution}
                     </a>
@@ -592,14 +599,14 @@ export function CaptureDialog({
             </FieldSet>
             <div className="flex flex-wrap items-center gap-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
               <Button type="submit" disabled={record.pending}>
-                {draft.updateId ? "Wijzigingen opslaan" : "Reisupdate opslaan"}
+                {draft.updateId ? m.owner_save_changes() : m.owner_save_travel_update()}
               </Button>
               <span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span>
             </div>
           </form>
           {selectedTrip && selectedTrip.travel_updates.length > 0 && (
             <section className="saved-records">
-              <h3>Opgeslagen reisupdates</h3>
+              <h3>{m.owner_saved_travel_updates()}</h3>
               {selectedTrip.travel_updates
                 .slice()
                 .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
@@ -613,7 +620,7 @@ export function CaptureDialog({
                     <strong>{update.title}</strong>
                     <span>
                       {timestamp(update.occurred_at)}
-                      {update.location ? ` · ${update.location.display_name}` : " · zonder locatie"}
+                      {update.location ? ` · ${update.location.display_name}` : m.owner_without_location()}
                     </span>
                   </Button>
                 ))}

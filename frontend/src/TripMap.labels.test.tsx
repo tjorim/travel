@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import type { FeatureCollection, Point } from "geojson";
 import type { SymbolLayerSpecification } from "maplibre-gl";
 import { afterEach, expect, it, vi } from "vitest";
+import { changeLocale } from "./locale";
 import { TripMap, type MapPoint } from "./TripMap";
 
 type CapturedMap = {
@@ -42,6 +43,13 @@ vi.mock("maplibre-gl", () => ({
     addLayer(layer: SymbolLayerSpecification) {
       this.layers.push(layer);
     }
+    getSource(id: string) {
+      return {
+        setData: (data: FeatureCollection<Point>) => {
+          this.sources[id] = data;
+        },
+      };
+    }
     getStyle() {
       return { version: 8, sources: {}, layers: [] };
     }
@@ -63,6 +71,7 @@ afterEach(() => {
   cleanup();
   maps.length = 0;
   vi.restoreAllMocks();
+  act(() => changeLocale("nl"));
 });
 
 it("supplies custom and derived area names to the visible label layer after map updates", async () => {
@@ -94,8 +103,11 @@ it("supplies custom and derived area names to the visible label layer after map 
   expect(labels.paint?.["text-halo-width"]).toBe(2);
 
   rerender(<TripMap owner points={[{ ...points[0], label: "Renamed Base Camp" }, points[1]]} lines={[]} />);
-  await waitFor(() => expect(maps[1]?.sources.stops).toBeDefined());
-  expect(maps[0].removed).toBe(true);
-  expect(maps[1].sources.stops.features[0].properties?.label).toBe("Renamed Base Camp");
-  expect(maps[1].sources.stops.features[1].properties?.label).toBe("Morning Walks");
+  await waitFor(() => expect(maps[0].sources.stops.features[0].properties?.label).toBe("Renamed Base Camp"));
+  expect(maps[0].removed).toBe(false);
+  expect(maps).toHaveLength(1);
+  act(() => changeLocale("en"));
+  expect(maps).toHaveLength(1);
+  expect(maps[0].removed).toBe(false);
+  expect(maps[0].sources.stops.features[1].properties?.label).toBe("Morning Walks");
 });

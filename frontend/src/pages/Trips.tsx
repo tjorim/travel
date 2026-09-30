@@ -1,3 +1,4 @@
+import { useFeedback } from "../query/feedback";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
@@ -44,7 +45,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [editing, setEditing] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [captureCandidate, setCaptureCandidate] = useState<TravelUpdateCandidateIntent | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFeedback<string | null>(null);
   // An Agenda row, or the private overview arriving from elsewhere, asks the matching manager below to open that record's dialog.
   type RecordKind = AgendaRecordKind | "area" | "location" | "task" | "update" | "document" | "media";
   const [recordFocus, setRecordFocus] = useState<({ kind: RecordKind } & DialogFocusRequest) | null>(null);
@@ -97,8 +98,8 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         : tripsQuery.isPending
           ? m.owner_trips_loading()
           : trips.length
-            ? "Kies een reis om de private details te beheren."
-            : "Nog geen reizen. Maak je eerste private reis aan.");
+            ? m.owner_choose_a_trip_to_manage_its_private_details()
+            : m.owner_no_trips_yet_create_your_first_private_trip());
 
   function showOnMap(pointId: string) {
     if (selectedTrip)
@@ -148,7 +149,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           className="justify-self-start py-1 font-bold text-travel-muted no-underline hover:underline focus-visible:underline"
           to="/trips"
         >
-          ← Alle reizen
+          {m.owner_all_trips()}
         </Link>
         <header className="flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch [&_h1]:m-0 [&_h2]:m-0 [&_h1]:text-2xl [&_h2]:text-2xl [&_p]:mt-1.5 [&_p]:mb-0 [&_p]:text-travel-muted">
           <div>
@@ -167,13 +168,13 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           </div>
           <div className="button-row">
             <Button className="secondary compact" type="button" onClick={() => setEditing(true)}>
-              Reisgegevens
+              {m.owner_trip_details()}
             </Button>
             <Link className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>
-              Volledig privéoverzicht
+              {m.owner_complete_private_overview()}
             </Link>
             <Button className="action-link" type="button" onClick={() => setCapturing(true)}>
-              Moment vastleggen
+              {m.owner_capture_a_moment()}
             </Button>
           </div>
         </header>
@@ -183,7 +184,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           open={editing}
           onClose={() => setEditing(false)}
           onSaved={() => undefined}
-          onDeleted={() => void navigate({ to: "/trips", state: { notice: "Reis verwijderd." } })}
+          onDeleted={() => void navigate({ to: "/trips", state: { notice: m.owner_trip_deleted() } })}
           onNotice={setNotice}
         />
         <CaptureDialog
@@ -195,16 +196,16 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         />
         <nav
           className="flex gap-1.5 overflow-x-auto border-b border-travel-divider pb-0.5 scrollbar-thin"
-          aria-label="Reisonderdelen"
+          aria-label={m.owner_trip_sections()}
         >
           {(
             [
-              ["overview", "Overzicht"],
-              ["plan", "Plan"],
-              ["packing", "Inpakken"],
-              ["story", "Verhaal"],
-              ["media", "Media & documenten"],
-              ["sharing", "Delen"],
+              ["overview", m.owner_overview()],
+              ["plan", m.owner_plan()],
+              ["packing", m.owner_packing()],
+              ["story", m.owner_story()],
+              ["media", m.owner_media_documents()],
+              ["sharing", m.owner_sharing()],
             ] as const
           ).map(([section, label]) => (
             <Link
@@ -229,7 +230,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             <OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} onOpenRecord={openMapRecord} />
             <div className="grid gap-4.5 min-[680px]:grid-cols-2">
               <section className="travel-card grid content-start gap-4.5 [&_h3]:m-0 [&_p]:m-0">
-                <h3>Reisupdates</h3>
+                <h3>{m.owner_travel_updates()}</h3>
                 {selectedTrip.travel_updates.length ? (
                   <div className="saved-records">
                     {selectedTrip.travel_updates
@@ -246,7 +247,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
                       ))}
                   </div>
                 ) : (
-                  <p>Nog geen reisupdates. Leg er één vast wanneer je wilt.</p>
+                  <p>{m.owner_no_travel_updates_yet_capture_one_whenever_you_like()}</p>
                 )}
               </section>
               <TripTaskManager trip={selectedTrip} />
@@ -257,14 +258,14 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
           <>
             <nav
               className="flex flex-wrap gap-1.5 [&_a]:rounded-full [&_a]:border [&_a]:border-travel-card-border [&_a]:bg-travel-surface [&_a]:px-2.5 [&_a]:py-1.5 [&_a]:text-sm [&_a]:font-bold [&_a]:text-travel-muted [&_a]:no-underline [&_a:hover]:bg-travel-selected-bg [&_a:focus-visible]:bg-travel-selected-bg"
-              aria-label="Planningsonderdelen"
+              aria-label={m.owner_planning_sections()}
             >
-              <a href="#agenda">Agenda</a>
-              <a href="#areas">Gebieden en locaties</a>
-              <a href="#visits">Bezoeken</a>
-              <a href="#stays">Verblijven</a>
-              <a href="#routes">Routes</a>
-              <a href="#tasks">Nog te regelen</a>
+              <a href="#agenda">{m.owner_agenda()}</a>
+              <a href="#areas">{m.owner_areas_and_locations()}</a>
+              <a href="#visits">{m.owner_visits()}</a>
+              <a href="#stays">{m.owner_stays()}</a>
+              <a href="#routes">{m.owner_routes()}</a>
+              <a href="#tasks">{m.owner_things_to_arrange()}</a>
             </nav>
             <AgendaView trip={selectedTrip} onOpenRecord={openAgendaRecord} />
             <AreaManager
@@ -313,11 +314,11 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
     <section className="grid gap-4.5" aria-labelledby="trips-title">
       <div className="capture-heading">
         <div>
-          <p className="travel-eyebrow">Private reisbeheer</p>
+          <p className="travel-eyebrow">{m.owner_private_trip_management()}</p>
           <h2 id="trips-title">{m.trips()}</h2>
         </div>
         <Button className="secondary compact" type="button" onClick={newTrip}>
-          Nieuwe reis
+          {m.owner_new_trip()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -340,7 +341,7 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             </span>
           </Button>
         ))}
-        {!trips.length && <p>Je eerste reis blijft privé totdat je iets deelt.</p>}
+        {!trips.length && <p>{m.owner_your_first_trip_stays_private_until_you_share_something()}</p>}
       </section>
       <TripEditor
         key="new"

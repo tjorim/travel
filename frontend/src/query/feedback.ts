@@ -9,14 +9,23 @@ export const errorNotice = (error: unknown, fallback: ErrorFallback, suffix?: ()
   fallback,
   suffix,
 });
-export function noticeMessage(value: string | ErrorNotice): string {
-  return typeof value === "string" ? value : errorMessage(value.error, value.fallback) + (value.suffix?.() ?? "");
+export type MessageNotice = { message: () => string };
+export const textNotice = (message: () => string): MessageNotice => ({ message });
+
+export function noticeMessage(value: string | ErrorNotice | MessageNotice): string {
+  return typeof value === "string"
+    ? value
+    : "message" in value
+      ? value.message()
+      : errorMessage(value.error, value.fallback) + (value.suffix?.() ?? "");
 }
 
-export function useFeedback<T extends string | null>(initial: T): [T, Dispatch<SetStateAction<T | ErrorNotice>>] {
+export function useFeedback<T extends string | null>(
+  initial: T | MessageNotice,
+): [T, Dispatch<SetStateAction<T | ErrorNotice | MessageNotice>>] {
   useLocale();
-  const [value, setValue] = useState<T | ErrorNotice>(initial);
-  return [typeof value === "object" && value !== null ? (noticeMessage(value) as T) : value, setValue];
+  const [value, setValue] = useState<T | ErrorNotice | MessageNotice>(initial);
+  return [typeof value === "object" && value !== null ? (noticeMessage(value) as T) : (value as T), setValue];
 }
 
 /** Compose a local message without freezing the language at mutation time. */

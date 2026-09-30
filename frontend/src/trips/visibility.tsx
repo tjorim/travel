@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { useLocale } from "../locale";
 import { errorNotice, useFeedback } from "../query/feedback";
 
 import { SearchSelect } from "../forms/fields";
@@ -9,12 +11,28 @@ import { Field, FieldError, FieldLabel } from "../ui/field";
 
 /** Who receives a record. The same three choices apply to everything that can be shared. */
 export const VISIBILITY_LABELS: Record<Visibility, string> = {
-  private: "Privé — alleen ik",
-  everyone: "Iedereen — alle bezoekers",
-  custom: "Zelf kiezen in Delen",
+  get private() {
+    return m.owner_private_only_me();
+  },
+  get everyone() {
+    return m.owner_everyone_all_visitors();
+  },
+  get custom() {
+    return m.owner_choose_in_sharing();
+  },
 };
 
-const SHORT_LABELS: Record<Visibility, string> = { private: "Privé", everyone: "Iedereen", custom: "Eigen keuze" };
+const SHORT_LABELS: Record<Visibility, string> = {
+  get private() {
+    return m.owner_private();
+  },
+  get everyone() {
+    return m.owner_everyone();
+  },
+  get custom() {
+    return m.owner_custom();
+  },
+};
 
 /** The short form for a list row, such as "Privé". */
 export const visibilityLabel = (visibility: Visibility): string => SHORT_LABELS[visibility];
@@ -22,7 +40,7 @@ export const visibilityLabel = (visibility: Visibility): string => SHORT_LABELS[
 /** One request sets the choice for any kind, then refreshes everything on the trip, scopes included. */
 export function useSetVisibility(tripId: string) {
   return useOwnerMutation<{ kind: ShareScopeKind; id: string; visibility: Visibility }, { visibility: Visibility }>({
-    fallback: "De zichtbaarheid kon niet worden bewaard.",
+    fallback: m.owner_visibility_save_failed,
     request: ({ kind, id, visibility }) => ({
       path: tripPath(tripId, `visibility/${kind}/${encodeURIComponent(id)}`),
       method: "PUT",
@@ -53,22 +71,23 @@ export function VisibilityControl({
   /** A photo attached to a reisupdate is shared with it, so it has no choice of its own. */
   followsUpdate?: string;
 }) {
+  useLocale();
   const save = useSetVisibility(tripId);
   const [error, setError] = useFeedback<string | null>(null);
-  if (followsUpdate) return <p className="help">Wordt gedeeld samen met reisupdate “{followsUpdate}”.</p>;
+  if (followsUpdate) return <p className="help">{m.owner_shared_with_update({ title: followsUpdate })}</p>;
   const shown = save.isPending && save.variables ? save.variables.visibility : value;
   function choose(visibility: Visibility) {
     setError(null);
     save
       .mutateAsync({ kind, id, visibility })
-      .catch((failure: unknown) => setError(errorNotice(failure, "De zichtbaarheid kon niet worden bewaard.")));
+      .catch((failure: unknown) => setError(errorNotice(failure, m.owner_visibility_save_failed)));
   }
   return (
     <Field>
       <FieldLabel>
-        Zichtbaarheid
+        {m.owner_visibility()}
         <SearchSelect
-          ariaLabel={`Zichtbaarheid van ${name}`}
+          ariaLabel={m.owner_visibility_for({ name })}
           value={shown}
           isDisabled={save.isPending}
           onChange={(value) => choose(value as Visibility)}

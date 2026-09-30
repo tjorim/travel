@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Translated owner trip workspaces, record managers, shared dialogs, Markdown
+  editing and map controls into Dutch and English. Notices, validation and enum
+  labels update in place; dirty values, pending saves and authored content are
+  preserved. Planning warnings use stable identifiers and new Markdown snippets
+  use the current language (#286).
+
 - Added stable API error descriptors with safe validation paths/constraints and
   provider diagnostics. Owner and visitor feedback renders Dutch/English typed
   messages from retained descriptors, including locale switches while errors

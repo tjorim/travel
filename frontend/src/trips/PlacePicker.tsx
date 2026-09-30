@@ -1,3 +1,5 @@
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { Input } from "@base-ui/react/input";
 import { useCallback, useRef } from "react";
 
@@ -101,6 +103,7 @@ export function PlacePicker({
   /** Why the chosen place cannot be used yet, shown under the picker. */
   error?: string | null;
 }) {
+  useLocale();
   const currentValue = useRef(value);
   currentValue.current = value;
   const areas = useTripResource(tripId, "areas").data ?? [];
@@ -108,7 +111,7 @@ export function PlacePicker({
   const searchAreas = useAreaSearch(tripId);
   const searchLocations = useLocationSearch(tripId);
   const suggestion = useOwnerMutation<{ latitude: number; longitude: number; city?: string }, AreaSuggestion>({
-    fallback: "Gebied kon niet worden voorgesteld.",
+    fallback: m.owner_an_area_could_not_be_suggested,
     request: (body) => ({ path: tripPath(tripId, "areas/suggest"), method: "POST", body }),
     invalidate: () => [],
     gcTime: 0,
@@ -124,26 +127,48 @@ export function PlacePicker({
         grouped.get(location.area_id)?.places.push(location);
       }
       return [
-        { value: "", label: "Kies een gebied of een locatie" },
+        {
+          value: "",
+          get label() {
+            return m.owner_choose_an_area_or_location();
+          },
+        },
         ...[...grouped.values()].map(({ area, places }) => ({
           label: `${area.label}${area.region ? ` · ${area.region}` : ""}`,
           options: [
-            { value: `area:${area.id}`, label: `${area.label} (heel gebied)` },
+            {
+              value: `area:${area.id}`,
+              get label() {
+                return m.owner_whole_area({ p0: area.label });
+              },
+            },
             ...places.map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
           ],
         })),
-        { value: "new", label: "Nieuwe locatie…" },
+        {
+          value: "new",
+          get label() {
+            return m.owner_new_location();
+          },
+        },
       ];
     },
     [areas, searchAreas, searchLocations],
   );
   const selectedOption =
     value.choice === "new"
-      ? { value: "new", label: "Nieuwe locatie…" }
+      ? {
+          value: "new",
+          get label() {
+            return m.owner_new_location();
+          },
+        }
       : value.choice.startsWith("area:")
         ? {
             value: value.choice,
-            label: `${areas.find((area) => area.id === value.choice.slice(5))?.label ?? value.choice} (heel gebied)`,
+            label: m.owner_whole_area({
+              p0: areas.find((area) => area.id === value.choice.slice(5))?.label ?? value.choice,
+            }),
           }
         : value.choice.startsWith("location:")
           ? {
@@ -190,24 +215,39 @@ export function PlacePicker({
     <FieldSet>
       <FieldLegend>{label}</FieldLegend>
       <Field invalid={Boolean(error)}>
-        <FieldLabel>{label} kiezen</FieldLabel>
+        <FieldLabel>{m.owner_choose_field({ label })}</FieldLabel>
         <AsyncSearchSelect
           ariaLabel={label}
           value={value.choice}
           selectedOption={selectedOption}
           defaultOptions={[
-            { value: "", label: "Kies een gebied of een locatie" },
+            {
+              value: "",
+              get label() {
+                return m.owner_choose_an_area_or_location();
+              },
+            },
             ...areas.slice(0, 50).map((area) => ({
               label: `${area.label}${area.region ? ` · ${area.region}` : ""}`,
               options: [
-                { value: `area:${area.id}`, label: `${area.label} (heel gebied)` },
+                {
+                  value: `area:${area.id}`,
+                  get label() {
+                    return m.owner_whole_area({ p0: area.label });
+                  },
+                },
                 ...locations
                   .slice(0, 50)
                   .filter((location) => location.area_id === area.id)
                   .map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
               ],
             })),
-            { value: "new", label: "Nieuwe locatie…" },
+            {
+              value: "new",
+              get label() {
+                return m.owner_new_location();
+              },
+            },
           ]}
           loadOptions={loadPlaces}
           onChange={(next) =>
@@ -221,18 +261,18 @@ export function PlacePicker({
         <div>
           <PlaceSearchField
             tripId={tripId}
-            legend="Locatie zoeken"
-            inputLabel={`Zoek locatie (${label.toLowerCase()})`}
-            placeholder="Bijvoorbeeld: Taipei Main Station"
-            help="Een gekozen locatie blijft privé. Controleer het voorgestelde gebied voordat je opslaat."
+            legend={m.owner_search_location()}
+            inputLabel={m.owner_search_location_2({ p0: label })}
+            placeholder={m.owner_for_example_taipei_main_station()}
+            help={m.owner_a_selected_location_stays_private_check_the_suggested_area_before_saving()}
             onSelect={(result) => void useResult(result)}
           />
           <div className="field-row">
             <Field>
               <FieldLabel>
-                Naam <span className="font-medium text-travel-optional">(optioneel)</span>
+                {m.owner_name()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                 <Input
-                  aria-label={`Naam (${label.toLowerCase()})`}
+                  aria-label={m.owner_name_2({ p0: label })}
                   value={value.newName}
                   maxLength={500}
                   onChange={(event) => onChange({ ...value, newName: event.target.value })}
@@ -241,9 +281,9 @@ export function PlacePicker({
             </Field>
             <Field>
               <FieldLabel>
-                Plaats <span className="font-medium text-travel-optional">(optioneel)</span>
+                {m.owner_city()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                 <Input
-                  aria-label={`Plaats (${label.toLowerCase()})`}
+                  aria-label={m.owner_city_2({ p0: label })}
                   value={value.newLocality}
                   maxLength={120}
                   onChange={(event) => onChange({ ...value, newLocality: event.target.value })}
@@ -254,9 +294,9 @@ export function PlacePicker({
           <div className="field-row">
             <Field>
               <FieldLabel>
-                Landcode <span className="font-medium text-travel-optional">(optioneel)</span>
+                {m.owner_country_code()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                 <Input
-                  aria-label={`Landcode (${label.toLowerCase()})`}
+                  aria-label={m.owner_country_code_3({ p0: label })}
                   value={value.newCountryCode}
                   maxLength={2}
                   onChange={(event) => onChange({ ...value, newCountryCode: event.target.value })}
@@ -265,21 +305,21 @@ export function PlacePicker({
             </Field>
             <Field>
               <FieldLabel>
-                Gebied <span className="font-medium text-travel-optional">(optioneel)</span>
+                {m.owner_area()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
               </FieldLabel>
               <SearchSelect
-                ariaLabel={`Gebied van de nieuwe locatie (${label.toLowerCase()})`}
+                ariaLabel={m.owner_new_location_s_area({ p0: label })}
                 value={value.newAreaId}
                 onChange={(next) => onChange({ ...value, newAreaId: next })}
               >
                 <option value="">
                   {value.newResult?.latitude != null
-                    ? "Geen voorstel gebruiken (plaatsregel)"
-                    : "Afleiden uit de plaats"}
+                    ? m.owner_do_not_use_a_suggestion_city_rule()
+                    : m.owner_derive_from_the_city()}
                 </option>
                 {value.newAreaCandidate && (
                   <option value="__new__">
-                    Nieuw gebied: {value.newAreaCandidate.label}
+                    {m.owner_new_area()} {value.newAreaCandidate.label}
                     {value.newAreaCandidate.timezone ? ` · ${value.newAreaCandidate.timezone}` : ""}
                   </option>
                 )}
@@ -295,7 +335,7 @@ export function PlacePicker({
             <div className="field-row">
               <Field>
                 <FieldLabel>
-                  Naam nieuw gebied
+                  {m.owner_new_area_name()}
                   <Input
                     value={value.newAreaCandidate.label}
                     maxLength={120}
@@ -310,7 +350,7 @@ export function PlacePicker({
               </Field>
               <Field>
                 <FieldLabel>
-                  Tijdzone nieuw gebied
+                  {m.owner_new_area_time_zone()}
                   <Input
                     value={value.newAreaCandidate.timezone ?? ""}
                     maxLength={64}

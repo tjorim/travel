@@ -59,6 +59,7 @@ function RecordLink({
   id: string;
   children: React.ReactNode;
 }) {
+  useLocale();
   return (
     <Link
       className="action-link compact"
@@ -82,18 +83,19 @@ function RecordHeading({
   id: string;
   children: React.ReactNode;
 }) {
+  useLocale();
   return (
     <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
       <h3>{children}</h3>
       <RecordLink tripId={tripId} kind={kind} id={id}>
-        Openen
+        {m.owner_open()}
       </RecordLink>
     </div>
   );
 }
 
 function placeLabel(place: Location | null): string {
-  if (!place) return "Geen locatie vastgelegd";
+  if (!place) return m.owner_no_location_captured();
   const name = locationName(place);
   const extra = [
     place.address_line1,
@@ -129,6 +131,7 @@ function MediaPreview({
   asset: MediaAsset;
   session: NonNullable<ReturnType<typeof useOwner>>["session"];
 }) {
+  useLocale();
   return asset.thumbnail_url ? (
     <OwnerImage
       session={session}
@@ -147,6 +150,7 @@ function MediaPreview({
 }
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  useLocale();
   return (
     <section id={id} className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0">
       <h2>{title}</h2>
@@ -156,15 +160,60 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 const SECTIONS: { id: string; label: string }[] = [
-  { id: "updates", label: "Reisupdates" },
-  { id: "visits", label: "Bezoeken" },
-  { id: "stays", label: "Verblijven" },
-  { id: "routes", label: "Routes" },
-  { id: "tasks", label: "Taken" },
-  { id: "locations", label: "Locaties" },
-  { id: "areas", label: "Gebieden" },
-  { id: "documents", label: "Privédocumenten" },
-  { id: "media", label: "Privémedia" },
+  {
+    id: "updates",
+    get label() {
+      return m.owner_travel_updates();
+    },
+  },
+  {
+    id: "visits",
+    get label() {
+      return m.owner_visits();
+    },
+  },
+  {
+    id: "stays",
+    get label() {
+      return m.owner_stays();
+    },
+  },
+  {
+    id: "routes",
+    get label() {
+      return m.owner_routes();
+    },
+  },
+  {
+    id: "tasks",
+    get label() {
+      return m.owner_tasks();
+    },
+  },
+  {
+    id: "locations",
+    get label() {
+      return m.owner_locations();
+    },
+  },
+  {
+    id: "areas",
+    get label() {
+      return m.owner_areas();
+    },
+  },
+  {
+    id: "documents",
+    get label() {
+      return m.owner_private_documents();
+    },
+  },
+  {
+    id: "media",
+    get label() {
+      return m.owner_private_media();
+    },
+  },
 ];
 
 export function TripDetail() {
@@ -255,16 +304,16 @@ export function TripDetail() {
     <main className="grid gap-4.5" aria-labelledby="admin-trip-title">
       <header className="flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch [&_h1]:m-0 [&_h2]:m-0 [&_h1]:text-2xl [&_h2]:text-2xl [&_p]:mt-1.5 [&_p]:mb-0 [&_p]:text-travel-muted">
         <div>
-          <p className="travel-eyebrow">Alleen voor jou · volledig privéoverzicht</p>
+          <p className="travel-eyebrow">{m.owner_only_for_you_complete_private_overview()}</p>
           <h1 id="admin-trip-title">{trip.title}</h1>
           {trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}
         </div>
         <Link className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>
-          Naar reisbeheer
+          {m.owner_go_to_trip_management()}
         </Link>
       </header>
       {trip.summary && (
-        <section className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0" aria-label="Reissamenvatting">
+        <section className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0" aria-label={m.owner_trip_summary()}>
           <Markdown html={trip.summary_html} text={trip.summary} />
         </section>
       )}
@@ -272,7 +321,7 @@ export function TripDetail() {
       <OwnerTripMap trip={trip} areas={areas} onOpenRecord={openMapRecord} />
       <nav
         className="flex flex-wrap gap-1.5 [&_a]:rounded-full [&_a]:border [&_a]:border-travel-card-border [&_a]:bg-travel-surface [&_a]:px-2.5 [&_a]:py-1.5 [&_a]:text-sm [&_a]:font-bold [&_a]:text-travel-muted [&_a]:no-underline [&_a:hover]:bg-travel-selected-bg [&_a:focus-visible]:bg-travel-selected-bg"
-        aria-label="Onderdelen van dit overzicht"
+        aria-label={m.owner_sections_in_this_overview()}
       >
         {SECTIONS.map(({ id: sectionId, label }) => (
           <a key={sectionId} href={`#${sectionId}`}>
@@ -286,7 +335,7 @@ export function TripDetail() {
         </p>
       )}
 
-      <Section id="updates" title="Reisupdates">
+      <Section id="updates" title={m.owner_travel_updates()}>
         {trip.travel_updates.length ? (
           <div className="travel-detail-list">
             {trip.travel_updates
@@ -301,27 +350,31 @@ export function TripDetail() {
                     {timestamp(update.occurred_at)} · {placeLabel(update.location)} ·{" "}
                     {visibilityLabel(update.visibility)}
                   </p>
-                  <p className="markdown-label">Voor bezoekers</p>
+                  <p className="markdown-label">{m.owner_for_visitors()}</p>
                   {update.body ? (
                     <Markdown html={update.body_html} text={update.body} />
                   ) : (
-                    <p className="help">Nog geen tekst voor bezoekers.</p>
+                    <p className="help">{m.owner_no_text_for_visitors_yet()}</p>
                   )}
                   {update.private_notes && (
                     <>
-                      <p className="markdown-label">Privénotitie</p>
+                      <p className="markdown-label">{m.owner_private_note()}</p>
                       <Markdown html={update.private_notes_html} text={update.private_notes} />
                     </>
                   )}
                   {update.media_asset_ids.length > 0 && (
-                    <div className="flex flex-wrap gap-3" role="group" aria-label={`Media bij ${update.title}`}>
+                    <div
+                      className="flex flex-wrap gap-3"
+                      role="group"
+                      aria-label={m.owner_media_for({ p0: update.title })}
+                    >
                       {update.media_asset_ids.map((assetId) => {
                         const asset = mediaById.get(assetId);
                         return asset && owner ? (
                           <div key={assetId} className="grid max-w-37.5 gap-1.25">
                             <MediaPreview asset={asset} session={owner.session} />
                             <RecordLink tripId={trip.id} kind="media" id={asset.id}>
-                              {asset.original_filename ?? "Medium openen"}
+                              {asset.original_filename ?? m.owner_open_media_item()}
                             </RecordLink>
                           </div>
                         ) : null;
@@ -332,10 +385,10 @@ export function TripDetail() {
               ))}
           </div>
         ) : (
-          <p>Geen reisupdates vastgelegd.</p>
+          <p>{m.owner_no_travel_updates_captured()}</p>
         )}
       </Section>
-      <Section id="visits" title="Bezoeken">
+      <Section id="visits" title={m.owner_visits()}>
         {visits.length ? (
           <ol className="travel-detail-list">
             {visits.map((visit) => (
@@ -353,7 +406,7 @@ export function TripDetail() {
                 <Markdown html={visit.notes_html} text={visit.notes} />
                 {visit.summary && (
                   <>
-                    <p className="markdown-label">Voor bezoekers</p>
+                    <p className="markdown-label">{m.owner_for_visitors()}</p>
                     <Markdown html={visit.summary_html} text={visit.summary} />
                   </>
                 )}
@@ -361,10 +414,10 @@ export function TripDetail() {
             ))}
           </ol>
         ) : (
-          <p>Nog geen bezoeken.</p>
+          <p>{m.owner_no_visits_yet()}</p>
         )}
       </Section>
-      <Section id="stays" title="Verblijven">
+      <Section id="stays" title={m.owner_stays()}>
         {stays.length ? (
           <div className="travel-detail-list">
             {stays
@@ -381,8 +434,8 @@ export function TripDetail() {
                   {(stay.check_in_time || stay.check_out_time) && (
                     <p>
                       {[
-                        stay.check_in_time && `Inchecken ${stay.check_in_time.slice(0, 5)}`,
-                        stay.check_out_time && `Uitchecken ${stay.check_out_time.slice(0, 5)}`,
+                        stay.check_in_time && m.owner_check_in({ p0: stay.check_in_time.slice(0, 5) }),
+                        stay.check_out_time && m.owner_check_out({ p0: stay.check_out_time.slice(0, 5) }),
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -395,13 +448,17 @@ export function TripDetail() {
                   </p>
                   {stay.website_url && (
                     <a href={stay.website_url} target="_blank" rel="noreferrer">
-                      Website accommodatie
+                      {m.owner_accommodation_website()}
                     </a>
                   )}
-                  {stay.booking_reference && <p>Boekingsreferentie: {stay.booking_reference}</p>}
+                  {stay.booking_reference && (
+                    <p>
+                      {m.owner_booking_reference()} {stay.booking_reference}
+                    </p>
+                  )}
                   {stay.contact_details && (
                     <>
-                      <p className="markdown-label">Contact</p>
+                      <p className="markdown-label">{m.owner_contact()}</p>
                       <Markdown html={stay.contact_details_html} text={stay.contact_details} />
                     </>
                   )}
@@ -410,10 +467,10 @@ export function TripDetail() {
               ))}
           </div>
         ) : (
-          <p>Geen verblijven vastgelegd.</p>
+          <p>{m.owner_no_stays_captured()}</p>
         )}
       </Section>
-      <Section id="routes" title="Routes">
+      <Section id="routes" title={m.owner_routes()}>
         {routes.length ? (
           <div className="travel-detail-list">
             {routes.map((route) => (
@@ -430,7 +487,7 @@ export function TripDetail() {
                       : route.departs_on
                         ? formatDay(route.departs_on)
                         : null,
-                    route.geometry ? `lijn van ${route.geometry.coordinates.length} punten` : null,
+                    route.geometry ? m.owner_line_with_points({ p0: route.geometry.coordinates.length }) : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -440,16 +497,20 @@ export function TripDetail() {
                   {routeEndpoint(route.arrival_area.label, route.arrival_location)}
                 </p>
                 <p>{[route.carrier, route.service_reference, route.travel_class].filter(Boolean).join(" · ")}</p>
-                {route.booking_reference && <p>Boekingsreferentie: {route.booking_reference}</p>}
+                {route.booking_reference && (
+                  <p>
+                    {m.owner_booking_reference()} {route.booking_reference}
+                  </p>
+                )}
                 <Markdown html={route.notes_html} text={route.notes} />
               </article>
             ))}
           </div>
         ) : (
-          <p>Geen routes vastgelegd.</p>
+          <p>{m.owner_no_routes_captured()}</p>
         )}
       </Section>
-      <Section id="tasks" title="Taken">
+      <Section id="tasks" title={m.owner_tasks()}>
         {tasks.length ? (
           <div className="travel-detail-list">
             {tasks
@@ -466,12 +527,16 @@ export function TripDetail() {
                   </RecordHeading>
                   <p>
                     {task.completed_at
-                      ? `Afgerond op ${timestamp(task.completed_at)}`
+                      ? m.owner_completed_on({ p0: timestamp(task.completed_at) })
                       : task.due_date
-                        ? `Voor ${formatDay(task.due_date)}`
-                        : "Geen deadline"}
+                        ? m.owner_due({ p0: formatDay(task.due_date) })
+                        : m.owner_no_deadline()}
                   </p>
-                  {task.remind_at && <p>Herinnering: {timestamp(task.remind_at)}</p>}
+                  {task.remind_at && (
+                    <p>
+                      {m.owner_reminder()} {timestamp(task.remind_at)}
+                    </p>
+                  )}
                   <Markdown html={task.notes_html} text={task.notes} />
                   {task.links.map((link) => (
                     <p key={link.url}>
@@ -484,10 +549,10 @@ export function TripDetail() {
               ))}
           </div>
         ) : (
-          <p>Geen taken vastgelegd.</p>
+          <p>{m.owner_no_tasks_captured()}</p>
         )}
       </Section>
-      <Section id="locations" title="Locaties">
+      <Section id="locations" title={m.owner_locations()}>
         {places.length ? (
           <div className="travel-detail-list">
             {places.map((place) => (
@@ -495,23 +560,23 @@ export function TripDetail() {
                 <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
                   <h3>{placeLabel(place)}</h3>
                   <Link className="action-link compact" to={`/trips/${encodeURIComponent(trip.id)}/plan`}>
-                    Naar planning
+                    {m.owner_go_to_planning()}
                   </Link>
                 </div>
                 <Markdown html={place.notes_html} text={place.notes} />
                 {place.latitude != null && place.longitude != null && (
                   <p>
-                    Coördinaten: {place.latitude}, {place.longitude}
+                    {m.owner_coordinates()} {place.latitude}, {place.longitude}
                   </p>
                 )}
               </article>
             ))}
           </div>
         ) : (
-          <p>Geen locaties vastgelegd.</p>
+          <p>{m.owner_no_locations_captured()}</p>
         )}
       </Section>
-      <Section id="areas" title="Gebieden">
+      <Section id="areas" title={m.owner_areas()}>
         {areas.length ? (
           <div className="travel-detail-list">
             {areas.map((place) => (
@@ -524,10 +589,10 @@ export function TripDetail() {
             ))}
           </div>
         ) : (
-          <p>Nog geen gebieden vastgelegd.</p>
+          <p>{m.owner_no_areas_captured_yet()}</p>
         )}
       </Section>
-      <Section id="documents" title="Privédocumenten">
+      <Section id="documents" title={m.owner_private_documents()}>
         {documents.length || libraryDocuments.length ? (
           <div className="travel-detail-list">
             {documents.map((document) => (
@@ -536,15 +601,15 @@ export function TripDetail() {
                   {document.title}
                 </RecordHeading>
                 <p>
-                  {DOCUMENT_KIND_LABELS[document.document_kind]} · {document.original_filename ?? "Naamloos bestand"} ·{" "}
-                  {bytesLabel(document.byte_size)}
+                  {DOCUMENT_KIND_LABELS[document.document_kind]} ·{" "}
+                  {document.original_filename ?? m.owner_unnamed_file()} · {bytesLabel(document.byte_size)}
                 </p>
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => openFile(document.file_url, "Het private document kon niet worden geopend.")}
+                  onClick={() => openFile(document.file_url, m.owner_the_private_document_could_not_be_opened())}
                 >
-                  Document openen
+                  {m.owner_open_document()}
                 </Button>
               </article>
             ))}
@@ -553,56 +618,57 @@ export function TripDetail() {
                 <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
                   <h3>{document.title}</h3>
                   <Link className="action-link compact" to="/library">
-                    Naar bibliotheek
+                    {m.owner_go_to_library()}
                   </Link>
                 </div>
                 <p>
-                  Bibliotheek · {document.original_filename ?? "Naamloos bestand"} · {bytesLabel(document.byte_size)}
+                  {m.owner_library()} {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                  {bytesLabel(document.byte_size)}
                 </p>
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => openFile(document.file_url, "Het bibliotheekdocument kon niet worden geopend.")}
+                  onClick={() => openFile(document.file_url, m.owner_the_library_document_could_not_be_opened())}
                 >
-                  Bibliotheekdocument openen
+                  {m.owner_open_library_document()}
                 </Button>
               </article>
             ))}
           </div>
         ) : (
-          <p>Geen privédocumenten vastgelegd.</p>
+          <p>{m.owner_no_private_documents_captured()}</p>
         )}
       </Section>
-      <Section id="media" title="Privémedia">
+      <Section id="media" title={m.owner_private_media()}>
         {media.length ? (
           <div className="travel-detail-list">
             {media.map((asset) => (
               <article key={asset.id}>
                 <RecordHeading tripId={trip.id} kind="media" id={asset.id}>
-                  {asset.original_filename ?? "Naamloos medium"}
+                  {asset.original_filename ?? m.owner_unnamed_media_item()}
                 </RecordHeading>
                 {owner && <MediaPreview asset={asset} session={owner.session} />}
                 <p>
-                  {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)} · vastgelegd{" "}
+                  {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)} {m.owner_captured()}{" "}
                   {timestamp(asset.captured_at)}
                 </p>
                 {asset.gps && (
                   <p>
-                    GPS: {asset.gps.latitude}, {asset.gps.longitude}
+                    {m.owner_gps()} {asset.gps.latitude}, {asset.gps.longitude}
                   </p>
                 )}
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => openFile(asset.file_url, "De privemedia konden niet worden geopend.")}
+                  onClick={() => openFile(asset.file_url, m.owner_the_private_media_could_not_be_opened())}
                 >
-                  Media openen
+                  {m.owner_open_media()}
                 </Button>
               </article>
             ))}
           </div>
         ) : (
-          <p>Geen privémedia vastgelegd.</p>
+          <p>{m.owner_no_private_media_captured()}</p>
         )}
       </Section>
     </main>

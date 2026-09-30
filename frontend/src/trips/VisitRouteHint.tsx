@@ -1,3 +1,5 @@
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
@@ -11,11 +13,11 @@ type RouteReference = NonNullable<Visit["possible_route_duplicates"]>[number];
 
 /** A non-blocking hint that a visit repeats a journey that already is a route. */
 export function RestatedRoutesNote({ routes }: { routes: RouteReference[] }) {
+  useLocale();
   if (!routes.length) return null;
   return (
     <p className="help" role="note">
-      Lijkt op de route {routes.map((route) => `“${route.title}”`).join(", ")}. Een reis hoort bij Routes; houd dit
-      bezoek alleen als het over iets anders gaat.
+      {m.owner_restated_routes({ routes: routes.map((route) => `“${route.title}”`).join(", ") })}
     </p>
   );
 }
@@ -45,6 +47,7 @@ function checkBody(draft: Draft) {
 
 /** Warns, while the visit is being typed, that it restates a route. It never blocks saving and stays quiet on failure. */
 export function VisitRouteHint({ tripId, draft }: { tripId: string; draft: Draft }) {
+  useLocale();
   const owner = useOwner();
   const body = checkBody(draft);
   const wanted = body ? JSON.stringify(body) : null;
@@ -63,7 +66,7 @@ export function VisitRouteHint({ tripId, draft }: { tripId: string; draft: Draft
       ownerRequest<RouteReference[]>(
         owner!.session,
         `${tripPath(tripId, "visits")}/route-check`,
-        "De controle op routes lukte niet.",
+        m.owner_the_route_check_failed,
         { method: "POST", body: JSON.parse(settled!), signal },
       ),
   });

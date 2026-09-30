@@ -1,3 +1,5 @@
+import { m } from "../paraglide/messages.js";
+import { useLocale } from "../locale";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Field, FieldError, FieldLabel } from "../ui/field";
 import { TravelTextarea } from "../ui/TravelTextarea";
@@ -80,10 +82,15 @@ export function RecordForm({
 }
 
 export function useFieldErrors(field: AnyFieldApi) {
+  useLocale();
   const server = useContext(ServerFieldErrors)[field.name];
   const errors = [
     ...field.state.meta.errors.map((error: unknown) =>
-      typeof error === "string" ? error : ((error as { message?: string } | null)?.message ?? ""),
+      typeof error === "function"
+        ? error()
+        : typeof error === "string"
+          ? error
+          : ((error as { message?: string } | null)?.message ?? ""),
     ),
     server ?? "",
   ].filter(Boolean);
@@ -97,7 +104,7 @@ export const optionalNote = (optional: Common["optional"]) =>
     <>
       {" "}
       <span className="font-medium text-travel-optional">
-        {typeof optional === "string" ? optional : "(optioneel)"}
+        {typeof optional === "string" ? optional : m.owner_optional()}
       </span>
     </>
   ) : null;
@@ -108,6 +115,7 @@ export function TextField({
   optional,
   ...input
 }: Common & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "name">) {
+  useLocale();
   const { message, invalid } = useFieldErrors(field);
   const { required, ...rest } = input;
   return (
@@ -117,14 +125,14 @@ export function TextField({
           {label}
           {optionalNote(optional)}
         </span>
-        <Input
-          {...rest}
-          value={field.state.value ?? ""}
-          aria-required={required || undefined}
-          onBlur={field.handleBlur}
-          onChange={(event) => field.handleChange(event.target.value)}
-        />
       </FieldLabel>
+      <Input
+        {...rest}
+        value={field.state.value ?? ""}
+        aria-required={required || undefined}
+        onBlur={field.handleBlur}
+        onChange={(event) => field.handleChange(event.target.value)}
+      />
       <FieldError>{message}</FieldError>
     </Field>
   );
@@ -137,6 +145,7 @@ export function TimeZoneField({
   optional,
   ...input
 }: Common & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "name">) {
+  useLocale();
   const { message, invalid } = useFieldErrors(field);
   const { required, ...rest } = input;
   return (
@@ -166,6 +175,7 @@ export function TextAreaField({
   optional,
   ...input
 }: Common & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange" | "onBlur" | "name">) {
+  useLocale();
   const { message, invalid } = useFieldErrors(field);
   const { required, ...rest } = input;
   return (
@@ -175,14 +185,14 @@ export function TextAreaField({
           {label}
           {optionalNote(optional)}
         </span>
-        <TravelTextarea
-          {...rest}
-          value={field.state.value ?? ""}
-          aria-required={required || undefined}
-          onBlur={field.handleBlur}
-          onChange={(event) => field.handleChange(event.target.value)}
-        />
       </FieldLabel>
+      <TravelTextarea
+        {...rest}
+        value={field.state.value ?? ""}
+        aria-required={required || undefined}
+        onBlur={field.handleBlur}
+        onChange={(event) => field.handleChange(event.target.value)}
+      />
       <FieldError>{message}</FieldError>
     </Field>
   );
@@ -195,6 +205,7 @@ export function SelectField({
   children,
   disabled,
 }: Common & { children: ReactNode; disabled?: boolean }) {
+  useLocale();
   const { message, invalid } = useFieldErrors(field);
   return (
     <Field name={field.name} invalid={invalid} disabled={disabled}>
@@ -220,7 +231,7 @@ export function SelectField({
 
 /** The value is required once trimmed. */
 export const requiredText =
-  (message: string) =>
+  (message: string | (() => string)) =>
   ({ value }: { value: string }) =>
     value.trim() ? undefined : message;
 

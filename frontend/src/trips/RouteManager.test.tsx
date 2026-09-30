@@ -258,10 +258,10 @@ it("files a new location under the chosen area", async () => {
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
-  fireEvent.change(screen.getByLabelText("Zoek locatie (vertrek)"), { target: { value: "Taipei Main Station" } });
+  fireEvent.change(screen.getByLabelText("Zoek locatie (Vertrek)"), { target: { value: "Taipei Main Station" } });
   fireEvent.click(screen.getAllByRole("button", { name: "Zoeken" })[0]);
   fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
-  chooseOption("Gebied van de nieuwe locatie (vertrek)", "Taipei");
+  chooseOption("Gebied van de nieuwe locatie (Vertrek)", "Taipei");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
@@ -297,10 +297,10 @@ it("shows a nearby area suggestion before saving a new location", async () => {
   renderWithOwner(<RouteManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
   pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
-  fireEvent.change(screen.getByLabelText("Zoek locatie (vertrek)"), { target: { value: "Taipei Main Station" } });
+  fireEvent.change(screen.getByLabelText("Zoek locatie (Vertrek)"), { target: { value: "Taipei Main Station" } });
   fireEvent.click(screen.getAllByRole("button", { name: "Zoeken" })[0]);
   fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
-  await waitFor(() => expect(selectedOption("Gebied van de nieuwe locatie (vertrek)")).toBe("Taipei"));
+  await waitFor(() => expect(selectedOption("Gebied van de nieuwe locatie (Vertrek)")).toBe("Taipei"));
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await waitFor(() =>
     expect(

@@ -1,6 +1,7 @@
-import { errorNotice } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
-import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
@@ -74,7 +75,7 @@ const bodyToShare = ({
   fieldApi: { form: { getFieldValue: (name: never) => unknown } };
 }) =>
   fieldApi.form.getFieldValue("visibility" as never) !== "private" && !value.trim()
-    ? "Schrijf eerst de tekst voor bezoekers, of kies “Privé”."
+    ? m.owner_write_the_text_for_visitors_first_or_choose_private()
     : undefined;
 
 /** Travel updates are embedded in the trip, so every write refreshes the trip list. */
@@ -87,9 +88,12 @@ export function TravelUpdateManager({
   areas: Area[];
   focusId?: DialogFocusRequest | null;
 }) {
+  useLocale();
   const dialog = useRecordDialog(trip.travel_updates);
   useDialogFocus(focusId, dialog.inspect);
-  const [message, setMessage] = useState("Een reisupdate blijft privé totdat je kiest wie hem mag zien.");
+  const [message, setMessage] = useFeedback<string>(
+    textNotice(() => m.owner_a_travel_update_stays_private_until_you_choose_who_may_see_it()),
+  );
   const path = tripPath(trip.id, "travel-updates");
   // An update may add a reusable location and its derived area as well as changing the trip's embedded update list.
   const invalidate = (subject: string) => [
@@ -99,19 +103,19 @@ export function TravelUpdateManager({
   ];
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, TravelUpdate>({
-    fallback: "De reisupdate kon niet worden opgeslagen.",
+    fallback: m.owner_the_travel_update_could_not_be_saved,
     request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
     invalidate,
   });
   const remove = useOwnerMutation<TravelUpdate>({
-    fallback: "De reisupdate kon niet worden verwijderd.",
+    fallback: m.owner_the_travel_update_could_not_be_deleted,
     request: (item) => ({ path: `${path}/${item.id}`, method: "DELETE" }),
     invalidate,
   });
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: "De reisupdate kon niet worden opgeslagen.",
+    fallback: m.owner_the_travel_update_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       await save.mutateAsync({
@@ -130,7 +134,7 @@ export function TravelUpdateManager({
     },
     onSuccess: () => {
       close();
-      setMessage("Reisupdate opgeslagen.");
+      setMessage(textNotice(() => m.owner_travel_update_saved()));
     },
   });
 
@@ -154,11 +158,11 @@ export function TravelUpdateManager({
     remove.mutateAsync(item).then(
       () => {
         close();
-        setMessage("Reisupdate verwijderd.");
+        setMessage(textNotice(() => m.owner_travel_update_deleted()));
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
-        dialog.setError(errorNotice(error, "De reisupdate kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, m.owner_the_travel_update_could_not_be_deleted));
       },
     );
   }
@@ -168,14 +172,11 @@ export function TravelUpdateManager({
     <section className="travel-card manager" aria-labelledby="updates-title">
       <div className="capture-heading">
         <div>
-          <h3 id="updates-title">Reisupdates</h3>
-          <p>
-            Wat er gebeurde, met een privé- en een gedeeld deel. Je notities, locatie en foto’s blijven altijd privé; de
-            titel en de tekst voor bezoekers deel je alleen als je dat kiest.
-          </p>
+          <h3 id="updates-title">{m.owner_travel_updates()}</h3>
+          <p>{m.owner_what_happened_with_a_private_and_a_shared_part_your_notes_location_and_p()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          Nieuwe update
+          {m.owner_new_update()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -189,12 +190,12 @@ export function TravelUpdateManager({
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(item.id)}
-                aria-label={`Reisupdate ${item.title} bekijken`}
+                aria-label={m.owner_view_travel_update({ p0: item.title })}
               >
                 <strong>{item.title}</strong>
                 <span>
                   {updateDateLabel(item.occurred_at, item.date_precision)} · {visibilityLabel(item.visibility)} ·{" "}
-                  {item.area?.label ?? "geen plaats"}
+                  {item.area?.label ?? m.owner_no_place()}
                 </span>
               </Button>
             </article>
@@ -203,7 +204,13 @@ export function TravelUpdateManager({
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? "Reisupdate bewerken" : "Reisupdate maken") : "Reisupdate"}
+        title={
+          editing
+            ? editingId
+              ? m.owner_edit_travel_update()
+              : m.owner_create_travel_update()
+            : m.owner_travel_update()
+        }
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -215,22 +222,24 @@ export function TravelUpdateManager({
               {selected.body ? (
                 <Markdown html={selected.body_html} text={selected.body} />
               ) : (
-                <p className="help">Nog geen tekst voor bezoekers.</p>
+                <p className="help">{m.owner_no_text_for_visitors_yet()}</p>
               )}
             </div>
             <div>
-              <h4>Alleen voor jou</h4>
+              <h4>{m.owner_only_for_you()}</h4>
               {selected.private_notes ? (
                 <Markdown html={selected.private_notes_html} text={selected.private_notes} />
               ) : (
-                <p className="help">Geen privénotitie.</p>
+                <p className="help">{m.owner_no_private_note()}</p>
               )}
               <p className="help">
                 {[
                   selected.location
-                    ? `Locatie: ${selected.location.display_name ?? selected.location.locality ?? "naamloos"}`
+                    ? m.owner_location_2({
+                        p0: selected.location.display_name ?? selected.location.locality ?? m.owner_unnamed_location(),
+                      })
                     : null,
-                  `${selected.media_asset_ids.length} gekoppelde ${selected.media_asset_ids.length === 1 ? "foto" : "foto’s"}`,
+                  m.owner_linked_media_count({ count: selected.media_asset_ids.length }),
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -245,15 +254,15 @@ export function TravelUpdateManager({
             />
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                Bewerken
+                {m.owner_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={`Reisupdate “${selected.title}” verwijderen?`}
+                title={m.owner_delete_travel_update({ p0: selected.title })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -263,17 +272,17 @@ export function TravelUpdateManager({
         {editing && (
           <RecordForm
             record={record}
-            submitLabel={editingId ? "Reisupdate opslaan" : "Reisupdate maken"}
-            pendingLabel="Opslaan…"
+            submitLabel={editingId ? m.owner_save_travel_update() : m.owner_create_travel_update()}
+            pendingLabel={m.owner_saving()}
           >
             <record.form.Field
               name="title"
               validators={{
-                onChange: requiredText("Geef de reisupdate een titel."),
-                onSubmit: requiredText("Geef de reisupdate een titel."),
+                onChange: requiredText(m.owner_give_the_travel_update_a_title),
+                onSubmit: requiredText(m.owner_give_the_travel_update_a_title),
               }}
             >
-              {(field) => <TextField field={field} label="Titel" required maxLength={160} />}
+              {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
             </record.form.Field>
             <record.form.Field
               name="body"
@@ -282,8 +291,8 @@ export function TravelUpdateManager({
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label="Tekst voor bezoekers"
-                  optional="(leeg zolang je niets deelt)"
+                  label={m.owner_text_for_visitors()}
+                  optional={m.owner_empty_until_shared()}
                   maxLength={10000}
                   rows={5}
                 />
@@ -293,18 +302,18 @@ export function TravelUpdateManager({
               <record.form.Field
                 name="occurredAt"
                 validators={{
-                  onChange: requiredText("Geef de datum en tijd op."),
-                  onSubmit: requiredText("Geef de datum en tijd op."),
+                  onChange: requiredText(m.owner_enter_the_date_and_time),
+                  onSubmit: requiredText(m.owner_enter_the_date_and_time),
                 }}
               >
-                {(field) => <TextField field={field} label="Datum en tijd" required type="datetime-local" />}
+                {(field) => <TextField field={field} label={m.owner_date_and_time()} required type="datetime-local" />}
               </record.form.Field>
               <record.form.Field name="datePrecision">
                 {(field) => (
-                  <SelectField field={field} label="Datum voor bezoekers">
-                    <option value="day">Volledige datum</option>
-                    <option value="month">Alleen de maand</option>
-                    <option value="year">Alleen het jaar</option>
+                  <SelectField field={field} label={m.owner_date_for_visitors()}>
+                    <option value="day">{m.owner_full_date()}</option>
+                    <option value="month">{m.owner_month_only()}</option>
+                    <option value="year">{m.owner_year_only()}</option>
                   </SelectField>
                 )}
               </record.form.Field>
@@ -314,22 +323,22 @@ export function TravelUpdateManager({
                 <>
                   <PlaceSearchField
                     tripId={trip.id}
-                    legend="Locatie (privé)"
-                    inputLabel="Zoek locatie van deze update"
-                    placeholder="Bijvoorbeeld: Beitou Hot Spring"
-                    help="De locatie bepaalt automatisch het gebied. Hij blijft privé tenzij je hem apart deelt."
+                    legend={m.owner_location_private()}
+                    inputLabel={m.owner_search_for_this_update_s_location()}
+                    placeholder={m.owner_for_example_beitou_hot_spring()}
+                    help={m.owner_the_location_automatically_determines_the_area_it_stays_private_unless_y()}
                     onSelect={usePlaceResult}
                     allowExisting
                   />
                   {place && (
                     <p className="help">
-                      Gekozen locatie: {locationName(place)}{" "}
+                      {m.owner_selected_location()} {locationName(place)}{" "}
                       <Button
                         className="compact secondary"
                         type="button"
                         onClick={() => record.form.setFieldValue("location", null)}
                       >
-                        Locatie wissen
+                        {m.owner_clear_location()}
                       </Button>
                     </p>
                   )}
@@ -341,11 +350,11 @@ export function TravelUpdateManager({
                 {(field) => (
                   <SelectField
                     field={field}
-                    label="Gebied zonder specifieke locatie"
+                    label={m.owner_area_without_a_specific_location()}
                     optional
                     disabled={Boolean(record.form.getFieldValue("location"))}
                   >
-                    <option value="">Geen gebied</option>
+                    <option value="">{m.owner_no_area()}</option>
                     {areas.map((place) => (
                       <option key={place.id} value={place.id}>
                         {place.label}
@@ -356,7 +365,7 @@ export function TravelUpdateManager({
               </record.form.Field>
               <record.form.Field name="visibility">
                 {(field) => (
-                  <SelectField field={field} label="Zichtbaarheid">
+                  <SelectField field={field} label={m.owner_visibility()}>
                     {Object.entries(VISIBILITY_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -370,8 +379,8 @@ export function TravelUpdateManager({
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label="Privénotitie"
-                  optional="(nooit gedeeld)"
+                  label={m.owner_private_note()}
+                  optional={m.owner_never_shared()}
                   maxLength={10000}
                   rows={4}
                 />

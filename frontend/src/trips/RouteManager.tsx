@@ -1,4 +1,6 @@
-import { errorNotice } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { useFeedback, FeedbackError, textNotice, errorNotice } from "../query/feedback";
 import { TravelCheckbox } from "../ui/TravelCheckbox";
 import { Button } from "@base-ui/react/button";
 import { Collapsible } from "@base-ui/react/collapsible";
@@ -34,10 +36,18 @@ import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor
 import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 export const ROUTE_STATUS_LABELS: Record<Route["status"], string> = {
-  planned: "Gepland",
-  booked: "Geboekt",
-  confirmed: "Bevestigd",
-  cancelled: "Geannuleerd",
+  get planned() {
+    return m.owner_planned();
+  },
+  get booked() {
+    return m.owner_booked_3();
+  },
+  get confirmed() {
+    return m.owner_confirmed();
+  },
+  get cancelled() {
+    return m.owner_cancelled();
+  },
 };
 const STATUS_LABELS = ROUTE_STATUS_LABELS;
 
@@ -79,7 +89,7 @@ type Values = {
   coordinates: string;
 };
 
-const NOT_ENOUGH_POINTS = "Een lijn heeft minstens twee punten nodig.";
+const NOT_ENOUGH_POINTS = m.owner_a_line_needs_at_least_two_points;
 
 /** The line's points, or the message explaining why the text is not a usable line. */
 function parseCoordinates(text: string): [number, number][] | string {
@@ -87,7 +97,7 @@ function parseCoordinates(text: string): [number, number][] | string {
   try {
     coordinates = JSON.parse(text);
   } catch {
-    return "Gebruik geldige JSON met minstens twee [lengtegraad, breedtegraad]-paren.";
+    return m.owner_use_valid_json_with_at_least_two_longitude_latitude_pairs();
   }
   if (
     !Array.isArray(coordinates) ||
@@ -96,13 +106,13 @@ function parseCoordinates(text: string): [number, number][] | string {
       (point) => !Array.isArray(point) || point.length !== 2 || point.some((value) => typeof value !== "number"),
     )
   )
-    return NOT_ENOUGH_POINTS;
+    return NOT_ENOUGH_POINTS();
   return coordinates as [number, number][];
 }
 const validCoordinates = ({ value }: { value: string }) => {
   if (!value.trim()) return undefined;
   const parsed = parseCoordinates(value);
-  return typeof parsed === "string" ? parsed : undefined;
+  return typeof parsed === "string" ? () => parseCoordinates(value) as string : undefined;
 };
 const editableCoordinates = (value: string): RouteCoordinate[] => {
   if (!value.trim()) return [];
@@ -170,7 +180,7 @@ const serverFields = {
 };
 
 const departureChosen = ({ value }: { value: PlaceValue }) =>
-  hasPlace(value) ? undefined : "Kies waar de route begint: een gebied of een locatie.";
+  hasPlace(value) ? undefined : m.owner_choose_where_the_route_starts_an_area_or_location;
 const arrivalChosen = ({
   value,
   fieldApi,
@@ -178,15 +188,16 @@ const arrivalChosen = ({
   value: PlaceValue;
   fieldApi: { form: { getFieldValue: (name: never) => unknown } };
 }) => {
-  if (!hasPlace(value)) return "Kies waar de route eindigt: een gebied of een locatie.";
+  if (!hasPlace(value)) return m.owner_choose_where_the_route_ends_an_area_or_location;
   const departure = fieldApi.form.getFieldValue("departure" as never) as PlaceValue | undefined;
   // A route between the very same area or location goes nowhere; "new" places are compared by the fields behind them.
   return departure && value.choice !== "new" && departure.choice === value.choice
-    ? "Kies twee verschillende plaatsen: vertrek en aankomst zijn hetzelfde."
+    ? m.owner_choose_two_different_places_departure_and_arrival_are_the_same
     : undefined;
 };
 
 export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
+  useLocale();
   const routesQuery = useTripResource(trip.id, "routes");
   const areasQuery = useTripResource(trip.id, "areas");
   const locationsQuery = useTripResource(trip.id, "locations");
@@ -197,8 +208,8 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
   const documents = documentsQuery.data ?? [];
   const dialog = useRecordDialog(routes);
   useDialogFocus(focusId, dialog.inspect);
-  const [message, setMessage] = useState(
-    "Een route loopt tussen twee gebieden. Een dag, stations, tijden, boekingen en een getekende lijn zijn optioneel: kies eerst de dag, de tijden kunnen later. Bezoekers zien alleen wat je deelt, en dan met de gebieden, nooit met de locaties.",
+  const [message, setMessage] = useFeedback<string>(
+    textNotice(() => m.owner_a_route_connects_two_areas_a_day_stations_times_bookings_and_a_drawn_lin()),
   );
   const [deleteTarget, setDeleteTarget] = useState<Route | null>(null);
   // An end's location is only rewritten when one of its fields differs from what the editor opened with.
@@ -211,7 +222,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
   ];
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Route>({
-    fallback: "De route kon niet worden opgeslagen.",
+    fallback: m.owner_the_route_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${tripPath(trip.id, "routes")}/${id}` : tripPath(trip.id, "routes"),
       method: id ? "PATCH" : "POST",
@@ -220,25 +231,27 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
     invalidate: refreshRoutes,
   });
   const remove = useOwnerMutation<Route>({
-    fallback: "De route kon niet worden verwijderd.",
+    fallback: m.owner_the_route_could_not_be_deleted,
     request: (route) => ({ path: `${tripPath(trip.id, "routes")}/${route.id}`, method: "DELETE" }),
     invalidate: refreshRoutes,
   });
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: "De route kon niet worden opgeslagen.",
+    fallback: m.owner_the_route_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       const id = dialog.editingId ?? null;
       if (Boolean(values.departsAt) !== Boolean(values.arrivesAt))
-        throw new Error("Geef zowel de vertrek- als de aankomsttijd op, of geen van beide.");
+        throw new FeedbackError(() => m.owner_enter_both_departure_and_arrival_times_or_neither());
       if (values.departsAt && (!values.departureTimezone || !values.arrivalTimezone))
-        throw new Error("Geef de tijdzone van het vertrek en van de aankomst op.");
+        throw new FeedbackError(() => m.owner_enter_both_the_departure_and_arrival_time_zones());
       // A departure time fixes the day: its local date there.
       if (values.departsAt && values.departsOn && values.departsAt.slice(0, 10) !== values.departsOn)
         throw new Error(
-          `De vertrektijd valt op ${formatDay(values.departsAt.slice(0, 10))}, niet op de gekozen dag. Pas de dag of de tijd aan.`,
+          m.owner_the_departure_time_falls_on_not_on_the_selected_day_change_the_day_or_ti({
+            p0: formatDay(values.departsAt.slice(0, 10)),
+          }),
         );
       const line = values.coordinates.trim() ? parseCoordinates(values.coordinates) : null;
       if (typeof line === "string") throw new Error(line);
@@ -272,7 +285,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
     },
     onSuccess: () => {
       close();
-      setMessage("Route opgeslagen.");
+      setMessage(textNotice(() => m.owner_route_saved()));
     },
   });
 
@@ -300,11 +313,11 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       () => {
         close();
         setDeleteTarget(null);
-        setMessage("Route verwijderd.");
+        setMessage(textNotice(() => m.owner_route_deleted()));
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        dialog.setError(errorNotice(error, "De route kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, m.owner_the_route_could_not_be_deleted));
       },
     );
   }
@@ -354,33 +367,30 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
   const shift = (route: Route) => {
     if (!route.departs_at || !route.arrives_at) return "";
     const days = dayShift(route as TimedRoute);
-    return days !== 0 ? ` (${days > 0 ? "+" : ""}${days} ${Math.abs(days) === 1 ? "dag" : "dagen"})` : "";
+    return days !== 0 ? m.owner_day_shift({ count: Math.abs(days), shift: `${days > 0 ? "+" : ""}${days}` }) : "";
   };
 
   return (
     <section className="travel-card manager" id="routes" aria-labelledby="routes-title">
       <div className="capture-heading">
         <div>
-          <h3 id="routes-title">Routes</h3>
-          <p>
-            Hoe je van het ene gebied naar het andere reist: vlucht, trein, bus, fiets… Stations, tijden en boekingen
-            zijn optioneel en blijven privé. Je kunt er een lijn bij tekenen.
-          </p>
+          <h3 id="routes-title">{m.owner_routes()}</h3>
+          <p>{m.owner_how_you_travel_from_one_area_to_another_flight_train_bus_bike_stations_t()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          Nieuwe route
+          {m.owner_new_route()}
         </Button>
       </div>
       <p className="help" role="status">
         {readError
-          ? errorMessage(readError, "Je routes konden niet worden geladen.")
+          ? errorMessage(readError, m.owner_your_routes_could_not_be_loaded)
           : routesQuery.isPending
-            ? "Laad je routes…"
+            ? m.owner_loading_your_routes()
             : message}
       </p>
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? "Route bewerken" : "Route toevoegen") : "Route"}
+        title={editing ? (editingId ? m.owner_edit_route() : m.owner_add_route()) : m.owner_route()}
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -396,8 +406,8 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               </p>
               <p>
                 {selected.booking_reference
-                  ? `Boekingsreferentie: ${selected.booking_reference}`
-                  : "Geen boekingsreferentie"}
+                  ? m.owner_booking_reference_2({ p0: selected.booking_reference })
+                  : m.owner_no_booking_reference()}
               </p>
               <Markdown html={selected.notes_html} text={selected.notes} />
             </div>
@@ -415,16 +425,13 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               value={selected.visibility}
               name={routeTitle(selected)}
             />
-            <p className="help">
-              Bezoekers zien de gebieden, het vervoermiddel en de lijn. Nooit je boekingscode, klasse, notities of
-              documenten, en een station alleen als je die locatie zelf deelt.
-            </p>
+            <p className="help">{m.owner_visitors_see_the_areas_travel_mode_and_line_never_your_booking_code_clas()}</p>
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                Bewerken
+                {m.owner_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => setDeleteTarget(selected)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
           </div>
@@ -432,13 +439,13 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
         {editing && (
           <RecordForm
             record={record}
-            submitLabel={editingId ? "Route opslaan" : "Route toevoegen"}
-            pendingLabel="Opslaan…"
+            submitLabel={editingId ? m.owner_save_route() : m.owner_add_route()}
+            pendingLabel={m.owner_saving()}
           >
             <div className="field-row">
               <record.form.Field name="mode">
                 {(input) => (
-                  <SelectField field={input} label="Vervoer">
+                  <SelectField field={input} label={m.owner_transport()}>
                     {Object.entries(ROUTE_MODE_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -449,7 +456,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               </record.form.Field>
               <record.form.Field name="status">
                 {(input) => (
-                  <SelectField field={input} label="Status">
+                  <SelectField field={input} label={m.owner_status()}>
                     {Object.entries(STATUS_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -463,10 +470,10 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               {(input) => (
                 <TextField
                   field={input}
-                  label="Naam"
+                  label={m.owner_name()}
                   optional
                   maxLength={160}
-                  placeholder="Zonder naam heet de route “vertrek → aankomst”"
+                  placeholder={m.owner_without_a_name_the_route_is_called_departure_arrival()}
                 />
               )}
             </record.form.Field>
@@ -474,10 +481,12 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               {(input) => (
                 <PlacePicker
                   tripId={trip.id}
-                  label="Vertrek"
+                  label={m.owner_departure()}
                   value={input.state.value}
                   onChange={(value) => input.handleChange(value)}
-                  error={input.state.meta.errors.find((error) => typeof error === "string")}
+                  error={input.state.meta.errors
+                    .map((error) => (typeof error === "function" ? error() : error))
+                    .find((error) => typeof error === "string")}
                 />
               )}
             </record.form.Field>
@@ -485,30 +494,36 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               {(input) => (
                 <PlacePicker
                   tripId={trip.id}
-                  label="Aankomst"
+                  label={m.owner_arrival()}
                   value={input.state.value}
                   onChange={(value) => input.handleChange(value)}
-                  error={input.state.meta.errors.find((error) => typeof error === "string")}
+                  error={input.state.meta.errors
+                    .map((error) => (typeof error === "function" ? error() : error))
+                    .find((error) => typeof error === "string")}
                 />
               )}
             </record.form.Field>
             <record.form.Field name="departsOn">
-              {(input) => <TextField field={input} label="Dag van vertrek" optional type="date" />}
+              {(input) => <TextField field={input} label={m.owner_departure_day()} optional type="date" />}
             </record.form.Field>
             <FieldSet className="grid gap-3">
               <FieldLegend>
-                Tijden{" "}
-                <span className="font-medium text-travel-optional">(optioneel, zodra je een verbinding kiest)</span>
+                {m.owner_times()}{" "}
+                <span className="font-medium text-travel-optional">
+                  {m.owner_optional_once_you_choose_a_connection()}
+                </span>
               </FieldLegend>
               <div className="field-row">
                 <record.form.Field name="departsAt">
-                  {(input) => <TextField field={input} label="Vertrektijd (lokaal)" optional type="datetime-local" />}
+                  {(input) => (
+                    <TextField field={input} label={m.owner_departure_time_local()} optional type="datetime-local" />
+                  )}
                 </record.form.Field>
                 <record.form.Field name="departureTimezone">
                   {(input) => (
                     <TimeZoneField
                       field={input}
-                      label="Tijdzone vertrek"
+                      label={m.owner_departure_time_zone()}
                       optional
                       maxLength={64}
                       placeholder="Europe/Amsterdam"
@@ -518,13 +533,15 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               </div>
               <div className="field-row">
                 <record.form.Field name="arrivesAt">
-                  {(input) => <TextField field={input} label="Aankomsttijd (lokaal)" optional type="datetime-local" />}
+                  {(input) => (
+                    <TextField field={input} label={m.owner_arrival_time_local()} optional type="datetime-local" />
+                  )}
                 </record.form.Field>
                 <record.form.Field name="arrivalTimezone">
                   {(input) => (
                     <TimeZoneField
                       field={input}
-                      label="Tijdzone aankomst"
+                      label={m.owner_arrival_time_zone()}
                       optional
                       maxLength={64}
                       placeholder="Asia/Taipei"
@@ -535,7 +552,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
             </FieldSet>
             <Collapsible.Root open={bookingOpen} onOpenChange={setBookingOpen}>
               <Collapsible.Trigger className="disclosure-trigger">
-                Boekingsdetails (optioneel, privé)
+                {m.owner_booking_details_optional_private()}
               </Collapsible.Trigger>
               <Collapsible.Panel keepMounted className="mt-2.5 grid gap-3">
                 <div className="field-row">
@@ -543,10 +560,10 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                     {(input) => (
                       <TextField
                         field={input}
-                        label="Vervoerder"
+                        label={m.owner_carrier()}
                         optional
                         maxLength={160}
-                        placeholder="Bijvoorbeeld: EVA Air"
+                        placeholder={m.owner_for_example_eva_air()}
                       />
                     )}
                   </record.form.Field>
@@ -554,7 +571,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                     {(input) => (
                       <TextField
                         field={input}
-                        label="Vlucht-/dienstnummer"
+                        label={m.owner_flight_service_number()}
                         optional
                         maxLength={40}
                         placeholder="BR-087"
@@ -566,25 +583,30 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                   {(input) => (
                     <TextField
                       field={input}
-                      label="Reisklasse"
+                      label={m.owner_travel_class()}
                       optional
                       maxLength={80}
-                      placeholder="Bijvoorbeeld: Premium Economy"
+                      placeholder={m.owner_for_example_premium_economy()}
                     />
                   )}
                 </record.form.Field>
                 <record.form.Field name="bookingReference">
-                  {(input) => <TextField field={input} label="Boekingsreferentie" optional maxLength={255} />}
+                  {(input) => (
+                    <TextField field={input} label={m.owner_booking_reference_3()} optional maxLength={255} />
+                  )}
                 </record.form.Field>
                 <record.form.Field name="notes">
-                  {(input) => <MarkdownField field={input} label="Notities" optional maxLength={4000} rows={3} />}
+                  {(input) => (
+                    <MarkdownField field={input} label={m.owner_notes()} optional maxLength={4000} rows={3} />
+                  )}
                 </record.form.Field>
                 {documents.length > 0 && (
                   <record.form.Field name="documentAssetIds">
                     {(input) => (
                       <FieldSet className="grid gap-2">
                         <FieldLegend>
-                          Gekoppelde documenten <span className="font-medium text-travel-optional">(optioneel)</span>
+                          {m.owner_linked_documents()}{" "}
+                          <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                         </FieldLegend>
                         {documents.map((document) => (
                           <Field className="contents" key={document.id}>
@@ -613,7 +635,8 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               {(input) => (
                 <FieldSet>
                   <FieldLegend>
-                    Lijn op de kaart <span className="font-medium text-travel-optional">(optioneel)</span>
+                    {m.owner_line_on_the_map()}{" "}
+                    <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                   </FieldLegend>
                   <RouteGeometryEditor
                     coordinates={editableCoordinates(input.state.value)}
@@ -627,12 +650,12 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                   />
                   <Collapsible.Root className="border-t border-travel-divider pt-2.5">
                     <Collapsible.Trigger className="disclosure-trigger">
-                      Geavanceerd: coördinaten als JSON plakken
+                      {m.owner_advanced_paste_coordinates_as_json()}
                     </Collapsible.Trigger>
                     <Collapsible.Panel keepMounted className="mt-2.5">
                       <TextAreaField
                         field={input}
-                        label="Lijncoördinaten (JSON)"
+                        label={m.owner_line_coordinates_json()}
                         optional
                         placeholder="[[121.5,25.0],[121.6,25.1]]"
                       />
@@ -652,7 +675,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(route.id)}
-                aria-label={`Route ${routeTitle(route)} bekijken`}
+                aria-label={m.owner_view_route({ p0: routeTitle(route) })}
               >
                 <strong>{routeTitle(route)}</strong>
                 <span>
@@ -661,7 +684,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                     [times(route), shift(route)].filter(Boolean).join(""),
                     STATUS_LABELS[route.status],
                     route.carrier,
-                    route.geometry ? "met lijn" : null,
+                    route.geometry ? m.owner_with_line() : null,
                     visibilityLabel(route.visibility),
                   ]
                     .filter(Boolean)
@@ -674,7 +697,7 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       )}
       {deleteTarget && (
         <DeleteConfirmation
-          title={`Route “${routeTitle(deleteTarget)}” verwijderen?`}
+          title={m.owner_delete_route({ p0: routeTitle(deleteTarget) })}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => confirmDelete(deleteTarget)}
         />

@@ -83,7 +83,7 @@ archive-content import in #40.
       early preferences with #278 and Base UI controls with #279.
 - [x] [#285](https://github.com/tjorim/travel/issues/285) Add stable API error
       codes and render-time localized feedback before completing extraction.
-- [ ] [#286](https://github.com/tjorim/travel/issues/286) Translate owner trip
+- [x] [#286](https://github.com/tjorim/travel/issues/286) Translate owner trip
       workspaces, shared editors, capture and map controls.
 - [ ] [#287](https://github.com/tjorim/travel/issues/287) Translate private
       assets, publication, library and offline packing workflows.

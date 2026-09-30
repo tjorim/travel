@@ -1,3 +1,6 @@
+import { useFeedback, textNotice, errorNotice } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -6,9 +9,10 @@ import { beginSignIn, completeSignIn } from "../auth";
 import { useAuth } from "../auth-context";
 
 export function Callback() {
+  useLocale();
   const { setSession } = useAuth();
   const navigate = useNavigate();
-  const [message, setMessage] = useState("Aanmelden wordt afgerond…");
+  const [message, setMessage] = useFeedback<string>(textNotice(m.owner_completing_sign_in));
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -19,18 +23,18 @@ export function Callback() {
       })
       .catch((error: unknown) => {
         setFailed(true);
-        setMessage(error instanceof Error ? error.message : "Aanmelden is mislukt.");
+        setMessage(errorNotice(error, m.owner_sign_in_failed));
       });
   }, [navigate, setSession]);
 
   return (
     <main className="travel-shell">
       <section className="travel-card">
-        <h1>Aanmelden</h1>
+        <h1>{m.owner_sign_in()}</h1>
         <p>{message}</p>
         {failed && (
           <Button type="button" onClick={() => void beginSignIn("/")}>
-            Opnieuw aanmelden
+            {m.owner_sign_in_again()}
           </Button>
         )}
       </section>

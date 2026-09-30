@@ -1,4 +1,6 @@
-import { errorNotice } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
@@ -49,23 +51,23 @@ const bothCoordinates = ({
   fieldApi: { form: { getFieldValue: (name: never) => unknown } };
 }) =>
   (value === "") !== (String(fieldApi.form.getFieldValue("longitude" as never) ?? "") === "")
-    ? "Vul beide kaartcoördinaten in of laat beide leeg."
+    ? m.owner_enter_both_map_coordinates_or_leave_both_empty
     : undefined;
 const withinRange =
-  (min: number, max: number, name: string) =>
+  (min: number, max: number, name: () => string) =>
   ({ value }: { value: string }) =>
     value !== "" && !(Number(value) >= min && Number(value) <= max)
-      ? `${name} ligt tussen ${min} en ${max} graden.`
+      ? () => m.owner_must_be_between_and_degrees({ p0: name(), p1: min, p2: max })
       : undefined;
-const latitudeRange = withinRange(-90, 90, "De breedtegraad");
-const longitudeRange = withinRange(-180, 180, "De lengtegraad");
+const latitudeRange = withinRange(-90, 90, m.owner_latitude);
+const longitudeRange = withinRange(-180, 180, m.owner_longitude);
 const knownTimeZone = ({ value }: { value: string }) => {
   if (!value.trim()) return undefined;
   try {
     new Intl.DateTimeFormat("en", { timeZone: value.trim() });
     return undefined;
   } catch {
-    return "Onbekende tijdzone; kies er een uit de suggesties.";
+    return m.owner_unknown_time_zone_choose_one_from_the_suggestions;
   }
 };
 const areaCoordinate = (value: number) => (Math.round(value * 100) / 100).toString();
@@ -79,6 +81,7 @@ export function AreaManager({
   focusId?: DialogFocusRequest | null;
   locationFocusId?: DialogFocusRequest | null;
 }) {
+  useLocale();
   const areasQuery = useTripResource(trip.id, "areas");
   const areas = areasQuery.data ?? [];
   const locationsQuery = useTripResource(trip.id, "locations");
@@ -89,12 +92,12 @@ export function AreaManager({
     setLocationRequest({ id, areaId, token: Date.now() + Math.random() });
   const dialog = useRecordDialog(areas);
   useDialogFocus(focusId, dialog.inspect);
-  const [message, setMessage] = useState(
-    "Een gebied is een stad of regio, zonder adres. Het is niet automatisch openbaar.",
+  const [message, setMessage] = useFeedback<string>(
+    textNotice(() => m.owner_an_area_is_a_city_or_region_without_an_address_it_is_not_automatically_p()),
   );
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Area>({
-    fallback: "Het gebied kon niet worden opgeslagen.",
+    fallback: m.owner_the_area_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${tripPath(trip.id, "areas")}/${id}` : tripPath(trip.id, "areas"),
       method: id ? "PATCH" : "POST",
@@ -104,14 +107,14 @@ export function AreaManager({
     invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "areas"), ownerKeys.trips(subject)],
   });
   const remove = useOwnerMutation<Area>({
-    fallback: "Het gebied kon niet worden verwijderd.",
+    fallback: m.owner_the_area_could_not_be_deleted,
     request: (area) => ({ path: `${tripPath(trip.id, "areas")}/${area.id}`, method: "DELETE" }),
     invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "areas"), ownerKeys.trips(subject)],
   });
 
   const record = useRecordForm<Values, Area>({
     defaultValues: blank(),
-    fallback: "Het gebied kon niet worden opgeslagen.",
+    fallback: m.owner_the_area_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       return save.mutateAsync({
@@ -128,7 +131,7 @@ export function AreaManager({
     },
     onSuccess: (area) => {
       close();
-      setMessage("Gebied opgeslagen. Je kunt het bewust aan een bezoek, reisupdate of verblijf koppelen.");
+      setMessage(textNotice(() => m.owner_area_saved_you_can_deliberately_link_it_to_a_visit_travel_update_or_stay()));
       if (resumeLocation) {
         setResumeLocation(false);
         requestLocation(undefined, area.id);
@@ -152,11 +155,11 @@ export function AreaManager({
     remove.mutateAsync(area).then(
       () => {
         close();
-        setMessage("Gebied verwijderd.");
+        setMessage(textNotice(() => m.owner_area_deleted()));
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
-        dialog.setError(errorNotice(error, "Het gebied kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, m.owner_the_area_could_not_be_deleted));
       },
     );
   }
@@ -174,7 +177,7 @@ export function AreaManager({
   }
 
   const summary = (area: Area) =>
-    [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") || "Alleen voor deze reis";
+    [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") || m.owner_only_for_this_trip();
   const { selected, editing, editingId } = dialog;
 
   return (
@@ -182,28 +185,25 @@ export function AreaManager({
       <span id="locations" />
       <div className="capture-heading">
         <div>
-          <h3 id="areas-title">Gebieden en locaties</h3>
-          <p>
-            Een stad of regio die je kunt hergebruiken. Locaties, verblijven, reisupdates en vervoer horen bij een
-            gebied. Een gebied is privé tot je kiest wie het ziet en deelt nooit automatisch zijn locaties.
-          </p>
+          <h3 id="areas-title">{m.owner_areas_and_locations()}</h3>
+          <p>{m.owner_a_city_or_region_you_can_reuse_locations_stays_travel_updates_and_transp()}</p>
         </div>
         <div className="button-row">
           <Button className="secondary compact" type="button" onClick={create}>
-            Gebied toevoegen
+            {m.owner_add_area()}
           </Button>
           <Button className="secondary compact" type="button" onClick={() => requestLocation()}>
-            Locatie toevoegen
+            {m.owner_add_location()}
           </Button>
         </div>
       </div>
       <p className="help" role="status">
-        {areasQuery.error ? errorMessage(areasQuery.error, "Je gebieden konden niet worden geladen.") : message}
+        {areasQuery.error ? errorMessage(areasQuery.error, m.owner_your_areas_could_not_be_loaded) : message}
       </p>
       {locationsQuery.error && (
-        <p role="status">{errorMessage(locationsQuery.error, "Je locaties konden niet worden geladen.")}</p>
+        <p role="status">{errorMessage(locationsQuery.error, m.owner_your_locations_could_not_be_loaded)}</p>
       )}
-      {locationsQuery.isPending && <p role="status">Locaties laden…</p>}
+      {locationsQuery.isPending && <p role="status">{m.owner_loading_locations()}</p>}
       {areas.length ? (
         <div className="saved-records mt-0.5">
           {areas.map((area) => (
@@ -216,7 +216,7 @@ export function AreaManager({
                   className="document-select"
                   type="button"
                   onClick={() => dialog.inspect(area.id)}
-                  aria-label={`Gebied ${area.label} bekijken`}
+                  aria-label={m.owner_view_area({ p0: area.label })}
                 >
                   <strong>{area.label}</strong>
                   <span>
@@ -224,7 +224,7 @@ export function AreaManager({
                   </span>
                 </Button>
                 <Button className="secondary compact" type="button" onClick={() => requestLocation(undefined, area.id)}>
-                  Locatie toevoegen
+                  {m.owner_add_location()}
                 </Button>
               </div>
               {!locationsQuery.isPending && !locationsQuery.error && (
@@ -247,7 +247,7 @@ export function AreaManager({
                       </Button>
                     ))}
                   {!locations.some((place) => place.area_id === area.id) && (
-                    <p className="help">Nog geen locaties in dit gebied.</p>
+                    <p className="help">{m.owner_no_locations_in_this_area_yet()}</p>
                   )}
                 </div>
               )}
@@ -256,7 +256,7 @@ export function AreaManager({
         </div>
       ) : (
         !areasQuery.isPending &&
-        !areasQuery.error && <p>Nog geen gebieden. Voeg een gebied toe om er locaties in te bewaren.</p>
+        !areasQuery.error && <p>{m.owner_no_areas_yet_add_an_area_to_keep_locations_in_it()}</p>
       )}
       <LocationManager
         trip={trip}
@@ -270,7 +270,7 @@ export function AreaManager({
       />
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? "Gebied bewerken" : "Gebied toevoegen") : "Gebied"}
+        title={editing ? (editingId ? m.owner_edit_area() : m.owner_add_area()) : m.owner_area()}
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={() => {
@@ -285,7 +285,7 @@ export function AreaManager({
               <p>{summary(selected)}</p>
               {selected.latitude !== null && selected.longitude !== null && (
                 <p>
-                  Kaartpunt: {selected.latitude}, {selected.longitude}
+                  {m.owner_map_point()} {selected.latitude}, {selected.longitude}
                 </p>
               )}
             </div>
@@ -306,16 +306,16 @@ export function AreaManager({
             />
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                Bewerken
+                {m.owner_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={`Gebied “${selected.label}” verwijderen?`}
-                description="Dit kan alleen wanneer het gebied niet meer in een bezoek, reisupdate, locatie, verblijf of route wordt gebruikt. Een eventuele losse selectie voor delen wordt ook verwijderd."
+                title={m.owner_delete_area({ p0: selected.label })}
+                description={m.owner_this_is_only_possible_when_the_area_is_no_longer_used_by_a_visit_travel()}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -323,36 +323,41 @@ export function AreaManager({
           </div>
         )}
         {editing && (
-          <RecordForm record={record} submitLabel="Gebied opslaan" pendingLabel="Opslaan…">
+          <RecordForm record={record} submitLabel={m.owner_save_area()} pendingLabel={m.owner_saving()}>
             <PlaceSearchField
               tripId={trip.id}
-              legend="Stad of regio zoeken"
-              inputLabel="Zoek stad of regio"
-              placeholder="Bijvoorbeeld: Taipei"
-              help="Gebruik dit voor een stad of regio. Een resultaat wordt pas bij opslaan bewaard en het punt wordt op ongeveer één kilometer afgerond."
+              legend={m.owner_search_city_or_region()}
+              inputLabel={m.owner_search_for_a_city_or_region()}
+              placeholder={m.owner_for_example_taipei()}
+              help={m.owner_use_this_for_a_city_or_region_a_result_is_only_stored_when_you_save_and()}
               onSelect={useSearchResult}
             />
             <div className="field-row">
               <record.form.Field
                 name="label"
                 validators={{
-                  onChange: requiredText("Geef het gebied een naam."),
-                  onSubmit: requiredText("Geef het gebied een naam."),
+                  onChange: requiredText(m.owner_give_the_area_a_name),
+                  onSubmit: requiredText(m.owner_give_the_area_a_name),
                 }}
               >
-                {(field) => <TextField field={field} label="Naam" required maxLength={120} />}
+                {(field) => <TextField field={field} label={m.owner_name()} required maxLength={120} />}
               </record.form.Field>
               <record.form.Field name="countryCode">
-                {(field) => <TextField field={field} label="Landcode" optional maxLength={2} />}
+                {(field) => <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />}
               </record.form.Field>
             </div>
             <div className="field-row">
               <record.form.Field name="region">
-                {(field) => <TextField field={field} label="Regio" optional maxLength={120} />}
+                {(field) => <TextField field={field} label={m.owner_region()} optional maxLength={120} />}
               </record.form.Field>
               <record.form.Field name="timezone" validators={{ onBlur: knownTimeZone, onSubmit: knownTimeZone }}>
                 {(field) => (
-                  <TimeZoneField field={field} label="Tijdzone" optional="(optioneel, privé)" maxLength={64} />
+                  <TimeZoneField
+                    field={field}
+                    label={m.owner_time_zone()}
+                    optional={m.owner_optional_private()}
+                    maxLength={64}
+                  />
                 )}
               </record.form.Field>
             </div>
@@ -366,12 +371,28 @@ export function AreaManager({
                 }}
               >
                 {(field) => (
-                  <TextField field={field} label="Breedtegraad" optional type="number" min={-90} max={90} step="any" />
+                  <TextField
+                    field={field}
+                    label={m.owner_latitude_2()}
+                    optional
+                    type="number"
+                    min={-90}
+                    max={90}
+                    step="any"
+                  />
                 )}
               </record.form.Field>
               <record.form.Field name="longitude" validators={{ onChange: longitudeRange, onSubmit: longitudeRange }}>
                 {(field) => (
-                  <TextField field={field} label="Lengtegraad" optional type="number" min={-180} max={180} step="any" />
+                  <TextField
+                    field={field}
+                    label={m.owner_longitude_2()}
+                    optional
+                    type="number"
+                    min={-180}
+                    max={180}
+                    step="any"
+                  />
                 )}
               </record.form.Field>
             </div>

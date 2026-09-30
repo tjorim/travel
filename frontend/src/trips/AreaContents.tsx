@@ -1,3 +1,5 @@
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { Button } from "@base-ui/react/button";
 import { routeTitle, stayLabel, visitTitle, type Area, type Trip } from "../tracker-model";
 import { useTripResource } from "../query/owner-queries";
@@ -12,6 +14,7 @@ export function AreaContents({
   area: Area;
   onOpenLocation: (id: string) => void;
 }) {
+  useLocale();
   const locationsQuery = useTripResource(trip.id, "locations");
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
@@ -29,17 +32,20 @@ export function AreaContents({
     <div className="grid gap-2.5 px-3.25 pt-0 pb-3.25">
       {error && (
         <p className="help" role="status">
-          Wat bij dit gebied hoort kon niet volledig worden geladen.
+          {m.owner_the_records_in_this_area_could_not_be_fully_loaded()}
         </p>
       )}
       {locations.length > 0 && (
         <div>
-          <strong>Locaties</strong>
+          <strong>{m.owner_locations()}</strong>
           <ul>
             {locations.map((location) => (
               <li key={location.id}>
                 <Button className="secondary compact" type="button" onClick={() => onOpenLocation(location.id)}>
-                  {location.label || location.display_name?.split(",")[0] || location.locality || "Naamloze locatie"}
+                  {location.label ||
+                    location.display_name?.split(",")[0] ||
+                    location.locality ||
+                    m.owner_unnamed_location()}
                 </Button>
               </li>
             ))}
@@ -48,25 +54,25 @@ export function AreaContents({
       )}
       {visits.length > 0 && (
         <p>
-          <strong>Bezoeken</strong> · {visits.map(visitTitle).join("; ")}
+          <strong>{m.owner_visits()}</strong> · {visits.map(visitTitle).join("; ")}
         </p>
       )}
       {stays.length > 0 && (
         <p>
-          <strong>Verblijven</strong> · {stays.map(stayLabel).join("; ")}
+          <strong>{m.owner_stays()}</strong> · {stays.map(stayLabel).join("; ")}
         </p>
       )}
       {updates.length > 0 && (
         <p>
-          <strong>Reisupdates</strong> · {updates.map((update) => update.title).join("; ")}
+          <strong>{m.owner_travel_updates()}</strong> · {updates.map((update) => update.title).join("; ")}
         </p>
       )}
       {routes.length > 0 && (
         <p>
-          <strong>Routes</strong> · {routes.map(routeTitle).join("; ")}
+          <strong>{m.owner_routes()}</strong> · {routes.map(routeTitle).join("; ")}
         </p>
       )}
-      {!total && !error && <p className="help">Nog geen locaties of reisgegevens in dit gebied.</p>}
+      {!total && !error && <p className="help">{m.owner_no_locations_or_travel_records_in_this_area_yet()}</p>}
     </div>
   );
 }

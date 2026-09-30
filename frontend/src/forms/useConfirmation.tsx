@@ -1,3 +1,4 @@
+import { useLocale } from "../locale";
 import { useState, type ReactNode } from "react";
 
 import { DeleteConfirmation } from "../RecordDialog";
@@ -15,6 +16,7 @@ export type ConfirmationRequest = {
  * after the owner confirms, and dismissing returns focus to the opening control.
  */
 export function useConfirmation(): { ask: (request: ConfirmationRequest) => void; dialog: ReactNode } {
+  useLocale();
   const [request, setRequest] = useState<ConfirmationRequest | null>(null);
   const close = () => setRequest(null);
   return {

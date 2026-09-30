@@ -1,3 +1,5 @@
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { useEffect, useMemo, useState } from "react";
 
 import { dayjs } from "../dayjs";
@@ -35,8 +37,11 @@ export function tripBadges(
   if (activeRoutes.length) {
     const booked = activeRoutes.filter((route) => isBooked(route.status)).length;
     badges.push({
-      label: "Vervoer",
-      value: booked === activeRoutes.length ? "geboekt" : `${booked}/${activeRoutes.length} geboekt`,
+      label: m.owner_transport(),
+      value:
+        booked === activeRoutes.length
+          ? m.owner_fully_booked()
+          : m.owner_booked({ p0: booked, p1: activeRoutes.length }),
       done: booked === activeRoutes.length,
     });
   }
@@ -49,18 +54,30 @@ export function tripBadges(
     ).length;
     const missing = nights.filter((night) => !stays.some((stay) => stayCoversNight(stay, night))).length;
     badges.push({
-      label: "Nachten",
-      value: `${booked}/${nights.length} geboekt${missing ? ` · ${missing} zonder verblijf` : ""}`,
+      label: m.owner_nights(),
+      value: m.owner_booked_2({
+        p0: booked,
+        p1: nights.length,
+        p2: missing ? m.owner_without_a_stay({ p0: missing }) : "",
+      }),
       done: booked === nights.length,
     });
   } else if (stays.some((stay) => stay.status !== "cancelled")) {
     const active = stays.filter((stay) => stay.status !== "cancelled");
     const booked = active.filter((stay) => isBooked(stay.status)).length;
-    badges.push({ label: "Verblijven", value: `${booked}/${active.length} geboekt`, done: booked === active.length });
+    badges.push({
+      label: m.owner_stays(),
+      value: m.owner_booked({ p0: booked, p1: active.length }),
+      done: booked === active.length,
+    });
   }
   const open = tasks.filter((task) => !task.completed_at).length;
   if (tasks.length)
-    badges.push({ label: "Nog te regelen", value: open ? `${open} open` : "alles gedaan", done: open === 0 });
+    badges.push({
+      label: m.owner_things_to_arrange(),
+      value: open ? m.owner_open_2({ p0: open }) : m.owner_all_done(),
+      done: open === 0,
+    });
   return badges;
 }
 
@@ -97,6 +114,7 @@ export function LocalTimes({
   now: Date;
   homeZone?: string;
 }) {
+  useLocale();
   const instant = now.toISOString();
   const here = whereabouts(instant, stays, routes, homeZone);
   const destination = tripZone(trip, stays, routes);
@@ -105,7 +123,11 @@ export function LocalTimes({
   if (here.kind !== "home" && here.zone) {
     const time = dayjs(now).tz(here.zone).format("ddd HH:mm");
     lines.push(
-      `Nu ${here.kind === "stay" ? `in ${here.label}` : here.label}: ${time} · ${offsetLabel(nowOffset(here.zone))}`,
+      m.owner_now({
+        p0: here.kind === "stay" ? m.owner_in({ p0: here.label }) : here.label,
+        p1: time,
+        p2: offsetLabel(nowOffset(here.zone)),
+      }),
     );
   }
   if (destination) {
@@ -113,7 +135,9 @@ export function LocalTimes({
     const current = nowOffset(destination.zone);
     if (here.kind === "home")
       lines.push(
-        `Tijdens de reis: ${offsetLabel(during)}${current !== during ? ` (nu ${offsetLabel(current).replace(" dan hier", "")})` : ""}`,
+        current !== during
+          ? m.owner_trip_offset_now({ during: offsetLabel(during), current: offsetLabel(current, true) })
+          : m.owner_during_the_trip({ p0: offsetLabel(during), p1: "" }),
       );
   }
   if (!lines.length) return null;
@@ -130,6 +154,7 @@ export function LocalTimes({
 }
 
 export function TripOverview({ trip }: { trip: Trip }) {
+  const locale = useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
@@ -148,19 +173,19 @@ export function TripOverview({ trip }: { trip: Trip }) {
       staysQuery.data && routesQuery.data && tasksQuery.data
         ? tripBadges(trip, staysQuery.data, routesQuery.data, tasksQuery.data)
         : [],
-    [trip, staysQuery.data, routesQuery.data, tasksQuery.data],
+    [locale, trip, staysQuery.data, routesQuery.data, tasksQuery.data],
   );
 
   const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
   if (!trip.starts_on && !badges.length && !stays.length && !routes.length) return null;
   return (
-    <section className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0" aria-label="Reisoverzicht">
+    <section className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0" aria-label={m.owner_trip_overview()}>
       {trip.starts_on && (
         <p className="travel-eyebrow">
           {formatDay(trip.starts_on, "D MMMM")}
           {trip.ends_on ? ` — ${formatDay(trip.ends_on, "D MMMM YYYY")}` : ""}
-          {nights ? ` · ${nights} ${nights === 1 ? "nacht" : "nachten"}` : ""}
+          {nights ? ` · ${m.owner_night_count({ count: nights })}` : ""}
         </p>
       )}
       {localTimes}

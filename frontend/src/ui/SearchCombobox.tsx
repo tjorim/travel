@@ -1,3 +1,5 @@
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { Combobox } from "@base-ui/react/combobox";
 import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -79,6 +81,7 @@ function SearchCombobox({
   remote?: boolean;
   name?: string;
 }) {
+  useLocale();
   const [open, setOpen] = useState(false);
   const selected = selectedOption ?? findOption(choices, value) ?? (value ? { value, label: value } : null);
   const visible = groupChoices(choices);
@@ -123,14 +126,14 @@ function SearchCombobox({
         />
         <Combobox.Trigger
           aria-labelledby=""
-          aria-label={`${ariaLabel ?? "Keuze"} opties tonen`}
+          aria-label={m.owner_show_options_for({ p0: ariaLabel ?? m.owner_selection() })}
           className="shrink-0 rounded-l-none! border! border-travel-muted! bg-travel-surface! px-3! text-travel-ink!"
         >
           <span aria-hidden="true">▾</span>
         </Combobox.Trigger>
         {open && (
           <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border bg-travel-surface p-1 text-travel-ink shadow-lg">
-            <Combobox.Empty className="p-2 text-sm">Geen resultaten</Combobox.Empty>
+            <Combobox.Empty className="p-2 text-sm">{m.owner_no_results()}</Combobox.Empty>
             <Combobox.List>
               {(group: DisplayGroup) => (
                 <Combobox.Group key={group.value} items={group.items}>
@@ -178,6 +181,7 @@ export function SearchSelect({
   children: ReactNode;
   name?: string;
 }) {
+  useLocale();
   return (
     <SearchCombobox
       ariaLabel={ariaLabel}
@@ -209,6 +213,7 @@ export function AsyncSearchSelect({
   loadOptions: (query: string) => Promise<Choice[]>;
   isDisabled?: boolean;
 }) {
+  useLocale();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Choice[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

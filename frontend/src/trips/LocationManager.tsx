@@ -1,4 +1,6 @@
-import { errorNotice } from "../query/feedback";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
+import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useState } from "react";
 
@@ -107,26 +109,26 @@ function recipients(
     place.visibility === "everyone" || scope.items?.some((item) => item.kind === "location" && item.id === place.id);
   const now = Date.now();
   return [
-    ...(status?.surface_state === "published" && included(status.scope) ? ["publieke pagina"] : []),
+    ...(status?.surface_state === "published" && included(status.scope) ? [m.owner_public_page()] : []),
     ...(links ?? [])
       .filter(
         (link) =>
           link.state === "active" && (!link.expires_at || Date.parse(link.expires_at) > now) && included(link.scope),
       )
-      .map((link) => `deellink “${link.label}”`),
+      .map((link) => m.owner_share_link({ p0: link.label })),
   ];
 }
 function mapTarget(latitude: number | null | undefined, longitude: number | null | undefined) {
   if (latitude == null || longitude == null) return null;
   return (
     <p className="help">
-      Opgeslagen kaartpunt en navigatiedoel: {latitude}, {longitude} ·{" "}
+      {m.owner_saved_map_point_and_navigation_target()} {latitude}, {longitude} ·{" "}
       <a
         href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`}
         target="_blank"
         rel="noreferrer"
       >
-        Op kaart bekijken
+        {m.owner_view_on_map()}
       </a>
     </p>
   );
@@ -162,6 +164,7 @@ export function LocationManager({
   onNeedArea: () => void;
   onSaved?: () => void;
 }) {
+  useLocale();
   const locationsQuery = useTripResource(trip.id, "locations");
   const statusQuery = useTripResource(trip.id, "public-projection");
   const linksQuery = useTripResource(trip.id, "share-links");
@@ -170,9 +173,9 @@ export function LocationManager({
   useDialogFocus(focusId, dialog.inspect);
   const [suggestion, setSuggestion] = useState<PlaceSearchResult | null>(null);
   const [resume, setResume] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useFeedback<string>("");
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Location>({
-    fallback: "De locatie kon niet worden opgeslagen.",
+    fallback: m.owner_the_location_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${tripPath(trip.id, "locations")}/${id}` : tripPath(trip.id, "locations"),
       method: id ? "PATCH" : "POST",
@@ -181,13 +184,13 @@ export function LocationManager({
     invalidate: (subject) => [ownerKeys.trip(subject, trip.id), ownerKeys.trips(subject)],
   });
   const remove = useOwnerMutation<Location>({
-    fallback: "De locatie kon niet worden verwijderd.",
+    fallback: m.owner_the_location_could_not_be_deleted,
     request: (place) => ({ path: `${tripPath(trip.id, "locations")}/${place.id}`, method: "DELETE" }),
     invalidate: (subject) => [ownerKeys.trip(subject, trip.id), ownerKeys.trips(subject)],
   });
   const record = useRecordForm<Values, Location>({
     defaultValues: blank(),
-    fallback: "De locatie kon niet worden opgeslagen.",
+    fallback: m.owner_the_location_could_not_be_saved,
     serverFields,
     submit: (values) => {
       const fields = {
@@ -231,7 +234,7 @@ export function LocationManager({
     onSuccess: (place) => {
       setSuggestion(null);
       dialog.inspect(place.id);
-      setNotice("Locatie opgeslagen.");
+      setNotice(textNotice(() => m.owner_location_saved()));
       onSaved?.();
     },
   });
@@ -251,12 +254,12 @@ export function LocationManager({
     remove.mutateAsync(place).then(
       () => {
         close();
-        setNotice("Locatie verwijderd.");
+        setNotice(textNotice(() => m.owner_location_deleted()));
         onSaved?.();
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
-        dialog.setError(errorNotice(error, "De locatie kon niet worden verwijderd."));
+        dialog.setError(errorNotice(error, m.owner_the_location_could_not_be_deleted));
       },
     );
   }
@@ -305,12 +308,12 @@ export function LocationManager({
             dialog.create();
           }}
         >
-          Locatieconcept hervatten
+          {m.owner_resume_location_draft()}
         </Button>
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? "Locatie bewerken" : "Locatie toevoegen") : "Locatie"}
+        title={editing ? (editingId ? m.owner_edit_location() : m.owner_add_location()) : m.owner_location()}
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -319,44 +322,58 @@ export function LocationManager({
           <div className="stack-form">
             <div>
               <h3>{ownerLocationName(selected)}</h3>
-              <p>Eigen naam: {selected.display_name || "Geen eigen naam"}</p>
               <p>
-                Gebied: {areas.find((area) => area.id === selected.area_id)?.label ?? "Onbekend gebied"} ·{" "}
-                {visibilityLabel(selected.visibility)}
+                {m.owner_your_name()} {selected.display_name || m.owner_no_name_of_your_own()}
               </p>
-              <p>Publieke naam: {selected.label || "Nog geen publieke naam"}</p>
               <p>
-                Opgeslagen adres: {address(selected) || "Geen adres vastgelegd"}
+                {m.owner_area_2()} {areas.find((area) => area.id === selected.area_id)?.label ?? m.owner_unknown_area()}{" "}
+                · {visibilityLabel(selected.visibility)}
+              </p>
+              <p>
+                {m.owner_public_name()} {selected.label || m.owner_no_public_name_yet()}
+              </p>
+              <p>
+                {m.owner_saved_address()} {address(selected) || m.owner_no_address_captured()}
                 {address(selected) && selected.country_code ? `, ${selected.country_code}` : ""}
               </p>
-              {!address(selected) && selected.country_code && <p>Landcode: {selected.country_code}</p>}
-              {selected.notes && <p>Privénotities: {selected.notes}</p>}
+              {!address(selected) && selected.country_code && (
+                <p>
+                  {m.owner_country_code_2()} {selected.country_code}
+                </p>
+              )}
+              {selected.notes && (
+                <p>
+                  {m.owner_private_notes()} {selected.notes}
+                </p>
+              )}
               {mapTarget(selected.latitude, selected.longitude)}
               {selected.osm_url && (
                 <p className="help">
-                  Providerlocatie:{" "}
+                  {m.owner_provider_location()}{" "}
                   <a href={selected.osm_url} target="_blank" rel="noreferrer">
                     {selected.osm_element_type} {selected.osm_element_id}
                   </a>
-                  . Een adrescorrectie verplaatst dit kaartpunt of navigatiedoel niet.
+                  {m.owner_correcting_the_address_does_not_move_this_map_point_or_navigation_target()}
                 </p>
               )}
               <p>
                 {statusQuery.isPending || linksQuery.isPending
-                  ? "Ontvangers worden geladen."
+                  ? m.owner_loading_recipients()
                   : statusQuery.isError || linksQuery.isError
-                    ? "Ontvangers konden niet worden gecontroleerd."
+                    ? m.owner_recipients_could_not_be_checked()
                     : currentRecipients.length
-                      ? `Bereikt momenteel: ${currentRecipients.join(", ")}.`
-                      : "Deze locatie bereikt momenteel geen bezoekers."}{" "}
-                Adres delen verandert de zichtbaarheid of ontvangers niet.
+                      ? m.owner_currently_reaches({ p0: currentRecipients.join(", ") })
+                      : m.owner_this_location_currently_reaches_no_visitors()}{" "}
+                {m.owner_sharing_the_address_does_not_change_visibility_or_recipients()}
               </p>
               <p>
-                {selected.share_address ? "Adres delen staat aan." : "Adres delen staat uit."}{" "}
+                {selected.share_address ? m.owner_address_sharing_is_on() : m.owner_address_sharing_is_off()}{" "}
                 {shareableAddress(selected)
-                  ? `Adresveld voor bezoekers als Adres delen aanstaat en deze locatie hen bereikt: ${projectionText(addressProjection(selected))}.`
-                  : "Geen deelbaar adres."}{" "}
-                De eigen naam en privénotities worden niet getoond.
+                  ? m.owner_address_shown_to_visitors_when_address_sharing_is_on_and_this_location_r({
+                      p0: projectionText(addressProjection(selected)),
+                    })
+                  : m.owner_no_shareable_address()}{" "}
+                {m.owner_your_name_and_private_notes_are_not_shown()}
               </p>
             </div>
             <VisibilityControl
@@ -369,16 +386,16 @@ export function LocationManager({
             {notice && <p role="status">{notice}</p>}
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                Bewerken
+                {m.owner_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
-                Verwijderen
+                {m.owner_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={`Locatie “${ownerLocationName(selected)}” verwijderen?`}
-                description="Dit kan alleen wanneer de locatie niet meer in een bezoek, verblijf, route of reisupdate wordt gebruikt. Wil je duplicaten opruimen, voeg ze dan samen."
+                title={m.owner_delete_location({ p0: ownerLocationName(selected) })}
+                description={m.owner_this_is_only_possible_when_the_location_is_no_longer_used_by_a_visit_sta()}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -388,8 +405,8 @@ export function LocationManager({
         {editing && (
           <RecordForm
             record={record}
-            submitLabel="Locatie opslaan"
-            pendingLabel="Opslaan…"
+            submitLabel={m.owner_save_location()}
+            pendingLabel={m.owner_saving()}
             disabled={
               !record.values.areaId ||
               (record.values.shareAddress && !canShareAddress) ||
@@ -400,11 +417,11 @@ export function LocationManager({
             }
             actions={
               <Button className="secondary" type="button" onClick={close}>
-                Annuleren
+                {m.owner_cancel()}
               </Button>
             }
           >
-            {!areas.length && <p>Maak eerst een gebied. Je locatieconcept blijft bewaard.</p>}
+            {!areas.length && <p>{m.owner_create_an_area_first_your_location_draft_is_kept()}</p>}
             {!areas.length && (
               <Button
                 type="button"
@@ -415,16 +432,19 @@ export function LocationManager({
                   onNeedArea();
                 }}
               >
-                Gebied toevoegen
+                {m.owner_add_area()}
               </Button>
             )}
             <record.form.Field
               name="areaId"
-              validators={{ onChange: requiredText("Kies een gebied."), onSubmit: requiredText("Kies een gebied.") }}
+              validators={{
+                onChange: requiredText(m.owner_choose_an_area),
+                onSubmit: requiredText(m.owner_choose_an_area),
+              }}
             >
               {(field) => (
-                <SelectField field={field} label="Gebied">
-                  <option value="">Kies een gebied</option>
+                <SelectField field={field} label={m.owner_area()}>
+                  <option value="">{m.owner_choose_an_area_2()}</option>
                   {areas.map((area) => (
                     <option key={area.id} value={area.id}>
                       {area.label}
@@ -443,16 +463,16 @@ export function LocationManager({
                   onNeedArea();
                 }}
               >
-                Nieuw gebied toevoegen
+                {m.owner_add_new_area()}
               </Button>
             )}
             {!editingId && (
               <PlaceSearchField
                 tripId={trip.id}
-                legend="Locatie zoeken"
-                inputLabel="Zoek via OpenStreetMap"
-                placeholder="Bijvoorbeeld: station Brussel-Centraal"
-                help="Een resultaat vult alleen dit concept in; pas Opslaan maakt de locatie aan."
+                legend={m.owner_search_location()}
+                inputLabel={m.owner_search_via_openstreetmap()}
+                placeholder={m.owner_for_example_brussels_central_station()}
+                help={m.owner_a_result_only_fills_in_this_draft_save_creates_the_location()}
                 onSelect={choose}
               />
             )}
@@ -463,43 +483,42 @@ export function LocationManager({
                   editingId ? selected?.longitude : suggestion?.longitude,
                 )}
                 <p className="help">
-                  Adreswijzigingen verplaatsen het opgeslagen kaartpunt of navigatiedoel niet. Er wordt niet opnieuw
-                  gezocht op het gewijzigde adres.
+                  {m.owner_address_changes_do_not_move_the_saved_map_point_or_navigation_target_the()}
                 </p>
               </>
             )}
             <record.form.Field name="displayName">
-              {(field) => <TextField field={field} label="Eigen naam" optional maxLength={500} />}
+              {(field) => <TextField field={field} label={m.owner_your_name_2()} optional maxLength={500} />}
             </record.form.Field>
             <record.form.Field name="label">
-              {(field) => <TextField field={field} label="Publieke naam" optional maxLength={120} />}
+              {(field) => <TextField field={field} label={m.owner_public_name_2()} optional maxLength={120} />}
             </record.form.Field>
             <div className="field-row">
               <record.form.Field name="addressLine1">
-                {(field) => <TextField field={field} label="Adresregel 1" optional maxLength={160} />}
+                {(field) => <TextField field={field} label={m.owner_address_line_1()} optional maxLength={160} />}
               </record.form.Field>
               <record.form.Field name="addressLine2">
-                {(field) => <TextField field={field} label="Adresregel 2" optional maxLength={160} />}
+                {(field) => <TextField field={field} label={m.owner_address_line_2()} optional maxLength={160} />}
               </record.form.Field>
             </div>
             <div className="field-row">
               <record.form.Field name="postalCode">
-                {(field) => <TextField field={field} label="Postcode" optional maxLength={20} />}
+                {(field) => <TextField field={field} label={m.owner_postal_code()} optional maxLength={20} />}
               </record.form.Field>
               <record.form.Field name="locality">
-                {(field) => <TextField field={field} label="Plaats" optional maxLength={120} />}
+                {(field) => <TextField field={field} label={m.owner_city()} optional maxLength={120} />}
               </record.form.Field>
             </div>
             <div className="field-row">
               <record.form.Field name="adminArea">
-                {(field) => <TextField field={field} label="Regio" optional maxLength={120} />}
+                {(field) => <TextField field={field} label={m.owner_region()} optional maxLength={120} />}
               </record.form.Field>
               <record.form.Field name="countryCode">
-                {(field) => <TextField field={field} label="Landcode" optional maxLength={2} />}
+                {(field) => <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />}
               </record.form.Field>
             </div>
             <record.form.Field name="notes">
-              {(field) => <TextAreaField field={field} label="Privénotities" optional maxLength={2000} />}
+              {(field) => <TextAreaField field={field} label={m.owner_private_notes_2()} optional maxLength={2000} />}
             </record.form.Field>
             {editingId && (
               <>
@@ -507,30 +526,34 @@ export function LocationManager({
                   {(field) => (
                     <CheckboxField
                       field={field}
-                      label="Adres ook delen met ontvangers van deze locatie"
+                      label={m.owner_also_share_the_address_with_this_location_s_recipients()}
                       disabled={!canShareAddress && !field.state.value}
                     />
                   )}
                 </record.form.Field>
                 <p className="help">
                   {canShareAddress
-                    ? `Exact adresveld voor bezoekers als Adres delen aanstaat: ${projectionText(addressPreview)}.`
-                    : "Geen deelbaar adres. Vul eerst een adresveld in om Adres delen aan te zetten."}{" "}
-                  Landcode: {record.values.countryCode || "geen"}; publieke naam: {record.values.label || "geen"}. Deze
-                  staan los van het adresveld. Eigen naam en privénotities blijven privé.
+                    ? m.owner_exact_address_shown_to_visitors_when_address_sharing_is_on({
+                        p0: projectionText(addressPreview),
+                      })
+                    : m.owner_no_shareable_address_fill_in_an_address_field_first_to_enable_address_sh()}{" "}
+                  {m.owner_country_code_2()} {record.values.countryCode || "geen"}
+                  {m.owner_public_name_3()} {record.values.label || "geen"}
+                  {m.owner_these_are_separate_from_the_address_your_name_and_private_notes_stay_pri()}
                 </p>
                 <p className="help">
                   {statusQuery.isPending || linksQuery.isPending
-                    ? "Ontvangers worden geladen."
+                    ? m.owner_loading_recipients()
                     : statusQuery.isError || linksQuery.isError
-                      ? "Ontvangers konden niet worden gecontroleerd."
+                      ? m.owner_recipients_could_not_be_checked()
                       : currentRecipients.length
-                        ? `Huidige ontvangers: ${currentRecipients.join(", ")}. Een opgeslagen adreswijziging verschijnt direct bij hen als Adres delen aanstaat.`
-                        : "Deze locatie bereikt momenteel geen bezoekers. Adres delen alleen publiceert haar niet; kies ontvangers in Delen."}
+                        ? m.owner_current_recipients_a_saved_address_change_appears_immediately_for_them_w({
+                            p0: currentRecipients.join(", "),
+                          })
+                        : m.owner_this_location_currently_reaches_no_visitors_address_sharing_alone_does_n()}
                 </p>
                 <p className="help">
-                  Een wijziging aan deze herbruikbare locatie werkt door in alle gekoppelde bezoeken, verblijven, routes
-                  en reisupdates. Bij verplaatsen volgen gekoppelde bezoeken en routepunten het nieuwe gebied.
+                  {m.owner_changing_this_reusable_location_affects_all_linked_visits_stays_routes_a()}
                 </p>
               </>
             )}

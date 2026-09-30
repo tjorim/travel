@@ -1,17 +1,43 @@
+import { m } from "../paraglide/messages.js";
 /** The toolbar's Markdown snippets. They only insert source text: the server renders it. */
 export type MarkdownSnippet = "bold" | "italic" | "heading" | "list" | "tasks" | "link";
 
 export type MarkdownEdit = { value: string; selectionStart: number; selectionEnd: number };
 
 const WRAP: Partial<Record<MarkdownSnippet, { marker: string; placeholder: string }>> = {
-  bold: { marker: "**", placeholder: "vet" },
-  italic: { marker: "*", placeholder: "cursief" },
+  bold: {
+    marker: "**",
+    get placeholder() {
+      return m.owner_snippet_bold();
+    },
+  },
+  italic: {
+    marker: "*",
+    get placeholder() {
+      return m.owner_snippet_italic();
+    },
+  },
 };
 
 const LINE_PREFIX: Partial<Record<MarkdownSnippet, { prefix: string; placeholder: string }>> = {
-  heading: { prefix: "## ", placeholder: "Kop" },
-  list: { prefix: "- ", placeholder: "Item" },
-  tasks: { prefix: "- [ ] ", placeholder: "Taak" },
+  heading: {
+    prefix: "## ",
+    get placeholder() {
+      return m.owner_heading();
+    },
+  },
+  list: {
+    prefix: "- ",
+    get placeholder() {
+      return m.owner_item();
+    },
+  },
+  tasks: {
+    prefix: "- [ ] ",
+    get placeholder() {
+      return m.owner_task_2();
+    },
+  },
 };
 
 /**
@@ -69,7 +95,7 @@ export function applyMarkdownSnippet(
 
   // A link: a selected address becomes the target, any other selection the link text.
   const address = /^(https?:\/\/|mailto:)\S+$/.test(selected.trim());
-  const text = address ? "linktekst" : selected || "linktekst";
+  const text = address ? m.owner_snippet_link() : selected || m.owner_snippet_link();
   const url = address ? selected.trim() : "https://";
   const inserted = `[${text}](${url})`;
   const selectText = address || !selected;

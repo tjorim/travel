@@ -3,6 +3,20 @@
 Planning inventory audited against this checkout on 2026-09-29. This records
 implementation decisions; the foundation slice (#284) now ships shared-shell translations.
 The stable API error contract (#285) now ships; see [API error descriptors](../api-errors.md).
+The owner record slice (#286) now ships for the inventoried owner pages, shared
+editors, itinerary, places, routes, stays, updates, tasks and map controls.
+Shared visibility controls and the `location_repeats_area` / `visit_restates_route`
+warning messages are included because record editors use them. The remaining
+asset/publication/offline surfaces stay tracked by #287; visitor projection and
+its formatting stay tracked by #288. The final inventory audit remains #289.
+
+Owner record verification covers live client validation and success notices,
+dirty dialog dismissal, focus and control identity, pending-save payloads,
+0/1/multiple plural forms, render-time enums, authored map-label updates without
+rebuilding the map, and new Markdown placeholders without rewriting old source.
+Browser review uses fictional trip data, with both languages in light/dark themes
+and a 375 px layout check.
+
 The retired `dist/` archive is excluded. Catalogues contain application copy only.
 
 ## Decisions

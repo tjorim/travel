@@ -84,5 +84,5 @@ it("says so when the preview cannot be rendered", async () => {
   );
   withOwner(<Editor initial="x" format="contact" />);
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
-  expect((await screen.findByRole("alert")).textContent).toBe("Dit kon niet worden uitgevoerd. Probeer opnieuw.");
+  expect((await screen.findByRole("alert")).textContent).toBe("Het voorbeeld kon niet worden geladen.");
 });

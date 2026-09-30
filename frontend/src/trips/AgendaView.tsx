@@ -1,3 +1,5 @@
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { Button } from "@base-ui/react/button";
 import { useMemo } from "react";
 
@@ -40,6 +42,7 @@ export function AgendaView({
   trip: Trip;
   onOpenRecord?: (kind: AgendaRecordKind, id: string) => void;
 }) {
+  const locale = useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
   const visitsQuery = useTripResource(trip.id, "visits");
@@ -51,7 +54,7 @@ export function AgendaView({
           id: `stay-${stay.id}`,
           recordKind: "stay",
           recordId: stay.id,
-          kind: "Verblijf",
+          kind: m.owner_stay(),
           title: stayLabel(stay),
           first: stay.check_in_date,
           last: addDays(stay.check_out_date, -1),
@@ -66,7 +69,7 @@ export function AgendaView({
                   id: `route-${route.id}`,
                   recordKind: "route",
                   recordId: route.id,
-                  kind: "Route",
+                  kind: m.owner_route(),
                   title: routeTitle(route),
                   first: route.departs_on,
                   last: route.arrives_at ? localDate(route.arrives_at, route.arrival_timezone) : null,
@@ -83,7 +86,7 @@ export function AgendaView({
                   id: `visit-${visit.id}`,
                   recordKind: "visit",
                   recordId: visit.id,
-                  kind: "Bezoek",
+                  kind: m.owner_visit(),
                   title: visitTitle(visit),
                   first: visit.starts_on,
                   last: visit.ends_on,
@@ -100,7 +103,7 @@ export function AgendaView({
         (left, right) =>
           left.first.localeCompare(right.first) || (left.time ?? "99:99").localeCompare(right.time ?? "99:99"),
       ),
-    [staysQuery.data, routesQuery.data, visitsQuery.data],
+    [locale, staysQuery.data, routesQuery.data, visitsQuery.data],
   );
 
   const days = items.reduce(
@@ -115,7 +118,7 @@ export function AgendaView({
         id: `visit-${visit.id}`,
         recordKind: "visit",
         recordId: visit.id,
-        kind: "Bezoek",
+        kind: m.owner_visit(),
         title: visitTitle(visit),
         first: "",
         last: null,
@@ -128,7 +131,7 @@ export function AgendaView({
         id: `route-${route.id}`,
         recordKind: "route",
         recordId: route.id,
-        kind: "Route",
+        kind: m.owner_route(),
         title: routeTitle(route),
         first: "",
         last: null,
@@ -144,7 +147,7 @@ export function AgendaView({
         type="button"
         disabled={!onOpenRecord}
         onClick={() => onOpenRecord?.(item.recordKind, item.recordId)}
-        aria-label={`${item.kind} ${item.title} openen`}
+        aria-label={m.owner_open_3({ p0: item.kind, p1: item.title })}
       >
         {item.time && <time>{item.time}</time>}{" "}
         <span>
@@ -162,15 +165,12 @@ export function AgendaView({
     <section className="travel-card manager" id="agenda" aria-labelledby="agenda-title">
       <div className="capture-heading">
         <div>
-          <h3 id="agenda-title">Agenda</h3>
-          <p>
-            Alles per dag, op volgorde; wat nog geen dag heeft staat onderaan. Open een regel om het bijbehorende
-            onderdeel te bekijken en te bewerken.
-          </p>
+          <h3 id="agenda-title">{m.owner_agenda()}</h3>
+          <p>{m.owner_everything_by_day_in_order_anything_without_a_day_is_listed_at_the_botto()}</p>
         </div>
       </div>
       {items.length === 0 && undated.length === 0 ? (
-        <p>Nog niets in de agenda. Voeg een verblijf, route of bezoek toe, dan verschijnt het hier.</p>
+        <p>{m.owner_nothing_in_the_agenda_yet_add_a_stay_route_or_visit_to_see_it_here()}</p>
       ) : (
         <div className="saved-records mt-0.5">
           {[...days].map(([day, entries]) => (
@@ -181,7 +181,7 @@ export function AgendaView({
           ))}
           {undated.length > 0 && (
             <article className="excerpt-row" data-stacked="">
-              <strong>Nog geen dag</strong>
+              <strong>{m.owner_no_day_yet()}</strong>
               <ul>{undated.map(row)}</ul>
             </article>
           )}
