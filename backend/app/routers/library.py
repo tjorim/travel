@@ -18,6 +18,7 @@ from ..database import get_session
 from ..errors import ApiException, service_exception
 from ..library.service import LibraryError, delete_owner_document, direct_upload
 from ..media.ranges import private_original_headers
+from ..media.service import read_bounded_upload
 from ..models import DocumentKind, EmergencyInfoEntry, OwnerDocument
 from ..schemas import (
     EmergencyInfoEntryCreate,
@@ -102,7 +103,7 @@ def upload_library_document(
             owner_subject=subject,
             filename=file.filename or "upload",
             content_type=file.content_type,
-            data=file.file.read(),
+            data=read_bounded_upload(file.file, LibraryError),
             document_kind=document_kind,
             title=title,
             linked_trip_id=linked_trip_id,

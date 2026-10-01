@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..media.service import MediaImportError
+from ..media.service import MediaImportError, upload_too_large_error
 from ..models import DocumentKind, ObjectState, OwnerDocument, OwnerStoredObject, opaque_id
 from ..storage import ObjectStorage, sha256_hex
 
@@ -26,11 +26,7 @@ def _store_owner_bytes(
     if not data:
         raise LibraryError("Het bestand is leeg.", code="file_empty")
     if len(data) > settings.media_max_upload_bytes:
-        raise LibraryError(
-            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB.",
-            code="file_too_large",
-            params={"max_length": settings.media_max_upload_bytes // (1024 * 1024)},
-        )
+        raise upload_too_large_error(LibraryError)
 
     digest = sha256_hex(data)
     existing = session.scalar(

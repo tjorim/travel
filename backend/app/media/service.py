@@ -21,6 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
+from typing import BinaryIO
 
 from PIL import Image, ImageOps
 from sqlalchemy import select
@@ -204,6 +205,28 @@ def _store_bytes(
     return obj
 
 
+def upload_too_large_error[Error: MediaImportError](error_type: type[Error] = MediaImportError) -> Error:
+    """The one refusal for an upload over `media_max_upload_bytes`."""
+    limit_mb = settings.media_max_upload_bytes // (1024 * 1024)
+    return error_type(
+        f"Het bestand is groter dan de toegestane {limit_mb} MB.",
+        code="file_too_large",
+        params={"max_length": limit_mb},
+    )
+
+
+def read_bounded_upload[Error: MediaImportError](file: BinaryIO, error_type: type[Error] = MediaImportError) -> bytes:
+    """Read an uploaded file without ever buffering more than the limit plus one byte.
+
+    Reading one byte past `media_max_upload_bytes` is enough to know the file is
+    too large, so the rest is never pulled into memory.
+    """
+    data = file.read(settings.media_max_upload_bytes + 1)
+    if len(data) > settings.media_max_upload_bytes:
+        raise upload_too_large_error(error_type)
+    return data
+
+
 def store_uploaded_object(
     session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes, content_type: str
 ) -> StoredObject:
@@ -218,11 +241,7 @@ def store_uploaded_object(
     if not data:
         raise MediaImportError("Het bestand is leeg.", code="file_empty")
     if len(data) > settings.media_max_upload_bytes:
-        raise MediaImportError(
-            f"Het bestand is groter dan de toegestane {settings.media_max_upload_bytes // (1024 * 1024)} MB.",
-            code="file_too_large",
-            params={"max_length": settings.media_max_upload_bytes // (1024 * 1024)},
-        )
+        raise upload_too_large_error()
     return _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=content_type)
 
 

@@ -75,6 +75,25 @@ def _require_token(access_token: str | None) -> str:
     return access_token
 
 
+def download_bounded(http: httpx.Client, url: str) -> bytes:
+    """Stream one provider download, stopping as soon as it passes the upload limit.
+
+    Keeps a provider import under the same `media_max_upload_bytes` as a direct
+    upload without buffering an oversized item first.
+    """
+    limit = settings.media_max_upload_bytes
+    data = bytearray()
+    with http.stream("GET", url) as response:
+        response.raise_for_status()
+        for chunk in response.iter_bytes():
+            data += chunk
+            if len(data) > limit:
+                raise ProviderError(
+                    "Imported item exceeds the maximum size", code="imported_item_exceeds_the_maximum_size"
+                )
+    return bytes(data)
+
+
 def safe_provider_response[**P, R](call: Callable[P, R]) -> Callable[P, R]:
     """Malformed remote data is a provider failure, without echoing its contents."""
 
@@ -191,9 +210,7 @@ class GooglePhotosPickerProvider:
                 if not base_url:
                     raise ProviderError("Media provider request failed", code="provider_failed")
                 suffix = "=dv" if item.content_type.startswith("video/") else "=d"
-                download = http.get(base_url + suffix)
-                download.raise_for_status()
-                return download.content
+                return download_bounded(http, base_url + suffix)
         except httpx.HTTPError as error:
             raise ProviderError("Media provider request failed", code="provider_failed") from error
 
@@ -287,9 +304,7 @@ class GoProCloudProvider:
         _require_token(access_token)
         try:
             with self._http(access_token) as http:
-                response = http.get(f"/mediaItems/{item.provider_item_id}/download")
-                response.raise_for_status()
-                return response.content
+                return download_bounded(http, f"/mediaItems/{item.provider_item_id}/download")
         except httpx.HTTPError as error:
             raise ProviderError("Media provider request failed", code="provider_failed") from error
 

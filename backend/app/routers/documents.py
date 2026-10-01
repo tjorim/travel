@@ -12,7 +12,7 @@ from ..database import get_session
 from ..document.service import delete_document_asset, direct_upload
 from ..errors import ApiException, service_exception
 from ..media.ranges import private_original_headers
-from ..media.service import MediaImportError
+from ..media.service import MediaImportError, read_bounded_upload
 from ..models import DocumentAsset, DocumentKind
 from ..schemas import DocumentAssetResponse
 from ..storage import ObjectStorage, get_storage
@@ -79,7 +79,7 @@ def upload_document(
             trip_id=trip_id,
             filename=file.filename or "upload",
             content_type=file.content_type,
-            data=file.file.read(),
+            data=read_bounded_upload(file.file),
             document_kind=document_kind,
             title=title,
         )

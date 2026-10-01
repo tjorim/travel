@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Stopped the three upload routes (trip media, trip documents, owner library)
+  and provider imports from buffering oversized files. One shared helper reads
+  at most the 200 MB limit plus one byte and refuses the rest with the same
+  Dutch message and nothing stored; provider downloads are streamed and stop at
+  the same limit. Starlette still spools the multipart body to a temporary file
+  before the route runs, so the body-size cap in Caddy is tracked in
+  tjorim/apps#257 (#294).
 - Replaced the native date, time and date-time inputs in the owner PWA with
   locale-aware fields. A date is typed as "16 nov 2026" (or "16-11-2026" or ISO)
   and picked from a keyboard-accessible calendar (react-day-picker through the

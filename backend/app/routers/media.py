@@ -29,6 +29,7 @@ from ..media.service import (
     generate_thumbnail,
     process_video_derivative,
     queue_video_derivative,
+    read_bounded_upload,
 )
 from ..models import (
     DerivativeProcessingState,
@@ -172,7 +173,6 @@ def upload_media(
     file: Annotated[UploadFile, File()],
 ) -> MediaAssetResponse:
     owned_trip(session, trip_id, subject)
-    data = file.file.read()
     if not file.content_type:
         raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -186,7 +186,7 @@ def upload_media(
             trip_id=trip_id,
             filename=file.filename or "upload",
             content_type=file.content_type,
-            data=data,
+            data=read_bounded_upload(file.file),
         )
     except MediaImportError as error:
         raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
