@@ -205,10 +205,11 @@ def test_every_stay_has_a_location_but_the_accommodation_can_still_be_chosen_lat
             "property_name": "Mountain Lodge",
             "location": {"display_name": "Mountain Lodge", "locality": "Alishan", "country_code": "TW"},
             "website_url": "https://lodge.example.test/",
-            "status": "booked",
+            "status": "confirmed",
         },
     )
     assert chosen.status_code == 200, chosen.text
+    assert chosen.json()["status"] == "confirmed"
     assert chosen.json()["location"]["locality"] == "Alishan"
     assert chosen.json()["website_url"] == "https://lodge.example.test/"
     assert chosen.json()["area"]["id"] == area["id"]
@@ -333,3 +334,72 @@ def test_a_stay_takes_its_area_from_its_hotel_and_reuses_it() -> None:
     # One "Taipei", however the city is spelled.
     assert [area["label"] for area in areas] == ["Taipei"] and second["area"]["id"] == stay["area"]["id"]
     assert owner.put(f"{trips_path}/visibility/stay/{stay['id']}", json={"visibility": "everyone"}).status_code == 200
+
+
+def test_stay_ideas_can_overlap_but_are_never_shared_even_when_chosen() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    area = create_area(owner, trip["id"], "Tainan")
+    nights = {"check_in_date": "2054-11-30", "check_out_date": "2054-12-03"}
+    ideas = [
+        owner.post(
+            f"{trips_path}/stays",
+            json={**nights, "area_id": area["id"], "status": "idea", "property_name": name},
+        )
+        for name in ("Hotel A", "Hotel B", "Hotel C")
+    ]
+    # Identical dates raise no conflict, and a new idea stays private.
+    assert [response.status_code for response in ideas] == [201, 201, 201]
+    assert {response.json()["status"] for response in ideas} == {"idea"}
+    assert {response.json()["visibility"] for response in ideas} == {"private"}
+    idea = ideas[0].json()
+    assert owner.get(f"{trips_path}/stays/{idea['id']}").json()["status"] == "idea"
+    assert sorted(item["status"] for item in owner.get(f"{trips_path}/stays").json()) == ["idea"] * 3
+
+    # A candidate is not an itinerary record: it cannot be offered to any audience.
+    refused = owner.put(f"{trips_path}/visibility/stay/{idea['id']}", json={"visibility": "everyone"})
+    assert refused.status_code == 422, refused.text
+    assert "a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it" in refused.text
+
+    # Choosing it makes it shareable; the rejected alternatives stay private.
+    assert owner.patch(f"{trips_path}/stays/{idea['id']}", json={"status": "planned"}).json()["status"] == "planned"
+    assert owner.put(f"{trips_path}/visibility/stay/{idea['id']}", json={"visibility": "everyone"}).status_code == 200
+    published = owner.post(f"{trips_path}/public-projection/publish")
+    assert published.status_code == 200, published.text
+    public = f"/api/public/trips/{published.json()['slug']}"
+    assert len(TestClient(app).get(public).json()["stays"]) == 1
+
+    # Turning a shared stay back into an idea withdraws it from delivery at once.
+    back = owner.patch(f"{trips_path}/stays/{idea['id']}", json={"status": "idea"})
+    assert (back.status_code, back.json()["visibility"]) == (200, "private")
+    assert TestClient(app).get(public).json()["stays"] == []
+
+    # The other statuses are unchanged.
+    for status in ("planned", "confirmed", "cancelled"):
+        assert owner.patch(f"{trips_path}/stays/{idea['id']}", json={"status": status}).json()["status"] == status
+    assert owner.patch(f"{trips_path}/stays/{idea['id']}", json={"status": "maybe"}).status_code == 422
+
+
+def test_booked_is_accepted_as_confirmed_for_stays_and_routes() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    area = create_area(owner, trip["id"], "Tainan")
+    other = create_area(owner, trip["id"], "Taipei")
+    nights = {"check_in_date": "2054-11-30", "check_out_date": "2054-12-03", "area_id": area["id"]}
+    # Older clients, assistants and archive files still say booked; it is stored and returned as confirmed.
+    stay = owner.post(f"{trips_path}/stays", json={**nights, "status": "booked"})
+    assert (stay.status_code, stay.json()["status"]) == (201, "confirmed")
+    changed = owner.patch(f"{trips_path}/stays/{stay.json()['id']}", json={"status": "planned"}).json()
+    assert changed["status"] == "planned"
+    assert owner.patch(f"{trips_path}/stays/{stay.json()['id']}", json={"status": "booked"}).json()["status"] == (
+        "confirmed"
+    )
+    ends = {"departure_area_id": area["id"], "arrival_area_id": other["id"]}
+    route = owner.post(f"{trips_path}/routes", json={"mode": "train", "status": "booked", **ends})
+    assert (route.status_code, route.json()["status"]) == (201, "confirmed")
+    route_path = f"{trips_path}/routes/{route.json()['id']}"
+    assert owner.patch(route_path, json={"status": "planned"}).json()["status"] == "planned"
+    assert owner.patch(route_path, json={"status": "booked"}).json()["status"] == "confirmed"
+    assert owner.patch(route_path, json={"status": "paid"}).status_code == 422

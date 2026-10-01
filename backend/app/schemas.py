@@ -482,6 +482,24 @@ class TravelUpdateResponse(BaseModel):
         return _html(self.private_notes)
 
 
+def booked_is_confirmed(status: object) -> object:
+    """``booked`` was folded into ``confirmed``; older clients and archive files may still send it."""
+    return "confirmed" if status == "booked" else status
+
+
+_legacy_booked = field_validator("status", mode="before")(booked_is_confirmed)
+
+ROUTE_STATUS = (
+    "idea: a candidate being compared (two flights, a train or a bus) that covers no journey and cannot be shared; "
+    "planned: the intended route; confirmed: reserved or confirmed (booked means the same); cancelled."
+)
+
+STAY_STATUS = (
+    "idea: a candidate being compared, which may overlap other stays, covers no night and cannot be shared; "
+    "planned: the intended stay; confirmed: reserved or confirmed (booked means the same); cancelled."
+)
+
+
 class StayCreate(InputModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
     morning, so a stay covers the nights ``check_in_date`` up to, but not
@@ -495,7 +513,7 @@ class StayCreate(InputModel):
     check_out_date: date
     check_in_time: time | None = None
     check_out_time: time | None = None
-    status: StayStatus = StayStatus.PLANNED
+    status: StayStatus = Field(default=StayStatus.PLANNED, description=STAY_STATUS)
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
@@ -505,6 +523,7 @@ class StayCreate(InputModel):
 
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
+    _booked = _legacy_booked
 
     @model_validator(mode="after")
     def says_where(self):
@@ -531,7 +550,7 @@ class StayUpdate(InputModel):
     check_out_date: date | None = None
     check_in_time: time | None = None
     check_out_time: time | None = None
-    status: StayStatus | None = None
+    status: StayStatus | None = Field(default=None, description=STAY_STATUS)
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
@@ -541,6 +560,7 @@ class StayUpdate(InputModel):
 
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
+    _booked = _legacy_booked
 
 
 class StayResponse(BaseModel):
@@ -913,7 +933,7 @@ class RouteCreate(InputModel):
     day), booking details and a drawn line."""
 
     mode: RouteMode
-    status: RouteStatus = RouteStatus.PLANNED
+    status: RouteStatus = Field(default=RouteStatus.PLANNED, description=ROUTE_STATUS)
     label: str | None = Field(default=None, min_length=1, max_length=160)
     departure_area_id: str | None = Field(default=None, min_length=1, max_length=32)
     arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
@@ -935,6 +955,7 @@ class RouteCreate(InputModel):
     geometry: GeoJsonLineString | None = None
 
     _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
+    _booked = _legacy_booked
     _ends = model_validator(mode="after")(require_route_ends)
 
     @model_validator(mode="after")
@@ -956,7 +977,7 @@ class RouteCreate(InputModel):
 
 class RouteUpdate(InputModel):
     mode: RouteMode | None = None
-    status: RouteStatus | None = None
+    status: RouteStatus | None = Field(default=None, description=ROUTE_STATUS)
     label: str | None = Field(default=None, min_length=1, max_length=160)
     departure_area_id: str | None = Field(default=None, min_length=1, max_length=32)
     arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
@@ -976,6 +997,7 @@ class RouteUpdate(InputModel):
     geometry: GeoJsonLineString | None = None
 
     _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
+    _booked = _legacy_booked
 
     @field_validator("document_asset_ids")
     @classmethod

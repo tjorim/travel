@@ -27,7 +27,7 @@ function stay(label: string, check_in_date: string, check_out_date: string): Sta
     check_out_date,
     check_in_time: null,
     check_out_time: null,
-    status: "booked",
+    status: "confirmed",
     property_name: label,
     website_url: null,
     booking_reference: null,
@@ -51,7 +51,7 @@ function route(
   return {
     id: `${from}-${to}`,
     mode: "flight",
-    status: "booked",
+    status: "confirmed",
     label: null,
     departure_area: city(from),
     arrival_area: city(to),
@@ -102,7 +102,7 @@ it("follows the owner through the plan", () => {
   });
   // 09:00 on 28 Nov in Taipei: still the Linkou night before check-out.
   expect(whereabouts("2054-11-28T01:00:00Z", stays, routes, home).label).toBe("Linkou");
-  // 18:00 on 28 Nov: no stay booked for that night yet.
+  // 18:00 on 28 Nov: no stay confirmed for that night yet.
   expect(whereabouts("2054-11-28T10:00:00Z", stays, routes, home)).toEqual({
     kind: "between",
     zone: "Asia/Taipei",

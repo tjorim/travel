@@ -563,7 +563,7 @@ class TravelMcpBackend:
         )
 
     def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
-        """Create a visit: an area, or a location in one, with optional days, times, kind and notes. The visit status (idea, planned or confirmed) is owner-only and never shared: keep planning state there, not in a title or area label. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
+        """Create a visit: an area, or a location in one, with optional days, times, kind and notes. The visit status (idea, planned, confirmed or cancelled) is owner-only and never shared: keep planning state there, not in a title or area label, and cancel a rejected idea instead of deleting it. A cancelled visit can never be shared. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
         return self._call(
             "visit.create",
             "visit",
@@ -1169,7 +1169,7 @@ class TravelMcpBackend:
 
     # Stays and preparation ----------------------
     def list_stays(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
-        """List owner-only accommodation records. Compact rows name the area and location by id; pass compact=false, or use get_stay, for booking and contact details."""
+        """List owner-only accommodation records. A stay with status idea is a candidate under comparison, not part of the plan. Compact rows name the area and location by id; pass compact=false, or use get_stay, for booking and contact details."""
         return self._call(
             "stay.list",
             "stay",
@@ -1191,7 +1191,7 @@ class TravelMcpBackend:
         )
 
     def update_stay(self, trip_id: str, stay_id: str, payload: schemas.StayUpdate) -> dict[str, Any]:
-        """Update a private stay; set arrives_at/departs_at to null to clear unverified times."""
+        """Update a private stay; set check_in_time/check_out_time to null to clear unverified times. Move the chosen candidate from idea to planned or confirmed and cancel or delete the rejected alternatives."""
         return self._call(
             "stay.update",
             "stay",
@@ -1992,7 +1992,9 @@ MCP_INSTRUCTIONS = (
     "private notes, stay, route, task, location and emergency-information notes) is Markdown, including tables; "
     "task lists in it are display-only and never create trip tasks. A media caption is inline Markdown only (bold, "
     "italic, links), and a stay's contact_details is plain text whose phone numbers, email and web addresses become "
-    "links."
+    "links. Give hotels and transport that are only being compared the status idea: ideas may overlap, cover no "
+    "night or journey and are never shared; use planned for the intended stay or route, then cancel or delete the "
+    "rejected alternatives."
 )
 
 

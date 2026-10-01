@@ -10,7 +10,9 @@ import {
   daysBetween,
   formatDay,
   offsetLabel,
+  routeInPlan,
   stayCoversNight,
+  stayInPlan,
   utcOffsetMinutes,
   whereabouts,
   type Stay,
@@ -22,7 +24,7 @@ import {
 
 type Badge = { label: string; value: string; done: boolean };
 
-const isBooked = (status: Stay["status"] | Route["status"]) => status === "booked" || status === "confirmed";
+const isConfirmed = (status: Stay["status"] | Route["status"]) => status === "confirmed";
 
 /** The archive header's booking badges, derived live from the owner's records. */
 export function tripBadges(
@@ -33,15 +35,15 @@ export function tripBadges(
 ): Badge[] {
   const badges: Badge[] = [];
   // Only scheduled routes are bookings; a drawn line between two areas is not.
-  const activeRoutes = routes.filter((route) => route.departs_on && route.status !== "cancelled");
+  const activeRoutes = routes.filter((route) => route.departs_on && routeInPlan(route));
   if (activeRoutes.length) {
-    const booked = activeRoutes.filter((route) => isBooked(route.status)).length;
+    const booked = activeRoutes.filter((route) => isConfirmed(route.status)).length;
     badges.push({
       label: m.owner_transport(),
       value:
         booked === activeRoutes.length
-          ? m.owner_fully_booked()
-          : m.owner_booked({ p0: booked, p1: activeRoutes.length }),
+          ? m.owner_all_confirmed()
+          : m.owner_confirmed_count({ p0: booked, p1: activeRoutes.length }),
       done: booked === activeRoutes.length,
     });
   }
@@ -50,24 +52,24 @@ export function tripBadges(
       addDays(trip.starts_on!, index),
     );
     const booked = nights.filter((night) =>
-      stays.some((stay) => isBooked(stay.status) && stayCoversNight(stay, night)),
+      stays.some((stay) => isConfirmed(stay.status) && stayCoversNight(stay, night)),
     ).length;
     const missing = nights.filter((night) => !stays.some((stay) => stayCoversNight(stay, night))).length;
     badges.push({
       label: m.owner_nights(),
-      value: m.owner_booked_2({
+      value: m.owner_confirmed_nights({
         p0: booked,
         p1: nights.length,
         p2: missing ? m.owner_without_a_stay({ p0: missing }) : "",
       }),
       done: booked === nights.length,
     });
-  } else if (stays.some((stay) => stay.status !== "cancelled")) {
-    const active = stays.filter((stay) => stay.status !== "cancelled");
-    const booked = active.filter((stay) => isBooked(stay.status)).length;
+  } else if (stays.some(stayInPlan)) {
+    const active = stays.filter(stayInPlan);
+    const booked = active.filter((stay) => isConfirmed(stay.status)).length;
     badges.push({
       label: m.owner_stays(),
-      value: m.owner_booked({ p0: booked, p1: active.length }),
+      value: m.owner_confirmed_count({ p0: booked, p1: active.length }),
       done: booked === active.length,
     });
   }
@@ -89,11 +91,11 @@ export function tripZone(
   routes: Route[],
 ): { zone: string; at: string } | null {
   const stay = stays
-    .filter((item) => item.status !== "cancelled" && item.area.timezone)
+    .filter((item) => stayInPlan(item) && item.area.timezone)
     .sort((left, right) => left.check_in_date.localeCompare(right.check_in_date))[0];
   if (stay) return { zone: stay.area.timezone!, at: `${stay.check_in_date}T12:00:00Z` };
   const route = timedRoutes(routes)
-    .filter((item) => item.status !== "cancelled" && item.arrival_timezone)
+    .filter((item) => routeInPlan(item) && item.arrival_timezone)
     .sort((left, right) => left.arrives_at.localeCompare(right.arrives_at))[0];
   if (route) return { zone: route.arrival_timezone!, at: route.arrives_at };
   return null;

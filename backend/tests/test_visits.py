@@ -294,3 +294,34 @@ def test_an_unknown_field_is_rejected_rather_than_silently_dropped() -> None:
     assert owner.get(f"{base}/{visit['id']}").json()["title"] == "Temple"
     location = {"display_name": "Longshan Temple", "precise_address": "No. 211"}
     assert owner.post(base, json={"location": location}).status_code == 422
+
+
+def test_a_visit_idea_can_be_cancelled_and_a_cancelled_visit_is_never_shared() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    taipei = make_area(owner, trip["id"])
+    trips_path = f"/api/trips/{trip['id']}"
+    base = f"{trips_path}/visits"
+
+    idea = owner.post(base, json={"area_id": taipei, "title": "Hot springs", "status": "idea"}).json()
+    assert idea["status"] == "idea"
+    cancelled = owner.patch(f"{base}/{idea['id']}", json={"status": "cancelled"})
+    assert (cancelled.status_code, cancelled.json()["status"]) == (200, "cancelled")
+    assert owner.get(f"{base}/{idea['id']}").json()["status"] == "cancelled"
+    assert owner.patch(f"{base}/{idea['id']}", json={"status": "maybe"}).status_code == 422
+
+    refused = owner.put(f"{trips_path}/visibility/visit/{idea['id']}", json={"visibility": "everyone"})
+    assert refused.status_code == 422, refused.text
+    assert "a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared" in refused.text
+
+    # A shared visit that is cancelled leaves its audience at once; reinstating it does not bring it back.
+    visit = owner.post(base, json={"area_id": taipei, "title": "Night market", "status": "confirmed"}).json()
+    assert owner.put(f"{trips_path}/visibility/visit/{visit['id']}", json={"visibility": "everyone"}).status_code == 200
+    published = owner.post(f"{trips_path}/public-projection/publish")
+    assert published.status_code == 200, published.text
+    public = f"/api/public/trips/{published.json()['slug']}"
+    assert len(TestClient(app).get(public).json()["visits"]) == 1
+    dropped = owner.patch(f"{base}/{visit['id']}", json={"status": "cancelled"}).json()
+    assert dropped["visibility"] == "private"
+    assert TestClient(app).get(public).json()["visits"] == []
+    assert owner.patch(f"{base}/{visit['id']}", json={"status": "planned"}).json()["visibility"] == "private"

@@ -50,7 +50,7 @@ const stay = (id: string, name: string): Stay => ({
   check_out_date: "2054-11-18",
   check_in_time: null,
   check_out_time: null,
-  status: "booked",
+  status: "confirmed",
   property_name: name,
   website_url: null,
   booking_reference: "ABC",
@@ -352,6 +352,58 @@ it("shows an edited stay and removes a deleted one without a reload", async () =
   await waitFor(() => expect(screen.queryByRole("button", { name: /Hostel/ })).toBeNull());
   expect(screen.getByRole("button", { name: /Hotel Royal/ })).toBeTruthy();
   expect(api.count("DELETE /api/trips/trip/stays/s2")).toBe(1);
+});
+
+it("groups ideas for the same nights as alternatives and keeps them off the share controls", async () => {
+  const idea = (id: string, name: string): Stay => ({ ...stay(id, name), status: "idea", booking_reference: null });
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [idea("i1", "Hotel A"), idea("i2", "Hotel B"), stay("s1", "Hotel C")])
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  const group = await screen.findByRole("group", { name: "Alternatieven · 16 nov → 18 nov" });
+  expect(within(group).getByRole("button", { name: /Hotel A.*Idee/ })).toBeTruthy();
+  expect(within(group).getByRole("button", { name: /Hotel B.*Idee/ })).toBeTruthy();
+  expect(within(group).queryByRole("button", { name: /Hotel C/ })).toBeNull();
+
+  fireEvent.click(within(group).getByRole("button", { name: /Hotel A/ }));
+  expect(screen.getByText(/Een idee is een kandidaat/)).toBeTruthy();
+  expect(screen.queryByText("Wie mag dit zien?")).toBeNull();
+});
+
+it("offers to cancel the rejected ideas once a stay for the same nights is chosen", async () => {
+  const idea = (id: string, name: string): Stay => ({ ...stay(id, name), status: "idea" });
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [idea("i1", "Hotel A"), idea("i2", "Hotel B"), stay("s1", "Hotel C")])
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Hotel C/ }));
+  expect(screen.getByText("2 ideeën overlappen deze nachten.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Annuleer 2 alternatieven" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("PATCH /api/trips/trip/stays/i1")).toEqual({ status: "cancelled" });
+  expect(api.lastBody("PATCH /api/trips/trip/stays/i2")).toEqual({ status: "cancelled" });
+  expect(screen.getByText("Alternatieven geannuleerd.")).toBeTruthy();
+  // A candidate is not offered the cancel action for its own rivals.
+  fireEvent.click(screen.getByRole("button", { name: /Hotel C/ }));
+  expect(screen.queryByRole("button", { name: /Annuleer/ })).toBeNull();
+});
+
+it("creates a stay idea without warning about overlapping stays", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
+  expect(screen.getByText(/Deze nachten overlappen met/)).toBeTruthy();
+  chooseOption("Status", "Idee");
+  expect(await screen.findByText(/Een idee is een kandidaat/)).toBeTruthy();
+  expect(screen.queryByText(/Deze nachten overlappen met/)).toBeNull();
+  fireEvent.change(screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)"), {
+    target: { value: "Hotel Alt" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ status: "idea", property_name: "Hotel Alt" });
 });
 
 it("rewrites a stay's place only when a place field changed", async () => {

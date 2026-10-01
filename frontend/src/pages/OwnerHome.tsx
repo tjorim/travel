@@ -17,6 +17,7 @@ import {
   daysBetween,
   formatDay,
   formatInstant,
+  routeInPlan,
   stayCoversNight,
   type Stay,
   type Route,
@@ -55,9 +56,7 @@ function nextAction(trip: Trip, snapshot: TripSnapshot): string {
     if (missing) return m.owner_missing_nights({ count: missing });
   }
 
-  const unbookedRoute = snapshot.routes.find(
-    (route) => route.status !== "cancelled" && route.status !== "booked" && route.status !== "confirmed",
-  );
+  const unbookedRoute = snapshot.routes.find((route) => routeInPlan(route) && route.status !== "confirmed");
   if (unbookedRoute) return m.owner_transport_still_needs_to_be_booked_or_confirmed();
   if (!trip.travel_updates.length) return m.owner_capture_your_first_travel_update();
   return m.owner_open_your_trip_overview();

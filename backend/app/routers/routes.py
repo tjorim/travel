@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
-from ..models import Area, DocumentAsset, Location, Route, RouteDocumentAsset, Trip
+from ..models import Area, DocumentAsset, Location, Route, RouteDocumentAsset, RouteStatus, Trip, Visibility
 from ..schemas import RouteCreate, RouteResponse, RouteUpdate
 from .placement import resolve_place, selected_area
 from .trips import owned_trip
@@ -301,6 +301,9 @@ def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: Ses
             validate_route_times(departs_at, arrives_at)
     for field, value in values.items():
         setattr(route, field, value)
+    if route.status == RouteStatus.IDEA:
+        # A candidate is never offered to an audience, so going back to an idea also takes it off any.
+        route.visibility = Visibility.PRIVATE
     settle_departure_day(route, payload.departs_on, "departs_on" in payload.model_fields_set)
     session.commit()
     return session.scalar(_route_query().where(Route.id == route.id))  # type: ignore[return-value]

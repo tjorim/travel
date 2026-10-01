@@ -117,8 +117,8 @@ class DatePrecision(StrEnum):
 
 
 class StayStatus(StrEnum):
+    IDEA = "idea"
     PLANNED = "planned"
-    BOOKED = "booked"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
 
@@ -137,8 +137,8 @@ class RouteMode(StrEnum):
 
 
 class RouteStatus(StrEnum):
+    IDEA = "idea"
     PLANNED = "planned"
-    BOOKED = "booked"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
 
@@ -162,7 +162,7 @@ class VisitKind(StrEnum):
 
 
 class VisitStatus(StrEnum):
-    """How settled a visit is: an idea, planned, or confirmed.
+    """How settled a visit is: an idea, planned, confirmed, or cancelled (dropped).
 
     Owner-only planning state, kept here instead of in a title or area label
     (which visitors see). It is never shared. Areas carry no status of their
@@ -171,6 +171,7 @@ class VisitStatus(StrEnum):
     IDEA = "idea"
     PLANNED = "planned"
     CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
 
 
 class AuditEventKind(StrEnum):

@@ -24,7 +24,9 @@ import {
   formatDay,
   localDate,
   locationName,
+  routeInPlan,
   routeTitle,
+  sameJourney,
   wallClock,
   type Route,
   type RouteMode,
@@ -37,11 +39,11 @@ import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor
 import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 export const ROUTE_STATUS_LABELS: Record<Route["status"], string> = {
+  get idea() {
+    return m.owner_idea();
+  },
   get planned() {
     return m.owner_planned();
-  },
-  get booked() {
-    return m.owner_booked_3();
   },
   get confirmed() {
     return m.owner_confirmed();
@@ -197,6 +199,20 @@ const arrivalChosen = ({
     : undefined;
 };
 
+/** Ideas for the same journey are shown together as alternatives; a lone idea is listed like any route. */
+function routeEntries(routes: Route[]): { routes: Route[]; journey?: string }[] {
+  const shown = new Set<string>();
+  return routes.flatMap((route) => {
+    const group =
+      route.status === "idea" ? routes.filter((item) => item.status === "idea" && sameJourney(item, route)) : [route];
+    if (group.length < 2) return [{ routes: [route] }];
+    if (group.some((item) => shown.has(item.id))) return [];
+    group.forEach((item) => shown.add(item.id));
+    const places = `${route.departure_area.label} → ${route.arrival_area.label}`;
+    return [{ routes: group, journey: route.departs_on ? `${places} · ${formatDay(route.departs_on)}` : places }];
+  });
+}
+
 export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
   useLocale();
   const routesQuery = useTripResource(trip.id, "routes");
@@ -231,6 +247,16 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
     }),
     invalidate: refreshRoutes,
   });
+  async function cancelAlternatives(alternatives: Route[]) {
+    try {
+      for (const alternative of alternatives)
+        await save.mutateAsync({ id: alternative.id, payload: { status: "cancelled" } });
+      dialog.close();
+      setMessage(textNotice(() => m.owner_route_alternatives_cancelled()));
+    } catch (error) {
+      dialog.setError(errorNotice(error, m.owner_the_route_could_not_be_saved));
+    }
+  }
   const remove = useOwnerMutation<Route>({
     fallback: m.owner_the_route_could_not_be_deleted,
     request: (route) => ({ path: `${tripPath(trip.id, "routes")}/${route.id}`, method: "DELETE" }),
@@ -357,6 +383,11 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       : [];
   };
   const { selected, editing, editingId } = dialog;
+  // Once a route is chosen, the ideas for its journey are the rejected alternatives.
+  const alternatives =
+    selected && routeInPlan(selected)
+      ? routes.filter((other) => other.status === "idea" && sameJourney(other, selected))
+      : [];
   const readError = routesQuery.error ?? areasQuery.error ?? locationsQuery.error ?? documentsQuery.error;
   // The times once booked, else the day alone.
   const times = (route: Route) =>
@@ -419,14 +450,37 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 mode="preview"
               />
             )}
-            <VisibilityControl
-              tripId={trip.id}
-              kind="route"
-              id={selected.id}
-              value={selected.visibility}
-              name={routeTitle(selected)}
-            />
-            <p className="help">{m.owner_visitors_see_the_areas_travel_mode_and_line_never_your_booking_code_clas()}</p>
+            {selected.status === "idea" ? (
+              <p className="help">
+                {m.owner_a_route_idea_is_a_candidate_it_covers_no_journey_does_not_count_towards_booking_and_is_never_shared()}
+              </p>
+            ) : (
+              <>
+                <VisibilityControl
+                  tripId={trip.id}
+                  kind="route"
+                  id={selected.id}
+                  value={selected.visibility}
+                  name={routeTitle(selected)}
+                />
+                <p className="help">
+                  {m.owner_visitors_see_the_areas_travel_mode_and_line_never_your_booking_code_clas()}
+                </p>
+              </>
+            )}
+            {alternatives.length > 0 && (
+              <div>
+                <p className="help">{m.owner_route_ideas_for_this_journey({ count: alternatives.length })}</p>
+                <Button
+                  className="secondary compact"
+                  type="button"
+                  disabled={save.isPending}
+                  onClick={() => cancelAlternatives(alternatives)}
+                >
+                  {m.owner_cancel_route_alternatives({ count: alternatives.length })}
+                </Button>
+              </div>
+            )}
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
                 {m.owner_edit()}
@@ -467,6 +521,15 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 )}
               </record.form.Field>
             </div>
+            <record.form.Subscribe selector={(state) => state.values.status}>
+              {(status) =>
+                status === "idea" && (
+                  <p className="help">
+                    {m.owner_a_route_idea_is_a_candidate_it_covers_no_journey_does_not_count_towards_booking_and_is_never_shared()}
+                  </p>
+                )
+              }
+            </record.form.Subscribe>
             <record.form.Field name="label">
               {(input) => (
                 <TextField
@@ -666,30 +729,45 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       </RecordDialog>
       {routes.length > 0 && (
         <div className="saved-records mt-0.5">
-          {routes.map((route) => (
-            <article className="excerpt-row" key={route.id}>
-              <Button
-                className="document-select"
-                type="button"
-                onClick={() => dialog.inspect(route.id)}
-                aria-label={m.owner_view_route({ p0: routeTitle(route) })}
+          {routeEntries(routes).map((entry) => {
+            const rows = entry.routes.map((route) => (
+              <article className="excerpt-row" key={route.id}>
+                <Button
+                  className="document-select"
+                  type="button"
+                  onClick={() => dialog.inspect(route.id)}
+                  aria-label={m.owner_view_route({ p0: routeTitle(route) })}
+                >
+                  <strong>{routeTitle(route)}</strong>
+                  <span>
+                    {[
+                      ROUTE_MODE_LABELS[route.mode],
+                      [times(route), shift(route)].filter(Boolean).join(""),
+                      STATUS_LABELS[route.status],
+                      route.carrier,
+                      route.geometry ? m.owner_with_line() : null,
+                      visibilityLabel(route.visibility),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </Button>
+              </article>
+            ));
+            if (!entry.journey) return rows;
+            const label = m.owner_route_alternatives({ journey: entry.journey });
+            return (
+              <div
+                key={entry.routes[0].id}
+                role="group"
+                aria-label={label}
+                className="border-l-2 border-travel-border pl-1"
               >
-                <strong>{routeTitle(route)}</strong>
-                <span>
-                  {[
-                    ROUTE_MODE_LABELS[route.mode],
-                    [times(route), shift(route)].filter(Boolean).join(""),
-                    STATUS_LABELS[route.status],
-                    route.carrier,
-                    route.geometry ? m.owner_with_line() : null,
-                    visibilityLabel(route.visibility),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </Button>
-            </article>
-          ))}
+                <p className="help font-bold">{label}</p>
+                {rows}
+              </div>
+            );
+          })}
         </div>
       )}
       {deleteTarget && (

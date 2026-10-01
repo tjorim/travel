@@ -165,7 +165,8 @@ export type Stay = {
   check_out_date: string;
   check_in_time: string | null;
   check_out_time: string | null;
-  status: "planned" | "booked" | "confirmed" | "cancelled";
+  /** An `idea` is a candidate under comparison: it may overlap others, covers no night and is never shared. */
+  status: "idea" | "planned" | "confirmed" | "cancelled";
   property_name: string | null;
   website_url: string | null;
   booking_reference: string | null;
@@ -190,7 +191,8 @@ export type Stay = {
 export type Route = {
   id: string;
   mode: RouteMode;
-  status: "planned" | "booked" | "confirmed" | "cancelled";
+  /** An `idea` is a candidate under comparison: it covers no journey and is never shared. */
+  status: "idea" | "planned" | "confirmed" | "cancelled";
   label: string | null;
   departure_area: Area;
   arrival_area: Area;
@@ -226,7 +228,7 @@ export const routeTitle = (route: Pick<Route, "label" | "departure_area" | "arri
 export type VisitKind = "free" | "work";
 
 /** How settled a visit is. Owner-only: never shared, so planning state lives here, not in a label. */
-export type VisitStatus = "idea" | "planned" | "confirmed";
+export type VisitStatus = "idea" | "planned" | "confirmed" | "cancelled";
 
 /**
  * A stop on the trip: at an area, or at a location in one, and optionally when. The times are local
@@ -506,9 +508,23 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / dayMs);
 }
 
+/** Whether a stay is part of the plan: neither a candidate still being compared nor cancelled. */
+export const stayInPlan = (stay: Pick<Stay, "status">): boolean =>
+  stay.status !== "idea" && stay.status !== "cancelled";
+
+/** Whether a route is part of the plan: neither a candidate still being compared nor cancelled. */
+export const routeInPlan = (route: Pick<Route, "status">): boolean =>
+  route.status !== "idea" && route.status !== "cancelled";
+
+/** Two routes are alternatives for one journey when they join the same areas on the same day. */
+export const sameJourney = (left: Route, right: Route): boolean =>
+  left.departure_area.id === right.departure_area.id &&
+  left.arrival_area.id === right.arrival_area.id &&
+  left.departs_on === right.departs_on;
+
 /** A stay covers the night of ``isoDate`` when it sleeps there that evening. */
 export function stayCoversNight(stay: Stay, isoDate: string): boolean {
-  return stay.status !== "cancelled" && stay.check_in_date <= isoDate && isoDate < stay.check_out_date;
+  return stayInPlan(stay) && stay.check_in_date <= isoDate && isoDate < stay.check_out_date;
 }
 
 export function formatDay(isoDate: string, format = "D MMM"): string {
@@ -651,8 +667,8 @@ function effectiveNight(instant: string, zone: string): string {
  * travelling, at a stay, or between stays in the last known zone. */
 export function whereabouts(instant: string, stays: Stay[], routes: Route[], homeZone: string): Whereabouts {
   const now = Date.parse(instant);
-  const active = timedRoutes(routes).filter((route) => route.status !== "cancelled");
-  const zoned = stays.filter((stay) => stay.status !== "cancelled" && stayZone(stay));
+  const active = timedRoutes(routes).filter(routeInPlan);
+  const zoned = stays.filter((stay) => stayInPlan(stay) && stayZone(stay));
   const midday = (isoDate: string) => Date.parse(`${isoDate}T12:00:00Z`);
   const bounds = [
     ...active.flatMap((route) => [Date.parse(route.departs_at), Date.parse(route.arrives_at)]),

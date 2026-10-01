@@ -542,7 +542,7 @@ def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backen
     taipei = backend.save_area(
         trip["id"], schemas.AreaInput(label="Taipei", country_code="TW", latitude=25.03, longitude=121.56)
     )
-    backend.save_area(trip["id"], schemas.AreaInput(label="Tainan · concept", country_code="TW"))
+    tainan = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan · concept", country_code="TW"))
     backend.create_route(
         trip["id"],
         schemas.RouteCreate(
@@ -555,6 +555,29 @@ def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backen
     backend.create_stay(
         trip["id"], schemas.StayCreate(area_id=taipei["id"], check_in_date="2054-11-17", check_out_date="2054-11-18")
     )
+
+    idea = backend.create_stay(
+        trip["id"],
+        schemas.StayCreate(
+            area_id=taipei["id"], check_in_date="2054-11-17", check_out_date="2054-11-18", status="idea"
+        ),
+    )
+    assert idea["status"] == "idea"
+    assert backend.update_stay(trip["id"], idea["id"], schemas.StayUpdate(status="planned"))["status"] == "planned"
+    assert backend.update_stay(trip["id"], idea["id"], schemas.StayUpdate(status="idea"))["status"] == "idea"
+    assert backend.get_stay(trip["id"], idea["id"])["status"] == "idea"
+    assert sorted(stay["status"] for stay in backend.list_stays(trip["id"])) == ["idea", "planned"]
+    backend.delete_stay(trip["id"], idea["id"], confirm=True)
+
+    candidate = backend.create_route(
+        trip["id"],
+        schemas.RouteCreate(mode="train", status="idea", departure_area_id=taipei["id"], arrival_area_id=tainan["id"]),
+    )
+    assert candidate["status"] == "idea"
+    updated = backend.update_route(trip["id"], candidate["id"], schemas.RouteUpdate(status="planned"))
+    assert updated["status"] == "planned"
+    assert backend.get_route(trip["id"], candidate["id"])["status"] == "planned"
+    backend.delete_route(trip["id"], candidate["id"], confirm=True)
 
     (route,) = backend.list_routes(trip["id"])
     assert route["departure_area"] == {"id": taipei["id"], "label": "Taipei"}
@@ -588,7 +611,11 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
     tainan = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan"))
     batch = BatchCreate(
         visits=[schemas.VisitCreate(area_id=tainan["id"], title="Old town", starts_on="2054-12-01")],
-        stays=[schemas.StayCreate(area_id=tainan["id"], check_in_date="2054-12-01", check_out_date="2054-12-03")],
+        stays=[
+            schemas.StayCreate(
+                area_id=tainan["id"], check_in_date="2054-12-01", check_out_date="2054-12-03", status="idea"
+            )
+        ],
         routes=[schemas.RouteCreate(mode="train", departure_area_id=taipei["id"], arrival_area_id=tainan["id"])] * 2,
         travel_updates=[
             schemas.TravelUpdateCreate(occurred_at="2054-12-01T12:00:00Z", title="Arrived", area_id=tainan["id"])
@@ -604,6 +631,7 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
         "trip_tasks": 1,
     }
     assert created["routes"][0]["arrival_area"]["label"] == "Tainan"
+    assert backend.list_stays(trip["id"])[0]["status"] == "idea"
     assert created["trip_tasks"][0]["title"] == "Book the hotel"
 
     # One refused record keeps the whole batch out, and the error names it.

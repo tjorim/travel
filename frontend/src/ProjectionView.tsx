@@ -110,7 +110,6 @@ function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"):
 const transportKinds = (): Record<string, string> => ({ ...ROUTE_MODE_LABELS, other: m.visitor_transport() });
 const transportStatuses = (): Record<string, string> => ({
   planned: m.visitor_planned(),
-  booked: m.visitor_booked(),
   confirmed: m.visitor_confirmed(),
   cancelled: m.visitor_cancelled(),
 });

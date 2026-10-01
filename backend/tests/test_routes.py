@@ -804,3 +804,48 @@ def test_an_area_that_a_route_runs_between_cannot_be_deleted(tmp_path) -> None:
     assert refused.status_code == 409 and "1 route" in refused.json()["detail"]
     assert owner.delete(f"/api/trips/{trip['id']}/routes/{route['id']}").status_code == 204
     assert owner.delete(f"/api/trips/{trip['id']}/areas/{tainan}").status_code == 204
+
+
+def test_route_ideas_can_overlap_but_are_never_shared_even_when_chosen(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    areas = [
+        owner.post(f"{trips_path}/areas", json={"label": label, "country_code": "TW"}).json()["id"]
+        for label in ("Taipei", "Tainan")
+    ]
+    ends = {"departure_area_id": areas[0], "arrival_area_id": areas[1], "departs_on": "2054-12-01"}
+    ideas = [
+        owner.post(f"{trips_path}/routes", json={"mode": mode, "status": "idea", "label": mode, **ends})
+        for mode in ("train", "bus", "flight")
+    ]
+    # Several candidates for the same journey raise no conflict, and a new idea stays private.
+    assert [response.status_code for response in ideas] == [201, 201, 201]
+    assert {response.json()["status"] for response in ideas} == {"idea"}
+    assert {response.json()["visibility"] for response in ideas} == {"private"}
+    idea = ideas[0].json()
+    assert owner.get(f"{trips_path}/routes/{idea['id']}").json()["status"] == "idea"
+    assert sorted(item["status"] for item in owner.get(f"{trips_path}/routes").json()) == ["idea"] * 3
+
+    # A candidate is not an itinerary record: it cannot be offered to any audience.
+    refused = owner.put(f"{trips_path}/visibility/route/{idea['id']}", json={"visibility": "everyone"})
+    assert refused.status_code == 422, refused.text
+    assert "a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it" in refused.text
+
+    # Choosing it makes it shareable; the rejected alternatives stay private.
+    assert owner.patch(f"{trips_path}/routes/{idea['id']}", json={"status": "planned"}).json()["status"] == "planned"
+    assert owner.put(f"{trips_path}/visibility/route/{idea['id']}", json={"visibility": "everyone"}).status_code == 200
+    published = owner.post(f"{trips_path}/public-projection/publish")
+    assert published.status_code == 200, published.text
+    public = f"/api/public/trips/{published.json()['slug']}"
+    assert len(TestClient(app).get(public).json()["routes"]) == 1
+
+    # Turning a shared route back into an idea withdraws it from delivery at once.
+    back = owner.patch(f"{trips_path}/routes/{idea['id']}", json={"status": "idea"})
+    assert (back.status_code, back.json()["visibility"]) == (200, "private")
+    assert TestClient(app).get(public).json()["routes"] == []
+
+    # The other statuses are unchanged.
+    for status in ("planned", "confirmed", "cancelled"):
+        assert owner.patch(f"{trips_path}/routes/{idea['id']}", json={"status": status}).json()["status"] == status
+    assert owner.patch(f"{trips_path}/routes/{idea['id']}", json={"status": "maybe"}).status_code == 422

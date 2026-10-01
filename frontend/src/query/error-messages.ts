@@ -227,6 +227,12 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_only_a_share_copy_can_be_shared();
     case "wait_for_this_copy_to_finish_processing":
       return m.api_wait_for_this_copy_to_finish_processing();
+    case "a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it":
+      return m.api_a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it();
+    case "a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it":
+      return m.api_a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it();
+    case "a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared":
+      return m.api_a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared();
     case "approve_this_copy_before_sharing_it":
       return m.api_approve_this_copy_before_sharing_it();
     case "the_original_has_been_deleted":

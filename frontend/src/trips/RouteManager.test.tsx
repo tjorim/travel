@@ -38,7 +38,7 @@ const savedLocation = {
 const route = (id: string, label: string | null, overrides: Partial<Route> = {}): Route => ({
   id,
   mode: "train",
-  status: "booked",
+  status: "confirmed",
   label,
   departure_area: taipei,
   arrival_area: tainan,
@@ -121,6 +121,51 @@ const pickAreas = (from = "Taipei (heel gebied)", to = "Tainan (heel gebied)") =
   chooseOption("Vertrek", from);
   chooseOption("Aankomst", to);
 };
+
+const idea = (id: string, label: string) => route(id, label, { status: "idea", departs_on: "2054-12-01" });
+
+it("groups ideas for the same journey as alternatives and keeps them off the share controls", async () => {
+  seed([
+    idea("i1", "HSR"),
+    idea("i2", "Bus"),
+    route("r1", "Chosen train", { departs_on: "2054-12-01" }),
+    route("i3", "Other day", { status: "idea", departs_on: "2054-12-02" }),
+  ]);
+  renderWithOwner(<RouteManager trip={trip} />);
+  const group = await screen.findByRole("group", { name: "Alternatieven · Taipei → Tainan · 1 dec" });
+  expect(within(group).getByRole("button", { name: "Route HSR bekijken" }).textContent).toContain("Idee");
+  expect(within(group).getByRole("button", { name: "Route Bus bekijken" })).toBeTruthy();
+  expect(within(group).queryByRole("button", { name: "Route Chosen train bekijken" })).toBeNull();
+  // A lone idea for another day is listed like any route.
+  expect(screen.getAllByRole("group")).toHaveLength(1);
+
+  fireEvent.click(within(group).getByRole("button", { name: "Route HSR bekijken" }));
+  expect(screen.getByText(/Een idee is een kandidaat/)).toBeTruthy();
+  expect(screen.queryByText("Wie mag dit zien?")).toBeNull();
+});
+
+it("offers to cancel the rejected ideas once a route for the same journey is chosen", async () => {
+  seed([idea("i1", "HSR"), idea("i2", "Bus"), route("r1", "Chosen train", { departs_on: "2054-12-01" })]);
+  renderWithOwner(<RouteManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Route Chosen train bekijken" }));
+  expect(screen.getByText("2 ideeën voor dezelfde reis.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Annuleer 2 alternatieven" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("PATCH /api/trips/trip/routes/i1")).toEqual({ status: "cancelled" });
+  expect(api.lastBody("PATCH /api/trips/trip/routes/i2")).toEqual({ status: "cancelled" });
+  expect(screen.getByText("Alternatieven geannuleerd.")).toBeTruthy();
+  // An idea is not offered the cancel action for its own rivals.
+  fireEvent.click(screen.getByRole("button", { name: "Route Chosen train bekijken" }));
+  expect(screen.queryByRole("button", { name: /Annuleer/ })).toBeNull();
+});
+
+it("explains a route idea in the editor", async () => {
+  seed();
+  renderWithOwner(<RouteManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  chooseOption("Status", "Idee");
+  expect(await screen.findByText(/Een idee is een kandidaat/)).toBeTruthy();
+});
 
 it("needs only a mode and two areas", async () => {
   seed();

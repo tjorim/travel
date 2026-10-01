@@ -116,3 +116,12 @@ def test_a_draft_visit_is_checked_before_it_is_saved() -> None:
     assert owner.post(check, json={"location_id": "nope", "title": "EX101"}).status_code == 404
     assert owner.post(check, json={"title": "EX101"}).status_code == 422
     assert client_for("owner-2").post(check, json={"area_id": ams}).status_code == 404
+
+
+def test_a_route_idea_is_not_a_route_a_visit_restates() -> None:
+    owner = client_for("owner-1")
+    base, ams, _, _, route = _trip_with_flight(owner)
+    landed = _visit(owner, base, ams, title="Vertrek EX101", starts_on="2054-11-16")
+    assert [item["id"] for item in landed["possible_route_duplicates"]] == [route["id"]]
+    owner.patch(f"{base}/routes/{route['id']}", json={"status": "idea"})
+    assert owner.get(f"{base}/visits/{landed['id']}").json()["possible_route_duplicates"] == []

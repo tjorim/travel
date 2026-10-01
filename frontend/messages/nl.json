@@ -391,9 +391,9 @@
   "owner_item": "Item",
   "owner_task_2": "Taak",
   "owner_transport": "Vervoer",
-  "owner_booked": "{p0}/{p1} geboekt",
+  "owner_confirmed_count": "{p0}/{p1} bevestigd",
   "owner_nights": "Nachten",
-  "owner_booked_2": "{p0}/{p1} geboekt{p2}",
+  "owner_confirmed_nights": "{p0}/{p1} bevestigd{p2}",
   "owner_without_a_stay": " · {p0} zonder verblijf",
   "owner_open_2": "{p0} open",
   "owner_all_done": "alles gedaan",
@@ -584,7 +584,6 @@
   "owner_dates_for_visitors": "Datums voor bezoekers",
   "owner_show_the_time_to_visitors": "Toon de tijd aan bezoekers",
   "owner_only_with_full_dates": "Alleen bij volledige datums.",
-  "owner_booked_3": "Geboekt",
   "owner_cancelled": "Geannuleerd",
   "owner_a_line_needs_at_least_two_points": "Een lijn heeft minstens twee punten nodig.",
   "owner_use_valid_json_with_at_least_two_longitude_latitude_pairs": "Gebruik geldige JSON met minstens twee [lengtegraad, breedtegraad]-paren.",
@@ -1016,7 +1015,7 @@
       }
     }
   ],
-  "owner_fully_booked": "geboekt",
+  "owner_all_confirmed": "bevestigd",
   "owner_offset_short_ahead": "{hours} u {minutes} min later",
   "owner_offset_hours_short_ahead": "{hours} u later",
   "owner_offset_minutes_short_ahead": "{minutes} min later",
@@ -1701,7 +1700,6 @@
   "visitor_year_precision": "Jaarprecisie",
   "visitor_transport": "Vervoer",
   "visitor_planned": "Gepland",
-  "visitor_booked": "Geboekt",
   "visitor_confirmed": "Bevestigd",
   "visitor_cancelled": "Geannuleerd",
   "visitor_route": "Route",
@@ -1848,5 +1846,55 @@
   "owner_possible_duplicate_areas": "Mogelijk dubbele gebieden",
   "owner_possible_duplicates_help": "Dit zijn alleen suggesties. Er wordt niets samengevoegd voordat je het voorbeeld hebt gezien en bevestigt.",
   "owner_review_merge": "Samenvoegen bekijken",
-  "owner_review_merge_of": "Samenvoegen bekijken: {p0}"
+  "owner_review_merge_of": "Samenvoegen bekijken: {p0}",
+  "owner_stay_alternatives": "Alternatieven · {dates}",
+  "owner_stay_ideas_overlap_these_nights": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} idee overlapt deze nachten.",
+        "countPlural=other": "{count} ideeën overlappen deze nachten."
+      }
+    }
+  ],
+  "owner_cancel_stay_alternatives": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Annuleer {count} alternatief",
+        "countPlural=other": "Annuleer {count} alternatieven"
+      }
+    }
+  ],
+  "owner_stay_alternatives_cancelled": "Alternatieven geannuleerd.",
+  "owner_a_stay_idea_is_a_candidate_it_may_overlap_other_stays_covers_no_night_and_is_never_shared": "Een idee is een kandidaat die je vergelijkt. Het mag overlappen met andere verblijven, telt niet als gedekte nacht en wordt nooit gedeeld.",
+  "api_a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "Een idee voor een verblijf is slechts een kandidaat: zet het op gepland voordat je het deelt.",
+  "owner_a_cancelled_visit_is_never_shared": "Een geannuleerd bezoek wordt nooit gedeeld.",
+  "api_a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared": "Een geannuleerd bezoek staat niet meer gepland en kan niet worden gedeeld.",
+  "owner_route_alternatives": "Alternatieven · {journey}",
+  "owner_route_ideas_for_this_journey": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} idee voor dezelfde reis.",
+        "countPlural=other": "{count} ideeën voor dezelfde reis."
+      }
+    }
+  ],
+  "owner_cancel_route_alternatives": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Annuleer {count} alternatief",
+        "countPlural=other": "Annuleer {count} alternatieven"
+      }
+    }
+  ],
+  "owner_route_alternatives_cancelled": "Alternatieven geannuleerd.",
+  "owner_a_route_idea_is_a_candidate_it_covers_no_journey_does_not_count_towards_booking_and_is_never_shared": "Een idee is een kandidaat die je vergelijkt. Het telt niet als reis in het plan, telt niet mee voor de boekingsvoortgang en wordt nooit gedeeld.",
+  "api_a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "Een idee voor een route is slechts een kandidaat: zet het op gepland voordat je het deelt."
 }

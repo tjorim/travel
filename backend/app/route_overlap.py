@@ -83,7 +83,7 @@ def overlapping_routes(visit: Visit, routes: Iterable[Route]) -> list[Route]:
     return [
         route
         for route in routes
-        if route.status != RouteStatus.CANCELLED
+        if route.status not in (RouteStatus.IDEA, RouteStatus.CANCELLED)
         and visit.area_id in (route.departure_area_id, route.arrival_area_id)
         and days & route_days(route)
         and _about_the_journey(visit, route)

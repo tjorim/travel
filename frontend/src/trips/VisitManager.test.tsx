@@ -64,7 +64,7 @@ const stay = {
   id: "s1",
   check_in_date: "2054-11-16",
   check_out_date: "2054-11-20",
-  status: "booked",
+  status: "confirmed",
   property_name: "Hotel Royal",
   location: {},
   area: taipei,
@@ -249,6 +249,22 @@ it("rewrites the place only when it changed, and shows where the nights are spen
   expect(sent).toMatchObject({ notes: "Laptop mee", kind: "work", status: "confirmed" });
   expect(sent).not.toHaveProperty("area_id");
   expect(sent).not.toHaveProperty("location");
+});
+
+it("cancels a visit idea and keeps it off the share controls", async () => {
+  seed([visit("v1", 0, { title: "Hot springs", status: "idea" })]);
+  renderWithOwner(<VisitManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Hot springs bekijken" }));
+  expect(screen.queryByText(/Een geannuleerd bezoek wordt nooit gedeeld/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  expect(selectedOption("Status")).toBe("Idee");
+  chooseOption("Status", "Geannuleerd");
+  fireEvent.click(screen.getByRole("button", { name: "Bezoek opslaan" }));
+  await screen.findByText("Bezoek opgeslagen.");
+  expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toMatchObject({ status: "cancelled" });
+  expect(screen.getByRole("button", { name: "Bezoek Hot springs bekijken" }).textContent).toContain("Geannuleerd");
+  fireEvent.click(screen.getByRole("button", { name: "Bezoek Hot springs bekijken" }));
+  expect(screen.getByText(/Een geannuleerd bezoek wordt nooit gedeeld/)).toBeTruthy();
 });
 
 it("reorders and deletes visits after the in-app confirmation", async () => {

@@ -4,8 +4,52 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added an `idea` status for routes, for transport that is only being compared
+  (migration `010_planning_statuses`; existing routes keep their status, and
+  the downgrade turns ideas back into `planned`). Routes are now `idea`,
+  `planned`, `confirmed` or `cancelled`. Like stay ideas, route ideas may
+  overlap, are left out of the transport progress badge, the next action,
+  current whereabouts and the check for visits that restate a route, and can
+  never be shared: sharing one is refused and turning a route back into an idea
+  makes it private. The owner PWA lists ideas for the same journey (same areas,
+  same day) together as *Alternatives*, and a chosen route offers to cancel
+  them. The API and the owner MCP route tools accept and return `idea`, and the
+  MCP instructions cover transport shortlists (#318).
+- Added an `idea` status for stays, for hotels that are only being compared
+  (migration `010_planning_statuses`; existing stays keep their status). Ideas
+  may overlap each other and any other stay without a warning, never count as
+  covering a night in the missing-night badge, next action, visit overnights
+  or current whereabouts, and can never be shared: choosing a visibility other
+  than private is refused, and turning a stay back into an idea makes it
+  private and stops its delivery. The owner PWA lists ideas for the same nights
+  together as *Alternatives* (**Idee** in Dutch), and a chosen stay offers to
+  cancel the ideas that overlap it. The API and every owner MCP stay tool
+  accept and return `idea`, and the MCP instructions tell assistants to use it
+  for hotel shortlists instead of `planned` (#316).
+
 ### Changed
 
+- Let a visit be `cancelled`, so a rejected idea or dropped plan can stay on
+  record instead of being deleted (migration `010_planning_statuses`;
+  existing visits keep their status, and the downgrade turns cancelled visits
+  back into ideas). Visits are now `idea`, `planned`, `confirmed` or
+  `cancelled`. Because the visit status is never shared, a cancelled visit
+  could otherwise read as a plan to visitors: it can never be shared, and
+  cancelling one makes it private and stops its delivery. The owner PWA offers
+  **Geannuleerd** in the status list and shows an explanation in place of the
+  share control (#316).
+- Merged the `booked` status of stays and routes into `confirmed` (migration
+  `010_planning_statuses`; existing `booked` records become
+  `confirmed`, and the downgrade cannot tell which ones were once only
+  booked). The app never enforced a difference: both counted as booked in the
+  badges and next action. Stays and routes are now `idea`, `planned`,
+  `confirmed` or `cancelled`, matching visits' `confirmed`. The API, owner MCP tools and archive import still accept
+  `booked` and store it as `confirmed`, so older clients and
+  `dist/exampleland-2054/private/app-import.json` keep working. The progress badges
+  now read "x/y confirmed" (**bevestigd**) and the public projection reports
+  `confirmed` for a route that was `booked` (#316).
 - Stopped the frontend suite timing out on a busy machine. Vitest now has a
   project-wide 30 s `testTimeout` and `hookTimeout` (the 5 s default only
   measured host load: `RouteManager` and `PublicationManager` tests failed at

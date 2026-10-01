@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
-from ..models import Location, Stay, Trip
+from ..models import Location, Stay, StayStatus, Trip, Visibility
 from ..schemas import LocationInput, StayCreate, StayResponse, StayUpdate
 from .placement import area_location, location_from_input, selected_area
 from .trips import owned_trip
@@ -123,6 +123,9 @@ def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: Sessio
     )
     for field, value in values.items():
         setattr(stay, field, value)
+    if stay.status == StayStatus.IDEA:
+        # A candidate is never offered to an audience, so going back to an idea also takes it off any.
+        stay.visibility = Visibility.PRIVATE
     session.commit()
     return session.scalar(_stay_query().where(Stay.id == stay.id))  # type: ignore[return-value]
 

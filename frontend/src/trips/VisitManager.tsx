@@ -58,6 +58,9 @@ export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
   get confirmed() {
     return m.owner_confirmed();
   },
+  get cancelled() {
+    return m.owner_cancelled();
+  },
 };
 const KIND_LABELS = VISIT_KIND_LABELS;
 const STATUS_LABELS = VISIT_STATUS_LABELS;
@@ -335,7 +338,7 @@ export function VisitManager({
   const readError = visitsQuery.error ?? staysQuery.error;
 
   const dayLine = (visit: Visit) => {
-    // "Gepland" is the default, so only an idea or a confirmed visit is called out.
+    // "Gepland" is the default, so any other status is called out.
     const tags = [
       visit.status !== "planned" ? STATUS_LABELS[visit.status] : "",
       visit.kind ? KIND_LABELS[visit.kind] : "",
@@ -471,13 +474,17 @@ export function VisitManager({
                 <p className="help">{m.owner_no_private_note()}</p>
               )}
             </div>
-            <VisibilityControl
-              tripId={trip.id}
-              kind="visit"
-              id={selected.id}
-              value={selected.visibility}
-              name={visitTitle(selected)}
-            />
+            {selected.status === "cancelled" ? (
+              <p className="help">{m.owner_a_cancelled_visit_is_never_shared()}</p>
+            ) : (
+              <VisibilityControl
+                tripId={trip.id}
+                kind="visit"
+                id={selected.id}
+                value={selected.visibility}
+                name={visitTitle(selected)}
+              />
+            )}
             <p className="help">
               {selected.start_time
                 ? selected.share_time

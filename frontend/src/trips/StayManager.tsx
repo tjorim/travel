@@ -18,6 +18,7 @@ import {
   addDays,
   daysBetween,
   formatDay,
+  stayInPlan,
   stayLabel,
   locationName,
   type Area,
@@ -30,11 +31,11 @@ import { PlaceSearchField } from "./PlaceSearchField";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 
 const STATUS_LABELS: Record<Stay["status"], string> = {
+  get idea() {
+    return m.owner_idea();
+  },
   get planned() {
     return m.owner_planned();
-  },
-  get booked() {
-    return m.owner_booked_3();
   },
   get confirmed() {
     return m.owner_confirmed();
@@ -44,7 +45,7 @@ const STATUS_LABELS: Record<Stay["status"], string> = {
   },
 };
 
-/** The archive's hotel states: still choosing, proposed, booked. */
+/** The archive's hotel states: still choosing, proposed, or settled. */
 export function stayStateLabel(stay: Stay): string {
   if (stay.status === "planned") return stay.property_name ? m.owner_suggested() : m.owner_still_to_choose();
   return STATUS_LABELS[stay.status];
@@ -141,6 +142,25 @@ const httpsOnly = ({ value }: { value: string }) =>
 
 const locationLine = (place: Stay["location"] | undefined) =>
   place ? [...new Set([locationName(place), place.locality].filter(Boolean))].join(" · ") : "";
+const overlaps = (stay: Stay, checkIn: string, checkOut: string) =>
+  stay.check_in_date < checkOut && checkIn < stay.check_out_date;
+/** Ideas for the same dates are shown together as alternatives; a lone idea is listed like any stay. */
+function stayEntries(stays: Stay[]): { stays: Stay[]; dates?: string }[] {
+  const groups = new Map<string, Stay[]>();
+  for (const stay of stays.filter((item) => item.status === "idea")) {
+    const key = `${stay.check_in_date}|${stay.check_out_date}`;
+    groups.set(key, [...(groups.get(key) ?? []), stay]);
+  }
+  const shown = new Set<string>();
+  return stays.flatMap((stay) => {
+    const key = `${stay.check_in_date}|${stay.check_out_date}`;
+    const group = stay.status === "idea" ? groups.get(key)! : [stay];
+    if (group.length < 2) return [{ stays: [stay] }];
+    if (shown.has(key)) return [];
+    shown.add(key);
+    return [{ stays: group, dates: `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}` }];
+  });
+}
 const overlapLabel = (stay: Stay) =>
   `${stayLabel(stay)} (${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)})`;
 
@@ -180,6 +200,16 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
       ownerKeys.tripResource(subject, trip.id, "areas"),
     ],
   });
+  async function cancelAlternatives(alternatives: Stay[]) {
+    try {
+      for (const alternative of alternatives)
+        await saveStay.mutateAsync({ id: alternative.id, payload: { status: "cancelled" } });
+      stayDialog.close();
+      setMessage(textNotice(() => m.owner_stay_alternatives_cancelled()));
+    } catch (error) {
+      stayDialog.setError(errorNotice(error, m.owner_the_stay_could_not_be_saved));
+    }
+  }
   const stayRecord = useRecordForm<StayValues>({
     defaultValues: blankStay(trip),
     fallback: m.owner_the_stay_could_not_be_saved,
@@ -276,6 +306,14 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
 
   const { selected: selectedStay, editing: editingStay, editingId: editingStayId } = stayDialog;
   const readError = staysQuery.error;
+  // Once a stay is chosen, the ideas for its nights are the rejected alternatives.
+  const alternatives =
+    selectedStay && stayInPlan(selectedStay)
+      ? stays.filter(
+          (other) =>
+            other.status === "idea" && overlaps(other, selectedStay.check_in_date, selectedStay.check_out_date),
+        )
+      : [];
   const currentPlace = locationLine(stays.find((stay) => stay.id === editingStayId)?.location);
 
   return (
@@ -298,25 +336,40 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
       </p>
       {stays.length > 0 && (
         <div className="saved-records mt-0.5">
-          {stays.map((stay) => {
-            const nights = daysBetween(stay.check_in_date, stay.check_out_date);
+          {stayEntries(stays).map((entry) => {
+            const rows = entry.stays.map((stay) => {
+              const nights = daysBetween(stay.check_in_date, stay.check_out_date);
+              return (
+                <article className="excerpt-row" key={stay.id}>
+                  <Button className="document-select" type="button" onClick={() => stayDialog.inspect(stay.id)}>
+                    <strong>{stayLabel(stay)}</strong>
+                    <span>
+                      {[
+                        stay.area?.label,
+                        `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
+                        m.owner_night_count({ count: nights }),
+                        stayStateLabel(stay),
+                        visibilityLabel(stay.visibility),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </Button>
+                </article>
+              );
+            });
+            if (!entry.dates) return rows;
+            const label = m.owner_stay_alternatives({ dates: entry.dates });
             return (
-              <article className="excerpt-row" key={stay.id}>
-                <Button className="document-select" type="button" onClick={() => stayDialog.inspect(stay.id)}>
-                  <strong>{stayLabel(stay)}</strong>
-                  <span>
-                    {[
-                      stay.area?.label,
-                      `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
-                      m.owner_night_count({ count: nights }),
-                      stayStateLabel(stay),
-                      visibilityLabel(stay.visibility),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </Button>
-              </article>
+              <div
+                key={entry.stays[0].id}
+                role="group"
+                aria-label={label}
+                className="border-l-2 border-travel-border pl-1"
+              >
+                <p className="help font-bold">{label}</p>
+                {rows}
+              </div>
             );
           })}
         </div>
@@ -350,13 +403,32 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               )}
               <Markdown html={selectedStay.notes_html} text={selectedStay.notes} />
             </div>
-            <VisibilityControl
-              tripId={trip.id}
-              kind="stay"
-              id={selectedStay.id}
-              value={selectedStay.visibility}
-              name={stayLabel(selectedStay)}
-            />
+            {selectedStay.status === "idea" ? (
+              <p className="help">
+                {m.owner_a_stay_idea_is_a_candidate_it_may_overlap_other_stays_covers_no_night_and_is_never_shared()}
+              </p>
+            ) : (
+              <VisibilityControl
+                tripId={trip.id}
+                kind="stay"
+                id={selectedStay.id}
+                value={selectedStay.visibility}
+                name={stayLabel(selectedStay)}
+              />
+            )}
+            {alternatives.length > 0 && (
+              <div>
+                <p className="help">{m.owner_stay_ideas_overlap_these_nights({ count: alternatives.length })}</p>
+                <Button
+                  className="secondary compact"
+                  type="button"
+                  disabled={saveStay.isPending}
+                  onClick={() => cancelAlternatives(alternatives)}
+                >
+                  {m.owner_cancel_stay_alternatives({ count: alternatives.length })}
+                </Button>
+              </div>
+            )}
             <div className="button-row">
               <Button type="button" onClick={() => editStay(selectedStay)}>
                 {m.owner_edit()}
@@ -384,6 +456,15 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
                 </SelectField>
               )}
             </stayRecord.form.Field>
+            <stayRecord.form.Subscribe selector={(state) => state.values.status}>
+              {(status) =>
+                status === "idea" && (
+                  <p className="help">
+                    {m.owner_a_stay_idea_is_a_candidate_it_may_overlap_other_stays_covers_no_night_and_is_never_shared()}
+                  </p>
+                )
+              }
+            </stayRecord.form.Subscribe>
             <stayRecord.form.Field name="shareDatePrecision">
               {(field) => (
                 <SelectField field={field} label={m.owner_dates_for_visitors()}>
@@ -445,17 +526,16 @@ export function StayManager({ trip, focusId }: { trip: Trip; areas?: Area[]; foc
               </stayRecord.form.Field>
             </div>
             <stayRecord.form.Subscribe
-              selector={(state) => [state.values.checkInDate, state.values.checkOutDate] as const}
+              selector={(state) => [state.values.checkInDate, state.values.checkOutDate, state.values.status] as const}
             >
-              {([checkIn, checkOut]) => {
+              {([checkIn, checkOut, status]) => {
                 const nights = checkIn && checkOut ? daysBetween(checkIn, checkOut) : 0;
+                // Ideas are expected to overlap: they neither warn nor are warned about.
                 const overlapping =
-                  nights > 0
+                  nights > 0 && status !== "idea"
                     ? stays.filter(
                         (other) =>
-                          other.id !== editingStayId &&
-                          other.check_in_date < checkOut &&
-                          checkIn < other.check_out_date,
+                          other.id !== editingStayId && other.status !== "idea" && overlaps(other, checkIn, checkOut),
                       )
                     : [];
                 return (

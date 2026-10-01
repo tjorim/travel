@@ -391,9 +391,9 @@
   "owner_item": "Item",
   "owner_task_2": "Task",
   "owner_transport": "Transport",
-  "owner_booked": "{p0}/{p1} booked",
+  "owner_confirmed_count": "{p0}/{p1} confirmed",
   "owner_nights": "Nights",
-  "owner_booked_2": "{p0}/{p1} booked{p2}",
+  "owner_confirmed_nights": "{p0}/{p1} confirmed{p2}",
   "owner_without_a_stay": " · {p0} without a stay",
   "owner_open_2": "{p0} open",
   "owner_all_done": "all done",
@@ -584,7 +584,6 @@
   "owner_dates_for_visitors": "Dates for visitors",
   "owner_show_the_time_to_visitors": "Show the time to visitors",
   "owner_only_with_full_dates": "Only with full dates.",
-  "owner_booked_3": "Booked",
   "owner_cancelled": "Cancelled",
   "owner_a_line_needs_at_least_two_points": "A line needs at least two points.",
   "owner_use_valid_json_with_at_least_two_longitude_latitude_pairs": "Use valid JSON with at least two [longitude, latitude] pairs.",
@@ -1016,7 +1015,7 @@
       }
     }
   ],
-  "owner_fully_booked": "booked",
+  "owner_all_confirmed": "confirmed",
   "owner_offset_short_ahead": "{hours} h {minutes} min ahead",
   "owner_offset_hours_short_ahead": "{hours} h ahead",
   "owner_offset_minutes_short_ahead": "{minutes} min ahead",
@@ -1701,7 +1700,6 @@
   "visitor_year_precision": "Year precision",
   "visitor_transport": "Transport",
   "visitor_planned": "Planned",
-  "visitor_booked": "Booked",
   "visitor_confirmed": "Confirmed",
   "visitor_cancelled": "Cancelled",
   "visitor_route": "Route",
@@ -1848,5 +1846,55 @@
   "owner_possible_duplicate_areas": "Possible duplicate areas",
   "owner_possible_duplicates_help": "These are only suggestions. Nothing is merged until you have seen the preview and confirmed.",
   "owner_review_merge": "Review merge",
-  "owner_review_merge_of": "Review merge: {p0}"
+  "owner_review_merge_of": "Review merge: {p0}",
+  "owner_stay_alternatives": "Alternatives · {dates}",
+  "owner_stay_ideas_overlap_these_nights": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} idea overlaps these nights.",
+        "countPlural=other": "{count} ideas overlap these nights."
+      }
+    }
+  ],
+  "owner_cancel_stay_alternatives": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Cancel {count} alternative",
+        "countPlural=other": "Cancel {count} alternatives"
+      }
+    }
+  ],
+  "owner_stay_alternatives_cancelled": "Alternatives cancelled.",
+  "owner_a_stay_idea_is_a_candidate_it_may_overlap_other_stays_covers_no_night_and_is_never_shared": "An idea is a candidate you are comparing. It may overlap other stays, does not cover a night and is never shared.",
+  "api_a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "A stay idea is only a candidate: make it planned before sharing it",
+  "owner_a_cancelled_visit_is_never_shared": "A cancelled visit is never shared.",
+  "api_a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared": "A cancelled visit is no longer planned: it cannot be shared",
+  "owner_route_alternatives": "Alternatives · {journey}",
+  "owner_route_ideas_for_this_journey": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} idea for the same journey.",
+        "countPlural=other": "{count} ideas for the same journey."
+      }
+    }
+  ],
+  "owner_cancel_route_alternatives": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Cancel {count} alternative",
+        "countPlural=other": "Cancel {count} alternatives"
+      }
+    }
+  ],
+  "owner_route_alternatives_cancelled": "Alternatives cancelled.",
+  "owner_a_route_idea_is_a_candidate_it_covers_no_journey_does_not_count_towards_booking_and_is_never_shared": "An idea is a candidate you are comparing. It covers no journey in the plan, does not count towards booking progress and is never shared.",
+  "api_a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "A route idea is only a candidate: make it planned before sharing it"
 }
