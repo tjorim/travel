@@ -6,6 +6,17 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Kept EXIF capture times as the camera's wall-clock time. A bare
+  `DateTimeOriginal` carries no zone and was stored as UTC, so an owner in
+  Brussels saw a photo taken at 10:15 in Taiwan as 11:15 (or on another day). The
+  time is now stored as written, flagged `captured_local` on the media asset and
+  on candidate times, and shown unchanged in any viewer zone, including the
+  value handed to the capture dialog. No zone is guessed from areas, the trip or
+  GPS. When the camera also wrote `OffsetTimeOriginal`, candidate grouping uses
+  the real instant, so mixed offsets across a trip no longer split or merge
+  candidates; grouping never depends on the viewer's zone. Provider capture
+  times stay instants. Media stored earlier keeps its value and display
+  (migration `009_media_captured_local`) (#297).
 - Made the server refuse a route that starts and ends at the same place,
   whoever writes it: the owner form, the MCP route tools and batch create, the
   archive import and direct API clients now get the same 422

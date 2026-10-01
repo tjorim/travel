@@ -284,7 +284,9 @@ both: `MediaAsset.captured_at` and a small convenience subset in
 response can pre-fill a reisupdate's date or suggest a place without any client
 needing to parse the file itself — a provider's own capture-time metadata
 (e.g. Google's `createTime`) is used only as a fallback when a photo has no
-usable EXIF `DateTimeOriginal`. This is a read, never a strip: nothing here
+usable EXIF `DateTimeOriginal`. An EXIF time is the camera's wall clock and is
+kept as written (`captured_local`), never converted to an instant; see
+`docs/decisions/297-exif-capture-time.md`. This is a read, never a strip: nothing here
 touches the file, and the extracted fields only ever appear on owner-only
 routes.
 

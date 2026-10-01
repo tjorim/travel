@@ -24,6 +24,7 @@ import {
   bytesLabel,
   formatDay,
   formatDayRange,
+  formatCapture,
   formatInstant,
   locationName,
   routeTitle,
@@ -650,7 +651,7 @@ export function TripDetail() {
                 {owner && <MediaPreview asset={asset} session={owner.session} />}
                 <p>
                   {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)} {m.owner_captured()}{" "}
-                  {timestamp(asset.captured_at)}
+                  {asset.captured_at ? formatCapture(asset.captured_at, asset.captured_local) : "—"}
                 </p>
                 {asset.gps && (
                   <p>

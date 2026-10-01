@@ -84,6 +84,7 @@ def _asset_response(asset: MediaAsset, trip_id: str) -> MediaAssetResponse:
         byte_size=original.byte_size,
         content_type=original.content_type,
         captured_at=asset.captured_at,
+        captured_local=asset.captured_local,
         created_at=asset.created_at,
         deleted_at=asset.deleted_at,
         original_filename=asset.raw_metadata.get("original_filename"),
@@ -237,9 +238,12 @@ def suggest_travel_update_candidates(
                 media_asset_ids=candidate.media_asset_ids,
                 starts_at=candidate.starts_at,
                 ends_at=candidate.ends_at,
+                captured_local=candidate.captured_local,
                 time_options=[
-                    MediaTravelUpdateTimeOption(media_asset_id=asset_id, captured_at=captured_at)
-                    for asset_id, captured_at in candidate.time_options
+                    MediaTravelUpdateTimeOption(
+                        media_asset_id=asset_id, captured_at=captured_at, captured_local=captured_local
+                    )
+                    for asset_id, captured_at, captured_local in candidate.time_options
                 ],
                 location_options=[
                     MediaTravelUpdateLocationOption(

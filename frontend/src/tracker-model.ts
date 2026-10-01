@@ -51,6 +51,8 @@ export type MediaAsset = {
   byte_size: number;
   content_type: string;
   captured_at: string | null;
+  /** True when `captured_at` is the camera's wall-clock time, shown as written in any zone. */
+  captured_local: boolean;
   created_at: string;
   original_filename: string | null;
   camera_make: string | null;
@@ -354,7 +356,8 @@ export type TravelUpdateCandidate = {
   media_asset_ids: string[];
   starts_at: string | null;
   ends_at: string | null;
-  time_options: { media_asset_id: string; captured_at: string }[];
+  captured_local: boolean;
+  time_options: { media_asset_id: string; captured_at: string; captured_local: boolean }[];
   location_options: { latitude: number; longitude: number; media_asset_ids: string[] }[];
 };
 
@@ -369,6 +372,8 @@ export type TravelUpdateCandidateIntent = {
   tripId: string;
   mediaAssetIds: string[];
   occurredAt?: string;
+  /** `occurredAt` is a camera wall-clock time rather than an instant. */
+  occurredAtLocal?: boolean;
   gps?: { latitude: number; longitude: number };
 };
 
@@ -521,6 +526,19 @@ export function stayLabel(stay: Stay): string {
 /** An instant as the app displays it everywhere: "16 nov 2026, 14:32". */
 export function formatInstant(instant: string | number): string {
   return dayjs(instant).format("D MMM YYYY, HH:mm");
+}
+
+/**
+ * A media capture time. A camera wall-clock time (EXIF carries no zone) keeps its written clock in every
+ * viewer zone; any other value is an instant shown in the viewer's zone.
+ */
+export function formatCapture(value: string, local: boolean, format = "D MMM YYYY, HH:mm"): string {
+  return local ? dayjs.utc(value).format(format) : dayjs(value).format(format);
+}
+
+/** A capture time as a `YYYY-MM-DDTHH:mm` form value, in the same clock `formatCapture` shows. */
+export function captureInputValue(value: string, local: boolean): string {
+  return local ? dayjs.utc(value).format("YYYY-MM-DDTHH:mm") : localDateTime(new Date(value));
 }
 
 /** An instant's calendar date only, no time: "16 nov 2026". */

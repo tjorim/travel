@@ -21,6 +21,8 @@ import { RecordDialog } from "../RecordDialog";
 import {
   clearDraft,
   emptyDraft,
+  captureInputValue,
+  formatCapture,
   formatInstant,
   localDateTime,
   readDraft,
@@ -198,7 +200,9 @@ export function CaptureDialog({
     if (candidate && candidate.tripId === tripId) {
       record.load({
         ...emptyDraft(tripId),
-        occurredAt: candidate.occurredAt ? localDateTime(new Date(candidate.occurredAt)) : localDateTime(),
+        occurredAt: candidate.occurredAt
+          ? captureInputValue(candidate.occurredAt, candidate.occurredAtLocal ?? false)
+          : localDateTime(),
         mediaAssetIds: candidate.mediaAssetIds,
       });
       setCandidateGps(candidate.gps ?? null);
@@ -470,7 +474,7 @@ export function CaptureDialog({
                       onCheckedChange={() => toggleMedia(asset.id)}
                     />
                     {asset.original_filename ?? m.owner_unnamed_photo()}
-                    {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
+                    {asset.captured_at ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}` : ""}
                   </FieldLabel>
                 </Field>
               ))}
@@ -487,7 +491,7 @@ export function CaptureDialog({
                       </strong>
                       {asset.captured_at && (
                         <span>
-                          {m.owner_captured_2()} {timestamp(asset.captured_at)}.
+                          {m.owner_captured_2()} {formatCapture(asset.captured_at, asset.captured_local)}.
                         </span>
                       )}
                       <div className="button-row">
@@ -496,7 +500,7 @@ export function CaptureDialog({
                             className="secondary compact"
                             type="button"
                             onClick={() => {
-                              updateDraft({ occurredAt: localDateTime(new Date(asset.captured_at!)) });
+                              updateDraft({ occurredAt: captureInputValue(asset.captured_at!, asset.captured_local) });
                               setSaveState(
                                 textNotice(() => m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it()),
                               );

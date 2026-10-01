@@ -16,6 +16,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -921,6 +922,9 @@ class MediaAsset(Base):
     original_object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
     media_kind: Mapped[MediaKind] = mapped_column(_enum_column(MediaKind, "travel_media_kind"))
     captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # True when `captured_at` is the camera's wall-clock time as written in EXIF (stored with a nominal UTC label),
+    # not an instant; it is shown unchanged in any viewer zone. See docs/decisions/297-exif-capture-time.md.
+    captured_local: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
     import_id: Mapped[str | None] = mapped_column(ForeignKey("import_records.id"), nullable=True)
     raw_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

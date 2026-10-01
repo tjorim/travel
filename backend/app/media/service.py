@@ -19,7 +19,7 @@ import tempfile
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
 
@@ -100,7 +100,13 @@ def _dms_to_decimal(dms: tuple | None, ref: str | None) -> float | None:
     return -decimal if ref in ("S", "W") else decimal
 
 
-def _exif_captured_at(exif) -> datetime | None:
+def _exif_captured_at(exif) -> tuple[datetime, int | None] | None:
+    """The camera's wall-clock capture time and, when the camera wrote one, its UTC offset in minutes.
+
+    EXIF times normally carry no zone, and none is guessed: the wall time is
+    returned as written, labelled UTC only so it fits the column, and callers
+    flag it `captured_local` so it is displayed unchanged in any viewer zone.
+    """
     raw = exif.get(_EXIF_DATETIME_ORIGINAL)
     if not raw:
         return None
@@ -108,18 +114,15 @@ def _exif_captured_at(exif) -> datetime | None:
         captured = datetime.strptime(str(raw), "%Y:%m:%d %H:%M:%S")
     except ValueError:
         return None
-    offset = exif.get(_EXIF_OFFSET_TIME_ORIGINAL)
-    if offset and len(str(offset)) == 6 and str(offset)[0] in "+-":
-        sign = 1 if str(offset)[0] == "+" else -1
+    wall = captured.replace(tzinfo=UTC)
+    offset = str(exif.get(_EXIF_OFFSET_TIME_ORIGINAL) or "")
+    if len(offset) == 6 and offset[0] in "+-":
         try:
-            hours, minutes = (int(part) for part in str(offset)[1:].split(":"))
+            hours, minutes = (int(part) for part in offset[1:].split(":"))
         except ValueError:
-            return captured.replace(tzinfo=UTC)
-        return captured.replace(tzinfo=timezone(sign * timedelta(hours=hours, minutes=minutes)))
-    # EXIF rarely carries a UTC offset; treat a bare timestamp as the best
-    # available capture instant rather than dropping it, same as most photo
-    # tooling does.
-    return captured.replace(tzinfo=UTC)
+            return wall, None
+        return wall, (1 if offset[0] == "+" else -1) * (hours * 60 + minutes)
+    return wall, None
 
 
 def extract_exif_metadata(data: bytes) -> dict:
@@ -143,9 +146,11 @@ def extract_exif_metadata(data: bytes) -> dict:
             if model:
                 metadata["camera_model"] = str(model).strip("\x00 ")
             # Cameras keep the capture time in the Exif sub-IFD, not beside Make and Model.
-            captured_at = _exif_captured_at({**exif, **exif.get_ifd(_EXIF_SUB_IFD)})
-            if captured_at is not None:
-                metadata["captured_at"] = captured_at
+            captured = _exif_captured_at({**exif, **exif.get_ifd(_EXIF_SUB_IFD)})
+            if captured is not None:
+                metadata["captured_at"], offset_minutes = captured
+                if offset_minutes is not None:
+                    metadata["captured_utc_offset_minutes"] = offset_minutes
             gps_ifd = exif.get_ifd(_EXIF_GPS_IFD)
             if gps_ifd:
                 latitude = _dms_to_decimal(gps_ifd.get(2), gps_ifd.get(1))
@@ -290,6 +295,7 @@ def direct_upload(
         original_object_id=stored.id,
         media_kind=media_kind,
         captured_at=exif_captured_at or captured_at,
+        captured_local=exif_captured_at is not None,
         import_id=record.id,
         raw_metadata=raw_metadata,
     )
@@ -422,6 +428,7 @@ def complete_import_session(
                     original_object_id=stored.id,
                     media_kind=media_kind,
                     captured_at=exif_captured_at or item.captured_at,
+                    captured_local=exif_captured_at is not None,
                     import_id=None,
                     raw_metadata=raw_metadata,
                 )

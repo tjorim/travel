@@ -1,6 +1,7 @@
 import io
 import json
 import subprocess
+import time
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -79,6 +80,7 @@ def jpeg_bytes(
     with_exif: bool = True,
     with_gps: bool = False,
     captured_at: str | None = None,
+    offset: str | None = None,
 ) -> bytes:
     image = Image.new("RGB", (40, 30), color)
     buffer = io.BytesIO()
@@ -89,6 +91,8 @@ def jpeg_bytes(
         if captured_at:
             # DateTimeOriginal, "YYYY:MM:DD HH:MM:SS", in the Exif sub-IFD where cameras write it.
             exif.get_ifd(0x8769)[36867] = captured_at
+            if offset:
+                exif.get_ifd(0x8769)[36881] = offset  # OffsetTimeOriginal
         if with_gps:
             gps = exif.get_ifd(0x8825)
             gps[1] = "N"
@@ -580,6 +584,74 @@ def test_direct_upload_extracts_exif_for_the_owner_while_the_original_keeps_it_e
     assert Image.open(io.BytesIO(original.content)).getexif().get(271) == "ExampleCam"
 
 
+def test_exif_capture_time_is_camera_wall_time_whatever_the_server_zone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The server runs in a zone other than the photo's (Exampleland); the wall time must come back unchanged.
+    monkeypatch.setenv("TZ", "America/New_York")
+    time.tzset()
+    try:
+        owner = client_for("owner-1", tmp_path)
+        trip = create_trip(owner)
+        data = jpeg_bytes(captured_at="2054:11:20 10:15:00")
+
+        body = owner.post(
+            f"/api/trips/{trip['id']}/media/uploads", files={"file": ("taipei.jpg", data, "image/jpeg")}
+        ).json()
+        assert body["captured_local"] is True
+        assert body["captured_at"].startswith("2054-11-20T10:15:00")
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+
+def test_exif_wall_time_keeps_its_written_clock_when_the_camera_records_an_offset(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    data = jpeg_bytes(captured_at="2054:11:20 10:15:00", offset="+08:00")
+
+    body = owner.post(
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("taipei.jpg", data, "image/jpeg")}
+    ).json()
+
+    assert body["captured_local"] is True
+    assert body["captured_at"].startswith("2054-11-20T10:15:00")
+
+
+def test_candidate_grouping_uses_recorded_offsets_and_never_the_viewer_zone(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+
+    def upload(name: str, colour: tuple[int, int, int], taken: str, offset: str) -> dict:
+        return owner.post(
+            f"/api/trips/{trip['id']}/media/uploads",
+            files={"file": (name, jpeg_bytes(colour, captured_at=taken, offset=offset), "image/jpeg")},
+        ).json()
+
+    # 10:15 +08:00 and 04:30 +02:00 are 15 minutes apart in real time, though 5½ hours apart on the clock.
+    taipei = upload("taipei.jpg", (1, 1, 1), "2054:11:20 10:15:00", "+08:00")
+    brussels = upload("brussels.jpg", (2, 2, 2), "2054:11:20 04:30:00", "+02:00")
+    # The same wall time, but eight hours later in real time, is a separate candidate.
+    evening = upload("evening.jpg", (3, 3, 3), "2054:11:20 18:15:00", "+08:00")
+
+    body = owner.post(
+        f"/api/trips/{trip['id']}/media/travel-update-candidates",
+        json={"media_asset_ids": [taipei["id"], brussels["id"], evening["id"]]},
+    ).json()
+
+    assert len(body["candidates"]) == 2
+    first, second = body["candidates"]
+    assert set(first["media_asset_ids"]) == {taipei["id"], brussels["id"]}
+    assert second["media_asset_ids"] == [evening["id"]]
+    assert second["captured_local"] is True
+    assert second["starts_at"].startswith("2054-11-20T18:15:00")
+    assert {option["captured_at"][:19] for option in first["time_options"]} == {
+        "2054-11-20T10:15:00",
+        "2054-11-20T04:30:00",
+    }
+    assert all(option["captured_local"] for option in first["time_options"])
+
+
 def test_direct_upload_is_idempotent_and_never_duplicates_a_media_record(tmp_path: Path) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
@@ -944,6 +1016,7 @@ def test_imported_exif_capture_time_takes_precedence_over_the_providers_own_meta
     ).json()
 
     assert completed["imported"][0]["captured_at"].startswith("2054-04-01T08:30:00")
+    assert completed["imported"][0]["captured_local"] is True
 
 
 def test_completing_an_expired_import_session_is_rejected_and_marks_it_expired(tmp_path: Path) -> None:

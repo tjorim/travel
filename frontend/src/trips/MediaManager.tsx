@@ -27,10 +27,9 @@ import {
 } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { VisibilityControl } from "./visibility";
-import { dayjs } from "../dayjs";
 import {
   bytesLabel,
-  formatInstant,
+  formatCapture,
   visitTitle,
   type AreaSuggestion,
   type ImportCompleteResult,
@@ -447,7 +446,6 @@ export function MediaManager({
     setConfirmDeleteCopy(false);
     assetDialog.setError(errorNotice(error, fallback));
   };
-  const timestamp = formatInstant;
 
   function openUpload() {
     setUploadError(null);
@@ -711,6 +709,7 @@ export function MediaManager({
       tripId: trip.id,
       mediaAssetIds: candidate.media_asset_ids,
       occurredAt: time || undefined,
+      occurredAtLocal: candidate.time_options.find((option) => option.captured_at === time)?.captured_local,
       gps: selectedLocation && { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude },
     });
   }
@@ -834,7 +833,7 @@ export function MediaManager({
                   <strong>{asset.original_filename ?? m.owner_unnamed_media_item()}</strong>
                   <span>
                     {asset.media_kind === "photo" ? m.assets_photo() : m.assets_video()} · {bytesLabel(asset.byte_size)}
-                    {asset.captured_at ? ` · ${timestamp(asset.captured_at)}` : ""}
+                    {asset.captured_at ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}` : ""}
                   </span>
                 </div>
               </Button>
@@ -924,7 +923,7 @@ export function MediaManager({
               <strong>{candidateAssetNames(candidate)}</strong>
               <span>
                 {candidate.starts_at
-                  ? `${timestamp(candidate.starts_at)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${dayjs(candidate.ends_at).format("HH:mm")}` : ""}`
+                  ? `${formatCapture(candidate.starts_at, candidate.captured_local)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${formatCapture(candidate.ends_at, candidate.captured_local, "HH:mm")}` : ""}`
                   : m.assets_no_capture_time_available()}
               </span>
               {candidate.time_options.length > 1 && (
@@ -938,7 +937,7 @@ export function MediaManager({
                     <option value="">{m.assets_choose_a_time_yourself()}</option>
                     {candidate.time_options.map((option) => (
                       <option key={option.media_asset_id} value={option.captured_at}>
-                        {timestamp(option.captured_at)}
+                        {formatCapture(option.captured_at, option.captured_local)}
                       </option>
                     ))}
                   </SearchSelect>
@@ -1065,7 +1064,7 @@ export function MediaManager({
               <p>
                 {selected.media_kind === "photo" ? m.assets_photo() : m.assets_video()} ·{" "}
                 {bytesLabel(selected.byte_size)}
-                {selected.captured_at ? ` · ${timestamp(selected.captured_at)}` : ""}
+                {selected.captured_at ? ` · ${formatCapture(selected.captured_at, selected.captured_local)}` : ""}
               </p>
             </div>
             <div className="button-row">

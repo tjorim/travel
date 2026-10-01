@@ -1236,6 +1236,8 @@ class MediaAssetResponse(BaseModel):
     byte_size: int
     content_type: str
     captured_at: datetime | None
+    # True: captured_at is the camera's wall-clock time (UTC label is nominal) and is shown as written.
+    captured_local: bool = False
     created_at: datetime
     deleted_at: datetime | None
     original_filename: str | None
@@ -1310,6 +1312,7 @@ class MediaTravelUpdateCandidatesRequest(InputModel):
 class MediaTravelUpdateTimeOption(BaseModel):
     media_asset_id: str
     captured_at: datetime
+    captured_local: bool = False
 
 
 class MediaTravelUpdateLocationOption(MediaGpsCoordinates):
@@ -1321,6 +1324,7 @@ class MediaTravelUpdateCandidateResponse(BaseModel):
     media_asset_ids: list[str]
     starts_at: datetime | None
     ends_at: datetime | None
+    captured_local: bool = False
     time_options: list[MediaTravelUpdateTimeOption]
     location_options: list[MediaTravelUpdateLocationOption]
 

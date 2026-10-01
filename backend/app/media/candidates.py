@@ -31,12 +31,27 @@ class TravelUpdateCandidate:
     media_asset_ids: list[str]
     starts_at: datetime | None
     ends_at: datetime | None
-    time_options: list[tuple[str, datetime]]
+    captured_local: bool
+    time_options: list[tuple[str, datetime, bool]]
     location_options: list[CandidateLocation]
 
 
 def _utc(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def _instant(asset: MediaAsset) -> datetime:
+    """The moment used to order and group a capture time, never the viewer's zone.
+
+    A camera wall-clock time with a recorded offset is converted to its real
+    instant, so photos taken across a time-zone change group correctly; one
+    without an offset is compared as written, which holds within a single camera.
+    """
+    value = _utc(asset.captured_at)
+    offset = (asset.raw_metadata.get("exif") or {}).get("captured_utc_offset_minutes")
+    if asset.captured_local and isinstance(offset, int):
+        return value - timedelta(minutes=offset)
+    return value
 
 
 def _gps(asset: MediaAsset) -> tuple[float, float] | None:
@@ -92,14 +107,12 @@ def build_travel_update_candidates(assets: list[MediaAsset]) -> tuple[list[Trave
     """
     eligible = [asset for asset in assets if asset.captured_at is not None or _gps(asset) is not None]
     unavailable = [asset.id for asset in assets if asset not in eligible]
-    timed = sorted(
-        (asset for asset in eligible if asset.captured_at is not None), key=lambda asset: _utc(asset.captured_at)
-    )
+    timed = sorted((asset for asset in eligible if asset.captured_at is not None), key=_instant)
     groups: list[list[MediaAsset]] = []
     current: list[MediaAsset] = []
     start: datetime | None = None
     for asset in timed:
-        captured_at = _utc(asset.captured_at)
+        captured_at = _instant(asset)
         if start is None or captured_at - start <= GROUPING_WINDOW:
             current.append(asset)
             start = captured_at if start is None else start
@@ -112,7 +125,11 @@ def build_travel_update_candidates(assets: list[MediaAsset]) -> tuple[list[Trave
 
     candidates = []
     for group in groups:
-        time_options = [(asset.id, _utc(asset.captured_at)) for asset in group if asset.captured_at is not None]
+        time_options = [
+            (asset.id, _utc(asset.captured_at), asset.captured_local)
+            for asset in group
+            if asset.captured_at is not None
+        ]
         ids = [asset.id for asset in group]
         candidates.append(
             TravelUpdateCandidate(
@@ -120,6 +137,7 @@ def build_travel_update_candidates(assets: list[MediaAsset]) -> tuple[list[Trave
                 media_asset_ids=ids,
                 starts_at=time_options[0][1] if time_options else None,
                 ends_at=time_options[-1][1] if time_options else None,
+                captured_local=time_options[0][2] if time_options else False,
                 time_options=time_options,
                 location_options=_location_options(group),
             )
