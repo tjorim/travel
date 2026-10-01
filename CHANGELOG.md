@@ -6,6 +6,14 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Stopped the frontend suite timing out on a busy machine. Vitest now has a
+  project-wide 30 s `testTimeout` and `hookTimeout` (the 5 s default only
+  measured host load: `RouteManager` and `PublicationManager` tests failed at
+  5 s under a load average of about 16 and pass in under 2 s alone) and a
+  worker cap of eight. `isolate: false` was evaluated and kept off: it saved
+  CPU time but not wall time and made tests in several files fail on shared
+  state. The reasoning sits next to the config in `frontend/vite.config.ts`
+  (#298).
 - Kept EXIF capture times as the camera's wall-clock time. A bare
   `DateTimeOriginal` carries no zone and was stored as UTC, so an owner in
   Brussels saw a photo taken at 10:15 in Taiwan as 11:15 (or on another day). The
