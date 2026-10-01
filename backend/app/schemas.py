@@ -197,6 +197,62 @@ class LocationUpdate(InputModel):
     postal_code: str | None = Field(default=None, max_length=20)
     country_code: str | None = COUNTRY_CODE_FIELD
     notes: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
+    # The map target, applied from a place search result the owner has verified.
+    # An omitted field keeps its value; an explicit null clears it. Each group
+    # is set or cleared as a whole, and the owner-only OSM link follows the element.
+    latitude: float | None = Field(
+        default=None, ge=-90, le=90, description="Point latitude; send with longitude, or null with it to clear."
+    )
+    longitude: float | None = Field(
+        default=None, ge=-180, le=180, description="Point longitude; send with latitude, or null with it to clear."
+    )
+    viewport_north: float | None = Field(default=None, ge=-90, le=90)
+    viewport_south: float | None = Field(default=None, ge=-90, le=90)
+    viewport_east: float | None = Field(default=None, ge=-180, le=180)
+    viewport_west: float | None = Field(default=None, ge=-180, le=180)
+    osm_element_type: Literal["node", "way", "relation"] | None = Field(
+        default=None, description="OSM element type; send with osm_element_id, or null with it to clear."
+    )
+    osm_element_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=32,
+        pattern=r"^[0-9]+$",
+        description="OSM element id; send with osm_element_type, or null with it to clear.",
+    )
+    navigation_provider: str | None = Field(default=None, max_length=40)
+    navigation_provider_place_id: str | None = Field(default=None, max_length=255)
+
+    @model_validator(mode="after")
+    def geo_groups_are_set_or_cleared_together(self):
+        supplied = self.model_fields_set
+        groups = {
+            "latitude_and_longitude_must_be_supplied_together": ("latitude", "longitude"),
+            "the_four_viewport_edges_must_be_supplied_together": (
+                "viewport_north",
+                "viewport_south",
+                "viewport_east",
+                "viewport_west",
+            ),
+            "osm_element_type_and_osm_element_id_must_be_supplied_together": ("osm_element_type", "osm_element_id"),
+        }
+        for code, fields in groups.items():
+            present = [field for field in fields if field in supplied]
+            if present and len(present) != len(fields):
+                raise PydanticCustomError(code, "Supply " + ", ".join(fields) + " together")
+            values = [getattr(self, field) for field in present]
+            if values and any(value is None for value in values) and not all(value is None for value in values):
+                raise PydanticCustomError(code, "Supply " + ", ".join(fields) + " together, or null them together")
+        if (
+            self.viewport_north is not None
+            and self.viewport_south is not None
+            and self.viewport_north < self.viewport_south
+        ):
+            raise PydanticCustomError(
+                "the_viewport_north_edge_must_not_be_south_of_the_south_edge",
+                "The viewport's north edge must not be south of its south edge",
+            )
+        return self
 
 
 class MergeRequest(InputModel):

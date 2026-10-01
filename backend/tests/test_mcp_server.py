@@ -1002,3 +1002,19 @@ def test_a_full_owner_session_works_through_search_and_call_tool(backend: Travel
     asyncio.run(run())
     actions = [row[0] for row in _audit_rows()]
     assert {"location.merge_preview", "location.merge", "visit.update", "share_link.preview"} <= set(actions)
+
+
+def test_update_location_geocodes_in_place_through_the_mcp_tool(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Geocoding"))
+    location = backend.save_location(trip["id"], schemas.LocationInput(label="Longshan", display_name="Longshan"))
+    updated = backend.update_location(
+        trip["id"],
+        location["id"],
+        schemas.LocationUpdate(
+            latitude=25.0352844, longitude=121.4995813, osm_element_type="node", osm_element_id="3639530981"
+        ),
+    )
+    assert updated["id"] == location["id"] and updated["latitude"] == 25.0352844
+    assert updated["osm_url"] == "https://www.openstreetmap.org/node/3639530981"
+    with pytest.raises(ValueError, match="latitude"):
+        backend.update_location(trip["id"], location["id"], schemas.LocationUpdate(longitude=1.0))

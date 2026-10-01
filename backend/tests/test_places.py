@@ -711,3 +711,156 @@ def test_address_correction_updates_only_the_selected_link_and_cannot_share_an_e
     assert owner.patch(url, json={"share_address": False, "address_line2": None, "locality": None}).status_code == 200
     assert "address" not in visitor.get(f"/api/shared/{listed_token}").json()["places"][0]
     assert owner.patch(url, json={"share_address": True}).status_code == 422
+
+
+def _geocoded(**overrides) -> dict:
+    return {
+        "latitude": 25.0352844,
+        "longitude": 121.4995813,
+        "viewport_north": 25.0357,
+        "viewport_south": 25.0348,
+        "viewport_east": 121.5,
+        "viewport_west": 121.499,
+        "osm_element_type": "node",
+        "osm_element_id": "3639530981",
+        "navigation_provider": "osm",
+        "navigation_provider_place_id": "3639530981",
+        **overrides,
+    }
+
+
+def test_a_verified_place_result_geocodes_an_existing_location_in_place() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    area = owner.post(f"{trips_path}/areas", json={"label": "Taipei"}).json()
+    location = owner.post(
+        f"{trips_path}/locations",
+        json={"label": "Longshan Temple", "display_name": "Longshan Temple", "area_id": area["id"]},
+    ).json()
+    visit = owner.post(
+        f"{trips_path}/visits", json={"area_id": area["id"], "location": {"existing_location_id": location["id"]}}
+    )
+    assert visit.status_code == 201, visit.text
+    assert location["latitude"] is None and location["osm_url"] is None
+
+    updated = owner.patch(f"{trips_path}/locations/{location['id']}", json=_geocoded())
+    assert updated.status_code == 200, updated.text
+    body = updated.json()
+    assert body["id"] == location["id"]
+    assert body["latitude"] == 25.0352844 and body["longitude"] == 121.4995813
+    assert body["osm_url"] == "https://www.openstreetmap.org/node/3639530981"
+    assert body["viewport_north"] == 25.0357 and body["navigation_provider"] == "osm"
+    # Nothing else moves: label, area, visibility, address sharing and every reference.
+    for kept in ("label", "visibility", "share_address", "display_name"):
+        assert body[kept] == location[kept]
+    assert owner.get(f"{trips_path}/locations").json()[0]["id"] == location["id"]
+    visits = owner.get(f"{trips_path}/visits").json()
+    assert [(item["area"]["id"], item["location"]["id"]) for item in visits] == [(area["id"], location["id"])]
+    assert (
+        owner.get(f"{trips_path}/locations/{location['id']}/navigation")
+        .json()["url"]
+        .endswith("destination=25.0352844%2C121.4995813")
+    )
+
+    # Omitted fields keep their value; an unrelated edit leaves the target alone.
+    assert (
+        owner.patch(f"{trips_path}/locations/{location['id']}", json={"notes": "Pray"}).json()["latitude"] == 25.0352844
+    )
+
+    # Replacing the element replaces the URL, and clearing it clears the URL.
+    replaced = owner.patch(
+        f"{trips_path}/locations/{location['id']}", json={"osm_element_type": "way", "osm_element_id": "42"}
+    ).json()
+    assert replaced["osm_url"] == "https://www.openstreetmap.org/way/42"
+    cleared = owner.patch(
+        f"{trips_path}/locations/{location['id']}", json={"osm_element_type": None, "osm_element_id": None}
+    ).json()
+    assert cleared["osm_url"] is None and cleared["latitude"] == 25.0352844
+
+    # An explicit null point clears it with the owner's other data intact.
+    removed = owner.patch(f"{trips_path}/locations/{location['id']}", json={"latitude": None, "longitude": None})
+    assert removed.json()["latitude"] is None and removed.json()["label"] == "Longshan Temple"
+
+
+def test_geocoding_updates_reject_incomplete_out_of_range_and_stale_targets() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    location = owner.post(f"{trips_path}/locations", json={"label": "Temple", "display_name": "Temple"}).json()
+    path = f"{trips_path}/locations/{location['id']}"
+
+    for bad in (
+        {"latitude": 25.0},
+        {"longitude": 121.5},
+        {"latitude": 25.0, "longitude": None},
+        {"latitude": 91, "longitude": 121.5},
+        {"latitude": 25.0, "longitude": 181},
+        {"osm_element_type": "node"},
+        {"osm_element_id": "7"},
+        {"osm_element_type": "node", "osm_element_id": "abc"},
+        {"osm_element_type": "street", "osm_element_id": "7"},
+        {"viewport_north": 1.0, "viewport_south": 0.5},
+        {"viewport_north": 1.0, "viewport_south": 2.0, "viewport_east": 2.0, "viewport_west": 1.0},
+        {"navigation_provider_place_id": "7"},
+        {"surprise": 1},
+    ):
+        assert owner.patch(path, json=bad).status_code == 422, bad
+    assert owner.get(f"{trips_path}/locations").json()[0]["latitude"] is None
+
+    assert owner.patch(path, json=_geocoded()).status_code == 200
+    # A new point cannot keep provider data of the old place.
+    moved = owner.patch(path, json={"latitude": 25.1, "longitude": 121.6})
+    assert moved.status_code == 422
+    assert (
+        moved.json()["errors"][0]["code"]
+        == "moving_the_point_needs_the_osm_element_viewport_and_navigation_provider_of_the_new_place"
+    )
+    assert owner.get(f"{trips_path}/locations").json()[0]["latitude"] == 25.0352844
+    fresh = _geocoded(
+        latitude=25.1,
+        longitude=121.6,
+        osm_element_type=None,
+        osm_element_id=None,
+        navigation_provider=None,
+        navigation_provider_place_id=None,
+        viewport_north=None,
+        viewport_south=None,
+        viewport_east=None,
+        viewport_west=None,
+    )
+    body = owner.patch(path, json=fresh).json()
+    assert body["osm_url"] is None and body["osm_element_id"] is None and body["viewport_north"] is None
+    assert body["latitude"] == 25.1
+
+
+def test_changing_a_shared_locations_point_is_refused_until_it_is_private() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    location = owner.post(f"{trips_path}/locations", json={"label": "Temple", "display_name": "Temple"}).json()
+    share(owner, trip["id"], "location", location["id"], "everyone")
+    path = f"{trips_path}/locations/{location['id']}"
+
+    refused = owner.patch(path, json=_geocoded())
+    assert refused.status_code == 422
+    assert (
+        refused.json()["errors"][0]["code"]
+        == "make_this_location_private_before_changing_its_point_then_share_it_again"
+    )
+    shown = owner.get(path.rsplit("/", 1)[0]).json()[0]
+    assert shown["latitude"] is None and shown["visibility"] == "everyone"
+
+    # Provider references without a new point stay private data and are allowed.
+    assert owner.patch(path, json={"osm_element_type": "node", "osm_element_id": "7"}).status_code == 200
+
+
+def test_another_owner_cannot_geocode_a_location() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    location = owner.post(f"{trips_path}/locations", json={"label": "Temple", "display_name": "Temple"}).json()
+    intruder = client_for("owner-2")
+    assert intruder.patch(f"{trips_path}/locations/{location['id']}", json=_geocoded()).status_code == 404
+    owner = client_for("owner-1")
+    assert owner.get(f"{trips_path}/locations").json()[0]["latitude"] is None

@@ -89,14 +89,72 @@ def _carry_links(session: Session, location: Location) -> None:
         visit.area = location.area
 
 
+# What a place-search result says about one place: stale once the point moves elsewhere.
+_PROVIDER_REFERENCES = (
+    "osm_element_type",
+    "osm_element_id",
+    "viewport_north",
+    "viewport_south",
+    "viewport_east",
+    "viewport_west",
+    "navigation_provider",
+    "navigation_provider_place_id",
+)
+
+
+def _unprocessable(detail: str, code: str) -> ApiException:
+    return ApiException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail, code=code)
+
+
+def _apply_map_target(location: Location, payload: LocationUpdate) -> None:
+    """Apply the point, viewport, OSM element and navigation provider fields the payload names.
+
+    Omitted fields keep their values and explicit nulls clear them. The OSM URL
+    always follows the stored element, and a point that moves may not keep
+    provider references describing the old place."""
+    changes = payload.model_fields_set
+    if "latitude" in changes:
+        point = (payload.latitude, payload.longitude)
+        if point != (location.latitude, location.longitude) and payload.latitude is not None:
+            if location.visibility != Visibility.PRIVATE:
+                # A shared location publishes its point, so a new one is the owner's explicit sharing decision.
+                raise _unprocessable(
+                    "Make this location private before changing its point, then share it again",
+                    "make_this_location_private_before_changing_its_point_then_share_it_again",
+                )
+            stale = [field for field in _PROVIDER_REFERENCES if getattr(location, field) is not None]
+            if any(field not in changes for field in stale):
+                raise _unprocessable(
+                    "Moving the point also needs the OSM element, viewport and navigation provider "
+                    "of the new place: send them, or null the ones that no longer apply",
+                    "moving_the_point_needs_the_osm_element_viewport_and_navigation_provider_of_the_new_place",
+                )
+        location.latitude, location.longitude = point
+    for field in _PROVIDER_REFERENCES:
+        if field in changes:
+            setattr(location, field, getattr(payload, field))
+    if "osm_element_type" in changes:
+        location.osm_url = (
+            f"https://www.openstreetmap.org/{location.osm_element_type}/{location.osm_element_id}"
+            if location.osm_element_type is not None
+            else None
+        )
+    if location.navigation_provider_place_id is not None and location.navigation_provider is None:
+        raise _unprocessable(
+            "A navigation provider place id needs a navigation provider",
+            "a_navigation_provider_place_id_needs_a_navigation_provider",
+        )
+
+
 @router.patch("/locations/{location_id}", response_model=LocationResponse)
 def update_location(
     trip_id: str, location_id: str, payload: LocationUpdate, session: SessionDep, subject: SubjectDep
 ) -> Location:
-    """Correct a saved location without replacing its provider/map target.
+    """Correct a saved location, or apply a verified place-search result to it, in place.
 
     The location is reusable: every linked stay, visit, route end and update
-    reads the corrected address from this same record.
+    reads the corrected address and map target from this same record. Its id,
+    area, visibility and sharing choices are never changed by a map-target update.
     """
     location = owned_location(session, trip_id, subject, location_id)
     changes = payload.model_fields_set
@@ -125,6 +183,7 @@ def update_location(
     ):
         if field in changes:
             setattr(location, field, getattr(payload, field))
+    _apply_map_target(location, payload)
     if location.share_address and not any(
         (location.address_line1, location.address_line2, location.postal_code, location.locality, location.admin_area)
     ):

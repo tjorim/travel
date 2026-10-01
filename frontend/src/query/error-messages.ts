@@ -217,6 +217,18 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_keep_id_cannot_also_be_a_duplicate();
     case "add_an_address_before_sharing_it":
       return m.api_add_an_address_before_sharing_it();
+    case "latitude_and_longitude_must_be_supplied_together":
+      return m.api_latitude_and_longitude_must_be_supplied_together();
+    case "the_four_viewport_edges_must_be_supplied_together":
+      return m.api_the_four_viewport_edges_must_be_supplied_together();
+    case "the_viewport_north_edge_must_not_be_south_of_the_south_edge":
+      return m.api_the_viewport_north_edge_must_not_be_south_of_the_south_edge();
+    case "make_this_location_private_before_changing_its_point_then_share_it_again":
+      return m.api_make_this_location_private_before_changing_its_point_then_share_it_again();
+    case "moving_the_point_needs_the_osm_element_viewport_and_navigation_provider_of_the_new_place":
+      return m.api_moving_the_point_needs_the_osm_element_viewport_and_navigation_provider_of_the_new_place();
+    case "a_navigation_provider_place_id_needs_a_navigation_provider":
+      return m.api_a_navigation_provider_place_id_needs_a_navigation_provider();
     case "give_this_location_a_public_name_before_sharing_it":
       return m.api_give_this_location_a_public_name_before_sharing_it();
     case "location_has_no_navigation_target":

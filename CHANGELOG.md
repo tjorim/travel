@@ -6,6 +6,18 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Locations can be geocoded in place: `PATCH …/locations/{id}` and the MCP
+  `update_location` tool now accept the latitude and longitude, viewport edges,
+  OSM element type and id, and navigation provider fields of a verified
+  `search_places` result, so a named location gains its map point without a
+  replacement or merge. Omitted fields keep their value and an explicit null
+  clears one; the point, the viewport and the OSM element are each set or
+  cleared together, and the owner-only OSM link always follows the stored
+  element. Moving an existing point must restate or null the provider fields
+  of the old place, and a shared location must be made private before its point
+  changes, because a shared location publishes its point. The id, area, label,
+  visibility and every visit, stay, route end and reisupdate are untouched
+  (#319).
 - Added an `idea` status for routes, for transport that is only being compared
   (migration `010_planning_statuses`; existing routes keep their status, and
   the downgrade turns ideas back into `planned`). Routes are now `idea`,

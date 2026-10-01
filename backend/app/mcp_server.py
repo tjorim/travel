@@ -785,7 +785,7 @@ class TravelMcpBackend:
         )
 
     def update_location(self, trip_id: str, location_id: str, payload: schemas.LocationUpdate) -> dict[str, Any]:
-        """Give a location its public name (a location cannot be shared without one), or move it to another area; its routes and visits move along."""
+        """Give a location its public name (a location cannot be shared without one), move it to another area (its routes and visits move along), or geocode it in place: after search_places, verify the match and send its latitude and longitude, viewport edges, osm_element_type and osm_element_id (the OSM link follows the element) and navigation provider fields. The id and every visit, stay, route end and reisupdate keep pointing at it; area, label and visibility never change. Omitted fields keep their value and null clears one; latitude/longitude, the four viewport edges and the OSM type/id are each set or cleared together. Moving an existing point needs the new place's OSM, viewport and provider fields too (null the ones that no longer apply), and a shared location must be made private first, because a shared location publishes its point."""
         return self._call(
             "location.update",
             "location",
