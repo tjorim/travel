@@ -1769,5 +1769,84 @@
   "owner_date_and_time_both": "Vul zowel een datum als een tijd in, of laat beide leeg.",
   "owner_choose_date_in_calendar": "{label}: kies in de kalender",
   "owner_label_date": "{label}, datum",
-  "owner_label_time": "{label}, tijd"
+  "owner_label_time": "{label}, tijd",
+  "owner_same_name": "dezelfde naam",
+  "owner_same_coordinates": "dezelfde coördinaten",
+  "owner_same_address": "hetzelfde adres",
+  "owner_merge_locations": "Locaties samenvoegen",
+  "owner_merge_areas": "Gebieden samenvoegen",
+  "owner_merge_location_intro": "Kies de locatie die je bewaart en de dubbele locaties die erin opgaan. Hun bezoeken, verblijven, routes en reisupdates verhuizen naar de bewaarde locatie; daarna worden de dubbelen verwijderd. Je ziet eerst een voorbeeld, en er verandert niets voordat je bevestigt.",
+  "owner_merge_area_intro": "Kies het gebied dat je bewaart en de dubbele gebieden die erin opgaan. Hun locaties, bezoeken, routes en reisupdates verhuizen naar het bewaarde gebied; daarna worden de dubbelen verwijderd. Je ziet eerst een voorbeeld, en er verandert niets voordat je bevestigt.",
+  "owner_location_to_keep": "Locatie die je bewaart",
+  "owner_area_to_keep": "Gebied dat je bewaart",
+  "owner_duplicate_locations_to_merge": "Dubbele locaties om samen te voegen",
+  "owner_duplicate_areas_to_merge": "Dubbele gebieden om samen te voegen",
+  "owner_nothing_else_to_merge": "Er is niets anders om mee samen te voegen.",
+  "owner_probably_the_same": "Waarschijnlijk dubbel: {p0}",
+  "owner_preview_merge": "Voorbeeld bekijken",
+  "owner_what_the_merge_does": "Dit gebeurt er bij het samenvoegen",
+  "owner_merge_keeps": "Je bewaart: {p0}",
+  "owner_merge_into": "{p0} gaat op in het bewaarde onderdeel",
+  "owner_merge_count_locations": "Locaties die verhuizen: {p0}",
+  "owner_merge_count_visits": "Bezoeken die verhuizen: {p0}",
+  "owner_merge_count_stays": "Verblijven die verhuizen: {p0}",
+  "owner_merge_count_routes": "Routes die verhuizen: {p0}",
+  "owner_merge_count_travel_updates": "Reisupdates die verhuizen: {p0}",
+  "owner_merge_warnings": "Waarschuwingen bij het samenvoegen",
+  "owner_merge_no_warnings": "Geen waarschuwingen: niemand verliest iets door dit samenvoegen.",
+  "owner_merge_location_narrows": "{p0} bereikt nu {p1}, maar de bewaarde locatie niet. Na het samenvoegen zien zij die niet meer. Deel eerst de bewaarde locatie om dat te voorkomen.",
+  "owner_merge_area_narrows": "{p0} bereikt nu {p1}, maar het bewaarde gebied niet. Na het samenvoegen zien zij het niet meer. Deel eerst het bewaarde gebied om dat te voorkomen.",
+  "owner_merge_moves_to_area": "Bezoeken en routes bij {p0} verhuizen naar het gebied van de bewaarde locatie: {p1}.",
+  "owner_merge_city_level": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} locatie in het samengevoegde gebied noemt alleen de stad. Voeg die daarna samen met een andere.",
+        "countPlural=other": "{count} locaties in het samengevoegde gebied noemen alleen de stad en zijn waarschijnlijk dubbel. Voeg ze daarna samen."
+      }
+    }
+  ],
+  "owner_merge_location_cannot_be_undone": "Samenvoegen kan niet ongedaan worden gemaakt. De bewaarde locatie houdt haar eigen naam, zichtbaarheid en gebied.",
+  "owner_merge_area_cannot_be_undone": "Samenvoegen kan niet ongedaan worden gemaakt. Het bewaarde gebied houdt zijn eigen naam, kaartpunt, tijdzone en zichtbaarheid.",
+  "owner_merge": "Samenvoegen",
+  "owner_merging": "Bezig met samenvoegen…",
+  "owner_back": "Terug",
+  "owner_merge_locations_question": "Locaties samenvoegen?",
+  "owner_merge_areas_question": "Gebieden samenvoegen?",
+  "owner_merge_confirmation": "De gekozen dubbelen worden verwijderd en alles wat eraan hangt verhuist naar {p0}. Dit kan niet ongedaan worden gemaakt.",
+  "owner_merge_for_good": "Definitief samenvoegen",
+  "owner_the_location_merge_could_not_be_previewed": "Het voorbeeld van het samenvoegen kon niet worden geladen.",
+  "owner_the_area_merge_could_not_be_previewed": "Het voorbeeld van het samenvoegen kon niet worden geladen.",
+  "owner_the_locations_could_not_be_merged": "De locaties konden niet worden samengevoegd. Er is niets gewijzigd.",
+  "owner_the_areas_could_not_be_merged": "De gebieden konden niet worden samengevoegd. Er is niets gewijzigd.",
+  "owner_locations_merged": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} locatie samengevoegd.",
+        "countPlural=other": "{count} locaties samengevoegd."
+      }
+    }
+  ],
+  "owner_areas_merged": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} gebied samengevoegd.",
+        "countPlural=other": "{count} gebieden samengevoegd."
+      }
+    }
+  ],
+  "owner_merge_with_other_locations": "Samenvoegen met andere locaties",
+  "owner_merge_with_other_areas": "Samenvoegen met andere gebieden",
+  "owner_merge_instead_of_deleting_location": "Wil je opruimen? Voeg deze locatie liever samen met een andere: alles wat eraan hangt verhuist dan mee.",
+  "owner_merge_instead_of_deleting_area": "Wil je opruimen? Voeg dit gebied liever samen met een ander: alles wat eraan hangt verhuist dan mee.",
+  "owner_possible_duplicate_locations": "Mogelijk dubbele locaties",
+  "owner_possible_duplicate_areas": "Mogelijk dubbele gebieden",
+  "owner_possible_duplicates_help": "Dit zijn alleen suggesties. Er wordt niets samengevoegd voordat je het voorbeeld hebt gezien en bevestigt.",
+  "owner_review_merge": "Samenvoegen bekijken",
+  "owner_review_merge_of": "Samenvoegen bekijken: {p0}"
 }

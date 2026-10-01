@@ -2,12 +2,12 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { RecordForm, requiredText, TextField, TimeZoneField } from "../forms/fields";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
-import { errorMessage } from "../query/api";
+import { errorMessage, isResourceInUse } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
@@ -15,7 +15,9 @@ import { type Area, type PlaceSearchResult, type Trip } from "../tracker-model";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { PlaceSearchField } from "./PlaceSearchField";
 import { AreaContents } from "./AreaContents";
-import { LocationManager, ownerLocationName } from "./LocationManager";
+import { LocationManager, matchableLocationName, ownerLocationName } from "./LocationManager";
+import { duplicateAreas, duplicateLocations, type DuplicateGroup } from "./merge-candidates";
+import { MergeDialog, mergedNotice, reasonsText, type MergeRequest } from "./MergeDialog";
 
 type Values = {
   label: string;
@@ -72,6 +74,48 @@ const knownTimeZone = ({ value }: { value: string }) => {
 };
 const areaCoordinate = (value: number) => (Math.round(value * 100) / 100).toString();
 
+/** Likely duplicates, listed without acting on them: reviewing opens the merge preview. */
+function DuplicateSuggestions({
+  title,
+  groups,
+  nameOf,
+  onReview,
+}: {
+  title: string;
+  groups: DuplicateGroup[];
+  nameOf: (id: string) => string;
+  onReview: (group: DuplicateGroup) => void;
+}) {
+  useLocale();
+  if (!groups.length) return null;
+  return (
+    <section className="grid gap-2 rounded-xl border border-travel-divider bg-travel-surface p-4">
+      <h4 className="m-0">{title}</h4>
+      <p className="help">{m.owner_possible_duplicates_help()}</p>
+      <ul className="m-0 grid list-none gap-2 p-0">
+        {groups.map((group) => {
+          const names = group.ids.map(nameOf).join(" · ");
+          return (
+            <li className="flex flex-wrap items-center justify-between gap-2" key={group.ids.join()}>
+              <span>
+                {names} <span className="help">({reasonsText(group.reasons)})</span>
+              </span>
+              <Button
+                className="secondary compact"
+                type="button"
+                aria-label={m.owner_review_merge_of({ p0: names })}
+                onClick={() => onReview(group)}
+              >
+                {m.owner_review_merge()}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 export function AreaManager({
   trip,
   focusId,
@@ -86,10 +130,20 @@ export function AreaManager({
   const areas = areasQuery.data ?? [];
   const locationsQuery = useTripResource(trip.id, "locations");
   const locations = locationsQuery.data ?? [];
-  const [locationRequest, setLocationRequest] = useState<{ id?: string; areaId?: string; token: number } | null>(null);
+  const [locationRequest, setLocationRequest] = useState<{
+    id?: string;
+    areaId?: string;
+    duplicateIds?: string[];
+    token: number;
+  } | null>(null);
   const [resumeLocation, setResumeLocation] = useState(false);
-  const requestLocation = (id?: string, areaId?: string) =>
-    setLocationRequest({ id, areaId, token: Date.now() + Math.random() });
+  const requestLocation = (id?: string, areaId?: string, duplicateIds?: string[]) =>
+    setLocationRequest({ id, areaId, duplicateIds, token: Date.now() + Math.random() });
+  const [merge, setMerge] = useState<MergeRequest | null>(null);
+  // The last delete was refused because the area is still used, so merging is the way to tidy up.
+  const [inUse, setInUse] = useState(false);
+  const duplicateAreaGroups = useMemo(() => duplicateAreas(areas), [areas]);
+  const duplicateLocationGroups = useMemo(() => duplicateLocations(locations, matchableLocationName), [locations]);
   const dialog = useRecordDialog(areas);
   useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useFeedback<string>(
@@ -142,6 +196,8 @@ export function AreaManager({
   function close() {
     dialog.close();
     record.load(blank());
+    setMerge(null);
+    setInUse(false);
   }
   function create() {
     record.load(blank());
@@ -159,6 +215,7 @@ export function AreaManager({
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
+        setInUse(isResourceInUse(error));
         dialog.setError(errorNotice(error, m.owner_the_area_could_not_be_deleted));
       },
     );
@@ -179,6 +236,17 @@ export function AreaManager({
   const summary = (area: Area) =>
     [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") || m.owner_only_for_this_trip();
   const { selected, editing, editingId } = dialog;
+  // dialog.error is cleared whenever the dialog moves to another record.
+  const refused = inUse && Boolean(dialog.error);
+  const mergeButton = (
+    <Button
+      className={refused ? undefined : "secondary"}
+      type="button"
+      onClick={() => selected && setMerge({ keepId: selected.id, duplicateIds: [], token: Date.now() })}
+    >
+      {m.owner_merge_with_other_areas()}
+    </Button>
+  );
 
   return (
     <section className="travel-card manager" id="areas" aria-labelledby="areas-title">
@@ -204,6 +272,25 @@ export function AreaManager({
         <p role="status">{errorMessage(locationsQuery.error, m.owner_your_locations_could_not_be_loaded)}</p>
       )}
       {locationsQuery.isPending && <p role="status">{m.owner_loading_locations()}</p>}
+      <DuplicateSuggestions
+        title={m.owner_possible_duplicate_areas()}
+        groups={duplicateAreaGroups}
+        nameOf={(id) => areas.find((area) => area.id === id)?.label ?? ""}
+        onReview={({ ids: [keepId, ...duplicateIds] }) => {
+          dialog.inspect(keepId);
+          setInUse(false);
+          setMerge({ keepId, duplicateIds, token: Date.now() });
+        }}
+      />
+      <DuplicateSuggestions
+        title={m.owner_possible_duplicate_locations()}
+        groups={duplicateLocationGroups}
+        nameOf={(id) => {
+          const place = locations.find((candidate) => candidate.id === id);
+          return place ? ownerLocationName(place) : "";
+        }}
+        onReview={({ ids: [keepId, ...duplicateIds] }) => requestLocation(keepId, undefined, duplicateIds)}
+      />
       {areas.length ? (
         <div className="saved-records mt-0.5">
           {areas.map((area) => (
@@ -308,10 +395,29 @@ export function AreaManager({
               <Button type="button" onClick={() => edit(selected)}>
                 {m.owner_edit()}
               </Button>
+              {areas.length > 1 && !refused && mergeButton}
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 {m.owner_delete()}
               </Button>
             </div>
+            {refused && areas.length > 1 && (
+              <div className="grid gap-2">
+                <p>{m.owner_merge_instead_of_deleting_area()}</p>
+                <div className="button-row">{mergeButton}</div>
+              </div>
+            )}
+            <MergeDialog
+              trip={trip}
+              kind="area"
+              records={areas.map((area) => ({ id: area.id, name: area.label, detail: summary(area) }))}
+              suggestions={duplicateAreaGroups}
+              request={merge}
+              onClose={() => setMerge(null)}
+              onMerged={(_keepId, merged) => {
+                close();
+                setMessage(mergedNotice("area", merged));
+              }}
+            />
             {dialog.confirmDelete && (
               <DeleteConfirmation
                 title={m.owner_delete_area({ p0: selected.label })}

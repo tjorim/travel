@@ -2,11 +2,12 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CheckboxField, RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
+import { isResourceInUse } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 
@@ -20,6 +21,8 @@ import {
   type ShareLink,
   type Trip,
 } from "../tracker-model";
+import { duplicateLocations } from "./merge-candidates";
+import { MergeDialog, mergedNotice, type MergeRequest } from "./MergeDialog";
 import { PlaceSearchField } from "./PlaceSearchField";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 
@@ -134,6 +137,9 @@ function mapTarget(latitude: number | null | undefined, longitude: number | null
   );
 }
 export const ownerLocationName = (place: Location) => place.display_name?.split(",")[0]?.trim() || locationName(place);
+/** The name two locations are compared by; an unnamed location has none, so it never matches by name. */
+export const matchableLocationName = (place: Location) =>
+  place.display_name || place.label || place.locality ? ownerLocationName(place) : "";
 const optional = (value: string) => value.trim() || null;
 const serverFields = {
   area_id: "areaId",
@@ -160,7 +166,8 @@ export function LocationManager({
   trip: Trip;
   areas: Area[];
   focusId?: DialogFocusRequest | null;
-  request?: { id?: string; areaId?: string; token: number } | null;
+  /** Opens a location, starts a new one in an area, or (with `duplicateIds`) previews merging them into `id`. */
+  request?: { id?: string; areaId?: string; duplicateIds?: string[]; token: number } | null;
   onNeedArea: () => void;
   onSaved?: () => void;
 }) {
@@ -173,6 +180,10 @@ export function LocationManager({
   useDialogFocus(focusId, dialog.inspect);
   const [suggestion, setSuggestion] = useState<PlaceSearchResult | null>(null);
   const [resume, setResume] = useState(false);
+  const [merge, setMerge] = useState<MergeRequest | null>(null);
+  // The last delete was refused because the location is still used, so merging is the way to tidy up.
+  const [inUse, setInUse] = useState(false);
+  const suggestions = useMemo(() => duplicateLocations(locations, matchableLocationName), [locations]);
   const [notice, setNotice] = useFeedback<string>("");
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Location>({
     fallback: m.owner_the_location_could_not_be_saved,
@@ -243,6 +254,8 @@ export function LocationManager({
     record.load(blank());
     setSuggestion(null);
     setResume(false);
+    setMerge(null);
+    setInUse(false);
   }
   function create(areaId = "") {
     record.load(blank(areaId));
@@ -259,6 +272,7 @@ export function LocationManager({
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
+        setInUse(isResourceInUse(error));
         dialog.setError(errorNotice(error, m.owner_the_location_could_not_be_deleted));
       },
     );
@@ -271,8 +285,12 @@ export function LocationManager({
   }
   useEffect(() => {
     if (!request) return;
-    if (request.id) dialog.inspect(request.id);
-    else if (resume) {
+    if (request.id) {
+      dialog.inspect(request.id);
+      setInUse(false);
+      if (request.duplicateIds)
+        setMerge({ keepId: request.id, duplicateIds: request.duplicateIds, token: request.token });
+    } else if (resume) {
       record.form.setFieldValue("areaId", request.areaId ?? "");
       setResume(false);
       dialog.create();
@@ -296,6 +314,18 @@ export function LocationManager({
   const { selected, editing, editingId } = dialog;
   const addressPreview = addressProjection(record.values);
   const canShareAddress = shareableAddress(record.values);
+  // dialog.error is cleared whenever the dialog moves to another record.
+  const refused = inUse && Boolean(dialog.error);
+  const areaLabel = (id: string) => areas.find((area) => area.id === id)?.label;
+  const mergeButton = (
+    <Button
+      className={refused ? undefined : "secondary"}
+      type="button"
+      onClick={() => selected && setMerge({ keepId: selected.id, duplicateIds: [], token: Date.now() })}
+    >
+      {m.owner_merge_with_other_locations()}
+    </Button>
+  );
   const currentRecipients = selected ? recipients(selected, statusQuery.data, linksQuery.data) : [];
   return (
     <>
@@ -388,10 +418,38 @@ export function LocationManager({
               <Button type="button" onClick={() => edit(selected)}>
                 {m.owner_edit()}
               </Button>
+              {locations.length > 1 && !refused && mergeButton}
               <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
                 {m.owner_delete()}
               </Button>
             </div>
+            {refused && locations.length > 1 && (
+              <div className="grid gap-2">
+                <p>{m.owner_merge_instead_of_deleting_location()}</p>
+                <div className="button-row">{mergeButton}</div>
+              </div>
+            )}
+            <MergeDialog
+              trip={trip}
+              kind="location"
+              records={locations.map((place) => ({
+                id: place.id,
+                name: ownerLocationName(place),
+                detail: [place.address_line1, place.locality, areaLabel(place.area_id)].filter(Boolean).join(" · "),
+                areaId: place.area_id,
+              }))}
+              areas={areas}
+              suggestions={suggestions}
+              request={merge}
+              onClose={() => setMerge(null)}
+              onMerged={(keepId, merged) => {
+                setMerge(null);
+                setInUse(false);
+                dialog.inspect(keepId);
+                setNotice(mergedNotice("location", merged));
+                onSaved?.();
+              }}
+            />
             {dialog.confirmDelete && (
               <DeleteConfirmation
                 title={m.owner_delete_location({ p0: ownerLocationName(selected) })}

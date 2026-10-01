@@ -57,6 +57,10 @@ export class ApiError extends Error {
   }
 }
 
+/** The server refused because other records still point at this one. */
+export const isResourceInUse = (error: unknown): boolean =>
+  error instanceof ApiError && error.descriptors.some((descriptor) => descriptor.code === "resource_in_use");
+
 function isDescriptor(value: unknown): value is ErrorDescriptor {
   if (!value || typeof value !== "object") return false;
   const descriptor = value as ErrorDescriptor;

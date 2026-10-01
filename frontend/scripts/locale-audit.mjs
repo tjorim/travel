@@ -59,6 +59,7 @@ const exclusions = {
   },
   "pages/Settings.tsx": { "Google Photos": "provider brand", "GoPro Cloud": "provider brand" },
   "trips/CaptureDialog.tsx": { connection: "CSS class fragment" },
+  "trips/merge-candidates.ts": { "public page": "audience name the API returns, translated where it is shown" },
   "trips/MediaManager.tsx": {
     "media-thumbnail-placeholder": "CSS class fragment",
     "Google Photos": "provider brand",

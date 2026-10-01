@@ -1769,5 +1769,84 @@
   "owner_date_and_time_both": "Enter both a date and a time, or leave both empty.",
   "owner_choose_date_in_calendar": "{label}: choose in the calendar",
   "owner_label_date": "{label}, date",
-  "owner_label_time": "{label}, time"
+  "owner_label_time": "{label}, time",
+  "owner_same_name": "same name",
+  "owner_same_coordinates": "same coordinates",
+  "owner_same_address": "same address",
+  "owner_merge_locations": "Merge locations",
+  "owner_merge_areas": "Merge areas",
+  "owner_merge_location_intro": "Choose the location you keep and the duplicates that fold into it. Their visits, stays, routes and travel updates move to the kept location, and the duplicates are then deleted. You see a preview first, and nothing changes until you confirm.",
+  "owner_merge_area_intro": "Choose the area you keep and the duplicates that fold into it. Their locations, visits, routes and travel updates move to the kept area, and the duplicates are then deleted. You see a preview first, and nothing changes until you confirm.",
+  "owner_location_to_keep": "Location to keep",
+  "owner_area_to_keep": "Area to keep",
+  "owner_duplicate_locations_to_merge": "Duplicate locations to merge",
+  "owner_duplicate_areas_to_merge": "Duplicate areas to merge",
+  "owner_nothing_else_to_merge": "There is nothing else to merge with.",
+  "owner_probably_the_same": "Probably the same: {p0}",
+  "owner_preview_merge": "Preview merge",
+  "owner_what_the_merge_does": "What the merge does",
+  "owner_merge_keeps": "You keep: {p0}",
+  "owner_merge_into": "{p0} folds into the kept record",
+  "owner_merge_count_locations": "Locations that move: {p0}",
+  "owner_merge_count_visits": "Visits that move: {p0}",
+  "owner_merge_count_stays": "Stays that move: {p0}",
+  "owner_merge_count_routes": "Routes that move: {p0}",
+  "owner_merge_count_travel_updates": "Travel updates that move: {p0}",
+  "owner_merge_warnings": "Merge warnings",
+  "owner_merge_no_warnings": "No warnings: nobody loses anything through this merge.",
+  "owner_merge_location_narrows": "{p0} currently reaches {p1}, but the kept location does not. After the merge they no longer see it. Share the kept location first to avoid that.",
+  "owner_merge_area_narrows": "{p0} currently reaches {p1}, but the kept area does not. After the merge they no longer see it. Share the kept area first to avoid that.",
+  "owner_merge_moves_to_area": "Visits and routes at {p0} move to the kept location’s area: {p1}.",
+  "owner_merge_city_level": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} location in the merged area names only the city. Merge it with another afterwards.",
+        "countPlural=other": "{count} locations in the merged area name only the city and are probably duplicates. Merge them afterwards."
+      }
+    }
+  ],
+  "owner_merge_location_cannot_be_undone": "A merge cannot be undone. The kept location keeps its own name, visibility and area.",
+  "owner_merge_area_cannot_be_undone": "A merge cannot be undone. The kept area keeps its own name, map point, time zone and visibility.",
+  "owner_merge": "Merge",
+  "owner_merging": "Merging…",
+  "owner_back": "Back",
+  "owner_merge_locations_question": "Merge locations?",
+  "owner_merge_areas_question": "Merge areas?",
+  "owner_merge_confirmation": "The chosen duplicates are deleted and everything attached to them moves to {p0}. This cannot be undone.",
+  "owner_merge_for_good": "Merge for good",
+  "owner_the_location_merge_could_not_be_previewed": "The merge preview could not be loaded.",
+  "owner_the_area_merge_could_not_be_previewed": "The merge preview could not be loaded.",
+  "owner_the_locations_could_not_be_merged": "The locations could not be merged. Nothing was changed.",
+  "owner_the_areas_could_not_be_merged": "The areas could not be merged. Nothing was changed.",
+  "owner_locations_merged": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} location merged.",
+        "countPlural=other": "{count} locations merged."
+      }
+    }
+  ],
+  "owner_areas_merged": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} area merged.",
+        "countPlural=other": "{count} areas merged."
+      }
+    }
+  ],
+  "owner_merge_with_other_locations": "Merge with other locations",
+  "owner_merge_with_other_areas": "Merge with other areas",
+  "owner_merge_instead_of_deleting_location": "Want to tidy up? Merge this location with another instead: everything attached to it moves along.",
+  "owner_merge_instead_of_deleting_area": "Want to tidy up? Merge this area with another instead: everything attached to it moves along.",
+  "owner_possible_duplicate_locations": "Possible duplicate locations",
+  "owner_possible_duplicate_areas": "Possible duplicate areas",
+  "owner_possible_duplicates_help": "These are only suggestions. Nothing is merged until you have seen the preview and confirmed.",
+  "owner_review_merge": "Review merge",
+  "owner_review_merge_of": "Review merge: {p0}"
 }

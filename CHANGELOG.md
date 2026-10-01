@@ -24,6 +24,19 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Added merging of duplicate locations and areas to the owner PWA (#295). In
+  "Gebieden en locaties" the owner opens a location or area, chooses what to
+  keep and which duplicates fold into it, reads the API's preview (counts of the
+  visits, stays, routes and reisupdates that move, who would stop seeing a
+  duplicate, a location's visits moving to another area, city-level locations
+  left to merge after an area merge) in the interface language, and confirms
+  twice because a merge cannot be undone. Cancelling changes nothing and a failed
+  preview or merge is shown inside the dialog. Likely duplicates (same name,
+  same map point or same street address; areas by name or map point) are listed
+  as suggestions that only open the preview, and a refused delete of a record
+  that is still in use now points at the merge. The warnings are built from the
+  preview's structured fields, not the API's English sentences.
+
 - Added explicit Dutch/English draft translation for long-form owner text. A
   translate action in the Markdown editor sends the field's text to a
   self-hosted, on-demand LibreTranslate service (apps#250, apps#252) and shows an

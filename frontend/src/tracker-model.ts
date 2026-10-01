@@ -754,3 +754,38 @@ export function openBlobInNewTab(blob: Blob): void {
   }
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
+
+/** What `POST …/locations/merge` returns: a preview without `confirm`, the applied merge with it. */
+export type LocationMergeResult = {
+  keep_id: string;
+  applied: boolean;
+  duplicates: {
+    id: string;
+    label: string | null;
+    display_name: string | null;
+    area_id: string;
+    visits: number;
+    stays: number;
+    routes: number;
+    travel_updates: number;
+    /** The server's audience names: "public page" or `link '<label>'`. */
+    narrowed_audiences: string[];
+  }[];
+};
+
+/** What `POST …/areas/merge` returns. */
+export type AreaMergeResult = {
+  keep_id: string;
+  applied: boolean;
+  duplicates: {
+    id: string;
+    label: string;
+    locations: number;
+    visits: number;
+    routes: number;
+    travel_updates: number;
+    narrowed_audiences: string[];
+  }[];
+  /** Locations in the merged area that only name the city, so likely duplicates of each other. */
+  city_level_location_ids: string[];
+};
