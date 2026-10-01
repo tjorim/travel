@@ -623,6 +623,23 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
     assert sorted(results) == ["rejected", "succeeded"]
 
 
+def test_route_tools_refuse_a_route_between_the_same_place(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Same place"))
+    taipei = backend.save_area(trip["id"], schemas.AreaInput(label="Taipei"))
+    tainan = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan"))
+
+    with pytest.raises(ValueError, match="departure and arrival are the same"):
+        backend.create_route(
+            trip["id"], schemas.RouteCreate(mode="train", departure_area_id=taipei["id"], arrival_area_id=taipei["id"])
+        )
+    route = backend.create_route(
+        trip["id"], schemas.RouteCreate(mode="train", departure_area_id=taipei["id"], arrival_area_id=tainan["id"])
+    )
+    with pytest.raises(ValueError, match="departure and arrival are the same"):
+        backend.update_route(trip["id"], route["id"], schemas.RouteUpdate(arrival_area_id=taipei["id"]))
+    assert backend.list_routes(trip["id"])[0]["arrival_area"]["id"] == tainan["id"]
+
+
 def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_leak(backend: TravelMcpBackend) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Overview", starts_on="2054-11-16", ends_on="2054-12-10"))
     chiayi = backend.save_area(

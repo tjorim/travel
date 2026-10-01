@@ -9,6 +9,7 @@ from test_publication import share
 from app.auth import current_subject
 from app.database import Base, get_session
 from app.main import app
+from app.models import Route
 from app.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -152,6 +153,109 @@ def test_arrival_must_be_after_departure(tmp_path) -> None:
     route = create_route(owner, trip["id"])
     edited = owner.patch(f"/api/trips/{trip['id']}/routes/{route['id']}", json={"departs_at": "2054-04-02T09:00:00Z"})
     assert edited.status_code == 422
+
+
+def place_payload(**ends) -> dict:
+    return {"mode": "train", "status": "planned", **ends}
+
+
+def test_a_route_cannot_start_and_end_at_the_same_place(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}/routes"
+    taipei = area_id(owner, trip["id"], "Taipei")
+    station = owner.post(f"/api/trips/{trip['id']}/locations", json={"display_name": "Taipei Main", "area_id": taipei})
+    hotel = owner.post(f"/api/trips/{trip['id']}/locations", json={"display_name": "Hotel", "area_id": taipei})
+    assert station.status_code == hotel.status_code == 201, station.text + hotel.text
+    station_id, hotel_id = station.json()["id"], hotel.json()["id"]
+
+    # The very same area on both ends, with no location.
+    same_area = owner.post(base, json=place_payload(departure_area_id=taipei, arrival_area_id=taipei))
+    assert same_area.status_code == 422
+    assert same_area.json()["errors"][0]["code"] == "route_ends_are_the_same_place"
+
+    # The very same location on both ends.
+    same_location = owner.post(
+        base,
+        json=place_payload(
+            departure_location={"existing_location_id": station_id},
+            arrival_location={"existing_location_id": station_id},
+        ),
+    )
+    assert same_location.status_code == 422
+    assert same_location.json()["errors"][0]["code"] == "route_ends_are_the_same_place"
+    assert owner.get(base).json() == []
+
+    # Two locations inside one area, and a whole area to a location inside it, stay valid.
+    between = owner.post(
+        base,
+        json=place_payload(
+            departure_location={"existing_location_id": hotel_id},
+            arrival_location={"existing_location_id": station_id},
+        ),
+    )
+    assert between.status_code == 201, between.text
+    into = owner.post(
+        base,
+        json=place_payload(departure_area_id=taipei, arrival_location={"existing_location_id": station_id}),
+    )
+    assert into.status_code == 201, into.text
+
+
+def test_a_partial_update_cannot_make_a_route_start_and_end_at_the_same_place(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}/routes"
+    taipei = area_id(owner, trip["id"], "Taipei")
+    tainan = area_id(owner, trip["id"], "Tainan")
+    station = owner.post(
+        f"/api/trips/{trip['id']}/locations", json={"display_name": "Taipei Main", "area_id": taipei}
+    ).json()["id"]
+    hotel = owner.post(f"/api/trips/{trip['id']}/locations", json={"display_name": "Hotel", "area_id": taipei}).json()[
+        "id"
+    ]
+
+    route = owner.post(base, json=place_payload(departure_area_id=taipei, arrival_area_id=tainan)).json()
+    url = f"{base}/{route['id']}"
+
+    # Only the arrival area is sent; the stored departure completes the merged result.
+    same_area = owner.patch(url, json={"arrival_area_id": taipei})
+    assert same_area.status_code == 422
+    assert same_area.json()["errors"][0]["code"] == "route_ends_are_the_same_place"
+    assert owner.get(url).json()["arrival_area"]["id"] == tainan
+
+    # A whole area to a location inside it is a different place.
+    assert owner.patch(url, json={"arrival_location": {"existing_location_id": station}}).status_code == 200
+
+    # Both ends at the same location is refused, and so is moving one end onto the other's location.
+    assert owner.patch(url, json={"departure_location": {"existing_location_id": station}}).status_code == 422
+    # Two locations inside one area stay valid.
+    assert owner.patch(url, json={"departure_location": {"existing_location_id": hotel}}).status_code == 200
+
+    # Clearing a location leaves two whole-area ends that are the same area.
+    cleared = owner.patch(url, json={"departure_location": None, "arrival_location": None})
+    assert cleared.status_code == 422
+    assert cleared.json()["errors"][0]["code"] == "route_ends_are_the_same_place"
+
+
+def test_an_edit_that_leaves_the_ends_alone_does_not_recheck_them(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    taipei = area_id(owner, trip["id"], "Taipei")
+    tainan = area_id(owner, trip["id"], "Tainan")
+    route = owner.post(
+        f"/api/trips/{trip['id']}/routes", json=place_payload(departure_area_id=taipei, arrival_area_id=tainan)
+    ).json()
+    # Stored before the rule existed: both ends the same area.
+    with TestingSessionLocal() as session:
+        stored = session.get(Route, route["id"])
+        stored.arrival_area_id = taipei
+        session.commit()
+
+    url = f"/api/trips/{trip['id']}/routes/{route['id']}"
+    assert owner.patch(url, json={"notes": "Still editable"}).status_code == 200
+    assert owner.patch(url, json={"arrival_area_id": taipei}).status_code == 422
+    assert owner.patch(url, json={"arrival_area_id": tainan}).status_code == 200
 
 
 def test_legs_are_listed_in_chronological_order_regardless_of_creation_order(tmp_path) -> None:
@@ -468,6 +572,7 @@ def test_a_location_settles_the_area_of_a_route_end(tmp_path) -> None:
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
     taipei, tainan = area_id(owner, trip["id"], "Taipei"), area_id(owner, trip["id"], "Tainan")
+    taichung = area_id(owner, trip["id"], "Taichung")
     base = f"/api/trips/{trip['id']}/routes"
 
     created = owner.post(
@@ -498,8 +603,8 @@ def test_a_location_settles_the_area_of_a_route_end(tmp_path) -> None:
     # Changing only the area drops a location that is no longer in it; the same area keeps it.
     kept = owner.patch(f"{base}/{route['id']}", json={"departure_area_id": taipei})
     assert kept.json()["departure_location"]["display_name"] == "Taipei Main Station"
-    moved = owner.patch(f"{base}/{route['id']}", json={"departure_area_id": tainan})
-    assert moved.json()["departure_area"]["id"] == tainan and moved.json()["departure_location"] is None
+    moved = owner.patch(f"{base}/{route['id']}", json={"departure_area_id": taichung})
+    assert moved.json()["departure_area"]["id"] == taichung and moved.json()["departure_location"] is None
     # A cleared location keeps its area.
     cleared = owner.patch(f"{base}/{route['id']}", json={"arrival_location": None})
     assert cleared.status_code == 200 and cleared.json()["arrival_area"]["id"] == tainan

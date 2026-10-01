@@ -111,7 +111,7 @@ def test_map_inputs_use_only_selected_area_points_and_routes() -> None:
             "label": "Selected line",
             "mode": "other",
             "departure_area_id": selected["id"],
-            "arrival_area_id": selected["id"],
+            "arrival_location": {"display_name": "Taipei harbour", "area_id": selected["id"]},
             "geometry": {"type": "LineString", "coordinates": [[120.0, 24.0], [121.0, 25.0]]},
         },
     ).json()
@@ -553,7 +553,7 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
             "label": "North coast",
             "mode": "car",
             "departure_area_id": place_id,
-            "arrival_area_id": place_id,
+            "arrival_location": {"display_name": "North coast", "area_id": place_id},
             "geometry": {"type": "LineString", "coordinates": [[121, 25], [121.1, 25.1]]},
         },
     ).json()
@@ -563,7 +563,7 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
             "label": "Private raw route",
             "mode": "car",
             "departure_area_id": place_id,
-            "arrival_area_id": place_id,
+            "arrival_location": {"display_name": "Private raw end", "area_id": place_id},
             "geometry": {"type": "LineString", "coordinates": [[120, 24], [120.1, 24.1]]},
         },
     ).json()

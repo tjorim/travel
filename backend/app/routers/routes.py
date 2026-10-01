@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
-from ..models import DocumentAsset, Location, Route, RouteDocumentAsset, Trip
+from ..models import Area, DocumentAsset, Location, Route, RouteDocumentAsset, Trip
 from ..schemas import RouteCreate, RouteResponse, RouteUpdate
 from .placement import resolve_place, selected_area
 from .trips import owned_trip
@@ -58,6 +58,31 @@ def validate_route_times(departs_at: datetime, arrives_at: datetime) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Arrival must be after departure",
             code="arrival_must_be_after_departure",
+        )
+
+
+def validate_distinct_ends(
+    departure_area: Area, departure_location: Location | None, arrival_area: Area, arrival_location: Location | None
+) -> None:
+    """Refuse a route that starts and ends at the same place.
+
+    The same place is the same location on both ends, or the same area on both
+    ends with no location on either. Two locations inside one area (hotel to
+    station), or a whole area and a location inside it, are different places.
+    """
+    if departure_location is not None or arrival_location is not None:
+        same = (
+            departure_location is not None
+            and arrival_location is not None
+            and departure_location.id == arrival_location.id
+        )
+    else:
+        same = departure_area.id == arrival_area.id
+    if same:
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Choose two different places: departure and arrival are the same",
+            code="route_ends_are_the_same_place",
         )
 
 
@@ -154,6 +179,7 @@ def create_route(trip_id: str, payload: RouteCreate, session: SessionDep, subjec
         session, trip.id, payload.departure_area_id, payload.departure_location
     )
     arrival_area, arrival_location = resolve_place(session, trip.id, payload.arrival_area_id, payload.arrival_location)
+    validate_distinct_ends(departure_area, departure_location, arrival_area, arrival_location)
     route = Route(
         trip=trip,
         departure_area=departure_area,
@@ -221,6 +247,16 @@ def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: Ses
     route = owned_route(trip, route_id)
     _update_end(session, trip, route, payload, "departure")
     _update_end(session, trip, route, payload, "arrival")
+    # Judge the merged result, but only when this edit touches an end: an unrelated
+    # edit must not lock the owner out of a route stored before the rule existed.
+    if any(
+        f"{end}_{part}" in payload.model_fields_set
+        for end in ("departure", "arrival")
+        for part in ("area_id", "location")
+    ):
+        validate_distinct_ends(
+            route.departure_area, route.departure_location, route.arrival_area, route.arrival_location
+        )
     if "document_asset_ids" in payload.model_fields_set:
         route.document_links = document_links_from_ids(session, trip.id, payload.document_asset_ids or [])
     values = payload.model_dump(

@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Made the server refuse a route that starts and ends at the same place,
+  whoever writes it: the owner form, the MCP route tools and batch create, the
+  archive import and direct API clients now get the same 422
+  (`route_ends_are_the_same_place`, shown in the interface language with the
+  form's own wording). "The same" is the same location on both ends, or the same
+  area on both ends with no location on either; two locations in one area or a
+  whole area to a location inside it stay valid. A PATCH is judged on the
+  merged stored and sent ends, but only when it changes an end, so a route
+  stored earlier stays editable and is not migrated (#296).
 - Stopped the three upload routes (trip media, trip documents, owner library)
   and provider imports from buffering oversized files. One shared helper reads
   at most the 200 MB limit plus one byte and refuses the rest with the same

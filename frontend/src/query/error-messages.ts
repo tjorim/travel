@@ -189,6 +189,8 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_a_time_without_an_offset_needs_the_end_s_time_zone();
     case "a_route_needs_both_its_areas":
       return m.api_a_route_needs_both_its_areas();
+    case "route_ends_are_the_same_place":
+      return m.owner_choose_two_different_places_departure_and_arrival_are_the_same();
     case "say_where_this_stay_is":
       return m.api_say_where_this_stay_is();
     case "a_stay_covers_at_least_one_night_check_out_after_the_check_in_date":
