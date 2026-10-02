@@ -23,7 +23,7 @@ dependencies = [
   "python-multipart==0.0.32",
   "sqlalchemy==2.0.54",
   "timezonefinder>=6,<9",
-  "uvicorn[standard]==0.53.0",
+  "uvicorn[standard]==0.54.0",
 ]
 
 [dependency-groups]
