@@ -1,4 +1,12 @@
-import type { StyleSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
+
+/** The viewed region of a map, kept across the rebuild a theme change needs. */
+export type MapCamera = { center: [number, number]; zoom: number; pitch: number; bearing: number };
+
+export function readCamera(instance: MapLibreMap): MapCamera {
+  const { lng, lat } = instance.getCenter();
+  return { center: [lng, lat], zoom: instance.getZoom(), pitch: instance.getPitch(), bearing: instance.getBearing() };
+}
 
 const defaultStyleUrl = "https://tiles.openfreemap.org/styles/liberty";
 export const configuredMapStyleUrl = import.meta.env.VITE_MAP_STYLE_URL || defaultStyleUrl;

@@ -11,7 +11,7 @@ import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 
-import { configuredMapStyleUrl, loadMapStyle } from "../map-style";
+import { configuredMapStyleUrl, loadMapStyle, readCamera, type MapCamera } from "../map-style";
 
 export type RouteCoordinate = [number, number];
 export type RouteSuggestion = { label: string; coordinates: RouteCoordinate };
@@ -89,6 +89,8 @@ export function RouteGeometryEditor({
   const seeded = useRef(false);
   const seededOnce = useRef(false);
   const modeRef = useRef(mode);
+  // A theme change rebuilds the map; the next build opens on the region the previous one was showing.
+  const camera = useRef<MapCamera | null>(null);
   const [editorCoordinates, setEditorCoordinates] = useState(coordinates);
   const [ready, setReady] = useState(false);
   useMapMessages(canvas, ready);
@@ -134,6 +136,9 @@ export function RouteGeometryEditor({
     let disposed = false;
     let instance: MapLibreMap | null = null;
     const controller = new AbortController();
+    const restore = camera.current;
+    camera.current = null;
+    let loaded = false;
     setReady(false);
     setError("");
     try {
@@ -153,8 +158,7 @@ export function RouteGeometryEditor({
           locale: mapMessages(),
           container: canvas.current,
           style,
-          center: [0, 20],
-          zoom: 1.4,
+          ...(restore ?? { center: [0, 20], zoom: 1.4 }),
           attributionControl: false,
           renderWorldCopies: false,
           transformRequest: (url: string) => ({ url, credentials: "same-origin" }),
@@ -172,9 +176,12 @@ export function RouteGeometryEditor({
             layout: { "line-cap": "round", "line-join": "round" },
           });
           refreshMarkers(coordinatesRef.current);
-          if (coordinatesRef.current.length) showWholeRoute(instance);
-          else if (suggestionsRef.current[0])
-            instance.flyTo({ center: suggestionsRef.current[0].coordinates, zoom: 7, essential: true });
+          loaded = true;
+          if (!restore) {
+            if (coordinatesRef.current.length) showWholeRoute(instance);
+            else if (suggestionsRef.current[0])
+              instance.flyTo({ center: suggestionsRef.current[0].coordinates, zoom: 7, essential: true });
+          }
           // A long press on touch screens ends in a click as well; do not let it add a point.
           const created = instance;
           instance.on("contextmenu", (event) => {
@@ -229,6 +236,7 @@ export function RouteGeometryEditor({
     return () => {
       disposed = true;
       controller.abort();
+      if (instance && loaded) camera.current = readCamera(instance);
       markers.current.forEach((marker) => marker.remove());
       markers.current = [];
       instance?.remove();

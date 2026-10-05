@@ -115,6 +115,12 @@ All notable changes to the travel hub are documented here.
 
 ### Fixed
 
+- Switching between the light and dark theme on a trip map no longer sends the
+  viewer back to the whole trip. The rebuilt map reopens on the same centre,
+  zoom, pitch and bearing, and keeps the selected stop or route, the focused
+  area and the terrain, satellite and globe toggles; the route editor keeps its
+  view as well. Only the new style is fetched, and a changed trip still starts
+  from the whole trip (#333).
 - An MCP tool called with invalid arguments no longer echoes the rejected
   values to the client. FastMCP 4 wraps the pydantic error in its own
   `ValidationError`, which skipped the field-path-only handling, so the error

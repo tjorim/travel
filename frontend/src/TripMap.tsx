@@ -7,10 +7,10 @@ import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import type { FeatureCollection, LineString, Point } from "geojson";
-import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import type { FilterSpecification, GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { configuredMapStyleUrl, loadMapStyle, styleLabelFont } from "./map-style";
+import { configuredMapStyleUrl, loadMapStyle, readCamera, styleLabelFont, type MapCamera } from "./map-style";
 import { ROUTE_MODE_LABELS, type RouteMode } from "./tracker-model";
 
 export type MapLink = { label: string; href?: string; onOpen?: () => void };
@@ -60,6 +60,59 @@ const attribution = (
     </a>
   </>
 );
+/** What a theme change must carry over to the rebuilt map; any other rebuild starts from the whole trip. */
+type ViewSnapshot = {
+  geometryKey: string;
+  styleUrl: string;
+  camera: MapCamera;
+  terrain: boolean;
+  satellite: boolean;
+  globe: boolean;
+  selected: string | null;
+  selectedKind: "point" | "line" | null;
+};
+
+const focusFilter = (areaId: string): FilterSpecification => [
+  "all",
+  ["==", ["get", "kind"], "location"],
+  ["==", ["get", "areaId"], areaId],
+];
+
+function applyTerrain(instance: MapLibreMap, on: boolean, perspective: MapPerspective | undefined, animate: boolean) {
+  if (on) {
+    if (!instance.getSource("terrain"))
+      instance.addSource("terrain", { type: "raster-dem", url: terrainUrl, tileSize: 512, encoding: "terrarium" });
+    instance.setTerrain({ source: "terrain", exaggeration: perspective?.exaggeration ?? 1.35 });
+    if (animate) instance.easeTo({ pitch: Math.min(perspective?.pitch ?? 55, 60), duration: 700, essential: true });
+  } else {
+    instance.setTerrain(null);
+    if (animate) instance.easeTo({ pitch: 0, duration: 700, essential: true });
+  }
+}
+
+function applySatellite(instance: MapLibreMap, on: boolean) {
+  if (!instance.getSource("satellite"))
+    instance.addSource("satellite", { type: "raster", tiles: [satelliteUrl], tileSize: 256, maxzoom: 19 });
+  if (!instance.getLayer("satellite")) {
+    const layers = instance.getStyle().layers;
+    const buildingLayer = layers.find(
+      (layer) => layer.type === "fill-extrusion" && layer["source-layer"] === "building",
+    );
+    const beforeLayer = buildingLayer?.id ?? layers.find((layer) => layer.type === "symbol")?.id ?? "route-flight";
+    instance.addLayer(
+      {
+        id: "satellite",
+        type: "raster",
+        source: "satellite",
+        layout: { visibility: "none" },
+        paint: { "raster-fade-duration": 150 },
+      },
+      beforeLayer,
+    );
+  }
+  instance.setLayoutProperty("satellite", "visibility", on ? "visible" : "none");
+}
+
 function fitToData(
   instance: MapLibreMap,
   Bounds: typeof import("maplibre-gl").LngLatBounds,
@@ -118,19 +171,34 @@ export function TripMap({
   const selectedPoint = selectedKind === "point" ? points.find((point) => point.id === selected) : undefined;
   const selectedLine = selectedKind === "line" ? lines.find((line) => line.id === selected) : undefined;
   const hasGeometry = points.length > 0 || lines.length > 0;
+  // The cleanup of a rebuild reads the latest view here and leaves a snapshot for the next build to restore.
+  const view = useRef({ terrain, satellite, globe, selected, selectedKind });
+  view.current = { terrain, satellite, globe, selected, selectedKind };
+  const snapshot = useRef<ViewSnapshot | null>(null);
+  const appliedFocus = useRef<number | undefined>(undefined);
+  const perspectiveRef = useRef(perspective);
+  perspectiveRef.current = perspective;
 
   useEffect(() => {
     if (!hasGeometry || !canvas.current) return;
     let disposed = false;
     let instance: MapLibreMap | null = null;
     const controller = new AbortController();
+    // A theme change keeps the viewed region, selection and layer toggles; anything else starts over.
+    const restore =
+      snapshot.current?.geometryKey === geometryKey && snapshot.current.styleUrl === styleUrl ? snapshot.current : null;
+    snapshot.current = null;
+    let loaded = false;
     setReady(false);
     setError("");
-    setTerrain(false);
-    setSatellite(false);
-    setGlobe(false);
-    setSelected(null);
-    setSelectedKind(null);
+    if (!restore) {
+      appliedFocus.current = undefined;
+      setTerrain(false);
+      setSatellite(false);
+      setGlobe(false);
+      setSelected(null);
+      setSelectedKind(null);
+    }
     try {
       if (!window.WebGLRenderingContext) {
         setError(textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()));
@@ -153,6 +221,7 @@ export function TripMap({
           locale: mapMessages(),
           container: canvas.current,
           style,
+          ...restore?.camera,
           attributionControl: false,
           renderWorldCopies: false,
           maxPitch: 60,
@@ -308,7 +377,22 @@ export function TripMap({
               "circle-stroke-color": themeColor("map-yellow"),
             },
           });
-          fitToData(instance, maplibregl.LngLatBounds, points, lines);
+          if (restore) {
+            try {
+              if (restore.satellite) applySatellite(instance, true);
+              if (restore.terrain) applyTerrain(instance, true, perspectiveRef.current, false);
+              if (restore.globe) instance.setProjection({ type: "globe" });
+              const area = data.current.points.find((point) => point.id === restore.selected);
+              if (restore.selectedKind === "point" && owner && (area?.kind === "area" || area?.kind === "derived"))
+                instance.setFilter("focused-locations", focusFilter(area.id));
+            } catch {
+              setTerrain(false);
+              setSatellite(false);
+              setGlobe(false);
+              setError(textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()));
+            }
+          } else fitToData(instance, maplibregl.LngLatBounds, points, lines);
+          loaded = true;
           instance.on("click", "stops", (event) => {
             const point = data.current.points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
             if (point) selectPoint(point);
@@ -370,6 +454,8 @@ export function TripMap({
     return () => {
       disposed = true;
       controller.abort();
+      if (instance && loaded)
+        snapshot.current = { geometryKey, styleUrl, camera: readCamera(instance), ...view.current };
       instance?.remove();
       map.current = null;
     };
@@ -398,22 +484,17 @@ export function TripMap({
   // request counter lets the same stop be chosen again.
   useEffect(() => {
     const point = focus ? points.find((candidate) => candidate.id === focus.id) : undefined;
-    if (point) selectPoint(point);
+    // A rebuilt map keeps its restored view rather than flying back to a stop it already showed.
+    if (!point || (ready && appliedFocus.current === focus?.request)) return;
+    if (ready) appliedFocus.current = focus?.request;
+    selectPoint(point);
   }, [focus?.request, ready]);
 
   function toggleTerrain() {
     const instance = map.current;
     if (!instance || !ready) return;
     try {
-      if (terrain) {
-        instance.setTerrain(null);
-        instance.easeTo({ pitch: 0, duration: 700, essential: true });
-      } else {
-        if (!instance.getSource("terrain"))
-          instance.addSource("terrain", { type: "raster-dem", url: terrainUrl, tileSize: 512, encoding: "terrarium" });
-        instance.setTerrain({ source: "terrain", exaggeration: perspective?.exaggeration ?? 1.35 });
-        instance.easeTo({ pitch: Math.min(perspective?.pitch ?? 55, 60), duration: 700, essential: true });
-      }
+      applyTerrain(instance, !terrain, perspective, true);
       setTerrain(!terrain);
       setError("");
     } catch {
@@ -437,26 +518,7 @@ export function TripMap({
     const instance = map.current;
     if (!instance || !ready) return;
     try {
-      if (!instance.getSource("satellite"))
-        instance.addSource("satellite", { type: "raster", tiles: [satelliteUrl], tileSize: 256, maxzoom: 19 });
-      if (!instance.getLayer("satellite")) {
-        const layers = instance.getStyle().layers;
-        const buildingLayer = layers.find(
-          (layer) => layer.type === "fill-extrusion" && layer["source-layer"] === "building",
-        );
-        const beforeLayer = buildingLayer?.id ?? layers.find((layer) => layer.type === "symbol")?.id ?? "route-flight";
-        instance.addLayer(
-          {
-            id: "satellite",
-            type: "raster",
-            source: "satellite",
-            layout: { visibility: "none" },
-            paint: { "raster-fade-duration": 150 },
-          },
-          beforeLayer,
-        );
-      }
-      instance.setLayoutProperty("satellite", "visibility", satellite ? "none" : "visible");
+      applySatellite(instance, !satellite);
       setSatellite(!satellite);
       setError("");
     } catch {
@@ -470,11 +532,7 @@ export function TripMap({
     const instance = map.current;
     if (!instance) return;
     const focusedArea = owner && (point.kind === "area" || point.kind === "derived");
-    instance.setFilter("focused-locations", [
-      "all",
-      ["==", ["get", "kind"], "location"],
-      ["==", ["get", "areaId"], focusedArea ? point.id : ""],
-    ]);
+    instance.setFilter("focused-locations", focusFilter(focusedArea ? point.id : ""));
     const group = focusedArea ? areaFocusPoints(point, points) : [point];
     if (group.length > 1) {
       const longitudes = group.map((member) => member.coordinates[0]);
@@ -500,11 +558,7 @@ export function TripMap({
     setSelectedKind("line");
     const instance = map.current;
     if (!instance) return;
-    instance.setFilter("focused-locations", [
-      "all",
-      ["==", ["get", "kind"], "location"],
-      ["==", ["get", "areaId"], ""],
-    ]);
+    instance.setFilter("focused-locations", focusFilter(""));
     let west = 180,
       east = -180,
       south = 90,
@@ -529,11 +583,7 @@ export function TripMap({
     setSelectedKind(null);
     const instance = map.current;
     if (!instance) return;
-    instance.setFilter("focused-locations", [
-      "all",
-      ["==", ["get", "kind"], "location"],
-      ["==", ["get", "areaId"], ""],
-    ]);
+    instance.setFilter("focused-locations", focusFilter(""));
     void import("maplibre-gl").then(({ LngLatBounds }) => {
       if (map.current === instance) fitToData(instance, LngLatBounds, points, lines, 500);
     });
