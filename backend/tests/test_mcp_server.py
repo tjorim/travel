@@ -358,20 +358,29 @@ def test_response_validation_failure_is_a_correlated_tool_error_audited_once(
 def test_invalid_arguments_are_audited_without_the_payload(
     backend: TravelMcpBackend, caplog: pytest.LogCaptureFixture
 ) -> None:
-    async def run() -> object:
-        async with _protocol_client() as client:
-            return await client.call_tool(
-                "create_trip", {"payload": {"title": "SECRET-TITLE", "starts_on": "not-a-date"}}, raise_on_error=False
-            )
+    arguments = {"payload": {"title": "Exampleland", "starts_on": "SECRET-DATE"}}
 
-    result = asyncio.run(run())
-    assert result.is_error
+    async def run() -> list[object]:
+        async with _protocol_client() as client:
+            direct = await client.call_tool("create_trip", arguments, raise_on_error=False)
+            proxied = await client.call_tool(
+                "call_tool", {"name": "create_trip", "arguments": arguments}, raise_on_error=False
+            )
+            return [direct, proxied]
+
+    with caplog.at_level(logging.INFO):
+        results = asyncio.run(run())
+    for result in results:
+        assert result.is_error
+        message = result.content[0].text
+        assert "payload.starts_on" in message and "Reference:" in message
+        assert "SECRET-DATE" not in message and "input_value" not in message
     with TestingSessionLocal() as session:
         events = list(session.scalars(select(McpAuditEvent)))
     assert [(event.action, event.result, event.resource_type) for event in events] == [
         ("create_trip", "rejected", "tool_invocation")
-    ]
-    assert "SECRET-TITLE" not in json.dumps(events[0].details)
+    ] * 2
+    assert "SECRET-DATE" not in json.dumps([event.details for event in events]) + caplog.text
 
 
 def test_an_unknown_field_is_a_rejection_naming_it_and_the_value_is_not_audited(
@@ -398,7 +407,8 @@ def test_an_unknown_field_is_a_rejection_naming_it_and_the_value_is_not_audited(
         result = asyncio.run(run())
 
     assert result.is_error
-    assert "payload.state" in result.content[0].text and "Extra inputs are not permitted" in result.content[0].text
+    assert "payload.state:extra_forbidden" in result.content[0].text
+    assert "SECRET-STATE" not in result.content[0].text
     with TestingSessionLocal() as session:
         rejected = session.scalars(select(McpAuditEvent).where(McpAuditEvent.result == "rejected")).one()
     assert (rejected.action, rejected.resource_type) == ("update_visit", "tool_invocation")

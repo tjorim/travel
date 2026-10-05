@@ -113,6 +113,14 @@ All notable changes to the travel hub are documented here.
   `YYYY-MM-DDTHH:mm`. Unreadable text and half-filled date-times block a save and
   say why (#293).
 
+### Fixed
+
+- An MCP tool called with invalid arguments no longer echoes the rejected
+  values to the client. FastMCP 4 wraps the pydantic error in its own
+  `ValidationError`, which skipped the field-path-only handling, so the error
+  carried `input_value=…`; it now names the tool, the field paths and error
+  types and a reference, the same as the audit row and log line.
+
 ### Added
 
 - Added merging of duplicate locations and areas to the owner PWA (#295). In

@@ -29,6 +29,7 @@ from fastapi.datastructures import UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastmcp import FastMCP
 from fastmcp.exceptions import DisabledError, FastMCPError, NotFoundError, ToolError
+from fastmcp.exceptions import ValidationError as ArgumentValidationError
 from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
 from fastmcp.server.dependencies import get_access_token, get_context
 from fastmcp.server.http import StarletteWithLifespan
@@ -1876,6 +1877,13 @@ class ToolFailureMiddleware(Middleware):
                         f"{tool} failed validation ({fields}); the stored or generated data did not match the API "
                         f"schema. Reference: {request_id}"
                     )
+                ) from None
+            if isinstance(error, ArgumentValidationError) and isinstance(error.__cause__, ValidationError):
+                # FastMCP wraps a bad call's pydantic error and its message echoes the rejected values.
+                fields = _validation_fields(error.__cause__)
+                logger.warning("MCP tool %s rejected its arguments request_id=%s fields=%s", tool, request_id, fields)
+                raise _reported(
+                    ToolError(f"{tool} rejected its arguments ({fields}). Reference: {request_id}")
                 ) from None
             if isinstance(error, FastMCPError):
                 raise _reported(ToolError(f"{error} Reference: {request_id}")) from error
