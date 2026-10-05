@@ -58,9 +58,25 @@ while the layer is active, and a provider failure leaves the route map usable.
   shapes remain visible above satellite imagery when zoomed in. Their roofs and
   facades use vector styling, not satellite photo textures.
 
+## Globe view
+
+Every map offers a `Wereldbol` (Globe) control. It only switches the camera
+projection with `setProjection`, so it makes no request of its own and needs no
+extra attribution, and it can be combined with terrain and satellite. It starts
+off and, like the other layer controls, resets when the map is rebuilt.
+
+## Route editor gestures
+
+The owner route editor adds a point on a click. Right-click, or a long press on
+a touch screen (MapLibre 6.11's `contextmenu` event), adds a point to the
+nearest part of the line, and the same gesture on a numbered point removes it.
+Markers swallow the map's own `contextmenu` event, so each marker listens for
+the DOM `contextmenu` event and runs its own touch long-press timer. A
+shared guard makes a gesture act once even when several of those events fire.
+
 ## Transfer trade-off
 
 MapLibre is loaded lazily as its own chunk, so pages without map data do not
-download it. On 23 September 2026, that chunk built to about 1,058 KB
-(284 KB gzipped) before the style and tiles. Recheck this whenever the pinned
+download it. On 4 October 2026, with `maplibre-gl` 6.11.2, that chunk built to
+about 1,063 KB (286 KB gzipped) before the style and tiles. Recheck this whenever the pinned
 MapLibre version or provider changes.

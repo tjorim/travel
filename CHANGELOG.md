@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- The route editor takes right-click and touch long-press gestures: pressing
+  the map adds a point to the nearest part of the line instead of the end, and
+  pressing a numbered point removes it. Every trip map also gains a **Globe**
+  (Dutch **Wereldbol**) control that switches the projection without any new
+  provider request. Both use `maplibre-gl` 6.11.2, which also smooths
+  camera moves over terrain, keeps satellite tiles sharp at fractional pixel
+  ratios and reports worker failures through the map `error` event.
 - Locations can be geocoded in place: `PATCH …/locations/{id}` and the MCP
   `update_location` tool now accept the latitude and longitude, viewport edges,
   OSM element type and id, and navigation provider fields of a verified

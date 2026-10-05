@@ -32,6 +32,7 @@ it("keeps the route and stop controls usable when WebGL is unavailable", () => {
   expect(within(words).queryByText("Area city")).toBeNull();
   expect((screen.getByRole("button", { name: "3D-terrein" }) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole("button", { name: "Satelliet" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "Wereldbol" }) as HTMLButtonElement).disabled).toBe(true);
 });
 
 it("offers the same non-sensitive map-layer controls to visitors", () => {

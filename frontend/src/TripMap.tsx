@@ -111,6 +111,7 @@ export function TripMap({
   const [error, setError] = useFeedback<string>("");
   const [terrain, setTerrain] = useState(false);
   const [satellite, setSatellite] = useState(false);
+  const [globe, setGlobe] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedKind, setSelectedKind] = useState<"point" | "line" | null>(null);
   const [hovered, setHovered] = useState("");
@@ -127,6 +128,7 @@ export function TripMap({
     setError("");
     setTerrain(false);
     setSatellite(false);
+    setGlobe(false);
     setSelected(null);
     setSelectedKind(null);
     try {
@@ -419,6 +421,18 @@ export function TripMap({
     }
   }
 
+  function toggleGlobe() {
+    const instance = map.current;
+    if (!instance || !ready) return;
+    try {
+      instance.setProjection({ type: globe ? "mercator" : "globe" });
+      setGlobe(!globe);
+      setError("");
+    } catch {
+      setError(textNotice(() => m.owner_the_globe_view_could_not_be_shown_the_route_map_remains_available()));
+    }
+  }
+
   function toggleSatellite() {
     const instance = map.current;
     if (!instance || !ready) return;
@@ -619,6 +633,19 @@ export function TripMap({
         >
           {m.owner_satellite()}
           {satellite && m.owner_on()}
+        </Button>
+        <Button
+          className={cn(
+            "secondary compact",
+            globe && "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
+          )}
+          type="button"
+          aria-pressed={globe}
+          disabled={!ready}
+          onClick={toggleGlobe}
+        >
+          {m.owner_globe()}
+          {globe && m.owner_on()}
         </Button>
       </div>
       {satellite && (

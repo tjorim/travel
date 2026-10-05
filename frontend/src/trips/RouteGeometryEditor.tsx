@@ -16,6 +16,10 @@ import { configuredMapStyleUrl, loadMapStyle } from "../map-style";
 export type RouteCoordinate = [number, number];
 export type RouteSuggestion = { label: string; coordinates: RouteCoordinate };
 
+const LONG_PRESS_MS = 550;
+const LONG_PRESS_SLOP_PX = 8;
+const GESTURE_GUARD_MS = 700;
+const MARKER_RADIUS_PX = 18;
 const roundedCoordinate = (value: number) => Math.round(value * 1_000) / 1_000;
 const lineData = (coordinates: RouteCoordinate[]): FeatureCollection<LineString> => ({
   type: "FeatureCollection",
@@ -25,6 +29,33 @@ const lineData = (coordinates: RouteCoordinate[]): FeatureCollection<LineString>
 const sameCoordinates = (left: RouteCoordinate[], right: RouteCoordinate[]) =>
   left.length === right.length &&
   left.every(([longitude, latitude], index) => longitude === right[index]?.[0] && latitude === right[index]?.[1]);
+
+type ScreenPoint = { x: number; y: number };
+
+/**
+ * Where a point added away from the ends belongs: after the vertex that starts the segment nearest to `target`
+ * (screen pixels). A line with fewer than two points just grows at the end, as a plain click does.
+ */
+export function insertionIndex(points: ScreenPoint[], target: ScreenPoint): number {
+  if (points.length < 2) return points.length;
+  let best = 0;
+  let bestDistance = Infinity;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const from = points[index];
+    const to = points[index + 1];
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = dx * dx + dy * dy;
+    const along =
+      length === 0 ? 0 : Math.max(0, Math.min(1, ((target.x - from.x) * dx + (target.y - from.y) * dy) / length));
+    const distance = Math.hypot(target.x - (from.x + along * dx), target.y - (from.y + along * dy));
+    if (distance < bestDistance) {
+      best = index;
+      bestDistance = distance;
+    }
+  }
+  return best + 1;
+}
 
 function updateSources(map: MapLibreMap, coordinates: RouteCoordinate[]) {
   (map.getSource("route-editor-line") as GeoJSONSource | undefined)?.setData(lineData(coordinates));
@@ -53,6 +84,8 @@ export function RouteGeometryEditor({
   const inputCoordinates = useRef(coordinates);
   const onChangeRef = useRef(onChange);
   const suggestionsRef = useRef(suggestions);
+  // A long press ends in a click, and may report both a pointer and a map event; one gesture acts once.
+  const gestureUntil = useRef(0);
   const seeded = useRef(false);
   const seededOnce = useRef(false);
   const modeRef = useRef(mode);
@@ -142,8 +175,29 @@ export function RouteGeometryEditor({
           if (coordinatesRef.current.length) showWholeRoute(instance);
           else if (suggestionsRef.current[0])
             instance.flyTo({ center: suggestionsRef.current[0].coordinates, zoom: 7, essential: true });
-          instance.on("click", (event) => {
+          // A long press on touch screens ends in a click as well; do not let it add a point.
+          const created = instance;
+          instance.on("contextmenu", (event) => {
             if (modeRef.current === "preview") return;
+            event.preventDefault();
+            const target = event.originalEvent.target;
+            // Markers handle their own gesture (see refreshMarkers).
+            if (target instanceof Element && target.closest("[data-route-marker]")) return;
+            const current = coordinatesRef.current;
+            const projected = current.map((coordinate) => created.project(coordinate));
+            // A press on a numbered point is that point's gesture, even where the event names no element.
+            if (
+              projected.some((point) => Math.hypot(point.x - event.point.x, point.y - event.point.y) < MARKER_RADIUS_PX)
+            )
+              return;
+            if (Date.now() < gestureUntil.current) return;
+            gestureUntil.current = Date.now() + GESTURE_GUARD_MS;
+            const next: RouteCoordinate = [roundedCoordinate(event.lngLat.lng), roundedCoordinate(event.lngLat.lat)];
+            const at = insertionIndex(projected, event.point);
+            commit([...current.slice(0, at), next, ...current.slice(at)]);
+          });
+          instance.on("click", (event) => {
+            if (modeRef.current === "preview" || Date.now() < gestureUntil.current) return;
             if (
               event.originalEvent.target instanceof Element &&
               event.originalEvent.target.closest("[data-route-marker]")
@@ -193,7 +247,14 @@ export function RouteGeometryEditor({
     seeded.current = false;
     coordinatesRef.current = next;
     setEditorCoordinates(next);
-    onChange(next);
+    onChangeRef.current(next);
+  }
+
+  /** Right-click, or a long press on a touch screen, removes the numbered point. */
+  function removePoint(index: number) {
+    if (Date.now() < gestureUntil.current) return;
+    gestureUntil.current = Date.now() + GESTURE_GUARD_MS;
+    commit(coordinatesRef.current.filter((_, position) => position !== index));
   }
 
   function refreshMarkers(points: RouteCoordinate[]) {
@@ -203,7 +264,7 @@ export function RouteGeometryEditor({
     markers.current.forEach((marker) => marker.remove());
     markers.current = points.map((coordinate, index) => {
       const element = document.createElement("div");
-      element.dataset.routeMarker = "";
+      element.dataset.routeMarker = String(index);
       element.className =
         "grid size-7 place-items-center rounded-full border-2 border-travel-ink bg-travel-map-marker text-xs font-extrabold text-travel-ink shadow-sm select-none";
       element.textContent = String(index + 1);
@@ -211,13 +272,32 @@ export function RouteGeometryEditor({
       element.title = editable ? m.owner_drag_route_point({ p0: index + 1 }) : m.owner_route_point({ p0: index + 1 });
       element.setAttribute("aria-label", element.title);
       const marker = new library.Marker({ element, draggable: editable }).setLngLat(coordinate).addTo(instance);
-      if (editable)
+      if (editable) {
+        element.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          removePoint(index);
+        });
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let origin = { x: 0, y: 0 };
+        const cancel = () => clearTimeout(timer);
+        element.addEventListener("pointerdown", (event) => {
+          if (event.pointerType === "mouse") return;
+          origin = { x: event.clientX, y: event.clientY };
+          cancel();
+          timer = setTimeout(() => removePoint(index), LONG_PRESS_MS);
+        });
+        element.addEventListener("pointermove", (event) => {
+          if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > LONG_PRESS_SLOP_PX) cancel();
+        });
+        for (const type of ["pointerup", "pointercancel", "pointerleave"]) element.addEventListener(type, cancel);
+        marker.on("dragstart", cancel);
         marker.on("dragend", () => {
           const position = marker.getLngLat();
           const next = [...coordinatesRef.current];
           next[index] = [roundedCoordinate(position.lng), roundedCoordinate(position.lat)];
           commit(next);
         });
+      }
       return marker;
     });
   }
@@ -260,7 +340,7 @@ export function RouteGeometryEditor({
         <p className="mt-1 mb-0 text-sm leading-normal text-travel-muted">
           {preview
             ? m.owner_this_is_the_saved_route_on_the_map_the_map_is_for_checking_only_use_the()
-            : m.owner_click_the_general_places_on_your_route_in_order_drag_a_numbered_point_to()}
+            : `${m.owner_click_the_general_places_on_your_route_in_order_drag_a_numbered_point_to()} ${m.owner_right_click_or_long_press_a_numbered_point_to_remove_it_or_the_line_to_add_a_point_between()}`}
         </p>
       </div>
       <div

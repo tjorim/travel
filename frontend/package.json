@@ -24,7 +24,7 @@
     "cn": "^0.4.0",
     "dayjs": "^1.11.23",
     "lucide-react": "^1.48.0",
-    "maplibre-gl": "6.10.0",
+    "maplibre-gl": "6.11.2",
     "react": "latest",
     "react-day-picker": "^10.0.1",
     "react-dom": "latest",
