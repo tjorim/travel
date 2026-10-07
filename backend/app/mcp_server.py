@@ -30,8 +30,6 @@ from fastapi.encoders import jsonable_encoder
 from fastmcp import FastMCP
 from fastmcp.exceptions import DisabledError, FastMCPError, NotFoundError, ToolError
 from fastmcp.exceptions import ValidationError as ArgumentValidationError
-from fastmcp.server.auth import AccessToken
-from fastmcp.server.auth.providers.jwt import JWTVerifier
 from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
 from fastmcp.server.dependencies import get_access_token, get_context
 from fastmcp.server.http import StarletteWithLifespan
@@ -230,68 +228,6 @@ def _error_summary(error: BaseException) -> str:
     return str(error)[:240]
 
 
-def _token_actor(claims: object) -> str | None:
-    """The agent a delegated token acts through (RFC 8693 ``act.sub``), or None for a direct owner token.
-
-    A token that carries ``act`` but no usable actor fails closed instead of
-    being treated as the owner calling directly.
-    """
-    if not isinstance(claims, dict) or "act" not in claims:
-        return None
-    act = claims["act"]
-    actor = act.get("sub") if isinstance(act, dict) else None
-    if not isinstance(actor, str) or not actor:
-        raise PermissionError("Authentication required: the delegated token has no usable actor")
-    return actor
-
-
-def delegation_refusal(claims: dict[str, Any], scopes: Sequence[str]) -> str | None:
-    """Why a verified token's delegation is not acceptable, or None when it is acceptable or not delegated.
-
-    The owner is ``sub``; the agent is ``act.sub``.  The reason is a stable,
-    token-free phrase that is safe to log.
-    """
-    if "act" not in claims:
-        return None
-    act = claims["act"]
-    actor = act.get("sub") if isinstance(act, dict) else None
-    if not isinstance(actor, str) or not actor:
-        return "malformed act claim"
-    if "act" in act:
-        return "nested actor chain"
-    if actor not in settings.mcp_agent_actors:
-        return "actor not allowed"
-    if actor == claims.get("sub"):
-        return "actor is the subject"
-    if settings.mcp_agent_scope not in scopes:
-        return "missing delegated scope"
-    issued, expires = claims.get("iat"), claims.get("exp")
-    if not isinstance(issued, int | float) or not isinstance(expires, int | float):
-        return "missing iat or exp"
-    if expires - issued > settings.mcp_agent_max_token_seconds:
-        return "lifetime too long"
-    return None
-
-
-class DelegationPolicyVerifier(JWTVerifier):
-    """Keycloak JWT verification plus Travel's delegated-agent policy.
-
-    A token with an ``act`` claim must pass :func:`delegation_refusal`, so an
-    unlisted, malformed, over-long or unscoped delegation is refused with the
-    same 401 as an invalid token and never reaches a tool.
-    """
-
-    async def load_access_token(self, token: str) -> AccessToken | None:
-        access = await super().load_access_token(token)
-        if access is None:
-            return None
-        reason = delegation_refusal(access.claims, access.scopes)
-        if reason is not None:
-            logger.warning("MCP delegated token refused: %s", reason)
-            return None
-        return access
-
-
 class TravelMcpBackend:
     """Task-specific owner tools which share the application's validation rules."""
 
@@ -311,14 +247,6 @@ class TravelMcpBackend:
         if settings.environment == "development" and settings.mcp_development_subject:
             return settings.mcp_development_subject
         raise PermissionError("Authentication required: a bearer token with a subject claim is required")
-
-    def _actor(self) -> str | None:
-        """The agent behind a delegated token; None for the owner (and for stdio, which has no token)."""
-        try:
-            token = get_access_token()
-        except Exception:  # stdio has no token context
-            return None
-        return _token_actor(getattr(token, "claims", {}) if token is not None else {})
 
     @staticmethod
     def _confirmation(confirm: bool) -> None:
@@ -347,7 +275,6 @@ class TravelMcpBackend:
         session.add(
             McpAuditEvent(
                 owner_subject=subject,
-                actor_subject=self._actor(),
                 action=action,
                 resource_type=resource_type,
                 resource_id=resource_id,
@@ -480,9 +407,6 @@ class TravelMcpBackend:
     def whoami(self) -> dict[str, str]:
         """Show the authenticated owner subject; no token material is returned."""
         subject = self._subject()
-        actor = self._actor()
-        if actor is not None:
-            return {"subject": subject, "role": "delegated-agent", "actor": actor}
         return {"subject": subject, "role": "owner"}
 
     def list_mcp_audit_events(self, limit: int = Field(default=50, ge=1, le=200)) -> list[dict[str, Any]]:
@@ -1921,21 +1845,6 @@ class ToolFailureMiddleware(Middleware):
         self.backend = backend
 
     async def on_call_tool(self, context: MiddlewareContext[Any], call_next: Callable[..., Any]) -> Any:
-        tool = context.message.name
-        if tool not in MCP_DELEGATED_TOOLS and self.backend._actor() is not None:
-            # A delegated agent reaches only its read-only allowlist, whether it
-            # names the tool directly or through the ``call_tool`` proxy.
-            await anyio.to_thread.run_sync(
-                self.backend._audit_unexecuted_rejection,
-                tool,
-                context.message.arguments,
-                PermissionError("Tool not permitted for delegated agent access"),
-            )
-            request_id = _request_id()
-            logger.warning("MCP delegated agent refused tool %.80r request_id=%s", tool, request_id)
-            raise _reported(
-                ToolError(f"{tool} is not available to delegated agent access. Reference: {request_id}")
-            ) from None
         try:
             return await call_next(context)
         except (NotFoundError, DisabledError):
@@ -2058,34 +1967,6 @@ _OPEN_WORLD_TOOLS = frozenset(
 )
 
 
-# The only tools a delegated agent token may run (#338): itinerary reads, plus
-# the search and call proxies that reach them.  Anything else, including every
-# write, publication, deletion, share-link, document, media, audit, provider
-# and external-service tool, is refused at dispatch.  Rebuilding the set from
-# a name pattern would admit future tools silently, so it stays explicit.
-MCP_AGENT_READ_TOOLS = frozenset(
-    {
-        "whoami",
-        "list_trips",
-        "get_trip",
-        "get_trip_overview",
-        "list_areas",
-        "list_locations",
-        "list_visits",
-        "get_visit",
-        "list_stays",
-        "get_stay",
-        "list_routes",
-        "get_route",
-        "list_trip_tasks",
-        "get_trip_task",
-        "list_packing_lists",
-        "get_packing_list",
-    }
-)
-MCP_DELEGATED_TOOLS = MCP_AGENT_READ_TOOLS | {MCP_SEARCH_TOOL, MCP_CALL_TOOL}
-
-
 def _tool_annotations(name: str) -> ToolAnnotations:
     capability = MCP_TOOL_CAPABILITIES[name]
     read = capability["effect"] == "read"
@@ -2098,16 +1979,7 @@ def _tool_annotations(name: str) -> ToolAnnotations:
 
 
 def _search_result(tools: Sequence[Tool]) -> list[dict[str, Any]]:
-    """Each found tool with its callable schema and its capability-manifest entry.
-
-    A delegated agent is shown only the tools it may call.
-    """
-    try:
-        delegated = _token_actor(getattr(get_access_token(), "claims", {})) is not None
-    except Exception:  # stdio has no token context
-        delegated = False
-    if delegated:
-        tools = [tool for tool in tools if tool.name in MCP_AGENT_READ_TOOLS]
+    """Each found tool with its callable schema and its capability-manifest entry."""
     return [
         {
             "name": tool.name,
@@ -2157,13 +2029,6 @@ def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
             realm_url=settings.oidc_issuer_url,
             base_url=settings.mcp_resource_url,
             audience=settings.mcp_token_audience,
-            token_verifier=DelegationPolicyVerifier(
-                jwks_uri=f"{settings.oidc_issuer_url.rstrip('/')}/protocol/openid-connect/certs",
-                issuer=settings.oidc_issuer_url.rstrip("/"),
-                algorithm="RS256",
-                required_scopes=["openid"],
-                audience=settings.mcp_token_audience,
-            ),
         )
     server = FastMCP(
         "travel",

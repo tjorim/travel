@@ -816,9 +816,6 @@ class McpAuditEvent(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    # The agent a delegated token (RFC 8693 ``act.sub``) acted through; null
-    # when the owner called directly.
-    actor_subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
     action: Mapped[str] = mapped_column(String(120), nullable=False)
     resource_type: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)

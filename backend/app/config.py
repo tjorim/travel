@@ -25,15 +25,6 @@ class Settings(BaseSettings):
     mcp_base_url: str | None = None
     mcp_audience: str | None = None
     mcp_development_subject: str | None = None
-    # Delegated agent access (#338).  A token carrying an RFC 8693 ``act`` claim
-    # is a delegated token: the owner is ``sub`` and the agent is ``act.sub``.
-    # It is accepted only when ``act.sub`` is listed here (empty by default, so
-    # delegation is off), it carries ``mcp_agent_scope`` and its lifetime
-    # (``exp`` - ``iat``) is at most ``mcp_agent_max_token_seconds``.  Such a
-    # token may call only the read-only tools in ``MCP_AGENT_READ_TOOLS``.
-    mcp_agent_actors: list[str] = Field(default_factory=list)
-    mcp_agent_scope: str = "travel:agent-read"
-    mcp_agent_max_token_seconds: int = Field(default=900, ge=1)
     # The visitor-facing PWA origin. MCP runs without an HTTP request from
     # which it could otherwise determine where an unlisted visitor URL lives.
     # This points to Vite's default local origin in development; deployment

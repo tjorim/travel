@@ -6,15 +6,6 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
-- MCP accepts a delegated agent token (an RFC 8693 `act` claim: owner `sub`,
-  agent `act.sub`) only for an actor listed in `TRAVEL_MCP_AGENT_ACTORS`, which
-  is empty by default, with the `travel:agent-read` scope and a lifetime of at
-  most 15 minutes. Such a token can run only an explicit read-only itinerary
-  tool set, directly or through `call_tool`; writes, publication, deletion,
-  sharing, documents and the audit trail are refused and audited. MCP audit
-  rows gain `actor_subject` (migration `011_mcp_audit_actor`). The spike
-  concludes with adopt-the-contract, defer-production: see
-  `docs/decisions/338-agent-delegation.md` (#338, harness in #342).
 - Settings gains a **Sign-in and passkeys** section whose button opens the
   owner's Keycloak account console, where passkeys and security keys are
   enrolled, renamed and removed. [docs/passkeys.md](docs/passkeys.md) records
