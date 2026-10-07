@@ -337,7 +337,8 @@ Production credential injection and key backup are tracked in
 | `TRAVEL_OIDC_ISSUER_URL` | Required issuer for production bearer-token validation. |
 | `TRAVEL_OIDC_JWKS_URL` | Required JWKS endpoint for production bearer-token validation. |
 | `TRAVEL_OIDC_AUDIENCE` | Expected API audience; defaults to `travel-api`. |
-| `TRAVEL_MCP_BASE_URL` | Public MCP base URL when an authenticated HTTP mount is supplied by deployment infrastructure; unset for local stdio use. |
+| `TRAVEL_MCP_BASE_URL` | Canonical public MCP resource URL (for example `https://travel.example.test/mcp`); advertised as the protected resource and, by default, the only audience MCP accepts. Unset for local stdio use. |
+| `TRAVEL_MCP_AUDIENCE` | Optional MCP audience when it must differ from the resource URL; never equal to `TRAVEL_OIDC_AUDIENCE`. |
 | `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |
 | `TRAVEL_PUBLIC_APP_URL` | Visitor-facing Travel PWA origin used by MCP to return a complete `/share/<capability>` URL; defaults to `http://localhost:5173` for local Vite development. Set this to the deployed Travel origin in production. |
 | `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. Required in production; the code default is development-only. |
@@ -396,9 +397,12 @@ is found by its own name. See
 
 The local
 MCP server is mounted by FastAPI at `/mcp` only when both
-`TRAVEL_MCP_BASE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. Caddy
-routing, production Keycloak configuration and endpoint exposure remain
-`tjorim/apps#226` work.
+`TRAVEL_MCP_BASE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. It accepts
+only Keycloak tokens whose audience is the MCP resource, never the API token;
+see [`docs/decisions/336-mcp-resource-audience.md`](../docs/decisions/336-mcp-resource-audience.md)
+for the contract and reconnect steps. Caddy routing, production Keycloak
+configuration and endpoint exposure remain `tjorim/apps#226` and
+`tjorim/apps#265` work.
 
 ```bash
 uv sync --all-groups --frozen

@@ -7,18 +7,21 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.server.auth.providers.jwt import RSAKeyPair
 from fastmcp.tools.base import Tool
 from fastmcp.utilities.json_schema import dereference_refs
+from pydantic import ValidationError
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import main as app_main
 from app import schemas
-from app.config import settings
+from app.config import Settings, settings
 from app.database import Base
 from app.mcp_server import (
     MCP_TOOL_CAPABILITIES,
@@ -28,6 +31,7 @@ from app.mcp_server import (
     create_mcp_http_app,
     create_mcp_server,
     mcp_http_enabled,
+    mount_mcp,
 )
 from app.models import McpAuditEvent, Trip
 from app.routers import trips as trips_router
@@ -238,6 +242,120 @@ def test_http_mcp_logs_why_a_request_was_refused_without_the_token(
     assert "MCP POST / rejected with 401: no Authorization header" in caplog.text
     assert "rejected with 401: Authorization header is not a Bearer token" in caplog.text
     assert "SECRET-CREDENTIAL" not in caplog.text
+
+
+ISSUER = "https://identity.example.test/realms/travel"
+MCP_URL = "https://travel.example.test/mcp"
+MCP_HEADERS = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
+WHOAMI_CALL = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "whoami", "arguments": {}}}
+
+
+@pytest.fixture
+def mcp_resource(monkeypatch: pytest.MonkeyPatch) -> tuple[FastAPI, RSAKeyPair]:
+    """The production mount: Keycloak-verified MCP below ``/mcp`` of the real FastAPI app shape."""
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "oidc_audience", "travel-api")
+    monkeypatch.setattr(settings, "oidc_issuer_url", ISSUER)
+    monkeypatch.setattr(settings, "mcp_base_url", MCP_URL)
+    monkeypatch.setattr(settings, "mcp_audience", None)
+    server, http_app = create_mcp_http_app(TestingSessionLocal)
+    pair = RSAKeyPair.generate()
+    # Only the key lookup is replaced; issuer, audience, expiry and scope checks are the production verifier's.
+    server.auth.token_verifier.public_key = pair.public_key
+    application = FastAPI(lifespan=http_app.lifespan)
+    mount_mcp(application, server, http_app)
+    return application, pair
+
+
+def _bearer(pair: RSAKeyPair, **claims: object) -> dict[str, str]:
+    options = {"subject": "owner-9", "issuer": ISSUER, "audience": MCP_URL, "scopes": ["openid"]} | claims
+    return {"Authorization": f"Bearer {pair.create_token(**options)}", **MCP_HEADERS}
+
+
+def test_mcp_publishes_its_canonical_resource_and_keycloak_as_the_authorization_server(
+    mcp_resource: tuple[FastAPI, RSAKeyPair],
+) -> None:
+    application, _ = mcp_resource
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        metadata = client.get("/.well-known/oauth-protected-resource/mcp")
+        challenge = client.post("/mcp", json=WHOAMI_CALL, headers=MCP_HEADERS, follow_redirects=True)
+
+    assert metadata.status_code == 200
+    assert metadata.json()["resource"] == MCP_URL
+    assert metadata.json()["authorization_servers"] == [ISSUER]
+    assert challenge.status_code == 401
+    assert (
+        'resource_metadata="https://travel.example.test/.well-known/oauth-protected-resource/mcp"'
+        in challenge.headers["www-authenticate"]
+    )
+
+
+def test_mcp_tool_call_with_the_dedicated_audience_acts_as_the_token_subject(
+    mcp_resource: tuple[FastAPI, RSAKeyPair],
+) -> None:
+    application, pair = mcp_resource
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        called = client.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair))
+        # Keycloak may list several audiences; the MCP resource being one of them is enough.
+        listed = client.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair, audience=["account", MCP_URL]))
+
+    assert called.status_code == listed.status_code == 200
+    assert '"subject":"owner-9"' in called.text.replace('\\"', '"').replace(" ", "")
+
+
+@pytest.mark.parametrize(
+    "claims",
+    [
+        pytest.param({"audience": "travel-api"}, id="api-audience-only"),
+        pytest.param({"audience": "https://worktime.example.test/mcp"}, id="another-mcp-resource"),
+        pytest.param({"audience": f"{MCP_URL}/"}, id="resource-with-trailing-slash"),
+        pytest.param({"audience": ["travel-api", "account"]}, id="audience-list-without-mcp"),
+        pytest.param({"audience": None}, id="no-audience"),
+        pytest.param({"issuer": "https://identity.example.test/realms/other"}, id="wrong-issuer"),
+        pytest.param({"expires_in_seconds": -60}, id="expired"),
+        pytest.param({"scopes": ["profile"]}, id="missing-openid-scope"),
+    ],
+)
+def test_mcp_rejects_signed_tokens_that_are_not_for_this_resource(
+    mcp_resource: tuple[FastAPI, RSAKeyPair], claims: dict[str, object]
+) -> None:
+    application, pair = mcp_resource
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        refused = client.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair, **claims))
+
+    assert refused.status_code == 401
+    assert "owner-9" not in refused.text
+
+
+def test_mcp_rejects_a_token_signed_by_another_key(mcp_resource: tuple[FastAPI, RSAKeyPair]) -> None:
+    application, _ = mcp_resource
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        refused = client.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate()))
+
+    assert refused.status_code == 401
+
+
+def test_a_rejected_mcp_token_leaves_no_audit_row(mcp_resource: tuple[FastAPI, RSAKeyPair]) -> None:
+    application, pair = mcp_resource
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        assert client.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair, audience="travel-api")).status_code == 401
+        trips = {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "list_trips", "arguments": {}}}
+        assert client.post("/mcp/", json=trips, headers=_bearer(pair)).status_code == 200
+
+    with TestingSessionLocal() as session:
+        assert {event.owner_subject for event in session.scalars(select(McpAuditEvent))} == {"owner-9"}
+
+
+def test_mcp_audience_defaults_to_the_canonical_url_and_never_the_api_audience(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configured = Settings(mcp_base_url="https://travel.example.test/mcp/", oidc_audience="travel-api")
+    assert configured.mcp_resource_url == MCP_URL
+    assert configured.mcp_token_audience == MCP_URL
+    assert Settings(mcp_base_url=MCP_URL, mcp_audience="travel-mcp").mcp_token_audience == "travel-mcp"
+    assert Settings().mcp_token_audience is None
+    with pytest.raises(ValidationError, match="TRAVEL_MCP_AUDIENCE must differ"):
+        Settings(mcp_base_url=MCP_URL, mcp_audience="travel-api", oidc_audience="travel-api")
 
 
 def test_unauthorized_reason_names_unverified_claims_but_never_the_token() -> None:

@@ -24,7 +24,7 @@ from typing import Any, Literal, TypeVar
 from urllib.parse import quote
 
 import anyio.to_thread
-from fastapi import HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.datastructures import UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastmcp import FastMCP
@@ -37,7 +37,7 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.server.transforms.search import BM25SearchTransform
 from fastmcp.tools.base import Tool
 from mcp.types import ToolAnnotations
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import AnyHttpUrl, BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.middleware import Middleware as StarletteMiddleware
@@ -2006,12 +2006,29 @@ MCP_INSTRUCTIONS = (
 )
 
 
+class TravelMcpAuthProvider(KeycloakAuthProvider):
+    """Keycloak resource-server auth bound to Travel's canonical MCP URL.
+
+    Clients discover Keycloak directly (RFC 9728) and receive Keycloak tokens,
+    so this server only verifies: issuer, signature, expiry, the ``openid``
+    scope and the dedicated MCP audience.  It is never an OAuth proxy.  The
+    default provider appends the in-app mount path to the base URL, which
+    would advertise ``.../mcp/``; the resource identifier a client sends as
+    its RFC 8707 ``resource`` must be exactly the configured URL.
+    """
+
+    def _get_resource_url(self, path: str | None = None) -> AnyHttpUrl | None:
+        return self.base_url
+
+
 def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
     """Create Travel's MCP server with OIDC verification when configured."""
     auth = None
-    if settings.oidc_issuer_url and settings.mcp_base_url:
-        auth = KeycloakAuthProvider(
-            realm_url=settings.oidc_issuer_url, base_url=settings.mcp_base_url, audience=settings.oidc_audience
+    if settings.oidc_issuer_url and settings.mcp_resource_url:
+        auth = TravelMcpAuthProvider(
+            realm_url=settings.oidc_issuer_url,
+            base_url=settings.mcp_resource_url,
+            audience=settings.mcp_token_audience,
         )
     server = FastMCP(
         "travel",
@@ -2118,6 +2135,18 @@ def create_mcp_http_app(
     server = create_mcp_server(factory)
     middleware = [StarletteMiddleware(UnauthorizedRequestLogger), *(http_app_kwargs.pop("middleware", None) or [])]
     return server, server.http_app(path="/", stateless_http=True, middleware=middleware, **http_app_kwargs)
+
+
+def mount_mcp(app: FastAPI, server: FastMCP, mcp_app: StarletteWithLifespan) -> None:
+    """Mount the MCP app and publish its RFC 9728 metadata at the host root.
+
+    The metadata lives at ``/.well-known/oauth-protected-resource/<path>``, which a
+    mount at ``/mcp`` would otherwise hide at ``/mcp/.well-known/...``, so the
+    challenge's ``resource_metadata`` URL would lead nowhere.
+    """
+    if server.auth is not None:
+        app.router.routes.extend(server.auth.get_well_known_routes("/"))
+    app.mount("/mcp", mcp_app)
 
 
 def main() -> None:

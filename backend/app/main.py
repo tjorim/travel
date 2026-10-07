@@ -15,6 +15,7 @@ from .mcp_server import (
     MCP_VISIBLE_TOOLS,
     create_mcp_http_app,
     mcp_http_enabled,
+    mount_mcp,
 )
 from .routers.areas import router as areas_router
 from .routers.documents import router as documents_router
@@ -83,8 +84,8 @@ app.include_router(markdown_router, prefix="/api")
 app.include_router(translation_router, prefix="/api")
 app.include_router(provider_tokens_router, prefix="/api")
 
-if _mcp_app is not None:
-    app.mount("/mcp", _mcp_app)
+if _mcp is not None and _mcp_app is not None:
+    mount_mcp(app, _mcp, _mcp_app)
 
 
 @app.get("/api/mcp/capabilities", tags=["mcp"])

@@ -72,6 +72,24 @@ def test_current_subject_rejects_a_wrong_audience(monkeypatch: pytest.MonkeyPatc
     assert error.value.status_code == 401
 
 
+def test_current_subject_rejects_a_token_for_the_mcp_resource(monkeypatch: pytest.MonkeyPatch) -> None:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    token = token_for(private_key, "https://travel.example.test/mcp")
+    monkeypatch.setattr("app.auth.jwt.PyJWKClient", lambda _: StaticJwksClient(private_key.public_key()))
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "oidc_audience", "travel-api")
+    monkeypatch.setattr(settings, "mcp_base_url", "https://travel.example.test/mcp")
+    monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
+    monkeypatch.setattr(
+        settings, "oidc_jwks_url", "https://auth.example.test/realms/travel/protocol/openid-connect/certs"
+    )
+
+    with pytest.raises(HTTPException, match="Invalid bearer token") as error:
+        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
+
+    assert error.value.status_code == 401
+
+
 def test_dev_bypass_token_authenticates_the_fixed_development_owner(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "dev_auth_bypass_token", "local-dev-token")
 

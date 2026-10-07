@@ -15,11 +15,15 @@ class Settings(BaseSettings):
     # it outside environment == "development". Same contract as the
     # DEV_AUTH_BYPASS_TOKEN of champagnefestival and worktime.
     dev_auth_bypass_token: str = ""
-    # The MCP application surface is local/application-only in v1.  An HTTP
-    # mount is deliberately not enabled from this setting; apps#226 owns that
-    # deployment work.  In development a named subject makes stdio integration
-    # tests possible without weakening production authentication.
+    # The canonical public URL of the MCP resource, for example
+    # https://travel.example.test/mcp.  It is advertised verbatim as the
+    # protected-resource identifier (RFC 9728/8707) and, unless
+    # mcp_audience overrides it, is the only audience MCP accepts.  Ordinary
+    # API tokens (oidc_audience) never authenticate MCP and the reverse.
+    # In development a named subject makes stdio integration tests possible
+    # without weakening production authentication.
     mcp_base_url: str | None = None
+    mcp_audience: str | None = None
     mcp_development_subject: str | None = None
     # The visitor-facing PWA origin. MCP runs without an HTTP request from
     # which it could otherwise determine where an unlisted visitor URL lives.
@@ -85,6 +89,22 @@ class Settings(BaseSettings):
             raise ValueError("TRAVEL_DEV_AUTH_BYPASS_TOKEN must not be set outside TRAVEL_ENVIRONMENT=development.")
         if self.provider_secret_key:
             Fernet(self.provider_secret_key.encode())
+        return self
+
+    @property
+    def mcp_resource_url(self) -> str | None:
+        """The canonical MCP resource URL, without a trailing slash."""
+        return self.mcp_base_url.rstrip("/") if self.mcp_base_url else None
+
+    @property
+    def mcp_token_audience(self) -> str | None:
+        """The one audience an MCP bearer token must carry."""
+        return self.mcp_audience or self.mcp_resource_url
+
+    @model_validator(mode="after")
+    def validate_mcp_audience_is_not_the_api_audience(self) -> "Settings":
+        if self.mcp_token_audience and self.mcp_token_audience == self.oidc_audience:
+            raise ValueError("TRAVEL_MCP_AUDIENCE must differ from TRAVEL_OIDC_AUDIENCE.")
         return self
 
 

@@ -50,6 +50,12 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- MCP now accepts only Keycloak tokens issued for its own resource: the
+  audience is the canonical `TRAVEL_MCP_BASE_URL` (or `TRAVEL_MCP_AUDIENCE`),
+  no longer the API's `travel-api`, and startup refuses the two being equal.
+  The protected-resource metadata advertises exactly that URL and is served at
+  `/.well-known/oauth-protected-resource/mcp`. Clean cutover: reconnect each MCP
+  client; see `docs/decisions/336-mcp-resource-audience.md`.
 - Let a visit be `cancelled`, so a rejected idea or dropped plan can stay on
   record instead of being deleted (migration `010_planning_statuses`;
   existing visits keep their status, and the downgrade turns cancelled visits
