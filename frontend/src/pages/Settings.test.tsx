@@ -142,3 +142,15 @@ it("offers a retry when the provider status cannot be loaded", async () => {
   expect(screen.queryByText("De providerstatus kon niet worden geladen.")).toBeNull();
   expect(screen.queryByRole("button", { name: "Opnieuw proberen" })).toBeNull();
 });
+
+it("sends the owner to the identity server's account page to manage passkeys", async () => {
+  const assign = vi.fn();
+  vi.stubGlobal("location", { ...window.location, origin: "https://travel.example", assign });
+  renderWithOwner(<Settings />);
+  fireEvent.click(await screen.findByRole("button", { name: "Passkeys en aanmelden beheren" }));
+  expect(assign).toHaveBeenCalledTimes(1);
+  const target = new URL(assign.mock.calls[0]?.[0] as string);
+  expect(`${target.origin}${target.pathname}`).toBe("https://auth.tjor.im/realms/travel/account/");
+  expect(target.searchParams.get("referrer")).toBe("travel-tracker");
+  expect(target.searchParams.get("referrer_uri")).toBe("https://travel.example/admin/");
+});

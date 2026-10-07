@@ -184,6 +184,19 @@ export function decodeSubject(accessToken: string): string | null {
   }
 }
 
+/**
+ * Keycloak's own account console, where the owner enrolls, renames and removes
+ * passkeys and security keys. Travel implements no WebAuthn itself; the
+ * referrer pair only adds a "back to Travel" link to that console.
+ */
+export function accountUrl(): string {
+  const parameters = new URLSearchParams({
+    referrer: clientId,
+    referrer_uri: `${window.location.origin}/admin/`,
+  });
+  return `${issuer}/account/?${parameters}`;
+}
+
 export function beginSignOut(session: TrackerSession): void {
   clearSession();
   const parameters = new URLSearchParams({

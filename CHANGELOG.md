@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Settings gains a **Sign-in and passkeys** section whose button opens the
+  owner's Keycloak account console, where passkeys and security keys are
+  enrolled, renamed and removed. [docs/passkeys.md](docs/passkeys.md) records
+  the sign-in and recovery model and the browser verification checklist for the
+  passkey pilot (#337); the checklist is still to be completed on a real device
+  once the realm policy (tjorim/apps#265) is deployed.
 - The route editor takes right-click and touch long-press gestures: pressing
   the map adds a point to the nearest part of the line instead of the end, and
   pressing a numbered point removes it. Every trip map also gains a **Globe**

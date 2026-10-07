@@ -4,7 +4,7 @@ import { Button } from "@base-ui/react/button";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { decodeSubject } from "../auth";
+import { accountUrl, decodeSubject } from "../auth";
 import { useAuth } from "../auth-context";
 import { useConfirmation } from "../forms/useConfirmation";
 import { ownerRequest } from "../query/api";
@@ -165,6 +165,18 @@ export function Settings() {
           ))}
         </div>
       )}
+      <article
+        className="grid gap-3 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 shadow-sm"
+        aria-labelledby="account-security-title"
+      >
+        <h3 id="account-security-title">{m.account_security_title()}</h3>
+        <p className="help">{m.account_security_intro()}</p>
+        <div className="flex flex-wrap items-end gap-2.25">
+          <Button type="button" onClick={() => window.location.assign(accountUrl())}>
+            {m.account_security_manage()}
+          </Button>
+        </div>
+      </article>
       {confirmation.dialog}
     </section>
   );
