@@ -323,3 +323,9 @@ Issues implementing this policy must test at least these boundaries:
 The pre-launch MVP `published` endpoint has been removed. Its full-trip
 serialization does not meet this policy; browser delivery uses only the
 audience projection and link model above.
+
+## Cross-app lifecycle alignment
+
+The [browser persistence contract](../browser-persistence-contract.md) aligns account isolation,
+schema checks, asynchronous cleanup and storage failure across the five apps.
+App-specific retention and offline capabilities remain as documented here.

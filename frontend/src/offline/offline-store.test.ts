@@ -257,3 +257,72 @@ it("requestPersistentStorage and isStoragePersisted delegate to navigator.storag
   expect(persist).toHaveBeenCalledOnce();
   expect(persisted).toHaveBeenCalledOnce();
 });
+
+it("does not recreate a copy when logout completes during revalidation", async () => {
+  await pinOfflineCopy(pinInput());
+  let release!: (response: Response) => void;
+  let started!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const revalidation = revalidateOfflineCopies(OWNER, () => {
+    started();
+    return new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+  });
+  await pending;
+  await wipeOfflineData(OWNER);
+  release(new Response("{}", { status: 200 }));
+  await revalidation;
+  expect(await listOfflineCopies(OWNER)).toEqual([]);
+  expect(await getKeyDisclosure(OWNER)).toBeNull();
+});
+
+it("rejects incompatible copies instead of decrypting or renewing them", async () => {
+  const copy = await pinOfflineCopy(pinInput());
+  const db = await new Promise<IDBDatabase>((resolve) => {
+    const request = indexedDB.open("travel-offline-v1", 2);
+    request.onsuccess = () => resolve(request.result);
+  });
+  await new Promise<void>((resolve) => {
+    const tx = db.transaction("copies", "readwrite");
+    const store = tx.objectStore("copies");
+    const request = store.get(copy.id);
+    request.onsuccess = () => store.put({ ...request.result, schemaVersion: "future@99" });
+    tx.oncomplete = () => resolve();
+  });
+  db.close();
+  await expect(openOfflineCopy(OWNER, copy.id)).rejects.toThrow();
+  expect(await listOfflineCopies(OWNER)).toEqual([]);
+});
+
+it("does not recreate a pinned copy after logout interrupts encryption", async () => {
+  await pinOfflineCopy(pinInput());
+  const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+  let started!: () => void;
+  let release!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const spy = vi.spyOn(crypto.subtle, "encrypt").mockImplementation(async (...args) => {
+    started();
+    await gate;
+    return encrypt(...args);
+  });
+  try {
+    const pin = pinOfflineCopy(pinInput({ resourceId: "doc-2" }));
+    const rejected = expect(pin).rejects.toThrow();
+    await entered;
+    await wipeOfflineData(OWNER);
+    release();
+    await rejected;
+    expect(await listOfflineCopies(OWNER)).toEqual([]);
+    expect(await getKeyDisclosure(OWNER)).toBeNull();
+  } finally {
+    spy.mockRestore();
+  }
+});

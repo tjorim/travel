@@ -8,7 +8,8 @@ function storageFailure(describe: () => string, cause?: unknown): FeedbackError 
 }
 
 const DB_NAME = "travel-offline-v1";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+const GENERATIONS_STORE = "generations";
 const KEYS_STORE = "keys";
 const COPIES_STORE = "copies";
 const SUBJECT_INDEX = "by_subject";
@@ -103,13 +104,20 @@ function openDb(): Promise<IDBDatabase> {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
+        if (!db.objectStoreNames.contains(GENERATIONS_STORE)) db.createObjectStore(GENERATIONS_STORE);
         if (!db.objectStoreNames.contains(KEYS_STORE)) db.createObjectStore(KEYS_STORE, { keyPath: "subject" });
         if (!db.objectStoreNames.contains(COPIES_STORE)) {
           const store = db.createObjectStore(COPIES_STORE, { keyPath: "id" });
           store.createIndex(SUBJECT_INDEX, "subject", { unique: false });
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        request.result.onversionchange = () => {
+          request.result.close();
+          dbPromise = null;
+        };
+        resolve(request.result);
+      };
       request.onerror = () => reject(storageFailure(m.assets_the_offline_database_could_not_be_opened, request.error));
     });
   }
@@ -155,19 +163,26 @@ async function getKeyRecord(
   return (record as { subject: string; key: CryptoKey; exportable: boolean; createdAt: number } | undefined) ?? null;
 }
 
-async function putKeyRecord(
-  db: IDBDatabase,
-  record: { subject: string; key: CryptoKey; exportable: boolean; createdAt: number },
-): Promise<void> {
-  const transaction = db.transaction(KEYS_STORE, "readwrite");
-  transaction.objectStore(KEYS_STORE).put(record);
-  await promisifyTransaction(transaction);
+async function getGeneration(db: IDBDatabase, subject: string): Promise<number> {
+  return (await promisifyRequest(db.transaction(GENERATIONS_STORE).objectStore(GENERATIONS_STORE).get(subject))) ?? 0;
 }
 
-async function deleteKeyRecord(db: IDBDatabase, subject: string): Promise<void> {
-  const transaction = db.transaction(KEYS_STORE, "readwrite");
-  transaction.objectStore(KEYS_STORE).delete(subject);
-  await promisifyTransaction(transaction);
+/** Compare the logout generation in the same transaction as the write, including across tabs. */
+async function guardedPut(
+  db: IDBDatabase,
+  store: string,
+  subject: string,
+  generation: number,
+  record: unknown,
+): Promise<void> {
+  const transaction = db.transaction([store, GENERATIONS_STORE], "readwrite");
+  const done = promisifyTransaction(transaction);
+  const request = transaction.objectStore(GENERATIONS_STORE).get(subject);
+  request.onsuccess = () => {
+    if ((request.result ?? 0) !== generation) transaction.abort();
+    else transaction.objectStore(store).put(record);
+  };
+  await done;
 }
 
 /**
@@ -175,19 +190,23 @@ async function deleteKeyRecord(db: IDBDatabase, subject: string): Promise<void> 
  * bytes to application code; some older browsers cannot clone such a key at all, so we
  * fall back to an extractable one and disclose that downgrade to the owner.
  */
-export async function getOrCreateDeviceKey(subject: string): Promise<{ key: CryptoKey; exportable: boolean }> {
+export async function getOrCreateDeviceKey(
+  subject: string,
+  expectedGeneration?: number,
+): Promise<{ key: CryptoKey; exportable: boolean }> {
   const db = await openDb();
+  const generation = expectedGeneration ?? (await getGeneration(db, subject));
   const existing = await getKeyRecord(db, subject);
   if (existing) return existing;
 
   const createdAt = Date.now();
   try {
     const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-    await putKeyRecord(db, { subject, key, exportable: false, createdAt });
+    await guardedPut(db, KEYS_STORE, subject, generation, { subject, key, exportable: false, createdAt });
     return { key, exportable: false };
   } catch {
     const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-    await putKeyRecord(db, { subject, key, exportable: true, createdAt });
+    await guardedPut(db, KEYS_STORE, subject, generation, { subject, key, exportable: true, createdAt });
     return { key, exportable: true };
   }
 }
@@ -212,12 +231,6 @@ async function getCopy(db: IDBDatabase, id: string): Promise<OfflineCopyRecord |
   return (record as OfflineCopyRecord | undefined) ?? null;
 }
 
-async function putCopy(db: IDBDatabase, record: OfflineCopyRecord): Promise<void> {
-  const transaction = db.transaction(COPIES_STORE, "readwrite");
-  transaction.objectStore(COPIES_STORE).put(record);
-  await promisifyTransaction(transaction);
-}
-
 async function deleteCopy(db: IDBDatabase, id: string): Promise<void> {
   const transaction = db.transaction(COPIES_STORE, "readwrite");
   transaction.objectStore(COPIES_STORE).delete(id);
@@ -236,13 +249,20 @@ export async function findPinnedCopy(
 ): Promise<OfflineCopySummary | null> {
   const db = await openDb();
   const records = await getCopiesForSubject(db, subject);
-  const match = records.find((record) => record.resourceKind === resourceKind && record.resourceId === resourceId);
+  const match = records.find(
+    (record) =>
+      record.schemaVersion === OFFLINE_SCHEMA_VERSION &&
+      record.leaseExpiresAt > Date.now() &&
+      record.resourceKind === resourceKind &&
+      record.resourceId === resourceId,
+  );
   return match ? toSummary(match) : null;
 }
 
 export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummary> {
   const db = await openDb();
-  const { key } = await getOrCreateDeviceKey(input.subject);
+  const generation = await getGeneration(db, input.subject);
+  const { key } = await getOrCreateDeviceKey(input.subject, generation);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, input.bytes).catch((cause: unknown) => {
     throw storageFailure(m.assets_the_offline_action_failed, cause);
@@ -265,7 +285,7 @@ export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummar
     leaseExpiresAt: now + OFFLINE_LEASE_MS,
     schemaVersion: OFFLINE_SCHEMA_VERSION,
   };
-  await putCopy(db, record);
+  await guardedPut(db, COPIES_STORE, input.subject, generation, record);
   return toSummary(record);
 }
 
@@ -275,7 +295,7 @@ export async function listOfflineCopies(subject: string): Promise<OfflineCopySum
   const now = Date.now();
   const fresh: OfflineCopyRecord[] = [];
   for (const record of records) {
-    if (record.leaseExpiresAt <= now) {
+    if (record.schemaVersion !== OFFLINE_SCHEMA_VERSION || record.leaseExpiresAt <= now) {
       await deleteCopy(db, record.id);
       continue;
     }
@@ -297,8 +317,21 @@ export async function clearOfflineCopies(subject: string): Promise<void> {
 
 export async function wipeOfflineData(subject: string): Promise<void> {
   const db = await openDb();
-  await clearOfflineCopies(subject);
-  await deleteKeyRecord(db, subject);
+  const transaction = db.transaction([COPIES_STORE, KEYS_STORE, GENERATIONS_STORE], "readwrite");
+  const done = promisifyTransaction(transaction);
+  const generations = transaction.objectStore(GENERATIONS_STORE);
+  const generation = generations.get(subject);
+  generation.onsuccess = () => generations.put((generation.result ?? 0) + 1, subject);
+  transaction.objectStore(KEYS_STORE).delete(subject);
+  const cursor = transaction.objectStore(COPIES_STORE).index(SUBJECT_INDEX).openCursor(subject);
+  cursor.onsuccess = () => {
+    const current = cursor.result;
+    if (current) {
+      current.delete();
+      current.continue();
+    }
+  };
+  await done;
 }
 
 export async function openOfflineCopy(subject: string, id: string): Promise<Blob> {
@@ -306,6 +339,10 @@ export async function openOfflineCopy(subject: string, id: string): Promise<Blob
   const record = await getCopy(db, id);
   if (!record || record.subject !== subject)
     throw new FeedbackError(() => m.assets_this_offline_copy_is_not_available_for_this_account());
+  if (record.schemaVersion !== OFFLINE_SCHEMA_VERSION) {
+    await deleteCopy(db, id);
+    throw new FeedbackError(() => m.assets_this_offline_copy_is_not_available_for_this_account());
+  }
   if (record.leaseExpiresAt <= Date.now()) {
     await deleteCopy(db, id);
     throw new FeedbackError(() => m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in());
@@ -331,11 +368,12 @@ export async function revalidateOfflineCopies(
   fetchImpl: RevalidateFetch,
 ): Promise<{ checked: number; removed: number }> {
   const db = await openDb();
+  const generation = await getGeneration(db, subject);
   const records = await getCopiesForSubject(db, subject);
   const now = Date.now();
   let removed = 0;
   for (const record of records) {
-    if (record.leaseExpiresAt <= now) {
+    if (record.schemaVersion !== OFFLINE_SCHEMA_VERSION || record.leaseExpiresAt <= now) {
       await deleteCopy(db, record.id);
       removed += 1;
       continue;
@@ -348,7 +386,11 @@ export async function revalidateOfflineCopies(
         continue;
       }
       if (!response.ok) continue;
-      await putCopy(db, { ...record, lastValidatedAt: now, leaseExpiresAt: now + OFFLINE_LEASE_MS });
+      await guardedPut(db, COPIES_STORE, subject, generation, {
+        ...record,
+        lastValidatedAt: now,
+        leaseExpiresAt: now + OFFLINE_LEASE_MS,
+      });
     } catch {
       // Offline or a transient network failure: leave the copy as-is until the next reconnect.
     }
