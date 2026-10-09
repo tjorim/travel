@@ -4,6 +4,14 @@ import { useLocale } from "../locale";
 import { Button } from "@base-ui/react/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import {
+  BackpackIcon,
+  BookOpenIcon,
+  CalendarDaysIcon,
+  ImagesIcon,
+  LayoutDashboardIcon,
+  Share2Icon,
+} from "lucide-react";
 
 import { useAuth } from "../auth-context";
 import { EmptyState } from "../tracker-routes";
@@ -200,21 +208,22 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         >
           {(
             [
-              ["overview", m.owner_overview()],
-              ["plan", m.owner_plan()],
-              ["packing", m.owner_packing()],
-              ["story", m.owner_story()],
-              ["media", m.owner_media_documents()],
-              ["sharing", m.owner_sharing()],
+              ["overview", m.owner_overview(), LayoutDashboardIcon],
+              ["plan", m.owner_plan(), CalendarDaysIcon],
+              ["packing", m.owner_packing(), BackpackIcon],
+              ["story", m.owner_story(), BookOpenIcon],
+              ["media", m.owner_media_documents(), ImagesIcon],
+              ["sharing", m.owner_sharing(), Share2Icon],
             ] as const
-          ).map(([section, label]) => (
+          ).map(([section, label, Icon]) => (
             <Link
-              className="inline-flex min-h-11 shrink-0 items-center rounded-t-lg px-2.5 text-sm font-bold text-travel-muted no-underline aria-[current=page]:bg-travel-selected-bg aria-[current=page]:text-travel-forest"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-t-lg px-2.5 text-sm font-bold text-travel-muted no-underline aria-[current=page]:bg-travel-selected-bg aria-[current=page]:text-travel-forest"
               key={section}
               to={sectionUrl(section)}
               activeOptions={{ exact: section === "overview" }}
               aria-current={currentSection === section ? "page" : undefined}
             >
+              <Icon className="size-4" aria-hidden="true" />
               {label}
             </Link>
           ))}

@@ -22,6 +22,11 @@ updates:
         patterns:
           - "pytest"
           - "ruff"
+      # markdown-it plugins are pinned against their core release
+      markdown:
+        patterns:
+          - "markdown-it-py"
+          - "mdit-py-plugins"
 
   # pnpm projects use Dependabot's npm ecosystem support.
   - package-ecosystem: "npm"
@@ -56,6 +61,23 @@ updates:
         patterns:
           - "@tanstack/react-query"
           - "@tanstack/react-query-devtools"
+      testing:
+        patterns:
+          - "@testing-library/*"
+          - "@vitest/*"
+          - "vitest"
+      oxc:
+        patterns:
+          - "oxlint"
+          - "oxfmt"
+      i18n:
+        patterns:
+          - "@inlang/*"
+      # tailwindcss and its Vite plugin share one release train
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"

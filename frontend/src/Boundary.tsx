@@ -6,6 +6,7 @@ import { Collapsible } from "@base-ui/react/collapsible";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { CameraIcon, HouseIcon, LibraryIcon, MapPinIcon, SettingsIcon } from "lucide-react";
 
 import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
 import { useAuth } from "./auth-context";
@@ -14,11 +15,11 @@ import { wipeOfflineData } from "./offline/offline-store";
 export function Boundary({ children }: { children: ReactNode }) {
   useLocale();
   const navigation = [
-    ["/", m.overview()],
-    ["/trips", m.trips()],
-    ["/capture", m.capture()],
-    ["/library", m.library()],
-    ["/settings", m.settings()],
+    ["/", m.overview(), HouseIcon],
+    ["/trips", m.trips(), MapPinIcon],
+    ["/capture", m.capture(), CameraIcon],
+    ["/library", m.library(), LibraryIcon],
+    ["/settings", m.settings(), SettingsIcon],
   ] as const;
 
   const { session } = useAuth();
@@ -82,13 +83,14 @@ export function Boundary({ children }: { children: ReactNode }) {
           className="fixed inset-x-0 bottom-0 z-20 flex justify-between border-t border-travel-card-border bg-travel-surface/95 px-1 backdrop-blur-md min-[680px]:static min-[680px]:z-auto min-[680px]:mt-7 min-[680px]:justify-start min-[680px]:gap-10 min-[680px]:border-0 min-[680px]:bg-transparent min-[680px]:p-0 min-[680px]:backdrop-blur-none"
           aria-label={m.navigation()}
         >
-          {navigation.map(([to, label]) => (
+          {navigation.map(([to, label, Icon]) => (
             <Link
-              className="flex min-h-11 flex-1 items-center justify-center whitespace-nowrap text-xs font-bold text-travel-muted no-underline aria-[current=page]:text-travel-forest min-[680px]:min-h-0 min-[680px]:flex-none min-[680px]:text-sm"
+              className="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 whitespace-nowrap text-xs font-bold text-travel-muted no-underline aria-[current=page]:text-travel-forest min-[680px]:min-h-0 min-[680px]:flex-none min-[680px]:text-sm"
               key={to}
               to={to}
               activeOptions={{ exact: to === "/", includeSearch: false }}
             >
+              <Icon className="size-5 min-[680px]:hidden" aria-hidden="true" />
               {label}
             </Link>
           ))}
