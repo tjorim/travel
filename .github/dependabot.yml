@@ -51,6 +51,11 @@ updates:
         patterns:
           - "vite"
           - "@vitejs/plugin-react"
+      # Group TanStack Query packages (devtools must track react-query's query-core; duplicate copies drift apart)
+      tanstack-query:
+        patterns:
+          - "@tanstack/react-query"
+          - "@tanstack/react-query-devtools"
 
   - package-ecosystem: "github-actions"
     directory: "/"
