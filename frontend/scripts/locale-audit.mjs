@@ -1,203 +1,176 @@
+// Shared by the Travel, Worktime, Daynest, Champagne Festival and Bordertax frontends: keep the logic in step.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
+import { parseSync } from "oxc-parser";
+import { projectErrors } from "./check-message-parity.mjs";
+import { diagnosticCallees, excludedFiles, exclusions } from "./locale-audit-exclusions.mjs";
 
-const root = fileURLToPath(new URL("../", import.meta.url));
-const placeholders = (text) => [...new Set([...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort();
-
-/** Compare declarations as well as interpolation: an unused input is still part of the typed contract. */
-export function catalogueErrors(base, translation) {
-  const errors = [];
-  for (const key of new Set([...Object.keys(base), ...Object.keys(translation)])) {
-    if (!(key in base) || !(key in translation)) {
-      errors.push(`${key}: missing catalogue key`);
-      continue;
-    }
-    const signature = (message) =>
-      typeof message === "string"
-        ? { inputs: placeholders(message) }
-        : message.map((variant) => ({
-            declarations: [...(variant.declarations ?? [])].sort(),
-            selectors: variant.selectors ?? [],
-            matches: Object.fromEntries(
-              Object.entries(variant.match)
-                .sort(([left], [right]) => left.localeCompare(right))
-                .map(([selector, text]) => [selector, placeholders(text)]),
-            ),
-          }));
-    if (JSON.stringify(signature(base[key])) !== JSON.stringify(signature(translation[key])))
-      errors.push(`${key}: interpolation, declaration or selector mismatch`);
-  }
-  return errors;
-}
-
-// Exact source/value exclusions. Never approve a whole component or directory for visible copy.
-const exclusions = {
-  "locale.tsx": {
-    Nederlands: "language autonym",
-    English: "language autonym",
-    "Travel ·": "fixed application title brand",
-  },
-  "visitor-routes.tsx": { Travel: "fixed application brand" },
-  "TripMap.tsx": {
-    "© OpenFreeMap": "provider attribution",
-    OpenMapTiles: "provider attribution",
-    "© OpenStreetMap": "provider attribution",
-    "© Mapterhorn": "provider attribution",
-    "© Esri": "provider attribution",
-    ", Maxar, Earthstar Geographics, and the GIS User Community": "provider attribution",
-  },
-  "auth-context.tsx": { "Travel tracker authentication context is missing.": "internal invariant diagnostic" },
-  "tracker-model.ts": { kB: "file size unit" },
-  "trips/PackingManager.tsx": { kg: "SI weight unit" },
-  "auth.ts": { "openid profile email": "OIDC scopes" },
-  "map-style.ts": { "Noto Sans Regular": "provider glyph font", HTTP: "internal status diagnostic" },
-  "query/api.ts": {
-    "Invalid API response": "diagnostic kept outside interface feedback",
-    Bearer: "HTTP authorization scheme",
-  },
-  "pages/Settings.tsx": { "Google Photos": "provider brand", "GoPro Cloud": "provider brand" },
-  "trips/CaptureDialog.tsx": { connection: "CSS class fragment" },
-  "trips/merge-candidates.ts": { "public page": "audience name the API returns, translated where it is shown" },
-  "trips/MediaManager.tsx": {
-    "media-thumbnail-placeholder": "CSS class fragment",
-    "Google Photos": "provider brand",
-    "GoPro Cloud": "provider brand",
-    "s ·": "SI seconds unit and metadata separator",
-  },
-  "offline/OfflineSnapshotView.tsx": { "Medische notitie": "legacy enum lookup key, never rendered literally" },
-  "trips/RouteManager.tsx": {
-    "Europe/Amsterdam": "IANA input example",
-    "Asia/Taipei": "IANA input example",
-    "BR-087": "service reference input example",
-  },
-  "ui/calendar.tsx": {
-    "absolute inset-x-0 top-0 flex items-center justify-between": "CSS class list",
-    "text-sm font-extrabold text-travel-ink capitalize": "CSS class list",
-    "size-11 p-0 text-xs font-bold text-travel-muted capitalize sm:size-9": "CSS class list",
-    "[&>button]:bg-primary [&>button]:font-bold [&>button]:text-primary-foreground [&>button]:hover:bg-primary":
-      "CSS class list",
-    "[&>button]:ring-2 [&>button]:ring-travel-forest [&>button]:ring-inset": "CSS class list",
-  },
-  "trips/StayManager.tsx": { TW: "ISO country input example", "https://": "URL input example" },
-};
 const copyAttribute = /^(?:aria-label|aria-description|title|label|ariaLabel|placeholder|alt|description)$/;
 const machine = (text) =>
-  /^(?:[DMYHhmsZd]+[ ,:\-]*)+$/.test(text) ||
-  /^(?:[DMYHhmsZd]+[ ,:\-]*)*(?:MMMM|MMM|ddd)(?:[DMYHhmsZd ,:\-]*)*$/.test(text) ||
+  /^(?:rgba?|hsla?|oklch|oklab|color-mix|(?:repeating-)?(?:linear|radial|conic)-gradient)\(/.test(text) ||
+  /^\((?:prefers|min|max)-[\w-]+: [^)]+\)$/.test(text) ||
+  // Day.js format tokens and separators; one linear pattern, no nested quantifiers.
+  /^[DMYHhmsZd][DMYHhmsZd ,:\-]*$/.test(text) ||
   text
     .split(/\s+/)
     .every(
       (token) =>
-        /^(?:[\w:[\]!./%-]*-)[\w:[\]!./%-]+$/.test(token) ||
+        /^(?:[\w:[\]!./%&()*=,'>#@^$~+-]*-)[\w:[\]!./%&()*=,'>#@^$~+-]+$/.test(token) ||
         ["block", "grid", "fixed", "relative", "flex", "border", "rounded", "peer", "secondary", "compact"].includes(
           token,
         ),
     );
 
+const functionLike = new Set([
+  "FunctionDeclaration",
+  "FunctionExpression",
+  "ArrowFunctionExpression",
+  "TSDeclareFunction",
+]);
+/** Walks the ESTree, passing each node with its ancestors (nearest first). */
+function walk(node, visit, ancestors = []) {
+  if (!node || typeof node.type !== "string") return;
+  visit(node, ancestors);
+  const next = [node, ...ancestors];
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "parent" || !value || typeof value !== "object") continue;
+    for (const child of Array.isArray(value) ? value : [value]) walk(child, visit, next);
+  }
+}
+function parse(source, file) {
+  const { program, errors } = parseSync(file, source);
+  if (errors.length) throw new Error(`${file}: ${errors[0].message}`);
+  return program;
+}
+const lineAt = (source, offset) => source.slice(0, offset).split("\n").length;
+const keyName = (property) => (property.computed ? "" : (property.key.name ?? ""));
+
 /** A review aid, not a proof about dynamic or authored data. --all lists every literal for manual tracing. */
 export function sourceCandidates(source, file = "source.tsx", all = false) {
-  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const result = [];
-  function visit(node) {
+  function consider(node, ancestors, text, start, templateFragment) {
+    const trimmed = text.trim();
+    const isJsxText = node.type === "JSXText";
+    // A fragment of a substituted template takes the position of the whole template.
+    const outer = templateFragment ? ancestors.slice(1) : ancestors;
+    const parent = outer[0]?.type === "JSXExpressionContainer" ? outer[1] : outer[0];
+    const attr = parent?.type === "JSXAttribute" ? (parent.name.name ?? "") : "";
+    const imported = /^(?:Import|Export\w*)Declaration$/.test(parent?.type ?? "");
+    // Strings handed to class-name helpers are styling, whatever their content.
+    const styling = ancestors.some(
+      (ancestor) =>
+        ancestor.type === "CallExpression" &&
+        ancestor.callee.type === "Identifier" &&
+        /^(?:cn|cva|clsx|twMerge)$/.test(ancestor.callee.name),
+    );
+    const directive = parent?.type === "ExpressionStatement" && typeof parent.directive === "string";
+    // Console and logger output and Error messages are developer diagnostics, never interface copy.
+    // An application that renders `error.message` must route it through its own translated fallback.
+    const diagnostic = ancestors.some(
+      (ancestor) =>
+        (ancestor.type === "CallExpression" &&
+          ancestor.callee.type === "MemberExpression" &&
+          ancestor.callee.object.type === "Identifier" &&
+          /^(?:console|logger)$/.test(ancestor.callee.object.name)) ||
+        (ancestor.type === "CallExpression" &&
+          ancestor.callee.type === "Identifier" &&
+          diagnosticCallees.includes(ancestor.callee.name)) ||
+        (ancestor.type === "NewExpression" &&
+          ancestor.callee.type === "Identifier" &&
+          /Error$/.test(ancestor.callee.name)),
+    );
+    const templateCopy = templateFragment && /\s/.test(text) && /[A-Za-zÀ-ž]{2}/.test(trimmed);
+    const fieldMapping = ancestors
+      .slice(0, ancestors.findIndex((ancestor) => functionLike.has(ancestor.type)) + 1 || ancestors.length)
+      .some(
+        (ancestor) =>
+          (ancestor.type === "Property" && keyName(ancestor) === "serverFields") ||
+          (ancestor.type === "VariableDeclarator" && ancestor.id.name === "serverFields"),
+      );
+    const propertyCopy =
+      !fieldMapping &&
+      parent?.type === "Property" &&
+      parent.value === node &&
+      /^(?:label|title|placeholder|description|alt)$/.test(keyName(parent));
+    const visible =
+      templateCopy || isJsxText || parent?.type === "JSXElement" || copyAttribute.test(attr) || propertyCopy;
     if (
-      ts.isStringLiteral(node) ||
-      ts.isNoSubstitutionTemplateLiteral(node) ||
-      ts.isTemplateHead(node) ||
-      ts.isTemplateMiddle(node) ||
-      ts.isTemplateTail(node) ||
-      ts.isJsxText(node)
+      /[A-Za-zÀ-ž]/.test(trimmed) &&
+      !imported &&
+      (all || (!directive && !diagnostic && !styling)) &&
+      (all || visible || /\s/.test(trimmed)) &&
+      (all ||
+        (!/^(?:className|rel|target|href|src|srcSet|id|htmlFor|role|type|name|data-.+)$/.test(attr) &&
+          (visible || !machine(trimmed))))
     ) {
-      const text = node.text.trim();
-      const parent = ts.isJsxExpression(node.parent) ? node.parent.parent : node.parent;
-      const attr = ts.isJsxAttribute(parent) ? parent.name.getText(tree) : "";
-      const imported = ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent);
-      const templateCopy =
-        (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) &&
-        /\s/.test(node.text) &&
-        /[A-Za-zÀ-ž]{2}/.test(text);
-      let ancestor = parent;
-      let fieldMapping = false;
-      while (ancestor && !ts.isFunctionLike(ancestor)) {
-        if (
-          (ts.isPropertyAssignment(ancestor) || ts.isVariableDeclaration(ancestor)) &&
-          ancestor.name.getText(tree) === "serverFields"
-        )
-          fieldMapping = true;
-        ancestor = ancestor.parent;
-      }
-      const propertyCopy =
-        !fieldMapping &&
-        ts.isPropertyAssignment(parent) &&
-        parent.initializer === node &&
-        /^(?:label|title|placeholder|description|alt)$/.test(parent.name.getText(tree));
-      const visible =
-        templateCopy || ts.isJsxText(node) || ts.isJsxElement(parent) || copyAttribute.test(attr) || propertyCopy;
-      if (
-        /[A-Za-zÀ-ž]/.test(text) &&
-        !imported &&
-        (all || visible || /\s/.test(text)) &&
-        (all || (attr !== "className" && (visible || !machine(text))))
-      ) {
-        result.push({ line: tree.getLineAndCharacterOfPosition(node.getStart()).line + 1, text });
-      }
+      result.push({ line: lineAt(source, start + text.length - text.trimStart().length), text: trimmed });
     }
-    ts.forEachChild(node, visit);
   }
-  visit(tree);
+  walk(parse(source, file), (node, ancestors) => {
+    if (node.type === "Literal" && typeof node.value === "string") consider(node, ancestors, node.value, node.start);
+    else if (node.type === "JSXText") consider(node, ancestors, node.value, node.start);
+    else if (node.type === "TemplateLiteral") {
+      const single = node.quasis.length === 1;
+      for (const quasi of node.quasis)
+        // A template without substitutions behaves like a string literal; fragments of a substituted one are copy hints.
+        single
+          ? consider(node, ancestors, quasi.value.cooked ?? quasi.value.raw, quasi.start, false)
+          : consider(quasi, [node, ...ancestors], quasi.value.cooked ?? quasi.value.raw, quasi.start, true);
+    }
+  });
   return result;
 }
 /** A top-level message call freezes copy before any locale switch. Store the function instead. */
 export function frozenMessageCalls(source, file = "source.tsx") {
-  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const lines = [];
-  function visit(node) {
+  walk(parse(source, file), (node, ancestors) => {
     if (
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.expression.getText(tree) === "m"
-    ) {
-      let parent = node.parent;
-      while (parent && !ts.isFunctionLike(parent)) parent = parent.parent;
-      if (!parent) lines.push(tree.getLineAndCharacterOfPosition(node.getStart()).line + 1);
-    }
-    ts.forEachChild(node, visit);
-  }
-  visit(tree);
+      node.type === "CallExpression" &&
+      node.callee.type === "MemberExpression" &&
+      node.callee.object.type === "Identifier" &&
+      node.callee.object.name === "m" &&
+      !ancestors.some((ancestor) => functionLike.has(ancestor.type))
+    )
+      lines.push(lineAt(source, node.start));
+  });
   return lines;
 }
 function files(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(directory, entry.name);
     if (entry.isDirectory()) return entry.name === "paraglide" ? [] : files(file);
-    return /\.(?:tsx?|js)$/.test(file) && !/(?:\.test\.|test-|fake-api|test-utils)/.test(file) ? [file] : [];
+    return /\.(?:tsx?|js)$/.test(file) && !/(?:\.test\.|\.spec\.|test-|fake-api|test-utils)/.test(file) ? [file] : [];
   });
 }
 function main() {
+  const root = fileURLToPath(new URL("../", import.meta.url));
   const all = process.argv.includes("--all");
-  const errors = catalogueErrors(
-    JSON.parse(fs.readFileSync(path.join(root, "messages/nl.json"))),
-    JSON.parse(fs.readFileSync(path.join(root, "messages/en.json"))),
-  );
+  const { errors, locales } = projectErrors(root);
   const sources = files(path.join(root, "src"));
-  for (const file of sources) {
+  const reviewed = sources.filter((file) => {
+    const relative = path.relative(path.join(root, "src"), file).split(path.sep).join("/");
+    return !Object.keys(excludedFiles).some((entry) =>
+      entry.endsWith("/") ? relative.startsWith(entry) : relative === entry,
+    );
+  });
+  for (const file of reviewed) {
     const relative = path.relative(path.join(root, "src"), file);
     for (const line of frozenMessageCalls(fs.readFileSync(file, "utf8"), relative))
       errors.push(`${relative}:${line}: module-level translated snapshot; retain the message function`);
     for (const candidate of sourceCandidates(fs.readFileSync(file, "utf8"), relative, all)) {
       const reason = exclusions[relative]?.[candidate.text];
       const entry = `${relative}:${candidate.line} ${JSON.stringify(candidate.text)}`;
-      if (all) console.log(`${entry}${reason ? ` — ${reason}` : ""}`);
+      if (all) process.stdout.write(`${entry}${reason ? ` — ${reason}` : ""}\n`);
       else if (!reason) errors.push(entry);
     }
   }
   if (errors.length) {
-    console.error(errors.join("\n"));
+    process.stderr.write(`${errors.join("\n")}\n`);
     process.exitCode = 1;
   } else
-    console.log(
-      `Locale audit passed: ${sources.length} production source files; Dutch/English catalogue contracts match.`,
+    process.stdout.write(
+      `Locale audit passed: ${reviewed.length} production source files; ${locales} locale catalogues match.\n`,
     );
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

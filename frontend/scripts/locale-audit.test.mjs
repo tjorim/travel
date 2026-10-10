@@ -1,20 +1,5 @@
 import { expect, it } from "vitest";
-import { catalogueErrors, sourceCandidates, frozenMessageCalls } from "./locale-audit.mjs";
-
-it("rejects missing keys and inputs, including declaration-only plural inputs", () => {
-  expect(catalogueErrors({ greeting: "Hello {name}" }, {})).toHaveLength(1);
-  expect(catalogueErrors({ greeting: "Hello {name}" }, { greeting: "Hallo {person}" })).toHaveLength(1);
-  const plural = (input = "count", match = "countPlural=other") => [
-    {
-      declarations: [`input ${input}`, "local countPlural = count: plural"],
-      selectors: ["countPlural"],
-      match: { [match]: "{count} records" },
-    },
-  ];
-  expect(catalogueErrors({ count: plural() }, { count: plural("total") })).toHaveLength(1);
-  expect(catalogueErrors({ count: plural() }, { count: plural("count", "countPlural=one") })).toHaveLength(1);
-  expect(catalogueErrors({ greeting: "Hello {name}" }, { greeting: "{name}, hallo" })).toEqual([]);
-});
+import { sourceCandidates, frozenMessageCalls } from "./locale-audit.mjs";
 
 it("finds JSX copy, single-word labels, validators, enum prose and template fragments", () => {
   const source = `const labels = { wait: "Even wachten" }; const validate = () => "Geef een naam";
@@ -33,6 +18,18 @@ it("finds JSX copy, single-word labels, validators, enum prose and template frag
   expect(sourceCandidates('const serverFields = { title: "title" };')).toEqual([]);
   expect(sourceCandidates('const config = { serverFields: { label: "label" } };')).toEqual([]);
   expect(sourceCandidates('const id = "protocol-key";', "source.ts", true)[0].text).toBe("protocol-key");
+});
+
+it("ignores diagnostics, directives, colours, media queries and class lists", () => {
+  const source = `"use client"; console.warn("Could not load"); logger.error(\`Failed to save: \${id}\`, error);
+    const dark = matchMedia("(prefers-color-scheme: dark)"); const fill = "rgba(168, 85, 247, 0.7)";
+    const box = <i className="[&_svg:not([class*='size-'])]:size-4 data-[size=sm]/dialog:grid" />;`;
+  expect(sourceCandidates(source)).toEqual([]);
+  expect(
+    sourceCandidates('const base = cva("uppercase tracking wide", { variants: { size: { sm: "text xs" } } });'),
+  ).toEqual([]);
+  expect(sourceCandidates("throw new RangeError(`Invalid value: ${value}`);")).toEqual([]);
+  expect(sourceCandidates('toast.error("Could not load");').map((item) => item.text)).toEqual(["Could not load"]);
 });
 
 it("rejects module-level translations while allowing deferred functions and getters", () => {

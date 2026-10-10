@@ -38,10 +38,18 @@ pnpm build
 ```
 
 The audit compares catalogue keys, interpolation names, plural declarations,
-selectors and each match branch. It catches visible JSX, copy attributes,
-prose literals, template fragments and eager module-level `m` calls. Exact
-source/value exclusions in `scripts/locale-audit.mjs` state their reason; do not
-approve a component wholesale. CI runs this audit, generated type checks and
+selectors and each match branch with `scripts/check-message-parity.mjs`, which
+Worktime, Daynest, Champagne Festival and Bordertax also run in CI as
+`pnpm check-message-parity`; keep its logic in step across them. The audit also
+catches visible JSX, copy attributes, prose literals, template fragments and eager
+module-level `m` calls. `scripts/locale-audit.mjs` is shared with those projects and
+holds no project data; each project keeps its own `scripts/locale-audit-exclusions.mjs`.
+Exact source/value exclusions state their reason; do not approve a component wholesale.
+`excludedFiles` lists the few files that hold no interface copy (authored data,
+development fixtures) and `diagnosticCallees` names logging helpers. Class-name
+helpers (`cn`, `cva`), `console`/`logger` calls, `new …Error(…)` messages, directives,
+colours and media queries are ignored by design, so an application that renders
+`error.message` must route it through a translated fallback. CI runs this audit, generated type checks and
 the full regression suite. Negative TypeScript assertions ensure generated
 message keys and interpolation inputs remain typed. Plural regression tests
 cover every plural message at 0, 1 and multiple, including authored interpolation.
