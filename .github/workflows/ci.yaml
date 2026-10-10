@@ -81,6 +81,8 @@ jobs:
         run: uv run ruff check .
       - name: Check formatting
         run: uv run ruff format --check .
+      - name: Type check
+        run: uv run ty check .
       - name: Test
         run: uv run pytest
       - name: Verify migrations against PostgreSQL

@@ -36,7 +36,7 @@ def owned_visit(trip: Trip, visit_id: str) -> Visit:
 def flag_route_overlaps(trip: Trip, *visits: Visit) -> None:
     """Note, for the response only, which routes each visit probably restates."""
     for visit in visits:
-        visit.possible_route_duplicates = [  # type: ignore[attr-defined]
+        visit.possible_route_duplicates = [  # ty: ignore[unresolved-attribute]
             {"id": route.id, "title": route_title(route)} for route in overlapping_routes(visit, trip.routes)
         ]
 

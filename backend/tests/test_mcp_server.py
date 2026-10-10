@@ -214,6 +214,29 @@ def test_mcp_share_activation_and_rotation_return_complete_visitor_urls(
     assert rotated["share_url"] == f"https://travel.example.test/share/{rotated['token']}"
 
 
+def test_mcp_revokes_an_active_share_link(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Shareable"))
+    link = backend.create_share_link(trip["id"], schemas.ShareLinkCreate(label="Family"), confirm=True)
+    backend.activate_share_link(trip["id"], link["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+
+    revoked = backend.revoke_share_link(trip["id"], link["id"], reason="Sent to the wrong person", confirm=True)
+
+    assert revoked["state"] == "revoked"
+
+
+def test_mcp_preview_file_and_derivative_tools_reach_their_handlers(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Previews"))
+    link = backend.create_share_link(trip["id"], schemas.ShareLinkCreate(label="Family"), confirm=True)
+
+    # A signature mismatch would surface as a TypeError; reaching the handler is a clean "not found" refusal.
+    with pytest.raises(ValueError, match="File not found"):
+        backend.inspect_public_preview_file(trip["id"], "missing")
+    with pytest.raises(ValueError, match="File not found"):
+        backend.inspect_share_preview_file(trip["id"], link["id"], "missing")
+    with pytest.raises(ValueError, match="not found"):
+        backend.create_media_derivative(trip["id"], "missing", schemas.MediaDerivativeCreate())
+
+
 def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "mcp_base_url", None)
     monkeypatch.setattr(settings, "oidc_issuer_url", None)

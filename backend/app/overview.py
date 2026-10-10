@@ -208,6 +208,8 @@ def _locations_repeating_areas(trip: Trip) -> list[dict[str, Any]]:
         area = areas.get(location.area_id)
         if area is None or location.latitude is None or location.longitude is None:
             continue
+        if area.latitude is None or area.longitude is None:
+            continue
         if _distance_km(area.latitude, area.longitude, location.latitude, location.longitude) > _SAME_PLACE_KM:
             continue
         if not _only_repeats_its_area(location):

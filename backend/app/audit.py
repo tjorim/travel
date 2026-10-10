@@ -8,9 +8,9 @@ event and the state transition it records land together or not at all.
 import hashlib
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import delete
+from sqlalchemy import CursorResult, delete
 from sqlalchemy.orm import Session
 
 from .models import AuditEvent, AuditEventKind, AuditTargetType
@@ -60,6 +60,6 @@ def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETE
     VPS scheduling is out of scope here (see tjorim/apps for that job, as
     with `purge_deleted_media`'s own schedule)."""
     cutoff = datetime.now(UTC) - older_than
-    result = session.execute(delete(AuditEvent).where(AuditEvent.occurred_at < cutoff))
+    result = cast(CursorResult, session.execute(delete(AuditEvent).where(AuditEvent.occurred_at < cutoff)))
     session.commit()
     return result.rowcount

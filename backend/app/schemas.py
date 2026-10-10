@@ -82,7 +82,7 @@ def require_timezone(value: str | None) -> str | None:
 
 def require_ordered_dates(start: date | None, end: date | None, message: str) -> None:
     if start is not None and end is not None and end < start:
-        raise PydanticCustomError("dates_out_of_order", message)
+        raise PydanticCustomError("dates_out_of_order", message)  # ty: ignore[invalid-argument-type]
 
 
 class InputModel(BaseModel):
@@ -238,11 +238,12 @@ class LocationUpdate(InputModel):
         }
         for code, fields in groups.items():
             present = [field for field in fields if field in supplied]
+            together = "Supply " + ", ".join(fields) + " together"
             if present and len(present) != len(fields):
-                raise PydanticCustomError(code, "Supply " + ", ".join(fields) + " together")
+                raise PydanticCustomError(code, together)  # ty: ignore[invalid-argument-type]
             values = [getattr(self, field) for field in present]
             if values and any(value is None for value in values) and not all(value is None for value in values):
-                raise PydanticCustomError(code, "Supply " + ", ".join(fields) + " together, or null them together")
+                raise PydanticCustomError(code, together + ", or null them together")  # ty: ignore[invalid-argument-type]
         if (
             self.viewport_north is not None
             and self.viewport_south is not None

@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import Connection, Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..auth import current_subject
@@ -325,7 +325,7 @@ def add_derivative(
     return _derivative_response(derivative, trip_id)
 
 
-def _process_video_job(bind: object, storage: ObjectStorage, derivative_id: str) -> None:
+def _process_video_job(bind: Engine | Connection, storage: ObjectStorage, derivative_id: str) -> None:
     with sessionmaker(bind=bind, autocommit=False, autoflush=False)() as job_session:
         process_video_derivative(job_session, storage, derivative_id=derivative_id)
 

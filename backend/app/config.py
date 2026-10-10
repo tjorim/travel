@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # which it could otherwise determine where an unlisted visitor URL lives.
     # This points to Vite's default local origin in development; deployment
     # must set it to the public Travel application origin.
-    public_app_url: AnyHttpUrl = "http://localhost:5173"
+    public_app_url: AnyHttpUrl = AnyHttpUrl("http://localhost:5173")
     # Explicit per-owner delivery mapping prevents one owner's private task
     # title from being mailed to another owner's address.
     task_alert_recipients: dict[str, str] = Field(default_factory=dict)

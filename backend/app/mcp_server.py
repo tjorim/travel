@@ -17,6 +17,7 @@ import base64
 import binascii
 import json
 import logging
+import threading
 import time
 from collections.abc import Callable, Sequence
 from io import BytesIO
@@ -24,8 +25,8 @@ from typing import Any, Literal, TypeVar
 from urllib.parse import quote
 
 import anyio.to_thread
-from fastapi import FastAPI, HTTPException, Response
-from fastapi.datastructures import UploadFile
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response
+from fastapi.datastructures import Headers, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastmcp import FastMCP
 from fastmcp.exceptions import DisabledError, FastMCPError, NotFoundError, ToolError
@@ -82,7 +83,9 @@ class BinaryUpload(schemas.InputModel):
             data = base64.b64decode(self.data_base64, validate=True)
         except (binascii.Error, ValueError) as error:
             raise ValueError("data_base64 must be valid base64") from error
-        return UploadFile(filename=self.filename, file=BytesIO(data), headers={"content-type": self.content_type})
+        return UploadFile(
+            filename=self.filename, file=BytesIO(data), headers=Headers({"content-type": self.content_type})
+        )
 
 
 def _without_html(value: Any) -> Any:
@@ -181,7 +184,12 @@ class BatchCreate(schemas.InputModel):
     trip_tasks: list[schemas.TripTaskCreate] = Field(default_factory=list, max_length=100)
 
 
-def _share_url(token: str) -> str:
+def _preview_request() -> Request:
+    """A bare request for owner preview handlers that read headers (such as Range) from one; MCP sends none."""
+    return Request({"type": "http", "method": "GET", "headers": []})
+
+
+def _share_url(token: str | None) -> str:
     """Build the visitor URL that corresponds to an unlisted capability.
 
     MCP has no browser request or current page URL, so this must use the
@@ -189,6 +197,8 @@ def _share_url(token: str) -> str:
     API URL.  The token is URL-safe today, but quote it defensively because it
     is a capability and must remain one path segment.
     """
+    if token is None:
+        raise ValueError("The share link has no capability token")
     return f"{str(settings.public_app_url).rstrip('/')}/share/{quote(token, safe='')}"
 
 
@@ -496,7 +506,7 @@ class TravelMcpBackend:
             # The domain handlers commit each record. Inside a batch a commit
             # only flushes, so ``_call`` commits everything at the end, or the
             # closing session rolls all of it back when one record is refused.
-            session.commit = session.flush  # type: ignore[method-assign]
+            session.commit = session.flush  # ty: ignore[invalid-assignment]
             created: dict[str, list[dict[str, Any]]] = {}
             try:
                 for field, kind, create, model_type in steps:
@@ -970,7 +980,7 @@ class TravelMcpBackend:
             link_id,
             trip_id,
             lambda s, sub: publication.revoke_share_link(
-                trip_id, link_id, schemas.AuditReasonInput(reason=reason), s, sub
+                trip_id, link_id, s, sub, schemas.AuditReasonInput(reason=reason)
             ),
             lambda x: _model(x, schemas.ShareLinkResponse),
             confirm=confirm,
@@ -1056,14 +1066,19 @@ class TravelMcpBackend:
         self, trip_id: str, media_id: str, payload: schemas.MediaDerivativeCreate
     ) -> dict[str, Any]:
         """Generate a metadata-stripped derivative that remains pending owner approval."""
-        return self._call(
+        tasks = BackgroundTasks()
+        result = self._call(
             "media_derivative.create",
             "media_derivative",
             None,
             trip_id,
-            lambda s, sub: media.add_derivative(trip_id, media_id, payload, s, sub, get_storage()),
+            lambda s, sub: media.add_derivative(trip_id, media_id, payload, s, sub, get_storage(), tasks),
             lambda x: _model(x, schemas.MediaDerivativeResponse),
         )
+        # A video derivative is processed after the request in the API; run it the same way once it is committed.
+        for task in tasks.tasks:
+            threading.Thread(target=task.func, args=task.args, kwargs=task.kwargs, daemon=True).start()
+        return result
 
     def approve_media_derivative(
         self, trip_id: str, media_id: str, derivative_id: str, confirm: bool = False
@@ -1776,7 +1791,7 @@ class TravelMcpBackend:
             local_id,
             trip_id,
             lambda s, sub: publication.preview_public_navigation(trip_id, local_id, s, sub),
-            lambda x: json.loads(x.body),
+            lambda x: json.loads(bytes(x.body)),
         )
 
     def preview_share_navigation(self, trip_id: str, link_id: str, local_id: str) -> dict[str, Any]:
@@ -1787,7 +1802,7 @@ class TravelMcpBackend:
             link_id,
             trip_id,
             lambda s, sub: publication.preview_share_navigation(trip_id, link_id, local_id, s, sub),
-            lambda x: json.loads(x.body),
+            lambda x: json.loads(bytes(x.body)),
         )
 
     def inspect_public_preview_file(self, trip_id: str, local_id: str) -> dict[str, str | None]:
@@ -1797,7 +1812,9 @@ class TravelMcpBackend:
             "public_surface",
             local_id,
             trip_id,
-            lambda s, sub: publication.preview_public_file(trip_id, local_id, s, sub, get_storage()),
+            lambda s, sub: publication.preview_public_file(
+                trip_id, local_id, s, sub, get_storage(), _preview_request()
+            ),
             lambda x: {"content_type": x.media_type, "cache_control": x.headers.get("cache-control")},
         )
 
@@ -1808,7 +1825,9 @@ class TravelMcpBackend:
             "share_link",
             link_id,
             trip_id,
-            lambda s, sub: publication.preview_share_file(trip_id, link_id, local_id, s, sub, get_storage()),
+            lambda s, sub: publication.preview_share_file(
+                trip_id, link_id, local_id, s, sub, get_storage(), _preview_request()
+            ),
             lambda x: {"content_type": x.media_type, "cache_control": x.headers.get("cache-control")},
         )
 

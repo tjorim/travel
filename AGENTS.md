@@ -44,6 +44,7 @@ cd backend
 uv sync --all-groups --frozen
 uv run pytest
 uv run ruff check .
+uv run ty check .
 # Run migration checks against a local PostgreSQL database.
 TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
   uv run alembic upgrade head

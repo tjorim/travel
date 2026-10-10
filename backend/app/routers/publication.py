@@ -124,7 +124,7 @@ def preview_public_file(
 
 
 @router.get("/public-projection/preview/navigation/{local_id}")
-def preview_public_navigation(trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep) -> dict:
+def preview_public_navigation(trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
     return _preview_navigation(trip, surface.scope if surface else {}, local_id)
@@ -296,7 +296,7 @@ def preview_share_file(
 @router.get("/share-links/{link_id}/preview/navigation/{local_id}")
 def preview_share_navigation(
     trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep
-) -> dict:
+) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject)
     link = owned_link(session, trip_id, subject, link_id)
     return _preview_navigation(trip, link.scope, local_id)

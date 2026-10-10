@@ -60,8 +60,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=_lifespan,
 )
-app.add_exception_handler(StarletteHTTPException, http_error_handler)
-app.add_exception_handler(RequestValidationError, validation_error_handler)
+# Starlette types handlers against `Exception`, not the specific class they are registered for.
+app.add_exception_handler(StarletteHTTPException, http_error_handler)  # ty: ignore[invalid-argument-type]
+app.add_exception_handler(RequestValidationError, validation_error_handler)  # ty: ignore[invalid-argument-type]
 
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")

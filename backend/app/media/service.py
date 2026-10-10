@@ -210,7 +210,9 @@ def _store_bytes(
     return obj
 
 
-def upload_too_large_error[Error: MediaImportError](error_type: type[Error] = MediaImportError) -> Error:
+def upload_too_large_error[Error: MediaImportError](
+    error_type: type[Error] = MediaImportError,  # ty: ignore[invalid-parameter-default]
+) -> Error:
     """The one refusal for an upload over `media_max_upload_bytes`."""
     limit_mb = settings.media_max_upload_bytes // (1024 * 1024)
     return error_type(
@@ -220,7 +222,10 @@ def upload_too_large_error[Error: MediaImportError](error_type: type[Error] = Me
     )
 
 
-def read_bounded_upload[Error: MediaImportError](file: BinaryIO, error_type: type[Error] = MediaImportError) -> bytes:
+def read_bounded_upload[Error: MediaImportError](
+    file: BinaryIO,
+    error_type: type[Error] = MediaImportError,  # ty: ignore[invalid-parameter-default]
+) -> bytes:
     """Read an uploaded file without ever buffering more than the limit plus one byte.
 
     Reading one byte past `media_max_upload_bytes` is enough to know the file is
@@ -841,7 +846,7 @@ def delete_media_derivative(session: Session, storage: ObjectStorage, *, derivat
     session.flush()
     for object_id in object_ids:
         if not _object_is_referenced(session, object_id):
-            session.get(StoredObject, object_id).state = ObjectState.PURGE_PENDING
+            session.get_one(StoredObject, object_id).state = ObjectState.PURGE_PENDING
     session.commit()
     _purge_pending_objects(session, storage, object_ids=object_ids)
 
@@ -884,9 +889,9 @@ def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than:
 def _purge_pending_objects(session: Session, storage: ObjectStorage, *, object_ids: list[str] | None = None) -> int:
     purged = 0
     if object_ids is None:
-        object_ids = session.scalars(
-            select(StoredObject.id).where(StoredObject.state == ObjectState.PURGE_PENDING)
-        ).all()
+        object_ids = list(
+            session.scalars(select(StoredObject.id).where(StoredObject.state == ObjectState.PURGE_PENDING))
+        )
     for object_id in object_ids:
         # A failed file deletion or commit leaves this unreferenced row for a
         # later run; the lock prevents an upload from reusing it meanwhile.

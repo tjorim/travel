@@ -65,6 +65,8 @@ def find_record(trip: Trip, kind: str, record_id: str) -> Any | None:
 class SharingBlocker(str):
     """Keep the diagnostic string API while carrying a language-neutral cause."""
 
+    code: str
+
     def __new__(cls, message: str, code: str):
         value = super().__new__(cls, message)
         value.code = code

@@ -38,7 +38,8 @@ class PlaceSearchProvider(Protocol):
 
 
 def _address(data: dict) -> dict[str, str | None]:
-    address = data.get("address") if isinstance(data.get("address"), dict) else {}
+    raw_address = data.get("address")
+    address = raw_address if isinstance(raw_address, dict) else {}
     road = address.get("road")
     house_number = address.get("house_number")
     line1 = " ".join(value for value in [house_number, road] if isinstance(value, str)) or None

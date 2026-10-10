@@ -50,6 +50,6 @@ def delete_document_asset(session: Session, storage: ObjectStorage, *, document_
     session.delete(document_asset)
     session.flush()
     if not _object_is_referenced(session, object_id):
-        session.get(StoredObject, object_id).state = ObjectState.PURGE_PENDING
+        session.get_one(StoredObject, object_id).state = ObjectState.PURGE_PENDING
     session.commit()
     _purge_pending_objects(session, storage, object_ids=[object_id])

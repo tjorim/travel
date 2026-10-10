@@ -47,6 +47,7 @@ def _instant(asset: MediaAsset) -> datetime:
     instant, so photos taken across a time-zone change group correctly; one
     without an offset is compared as written, which holds within a single camera.
     """
+    assert asset.captured_at is not None, "only assets with a capture time are grouped"
     value = _utc(asset.captured_at)
     offset = (asset.raw_metadata.get("exif") or {}).get("captured_utc_offset_minutes")
     if asset.captured_local and isinstance(offset, int):

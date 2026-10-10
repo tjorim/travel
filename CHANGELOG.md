@@ -127,6 +127,10 @@ All notable changes to the travel hub are documented here.
 
 ### Fixed
 
+- The MCP `revoke_share_link`, `create_media_derivative`,
+  `inspect_public_preview_file` and `inspect_share_preview_file` tools called
+  their handlers with the wrong arguments and failed; they now work, with
+  regression tests. Found by adding the `ty` type checker to the backend CI.
 - Switching between the light and dark theme on a trip map no longer sends the
   viewer back to the whole trip. The rebuilt map reopens on the same centre,
   zoom, pitch and bearing, and keeps the selected stop or route, the focused

@@ -150,7 +150,7 @@ def delete_trip(trip_id: str, session: SessionDep, subject: SubjectDep) -> Respo
 
 
 def _loaded(session: Session, update_id: str) -> TravelUpdate:
-    return session.scalar(
+    return session.execute(
         select(TravelUpdate)
         .options(
             selectinload(TravelUpdate.chosen_area),
@@ -158,7 +158,7 @@ def _loaded(session: Session, update_id: str) -> TravelUpdate:
             selectinload(TravelUpdate.media_links),
         )
         .where(TravelUpdate.id == update_id)
-    )  # type: ignore[return-value]
+    ).scalar_one()
 
 
 @router.get("/{trip_id}/travel-updates", response_model=list[TravelUpdateResponse])

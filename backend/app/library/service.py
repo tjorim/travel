@@ -104,9 +104,9 @@ def direct_upload(
 def purge_owner_objects(session: Session, storage: ObjectStorage, *, object_ids: list[str] | None = None) -> int:
     """Retry physical removal of unreferenced owner-library objects."""
     if object_ids is None:
-        object_ids = session.scalars(
-            select(OwnerStoredObject.id).where(OwnerStoredObject.state == ObjectState.PURGE_PENDING)
-        ).all()
+        object_ids = list(
+            session.scalars(select(OwnerStoredObject.id).where(OwnerStoredObject.state == ObjectState.PURGE_PENDING))
+        )
     purged = 0
     for object_id in object_ids:
         stored = session.scalar(select(OwnerStoredObject).where(OwnerStoredObject.id == object_id).with_for_update())
@@ -129,7 +129,7 @@ def delete_owner_document(session: Session, storage: ObjectStorage, *, document:
     object_id = document.original_object_id
     session.delete(document)
     session.flush()
-    stored = session.get(OwnerStoredObject, object_id)
+    stored = session.get_one(OwnerStoredObject, object_id)
     if session.scalar(select(OwnerDocument.id).where(OwnerDocument.original_object_id == object_id)) is None:
         stored.state = ObjectState.PURGE_PENDING
     session.commit()

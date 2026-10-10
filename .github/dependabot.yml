@@ -22,6 +22,7 @@ updates:
         patterns:
           - "pytest"
           - "ruff"
+          - "ty"
       # markdown-it plugins are pinned against their core release
       markdown:
         patterns:

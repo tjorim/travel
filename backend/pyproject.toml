@@ -30,6 +30,7 @@ dependencies = [
 dev = [
   "pytest==9.1.1",
   "ruff==0.16.10",
+  "ty==0.0.84",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -48,3 +49,23 @@ ignore = ["E501", "B008"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
+
+# Applied migrations are history and are not edited to satisfy a type checker.
+[tool.ty.src]
+exclude = ["alembic"]
+
+# Tests read ORM rows and MCP results they have just created, pass plain strings for enums and use stand-in doubles,
+# so argument and optional-access typing is noise there. Unresolved imports, missing arguments and the like still fail.
+[[tool.ty.overrides]]
+include = ["tests/**"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+invalid-assignment = "ignore"
+not-subscriptable = "ignore"
+unsupported-operator = "ignore"
+not-iterable = "ignore"
+invalid-argument-type = "ignore"
+invalid-return-type = "ignore"
+invalid-method-override = "ignore"
+no-matching-overload = "ignore"
