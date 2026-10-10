@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, expect, it } from "vitest";
 import { TravelCheckbox } from "./TravelCheckbox";
 
 afterEach(cleanup);
 
-it("toggles from its label and keyboard, and respects disabled state", () => {
+it("toggles from its label and keyboard, and respects disabled state", async () => {
   function Fixture() {
     const [checked, setChecked] = useState(false);
     return (
@@ -23,15 +24,16 @@ it("toggles from its label and keyboard, and respects disabled state", () => {
     );
   }
 
+  const user = userEvent.setup();
   render(<Fixture />);
   const checkbox = screen.getByRole("checkbox", { name: "Reis delen" });
-  fireEvent.click(screen.getByText("Reis delen"));
-  expect(checkbox.getAttribute("aria-checked")).toBe("true");
-  fireEvent.keyDown(checkbox, { key: " " });
-  fireEvent.keyUp(checkbox, { key: " " });
-  expect(checkbox.getAttribute("aria-checked")).toBe("false");
+  await user.click(screen.getByText("Reis delen"));
+  expect(checkbox).toBeChecked();
+  checkbox.focus();
+  await user.keyboard(" ");
+  expect(checkbox).not.toBeChecked();
 
   const disabled = screen.getByRole("checkbox", { name: "Uitgeschakeld" });
-  fireEvent.click(disabled);
-  expect(disabled.getAttribute("aria-checked")).toBe("true");
+  await user.click(disabled);
+  expect(disabled).toBeChecked();
 });
