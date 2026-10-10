@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
 
   travel-media-init:
-    image: busybox:1.37.0
+    image: busybox:1.38.0
     user: "0:0"
     command: ["/bin/sh", "-ec", "chown 1000:1000 /var/lib/travel/media && chmod 0700 /var/lib/travel/media"]
     restart: "no"
