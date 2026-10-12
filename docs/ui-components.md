@@ -11,6 +11,25 @@ Generate only what is needed with the command in AGENTS.md. Review source,
 replace arbitrary values with named tokens and run lint, formatting, tests
 and build. Do not bulk-generate or blindly overwrite wrappers.
 
+## Maintenance
+
+Dependabot updates the underlying packages (Base UI, Lucide and
+react-day-picker) through `package.json` and the lockfile. It does not update
+the copied component source in `src/ui/`. Updating the pinned shadcn CLI also
+does not rewrite existing components.
+
+For dependency updates, review release notes against the primitives we use,
+run the frontend checks, and verify keyboard operation, field validation,
+calendar selection, dirty-dialog dismissal and focus return. Include both
+locales and themes at narrow widths in the browser smoke and axe checks.
+Run test, build and end-to-end commands sequentially: their translation
+generation writes to the same ignored `src/paraglide/` directory.
+
+When an upstream shadcn fix affects a component we use, compare its registry
+source with our implementation and merge the relevant behavior manually.
+Preserve Travel tokens, translations and the wrapper decisions below. Do not
+overwrite all components merely to match the latest registry.
+
 | Existing control | Decision | Reason |
 | --- | --- | --- |
 | TravelCheckbox | Replace with generated checkbox; keep API wrapper | Same Base UI primitive and controlled API; Lucide replaces the glyph. Wrapper retains explicit-label handling, size and focus treatment. |
