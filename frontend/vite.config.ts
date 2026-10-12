@@ -1,7 +1,7 @@
 import type { ServerResponse } from "node:http";
 import { availableParallelism } from "node:os";
 import type { Plugin } from "vite";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -73,6 +73,8 @@ export default defineConfig({
   base: "/admin/",
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   test: {
+    // Playwright specs in e2e/ run with `pnpm e2e`, not under Vitest.
+    exclude: [...configDefaults.exclude, "e2e/**"],
     setupFiles: ["./src/test-setup.ts"],
     // The jsdom suites render whole Base UI + TanStack form trees, and each file pays its own cold import of that
     // graph (isolation re-evaluates ~200 modules per file). Alone a test takes under 2 s, but on a busy host the same

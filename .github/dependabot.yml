@@ -67,6 +67,8 @@ updates:
           - "@testing-library/*"
           - "@vitest/*"
           - "vitest"
+          - "@playwright/*"
+          - "@axe-core/*"
       oxc:
         patterns:
           - "oxlint"

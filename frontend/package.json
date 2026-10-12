@@ -12,6 +12,7 @@
     "format:check": "oxfmt --check",
     "test": "pnpm paraglide:compile && vitest run",
     "preview": "vite preview",
+    "e2e": "playwright test",
     "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy custom-travel baseLocale --emit-ts-declarations",
     "locale:audit": "node scripts/locale-audit.mjs",
     "check-message-parity": "node scripts/check-message-parity.mjs"
@@ -32,7 +33,9 @@
     "vite": "latest"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@inlang/paraglide-js": "^2.26.0",
+    "@playwright/test": "^1.64.0",
     "@shadcn/lint": "^0.2.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query-devtools": "^5.104.1",
@@ -41,6 +44,7 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/geojson": "^7946.0.16",
+    "@types/node": "^24.19.2",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "fake-indexeddb": "^6.2.5",

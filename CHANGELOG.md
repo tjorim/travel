@@ -6,6 +6,14 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Playwright smoke checks for the PWA (#371): `pnpm e2e` in `frontend/` starts
+  the Vite dev server with the API mocked in the page (no owner session,
+  database or media), walks owner navigation and the trip workspace tabs, loads
+  the public `/trips/` and unlisted `/share/` views, and runs an
+  `@axe-core/playwright` WCAG 2 A/AA scan of the visitor and owner screens in
+  nl and en, light and dark, at 360 px, also failing on horizontal overflow. A
+  separate `Frontend end-to-end` CI job runs it. Authenticated runs against a
+  real Keycloak realm stay out of scope (tjorim/apps).
 - The anonymous visitor routes are rate limited per client (#370) with
   `slowapi`: `/api/public/*` shares `TRAVEL_RATE_LIMIT_DEFAULT` (300 a minute)
   and `/api/shared/{token}*` the stricter `TRAVEL_RATE_LIMIT_SHARED` (120 a
