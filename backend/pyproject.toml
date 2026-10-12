@@ -21,7 +21,7 @@ dependencies = [
   "pydantic-settings==2.15.0",
   "PyJWT[crypto]==2.13.0",
   "python-multipart==0.0.32",
-  "slowapi==0.1.9",
+  "slowapi==0.1.10",
   "sqlalchemy==2.1.4",
   "timezonefinder==9.0.0",
   "uvicorn[standard]==0.54.0",
