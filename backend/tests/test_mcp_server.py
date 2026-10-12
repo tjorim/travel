@@ -473,13 +473,18 @@ def test_parallel_list_calls_all_succeed_and_are_each_audited(
     assert all(event.details.get("request_id") for event in events)
 
 
+@pytest.mark.parametrize("proxied", [False, True])
 def test_response_validation_failure_is_a_correlated_tool_error_audited_once(
-    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, proxied: bool
 ) -> None:
     async def run() -> object:
         async with _protocol_client() as client:
             trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Broken"}})).structured_content["id"]
             monkeypatch.setattr(trips_router, "get_trip", lambda *_: {"id": trip_id, "title": "SECRET-PRIVATE-NOTE"})
+            if proxied:
+                return await client.call_tool(
+                    "call_tool", {"name": "get_trip", "arguments": {"trip_id": trip_id}}, raise_on_error=False
+                )
             return await client.call_tool("get_trip", {"trip_id": trip_id}, raise_on_error=False)
 
     with caplog.at_level(logging.INFO):

@@ -6,6 +6,8 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Documented owner MCP CLI checks with FastMCP 4.1's encrypted OAuth credential
+  reuse, a local key outside Git, and read-only discovery commands (#381).
 - Playwright smoke checks for the PWA (#371): `pnpm e2e` in `frontend/` starts
   the Vite dev server with the API mocked in the page (no owner session,
   database or media), walks owner navigation and the trip workspace tabs, loads
@@ -147,6 +149,9 @@ All notable changes to the travel hub are documented here.
 
 ### Fixed
 
+- MCP response validation failures remain payload-free and correlated with a
+  single audit entry when FastMCP 4.1 wraps the original validation exception,
+  including calls through the discovery proxy (#381).
 - The MCP `revoke_share_link`, `create_media_derivative`,
   `inspect_public_preview_file` and `inspect_share_preview_file` tools called
   their handlers with the wrong arguments and failed; they now work, with

@@ -227,6 +227,14 @@ def _validation_fields(error: ValidationError) -> str:
     return ", ".join(f"{'.'.join(str(part) for part in item['loc']) or '<root>'}:{item['type']}" for item in found[:8])
 
 
+class ResponseValidationError(ToolError):
+    """Carry only safe field paths across FastMCP's tool-body error boundary."""
+
+    def __init__(self, error: ValidationError) -> None:
+        self.fields = _validation_fields(error)
+        super().__init__(f"Validation failed ({self.fields})")
+
+
 def _error_summary(error: BaseException) -> str:
     """A short, payload-free description that is safe to log and to persist in the audit trail."""
     if isinstance(error, HTTPException):
@@ -400,6 +408,12 @@ class TravelMcpBackend:
             raise translated from error
         except Exception as error:
             self._reject(error, subject, action, resource_type, resource_id, trip_id, request_id)
+            if isinstance(error, ValidationError):
+                # FastMCP 4.1 logs and wraps raw tool-body validation errors
+                # before our middleware sees them; strip their input here.
+                translated = ResponseValidationError(error)
+                setattr(translated, _AUDITED, True)
+                raise translated from None
             setattr(error, _AUDITED, True)
             raise
         self._record_audit(
@@ -1888,8 +1902,8 @@ class ToolFailureMiddleware(Middleware):
                 await anyio.to_thread.run_sync(
                     self.backend._audit_unexecuted_rejection, tool, context.message.arguments, error
                 )
-            if isinstance(error, ValidationError):
-                fields = _validation_fields(error)
+            if isinstance(error, (ValidationError, ResponseValidationError)):
+                fields = error.fields if isinstance(error, ResponseValidationError) else _validation_fields(error)
                 logger.warning("MCP tool %s failed validation request_id=%s fields=%s", tool, request_id, fields)
                 raise _reported(
                     ToolError(
