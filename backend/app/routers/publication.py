@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -30,6 +31,7 @@ from ..projection import (
     shared_trip_dates,
     validate_scope,
 )
+from ..ratelimit import delivery_limit, limiter, retry_after_seconds, shared_link_limit
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
@@ -65,6 +67,21 @@ UNLISTED_HEADERS = {
     "X-Robots-Tag": "noindex, noarchive",
     "Referrer-Policy": "no-referrer",
 }
+
+
+async def delivery_rate_limit_handler(request: Request, error: RateLimitExceeded) -> JSONResponse:
+    """The 429 of a visitor delivery route: a fixed body that never names the route's token.
+
+    An unlisted-link response carries the same privacy headers as its 404, so a throttled probe stays
+    uncacheable and unindexable and says nothing about whether the token exists.
+    """
+    headers = UNLISTED_HEADERS if request.url.path.startswith("/api/shared/") else {"Cache-Control": "no-store"}
+    descriptor = {"code": "rate_limited", "params": {}, "path": []}
+    return JSONResponse(
+        {"detail": "Too many requests", "errors": [descriptor]},
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        headers={**headers, "Retry-After": str(retry_after_seconds(request, error))},
+    )
 
 
 def _apply_scope(session: Session, trip_id: str, subject: str, scope: ShareScopeInput) -> dict:
@@ -435,7 +452,8 @@ def rotate_share_link(
 
 
 @delivery_router.get("/public/trips", response_model=list[PublicTripCard])
-def list_public_trips(session: SessionDep, response: Response) -> list[PublicTripCard]:
+@limiter.shared_limit(delivery_limit, scope="public-trip")
+def list_public_trips(request: Request, session: SessionDep, response: Response) -> list[PublicTripCard]:
     # Select only published surfaces. Card text is separately gated by the
     # current scope, just as it is on the individual visitor page.
     rows = session.execute(
@@ -457,7 +475,8 @@ def list_public_trips(session: SessionDep, response: Response) -> list[PublicTri
 
 
 @delivery_router.get("/public/trips/{slug}", response_model=ProjectionDocument)
-def get_public_trip(slug: str, session: SessionDep, response: Response) -> dict:
+@limiter.shared_limit(delivery_limit, scope="public-trip")
+def get_public_trip(request: Request, slug: str, session: SessionDep, response: Response) -> dict:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
         raise ApiException(
@@ -482,7 +501,8 @@ def get_public_trip(slug: str, session: SessionDep, response: Response) -> dict:
 
 
 @delivery_router.get("/public/trips/{slug}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
-def get_public_navigation(slug: str, local_id: str, session: SessionDep) -> RedirectResponse:
+@limiter.shared_limit(delivery_limit, scope="public-trip")
+def get_public_navigation(request: Request, slug: str, local_id: str, session: SessionDep) -> RedirectResponse:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found", code="not_found")
@@ -514,6 +534,7 @@ def _file_response(
 
 
 @delivery_router.get("/public/trips/{slug}/files/{local_id}")
+@limiter.shared_limit(delivery_limit, scope="public-trip")
 def get_public_file(slug: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
     headers = {"Cache-Control": "no-store"}
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
@@ -530,7 +551,8 @@ def get_public_file(slug: str, local_id: str, session: SessionDep, storage: Stor
 
 
 @delivery_router.get("/shared/{token}", response_model=ProjectionDocument)
-def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict:
+@limiter.shared_limit(shared_link_limit, scope="shared-link")
+def get_shared_trip(request: Request, token: str, session: SessionDep, response: Response) -> dict:
     # Headers are also attached to each HTTPException below: FastAPI's error
     # path builds its own response and does not carry over `response.headers`
     # mutations, and a not-found/expired/revoked link must be just as
@@ -563,7 +585,8 @@ def get_shared_trip(token: str, session: SessionDep, response: Response) -> dict
 
 
 @delivery_router.get("/shared/{token}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
-def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> RedirectResponse:
+@limiter.shared_limit(shared_link_limit, scope="shared-link")
+def get_shared_navigation(request: Request, token: str, local_id: str, session: SessionDep) -> RedirectResponse:
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
     )
@@ -596,6 +619,7 @@ def get_shared_navigation(token: str, local_id: str, session: SessionDep) -> Red
 
 
 @delivery_router.get("/shared/{token}/files/{local_id}")
+@limiter.shared_limit(shared_link_limit, scope="shared-link")
 def get_shared_file(token: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS, code="not_found"

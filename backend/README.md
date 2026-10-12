@@ -181,6 +181,28 @@ indexing behavior.
 Public projection responses also use `Cache-Control: no-store` so the next
 browser load checks the current publication state and scope.
 
+### Visitor rate limits
+
+The anonymous delivery routes are rate limited per client with `slowapi`
+(`app/ratelimit.py`, #370). All `/public/*` routes share one counter
+(`TRAVEL_RATE_LIMIT_DEFAULT`) and all `/shared/{token}*` routes another, with a
+stricter limit (`TRAVEL_RATE_LIMIT_SHARED`), so probing different tokens, files
+or navigation targets counts together. Owner routes are not limited. A throttled
+request gets `429`, the `rate_limited` error descriptor, `Retry-After` and the
+same privacy headers as that route's `404`; the response never contains the
+slug or token.
+
+The client is the direct peer. Only when that peer is a private address (the
+Caddy container) is `X-Real-IP` used instead, so a public peer cannot choose its
+own counter; an unparsable header falls back to the peer, and IPv6 clients are
+counted per /64. Caddy must therefore send `X-Real-IP` for `/api/*`
+(tjorim/apps#266); without it every visitor shares the proxy's address.
+
+Counters are held in process memory. Each uvicorn worker would keep its own, so
+the effective limit is multiplied by the worker count and a restart clears
+them. `backend/Dockerfile` runs one worker; running more requires moving the
+counters to shared storage first.
+
 ### Private place search and navigation
 
 `POST /trips/{trip_id}/places/search` and the explicit coordinate-to-place
@@ -342,6 +364,9 @@ Production credential injection and key backup are tracked in
 | `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |
 | `TRAVEL_PUBLIC_APP_URL` | Visitor-facing Travel PWA origin used by MCP to return a complete `/share/<capability>` URL; defaults to `http://localhost:5173` for local Vite development. Set this to the deployed Travel origin in production. |
 | `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. Required in production; the code default is development-only. |
+| `TRAVEL_RATE_LIMIT_ENABLED` | Per-client limits on the anonymous `/public/*` and `/shared/*` routes (default `true`). See "Visitor rate limits". |
+| `TRAVEL_RATE_LIMIT_DEFAULT` | Limit shared by all `/public/*` routes of one client, in `limits` notation (default `300/minute`; `30/minute;300/hour` combines windows). |
+| `TRAVEL_RATE_LIMIT_SHARED` | Stricter limit shared by all `/shared/{token}*` routes of one client (default `120/minute`), which bounds probing of unlisted tokens. |
 | `TRAVEL_MEDIA_STORAGE_ROOT` | Filesystem root for the local object-storage adapter; production points this at the backed-up VPS media volume, never Git. |
 | `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` | Refuses a direct upload or a single imported item larger than this (default 200 MiB). |
 | `TRAVEL_GOOGLE_OAUTH_CLIENT_ID`, `TRAVEL_GOOGLE_OAUTH_CLIENT_SECRET` | Google web OAuth credentials for Photos Picker. Both required for availability. |

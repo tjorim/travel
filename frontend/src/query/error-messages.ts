@@ -91,6 +91,8 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_provider_failed();
     case "range_unsatisfiable":
       return m.api_range_unsatisfiable();
+    case "rate_limited":
+      return m.api_rate_limited();
     case "unsupported_media_type":
       return m.api_unsupported_media_type();
     case "direct_device_upload_does_not_use_an_import_session":

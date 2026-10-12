@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from fastmcp.utilities.lifespan import combine_lifespans
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -28,6 +29,7 @@ from .routers.packing import router as packing_router
 from .routers.packing import sources_router as packing_sources_router
 from .routers.packing import templates_router as packing_templates_router
 from .routers.places import router as places_router
+from .routers.publication import delivery_rate_limit_handler
 from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
 from .routers.routes import router as routes_router
@@ -63,6 +65,7 @@ app = FastAPI(
 # Starlette types handlers against `Exception`, not the specific class they are registered for.
 app.add_exception_handler(StarletteHTTPException, http_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RequestValidationError, validation_error_handler)  # ty: ignore[invalid-argument-type]
+app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty: ignore[invalid-argument-type]
 
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")

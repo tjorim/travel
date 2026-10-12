@@ -1,5 +1,6 @@
 from cryptography.fernet import Fernet
-from pydantic import AnyHttpUrl, Field, model_validator
+from limits import parse_many
+from pydantic import AnyHttpUrl, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -81,7 +82,21 @@ class Settings(BaseSettings):
     # this many characters, one at a time.
     translation_segment_characters: int = 1000
 
+    # Per-client limits on the unauthenticated visitor delivery endpoints (#370), in "limits" notation such as
+    # "300/minute" or "30/minute;300/hour". A published trip page fetches its files and map links one by one, so
+    # these allow a busy page while still bounding bulk requests; an unlisted link, whose token can be probed,
+    # gets the stricter default. Counters are in-process (see app.ratelimit).
+    rate_limit_enabled: bool = True
+    rate_limit_default: str = "300/minute"
+    rate_limit_shared: str = "120/minute"
+
     model_config = SettingsConfigDict(env_prefix="TRAVEL_", case_sensitive=False)
+
+    @field_validator("rate_limit_default", "rate_limit_shared")
+    @classmethod
+    def validate_rate_limit_notation(cls, value: str) -> str:
+        parse_many(value)
+        return value
 
     @model_validator(mode="after")
     def validate_no_dev_bypass_outside_development(self) -> "Settings":

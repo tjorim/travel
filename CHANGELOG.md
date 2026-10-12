@@ -6,6 +6,18 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- The anonymous visitor routes are rate limited per client (#370) with
+  `slowapi`: `/api/public/*` shares `TRAVEL_RATE_LIMIT_DEFAULT` (300 a minute)
+  and `/api/shared/{token}*` the stricter `TRAVEL_RATE_LIMIT_SHARED` (120 a
+  minute), so probing unlisted tokens is bounded across all of their file and
+  navigation routes. A rejected request gets a `429` with the `rate_limited`
+  error descriptor (translated in the PWA), `Retry-After` and the route's
+  privacy headers, and never echoes the token. The client is the immediate peer,
+  or `X-Real-IP` only when that peer is a private address (the proxy), with IPv6
+  counted per /64. Counters are in-process, so the limits assume the single
+  uvicorn worker of `backend/Dockerfile`; `TRAVEL_RATE_LIMIT_ENABLED=false`
+  turns them off. Caddy must send `X-Real-IP` for `/api/*` before this is
+  deployed, or every visitor would be throttled together (tjorim/apps#266).
 - Settings gains a **Sign-in and passkeys** section whose button opens the
   owner's Keycloak account console, where passkeys and security keys are
   enrolled, renamed and removed. [docs/passkeys.md](docs/passkeys.md) records

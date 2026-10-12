@@ -57,6 +57,7 @@ bodies, codes and privacy headers. Byte-range rejections retain Content-Range.
 | `places/search.py` | Provider configuration, HTTP/JSON failure, malformed results | Typed safe diagnostics with existing unavailable status |
 | `media/ranges.py` | Status-only unsatisfiable range | 416 with existing range/cache/privacy headers and range_unsatisfiable code |
 | `routers/publication.py` delivery and preview routes | Public/share unavailable projection, file and navigation targets | Uniform not_found code; existing diagnostic and privacy-header distinctions preserved |
+| `ratelimit.py`, `routers/publication.py` delivery routes | Visitor rate limit | 429 with `rate_limited`, a fixed diagnostic that never names the route, slug or token, `Retry-After`, and the same `no-store` or unlisted privacy headers as the route's 404 |
 | Framework HTTP errors | Unmatched routes and other framework rejections | http_error descriptor alongside the existing status/detail/headers |
 
 Tests reject bare HTTPException calls anywhere in the application-owned HTTP
