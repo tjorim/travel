@@ -2,6 +2,8 @@ version: 2
 updates:
   # Monitor uv-managed backend dependencies.
   - package-ecosystem: "uv"
+    allow:
+      - dependency-type: all
     directory: "/backend"
     schedule:
       interval: "weekly"
@@ -38,6 +40,8 @@ updates:
 
   # pnpm projects use Dependabot's npm ecosystem support.
   - package-ecosystem: "npm"
+    allow:
+      - dependency-type: all
     directory: "/frontend"
     schedule:
       interval: "weekly"
