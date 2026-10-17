@@ -149,6 +149,9 @@ All notable changes to the travel hub are documented here.
 
 ### Fixed
 
+- Refreshed Babel runtime lockfile resolutions for Base UI and Testing Library
+  so Dependabot no longer rejects the transitive update when pnpm selects
+  runtime 8 for Base UI and runtime 7 for Testing Library.
 - MCP response validation failures remain payload-free and correlated with a
   single audit entry when FastMCP 4.1 wraps the original validation exception,
   including calls through the discovery proxy (#381).
