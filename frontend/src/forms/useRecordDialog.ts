@@ -53,7 +53,10 @@ export function useRecordDialog<T extends { id: string }>(items: readonly T[]) {
 }
 
 /** Opens `inspect(id)` whenever another part of the page (the Agenda) asks to focus a record. */
-export function useDialogFocus(request: DialogFocusRequest | null | undefined, inspect: (id: string) => void) {
+export function useDialogFocus(
+  request: DialogFocusRequest | null | undefined,
+  inspect: (id: string) => void,
+) {
   useEffect(() => {
     if (request) inspect(request.id);
     // `inspect` is a fresh closure every render, so it isn't a dependency: only a new `request` should retrigger this.

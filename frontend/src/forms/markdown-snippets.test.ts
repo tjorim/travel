@@ -27,7 +27,9 @@ it("prefixes every selected line and leaves blank lines alone", () => {
 });
 
 it("prefixes the cursor's line for a heading or a list", () => {
-  expect(applyMarkdownSnippet("One\nDay two\nThree", 6, 6, "heading").value).toBe("One\n## Day two\nThree");
+  expect(applyMarkdownSnippet("One\nDay two\nThree", 6, 6, "heading").value).toBe(
+    "One\n## Day two\nThree",
+  );
   expect(applyMarkdownSnippet("tea", 0, 0, "list").value).toBe("- tea");
   // A selection that ends just after a line break stays on its own lines.
   expect(applyMarkdownSnippet("a\nb", 0, 2, "list").value).toBe("- a\nb");

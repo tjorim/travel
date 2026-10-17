@@ -1,5 +1,11 @@
 import { m } from "../paraglide/messages.js";
-import { onlineManager, useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import {
+  onlineManager,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { decodeSubject, readSession, type TrackerSession } from "../auth";
@@ -100,9 +106,14 @@ export function tripResourceQueryOptions<R extends TripResource>(
     queryKey: ownerKeys.tripResource(owner?.subject ?? "", tripId ?? "", resource),
     enabled: owner !== null && tripId !== null,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<TripResourceData[R]>(owner!.session, tripPath(tripId!, resource), resourceFailure[resource], {
-        signal,
-      }),
+      ownerRequest<TripResourceData[R]>(
+        owner!.session,
+        tripPath(tripId!, resource),
+        resourceFailure[resource],
+        {
+          signal,
+        },
+      ),
   };
 }
 
@@ -126,7 +137,8 @@ function useOwnerSearch<T>(
     owner
       ? client.fetchQuery({
           queryKey: key(owner.subject, query),
-          queryFn: ({ signal }) => ownerRequest<T[]>(owner.session, path(query), fallback, { signal }),
+          queryFn: ({ signal }) =>
+            ownerRequest<T[]>(owner.session, path(query), fallback, { signal }),
           staleTime: 30_000,
         })
       : Promise.resolve([]);
@@ -191,7 +203,11 @@ export function derivativesQueryOptions<K extends DerivativeParent>(
   };
 }
 
-export function useDerivatives<K extends DerivativeParent>(tripId: string | null, kind: K, assetId: string | null) {
+export function useDerivatives<K extends DerivativeParent>(
+  tripId: string | null,
+  kind: K,
+  assetId: string | null,
+) {
   return useQuery(derivativesQueryOptions(useOwner(), tripId, kind, assetId));
 }
 
@@ -210,7 +226,12 @@ export function useLibrary<R extends LibraryResource>(resource: R) {
     queryKey: ownerKeys.library(owner?.subject ?? "", resource),
     enabled: owner !== null,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<LibraryData[R]>(owner!.session, libraryPath(resource), libraryFailure[resource], { signal }),
+      ownerRequest<LibraryData[R]>(
+        owner!.session,
+        libraryPath(resource),
+        libraryFailure[resource],
+        { signal },
+      ),
   });
 }
 
@@ -236,9 +257,14 @@ export function useProviderConnections() {
     queryKey: ownerKeys.providers(owner?.subject ?? ""),
     enabled: owner !== null,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<ProviderConnectionStatus[]>(owner!.session, "/api/provider-tokens", m.provider_status_error, {
-        signal,
-      }),
+      ownerRequest<ProviderConnectionStatus[]>(
+        owner!.session,
+        "/api/provider-tokens",
+        m.provider_status_error,
+        {
+          signal,
+        },
+      ),
   });
 }
 
@@ -251,7 +277,10 @@ type MutationSpec<V, R> = {
   /** Queries a successful write makes stale; they are refetched before the write settles. */
   invalidate: (subject: string, variables: V, result: R) => Invalidation;
   /** A safe, reversible cache edit applied immediately and rolled back if the write fails. */
-  optimistic?: { key: (subject: string, variables: V) => QueryKey; update: (current: never, variables: V) => unknown };
+  optimistic?: {
+    key: (subject: string, variables: V) => QueryKey;
+    update: (current: never, variables: V) => unknown;
+  };
   /** How long a settled write stays in the mutation cache. Use 0 when its result is a secret or a one-off preview. */
   gcTime?: number;
 };
@@ -271,7 +300,11 @@ export function useOwnerMutation<V, R = unknown>({
   const owner = useOwner();
   const client = useQueryClient();
   const refresh = (subject: string, variables: V, result: R) =>
-    Promise.all(invalidate(subject, variables, result).map((queryKey) => client.invalidateQueries({ queryKey })));
+    Promise.all(
+      invalidate(subject, variables, result).map((queryKey) =>
+        client.invalidateQueries({ queryKey }),
+      ),
+    );
   return useMutation<R, Error, V, { key: QueryKey; previous: unknown } | undefined>({
     ...(gcTime === undefined ? {} : { gcTime }),
     mutationFn: (variables) => {
@@ -284,7 +317,8 @@ export function useOwnerMutation<V, R = unknown>({
       const key = optimistic.key(owner.subject, variables);
       await client.cancelQueries({ queryKey: key });
       const previous = client.getQueryData(key);
-      if (previous !== undefined) client.setQueryData(key, optimistic.update(previous as never, variables));
+      if (previous !== undefined)
+        client.setQueryData(key, optimistic.update(previous as never, variables));
       return { key, previous };
     },
     onSuccess: async (result, variables) => {
@@ -294,7 +328,8 @@ export function useOwnerMutation<V, R = unknown>({
       if (onlineManager.isOnline()) await fresh;
     },
     onError: (_error, variables, context) => {
-      if (context && context.previous !== undefined) client.setQueryData(context.key, context.previous);
+      if (context && context.previous !== undefined)
+        client.setQueryData(context.key, context.previous);
       // Make sure the screen converges on the server's truth after a rejected write.
       if (owner && context) void refresh(owner.subject, variables, undefined as R);
     },
@@ -306,7 +341,10 @@ export function useRefreshTrip() {
   const owner = useOwner();
   const client = useQueryClient();
   return {
-    trips: () => (owner ? client.invalidateQueries({ queryKey: ownerKeys.trips(owner.subject) }) : Promise.resolve()),
+    trips: () =>
+      owner
+        ? client.invalidateQueries({ queryKey: ownerKeys.trips(owner.subject) })
+        : Promise.resolve(),
     /** Drops everything cached for a trip that no longer exists. */
     forget: (tripId: string) => {
       if (owner) client.removeQueries({ queryKey: ownerKeys.trip(owner.subject, tripId) });
@@ -315,7 +353,9 @@ export function useRefreshTrip() {
       owner
         ? Promise.all(
             resources.map((resource) =>
-              client.invalidateQueries({ queryKey: ownerKeys.tripResource(owner.subject, tripId, resource) }),
+              client.invalidateQueries({
+                queryKey: ownerKeys.tripResource(owner.subject, tripId, resource),
+              }),
             ),
           )
         : Promise.resolve([]),
@@ -336,7 +376,9 @@ export function useMarkAlertRead() {
     optimistic: {
       key: (subject, { tripId }) => ownerKeys.tripResource(subject, tripId, "task-alerts"),
       update: (alerts: TripTaskAlert[], { alertId }) =>
-        alerts.map((alert) => (alert.id === alertId ? { ...alert, read_at: new Date().toISOString() } : alert)),
+        alerts.map((alert) =>
+          alert.id === alertId ? { ...alert, read_at: new Date().toISOString() } : alert,
+        ),
     },
   });
 }

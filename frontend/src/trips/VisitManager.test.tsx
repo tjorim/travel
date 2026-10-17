@@ -4,14 +4,25 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { chooseOption, renderWithOwner, resetOfflineDb, selectedOption, testToken } from "../query/test-utils";
+import {
+  chooseOption,
+  renderWithOwner,
+  resetOfflineDb,
+  selectedOption,
+  testToken,
+} from "../query/test-utils";
 import type { Area, Location, Stay, Trip, Visit } from "../tracker-model";
 import { VisitManager, overnights, visitWhen } from "./VisitManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const area = (id: string, label: string, latitude: number | null = null, longitude: number | null = null): Area => ({
+const area = (
+  id: string,
+  label: string,
+  latitude: number | null = null,
+  longitude: number | null = null,
+): Area => ({
   id,
   visibility: "private",
   label,
@@ -82,7 +93,10 @@ function seed(visits: Visit[] = []) {
           share_time: Boolean(body.share_time),
           area: body.area_id === "tainan" ? tainan : taipei,
           location:
-            body.location && (body.location as { existing_location_id?: string }).existing_location_id ? spring : null,
+            body.location &&
+            (body.location as { existing_location_id?: string }).existing_location_id
+              ? spring
+              : null,
         }),
       update: (row, body) => ({ ...row, ...body }),
     })
@@ -141,12 +155,16 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
 
   // A time belongs to a day.
   expect((screen.getByLabelText("Begintijd (optioneel)") as HTMLInputElement).disabled).toBe(true);
-  fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), { target: { value: "2054-11-21" } });
+  fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), {
+    target: { value: "2054-11-21" },
+  });
   fireEvent.change(screen.getByLabelText("Begintijd (optioneel)"), { target: { value: "18:30" } });
   fireEvent.change(screen.getByLabelText("Eindtijd (optioneel)"), { target: { value: "21:00" } });
-  expect(screen.getByRole("checkbox", { name: /Toon de tijd aan bezoekers/ }).getAttribute("aria-checked")).toBe(
-    "false",
-  );
+  expect(
+    screen
+      .getByRole("checkbox", { name: /Toon de tijd aan bezoekers/ })
+      .getAttribute("aria-checked"),
+  ).toBe("false");
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await screen.findByRole("button", { name: "Bezoek Warme bron bekijken" });
   expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
@@ -166,7 +184,9 @@ it("chooses to show the time to visitors", async () => {
   renderWithOwner(<VisitManager trip={trip} />);
   await openNew();
   chooseOption("Waar", "Taipei (heel gebied)");
-  fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), { target: { value: "2054-11-21" } });
+  fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), {
+    target: { value: "2054-11-21" },
+  });
   fireEvent.change(screen.getByLabelText("Begintijd (optioneel)"), { target: { value: "10:00" } });
   chooseOption("Datums voor bezoekers", "Volledige datums");
   fireEvent.click(screen.getByRole("checkbox", { name: /Toon de tijd aan bezoekers/ }));
@@ -198,18 +218,26 @@ it("hints, without blocking, that a visit restates an existing route", async () 
 it("warns before saving when the draft visit restates a route, and never blocks the save", async () => {
   seed();
   api.on("POST", /\/api\/trips\/trip\/visits\/route-check$/, (body) =>
-    (body as { title: string }).title === "Vertrek EX101" ? [{ id: "r1", title: "Schiphol → Taoyuan" }] : [],
+    (body as { title: string }).title === "Vertrek EX101"
+      ? [{ id: "r1", title: "Schiphol → Taoyuan" }]
+      : [],
   );
   renderWithOwner(<VisitManager trip={trip} />);
   await openNew();
   chooseOption("Waar", "Taipei (heel gebied)");
-  fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), { target: { value: "2054-11-16" } });
+  fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), {
+    target: { value: "2054-11-16" },
+  });
   fireEvent.change(screen.getByLabelText("Titel (optioneel)"), { target: { value: "Lunch" } });
   await new Promise((resolve) => setTimeout(resolve, 700));
   expect(screen.queryByRole("note")).toBeNull();
 
-  fireEvent.change(screen.getByLabelText("Titel (optioneel)"), { target: { value: "Vertrek EX101" } });
-  expect((await screen.findByRole("note", undefined, { timeout: 2000 })).textContent).toContain("Schiphol → Taoyuan");
+  fireEvent.change(screen.getByLabelText("Titel (optioneel)"), {
+    target: { value: "Vertrek EX101" },
+  });
+  expect((await screen.findByRole("note", undefined, { timeout: 2000 })).textContent).toContain(
+    "Schiphol → Taoyuan",
+  );
   expect(api.lastBody("POST /api/trips/trip/visits/route-check")).toMatchObject({
     area_id: "taipei",
     title: "Vertrek EX101",
@@ -217,7 +245,9 @@ it("warns before saving when the draft visit restates a route, and never blocks 
   });
 
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
-  await waitFor(() => expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({ title: "Vertrek EX101" }));
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({ title: "Vertrek EX101" }),
+  );
 });
 
 it("rewrites the place only when it changed, and shows where the nights are spent", async () => {
@@ -232,9 +262,12 @@ it("rewrites the place only when it changed, and shows where the nights are spen
   ]);
   renderWithOwner(<VisitManager trip={trip} />);
   expect(
-    (await screen.findAllByText(/Overnachting: Hotel Royal · nog 5 nachten zonder verblijf/)).length,
+    (await screen.findAllByText(/Overnachting: Hotel Royal · nog 5 nachten zonder verblijf/))
+      .length,
   ).toBeGreaterThan(0);
-  expect(screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }).textContent).toContain("Idee · Werk");
+  expect(
+    screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }).textContent,
+  ).toContain("Idee · Werk");
   fireEvent.click(screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   fireEvent.keyDown(await screen.findByRole("combobox", { name: "Waar" }), { key: "ArrowDown" });
@@ -242,7 +275,9 @@ it("rewrites the place only when it changed, and shows where the nights are spen
   expect(selectedOption("Waar")).toBe("Taipei (heel gebied)");
   expect(selectedOption("Status")).toBe("Idee");
   chooseOption("Status", "Bevestigd");
-  fireEvent.change(screen.getByLabelText("Notities (optioneel, altijd privé)"), { target: { value: "Laptop mee" } });
+  fireEvent.change(screen.getByLabelText("Notities (optioneel, altijd privé)"), {
+    target: { value: "Laptop mee" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Bezoek opslaan" }));
   await screen.findByText("Bezoek opgeslagen.");
   const sent = api.lastBody<Record<string, unknown>>("PATCH /api/trips/trip/visits/v1")!;
@@ -262,7 +297,9 @@ it("cancels a visit idea and keeps it off the share controls", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Bezoek opslaan" }));
   await screen.findByText("Bezoek opgeslagen.");
   expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toMatchObject({ status: "cancelled" });
-  expect(screen.getByRole("button", { name: "Bezoek Hot springs bekijken" }).textContent).toContain("Geannuleerd");
+  expect(screen.getByRole("button", { name: "Bezoek Hot springs bekijken" }).textContent).toContain(
+    "Geannuleerd",
+  );
   fireEvent.click(screen.getByRole("button", { name: "Bezoek Hot springs bekijken" }));
   expect(screen.getByText(/Een geannuleerd bezoek wordt nooit gedeeld/)).toBeTruthy();
 });
@@ -272,12 +309,18 @@ it("reorders and deletes visits after the in-app confirmation", async () => {
   renderWithOwner(<VisitManager trip={trip} />);
   await screen.findByRole("button", { name: "Bezoek Eerste bekijken" });
   fireEvent.click(screen.getAllByRole("button", { name: /^Omlaag:/ })[0]);
-  await waitFor(() => expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toEqual({ position: 1 }));
+  await waitFor(() =>
+    expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toEqual({ position: 1 }),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Bezoek Tweede bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Bezoek Tweede bekijken" })).toBeNull());
+  fireEvent.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Bezoek Tweede bekijken" })).toBeNull(),
+  );
   expect(api.count("DELETE /api/trips/trip/visits/v2")).toBe(1);
 });
 
@@ -315,12 +358,17 @@ it("says so when there is no private note", async () => {
 
 it("describes when a visit is, and which nights a stay covers", () => {
   expect(visitWhen(visit("v", 0))).toBe("Nog geen dag");
-  expect(visitWhen(visit("v", 0, { starts_on: "2054-11-21", start_time: "18:30:00", end_time: "21:00:00" }))).toMatch(
-    /18:30–21:00$/,
-  );
+  expect(
+    visitWhen(
+      visit("v", 0, { starts_on: "2054-11-21", start_time: "18:30:00", end_time: "21:00:00" }),
+    ),
+  ).toMatch(/18:30–21:00$/);
   expect(overnights({ starts_on: "2054-11-18", ends_on: "2054-11-24" }, [stay], trip)).toEqual({
     stays: [stay],
     uncovered: 5,
   });
-  expect(overnights({ starts_on: null, ends_on: null }, [stay], trip)).toEqual({ stays: [], uncovered: 0 });
+  expect(overnights({ starts_on: null, ends_on: null }, [stay], trip)).toEqual({
+    stays: [],
+    uncovered: 0,
+  });
 });

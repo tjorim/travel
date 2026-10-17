@@ -14,7 +14,13 @@ import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
-import { derivativesQueryOptions, tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import {
+  derivativesQueryOptions,
+  tripPath,
+  useOwner,
+  useOwnerMutation,
+  useTripResource,
+} from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import { RenderedPreview } from "./RenderedPreview";
 import { useSetVisibility, VisibilityControl } from "./visibility";
@@ -182,7 +188,8 @@ function ScopeGroup({
   useLocale();
   const setVisibility = useSetVisibility(tripId);
   const [busy, setBusy] = useState(false);
-  const chosen = (item: CatalogItem) => scope.items.some((value) => value.kind === item.kind && value.id === item.id);
+  const chosen = (item: CatalogItem) =>
+    scope.items.some((value) => value.kind === item.kind && value.id === item.id);
   const count = items.filter(chosen).length;
 
   /** Promotes each record on its own, so one that cannot be shared yet does not hold back the rest. */
@@ -191,10 +198,14 @@ function ScopeGroup({
     setBusy(true);
     try {
       const results = await Promise.allSettled(
-        toPromote.map((item) => setVisibility.mutateAsync({ kind: item.kind, id: item.id, visibility: "custom" })),
+        toPromote.map((item) =>
+          setVisibility.mutateAsync({ kind: item.kind, id: item.id, visibility: "custom" }),
+        ),
       );
       const failed = results.flatMap((result, index) =>
-        result.status === "rejected" ? [{ item: toPromote[index]!, reason: result.reason as unknown }] : [],
+        result.status === "rejected"
+          ? [{ item: toPromote[index]!, reason: result.reason as unknown }]
+          : [],
       );
       if (failed.length)
         onError(
@@ -218,7 +229,9 @@ function ScopeGroup({
   }
 
   async function chooseAll() {
-    const promoted = await promote(items.filter((item) => item.visibility === "private" && !chosen(item)));
+    const promoted = await promote(
+      items.filter((item) => item.visibility === "private" && !chosen(item)),
+    );
     setScope(
       items
         .filter((item) => item.visibility !== "private" || chosen(item) || promoted.includes(item))
@@ -246,7 +259,9 @@ function ScopeGroup({
             className="secondary compact"
             type="button"
             disabled={busy || count === 0}
-            onClick={() => setScope(items.reduce((current, item) => updateItem(current, item, false), scope))}
+            onClick={() =>
+              setScope(items.reduce((current, item) => updateItem(current, item, false), scope))
+            }
           >
             {m.assets_select_none()}
           </Button>
@@ -335,7 +350,9 @@ function ScopeEditor({
           <FieldLabel className="scope-choice">
             <TravelCheckbox
               checked={scope.trip.title}
-              onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, title: checked } })}
+              onCheckedChange={(checked) =>
+                setScope({ ...scope, trip: { ...scope.trip, title: checked } })
+              }
             />
             {m.assets_trip_title()}
           </FieldLabel>
@@ -344,7 +361,9 @@ function ScopeEditor({
           <FieldLabel className="scope-choice">
             <TravelCheckbox
               checked={scope.trip.summary}
-              onCheckedChange={(checked) => setScope({ ...scope, trip: { ...scope.trip, summary: checked } })}
+              onCheckedChange={(checked) =>
+                setScope({ ...scope, trip: { ...scope.trip, summary: checked } })
+              }
             />
             {m.owner_summary()}
           </FieldLabel>
@@ -355,7 +374,10 @@ function ScopeEditor({
             ariaLabel={m.assets_how_precise_can_the_travel_dates_be()}
             value={scope.trip.dates ?? ""}
             onChange={(value) =>
-              setScope({ ...scope, trip: { ...scope.trip, dates: (value || null) as ShareScope["trip"]["dates"] } })
+              setScope({
+                ...scope,
+                trip: { ...scope.trip, dates: (value || null) as ShareScope["trip"]["dates"] },
+              })
             }
           >
             <option value="">{m.assets_hide()}</option>
@@ -366,10 +388,18 @@ function ScopeEditor({
             ))}
           </SearchSelect>
         </Field>
-        {scope.trip.dates === "day" && <small>{m.assets_visitors_see_the_start_and_end_day()}</small>}
-        {scope.trip.dates === "month" && <small>{m.assets_visitors_see_only_the_start_and_end_month()}</small>}
-        {scope.trip.dates === "year" && <small>{m.assets_visitors_see_only_the_travel_year()}</small>}
-        {scope.trip.dates && !hasDates && <small>{m.assets_this_trip_has_no_travel_dates_yet()}</small>}
+        {scope.trip.dates === "day" && (
+          <small>{m.assets_visitors_see_the_start_and_end_day()}</small>
+        )}
+        {scope.trip.dates === "month" && (
+          <small>{m.assets_visitors_see_only_the_start_and_end_month()}</small>
+        )}
+        {scope.trip.dates === "year" && (
+          <small>{m.assets_visitors_see_only_the_travel_year()}</small>
+        )}
+        {scope.trip.dates && !hasDates && (
+          <small>{m.assets_this_trip_has_no_travel_dates_yet()}</small>
+        )}
       </div>
       <VisibilityNote catalog={catalog} />
       <div className="grid gap-2">
@@ -386,30 +416,43 @@ function ScopeEditor({
         ))}
       </div>
       {!groups.size && (
-        <p className="help">{m.assets_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}</p>
+        <p className="help">
+          {m.assets_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}
+        </p>
       )}
     </FieldSet>
   );
 }
 
 /** Every shareable record with the same control as in its own editor; both write one field. */
-const MAP_KINDS = { visits: m.assets_count_visits, stays: m.assets_count_stays, updates: m.assets_count_updates };
+const MAP_KINDS = {
+  visits: m.assets_count_visits,
+  stays: m.assets_count_stays,
+  updates: m.assets_count_updates,
+};
 
 /** Describe canonical warning codes; server prose is diagnostic only. */
 function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): string {
   const name =
-    warning.audience_id === null ? m.assets_the_page_for_everyone() : m.assets_link({ p0: warning.audience ?? "" });
+    warning.audience_id === null
+      ? m.assets_the_page_for_everyone()
+      : m.assets_link({ p0: warning.audience ?? "" });
   switch (warning.code) {
     case "location_repeats_area":
       return m.owner_location_repeats_area({ name: warning.text ?? "" });
     case "visit_restates_route":
       return m.owner_visit_restates_route({ name: warning.text ?? "" });
     case "live_audience_receives_nothing":
-      return m.assets_is_active_but_receives_no_items_set_items_to_everyone_or_select_them_for({ p0: name });
+      return m.assets_is_active_but_receives_no_items_set_items_to_everyone_or_select_them_for({
+        p0: name,
+      });
     case "trip_dates_shared":
       return m.assets_shows_the_travel_dates({
         p0: name,
-        p1: DATE_PRECISIONS[warning.text as keyof typeof DATE_PRECISIONS]?.toLowerCase() ?? warning.text ?? "",
+        p1:
+          DATE_PRECISIONS[warning.text as keyof typeof DATE_PRECISIONS]?.toLowerCase() ??
+          warning.text ??
+          "",
       });
     case "planning_marker_visible":
       return m.assets_shows_with_a_planning_word_in_its_name_rename_it_the_status_belongs_to_t({
@@ -448,15 +491,23 @@ function SharingReview({ overview }: { overview: TripOverview | undefined }) {
       <div className="capture-heading">
         <div>
           <h3>{m.assets_sharing_check()}</h3>
-          <p>{m.assets_what_each_active_or_draft_audience_currently_receives_and_what_you_shoul()}</p>
+          <p>
+            {m.assets_what_each_active_or_draft_audience_currently_receives_and_what_you_shoul()}
+          </p>
         </div>
       </div>
-      <ul className="m-0 grid gap-1.5 pl-5 leading-normal text-travel-positive" aria-label={m.assets_sharing_check()}>
+      <ul
+        className="m-0 grid gap-1.5 pl-5 leading-normal text-travel-positive"
+        aria-label={m.assets_sharing_check()}
+      >
         {overview.audiences.map((audience) => {
           const delivered = audience.delivered;
           return (
             <li key={audience.id ?? "public"}>
-              <strong>{audience.kind === "public" ? m.assets_for_everyone() : audience.label}</strong> ·{" "}
+              <strong>
+                {audience.kind === "public" ? m.assets_for_everyone() : audience.label}
+              </strong>{" "}
+              ·{" "}
               {m.assets_audience_summary({
                 state: audience.live
                   ? m.assets_active()
@@ -494,7 +545,9 @@ function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: Cata
   const groups = groupBy(catalog);
   if (!groups.size)
     return (
-      <p className="help">{m.assets_there_are_no_items_to_share_yet_create_a_travel_update_area_or_visit_for()}</p>
+      <p className="help">
+        {m.assets_there_are_no_items_to_share_yet_create_a_travel_update_area_or_visit_for()}
+      </p>
     );
   return (
     <div className="grid gap-2">
@@ -504,7 +557,8 @@ function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: Cata
             <strong>{GROUP_TITLES[kind]}</strong>
             <span>
               {m.assets_of_is_set_to_everyone_or_choose_in_sharing_line({
-                p0: items.filter((item) => item.visibility !== "private" || item.followsUpdate).length,
+                p0: items.filter((item) => item.visibility !== "private" || item.followsUpdate)
+                  .length,
                 p1: items.length,
               })}
             </span>
@@ -534,12 +588,20 @@ function VisibilityOverview({ tripId, catalog }: { tripId: string; catalog: Cata
 }
 
 function combineDerivatives<T>(results: { data: T | undefined; error: Error | null }[]) {
-  return { data: results.map((result) => result.data), error: results.find((result) => result.error)?.error ?? null };
+  return {
+    data: results.map((result) => result.data),
+    error: results.find((result) => result.error)?.error ?? null,
+  };
 }
 
 type PublicValues = { scope: ShareScope };
 type LinkValues = { label: string; scope: ShareScope };
-type Preview = { name: string | (() => string); audience: "public" | "share"; linkId?: string; document: Projection };
+type Preview = {
+  name: string | (() => string);
+  audience: "public" | "share";
+  linkId?: string;
+  document: Projection;
+};
 type LinkAction = {
   link: ShareLink;
   action: "activate" | "rotate";
@@ -572,9 +634,13 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const linkSeries = useMemo<LinkSeries[]>(() => {
     const grouped = new Map<string, ShareLink[]>();
     for (const link of links)
-      grouped.set(link.series_id || link.id, [...(grouped.get(link.series_id || link.id) ?? []), link]);
+      grouped.set(link.series_id || link.id, [
+        ...(grouped.get(link.series_id || link.id) ?? []),
+        link,
+      ]);
     return [...grouped.entries()].map(([id, entries]) => {
-      const current = entries.find((link) => link.state === "draft" || link.state === "active") ?? entries[0];
+      const current =
+        entries.find((link) => link.state === "draft" || link.state === "active") ?? entries[0];
       return { id, current, history: entries.filter((link) => link.id !== current.id) };
     });
   }, [links]);
@@ -610,7 +676,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     // A preview is shown once and not kept.
     gcTime: 0,
   });
-  const togglePublic = useOwnerMutation<{ publish: boolean; reason: string | null }, PublicProjectionStatus>({
+  const togglePublic = useOwnerMutation<
+    { publish: boolean; reason: string | null },
+    PublicProjectionStatus
+  >({
     fallback: m.assets_the_publication_status_could_not_be_changed,
     request: ({ publish, reason: why }) => ({
       path: `${path}/${publish ? "publish" : "unpublish"}`,
@@ -619,7 +688,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     }),
     invalidate: (subject) => [...refreshStatus(subject), ownerKeys.trips(subject)],
   });
-  const saveLink = useOwnerMutation<{ id: string | null; label: string; scope: ShareScope }, ShareLink>({
+  const saveLink = useOwnerMutation<
+    { id: string | null; label: string; scope: ShareScope },
+    ShareLink
+  >({
     fallback: m.assets_the_share_link_could_not_be_saved,
     request: ({ id, label, scope }) => ({
       path: id ? `${linksPath}/${id}` : linksPath,
@@ -673,7 +745,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     fallback: m.assets_the_share_link_could_not_be_saved,
     serverFields: { label: "label" },
     // Saving never activates: a new link is created as a draft the owner can preview, then activate explicitly.
-    submit: (values) => saveLink.mutateAsync({ id: editingLinkId, label: values.label.trim(), scope: values.scope }),
+    submit: (values) =>
+      saveLink.mutateAsync({ id: editingLinkId, label: values.label.trim(), scope: values.scope }),
     onSuccess: (saved) => {
       const wasNew = editingLinkId === null;
       loadLink(saved);
@@ -733,14 +806,19 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     linkRecord.load({ label: "", scope: emptyScope() });
   }
 
-  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const fail = (fallback: ErrorFallback) => (error: unknown) =>
+    setNotice(errorNotice(error, fallback));
 
   async function previewPublic() {
     const values = publicRecord.form.state.values;
     const saved = await savePublic.mutateAsync(values.scope);
     publicRecord.load({ scope: cloneScope(saved.scope) });
     const document = await previewPublicScope.mutateAsync();
-    setPreview({ name: m.assets_public_preview, audience: "public", document: document as Projection });
+    setPreview({
+      name: m.assets_public_preview,
+      audience: "public",
+      document: document as Projection,
+    });
   }
 
   function toggle() {
@@ -748,7 +826,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     const publish = publicStatus.surface_state !== "published";
     togglePublic.mutateAsync({ publish, reason: reason.trim() || null }).then(() => {
       setReason("");
-      setNotice(textNotice(() => (publish ? m.assets_public_page_published() : m.assets_public_page_withdrawn())));
+      setNotice(
+        textNotice(() =>
+          publish ? m.assets_public_page_published() : m.assets_public_page_withdrawn(),
+        ),
+      );
     }, fail(m.assets_the_publication_status_could_not_be_changed));
   }
 
@@ -756,7 +838,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     let target = selectedLink;
     if (!target || !lockedLink) {
       const values = linkRecord.form.state.values;
-      target = await saveLink.mutateAsync({ id: editingLinkId, label: values.label.trim(), scope: values.scope });
+      target = await saveLink.mutateAsync({
+        id: editingLinkId,
+        label: values.label.trim(),
+        scope: values.scope,
+      });
       loadLink(target);
     }
     const document = await previewLinkScope.mutateAsync(target);
@@ -796,7 +882,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     if (!selectedLink) return;
     confirmation.ask({
       title: () => m.assets_revoke_named_link({ name: selectedLink.label }),
-      description: () => m.assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      description: () =>
+        m.assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
       confirmLabel: () => m.assets_revoke_link(),
       onConfirm: () =>
         revoke.mutateAsync({ link: selectedLink, reason: reason.trim() || null }).then((saved) => {
@@ -865,7 +952,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         kind: "stay" as const,
         id: item.id,
         label: stayLabel(item),
-        detail: m.assets_visitors_see_only_and_the_nights({ p0: item.area?.label ?? m.assets_no_area_selected_yet() }),
+        detail: m.assets_visitors_see_only_and_the_nights({
+          p0: item.area?.label ?? m.assets_no_area_selected_yet(),
+        }),
         visibility: item.visibility,
       })),
       ...media.flatMap((asset, index) =>
@@ -875,7 +964,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             kind: "media_derivative" as const,
             id: item.id,
             label: asset.original_filename ?? m.assets_approved_media_item(),
-            detail: asset.media_kind === "video" ? m.assets_approved_video() : m.assets_approved_photo(),
+            detail:
+              asset.media_kind === "video" ? m.assets_approved_video() : m.assets_approved_photo(),
             visibility: item.visibility,
             followsUpdate: updateTitles.get(item.travel_update_id ?? ""),
           })),
@@ -894,9 +984,16 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   ]);
 
   const readError =
-    [statusQuery, linksQuery, placesQuery, locationsQuery, routesQuery, visitsQuery, staysQuery, mediaQuery].find(
-      (query) => query.isError,
-    )?.error ?? mediaDerivatives.error;
+    [
+      statusQuery,
+      linksQuery,
+      placesQuery,
+      locationsQuery,
+      routesQuery,
+      visitsQuery,
+      staysQuery,
+      mediaQuery,
+    ].find((query) => query.isError)?.error ?? mediaDerivatives.error;
   const message =
     notice ??
     (readError
@@ -911,7 +1008,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       <div className="capture-heading">
         <div>
           <h3 id="publication-manager-title">{m.owner_sharing()}</h3>
-          <p>{m.assets_each_item_has_the_same_choice_private_everyone_or_select_per_audience_he()}</p>
+          <p>
+            {m.assets_each_item_has_the_same_choice_private_everyone_or_select_per_audience_he()}
+          </p>
         </div>
       </div>
       <p className="help" role="status">
@@ -924,12 +1023,21 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             aria-live="assertive"
           >
             <strong>{revealedLink.label}</strong>
-            <p>{m.assets_anyone_with_this_link_can_open_the_active_hidden_page_you_can_copy_it_ag()}</p>
+            <p>
+              {m.assets_anyone_with_this_link_can_open_the_active_hidden_page_you_can_copy_it_ag()}
+            </p>
             <code>{revealedLink.url}</code>
-            <Button type="button" onClick={() => void copyLink().catch(fail(m.assets_copying_failed))}>
+            <Button
+              type="button"
+              onClick={() => void copyLink().catch(fail(m.assets_copying_failed))}
+            >
               {m.assets_copy_link()}
             </Button>
-            <Button className="secondary compact" type="button" onClick={() => setRevealedLink(null)}>
+            <Button
+              className="secondary compact"
+              type="button"
+              onClick={() => setRevealedLink(null)}
+            >
               {m.owner_close_2()}
             </Button>
           </section>
@@ -940,7 +1048,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         <div className="capture-heading">
           <div>
             <h3>{m.assets_visibility_per_item()}</h3>
-            <p>{m.assets_the_same_choice_as_in_each_items_editor_this_shows_a_setting_not_who_act()}</p>
+            <p>
+              {m.assets_the_same_choice_as_in_each_items_editor_this_shows_a_setting_not_who_act()}
+            </p>
           </div>
         </div>
         <VisibilityOverview tripId={trip.id} catalog={catalog} />
@@ -991,7 +1101,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
               <Button
                 className="secondary"
                 type="button"
-                onClick={() => void previewPublic().catch(fail(m.assets_the_preview_could_not_be_loaded_2))}
+                onClick={() =>
+                  void previewPublic().catch(fail(m.assets_the_preview_could_not_be_loaded_2))
+                }
               >
                 {m.assets_view_as_visitor()}
               </Button>
@@ -1001,7 +1113,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 disabled={!publicStatus || togglePublic.isPending}
                 onClick={toggle}
               >
-                {isPublished ? m.assets_stop_sharing_with_everyone() : m.assets_share_with_everyone()}
+                {isPublished
+                  ? m.assets_stop_sharing_with_everyone()
+                  : m.assets_share_with_everyone()}
               </Button>
             </>
           }
@@ -1030,7 +1144,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             <h3>{m.assets_hidden_share_links()}</h3>
             <p>{m.assets_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated()}</p>
           </div>
-          <Button className="secondary compact" type="button" onClick={() => switchLinkEditor(null)}>
+          <Button
+            className="secondary compact"
+            type="button"
+            onClick={() => switchLinkEditor(null)}
+          >
             {m.assets_new_link()}
           </Button>
         </div>
@@ -1072,7 +1190,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                         >
                           <strong>{link.label}</strong>
                           <span>
-                            {LINK_STATE_LABELS[link.state]} {dateLabel(link.revoked_at ?? link.expires_at)}
+                            {LINK_STATE_LABELS[link.state]}{" "}
+                            {dateLabel(link.revoked_at ?? link.expires_at)}
                           </span>
                         </Button>
                       ))}
@@ -1084,7 +1203,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           </div>
         )}
         {links.length === 0 && !linksQuery.isPending && (
-          <p>{m.assets_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_()}</p>
+          <p>
+            {m.assets_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_()}
+          </p>
         )}
       </div>
       <RecordDialog
@@ -1105,7 +1226,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                   className="secondary"
                   type="button"
                   disabled={lockedLink || !linkRecord.values.label.trim()}
-                  onClick={() => void previewLink().catch(fail(m.assets_the_preview_could_not_be_loaded_2))}
+                  onClick={() =>
+                    void previewLink().catch(fail(m.assets_the_preview_could_not_be_loaded_2))
+                  }
                 >
                   {m.assets_view_preview()}
                 </Button>
@@ -1174,13 +1297,20 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 </Field>
                 <Field className="contents">
                   <FieldLabel>
-                    {m.assets_reason()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
-                    <Input maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+                    {m.assets_reason()}{" "}
+                    <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                    <Input
+                      maxLength={500}
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                    />
                   </FieldLabel>
                 </Field>
               </div>
               {expiresInDays === null && (
-                <p className="help">{m.assets_this_link_remains_valid_until_you_revoke_or_rotate_it()}</p>
+                <p className="help">
+                  {m.assets_this_link_remains_valid_until_you_revoke_or_rotate_it()}
+                </p>
               )}
               {selectedLink?.state === "draft" && (
                 <p className="help">
@@ -1241,7 +1371,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 ? isPublished
                   ? m.assets_currently_shared()
                   : m.assets_not_shared_yet()
-                : LINK_STATE_LABELS[links.find((link) => link.id === preview.linkId)?.state ?? "draft"]}
+                : LINK_STATE_LABELS[
+                    links.find((link) => link.id === preview.linkId)?.state ?? "draft"
+                  ]}
             </p>
             <p>{projectionSummary(preview.document)}</p>
             <p className="help">

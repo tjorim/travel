@@ -6,7 +6,14 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import { clearDraft, emptyDraft, readDraft, saveDraft, type TravelUpdate, type Trip } from "../tracker-model";
+import {
+  clearDraft,
+  emptyDraft,
+  readDraft,
+  saveDraft,
+  type TravelUpdate,
+  type Trip,
+} from "../tracker-model";
 import { Capture } from "./Capture";
 
 const routeTree = createRootRoute({ component: Capture });
@@ -66,7 +73,10 @@ beforeEach(() => {
     return state.trip.travel_updates.find((item) => item.id === match[1]);
   });
   api.on("DELETE", /^\/api\/trips\/trip\/travel-updates\/([^/]+)$/, (_body, match) => {
-    state.trip = { ...state.trip, travel_updates: state.trip.travel_updates.filter((item) => item.id !== match[1]) };
+    state.trip = {
+      ...state.trip,
+      travel_updates: state.trip.travel_updates.filter((item) => item.id !== match[1]),
+    };
     return undefined;
   });
 });
@@ -79,7 +89,8 @@ afterEach(() => {
 });
 
 const renderCapture = () => renderRoutesWithOwner(routeTree, ["/"]);
-const savedUpdates = () => within(screen.getByRole("heading", { name: "Opgeslagen reisupdates" }).closest("section")!);
+const savedUpdates = () =>
+  within(screen.getByRole("heading", { name: "Opgeslagen reisupdates" }).closest("section")!);
 
 it("restores a local draft and keeps it up to date while typing", async () => {
   saveDraft({ ...emptyDraft("trip"), title: "Terug van gisteren", notes: "Regen" });
@@ -102,7 +113,9 @@ it("asks for a title, but not for notes, before anything is sent", async () => {
 it("saves a new update, lists it at once and clears the local draft", async () => {
   renderCapture();
   fireEvent.change(await screen.findByLabelText("Titel"), { target: { value: "Nachtmarkt" } });
-  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), { target: { value: "Pindakaas-ijs" } });
+  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {
+    target: { value: "Pindakaas-ijs" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
   await screen.findByText("Reisupdate opgeslagen.");
   await waitFor(() => expect(savedUpdates().getByText("Nachtmarkt")).toBeTruthy());
@@ -121,7 +134,9 @@ it("opens a saved update prefilled and shows its edit at once", async () => {
   renderCapture();
   fireEvent.click(await screen.findByRole("button", { name: /Eerste avond/ }));
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Eerste avond");
-  expect((screen.getByLabelText("Privénotitie (optioneel)") as HTMLTextAreaElement).value).toBe("Nachtmarkt");
+  expect((screen.getByLabelText("Privénotitie (optioneel)") as HTMLTextAreaElement).value).toBe(
+    "Nachtmarkt",
+  );
   expect(screen.getByRole("heading", { name: "Reisupdate bewerken" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Eerste avond in Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Wijzigingen opslaan" }));
@@ -144,7 +159,9 @@ it("removes a deleted update from the list after the in-app confirmation", async
 it("keeps the typed update and says the local draft is safe when the server refuses", async () => {
   renderCapture();
   fireEvent.change(await screen.findByLabelText("Titel"), { target: { value: "Nachtmarkt" } });
-  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), { target: { value: "Pindakaas-ijs" } });
+  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {
+    target: { value: "Pindakaas-ijs" },
+  });
   api.failNext = { status: 500, body: {} };
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
   await screen.findByText(
@@ -170,7 +187,9 @@ it("does not send anything while offline and keeps the draft local", async () =>
   });
   await screen.findByText(/Offline — concepten blijven lokaal/);
   fireEvent.change(title, { target: { value: "Nachtmarkt" } });
-  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), { target: { value: "Pindakaas-ijs" } });
+  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {
+    target: { value: "Pindakaas-ijs" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
   await screen.findByText(
     "Je bent offline. Dit concept blijft alleen lokaal bewaard en wordt niet automatisch verstuurd.",
@@ -184,7 +203,12 @@ it("searches a place, lets the owner choose it and sends it with the update", as
     attribution: "OpenStreetMap",
     attribution_url: "https://osm.example",
     results: [
-      { display_name: "Taipei Main Station", osm_element_type: "node", osm_element_id: "1", locality: "Taipei" },
+      {
+        display_name: "Taipei Main Station",
+        osm_element_type: "node",
+        osm_element_id: "1",
+        locality: "Taipei",
+      },
     ],
   }));
   renderCapture();
@@ -194,7 +218,9 @@ it("searches a place, lets the owner choose it and sends it with the update", as
   fireEvent.change(screen.getByLabelText("Zoek locatie"), { target: { value: "Taipei Main" } });
   fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
-  await screen.findByText("Locatie geselecteerd. Hij wordt pas gemaakt wanneer je de reisupdate opslaat.");
+  await screen.findByText(
+    "Locatie geselecteerd. Hij wordt pas gemaakt wanneer je de reisupdate opslaat.",
+  );
   expect(api.lastBody("POST /api/trips/trip/places/search")).toEqual({ query: "Taipei Main" });
 
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Aankomst" } });
@@ -202,7 +228,8 @@ it("searches a place, lets the owner choose it and sends it with the update", as
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
   await screen.findByText("Reisupdate opgeslagen.");
   expect(
-    api.lastBody<{ location: { display_name: string } }>("POST /api/trips/trip/travel-updates")?.location.display_name,
+    api.lastBody<{ location: { display_name: string } }>("POST /api/trips/trip/travel-updates")
+      ?.location.display_name,
   ).toBe("Taipei Main Station");
 });
 
@@ -210,8 +237,12 @@ it("links a private photo to the update", async () => {
   renderCapture();
   fireEvent.click(await screen.findByRole("checkbox", { name: /markt.jpg/ }));
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Markt" } });
-  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), { target: { value: "Fruit" } });
+  fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {
+    target: { value: "Fruit" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
   await screen.findByText("Reisupdate opgeslagen.");
-  expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({ media_asset_ids: ["p1"] });
+  expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({
+    media_asset_ids: ["p1"],
+  });
 });

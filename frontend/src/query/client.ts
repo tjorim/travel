@@ -21,7 +21,9 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
  *   never retried: a write is not safe to repeat blindly.
  * - A 401 from any call reports once so the app can end the session.
  */
-export function createOwnerQueryClient({ onUnauthorized }: { onUnauthorized?: () => void } = {}): QueryClient {
+export function createOwnerQueryClient({
+  onUnauthorized,
+}: { onUnauthorized?: () => void } = {}): QueryClient {
   // The manager only learns of changes after load; start from the browser's current state.
   if (typeof navigator !== "undefined") onlineManager.setOnline(navigator.onLine);
   const report = (error: unknown) => {

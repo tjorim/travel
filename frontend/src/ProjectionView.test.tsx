@@ -48,13 +48,17 @@ it("renders shared video with a poster, controls and no eager download", () => {
       height: 360,
     },
   ];
-  const view = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  const view = render(
+    <ProjectionView projection={data} audience="public" identifier="safe-slug" />,
+  );
   const video = view.container.querySelector("video")!;
   expect(video.getAttribute("controls")).not.toBeNull();
   expect(video.getAttribute("preload")).toBe("none");
   expect(video.hasAttribute("autoplay")).toBe(false);
   expect(video.getAttribute("poster")).toBe("/api/public/trips/safe-slug/files/media-video-poster");
-  expect(video.querySelector("source")?.getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media-video");
+  expect(video.querySelector("source")?.getAttribute("src")).toBe(
+    "/api/public/trips/safe-slug/files/media-video",
+  );
   expect(view.container.textContent).toContain("At the shore");
 });
 
@@ -64,7 +68,9 @@ it("derives tile-facing map bounds only from scoped route geometry", () => {
     { id: "selected-place", label: "Area city", latitude: 25, longitude: 121 },
     { id: "incomplete", latitude: 25 },
   ];
-  data.visits = [{ id: "selected-visit", place: { label: "Area stage", latitude: 26, longitude: 122 } }];
+  data.visits = [
+    { id: "selected-visit", place: { label: "Area stage", latitude: 26, longitude: 122 } },
+  ];
   data.routes = [
     {
       id: "selected",
@@ -176,14 +182,34 @@ it("shows explicitly shared transport endpoints as map points and uses them for 
       departure: { label: "Amsterdam" },
       arrival: { label: "Taipei" },
       map: {
-        departure: { label: "Amsterdam Schiphol", latitude: 52.31, longitude: 4.76, kind: "airport" },
-        arrival: { label: "Taoyuan Airport", latitude: 25.0797, longitude: 121.2328, kind: "airport" },
+        departure: {
+          label: "Amsterdam Schiphol",
+          latitude: 52.31,
+          longitude: 4.76,
+          kind: "airport",
+        },
+        arrival: {
+          label: "Taoyuan Airport",
+          latitude: 25.0797,
+          longitude: 121.2328,
+          kind: "airport",
+        },
       },
     },
   ];
   expect(projectionMapPoints(data)).toEqual([
-    { id: "transport-flight-departure", label: "Amsterdam Schiphol", coordinates: [4.76, 52.31], kind: "airport" },
-    { id: "transport-flight-arrival", label: "Taoyuan Airport", coordinates: [121.2328, 25.0797], kind: "airport" },
+    {
+      id: "transport-flight-departure",
+      label: "Amsterdam Schiphol",
+      coordinates: [4.76, 52.31],
+      kind: "airport",
+    },
+    {
+      id: "transport-flight-arrival",
+      label: "Taoyuan Airport",
+      coordinates: [121.2328, 25.0797],
+      kind: "airport",
+    },
   ]);
   expect(projectionMapLines(data)).toEqual([
     {
@@ -232,11 +258,17 @@ it("links map cards only to records supplied in the visitor projection", () => {
   ];
   render(<ProjectionView projection={data} audience="public" identifier="trip" />);
   fireEvent.click(screen.getByRole("button", { name: "Lisbon" }));
-  expect(screen.getByRole("link", { name: "Bezoek: Arrival" }).getAttribute("href")).toBe("#visit-visit");
-  expect(screen.getByRole("link", { name: "Update: First day" }).getAttribute("href")).toBe("#update");
+  expect(screen.getByRole("link", { name: "Bezoek: Arrival" }).getAttribute("href")).toBe(
+    "#visit-visit",
+  );
+  expect(screen.getByRole("link", { name: "Update: First day" }).getAttribute("href")).toBe(
+    "#update",
+  );
   expect(document.getElementById("visit-visit")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /To Coimbra/ }));
-  expect(screen.getByRole("link", { name: "Route bekijken" }).getAttribute("href")).toBe("#route-route");
+  expect(screen.getByRole("link", { name: "Route bekijken" }).getAttribute("href")).toBe(
+    "#route-route",
+  );
   expect(document.getElementById("route-route")).toBeTruthy();
 });
 
@@ -255,8 +287,12 @@ it("lists only server supplied public cards and opens their stable slugs", async
   expect((await screen.findByRole("status")).textContent).toContain("Reizen laden");
   const first = await screen.findByRole("link", { name: /Visible journey/ });
   expect(first.getAttribute("href")).toBe("/trips/safe-slug");
-  expect(screen.getByRole("link", { name: /Gepubliceerde reis/ }).getAttribute("href")).toBe("/trips/hidden-title");
-  expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe("/admin/");
+  expect(screen.getByRole("link", { name: /Gepubliceerde reis/ }).getAttribute("href")).toBe(
+    "/trips/hidden-title",
+  );
+  expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe(
+    "/admin/",
+  );
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit" });
 });
@@ -272,7 +308,10 @@ it("shows an empty index and retries a failed listing without using archive rout
   failed = false;
   screen.getByRole("button", { name: "Opnieuw proberen" }).click();
   await screen.findByRole("heading", { name: "Nog geen publieke reizen" });
-  expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/public/trips", "/api/public/trips"]);
+  expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+    "/api/public/trips",
+    "/api/public/trips",
+  ]);
 });
 
 it("does not treat former archive paths as visitor trips", async () => {
@@ -286,10 +325,21 @@ it("does not treat former archive paths as visitor trips", async () => {
 it("renders every resource kind using only supplied fields", () => {
   const data = projection();
   data.visits = [
-    { id: "visit", title: "First stage", place: { label: "Area city" }, private_address: "Hidden street" },
+    {
+      id: "visit",
+      title: "First stage",
+      place: { label: "Area city" },
+      private_address: "Hidden street",
+    },
   ];
   data.places = [
-    { id: "place", label: "Shared place", region: "Region", latitude: 5, owner_note: "Secret place note" },
+    {
+      id: "place",
+      label: "Shared place",
+      region: "Region",
+      latitude: 5,
+      owner_note: "Secret place note",
+    },
   ];
   data.updates = [
     {
@@ -342,7 +392,9 @@ it("renders every resource kind using only supplied fields", () => {
   });
   data.media = [{ id: "media", image: { id: "media" }, original_filename: "Secret photo" }];
   data.navigation = [{ id: "place" }];
-  const { container } = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  const { container } = render(
+    <ProjectionView projection={data} audience="public" identifier="safe-slug" />,
+  );
   for (const value of [
     "Shared summary",
     "First stage",
@@ -401,7 +453,9 @@ it("shows a shared route's day while it has no times", () => {
       departs_on: "2054-12-05",
     },
   ];
-  const { container } = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  const { container } = render(
+    <ProjectionView projection={data} audience="public" identifier="safe-slug" />,
+  );
   expect(container.textContent).toContain("5 december 2054");
   expect(container.textContent).not.toContain("Vertrektijd onbekend");
 });
@@ -412,10 +466,16 @@ it("does not invent values for omitted fields and keeps audience links separate"
   data.places = [{ id: "place-1" }];
   data.media = [{ id: "media" }];
   data.navigation = [{ id: "place-1" }, { id: "location-4" }];
-  const { container } = render(<ProjectionView projection={data} audience="share" identifier="capability" />);
+  const { container } = render(
+    <ProjectionView projection={data} audience="share" identifier="capability" />,
+  );
   expect(container.querySelector("img")).toBeNull();
   expect(container.textContent).not.toContain("Reisoverzicht");
-  expect(screen.getAllByRole("link", { name: "Routebeschrijving" }).map((link) => link.getAttribute("href"))).toEqual([
+  expect(
+    screen
+      .getAllByRole("link", { name: "Routebeschrijving" })
+      .map((link) => link.getAttribute("href")),
+  ).toEqual([
     "/api/shared/capability/navigation/place-1",
     "/api/shared/capability/navigation/location-4",
   ]);
@@ -432,7 +492,9 @@ it("requests a fresh scoped projection after navigation and shows live edits", a
   vi.stubGlobal("fetch", fetcher);
   const first = render(<VisitorRoutes initialEntries={["/trips/slug"]} />);
   await screen.findByRole("heading", { name: "Before edit" });
-  expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe("/admin/");
+  expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe(
+    "/admin/",
+  );
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips/slug");
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
     cache: "no-store",
@@ -447,7 +509,9 @@ it("requests a fresh scoped projection after navigation and shows live edits", a
 });
 
 it("uses only the unlisted endpoint and a uniform unavailable state", async () => {
-  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 404 }));
+  const fetcher = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 404 }),
+  );
   vi.stubGlobal("fetch", fetcher);
   render(<VisitorRoutes initialEntries={["/share/token"]} />);
   await screen.findByRole("heading", { name: "Reis niet beschikbaar" });
@@ -459,7 +523,9 @@ it("uses only the unlisted endpoint and a uniform unavailable state", async () =
 it("renders a successful unlisted response without requesting public or owner data", async () => {
   const data = projection("travel/unlisted-trip@1");
   data.updates = [{ id: "update-1", body: "Shared update text" }];
-  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(data)));
+  const fetcher = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(data)),
+  );
   vi.stubGlobal("fetch", fetcher);
   render(<VisitorRoutes initialEntries={["/share/token"]} />);
   await screen.findByText("Shared update text");
@@ -497,7 +563,13 @@ it("renders dated updates in projection order with direct links and scoped photo
       date_precision: "month",
       place: { label: "Area coast" },
     },
-    { id: "update-first", title: "First", story_date: "2054-04-02", date_precision: "day", body: "Shared text" },
+    {
+      id: "update-first",
+      title: "First",
+      story_date: "2054-04-02",
+      date_precision: "day",
+      body: "Shared text",
+    },
   ];
   data.media = [
     {
@@ -513,18 +585,29 @@ it("renders dated updates in projection order with direct links and scoped photo
     },
     { id: "media-2", image: { id: "media-2" }, caption: "Elsewhere", alt_text: "Trees" },
   ];
-  const { container } = render(<ProjectionView projection={data} audience="share" identifier="token" />);
+  const { container } = render(
+    <ProjectionView projection={data} audience="share" identifier="token" />,
+  );
   expect(
-    screen.getByRole("navigation", { name: "Updates in dit verhaal" }).querySelectorAll("a")[1]?.getAttribute("href"),
+    screen
+      .getByRole("navigation", { name: "Updates in dit verhaal" })
+      .querySelectorAll("a")[1]
+      ?.getAttribute("href"),
   ).toBe("#update-first");
-  expect(container.querySelectorAll('ol[aria-label="Reisupdates tijdlijn"] > li')[1]?.id).toBe("update-first");
+  expect(container.querySelectorAll('ol[aria-label="Reisupdates tijdlijn"] > li')[1]?.id).toBe(
+    "update-first",
+  );
   expect(screen.getByText("Area coast")).toBeTruthy();
   expect(screen.getByText("2 april 2054")).toBeTruthy();
   expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("src")).toBe(
     "/api/shared/token/files/media-1",
   );
-  expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("style")).toContain("25% 60%");
-  expect(screen.getByText("At the station").closest('ol[aria-label="Reisupdates tijdlijn"]')).toBeTruthy();
+  expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("style")).toContain(
+    "25% 60%",
+  );
+  expect(
+    screen.getByText("At the station").closest('ol[aria-label="Reisupdates tijdlijn"]'),
+  ).toBeTruthy();
   expect(screen.getByText("Elsewhere").closest('ol[aria-label="Reisupdates tijdlijn"]')).toBeNull();
 });
 
@@ -549,20 +632,32 @@ it("keeps story-only, image-only, and empty projections readable", () => {
 
 it("uses the visitor story renderer for an owner preview and requests only owner scoped resources", async () => {
   const data = projection("travel/unlisted-trip@1");
-  data.updates = [{ id: "update-1", title: "Shared story", body: "Visitor text", private_body: "Owner secret" }];
+  data.updates = [
+    { id: "update-1", title: "Shared story", body: "Visitor text", private_body: "Owner secret" },
+  ];
   data.places = [{ id: "area-1", label: "Taipei" }];
   data.navigation = [{ id: "area-1" }];
   const fetcher = vi.fn(
     async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      new Response(JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" })),
+      new Response(
+        JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" }),
+      ),
   );
   vi.stubGlobal("fetch", fetcher);
   vi.spyOn(window, "open").mockImplementation(() => null);
   const session = { accessToken: "owner-token", expiresAt: Date.now() + 60_000 };
   const preview = render(
-    <RenderedPreview projection={data} audience="share" tripId="trip" linkId="draft-link" session={session} />,
+    <RenderedPreview
+      projection={data}
+      audience="share"
+      tripId="trip"
+      linkId="draft-link"
+      session={session}
+    />,
   );
-  const visitor = render(<ProjectionView projection={data} audience="share" identifier="live-token" />);
+  const visitor = render(
+    <ProjectionView projection={data} audience="share" identifier="live-token" />,
+  );
   for (const value of ["Shared story", "Visitor text", "Reisupdates", "Routebeschrijving"]) {
     expect(preview.container.textContent).toContain(value);
     expect(visitor.container.textContent).toContain(value);
@@ -570,7 +665,9 @@ it("uses the visitor story renderer for an owner preview and requests only owner
   expect(preview.container.textContent).not.toContain("Owner secret");
   fireEvent.click(screen.getByRole("button", { name: "Routebeschrijving" }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/trips/trip/share-links/draft-link/preview/navigation/area-1");
+  expect(fetcher.mock.calls[0]?.[0]).toBe(
+    "/api/trips/trip/share-links/draft-link/preview/navigation/area-1",
+  );
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
     credentials: "omit",
     cache: "no-store",
@@ -598,16 +695,22 @@ it("renders the same scoped gallery in preview without requesting a visitor file
       projection={data}
       audience="public"
       identifier=""
-      previewResources={{ images: { "photo-1": "blob:owner-preview" }, openFile: vi.fn(), openNavigation: vi.fn() }}
+      previewResources={{
+        images: { "photo-1": "blob:owner-preview" },
+        openFile: vi.fn(),
+        openNavigation: vi.fn(),
+      }}
     />,
   );
   expect(
-    visitor.container.querySelector('ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]')
-      ?.textContent,
+    visitor.container.querySelector(
+      'ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]',
+    )?.textContent,
   ).toContain("Station");
   expect(
-    preview.container.querySelector('ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]')
-      ?.textContent,
+    preview.container.querySelector(
+      'ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]',
+    )?.textContent,
   ).toContain("Station");
   expect(preview.container.querySelector("img")?.getAttribute("src")).toBe("blob:owner-preview");
   expect(preview.container.innerHTML).not.toContain("/api/public/trips/");
@@ -658,12 +761,24 @@ it("shows a visit with its days, its place and a time only when it was shared", 
 
 it("reads a visit time in the viewer's own zone, with the day when it moves", () => {
   // 18:30 in Taipei (UTC+8) is 11:30 in Amsterdam (UTC+1) in November, and 02:00 in Taipei is 19:00 the day before.
-  expect(timeForViewer("2054-11-21", "18:30", "Asia/Taipei", "Europe/Amsterdam")).toEqual({ time: "11:30", days: 0 });
-  expect(timeForViewer("2054-11-21", "02:00", "Asia/Taipei", "Europe/Amsterdam")).toEqual({ time: "19:00", days: -1 });
+  expect(timeForViewer("2054-11-21", "18:30", "Asia/Taipei", "Europe/Amsterdam")).toEqual({
+    time: "11:30",
+    days: 0,
+  });
+  expect(timeForViewer("2054-11-21", "02:00", "Asia/Taipei", "Europe/Amsterdam")).toEqual({
+    time: "19:00",
+    days: -1,
+  });
   expect(timeForViewer("2054-11-21", "18:30", "Asia/Taipei", "Asia/Taipei")).toBeNull();
   expect(timeForViewer("2054-11-21", "18:30", "Not/AZone", "Europe/Amsterdam")).toBeNull();
   expect(
-    visitTimes({ id: "v", start_time: "18:30", end_time: "21:00", starts_on: "2054-11-21", timezone: "Asia/Taipei" }),
+    visitTimes({
+      id: "v",
+      start_time: "18:30",
+      end_time: "21:00",
+      starts_on: "2054-11-21",
+      timezone: "Asia/Taipei",
+    }),
   ).toMatch(/^18:30–21:00 \(Taipei\)( · bij jou \d\d:\d\d–\d\d:\d\d)?/);
   expect(visitTimes({ id: "v", start_time: "18:30" })).toBe("18:30");
   expect(visitTimes({ id: "v" })).toBeNull();
@@ -683,9 +798,13 @@ it("shows the server's sanitized Markdown and falls back to plain source text", 
     },
   ];
   data.updates = [{ id: "update-1", title: "Arrival", body: "*Landed*" }];
-  const view = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  const view = render(
+    <ProjectionView projection={data} audience="public" identifier="safe-slug" />,
+  );
   expect(view.container.querySelector(".markdown strong")?.textContent).toBe("Two");
-  const checkbox = view.container.querySelector<HTMLInputElement>(".markdown input[type=checkbox]")!;
+  const checkbox = view.container.querySelector<HTMLInputElement>(
+    ".markdown input[type=checkbox]",
+  )!;
   expect(checkbox.disabled).toBe(true);
   expect(checkbox.checked).toBe(true);
   // Without rendered HTML the source is text, never markup.
@@ -726,7 +845,9 @@ it("renders a caption's inline Markdown in its figcaption and falls back to its 
     },
     { id: "media-2", image: { id: "media-2" }, caption: "*Temple*" },
   ];
-  const view = render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+  const view = render(
+    <ProjectionView projection={data} audience="public" identifier="safe-slug" />,
+  );
   const [rendered, source] = Array.from(view.container.querySelectorAll("figcaption"));
   expect(rendered.querySelector("strong")?.textContent).toBe("Night");
   expect(rendered.querySelector("p, div")).toBeNull();

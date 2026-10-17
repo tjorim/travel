@@ -8,7 +8,12 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { dayjs } from "../dayjs";
 import { useAuth } from "../auth-context";
 import { errorMessage, openOwnerFile } from "../query/api";
-import { useLinkedLibraryDocuments, useOwner, useTripResource, useTripsQuery } from "../query/owner-queries";
+import {
+  useLinkedLibraryDocuments,
+  useOwner,
+  useTripResource,
+  useTripsQuery,
+} from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { EmptyState } from "../tracker-routes";
 import { DOCUMENT_KIND_LABELS } from "../trips/DocumentManager";
@@ -34,7 +39,16 @@ import {
   type MediaAsset,
 } from "../tracker-model";
 
-type RecordKind = "stay" | "route" | "visit" | "area" | "location" | "task" | "update" | "document" | "media";
+type RecordKind =
+  | "stay"
+  | "route"
+  | "visit"
+  | "area"
+  | "location"
+  | "task"
+  | "update"
+  | "document"
+  | "media";
 /** Which workspace tab a record kind's dialog opens in. */
 const RECORD_SECTION: Record<RecordKind, "plan" | "story" | "media"> = {
   stay: "plan",
@@ -106,7 +120,8 @@ function placeLabel(place: Location | null): string {
     place.admin_area,
     place.country_code,
   ].filter(
-    (value, index, values): value is string => Boolean(value) && value !== name && values.indexOf(value) === index,
+    (value, index, values): value is string =>
+      Boolean(value) && value !== name && values.indexOf(value) === index,
   );
   return extra.length ? `${name} · ${extra.join(" · ")}` : name;
 }
@@ -150,7 +165,15 @@ function MediaPreview({
   );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+function Section({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: React.ReactNode;
+}) {
   useLocale();
   return (
     <section id={id} className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0">
@@ -234,7 +257,9 @@ export function TripDetail() {
   const { session } = useAuth();
   const owner = useOwner();
   const tripsQuery = useTripsQuery();
-  const trip = tripId ? (tripsQuery.data?.find((candidate) => candidate.id === tripId) ?? null) : null;
+  const trip = tripId
+    ? (tripsQuery.data?.find((candidate) => candidate.id === tripId) ?? null)
+    : null;
   // Nothing is read for a trip that does not exist.
   const id = trip ? trip.id : null;
   const placesQuery = useTripResource(id, "locations");
@@ -292,14 +317,18 @@ export function TripDetail() {
     return (
       <section className="travel-card" role={readError ? "alert" : "status"}>
         <h2>{m.private_trip()}</h2>
-        <p>{readError ? errorMessage(readError, m.private_trip_error) : m.private_trip_loading()}</p>
+        <p>
+          {readError ? errorMessage(readError, m.private_trip_error) : m.private_trip_loading()}
+        </p>
       </section>
     );
   }
 
   const openFile = (url: string, fallback: string) => {
     if (owner)
-      openOwnerFile(owner.session, url, fallback).catch((error: unknown) => setNotice(errorNotice(error, fallback)));
+      openOwnerFile(owner.session, url, fallback).catch((error: unknown) =>
+        setNotice(errorNotice(error, fallback)),
+      );
   };
   return (
     <main className="grid gap-4.5" aria-labelledby="admin-trip-title">
@@ -307,14 +336,19 @@ export function TripDetail() {
         <div>
           <p className="travel-eyebrow">{m.owner_only_for_you_complete_private_overview()}</p>
           <h1 id="admin-trip-title">{trip.title}</h1>
-          {trip.starts_on && <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>}
+          {trip.starts_on && (
+            <p>{formatDayRange(trip.starts_on, trip.ends_on ?? trip.starts_on)}</p>
+          )}
         </div>
         <Link className="action-link" to={`/trips/${encodeURIComponent(trip.id)}`}>
           {m.owner_go_to_trip_management()}
         </Link>
       </header>
       {trip.summary && (
-        <section className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0" aria-label={m.owner_trip_summary()}>
+        <section
+          className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0"
+          aria-label={m.owner_trip_summary()}
+        >
           <Markdown html={trip.summary_html} text={trip.summary} />
         </section>
       )}
@@ -430,13 +464,16 @@ export function TripDetail() {
                     {stayLabel(stay)}
                   </RecordHeading>
                   <p>
-                    {formatDayRange(stay.check_in_date, stay.check_out_date)} · {stayStateLabel(stay)}
+                    {formatDayRange(stay.check_in_date, stay.check_out_date)} ·{" "}
+                    {stayStateLabel(stay)}
                   </p>
                   {(stay.check_in_time || stay.check_out_time) && (
                     <p>
                       {[
-                        stay.check_in_time && m.owner_check_in({ p0: stay.check_in_time.slice(0, 5) }),
-                        stay.check_out_time && m.owner_check_out({ p0: stay.check_out_time.slice(0, 5) }),
+                        stay.check_in_time &&
+                          m.owner_check_in({ p0: stay.check_in_time.slice(0, 5) }),
+                        stay.check_out_time &&
+                          m.owner_check_out({ p0: stay.check_out_time.slice(0, 5) }),
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -488,7 +525,9 @@ export function TripDetail() {
                       : route.departs_on
                         ? formatDay(route.departs_on)
                         : null,
-                    route.geometry ? m.owner_line_with_points({ p0: route.geometry.coordinates.length }) : null,
+                    route.geometry
+                      ? m.owner_line_with_points({ p0: route.geometry.coordinates.length })
+                      : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -497,7 +536,11 @@ export function TripDetail() {
                   {routeEndpoint(route.departure_area.label, route.departure_location)} →{" "}
                   {routeEndpoint(route.arrival_area.label, route.arrival_location)}
                 </p>
-                <p>{[route.carrier, route.service_reference, route.travel_class].filter(Boolean).join(" · ")}</p>
+                <p>
+                  {[route.carrier, route.service_reference, route.travel_class]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
                 {route.booking_reference && (
                   <p>
                     {m.owner_booking_reference()} {route.booking_reference}
@@ -560,7 +603,10 @@ export function TripDetail() {
               <article key={place.id}>
                 <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
                   <h3>{placeLabel(place)}</h3>
-                  <Link className="action-link compact" to={`/trips/${encodeURIComponent(trip.id)}/plan`}>
+                  <Link
+                    className="action-link compact"
+                    to={`/trips/${encodeURIComponent(trip.id)}/plan`}
+                  >
                     {m.owner_go_to_planning()}
                   </Link>
                 </div>
@@ -603,12 +649,15 @@ export function TripDetail() {
                 </RecordHeading>
                 <p>
                   {DOCUMENT_KIND_LABELS[document.document_kind]} ·{" "}
-                  {document.original_filename ?? m.owner_unnamed_file()} · {bytesLabel(document.byte_size)}
+                  {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                  {bytesLabel(document.byte_size)}
                 </p>
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => openFile(document.file_url, m.owner_the_private_document_could_not_be_opened())}
+                  onClick={() =>
+                    openFile(document.file_url, m.owner_the_private_document_could_not_be_opened())
+                  }
                 >
                   {m.owner_open_document()}
                 </Button>
@@ -629,7 +678,9 @@ export function TripDetail() {
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => openFile(document.file_url, m.owner_the_library_document_could_not_be_opened())}
+                  onClick={() =>
+                    openFile(document.file_url, m.owner_the_library_document_could_not_be_opened())
+                  }
                 >
                   {m.owner_open_library_document()}
                 </Button>
@@ -650,7 +701,8 @@ export function TripDetail() {
                 </RecordHeading>
                 {owner && <MediaPreview asset={asset} session={owner.session} />}
                 <p>
-                  {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)} {m.owner_captured()}{" "}
+                  {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)}{" "}
+                  {m.owner_captured()}{" "}
                   {asset.captured_at ? formatCapture(asset.captured_at, asset.captured_local) : "—"}
                 </p>
                 {asset.gps && (
@@ -661,7 +713,9 @@ export function TripDetail() {
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => openFile(asset.file_url, m.owner_the_private_media_could_not_be_opened())}
+                  onClick={() =>
+                    openFile(asset.file_url, m.owner_the_private_media_could_not_be_opened())
+                  }
                 >
                   {m.owner_open_media()}
                 </Button>

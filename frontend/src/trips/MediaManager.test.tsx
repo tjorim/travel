@@ -80,7 +80,9 @@ beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi()
     .collection("/api/trips/trip/media", [photo("p1", "kust.jpg"), photo("p2", "markt.jpg")])
-    .collection("/api/trips/trip/media/p1/derivatives", [derivative("x1", "pending", { caption: "Kust" })])
+    .collection("/api/trips/trip/media/p1/derivatives", [
+      derivative("x1", "pending", { caption: "Kust" }),
+    ])
     .collection("/api/trips/trip/media/p2/derivatives", [])
     .collection("/api/trips/trip/visits", []);
   providers = [
@@ -105,7 +107,9 @@ const routeTree = createRootRoute({
 const renderMedia = () => renderRoutesWithOwner(routeTree, ["/"]);
 
 it("lists a new upload straight away and opens its details", async () => {
-  api.on("POST", /\/media\/uploads$/, () => api.push("/api/trips/trip/media", photo("p3", "nieuw.jpg")));
+  api.on("POST", /\/media\/uploads$/, () =>
+    api.push("/api/trips/trip/media", photo("p3", "nieuw.jpg")),
+  );
   api.collection("/api/trips/trip/media/p3/derivatives", []);
   renderMedia();
   await screen.findByText("kust.jpg");
@@ -116,8 +120,12 @@ it("lists a new upload straight away and opens its details", async () => {
   });
   fireEvent.submit(screen.getByRole("button", { name: "Privémedia uploaden" }).closest("form")!);
   await screen.findByRole("heading", { level: 2, name: "nieuw.jpg" });
-  expect(screen.getByText("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen.")).toBeTruthy();
-  expect(api.lastBody<FormData>("POST /api/trips/trip/media/uploads")!.get("file")).toBeInstanceOf(File);
+  expect(
+    screen.getByText("Privémedia geüpload. Je kunt ze nu aan een reisupdate koppelen."),
+  ).toBeTruthy();
+  expect(api.lastBody<FormData>("POST /api/trips/trip/media/uploads")!.get("file")).toBeInstanceOf(
+    File,
+  );
   expect(document.querySelector('input[type="file"]')).toBeNull();
 });
 
@@ -146,14 +154,19 @@ it("removes a deleted photo and its copies from the screen", async () => {
   expect(api.count("GET /api/trips/trip/media/p1/derivatives")).toBe(copyReads);
   expect(screen.getByText("markt.jpg")).toBeTruthy();
   expect(
-    screen.getByText("Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald."),
+    screen.getByText(
+      "Privémedia verwijderd. Eventuele koppelingen aan reisupdates zijn ook weggehaald.",
+    ),
   ).toBeTruthy();
   expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
 });
 
 it("creates a copy within the allowed size and lists it", async () => {
   api.on("POST", /\/media\/p1\/derivatives$/, () =>
-    api.push("/api/trips/trip/media/p1/derivatives", derivative("x2", "pending", { width: 800, height: 533 })),
+    api.push(
+      "/api/trips/trip/media/p1/derivatives",
+      derivative("x2", "pending", { width: 800, height: 533 }),
+    ),
   );
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
@@ -166,7 +179,10 @@ it("creates a copy within the allowed size and lists it", async () => {
   fireEvent.change(screen.getByLabelText("Maximale zijde (px)"), { target: { value: "800" } });
   fireEvent.click(screen.getByRole("button", { name: "Metadata-vrije kopie maken" }));
   await screen.findByText("800 × 533", { exact: false });
-  expect(api.lastBody("POST /api/trips/trip/media/p1/derivatives")).toEqual({ purpose: "share", max_dimension: 800 });
+  expect(api.lastBody("POST /api/trips/trip/media/p1/derivatives")).toEqual({
+    purpose: "share",
+    max_dimension: 800,
+  });
 });
 
 it("returns to the photo without saving when a copy's form is cancelled", async () => {
@@ -220,7 +236,9 @@ it("opens the presentation form with the saved values, saves it and keeps the sa
   fireEvent.change(caption, { target: { value: "Kust bij zonsopgang" } });
   fireEvent.change(screen.getByLabelText("Focus horizontaal (%)"), { target: { value: "40" } });
   fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
-  await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
+  await screen.findByText(
+    "Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.",
+  );
   expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({
     caption: "Kust bij zonsopgang",
     focal_x: 40,
@@ -230,7 +248,9 @@ it("opens the presentation form with the saved values, saves it and keeps the sa
   fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Presentatie bewerken" }));
   await waitFor(() =>
-    expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe("Kust bij zonsopgang"),
+    expect((screen.getByLabelText("Bijschrift") as HTMLInputElement).value).toBe(
+      "Kust bij zonsopgang",
+    ),
   );
 });
 
@@ -249,7 +269,9 @@ it("searches travel updates when linking a copy's presentation", async () => {
   fireEvent.click(await screen.findByRole("option", { name: "Eerste avond" }));
   expect(api.count("GET /api/trips/trip/travel-updates?q=Eerste&limit=50")).toBe(1);
   fireEvent.click(screen.getByRole("button", { name: "Presentatie opslaan" }));
-  await screen.findByText("Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.");
+  await screen.findByText(
+    "Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.",
+  );
   expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({
     travel_update_id: "e1",
   });
@@ -289,7 +311,14 @@ it("reviews possible travel updates without storing them, and attaches media to 
     gps_agreement_metres: 500,
     unavailable_media_asset_ids: [],
     candidates: [
-      { id: "c1", media_asset_ids: ["p1"], starts_at: null, ends_at: null, time_options: [], location_options: [] },
+      {
+        id: "c1",
+        media_asset_ids: ["p1"],
+        starts_at: null,
+        ends_at: null,
+        time_options: [],
+        location_options: [],
+      },
     ],
   }));
   api.on("GET", /\/travel-updates\?q=Eerste&limit=50$/, () => trip.travel_updates);
@@ -300,14 +329,22 @@ it("reviews possible travel updates without storing them, and attaches media to 
   await screen.findByText("Kies eerst private media om als mogelijke reisupdates te bekijken.");
   fireEvent.click(screen.getAllByLabelText("Reisupdates beoordelen")[0]);
   fireEvent.click(screen.getByRole("button", { name: "Geselecteerde media beoordelen" }));
-  await screen.findByText("Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen.");
-  expect(api.lastBody("POST /api/trips/trip/media/travel-update-candidates")).toEqual({ media_asset_ids: ["p1"] });
+  await screen.findByText(
+    "Kandidaten zijn alleen voor deze private review berekend; er is niets opgeslagen.",
+  );
+  expect(api.lastBody("POST /api/trips/trip/media/travel-update-candidates")).toEqual({
+    media_asset_ids: ["p1"],
+  });
 
   fireEvent.change(screen.getByLabelText("Koppel aan"), { target: { value: "Eerste" } });
   fireEvent.click(await screen.findByRole("option", { name: "Eerste avond" }));
   fireEvent.click(screen.getByRole("button", { name: "Aan reisupdate koppelen" }));
-  await screen.findByText("Private media gekoppeld aan “Eerste avond”. Er is geen locatie of deelbare inhoud gemaakt.");
-  expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e1")).toEqual({ media_asset_ids: ["p2", "p1"] });
+  await screen.findByText(
+    "Private media gekoppeld aan “Eerste avond”. Er is geen locatie of deelbare inhoud gemaakt.",
+  );
+  expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e1")).toEqual({
+    media_asset_ids: ["p2", "p1"],
+  });
 });
 
 it("starts an import and reports a selection that is not ready yet", async () => {
@@ -327,7 +364,9 @@ it("starts an import and reports a selection that is not ready yet", async () =>
   fireEvent.click(await screen.findByRole("button", { name: "Kies in GoPro Cloud" }));
   await screen.findByText("GoPro Cloud-selectie");
   fireEvent.click(screen.getByRole("button", { name: "Selectie importeren" }));
-  await screen.findByText("Je selectie is nog niet klaar bij de provider. Probeer opnieuw wanneer je klaar bent.");
+  await screen.findByText(
+    "Je selectie is nog niet klaar bij de provider. Probeer opnieuw wanneer je klaar bent.",
+  );
 });
 
 it("hides a provider the server does not offer and disables one the owner has not connected", async () => {

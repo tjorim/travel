@@ -17,7 +17,9 @@ import type { Trip } from "./tracker-model";
 
 const auth = vi.hoisted(() => ({ session: { accessToken: "" } }));
 vi.mock("./auth-context", () => ({ useAuth: () => auth }));
-vi.mock("./TripMap", () => ({ TripMap: ({ points }: { points: { detail: string }[] }) => <p>{points[0]?.detail}</p> }));
+vi.mock("./TripMap", () => ({
+  TripMap: ({ points }: { points: { detail: string }[] }) => <p>{points[0]?.detail}</p>,
+}));
 const trip: Trip = {
   id: "trip",
   title: "Eigen reis",
@@ -26,7 +28,11 @@ const trip: Trip = {
   ends_on: null,
   travel_updates: [],
 };
-const scope = { schema_version: "travel/share-scope@1", trip: { title: true, summary: true, dates: null }, items: [] };
+const scope = {
+  schema_version: "travel/share-scope@1",
+  trip: { title: true, summary: true, dates: null },
+  items: [],
+};
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   act(() => changeLocale("nl"));
@@ -133,7 +139,11 @@ it("keeps a pending packing toggle, retranslates its failure and submits canonic
       });
     return Promise.resolve(
       json(
-        url.endsWith("packing-lists") ? [{ id: "list", name: "Packing list" }] : url.endsWith("/items") ? [item] : [],
+        url.endsWith("packing-lists")
+          ? [{ id: "list", name: "Packing list" }]
+          : url.endsWith("/items")
+            ? [item]
+            : [],
       ),
     );
   });
@@ -193,9 +203,15 @@ it("reopens canonical packing data without merging authored categories with the 
   fireEvent.click(screen.getByRole("radio", { name: "Per categorie" }));
   expect(screen.getAllByRole("region", { name: "Zonder categorie" })).toHaveLength(2);
   act(() => changeLocale("en"));
-  expect(within(screen.getByRole("region", { name: "Zonder categorie" })).getByText("Eigen één")).toBeTruthy();
-  expect(within(screen.getByRole("region", { name: "Uncategorised" })).getByText("Eigen twee")).toBeTruthy();
-  expect(screen.getByRole("checkbox", { name: "Eigen één packed" }).getAttribute("aria-disabled")).toBe("true");
+  expect(
+    within(screen.getByRole("region", { name: "Zonder categorie" })).getByText("Eigen één"),
+  ).toBeTruthy();
+  expect(
+    within(screen.getByRole("region", { name: "Uncategorised" })).getByText("Eigen twee"),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("checkbox", { name: "Eigen één packed" }).getAttribute("aria-disabled"),
+  ).toBe("true");
   expect(open).toHaveBeenCalledOnce();
 });
 
@@ -215,7 +231,10 @@ it("renders legacy emergency and map display metadata in the current locale with
   renderWithOwner(
     <OfflineSnapshotView
       kind="route_data"
-      text={JSON.stringify({ points: [{ kind: "derived", detail: "Afgeleid uit privélocaties" }], lines: [] })}
+      text={JSON.stringify({
+        points: [{ kind: "derived", detail: "Afgeleid uit privélocaties" }],
+        lines: [],
+      })}
     />,
   );
   expect(screen.getByText("Derived from private locations")).toBeTruthy();
@@ -232,14 +251,18 @@ it("renders plural counts and retained local offline errors in either language",
   for (const locale of ["nl", "en"] as const) {
     act(() => changeLocale(locale));
     expect(unsupported.message).toBe(m.assets_offline_storage_is_not_supported_in_this_browser());
-    expect((unavailable as Error).message).toBe(m.assets_this_offline_copy_is_not_available_for_this_account());
+    expect((unavailable as Error).message).toBe(
+      m.assets_this_offline_copy_is_not_available_for_this_account(),
+    );
     for (const count of [0, 1, 3]) {
       expect(m.assets_offline_copies_count({ count, size: "12 kB" })).toContain(
         locale === "en"
           ? `${count} offline ${count === 1 ? "copy" : "copies"}`
           : `${count} offline ${count === 1 ? "kopie" : "kopieën"}`,
       );
-      expect(m.assets_imported_count({ count })).toContain(`${count} ${count === 1 ? "item" : "items"}`);
+      expect(m.assets_imported_count({ count })).toContain(
+        `${count} ${count === 1 ? "item" : "items"}`,
+      );
       expect(m.assets_count_visits({ count })).toBe(
         `${count} ${locale === "en" ? (count === 1 ? "visit" : "visits") : count === 1 ? "bezoek" : "bezoeken"}`,
       );
@@ -248,7 +271,12 @@ it("renders plural counts and retained local offline errors in either language",
 });
 
 it("clears an open packing view at lease expiry and retranslates the retained expiry notice", async () => {
-  const snapshot = { list: { id: "list", name: "Eigen lijst" }, bags: [], items: [], savedAt: Date.now() };
+  const snapshot = {
+    list: { id: "list", name: "Eigen lijst" },
+    bags: [],
+    items: [],
+    savedAt: Date.now(),
+  };
   renderWithOwner(
     <PackingOfflineView
       copy={{ id: "copy", leaseExpiresAt: Date.now() + 300 } as OfflineCopySummary}

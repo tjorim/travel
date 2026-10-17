@@ -36,11 +36,16 @@ export function RenderedPreview({
           : [],
       );
       for (const id of ids)
-        void ownerFile(session, `${base}/files/${encodeURIComponent(id)}`, m.assets_media_unavailable, {
-          cache: "no-store",
-          credentials: "omit",
-          signal: controller.signal,
-        })
+        void ownerFile(
+          session,
+          `${base}/files/${encodeURIComponent(id)}`,
+          m.assets_media_unavailable,
+          {
+            cache: "no-store",
+            credentials: "omit",
+            signal: controller.signal,
+          },
+        )
           .then((blob) => {
             const url = URL.createObjectURL(blob);
             if (controller.signal.aborted) {
@@ -62,18 +67,25 @@ export function RenderedPreview({
 
   async function openFile(id: string) {
     try {
-      const blob = await ownerFile(session, `${base}/files/${encodeURIComponent(id)}`, m.assets_document_unavailable, {
-        cache: "no-store",
-        credentials: "omit",
-      });
+      const blob = await ownerFile(
+        session,
+        `${base}/files/${encodeURIComponent(id)}`,
+        m.assets_document_unavailable,
+        {
+          cache: "no-store",
+          credentials: "omit",
+        },
+      );
       const url = URL.createObjectURL(blob);
       const anchor = window.document.createElement("a");
       const extension =
         (
-          { "application/pdf": ".pdf", "text/plain": ".txt", "image/jpeg": ".jpg", "image/png": ".png" } as Record<
-            string,
-            string
-          >
+          {
+            "application/pdf": ".pdf",
+            "text/plain": ".txt",
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+          } as Record<string, string>
         )[blob.type.split(";")[0]] ?? "";
       anchor.href = url;
       anchor.download = `${m.assets_shared_document_filename()}${extension}`;
@@ -111,7 +123,9 @@ export function RenderedPreview({
     <div className="rounded-xl border border-travel-card-border bg-travel-paper p-5">
       <header>
         <p className="travel-eyebrow">{m.assets_travel_preview()}</p>
-        <h2 className="m-0 text-3xl leading-none tracking-tight">{projection.title || m.shared_trip()}</h2>
+        <h2 className="m-0 text-3xl leading-none tracking-tight">
+          {projection.title || m.shared_trip()}
+        </h2>
       </header>
       {error && <p role="alert">{error}</p>}
       <ProjectionView

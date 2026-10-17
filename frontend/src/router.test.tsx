@@ -28,7 +28,8 @@ vi.mock("./trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
 vi.mock("./library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 vi.mock("./trips/TripOverview", () => ({ TripOverview: () => null }));
 
-const json = (value: unknown) => Promise.resolve(new Response(JSON.stringify(value), { status: 200 }));
+const json = (value: unknown) =>
+  Promise.resolve(new Response(JSON.stringify(value), { status: 200 }));
 
 const routeComponents = {
   Callback: () => null,
@@ -105,7 +106,16 @@ it("opens a trip workspace section directly without crashing (regression for #23
     "fetch",
     vi.fn((url: string) => {
       if (url === "/api/trips")
-        return json([{ id: "t1", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] }]);
+        return json([
+          {
+            id: "t1",
+            title: "Exampleland",
+            summary: null,
+            starts_on: null,
+            ends_on: null,
+            travel_updates: [],
+          },
+        ]);
       if (url.endsWith("/areas")) return json([]);
       throw new Error(`unexpected request ${url}`);
     }),
@@ -114,7 +124,10 @@ it("opens a trip workspace section directly without crashing (regression for #23
   const queryClient = createOwnerQueryClient();
   const routeTree = buildTrackerRouteTree(workspaceRouteComponents);
   // A direct load of a trip's sharing section, as in the issue's reproduction steps.
-  const router = createTrackerRouter(routeTree, { queryClient, initialEntries: ["/trips/t1/sharing"] });
+  const router = createTrackerRouter(routeTree, {
+    queryClient,
+    initialEntries: ["/trips/t1/sharing"],
+  });
 
   render(
     <AuthProvider>

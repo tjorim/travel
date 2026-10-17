@@ -12,7 +12,11 @@ import { TravelUpdateManager } from "./TravelUpdateManager";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const update = (id: string, title: string, visibility: TravelUpdate["visibility"] = "private"): TravelUpdate => ({
+const update = (
+  id: string,
+  title: string,
+  visibility: TravelUpdate["visibility"] = "private",
+): TravelUpdate => ({
   id,
   occurred_at: "2054-11-16T10:00:00Z",
   date_precision: "day",
@@ -39,7 +43,11 @@ function embed(
     state.trip = { ...state.trip, [key]: items as TravelUpdate[] };
   };
   api.on("POST", new RegExp(`^/api/trips/trip/${path}$`), (body) => {
-    const created = shape({ id: `new-${list().length}`, position: list().length, ...(body as object) });
+    const created = shape({
+      id: `new-${list().length}`,
+      position: list().length,
+      ...(body as object),
+    });
     set([...list(), created]);
     return created;
   });
@@ -53,7 +61,9 @@ function embed(
       set(items.map((item, position) => ({ ...item, position })));
       return moved;
     }
-    set(list().map((item) => (item.id === match[1] ? shape({ ...item, ...(body as object) }) : item)));
+    set(
+      list().map((item) => (item.id === match[1] ? shape({ ...item, ...(body as object) }) : item)),
+    );
     return list().find((item) => item.id === match[1]);
   });
   api.on("DELETE", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (_body, match) => {
@@ -91,7 +101,9 @@ afterEach(() => {
 });
 
 const confirmDelete = () =>
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
 
 it("opens a travel update in detail before editing and asks before discarding edits", async () => {
   renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
@@ -138,7 +150,9 @@ it("shows an edited update and removes it only after the in-app confirmation", a
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   // The editor opens with the saved record, not a blank form.
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Vertrek");
-  expect((screen.getByLabelText(/^Tekst voor bezoekers/) as HTMLTextAreaElement).value).toBe("De eerste avond.");
+  expect((screen.getByLabelText(/^Tekst voor bezoekers/) as HTMLTextAreaElement).value).toBe(
+    "De eerste avond.",
+  );
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Terugvlucht" } });
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
   await screen.findByRole("button", { name: "Reisupdate Terugvlucht bekijken" });
@@ -148,7 +162,9 @@ it("shows an edited update and removes it only after the in-app confirmation", a
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(0);
   confirmDelete();
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Reisupdate Aankomst bekijken" })).toBeNull());
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Reisupdate Aankomst bekijken" })).toBeNull(),
+  );
   expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(1);
 });
 
@@ -161,8 +177,14 @@ it("saves who may see an update with the update itself, private by default", asy
   chooseOption("Zichtbaarheid", "Iedereen — alle bezoekers");
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
   await screen.findByRole("button", { name: "Reisupdate Voor iedereen bekijken" });
-  expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({ visibility: "everyone" });
+  expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({
+    visibility: "everyone",
+  });
   // The list says who sees each update.
-  expect(screen.getByRole("button", { name: "Reisupdate Voor iedereen bekijken" }).textContent).toContain("Iedereen");
-  expect(screen.getByRole("button", { name: "Reisupdate Aankomst bekijken" }).textContent).toContain("Privé");
+  expect(
+    screen.getByRole("button", { name: "Reisupdate Voor iedereen bekijken" }).textContent,
+  ).toContain("Iedereen");
+  expect(
+    screen.getByRole("button", { name: "Reisupdate Aankomst bekijken" }).textContent,
+  ).toContain("Privé");
 });

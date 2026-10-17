@@ -19,25 +19,34 @@ export const exclusions = {
     "© Esri": "provider attribution",
     ", Maxar, Earthstar Geographics, and the GIS User Community": "provider attribution",
   },
-  "auth-context.tsx": { "Travel tracker authentication context is missing.": "internal invariant diagnostic" },
+  "auth-context.tsx": {
+    "Travel tracker authentication context is missing.": "internal invariant diagnostic",
+  },
   "tracker-model.ts": { kB: "file size unit" },
   "trips/PackingManager.tsx": { kg: "SI weight unit" },
   "auth.ts": { "openid profile email": "OIDC scopes" },
-  "map-style.ts": { "Noto Sans Regular": "provider glyph font", HTTP: "internal status diagnostic" },
+  "map-style.ts": {
+    "Noto Sans Regular": "provider glyph font",
+    HTTP: "internal status diagnostic",
+  },
   "query/api.ts": {
     "Invalid API response": "diagnostic kept outside interface feedback",
     Bearer: "HTTP authorization scheme",
   },
   "pages/Settings.tsx": { "Google Photos": "provider brand", "GoPro Cloud": "provider brand" },
   "trips/CaptureDialog.tsx": { connection: "CSS class fragment" },
-  "trips/merge-candidates.ts": { "public page": "audience name the API returns, translated where it is shown" },
+  "trips/merge-candidates.ts": {
+    "public page": "audience name the API returns, translated where it is shown",
+  },
   "trips/MediaManager.tsx": {
     "media-thumbnail-placeholder": "CSS class fragment",
     "Google Photos": "provider brand",
     "GoPro Cloud": "provider brand",
     "s ·": "SI seconds unit and metadata separator",
   },
-  "offline/OfflineSnapshotView.tsx": { "Medische notitie": "legacy enum lookup key, never rendered literally" },
+  "offline/OfflineSnapshotView.tsx": {
+    "Medische notitie": "legacy enum lookup key, never rendered literally",
+  },
   "trips/RouteManager.tsx": {
     "Europe/Amsterdam": "IANA input example",
     "Asia/Taipei": "IANA input example",

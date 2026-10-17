@@ -26,10 +26,14 @@ describe("owner browser session recovery", () => {
       "fetch",
       vi
         .fn()
-        .mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })),
+        .mockResolvedValue(
+          new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 }),
+        ),
     );
 
-    await expect(completeSignIn("?code=code&state=state")).resolves.toMatchObject({ returnPath: "/trips" });
+    await expect(completeSignIn("?code=code&state=state")).resolves.toMatchObject({
+      returnPath: "/trips",
+    });
 
     expect(readSession()).toMatchObject({ accessToken: "access" });
     expect(shouldRestoreSession()).toBe(true);
@@ -43,7 +47,9 @@ describe("owner browser session recovery", () => {
       "fetch",
       vi
         .fn()
-        .mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })),
+        .mockResolvedValue(
+          new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 }),
+        ),
     );
     await completeSignIn("?code=code&state=state");
 
@@ -57,7 +63,9 @@ describe("owner browser session recovery", () => {
     localStorage.setItem("travel-tracker-may-restore-session", "1");
     transaction(true);
 
-    await expect(completeSignIn("?error=login_required&state=state")).rejects.toThrow("sessie is verlopen");
+    await expect(completeSignIn("?error=login_required&state=state")).rejects.toThrow(
+      "sessie is verlopen",
+    );
 
     expect(shouldRestoreSession()).toBe(false);
     expect(localStorage.getItem("travel-tracker-may-restore-session")).toBeNull();
@@ -69,7 +77,9 @@ describe("owner browser session recovery", () => {
       "fetch",
       vi
         .fn()
-        .mockResolvedValue(new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 })),
+        .mockResolvedValue(
+          new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 }),
+        ),
     );
     await completeSignIn("?code=code&state=state");
 

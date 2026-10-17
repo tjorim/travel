@@ -15,7 +15,10 @@ export type ConfirmationRequest = {
  * event handler and render `dialog` once in the component; the action only runs
  * after the owner confirms, and dismissing returns focus to the opening control.
  */
-export function useConfirmation(): { ask: (request: ConfirmationRequest) => void; dialog: ReactNode } {
+export function useConfirmation(): {
+  ask: (request: ConfirmationRequest) => void;
+  dialog: ReactNode;
+} {
   useLocale();
   const [request, setRequest] = useState<ConfirmationRequest | null>(null);
   const close = () => setRequest(null);
@@ -24,8 +27,12 @@ export function useConfirmation(): { ask: (request: ConfirmationRequest) => void
     dialog: request && (
       <DeleteConfirmation
         title={typeof request.title === "function" ? request.title() : request.title}
-        description={typeof request.description === "function" ? request.description() : request.description}
-        confirmLabel={typeof request.confirmLabel === "function" ? request.confirmLabel() : request.confirmLabel}
+        description={
+          typeof request.description === "function" ? request.description() : request.description
+        }
+        confirmLabel={
+          typeof request.confirmLabel === "function" ? request.confirmLabel() : request.confirmLabel
+        }
         onCancel={close}
         onConfirm={() => {
           close();

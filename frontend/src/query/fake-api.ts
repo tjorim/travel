@@ -2,7 +2,11 @@ import { vi } from "vitest";
 
 type Row = { id: string } & Record<string, unknown>;
 type Body = Record<string, unknown>;
-type Collection = { rows: Row[]; create?: (body: Body, count: number) => Row; update?: (row: Row, body: Body) => Row };
+type Collection = {
+  rows: Row[];
+  create?: (body: Body, count: number) => Row;
+  update?: (row: Row, body: Body) => Row;
+};
 type Handler = (body: unknown, match: RegExpExecArray) => unknown;
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
@@ -25,7 +29,11 @@ export class FakeApi {
   private bodies: { key: string; body: unknown }[] = [];
 
   /** Registers a collection at `path` (list and create) and `path/:id` (update and delete). */
-  collection<T extends Row>(path: string, rows: T[], options: Pick<Collection, "create" | "update"> = {}): this {
+  collection<T extends Row>(
+    path: string,
+    rows: T[],
+    options: Pick<Collection, "create" | "update"> = {},
+  ): this {
     this.collections.set(path, { rows: rows.slice(), ...options });
     return this;
   }
@@ -66,7 +74,9 @@ export class FakeApi {
   install(): this {
     vi.stubGlobal(
       "fetch",
-      vi.fn((url: string, init: RequestInit = {}) => Promise.resolve(this.handle(String(url), init))),
+      vi.fn((url: string, init: RequestInit = {}) =>
+        Promise.resolve(this.handle(String(url), init)),
+      ),
     );
     return this;
   }
@@ -108,7 +118,9 @@ export class FakeApi {
       const current = parent.rows.find((row) => row.id === id);
       if (current && method === "GET") return json(current);
       if (current && method === "PATCH") {
-        const updated = parent.update ? parent.update(current, body as Body) : { ...current, ...(body as Body) };
+        const updated = parent.update
+          ? parent.update(current, body as Body)
+          : { ...current, ...(body as Body) };
         parent.rows = parent.rows.map((row) => (row.id === id ? updated : row));
         return json(updated);
       }

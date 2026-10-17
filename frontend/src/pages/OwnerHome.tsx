@@ -11,7 +11,12 @@ import { dayjs } from "../dayjs";
 import { EmptyState } from "../tracker-routes";
 
 import { errorMessage } from "../query/api";
-import { tripResourceQueryOptions, useMarkAlertRead, useOwner, useTripsQuery } from "../query/owner-queries";
+import {
+  tripResourceQueryOptions,
+  useMarkAlertRead,
+  useOwner,
+  useTripsQuery,
+} from "../query/owner-queries";
 import {
   addDays,
   daysBetween,
@@ -42,7 +47,9 @@ function nextAction(trip: Trip, snapshot: TripSnapshot): string {
   if (!trip.starts_on) return m.owner_choose_travel_dates_and_a_destination_to_start_planning();
   const openTasks = snapshot.tasks
     .filter((task) => !task.completed_at)
-    .sort((left, right) => (left.due_date ?? "9999-12-31").localeCompare(right.due_date ?? "9999-12-31"));
+    .sort((left, right) =>
+      (left.due_date ?? "9999-12-31").localeCompare(right.due_date ?? "9999-12-31"),
+    );
   if (openTasks[0])
     return openTasks[0].due_date
       ? m.owner_task_due({ p0: openTasks[0].title, p1: formatDay(openTasks[0].due_date) })
@@ -52,11 +59,15 @@ function nextAction(trip: Trip, snapshot: TripSnapshot): string {
     const nights = Array.from({ length: daysBetween(trip.starts_on, trip.ends_on) }, (_, index) =>
       addDays(trip.starts_on!, index),
     );
-    const missing = nights.filter((night) => !snapshot.stays.some((stay) => stayCoversNight(stay, night))).length;
+    const missing = nights.filter(
+      (night) => !snapshot.stays.some((stay) => stayCoversNight(stay, night)),
+    ).length;
     if (missing) return m.owner_missing_nights({ count: missing });
   }
 
-  const unbookedRoute = snapshot.routes.find((route) => routeInPlan(route) && route.status !== "confirmed");
+  const unbookedRoute = snapshot.routes.find(
+    (route) => routeInPlan(route) && route.status !== "confirmed",
+  );
   if (unbookedRoute) return m.owner_transport_still_needs_to_be_booked_or_confirmed();
   if (!trip.travel_updates.length) return m.owner_capture_your_first_travel_update();
   return m.owner_open_your_trip_overview();
@@ -150,7 +161,9 @@ export function OwnerHome() {
   const unreadAlerts = useMemo(
     () =>
       trips.flatMap((trip) =>
-        (snapshots[trip.id]?.alerts ?? []).filter((alert) => !alert.read_at).map((alert) => ({ ...alert, trip })),
+        (snapshots[trip.id]?.alerts ?? [])
+          .filter((alert) => !alert.read_at)
+          .map((alert) => ({ ...alert, trip })),
       ),
     [snapshots, trips],
   );
@@ -220,7 +233,10 @@ export function OwnerHome() {
                 <div>
                   <strong>{alert.title}</strong>
                   <span>
-                    {m.owner_reminder_scheduled({ trip: alert.trip.title, time: formatInstant(alert.scheduled_for) })}
+                    {m.owner_reminder_scheduled({
+                      trip: alert.trip.title,
+                      time: formatInstant(alert.scheduled_for),
+                    })}
                   </span>
                 </div>
                 <Button
@@ -230,7 +246,9 @@ export function OwnerHome() {
                     markAlertRead
                       .mutateAsync({ tripId: alert.trip.id, alertId: alert.id })
                       .catch((error: unknown) =>
-                        setNotice(errorNotice(error, m.owner_the_notification_could_not_be_updated)),
+                        setNotice(
+                          errorNotice(error, m.owner_the_notification_could_not_be_updated),
+                        ),
                       )
                   }
                 >
@@ -253,10 +271,18 @@ export function OwnerHome() {
         {visibleTrips.length ? (
           <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 min-[900px]:grid-cols-3">
             {visibleTrips.map((trip) => {
-              const snapshot = snapshots[trip.id] ?? { stays: [], routes: [], tasks: [], alerts: [] };
+              const snapshot = snapshots[trip.id] ?? {
+                stays: [],
+                routes: [],
+                tasks: [],
+                alerts: [],
+              };
               const status = tripState(trip, day);
               return (
-                <article className="travel-card flex flex-col gap-3 [&_h3]:m-0 [&_p]:m-0" key={trip.id}>
+                <article
+                  className="travel-card flex flex-col gap-3 [&_h3]:m-0 [&_p]:m-0"
+                  key={trip.id}
+                >
                   <p className="travel-eyebrow">
                     {status === "active"
                       ? m.owner_travelling_now()
@@ -277,7 +303,10 @@ export function OwnerHome() {
                     <strong>{m.owner_next_step()}</strong>
                     {nextAction(trip, snapshot)}
                   </p>
-                  <Link className="action-link mt-auto w-fit" to={`/trips/${encodeURIComponent(trip.id)}`}>
+                  <Link
+                    className="action-link mt-auto w-fit"
+                    to={`/trips/${encodeURIComponent(trip.id)}`}
+                  >
                     {m.owner_open_trip()}
                   </Link>
                 </article>
@@ -286,7 +315,11 @@ export function OwnerHome() {
           </div>
         ) : (
           <section className="travel-card">
-            <h3>{trips.length ? m.owner_no_active_or_upcoming_trips() : m.owner_start_your_first_trip()}</h3>
+            <h3>
+              {trips.length
+                ? m.owner_no_active_or_upcoming_trips()
+                : m.owner_start_your_first_trip()}
+            </h3>
             <p>{trips.length ? m.owner_past_trips_remain_available_under_manage() : message}</p>
             <Link className="action-link" to="/trips" search={{ new: "1" }}>
               {m.owner_new_trip()}

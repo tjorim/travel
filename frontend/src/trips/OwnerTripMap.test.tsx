@@ -13,7 +13,14 @@ import { OwnerTripMap } from "./OwnerTripMap";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
+const trip: Trip = {
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: null,
+  ends_on: null,
+  travel_updates: [],
+};
 const taipei: Area = {
   id: "taipei",
   visibility: "private",
@@ -41,7 +48,13 @@ const route = (id: string, label: string): Route =>
       ],
     },
   }) as Route;
-const cafe = { id: "cafe", display_name: "Café", locality: null, latitude: 25.04, longitude: 121.5 } as Location;
+const cafe = {
+  id: "cafe",
+  display_name: "Café",
+  locality: null,
+  latitude: 25.04,
+  longitude: 121.5,
+} as Location;
 const pagoda = {
   id: "pagoda",
   label: "Longshan Temple",
@@ -85,7 +98,9 @@ it("shows a route added elsewhere as soon as its read is refreshed, with no revi
   await screen.findByRole("button", { name: /Oostkust/ });
   api.push("/api/trips/trip/routes", route("r2", "Westkust"));
   await act(async () => {
-    await client.invalidateQueries({ queryKey: ownerKeys.tripResource("owner-1", "trip", "routes") });
+    await client.invalidateQueries({
+      queryKey: ownerKeys.tripResource("owner-1", "trip", "routes"),
+    });
   });
   await screen.findByRole("button", { name: /Westkust/ });
 });
@@ -99,7 +114,11 @@ it("falls back to the pinned map copy when the live reads are refused", async ()
     title: "Exampleland · kaart en route",
     contentType: "application/json",
     bytes: new TextEncoder().encode(
-      JSON.stringify({ version: 1, points: [{ id: "p", label: "Bewaarde stad", coordinates: [121, 25] }], lines: [] }),
+      JSON.stringify({
+        version: 1,
+        points: [{ id: "p", label: "Bewaarde stad", coordinates: [121, 25] }],
+        lines: [],
+      }),
     ).buffer as ArrayBuffer,
   });
   api.on("GET", /\/locations$/, () => {
@@ -142,6 +161,9 @@ it("offers a private derived area dot and stores it only on request", async () =
   expect(api.count("PATCH /api/trips/trip/areas/taipei")).toBe(0);
   fireEvent.click(screen.getByRole("button", { name: "Gebruik als punt" }));
   await waitFor(() =>
-    expect(api.lastBody("PATCH /api/trips/trip/areas/taipei")).toEqual({ latitude: 25.04, longitude: 121.5 }),
+    expect(api.lastBody("PATCH /api/trips/trip/areas/taipei")).toEqual({
+      latitude: 25.04,
+      longitude: 121.5,
+    }),
   );
 });

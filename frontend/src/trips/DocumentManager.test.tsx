@@ -4,14 +4,27 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderWithOwner, resetOfflineDb, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import {
+  renderWithOwner,
+  resetOfflineDb,
+  restoreObjectUrls,
+  stubObjectUrls,
+  testToken,
+} from "../query/test-utils";
 import type { DocumentAsset, Trip } from "../tracker-model";
 import { DocumentManager } from "./DocumentManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
+const trip: Trip = {
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: null,
+  ends_on: null,
+  travel_updates: [],
+};
 const asset = (id: string, title: string): DocumentAsset =>
   ({
     id,
@@ -41,7 +54,9 @@ afterEach(async () => {
 });
 
 const pickFile = (input: Element | null, name = "bestand.pdf") =>
-  fireEvent.change(input!, { target: { files: [new File(["x"], name, { type: "application/pdf" })] } });
+  fireEvent.change(input!, {
+    target: { files: [new File(["x"], name, { type: "application/pdf" })] },
+  });
 
 const openDocument = async (title: string) =>
   fireEvent.click(await screen.findByRole("button", { name: `Document ${title} bekijken` }));
@@ -55,7 +70,9 @@ it("keeps an opened document private with no sharing controls", async () => {
 });
 
 it("lists a new upload straight away", async () => {
-  api.on("POST", /\/documents\/uploads$/, () => api.push("/api/trips/trip/documents", asset("d3", "Verzekering")));
+  api.on("POST", /\/documents\/uploads$/, () =>
+    api.push("/api/trips/trip/documents", asset("d3", "Verzekering")),
+  );
   renderWithOwner(<DocumentManager trip={trip} />);
   await screen.findByText("Vliegticket");
   fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
@@ -80,8 +97,12 @@ it("removes a deleted document from the screen", async () => {
   renderWithOwner(<DocumentManager trip={trip} />);
   await openDocument("Vliegticket");
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Document Vliegticket bekijken" })).toBeNull());
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Document Vliegticket bekijken" })).toBeNull(),
+  );
   expect(screen.getByRole("button", { name: "Document Hotelbevestiging bekijken" })).toBeTruthy();
   expect(screen.getByText("Privédocument verwijderd.")).toBeTruthy();
   // Nothing stays open after a delete.
@@ -94,9 +115,9 @@ it("pins a document through the authenticated download and unpins it again", asy
   await screen.findByText("Vliegticket");
   fireEvent.click(screen.getAllByRole("button", { name: "Offline bewaren" })[0]);
   await screen.findByText("“Vliegticket” is offline bewaard op dit toestel.");
-  const [, init] = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls.find(([url]) =>
-    url.endsWith("/original"),
-  )!;
+  const [, init] = (
+    fetch as unknown as { mock: { calls: [string, RequestInit][] } }
+  ).mock.calls.find(([url]) => url.endsWith("/original"))!;
   expect((init.headers as Record<string, string>).Authorization).toMatch(/^Bearer /);
   fireEvent.click(await screen.findByRole("button", { name: "Offline verwijderen" }));
   await screen.findByText("“Vliegticket” is niet langer offline beschikbaar.");

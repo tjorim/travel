@@ -28,7 +28,8 @@ export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
             <div>
               <strong>{document.title}</strong>
               <span>
-                {document.original_filename ?? m.owner_unnamed_file()} · {bytesLabel(document.byte_size)}
+                {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                {bytesLabel(document.byte_size)}
               </span>
             </div>
           </article>

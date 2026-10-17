@@ -35,14 +35,23 @@ export type PreviewResources = {
   openNavigation: (id: string) => void;
 };
 
-const collections = ["visits", "places", "updates", "stays", "media", "routes", "navigation"] as const;
+const collections = [
+  "visits",
+  "places",
+  "updates",
+  "stays",
+  "media",
+  "routes",
+  "navigation",
+] as const;
 const navigableCollections = ["places", "stays"] as const;
 
 export function isProjection(value: unknown, audience: Audience): value is Projection {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const document = value as Record<string, unknown>;
   return (
-    document.schema_version === (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1") &&
+    document.schema_version ===
+      (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1") &&
     (document.title === null || typeof document.title === "string") &&
     (document.summary === null || typeof document.summary === "string") &&
     (document.summary_html == null || typeof document.summary_html === "string") &&
@@ -70,7 +79,11 @@ function text(item: ProjectionItem, field: string): string | null {
 function place(value: unknown): string | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const item = value as ProjectionItem;
-  return [text(item, "label"), text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ") || null;
+  return (
+    [text(item, "label"), text(item, "region"), text(item, "country_code")]
+      .filter(Boolean)
+      .join(" · ") || null
+  );
 }
 
 function precision(item: ProjectionItem): string | null {
@@ -107,7 +120,10 @@ function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"):
   }
 }
 
-const transportKinds = (): Record<string, string> => ({ ...ROUTE_MODE_LABELS, other: m.visitor_transport() });
+const transportKinds = (): Record<string, string> => ({
+  ...ROUTE_MODE_LABELS,
+  other: m.visitor_transport(),
+});
 const transportStatuses = (): Record<string, string> => ({
   planned: m.visitor_planned(),
   confirmed: m.visitor_confirmed(),
@@ -166,18 +182,25 @@ export function visitTimes(item: ProjectionItem): string | null {
 
 function positiveSize(item: ProjectionItem, field: "width" | "height"): number | undefined {
   const value = item[field];
-  return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 4000 ? value : undefined;
+  return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 4000
+    ? value
+    : undefined;
 }
 
 function focus(item: ProjectionItem, field: "focal_x" | "focal_y"): number {
   const value = item[field];
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : 50;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
+    ? value
+    : 50;
 }
 
 function hasFileMarker(item: ProjectionItem, field: "image" | "video" | "file"): boolean {
   const marker = item[field];
   return (
-    !!marker && typeof marker === "object" && !Array.isArray(marker) && (marker as { id?: unknown }).id === item.id
+    !!marker &&
+    typeof marker === "object" &&
+    !Array.isArray(marker) &&
+    (marker as { id?: unknown }).id === item.id
   );
 }
 
@@ -230,7 +253,9 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
   // A route with a day but no times yet.
   const departsOn = storyDate({ ...item, date_precision: "day" }, "departs_on");
   const mode = transportKinds()[text(item, "mode") ?? ""];
-  const carrier = [text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ");
+  const carrier = [text(item, "carrier"), text(item, "service_reference")]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <article>
       <h3>{routeHeading(item)}</h3>
@@ -243,14 +268,17 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
         {[
           mode,
           carrier || null,
-          text(item, "status") ? (transportStatuses()[text(item, "status")!] ?? text(item, "status")) : null,
+          text(item, "status")
+            ? (transportStatuses()[text(item, "status")!] ?? text(item, "status"))
+            : null,
         ]
           .filter(Boolean)
           .join(" · ")}
       </p>
       {departsAt || arrivesAt ? (
         <p>
-          {departsAt ?? m.visitor_departure_time_unknown()} → {arrivesAt ?? m.visitor_arrival_time_unknown()}
+          {departsAt ?? m.visitor_departure_time_unknown()} →{" "}
+          {arrivesAt ?? m.visitor_arrival_time_unknown()}
         </p>
       ) : (
         departsOn && <p>{departsOn}</p>
@@ -298,7 +326,12 @@ function routeLines(projection: Projection): MapLine[] {
         )
       ) {
         return [
-          { id: item.id, label: routeHeading(item), coordinates: line.coordinates as [number, number][], transport },
+          {
+            id: item.id,
+            label: routeHeading(item),
+            coordinates: line.coordinates as [number, number][],
+            transport,
+          },
         ];
       }
     }
@@ -308,7 +341,9 @@ function routeLines(projection: Projection): MapLine[] {
       const area = item[endpoint];
       if (!area || typeof area !== "object" || Array.isArray(area)) return null;
       const coordinates = validPoint(area as Record<string, unknown>);
-      return coordinates ? { coordinates, label: text(area as ProjectionItem, "label") ?? "" } : null;
+      return coordinates
+        ? { coordinates, label: text(area as ProjectionItem, "label") ?? "" }
+        : null;
     };
     const departure = end("departure"),
       arrival = end("arrival");
@@ -348,7 +383,9 @@ export function projectionMapPoints(projection: Projection): MapPoint[] {
     return [
       {
         id: item.id,
-        label: text(item, "label") ?? (typeof values.label === "string" ? values.label : m.visitor_location()),
+        label:
+          text(item, "label") ??
+          (typeof values.label === "string" ? values.label : m.visitor_location()),
         coordinates: [longitude, latitude],
       },
     ];
@@ -365,10 +402,17 @@ export function projectionMapPoints(projection: Projection): MapPoint[] {
       ),
     ),
   ];
-  return [...new Map(points.map((value) => [`${value.coordinates.join(",")}:${value.label}`, value])).values()];
+  return [
+    ...new Map(
+      points.map((value) => [`${value.coordinates.join(",")}:${value.label}`, value]),
+    ).values(),
+  ];
 }
 
-function routeLocationPoint(item: ProjectionItem, endpoint: "departure" | "arrival"): MapPoint | null {
+function routeLocationPoint(
+  item: ProjectionItem,
+  endpoint: "departure" | "arrival",
+): MapPoint | null {
   const map = item.map;
   if (!map || typeof map !== "object" || Array.isArray(map)) return null;
   const point = (map as Record<string, unknown>)[endpoint];
@@ -415,7 +459,11 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
       alt={alt}
       width={positiveSize(item, "width")}
       height={positiveSize(item, "height")}
-      style={expanded ? undefined : { objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }}
+      style={
+        expanded
+          ? undefined
+          : { objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }
+      }
       loading={expanded ? "eager" : "lazy"}
       decoding="async"
       referrerPolicy="no-referrer"
@@ -459,7 +507,11 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
             <figure className="m-0">
               {image(true)}
               {failure}
-              <Markdown as="figcaption" html={text(item, "caption_html")} text={text(item, "caption")} />
+              <Markdown
+                as="figcaption"
+                html={text(item, "caption_html")}
+                text={text(item, "caption")}
+              />
             </figure>
           </Dialog.Popup>
         </Dialog.Viewport>
@@ -468,7 +520,15 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   );
 }
 
-function SharedVideo({ item, url, poster }: { item: ProjectionItem; url: string; poster?: string }) {
+function SharedVideo({
+  item,
+  url,
+  poster,
+}: {
+  item: ProjectionItem;
+  url: string;
+  poster?: string;
+}) {
   useLocale();
   const [failed, setFailed] = useState(false);
   return (
@@ -521,7 +581,9 @@ function Gallery({
                   poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined}
                 />
               )}
-              {hasFileMarker(item, "video") && !fileUrl(item) && <p role="status">{m.visitor_video_loading()}</p>}
+              {hasFileMarker(item, "video") && !fileUrl(item) && (
+                <p role="status">{m.visitor_video_loading()}</p>
+              )}
               <Markdown
                 as="figcaption"
                 className="mt-1.75 wrap-anywhere leading-normal text-travel-muted"
@@ -570,7 +632,10 @@ function Updates({
       >
         {updates.map((item) => (
           <li className="relative min-w-0 scroll-mt-6" key={item.id} id={item.id} tabIndex={-1}>
-            <span aria-hidden="true" className="absolute top-2 -left-7.25 size-3 rounded-full bg-travel-forest" />
+            <span
+              aria-hidden="true"
+              className="absolute top-2 -left-7.25 size-3 rounded-full bg-travel-forest"
+            />
             <article>
               <div className="flex flex-wrap gap-x-3.5 gap-y-1.25 text-sm font-bold text-travel-muted">
                 {storyDate(item) ? (
@@ -610,7 +675,9 @@ export function ProjectionView({
   const mapLines = useMemo(
     () =>
       projectionMapLines(projection).map((line) => {
-        const route = projection.routes.find((item) => item.id === line.id || `route-${item.id}` === line.id);
+        const route = projection.routes.find(
+          (item) => item.id === line.id || `route-${item.id}` === line.id,
+        );
         if (!route) return line;
         return {
           ...line,
@@ -618,7 +685,8 @@ export function ProjectionView({
           to: line.to ?? transportPlace(route.arrival) ?? undefined,
           dates:
             [
-              transportTime(route, "departure") ?? storyDate({ ...route, date_precision: "day" }, "departs_on"),
+              transportTime(route, "departure") ??
+                storyDate({ ...route, date_precision: "day" }, "departs_on"),
               transportTime(route, "arrival"),
             ]
               .filter(Boolean)
@@ -631,10 +699,14 @@ export function ProjectionView({
   const mapPoints = useMemo(
     () =>
       projectionMapPoints(projection).map((point) => {
-        const visit = projection.visits.find((item) => item.id === point.id || `${item.id}-location` === point.id);
+        const visit = projection.visits.find(
+          (item) => item.id === point.id || `${item.id}-location` === point.id,
+        );
         const placeItem = projection.places.find((item) => item.id === point.id);
         const route = projection.routes.find(
-          (item) => point.id === `transport-${item.id}-departure` || point.id === `transport-${item.id}-arrival`,
+          (item) =>
+            point.id === `transport-${item.id}-departure` ||
+            point.id === `transport-${item.id}-arrival`,
         );
         const matchingPlace = (value: unknown) =>
           !!value &&
@@ -643,11 +715,14 @@ export function ProjectionView({
           (value as Record<string, unknown>).latitude === point.coordinates[1] &&
           (value as Record<string, unknown>).longitude === point.coordinates[0];
         const relatedVisits = projection.visits.filter(
-          (item) => item.id === visit?.id || matchingPlace(item.place) || matchingPlace(item.location),
+          (item) =>
+            item.id === visit?.id || matchingPlace(item.place) || matchingPlace(item.location),
         );
         const relatedUpdates = projection.updates.filter((item) => matchingPlace(item.place));
         const links = [
-          ...(placeItem ? [{ label: m.visitor_view_location(), href: `#place-${placeItem.id}` }] : []),
+          ...(placeItem
+            ? [{ label: m.visitor_view_location(), href: `#place-${placeItem.id}` }]
+            : []),
           ...relatedVisits.map((item) => ({
             label: m.visitor_visit_link({ title: text(item, "title") ?? m.visitor_visit() }),
             href: `#visit-${item.id}`,
@@ -671,7 +746,9 @@ export function ProjectionView({
     target?.focus({ preventScroll: true });
   }, [projection, previewResources]);
   const navigation = new Set(projection.navigation.map((item) => item.id));
-  const displayed = new Set(navigableCollections.flatMap((key) => projection[key].map((item) => item.id)));
+  const displayed = new Set(
+    navigableCollections.flatMap((key) => projection[key].map((item) => item.id)),
+  );
   const navigationLink = (item: ProjectionItem) => {
     if (!navigation.has(item.id)) return null;
     if (previewResources)
@@ -700,7 +777,9 @@ export function ProjectionView({
       ? (previewResources.images[item.id] ?? null)
       : `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}/files/${encodeURIComponent(item.id)}`;
   const updateIds = new Set(projection.updates.map((item) => item.id));
-  const looseMedia = projection.media.filter((item) => typeof item.update !== "string" || !updateIds.has(item.update));
+  const looseMedia = projection.media.filter(
+    (item) => typeof item.update !== "string" || !updateIds.has(item.update),
+  );
   const empty = collections.every((key) => projection[key].length === 0);
   const dates = tripDates(projection.dates);
   if (empty && !projection.summary && !dates)
@@ -720,7 +799,9 @@ export function ProjectionView({
           <Markdown html={projection.summary_html} text={projection.summary} />
         </section>
       )}
-      {(mapLines.length > 0 || mapPoints.length > 0) && <TripMap points={mapPoints} lines={mapLines} />}
+      {(mapLines.length > 0 || mapPoints.length > 0) && (
+        <TripMap points={mapPoints} lines={mapLines} />
+      )}
       {empty && (
         <section className="travel-card" role="status">
           <h2>{m.visitor_no_story()}</h2>
@@ -749,7 +830,9 @@ export function ProjectionView({
           <article>
             <h3>{text(item, "label") ?? m.visitor_location()}</h3>
             {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
-              <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>
+              <p>
+                {[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}
+              </p>
             )}
             {navigationLink(item)}
           </article>
@@ -763,7 +846,11 @@ export function ProjectionView({
         render={(item) => (
           <article>
             <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
-            {tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}
+            {tripDates(item) ? (
+              <p>{tripDates(item)}</p>
+            ) : (
+              precision(item) && <p>{precision(item)}</p>
+            )}
             {place(item.place) && <p>{place(item.place)}</p>}
             {navigationLink(item)}
           </article>

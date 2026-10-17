@@ -34,7 +34,15 @@ import {
   type Trip,
 } from "../tracker-model";
 import { VisibilityControl, visibilityLabel } from "./visibility";
-import { emptyPlace, hasPlace, PlacePicker, placeFields, placeOf, samePlace, type PlaceValue } from "./PlacePicker";
+import {
+  emptyPlace,
+  hasPlace,
+  PlacePicker,
+  placeFields,
+  placeOf,
+  samePlace,
+  type PlaceValue,
+} from "./PlacePicker";
 import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
 import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
@@ -106,7 +114,10 @@ function parseCoordinates(text: string): [number, number][] | string {
     !Array.isArray(coordinates) ||
     coordinates.length < 2 ||
     coordinates.some(
-      (point) => !Array.isArray(point) || point.length !== 2 || point.some((value) => typeof value !== "number"),
+      (point) =>
+        !Array.isArray(point) ||
+        point.length !== 2 ||
+        point.some((value) => typeof value !== "number"),
     )
   )
     return NOT_ENOUGH_POINTS();
@@ -204,16 +215,29 @@ function routeEntries(routes: Route[]): { routes: Route[]; journey?: string }[] 
   const shown = new Set<string>();
   return routes.flatMap((route) => {
     const group =
-      route.status === "idea" ? routes.filter((item) => item.status === "idea" && sameJourney(item, route)) : [route];
+      route.status === "idea"
+        ? routes.filter((item) => item.status === "idea" && sameJourney(item, route))
+        : [route];
     if (group.length < 2) return [{ routes: [route] }];
     if (group.some((item) => shown.has(item.id))) return [];
     group.forEach((item) => shown.add(item.id));
     const places = `${route.departure_area.label} → ${route.arrival_area.label}`;
-    return [{ routes: group, journey: route.departs_on ? `${places} · ${formatDay(route.departs_on)}` : places }];
+    return [
+      {
+        routes: group,
+        journey: route.departs_on ? `${places} · ${formatDay(route.departs_on)}` : places,
+      },
+    ];
   });
 }
 
-export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
+export function RouteManager({
+  trip,
+  focusId,
+}: {
+  trip: Trip;
+  focusId?: DialogFocusRequest | null;
+}) {
   useLocale();
   const routesQuery = useTripResource(trip.id, "routes");
   const areasQuery = useTripResource(trip.id, "areas");
@@ -226,7 +250,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
   const dialog = useRecordDialog(routes);
   useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useFeedback<string>(
-    textNotice(() => m.owner_a_route_connects_two_areas_a_day_stations_times_bookings_and_a_drawn_lin()),
+    textNotice(() =>
+      m.owner_a_route_connects_two_areas_a_day_stations_times_bookings_and_a_drawn_lin(),
+    ),
   );
   const [deleteTarget, setDeleteTarget] = useState<Route | null>(null);
   // An end's location is only rewritten when one of its fields differs from what the editor opened with.
@@ -274,14 +300,19 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       if (values.departsAt && (!values.departureTimezone || !values.arrivalTimezone))
         throw new FeedbackError(() => m.owner_enter_both_the_departure_and_arrival_time_zones());
       // A departure time fixes the day: its local date there.
-      if (values.departsAt && values.departsOn && values.departsAt.slice(0, 10) !== values.departsOn)
+      if (
+        values.departsAt &&
+        values.departsOn &&
+        values.departsAt.slice(0, 10) !== values.departsOn
+      )
         throw new FeedbackError(() =>
           m.owner_the_departure_time_falls_on_not_on_the_selected_day_change_the_day_or_ti({
             p0: formatDay(values.departsAt.slice(0, 10)),
           }),
         );
       const line = values.coordinates.trim() ? parseCoordinates(values.coordinates) : null;
-      if (typeof line === "string") throw new FeedbackError(() => parseCoordinates(values.coordinates) as string);
+      if (typeof line === "string")
+        throw new FeedbackError(() => parseCoordinates(values.coordinates) as string);
       await save.mutateAsync({
         id,
         payload: {
@@ -360,9 +391,17 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
   };
   const areaPoint = (value: PlaceValue): { label: string; coordinates: RouteCoordinate }[] => {
     if (value.choice.startsWith("location:")) {
-      const location = locations.find((candidate) => candidate.id === value.choice.slice("location:".length));
-      if (location?.visibility === "everyone" && location.latitude !== null && location.longitude !== null) {
-        return [{ label: locationName(location), coordinates: [location.longitude, location.latitude] }];
+      const location = locations.find(
+        (candidate) => candidate.id === value.choice.slice("location:".length),
+      );
+      if (
+        location?.visibility === "everyone" &&
+        location.latitude !== null &&
+        location.longitude !== null
+      ) {
+        return [
+          { label: locationName(location), coordinates: [location.longitude, location.latitude] },
+        ];
       }
     }
     if (
@@ -388,7 +427,8 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
     selected && routeInPlan(selected)
       ? routes.filter((other) => other.status === "idea" && sameJourney(other, selected))
       : [];
-  const readError = routesQuery.error ?? areasQuery.error ?? locationsQuery.error ?? documentsQuery.error;
+  const readError =
+    routesQuery.error ?? areasQuery.error ?? locationsQuery.error ?? documentsQuery.error;
   // The times once booked, else the day alone.
   const times = (route: Route) =>
     route.departs_at && route.arrives_at
@@ -399,7 +439,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
   const shift = (route: Route) => {
     if (!route.departs_at || !route.arrives_at) return "";
     const days = dayShift(route as TimedRoute);
-    return days !== 0 ? m.owner_day_shift({ count: Math.abs(days), shift: `${days > 0 ? "+" : ""}${days}` }) : "";
+    return days !== 0
+      ? m.owner_day_shift({ count: Math.abs(days), shift: `${days > 0 ? "+" : ""}${days}` })
+      : "";
   };
 
   return (
@@ -407,7 +449,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
       <div className="capture-heading">
         <div>
           <h3 id="routes-title">{m.owner_routes()}</h3>
-          <p>{m.owner_how_you_travel_from_one_area_to_another_flight_train_bus_bike_stations_t()}</p>
+          <p>
+            {m.owner_how_you_travel_from_one_area_to_another_flight_train_bus_bike_stations_t()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.owner_new_route()}
@@ -470,7 +514,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
             )}
             {alternatives.length > 0 && (
               <div>
-                <p className="help">{m.owner_route_ideas_for_this_journey({ count: alternatives.length })}</p>
+                <p className="help">
+                  {m.owner_route_ideas_for_this_journey({ count: alternatives.length })}
+                </p>
                 <Button
                   className="secondary compact"
                   type="button"
@@ -579,7 +625,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               </FieldLegend>
               <div className="field-row">
                 <record.form.Field name="departsAt">
-                  {(input) => <DateTimeField field={input} label={m.owner_departure_time_local()} optional />}
+                  {(input) => (
+                    <DateTimeField field={input} label={m.owner_departure_time_local()} optional />
+                  )}
                 </record.form.Field>
                 <record.form.Field name="departureTimezone">
                   {(input) => (
@@ -595,7 +643,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
               </div>
               <div className="field-row">
                 <record.form.Field name="arrivesAt">
-                  {(input) => <DateTimeField field={input} label={m.owner_arrival_time_local()} optional />}
+                  {(input) => (
+                    <DateTimeField field={input} label={m.owner_arrival_time_local()} optional />
+                  )}
                 </record.form.Field>
                 <record.form.Field name="arrivalTimezone">
                   {(input) => (
@@ -652,12 +702,23 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 </record.form.Field>
                 <record.form.Field name="bookingReference">
                   {(input) => (
-                    <TextField field={input} label={m.owner_booking_reference_3()} optional maxLength={255} />
+                    <TextField
+                      field={input}
+                      label={m.owner_booking_reference_3()}
+                      optional
+                      maxLength={255}
+                    />
                   )}
                 </record.form.Field>
                 <record.form.Field name="notes">
                   {(input) => (
-                    <MarkdownField field={input} label={m.owner_notes()} optional maxLength={4000} rows={3} />
+                    <MarkdownField
+                      field={input}
+                      label={m.owner_notes()}
+                      optional
+                      maxLength={4000}
+                      rows={3}
+                    />
                   )}
                 </record.form.Field>
                 {documents.length > 0 && (
@@ -666,7 +727,9 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                       <FieldSet className="grid gap-2">
                         <FieldLegend>
                           {m.owner_linked_documents()}{" "}
-                          <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                          <span className="font-medium text-travel-optional">
+                            {m.owner_optional()}
+                          </span>
                         </FieldLegend>
                         {documents.map((document) => (
                           <Field className="contents" key={document.id}>
@@ -691,7 +754,10 @@ export function RouteManager({ trip, focusId }: { trip: Trip; focusId?: DialogFo
                 )}
               </Collapsible.Panel>
             </Collapsible.Root>
-            <record.form.Field name="coordinates" validators={{ onBlur: validCoordinates, onSubmit: validCoordinates }}>
+            <record.form.Field
+              name="coordinates"
+              validators={{ onBlur: validCoordinates, onSubmit: validCoordinates }}
+            >
               {(input) => (
                 <FieldSet>
                   <FieldLegend>

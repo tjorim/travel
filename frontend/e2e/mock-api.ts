@@ -26,7 +26,11 @@ const publicTrip = {
   navigation: [],
 };
 
-const sharedTrip = { ...publicTrip, schema_version: "travel/unlisted-trip@1", title: "Shared Exampleland" };
+const sharedTrip = {
+  ...publicTrip,
+  schema_version: "travel/unlisted-trip@1",
+  title: "Shared Exampleland",
+};
 
 export const sharedToken = "share-token-1";
 
@@ -43,7 +47,12 @@ export async function mockApi(page: Page) {
 
     if (path === "/api/public/trips") {
       return json(route, [
-        { slug: "exampleland-2054", title: "Exampleland 2054", summary: "Three weeks around the island.", dates: null },
+        {
+          slug: "exampleland-2054",
+          title: "Exampleland 2054",
+          summary: "Three weeks around the island.",
+          dates: null,
+        },
       ]);
     }
     if (path === "/api/public/trips/exampleland-2054") return json(route, publicTrip);
@@ -64,9 +73,16 @@ export async function mockApi(page: Page) {
       });
     }
     if (path === `/api/trips/${ownerTrip.id}/overview`) {
-      return json(route, { trip_id: ownerTrip.id, counts: {}, visibility: {}, audiences: [], warnings: [] });
+      return json(route, {
+        trip_id: ownerTrip.id,
+        counts: {},
+        visibility: {},
+        audiences: [],
+        warnings: [],
+      });
     }
-    if (path.startsWith("/api/trips/") && path.endsWith("/offline-map")) return json(route, { detail: "none" }, 404);
+    if (path.startsWith("/api/trips/") && path.endsWith("/offline-map"))
+      return json(route, { detail: "none" }, 404);
     // Every other owner collection (stays, routes, documents, library, provider status...) is empty.
     return json(route, []);
   });

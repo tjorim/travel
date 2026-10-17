@@ -148,11 +148,18 @@ export function Settings() {
                 </span>
               </div>
               <div className="flex flex-wrap items-end gap-2.25">
-                <span className="provider-status" data-connected={provider.connected ? "" : undefined}>
+                <span
+                  className="provider-status"
+                  data-connected={provider.connected ? "" : undefined}
+                >
                   {provider.connected ? m.connected() : m.not_connected()}
                 </span>
                 {provider.connected ? (
-                  <Button className="danger compact" type="button" onClick={() => disconnect(provider.provider)}>
+                  <Button
+                    className="danger compact"
+                    type="button"
+                    onClick={() => disconnect(provider.provider)}
+                  >
                     {m.disconnect()}
                   </Button>
                 ) : provider.provider === "google_photos_picker" ? (

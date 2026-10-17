@@ -13,7 +13,9 @@ const normalize = (value: string | null | undefined) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 const rounded = (latitude: number | null, longitude: number | null, digits: number) =>
-  latitude == null || longitude == null ? "" : `${latitude.toFixed(digits)},${longitude.toFixed(digits)}`;
+  latitude == null || longitude == null
+    ? ""
+    : `${latitude.toFixed(digits)},${longitude.toFixed(digits)}`;
 
 /**
  * Groups records that share a key by any rule; a record in two rules joins both groups into one.
@@ -77,18 +79,24 @@ export function duplicateAreas(areas: readonly Area[]): DuplicateGroup[] {
   return group(areas, [
     {
       reason: "name",
-      key: (area) => (normalize(area.label) ? `${normalize(area.label)}|${area.country_code ?? ""}` : ""),
+      key: (area) =>
+        normalize(area.label) ? `${normalize(area.label)}|${area.country_code ?? ""}` : "",
     },
     { reason: "coordinates", key: (area) => rounded(area.latitude, area.longitude, 2) },
   ]);
 }
 
 /** Audience names the server returns, as data for a translated sentence. */
-export type Audience = { kind: "public" } | { kind: "link"; label: string } | { kind: "other"; name: string };
+export type Audience =
+  | { kind: "public" }
+  | { kind: "link"; label: string }
+  | { kind: "other"; name: string };
 
 /** "public page" and `link '<label>'` (a Python repr) are the server's audience names. */
 export function parseAudience(name: string): Audience {
   if (name === "public page") return { kind: "public" };
   const link = /^link (['"])(.*)\1$/s.exec(name);
-  return link ? { kind: "link", label: link[2].replace(/\\(['"\\])/g, "$1") } : { kind: "other", name };
+  return link
+    ? { kind: "link", label: link[2].replace(/\\(['"\\])/g, "$1") }
+    : { kind: "other", name };
 }

@@ -245,7 +245,12 @@
   "api_packing_retry": " Your choice remains visible; choose Retry.",
   "api_selection_failed": [
     {
-      "declarations": ["input count", "input labels", "input reason", "local countPlural = count: plural"],
+      "declarations": [
+        "input count",
+        "input labels",
+        "input reason",
+        "local countPlural = count: plural"
+      ],
       "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "{count} record was not selected: {labels}. {reason}",

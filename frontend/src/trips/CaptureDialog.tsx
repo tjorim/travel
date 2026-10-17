@@ -16,7 +16,13 @@ import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
-import { tripPath, useOwnerMutation, useTripResource, useTripSearch, useTripsQuery } from "../query/owner-queries";
+import {
+  tripPath,
+  useOwnerMutation,
+  useTripResource,
+  useTripSearch,
+  useTripsQuery,
+} from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import {
   clearDraft,
@@ -66,13 +72,17 @@ export function CaptureDialog({
   const searchTrips = useTripSearch();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const [connection, setConnection] = useState(navigator.onLine);
-  const [draftState, setDraftState] = useFeedback<string>(textNotice(() => m.owner_loading_draft()));
+  const [draftState, setDraftState] = useFeedback<string>(
+    textNotice(() => m.owner_loading_draft()),
+  );
   const [saveState, setSaveState] = useFeedback<string>("");
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeResults, setPlaceResults] = useState<PlaceSearchResponse | null>(null);
   const [placeState, setPlaceState] = useFeedback<string>("");
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
-  const [candidateGps, setCandidateGps] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [candidateGps, setCandidateGps] = useState<{ latitude: number; longitude: number } | null>(
+    null,
+  );
   const initialized = useRef(false);
 
   const saveUpdate = useOwnerMutation<
@@ -81,7 +91,9 @@ export function CaptureDialog({
   >({
     fallback: SAVE_FALLBACK,
     request: ({ tripId, updateId, payload }) => ({
-      path: updateId ? tripPath(tripId, `travel-updates/${updateId}`) : tripPath(tripId, "travel-updates"),
+      path: updateId
+        ? tripPath(tripId, `travel-updates/${updateId}`)
+        : tripPath(tripId, "travel-updates"),
       method: updateId ? "PATCH" : "POST",
       body: payload,
     }),
@@ -94,17 +106,27 @@ export function CaptureDialog({
   });
   const deleteUpdate = useOwnerMutation<{ tripId: string; updateId: string }>({
     fallback: m.owner_the_travel_update_could_not_be_deleted,
-    request: ({ tripId, updateId }) => ({ path: tripPath(tripId, `travel-updates/${updateId}`), method: "DELETE" }),
+    request: ({ tripId, updateId }) => ({
+      path: tripPath(tripId, `travel-updates/${updateId}`),
+      method: "DELETE",
+    }),
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
   // A search phrase or a photo's coordinates are private: those calls are dropped from the mutation cache once settled.
   const searchPlaces = useOwnerMutation<{ tripId: string; query: string }, PlaceSearchResponse>({
     fallback: m.owner_location_search_is_currently_unavailable,
-    request: ({ tripId, query }) => ({ path: tripPath(tripId, "places/search"), method: "POST", body: { query } }),
+    request: ({ tripId, query }) => ({
+      path: tripPath(tripId, "places/search"),
+      method: "POST",
+      body: { query },
+    }),
     invalidate: () => [],
     gcTime: 0,
   });
-  const reversePlaces = useOwnerMutation<{ tripId: string; latitude: number; longitude: number }, PlaceSearchResponse>({
+  const reversePlaces = useOwnerMutation<
+    { tripId: string; latitude: number; longitude: number },
+    PlaceSearchResponse
+  >({
     fallback: m.owner_this_photo_s_location_could_not_be_looked_up,
     request: ({ tripId, latitude, longitude }) => ({
       path: tripPath(tripId, "places/reverse"),
@@ -119,7 +141,8 @@ export function CaptureDialog({
     defaultValues: emptyDraft(lockedTripId ?? candidate?.tripId ?? ""),
     fallback: SAVE_FALLBACK,
     submit: async (values) => {
-      if (!session || !values.tripId) throw new FeedbackError(() => m.owner_choose_a_trip_and_sign_in_first_to_save());
+      if (!session || !values.tripId)
+        throw new FeedbackError(() => m.owner_choose_a_trip_and_sign_in_first_to_save());
       if (!connection)
         throw new FeedbackError(() =>
           m.owner_you_are_offline_this_draft_stays_on_this_device_and_is_not_sent_automati(),
@@ -150,7 +173,10 @@ export function CaptureDialog({
   const draft = record.values;
   const { form } = record;
   const draftTripId = useStore(form.store, (state) => state.values.tripId);
-  const selectedTrip = useMemo(() => trips.find((trip) => trip.id === draftTripId) ?? null, [draftTripId, trips]);
+  const selectedTrip = useMemo(
+    () => trips.find((trip) => trip.id === draftTripId) ?? null,
+    [draftTripId, trips],
+  );
   const lockedTrip = useMemo(
     () => (lockedTripId ? (trips.find((trip) => trip.id === lockedTripId) ?? null) : null),
     [lockedTripId, trips],
@@ -207,14 +233,18 @@ export function CaptureDialog({
       });
       setCandidateGps(candidate.gps ?? null);
       setDraftState(
-        textNotice(() => m.owner_candidate_copied_into_a_local_draft_choose_a_location_yourself_and_save()),
+        textNotice(() =>
+          m.owner_candidate_copied_into_a_local_draft_choose_a_location_yourself_and_save(),
+        ),
       );
       onCandidateConsumed?.();
       return;
     }
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
-    setDraftState(textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())));
+    setDraftState(
+      textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())),
+    );
     // `record.load` is a stable identity from `useRecordForm`; only the inputs that decide *which* draft to load matter here.
   }, [lockedTripId, candidate, trips, onCandidateConsumed]);
 
@@ -229,7 +259,8 @@ export function CaptureDialog({
   }, [draft]);
 
   function updateDraft(values: Partial<UpdateDraft>) {
-    for (const [name, value] of Object.entries(values)) form.setFieldValue(name as keyof UpdateDraft, value as never);
+    for (const [name, value] of Object.entries(values))
+      form.setFieldValue(name as keyof UpdateDraft, value as never);
     setSaveState("");
   }
 
@@ -244,7 +275,9 @@ export function CaptureDialog({
   function selectTrip(tripId: string) {
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
-    setDraftState(textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())));
+    setDraftState(
+      textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())),
+    );
     resetPlaceSearch();
     setSaveState("");
   }
@@ -280,13 +313,19 @@ export function CaptureDialog({
 
   function selectPlace(result: PlaceSearchResult) {
     updateDraft({ location: result });
-    setPlaceState(textNotice(() => m.owner_location_selected_it_will_only_be_created_when_you_save_the_travel_updat()));
+    setPlaceState(
+      textNotice(() =>
+        m.owner_location_selected_it_will_only_be_created_when_you_save_the_travel_updat(),
+      ),
+    );
     setPlaceResults(null);
   }
 
   function searchPlace() {
     if (!session || !selectedTrip || placeQuery.trim().length < 2) {
-      setPlaceState(textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()));
+      setPlaceState(
+        textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()),
+      );
       return;
     }
     setPlaceState(textNotice(() => m.owner_searching_locations()));
@@ -295,7 +334,9 @@ export function CaptureDialog({
         setPlaceResults(result);
         setPlaceState(
           textNotice(() =>
-            result.results.length ? m.owner_choose_a_result_nothing_is_saved_yet() : m.owner_no_locations_found(),
+            result.results.length
+              ? m.owner_choose_a_result_nothing_is_saved_yet()
+              : m.owner_no_locations_found(),
           ),
         );
       },
@@ -317,7 +358,8 @@ export function CaptureDialog({
           ),
         );
       },
-      (error: unknown) => setPlaceState(errorNotice(error, m.owner_this_photo_s_location_could_not_be_looked_up)),
+      (error: unknown) =>
+        setPlaceState(errorNotice(error, m.owner_this_photo_s_location_could_not_be_looked_up)),
     );
   }
 
@@ -338,7 +380,8 @@ export function CaptureDialog({
         startNew();
         setDraftState(textNotice(() => m.owner_travel_update_deleted()));
       },
-      (error: unknown) => setSaveState(errorNotice(error, m.owner_the_travel_update_could_not_be_deleted)),
+      (error: unknown) =>
+        setSaveState(errorNotice(error, m.owner_the_travel_update_could_not_be_deleted)),
     );
   }
 
@@ -350,8 +393,15 @@ export function CaptureDialog({
       : m.owner_new_travel_update();
 
   return (
-    <RecordDialog open={open} title={dialogTitle} dirty={initialized.current && record.dirty} onDismiss={onDismiss}>
-      {!session && <p>{m.owner_sign_in_to_save_a_draft_locally_or_add_a_travel_update_to_a_private_trip()}</p>}
+    <RecordDialog
+      open={open}
+      title={dialogTitle}
+      dirty={initialized.current && record.dirty}
+      onDismiss={onDismiss}
+    >
+      {!session && (
+        <p>{m.owner_sign_in_to_save_a_draft_locally_or_add_a_travel_update_to_a_private_trip()}</p>
+      )}
       {session && tripsQuery.isPending && (
         <p>
           {connection
@@ -359,7 +409,9 @@ export function CaptureDialog({
             : m.owner_you_are_offline_your_trips_will_load_once_you_reconnect()}
         </p>
       )}
-      {session && tripsQuery.isError && <p>{errorMessage(tripsQuery.error, m.owner_your_trips_could_not_be_loaded)}</p>}
+      {session && tripsQuery.isError && (
+        <p>{errorMessage(tripsQuery.error, m.owner_your_trips_could_not_be_loaded)}</p>
+      )}
       {session && !tripsQuery.isPending && !tripsQuery.isError && trips.length === 0 && (
         <p>{m.owner_create_a_private_trip_first_then_you_can_add_a_travel_update_here()}</p>
       )}
@@ -403,8 +455,12 @@ export function CaptureDialog({
                 <AsyncSearchSelect
                   ariaLabel={m.owner_trip()}
                   value={draft.tripId}
-                  selectedOption={selectedTrip ? { value: selectedTrip.id, label: selectedTrip.title } : null}
-                  defaultOptions={trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title }))}
+                  selectedOption={
+                    selectedTrip ? { value: selectedTrip.id, label: selectedTrip.title } : null
+                  }
+                  defaultOptions={trips
+                    .slice(0, 50)
+                    .map((trip) => ({ value: trip.id, label: trip.title }))}
                   onChange={selectTrip}
                   loadOptions={async (q) =>
                     (await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title }))
@@ -415,7 +471,9 @@ export function CaptureDialog({
             {selectedTrip && (
               <aside className="publication" aria-label={m.owner_sharing_this_travel_update()}>
                 <strong>{m.owner_before_saving()}</strong>
-                <span>{m.owner_a_new_travel_update_is_private_your_notes_location_and_photos_are_never()}</span>
+                <span>
+                  {m.owner_a_new_travel_update_is_private_your_notes_location_and_photos_are_never()}
+                </span>
               </aside>
             )}
             <div className="field-row">
@@ -427,7 +485,9 @@ export function CaptureDialog({
                   onSubmit: requiredText(m.owner_enter_the_date_and_time),
                 }}
               >
-                {(field) => <DateTimeField field={field} label={m.owner_date_and_time()} required />}
+                {(field) => (
+                  <DateTimeField field={field} label={m.owner_date_and_time()} required />
+                )}
               </form.Field>
               <form.Field
                 name="title"
@@ -462,7 +522,9 @@ export function CaptureDialog({
             </form.Field>
             <FieldSet className="location">
               <FieldLegend>{m.owner_link_private_photos()}</FieldLegend>
-              <p>{m.owner_a_link_is_private_exif_is_only_used_below_as_a_suggestion_no_date_or_pla()}</p>
+              <p>
+                {m.owner_a_link_is_private_exif_is_only_used_below_as_a_suggestion_no_date_or_pla()}
+              </p>
               <p className="help" role="status">
                 {mediaState}
               </p>
@@ -474,7 +536,9 @@ export function CaptureDialog({
                       onCheckedChange={() => toggleMedia(asset.id)}
                     />
                     {asset.original_filename ?? m.owner_unnamed_photo()}
-                    {asset.captured_at ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}` : ""}
+                    {asset.captured_at
+                      ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}`
+                      : ""}
                   </FieldLabel>
                 </Field>
               ))}
@@ -487,11 +551,13 @@ export function CaptureDialog({
                       key={`suggestion-${asset.id}`}
                     >
                       <strong>
-                        {m.owner_suggestion_from()} {asset.original_filename ?? m.owner_this_photo()}
+                        {m.owner_suggestion_from()}{" "}
+                        {asset.original_filename ?? m.owner_this_photo()}
                       </strong>
                       {asset.captured_at && (
                         <span>
-                          {m.owner_captured_2()} {formatCapture(asset.captured_at, asset.captured_local)}.
+                          {m.owner_captured_2()}{" "}
+                          {formatCapture(asset.captured_at, asset.captured_local)}.
                         </span>
                       )}
                       <div className="button-row">
@@ -500,9 +566,16 @@ export function CaptureDialog({
                             className="secondary compact"
                             type="button"
                             onClick={() => {
-                              updateDraft({ occurredAt: captureInputValue(asset.captured_at!, asset.captured_local) });
+                              updateDraft({
+                                occurredAt: captureInputValue(
+                                  asset.captured_at!,
+                                  asset.captured_local,
+                                ),
+                              });
                               setSaveState(
-                                textNotice(() => m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it()),
+                                textNotice(() =>
+                                  m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it(),
+                                ),
                               );
                             }}
                           >
@@ -521,7 +594,9 @@ export function CaptureDialog({
                         <Button
                           className="secondary compact"
                           type="button"
-                          onClick={() => setDismissedSuggestions((current) => [...current, asset.id])}
+                          onClick={() =>
+                            setDismissedSuggestions((current) => [...current, asset.id])
+                          }
                         >
                           {m.owner_dismiss_suggestion()}
                         </Button>
@@ -537,16 +612,28 @@ export function CaptureDialog({
             </FieldSet>
             <FieldSet className="location">
               <FieldLegend>{m.owner_location_entirely_optional()}</FieldLegend>
-              <p>{m.owner_search_for_and_choose_a_location_it_is_only_created_as_a_private_locatio()}</p>
+              <p>
+                {m.owner_search_for_and_choose_a_location_it_is_only_created_as_a_private_locatio()}
+              </p>
               {candidateGps && (
                 <aside className="grid gap-2 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.25 text-sm leading-normal text-travel-warning-ink [&_span]:text-travel-warning-muted">
                   <strong>{m.owner_selected_location_from_candidate()}</strong>
-                  <span>{m.owner_this_exif_coordinate_stays_private_and_has_not_been_looked_up_or_saved_y()}</span>
+                  <span>
+                    {m.owner_this_exif_coordinate_stays_private_and_has_not_been_looked_up_or_saved_y()}
+                  </span>
                   <div className="button-row">
-                    <Button className="secondary compact" type="button" onClick={() => reverseGeocode(candidateGps)}>
+                    <Button
+                      className="secondary compact"
+                      type="button"
+                      onClick={() => reverseGeocode(candidateGps)}
+                    >
                       {m.owner_search_this_candidate_place()}
                     </Button>
-                    <Button className="secondary compact" type="button" onClick={() => setCandidateGps(null)}>
+                    <Button
+                      className="secondary compact"
+                      type="button"
+                      onClick={() => setCandidateGps(null)}
+                    >
                       {m.owner_dismiss_location()}
                     </Button>
                   </div>
@@ -572,8 +659,14 @@ export function CaptureDialog({
               {draft.location && (
                 <p className="flex flex-wrap items-center gap-2">
                   <strong>{m.owner_selected_location()}</strong>{" "}
-                  {draft.location.display_name ?? draft.location.locality ?? m.owner_unnamed_location()}{" "}
-                  <Button className="secondary compact" type="button" onClick={() => updateDraft({ location: null })}>
+                  {draft.location.display_name ??
+                    draft.location.locality ??
+                    m.owner_unnamed_location()}{" "}
+                  <Button
+                    className="secondary compact"
+                    type="button"
+                    onClick={() => updateDraft({ location: null })}
+                  >
                     {m.owner_delete()}
                   </Button>
                 </p>
@@ -627,7 +720,9 @@ export function CaptureDialog({
                     <strong>{update.title}</strong>
                     <span>
                       {timestamp(update.occurred_at)}
-                      {update.location ? ` · ${update.location.display_name}` : m.owner_without_location()}
+                      {update.location
+                        ? ` · ${update.location.display_name}`
+                        : m.owner_without_location()}
                     </span>
                   </Button>
                 ))}

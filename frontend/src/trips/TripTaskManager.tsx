@@ -13,12 +13,29 @@ import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { ownerKeys } from "../query/keys";
 import { errorMessage } from "../query/api";
-import { tripPath, useMarkAlertRead, useOwnerMutation, useTripResource } from "../query/owner-queries";
-import { formatInstant, localDateTime, type TaskLink, type Trip, type TripTask } from "../tracker-model";
+import {
+  tripPath,
+  useMarkAlertRead,
+  useOwnerMutation,
+  useTripResource,
+} from "../query/owner-queries";
+import {
+  formatInstant,
+  localDateTime,
+  type TaskLink,
+  type Trip,
+  type TripTask,
+} from "../tracker-model";
 import { FieldSet, FieldLegend } from "../ui/field";
 
 const MAX_LINKS = 5;
-type Values = { title: string; notes: string; dueDate: string; remindAt: string; links: TaskLink[] };
+type Values = {
+  title: string;
+  notes: string;
+  dueDate: string;
+  remindAt: string;
+  links: TaskLink[];
+};
 const blank = (): Values => ({ title: "", notes: "", dueDate: "", remindAt: "", links: [] });
 const fromTask = (task: TripTask): Values => ({
   title: task.title,
@@ -34,7 +51,13 @@ function TaskLinks({ links }: { links: TaskLink[] }) {
   return links.length ? (
     <span className="flex flex-wrap gap-2 [&_a]:font-bold [&_a]:text-travel-link">
       {links.map((link) => (
-        <a key={link.url} href={link.url} target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+        <a
+          key={link.url}
+          href={link.url}
+          target="_blank"
+          rel="noreferrer"
+          referrerPolicy="no-referrer"
+        >
           {link.label} ↗
         </a>
       ))}
@@ -44,22 +67,35 @@ function TaskLinks({ links }: { links: TaskLink[] }) {
 
 const isHttps = (url: string) => url.trim().startsWith("https://");
 const linkNameError = (
-  { value, fieldApi }: { value: string; fieldApi: { form: { getFieldValue: (name: never) => unknown } } },
+  {
+    value,
+    fieldApi,
+  }: { value: string; fieldApi: { form: { getFieldValue: (name: never) => unknown } } },
   index: number,
 ) =>
   !value.trim() && String(fieldApi.form.getFieldValue(`links[${index}].url` as never) ?? "").trim()
     ? m.owner_give_the_link_a_name
     : undefined;
 const linkUrlError = (
-  { value, fieldApi }: { value: string; fieldApi: { form: { getFieldValue: (name: never) => unknown } } },
+  {
+    value,
+    fieldApi,
+  }: { value: string; fieldApi: { form: { getFieldValue: (name: never) => unknown } } },
   index: number,
 ) => {
-  const named = String(fieldApi.form.getFieldValue(`links[${index}].label` as never) ?? "").trim() !== "";
+  const named =
+    String(fieldApi.form.getFieldValue(`links[${index}].label` as never) ?? "").trim() !== "";
   if (!value.trim()) return named ? m.owner_enter_an_https_address : undefined;
   return isHttps(value) ? undefined : m.owner_use_an_https_address;
 };
 
-export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
+export function TripTaskManager({
+  trip,
+  focusId,
+}: {
+  trip: Trip;
+  focusId?: DialogFocusRequest | null;
+}) {
   useLocale();
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const alertsQuery = useTripResource(trip.id, "task-alerts");
@@ -83,7 +119,10 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     ownerKeys.tripResource(subject, trip.id, "trip-tasks"),
     ownerKeys.tripResource(subject, trip.id, "task-alerts"),
   ];
-  const saveTask = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, TripTask>({
+  const saveTask = useOwnerMutation<
+    { id: string | null; payload: Record<string, unknown> },
+    TripTask
+  >({
     fallback: m.owner_the_task_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${tripPath(trip.id, "trip-tasks")}/${id}` : tripPath(trip.id, "trip-tasks"),
@@ -104,13 +143,18 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       key: (subject) => ownerKeys.tripResource(subject, trip.id, "trip-tasks"),
       update: (current: TripTask[], task) =>
         current.map((item) =>
-          item.id === task.id ? { ...item, completed_at: task.completed_at ? null : new Date().toISOString() } : item,
+          item.id === task.id
+            ? { ...item, completed_at: task.completed_at ? null : new Date().toISOString() }
+            : item,
         ),
     },
   });
   const deleteTask = useOwnerMutation<TripTask>({
     fallback: m.owner_the_task_could_not_be_deleted,
-    request: (task) => ({ path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`, method: "DELETE" }),
+    request: (task) => ({
+      path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`,
+      method: "DELETE",
+    }),
     invalidate: taskKeys,
     optimistic: {
       key: (subject) => ownerKeys.tripResource(subject, trip.id, "trip-tasks"),
@@ -185,7 +229,11 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
 
   function toggle(task: TripTask) {
     toggleTask.mutateAsync(task).then(() => {
-      setNotice(textNotice(() => (task.completed_at ? m.owner_task_reopened() : m.owner_task_checked_off())));
+      setNotice(
+        textNotice(() =>
+          task.completed_at ? m.owner_task_reopened() : m.owner_task_checked_off(),
+        ),
+      );
     }, fail(m.owner_the_task_could_not_be_updated));
   }
   function remove(task: TripTask) {
@@ -202,7 +250,11 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
   }
 
   const row = (task: TripTask) => (
-    <article key={task.id} className="excerpt-row" data-completed={task.completed_at ? "" : undefined}>
+    <article
+      key={task.id}
+      className="excerpt-row"
+      data-completed={task.completed_at ? "" : undefined}
+    >
       <Button
         className="document-select"
         type="button"
@@ -212,7 +264,9 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
         <strong>{task.title}</strong>
         <span>
           {task.completed_at
-            ? m.owner_checked_off({ p0: task.due_date ? m.owner_was_due({ p0: task.due_date }) : "" })
+            ? m.owner_checked_off({
+                p0: task.due_date ? m.owner_was_due({ p0: task.due_date }) : "",
+              })
             : `${task.due_date ? m.owner_due({ p0: task.due_date }) : m.owner_no_deadline()}${task.remind_at ? m.owner_reminder_2({ p0: formatInstant(task.remind_at) }) : ""}`}
         </span>
       </Button>
@@ -229,7 +283,9 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
       <div className="capture-heading">
         <div>
           <h3 id="tasks-title">{m.owner_things_to_arrange()}</h3>
-          <p>{m.owner_a_deadline_sorts_tasks_choose_a_reminder_separately_notifications_appear()}</p>
+          <p>
+            {m.owner_a_deadline_sorts_tasks_choose_a_reminder_separately_notifications_appear()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.owner_new_task()}
@@ -328,7 +384,9 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                   onSubmit: requiredText(m.owner_give_the_task_a_title),
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_title()} required maxLength={160} />
+                )}
               </record.form.Field>
               <record.form.Field name="dueDate">
                 {(field) => <DateField field={field} label={m.owner_deadline()} optional />}
@@ -338,14 +396,24 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
               {(field) => <DateTimeField field={field} label={m.owner_reminder_3()} optional />}
             </record.form.Field>
             <record.form.Field name="notes">
-              {(field) => <MarkdownField field={field} label={m.owner_notes()} optional maxLength={4000} rows={3} />}
+              {(field) => (
+                <MarkdownField
+                  field={field}
+                  label={m.owner_notes()}
+                  optional
+                  maxLength={4000}
+                  rows={3}
+                />
+              )}
             </record.form.Field>
             <record.form.Field name="links" mode="array">
               {(links) => (
                 <FieldSet>
                   <FieldLegend>
                     {m.owner_links()}{" "}
-                    <span className="font-medium text-travel-optional">{m.owner_optional_https()}</span>
+                    <span className="font-medium text-travel-optional">
+                      {m.owner_optional_https()}
+                    </span>
                   </FieldLegend>
                   {links.state.value.map((_, index) => (
                     <div className="field-row" key={index}>
@@ -356,7 +424,9 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                           onSubmit: (context) => linkNameError(context, index),
                         }}
                       >
-                        {(field) => <TextField field={field} label={m.owner_name()} maxLength={80} />}
+                        {(field) => (
+                          <TextField field={field} label={m.owner_name()} maxLength={80} />
+                        )}
                       </record.form.Field>
                       <record.form.Field
                         name={`links[${index}].url`}
@@ -365,9 +435,20 @@ export function TripTaskManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                           onSubmit: (context) => linkUrlError(context, index),
                         }}
                       >
-                        {(field) => <TextField field={field} label={m.owner_address()} type="url" maxLength={2048} />}
+                        {(field) => (
+                          <TextField
+                            field={field}
+                            label={m.owner_address()}
+                            type="url"
+                            maxLength={2048}
+                          />
+                        )}
                       </record.form.Field>
-                      <Button className="secondary compact" type="button" onClick={() => void links.removeValue(index)}>
+                      <Button
+                        className="secondary compact"
+                        type="button"
+                        onClick={() => void links.removeValue(index)}
+                      >
                         {m.owner_remove_link()}
                       </Button>
                     </div>

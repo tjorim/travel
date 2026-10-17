@@ -54,7 +54,9 @@ export function tripBadges(
     const booked = nights.filter((night) =>
       stays.some((stay) => isConfirmed(stay.status) && stayCoversNight(stay, night)),
     ).length;
-    const missing = nights.filter((night) => !stays.some((stay) => stayCoversNight(stay, night))).length;
+    const missing = nights.filter(
+      (night) => !stays.some((stay) => stayCoversNight(stay, night)),
+    ).length;
     badges.push({
       label: m.owner_nights(),
       value: m.owner_confirmed_nights({
@@ -120,7 +122,8 @@ export function LocalTimes({
   const instant = now.toISOString();
   const here = whereabouts(instant, stays, routes, homeZone);
   const destination = tripZone(trip, stays, routes);
-  const nowOffset = (zone: string) => utcOffsetMinutes(instant, zone) - utcOffsetMinutes(instant, homeZone);
+  const nowOffset = (zone: string) =>
+    utcOffsetMinutes(instant, zone) - utcOffsetMinutes(instant, homeZone);
   const lines: string[] = [];
   if (here.kind !== "home" && here.zone) {
     const time = dayjs(now).tz(here.zone).format("ddd HH:mm");
@@ -133,12 +136,17 @@ export function LocalTimes({
     );
   }
   if (destination) {
-    const during = utcOffsetMinutes(destination.at, destination.zone) - utcOffsetMinutes(destination.at, homeZone);
+    const during =
+      utcOffsetMinutes(destination.at, destination.zone) -
+      utcOffsetMinutes(destination.at, homeZone);
     const current = nowOffset(destination.zone);
     if (here.kind === "home")
       lines.push(
         current !== during
-          ? m.owner_trip_offset_now({ during: offsetLabel(during), current: offsetLabel(current, true) })
+          ? m.owner_trip_offset_now({
+              during: offsetLabel(during),
+              current: offsetLabel(current, true),
+            })
           : m.owner_during_the_trip({ p0: offsetLabel(during), p1: "" }),
       );
   }
@@ -182,7 +190,10 @@ export function TripOverview({ trip }: { trip: Trip }) {
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
   if (!trip.starts_on && !badges.length && !stays.length && !routes.length) return null;
   return (
-    <section className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0" aria-label={m.owner_trip_overview()}>
+    <section
+      className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0"
+      aria-label={m.owner_trip_overview()}
+    >
       {trip.starts_on && (
         <p className="travel-eyebrow">
           {formatDay(trip.starts_on, "D MMMM")}
@@ -201,7 +212,9 @@ export function TripOverview({ trip }: { trip: Trip }) {
               <span
                 aria-hidden="true"
                 className={
-                  badge.done ? "size-2 rounded-full bg-travel-link" : "size-2 rounded-full bg-travel-status-pending"
+                  badge.done
+                    ? "size-2 rounded-full bg-travel-link"
+                    : "size-2 rounded-full bg-travel-status-pending"
                 }
               />
               <span>{badge.label}</span> <strong className="text-travel-ink">{badge.value}</strong>

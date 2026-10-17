@@ -18,7 +18,12 @@ function labelText(node: ReactNode): string {
 function optionsFromChildren(children: ReactNode): Choice[] {
   const choices: Choice[] = [];
   Children.forEach(children, (child) => {
-    if (!isValidElement<{ value?: string; children?: ReactNode; disabled?: boolean; label?: string }>(child)) return;
+    if (
+      !isValidElement<{ value?: string; children?: ReactNode; disabled?: boolean; label?: string }>(
+        child,
+      )
+    )
+      return;
     if (child.type === "option")
       choices.push({
         value: String(child.props.value ?? ""),
@@ -39,7 +44,8 @@ function optionsFromChildren(children: ReactNode): Choice[] {
 function groupChoices(choices: Choice[]): DisplayGroup[] {
   const groups: DisplayGroup[] = [];
   choices.forEach((choice, index) => {
-    if ("options" in choice) groups.push({ value: `group-${index}`, label: choice.label, items: choice.options });
+    if ("options" in choice)
+      groups.push({ value: `group-${index}`, label: choice.label, items: choice.options });
     else if (groups.at(-1)?.label === "") groups.at(-1)!.items.push(choice);
     else groups.push({ value: `group-${index}`, label: "", items: [choice] });
   });
@@ -83,7 +89,8 @@ function SearchCombobox({
 }) {
   useLocale();
   const [open, setOpen] = useState(false);
-  const selected = selectedOption ?? findOption(choices, value) ?? (value ? { value, label: value } : null);
+  const selected =
+    selectedOption ?? findOption(choices, value) ?? (value ? { value, label: value } : null);
   const visible = groupChoices(choices);
   const known =
     selected && !findOption(choices, selected.value)
@@ -120,7 +127,9 @@ function SearchCombobox({
         <Combobox.Input
           aria-label={ariaLabel}
           // An explicit accessible name wins over the surrounding Field label.
-          render={(props) => <input {...props} aria-labelledby={ariaLabel ? undefined : props["aria-labelledby"]} />}
+          render={(props) => (
+            <input {...props} aria-labelledby={ariaLabel ? undefined : props["aria-labelledby"]} />
+          )}
           onBlur={onBlur}
           className="min-w-0 flex-1 rounded-r-none! border-r-0!"
         />

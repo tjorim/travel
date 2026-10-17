@@ -37,7 +37,10 @@ function AppShell() {
   // the same QueryClient cache that the page's own `useQuery` reads from.
   const [{ queryClient, router }] = useState(() => {
     const queryClient = createOwnerQueryClient({ onUnauthorized: () => endSession.current() });
-    return { queryClient, router: createTrackerRouter(routeTree, { basepath: "/admin", queryClient }) };
+    return {
+      queryClient,
+      router: createTrackerRouter(routeTree, { basepath: "/admin", queryClient }),
+    };
   });
 
   return (

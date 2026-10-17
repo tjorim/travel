@@ -22,11 +22,15 @@ afterEach(() => {
 
 it("offers the same three choices for every kind and saves the chosen one at once", async () => {
   api.on("PUT", /\/visibility\/visit\/s1$/, (body) => body);
-  renderWithOwner(<VisibilityControl tripId="trip" kind="visit" id="s1" value="private" name="Noordkust" />);
+  renderWithOwner(
+    <VisibilityControl tripId="trip" kind="visit" id="s1" value="private" name="Noordkust" />,
+  );
   expect(selectedOption("Zichtbaarheid van Noordkust")).toEqual("Privé — alleen ik");
   chooseOption("Zichtbaarheid van Noordkust", "Zelf kiezen in Delen");
   await waitFor(() =>
-    expect(api.lastBody("PUT /api/trips/trip/visibility/visit/s1")).toEqual({ visibility: "custom" }),
+    expect(api.lastBody("PUT /api/trips/trip/visibility/visit/s1")).toEqual({
+      visibility: "custom",
+    }),
   );
 });
 
@@ -36,10 +40,14 @@ it("shows the server's reason when a record cannot be shared yet", async () => {
     status: 422,
     body: {
       detail: "sharing diagnostic",
-      errors: [{ code: "give_this_location_a_public_name_before_sharing_it", path: [], params: {} }],
+      errors: [
+        { code: "give_this_location_a_public_name_before_sharing_it", path: [], params: {} },
+      ],
     },
   };
-  renderWithOwner(<VisibilityControl tripId="trip" kind="location" id="e1" value="private" name="Hotel" />);
+  renderWithOwner(
+    <VisibilityControl tripId="trip" kind="location" id="e1" value="private" name="Hotel" />,
+  );
   chooseOption("Zichtbaarheid van Hotel", "Iedereen — alle bezoekers");
   expect(await screen.findByRole("alert")).toBeTruthy();
 });

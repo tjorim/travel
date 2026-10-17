@@ -3,8 +3,19 @@ import { m } from "../paraglide/messages.js";
 import { Input } from "@base-ui/react/input";
 import { useCallback, useRef } from "react";
 
-import { AsyncSearchSelect, SearchSelect, type SearchSelectGroup, type SearchSelectOption } from "../forms/fields";
-import { tripPath, useAreaSearch, useLocationSearch, useOwnerMutation, useTripResource } from "../query/owner-queries";
+import {
+  AsyncSearchSelect,
+  SearchSelect,
+  type SearchSelectGroup,
+  type SearchSelectOption,
+} from "../forms/fields";
+import {
+  tripPath,
+  useAreaSearch,
+  useLocationSearch,
+  useOwnerMutation,
+  useTripResource,
+} from "../query/owner-queries";
 import {
   locationName,
   type Area,
@@ -110,7 +121,10 @@ export function PlacePicker({
   const locations = useTripResource(tripId, "locations").data ?? [];
   const searchAreas = useAreaSearch(tripId);
   const searchLocations = useLocationSearch(tripId);
-  const suggestion = useOwnerMutation<{ latitude: number; longitude: number; city?: string }, AreaSuggestion>({
+  const suggestion = useOwnerMutation<
+    { latitude: number; longitude: number; city?: string },
+    AreaSuggestion
+  >({
     fallback: m.owner_an_area_could_not_be_suggested,
     request: (body) => ({ path: tripPath(tripId, "areas/suggest"), method: "POST", body }),
     invalidate: () => [],
@@ -118,7 +132,10 @@ export function PlacePicker({
   });
   const loadPlaces = useCallback(
     async (query: string): Promise<(SearchSelectOption | SearchSelectGroup)[]> => {
-      const [matchingAreas, matchingLocations] = await Promise.all([searchAreas(query), searchLocations(query)]);
+      const [matchingAreas, matchingLocations] = await Promise.all([
+        searchAreas(query),
+        searchLocations(query),
+      ]);
       const grouped = new Map<string, { area: Area; places: Location[] }>();
       for (const area of matchingAreas) grouped.set(area.id, { area, places: [] });
       for (const location of matchingLocations) {
@@ -142,7 +159,10 @@ export function PlacePicker({
                 return m.owner_whole_area({ p0: area.label });
               },
             },
-            ...places.map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
+            ...places.map((location) => ({
+              value: `location:${location.id}`,
+              label: locationName(location),
+            })),
           ],
         })),
         {
@@ -173,7 +193,9 @@ export function PlacePicker({
         : value.choice.startsWith("location:")
           ? {
               value: value.choice,
-              label: locationName(locations.find((location) => location.id === value.choice.slice(9)) ?? {}),
+              label: locationName(
+                locations.find((location) => location.id === value.choice.slice(9)) ?? {},
+              ),
             }
           : null;
   async function useResult(result: PlaceSearchResult) {
@@ -239,7 +261,10 @@ export function PlacePicker({
                 ...locations
                   .slice(0, 50)
                   .filter((location) => location.area_id === area.id)
-                  .map((location) => ({ value: `location:${location.id}`, label: locationName(location) })),
+                  .map((location) => ({
+                    value: `location:${location.id}`,
+                    label: locationName(location),
+                  })),
               ],
             })),
             {
@@ -251,7 +276,11 @@ export function PlacePicker({
           ]}
           loadOptions={loadPlaces}
           onChange={(next) =>
-            onChange(next === "new" ? { ...emptyPlace(), choice: "new" } : { ...emptyPlace(), choice: next })
+            onChange(
+              next === "new"
+                ? { ...emptyPlace(), choice: "new" }
+                : { ...emptyPlace(), choice: next },
+            )
           }
         />
         <FieldError>{error}</FieldError>
@@ -270,7 +299,8 @@ export function PlacePicker({
           <div className="field-row">
             <Field>
               <FieldLabel>
-                {m.owner_name()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.owner_name()}{" "}
+                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                 <Input
                   aria-label={m.owner_name_2({ p0: label })}
                   value={value.newName}
@@ -281,7 +311,8 @@ export function PlacePicker({
             </Field>
             <Field>
               <FieldLabel>
-                {m.owner_city()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.owner_city()}{" "}
+                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                 <Input
                   aria-label={m.owner_city_2({ p0: label })}
                   value={value.newLocality}
@@ -294,7 +325,8 @@ export function PlacePicker({
           <div className="field-row">
             <Field>
               <FieldLabel>
-                {m.owner_country_code()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.owner_country_code()}{" "}
+                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
                 <Input
                   aria-label={m.owner_country_code_3({ p0: label })}
                   value={value.newCountryCode}
@@ -305,7 +337,8 @@ export function PlacePicker({
             </Field>
             <Field>
               <FieldLabel>
-                {m.owner_area()} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.owner_area()}{" "}
+                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
               </FieldLabel>
               <SearchSelect
                 ariaLabel={m.owner_new_location_s_area({ p0: label })}
@@ -357,7 +390,10 @@ export function PlacePicker({
                     onChange={(event) =>
                       onChange({
                         ...value,
-                        newAreaCandidate: { ...value.newAreaCandidate!, timezone: event.target.value || null },
+                        newAreaCandidate: {
+                          ...value.newAreaCandidate!,
+                          timezone: event.target.value || null,
+                        },
                       })
                     }
                   />

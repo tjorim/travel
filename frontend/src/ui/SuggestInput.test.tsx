@@ -25,7 +25,10 @@ it("offers matching suggestions, fills one on choice, and keeps free text", () =
   const input = screen.getByLabelText("Tijdzone") as HTMLInputElement;
   fireEvent.change(input, { target: { value: "asia" } });
   fireEvent.keyDown(input, { key: "ArrowDown" });
-  expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Asia/Taipei", "Asia/Tokyo"]);
+  expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+    "Asia/Taipei",
+    "Asia/Tokyo",
+  ]);
   const option = screen.getByRole("option", { name: "Asia/Tokyo" });
   fireEvent.click(option);
   expect(input.value).toBe("Asia/Tokyo");

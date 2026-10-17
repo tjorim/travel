@@ -12,7 +12,9 @@ export function useTheme() {
   return useSyncExternalStore(subscribe, () => document.documentElement.dataset.theme ?? "light");
 }
 export function themeColor(token: string) {
-  return getComputedStyle(document.documentElement).getPropertyValue(`--color-travel-${token}`).trim();
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(`--color-travel-${token}`)
+    .trim();
 }
 export function AppearanceControl() {
   useLocale();
@@ -29,7 +31,9 @@ export function AppearanceControl() {
         { value: "dark", label: m.dark() },
         { value: "auto", label: m.auto() },
       ]}
-      onChange={(next) => window.dispatchEvent(new CustomEvent("travel-appearance-set", { detail: next }))}
+      onChange={(next) =>
+        window.dispatchEvent(new CustomEvent("travel-appearance-set", { detail: next }))
+      }
     />
   );
 }

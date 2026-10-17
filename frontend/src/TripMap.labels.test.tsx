@@ -144,8 +144,12 @@ it("supplies custom and derived area names to the visible label layer after map 
   expect(labels.paint?.["text-halo-color"]).toBe("#fffdf8");
   expect(labels.paint?.["text-halo-width"]).toBe(2);
 
-  rerender(<TripMap owner points={[{ ...points[0], label: "Renamed Base Camp" }, points[1]]} lines={[]} />);
-  await waitFor(() => expect(maps[0].sources.stops.features[0].properties?.label).toBe("Renamed Base Camp"));
+  rerender(
+    <TripMap owner points={[{ ...points[0], label: "Renamed Base Camp" }, points[1]]} lines={[]} />,
+  );
+  await waitFor(() =>
+    expect(maps[0].sources.stops.features[0].properties?.label).toBe("Renamed Base Camp"),
+  );
   expect(maps[0].removed).toBe(false);
   expect(maps).toHaveLength(1);
   act(() => changeLocale("en"));
@@ -164,7 +168,9 @@ it("keeps the camera, selection and layer toggles when the theme changes", async
   render(<TripMap owner points={points} lines={[]} />);
   await waitFor(() => expect(maps[0]?.sources.stops).toBeDefined());
   await waitFor(() =>
-    expect((screen.getByRole("button", { name: "Satelliet" }) as HTMLButtonElement).disabled).toBe(false),
+    expect((screen.getByRole("button", { name: "Satelliet" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    ),
   );
   fireEvent.click(screen.getByRole("button", { name: "Satelliet" }));
   fireEvent.click(screen.getByRole("button", { name: "Wereldbol" }));
@@ -178,14 +184,29 @@ it("keeps the camera, selection and layer toggles when the theme changes", async
   await waitFor(() => expect(maps).toHaveLength(2));
   expect(maps[0].removed).toBe(true);
   await waitFor(() => expect(maps[1].sources.stops).toBeDefined());
-  expect(maps[1].options).toMatchObject({ center: [121.4, 25.3], zoom: 11.5, pitch: 40, bearing: 30 });
+  expect(maps[1].options).toMatchObject({
+    center: [121.4, 25.3],
+    zoom: 11.5,
+    pitch: 40,
+    bearing: 30,
+  });
   await waitFor(() => expect(maps[1].projection).toBe("globe"));
   expect(maps[1].visibility).toBe("visible");
-  expect(maps[1].filter).toEqual(["all", ["==", ["get", "kind"], "location"], ["==", ["get", "areaId"], "area"]]);
+  expect(maps[1].filter).toEqual([
+    "all",
+    ["==", ["get", "kind"], "location"],
+    ["==", ["get", "areaId"], "area"],
+  ]);
   expect(maps[1].fitted).toBe(0);
-  expect(screen.getByRole("button", { name: /^Satelliet/ }).getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getByRole("button", { name: /^Wereldbol/ }).getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getByRole("button", { name: "Base Camp" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("button", { name: /^Satelliet/ }).getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+  expect(screen.getByRole("button", { name: /^Wereldbol/ }).getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+  expect(screen.getByRole("button", { name: "Base Camp" }).getAttribute("aria-pressed")).toBe(
+    "true",
+  );
 });
 
 it("starts over from the whole trip when the trip geometry changes", async () => {
@@ -195,12 +216,16 @@ it("starts over from the whole trip when the trip geometry changes", async () =>
   const { rerender } = render(<TripMap owner points={[point]} lines={[]} />);
   await waitFor(() => expect(maps[0]?.sources.stops).toBeDefined());
   await waitFor(() =>
-    expect((screen.getByRole("button", { name: "Satelliet" }) as HTMLButtonElement).disabled).toBe(false),
+    expect((screen.getByRole("button", { name: "Satelliet" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    ),
   );
   fireEvent.click(screen.getByRole("button", { name: "Satelliet" }));
   rerender(<TripMap owner points={[{ ...point, coordinates: [122, 26] }]} lines={[]} />);
   await waitFor(() => expect(maps).toHaveLength(2));
   await waitFor(() => expect(maps[1].fitted).toBe(1));
   expect(maps[1].options.center).toBeUndefined();
-  expect(screen.getByRole("button", { name: /^Satelliet/ }).getAttribute("aria-pressed")).toBe("false");
+  expect(screen.getByRole("button", { name: /^Satelliet/ }).getAttribute("aria-pressed")).toBe(
+    "false",
+  );
 });

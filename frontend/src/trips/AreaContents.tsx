@@ -41,7 +41,11 @@ export function AreaContents({
           <ul>
             {locations.map((location) => (
               <li key={location.id}>
-                <Button className="secondary compact" type="button" onClick={() => onOpenLocation(location.id)}>
+                <Button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => onOpenLocation(location.id)}
+                >
                   {location.label ||
                     location.display_name?.split(",")[0] ||
                     location.locality ||
@@ -64,7 +68,8 @@ export function AreaContents({
       )}
       {updates.length > 0 && (
         <p>
-          <strong>{m.owner_travel_updates()}</strong> · {updates.map((update) => update.title).join("; ")}
+          <strong>{m.owner_travel_updates()}</strong> ·{" "}
+          {updates.map((update) => update.title).join("; ")}
         </p>
       )}
       {routes.length > 0 && (
@@ -72,7 +77,9 @@ export function AreaContents({
           <strong>{m.owner_routes()}</strong> · {routes.map(routeTitle).join("; ")}
         </p>
       )}
-      {!total && !error && <p className="help">{m.owner_no_locations_or_travel_records_in_this_area_yet()}</p>}
+      {!total && !error && (
+        <p className="help">{m.owner_no_locations_or_travel_records_in_this_area_yet()}</p>
+      )}
     </div>
   );
 }

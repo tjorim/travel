@@ -15,7 +15,8 @@ export const ownerKeys = {
   /** Redacted copies of one document or media asset. Nested under the asset list, so refreshing the list refreshes them. */
   derivatives: (subject: string, tripId: string, kind: DerivativeParent, assetId: string) =>
     [...scope(subject), "trip", tripId, kind, assetId, "derivatives"] as const,
-  library: (subject: string, resource: LibraryResource) => [...scope(subject), "library", resource] as const,
+  library: (subject: string, resource: LibraryResource) =>
+    [...scope(subject), "library", resource] as const,
   /** Library documents linked to one trip. Nested under the library documents. */
   linkedLibraryDocuments: (subject: string, tripId: string) =>
     [...scope(subject), "library", "documents", "linked", tripId] as const,

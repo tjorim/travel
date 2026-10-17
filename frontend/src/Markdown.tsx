@@ -33,6 +33,9 @@ export function Markdown({
   const Element = as ?? "div";
   // Safe: sanitized by the server's allowlist (nh3) before it ever reaches a client.
   return (
-    <Element className={["markdown", className].filter(Boolean).join(" ")} dangerouslySetInnerHTML={{ __html: html }} />
+    <Element
+      className={["markdown", className].filter(Boolean).join(" ")}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }

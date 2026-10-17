@@ -1,5 +1,10 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { createMemoryHistory, createRouter, RouterProvider, type AnyRoute } from "@tanstack/react-router";
+import {
+  createMemoryHistory,
+  createRouter,
+  RouterProvider,
+  type AnyRoute,
+} from "@tanstack/react-router";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 
@@ -27,7 +32,11 @@ export function renderWithOwner(ui: ReactElement, client = testClient()) {
 }
 
 /** Renders a route tree behind a memory-history router, for pages that read params, search or navigation state. */
-export function renderRoutesWithOwner(routeTree: AnyRoute, initialEntries: string[], client = testClient()) {
+export function renderRoutesWithOwner(
+  routeTree: AnyRoute,
+  initialEntries: string[],
+  client = testClient(),
+) {
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries }) });
   return {
     client,
@@ -42,8 +51,16 @@ export function renderRoutesWithOwner(routeTree: AnyRoute, initialEntries: strin
 
 /** jsdom has no object URLs; give a test one and remove it again with `restoreObjectUrls`. */
 export function stubObjectUrls(url = "blob:test") {
-  Object.defineProperty(URL, "createObjectURL", { configurable: true, writable: true, value: () => url });
-  Object.defineProperty(URL, "revokeObjectURL", { configurable: true, writable: true, value: () => undefined });
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    writable: true,
+    value: () => url,
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    writable: true,
+    value: () => undefined,
+  });
 }
 
 export function restoreObjectUrls() {

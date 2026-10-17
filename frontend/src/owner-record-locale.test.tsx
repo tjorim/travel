@@ -23,7 +23,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
   act(() => changeLocale("nl"));
 });
-const props = { trip: null, open: true, onClose: vi.fn(), onSaved: vi.fn(), onDeleted: vi.fn(), onNotice: vi.fn() };
+const props = {
+  trip: null,
+  open: true,
+  onClose: vi.fn(),
+  onSaved: vi.fn(),
+  onDeleted: vi.fn(),
+  onNotice: vi.fn(),
+};
 
 it("rerenders client validation and dirty values without replacing focused controls", async () => {
   renderWithOwner(<TripEditor {...props} />);
@@ -57,16 +64,24 @@ it("keeps a pending save and submitted authored values across switches", async (
   );
   vi.stubGlobal("fetch", request);
   renderWithOwner(<TripEditor {...props} />);
-  fireEvent.change(screen.getByRole("textbox", { name: "Titel" }), { target: { value: "Eigen reis" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Titel" }), {
+    target: { value: "Eigen reis" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Reis maken" }));
   await waitFor(() => expect(request).toHaveBeenCalledOnce());
   act(() => changeLocale("en"));
-  expect((screen.getByRole("button", { name: "Creating trip…" }) as HTMLButtonElement).disabled).toBe(true);
-  expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe("Eigen reis");
-  expect(JSON.parse(String((request.mock.calls[0] as unknown as [string, RequestInit])[1].body)).title).toBe(
+  expect(
+    (screen.getByRole("button", { name: "Creating trip…" }) as HTMLButtonElement).disabled,
+  ).toBe(true);
+  expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe(
     "Eigen reis",
   );
-  await act(async () => finish(new Response(JSON.stringify({ id: "new", title: "Eigen reis", travel_updates: [] }))));
+  expect(
+    JSON.parse(String((request.mock.calls[0] as unknown as [string, RequestInit])[1].body)).title,
+  ).toBe("Eigen reis");
+  await act(async () =>
+    finish(new Response(JSON.stringify({ id: "new", title: "Eigen reis", travel_updates: [] }))),
+  );
 });
 
 it("renders retained success notices, enums and plural messages in the current locale", () => {
@@ -82,7 +97,9 @@ it("renders retained success notices, enums and plural messages in the current l
     expect(ROUTE_MODE_LABELS.flight).toBe(locale === "en" ? "Flight" : "Vlucht");
     expect(bytesLabel(1536)).toBe(locale === "en" ? "1.5 kB" : "1,5 kB");
     expect(VISIT_STATUS_LABELS.planned).toBe(locale === "en" ? "Planned" : "Gepland");
-    expect(mapMessages()["NavigationControl.ZoomIn"]).toBe(locale === "en" ? "Zoom in" : "Inzoomen");
+    expect(mapMessages()["NavigationControl.ZoomIn"]).toBe(
+      locale === "en" ? "Zoom in" : "Inzoomen",
+    );
     for (const count of [0, 1, 3]) {
       expect(m.owner_night_count({ count })).toBe(
         `${count} ${locale === "en" ? (count === 1 ? "night" : "nights") : count === 1 ? "nacht" : "nachten"}`,
@@ -97,7 +114,9 @@ it("localizes only new Markdown placeholders and preserves existing source and s
   const dutch = applyMarkdownSnippet("", 0, 0, "bold").value;
   expect(dutch).toBe("**vet**");
   act(() => changeLocale("en"));
-  expect(applyMarkdownSnippet(dutch, dutch.length, dutch.length, "italic").value).toBe("**vet***italic*");
+  expect(applyMarkdownSnippet(dutch, dutch.length, dutch.length, "italic").value).toBe(
+    "**vet***italic*",
+  );
   expect(applyMarkdownSnippet("Eigen tekst", 0, 5, "bold").value).toBe("**Eigen** tekst");
   expect(applyMarkdownSnippet("", 0, 0, "link").value).toBe("[link text](https://)");
 });

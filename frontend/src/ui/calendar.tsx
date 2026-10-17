@@ -30,9 +30,15 @@ function Calendar({ className, classNames, ...props }: React.ComponentProps<type
         button_previous: cn(navButton, defaults.button_previous),
         button_next: cn(navButton, defaults.button_next),
         month_caption: cn("flex h-11 items-center justify-center sm:h-9", defaults.month_caption),
-        caption_label: cn("text-sm font-extrabold text-travel-ink capitalize", defaults.caption_label),
+        caption_label: cn(
+          "text-sm font-extrabold text-travel-ink capitalize",
+          defaults.caption_label,
+        ),
         month_grid: cn("border-collapse", defaults.month_grid),
-        weekday: cn("size-11 p-0 text-xs font-bold text-travel-muted capitalize sm:size-9", defaults.weekday),
+        weekday: cn(
+          "size-11 p-0 text-xs font-bold text-travel-muted capitalize sm:size-9",
+          defaults.weekday,
+        ),
         day: cn("p-0 text-center", defaults.day),
         day_button: cn(
           "size-11 rounded-travel-control bg-transparent p-0 font-normal text-travel-ink hover:bg-travel-hover sm:size-9",
@@ -42,7 +48,10 @@ function Calendar({ className, classNames, ...props }: React.ComponentProps<type
           "[&>button]:bg-primary [&>button]:font-bold [&>button]:text-primary-foreground [&>button]:hover:bg-primary",
           defaults.selected,
         ),
-        today: cn("[&>button]:ring-2 [&>button]:ring-travel-forest [&>button]:ring-inset", defaults.today),
+        today: cn(
+          "[&>button]:ring-2 [&>button]:ring-travel-forest [&>button]:ring-inset",
+          defaults.today,
+        ),
         outside: cn("[&>button]:text-travel-muted", defaults.outside),
         disabled: cn("opacity-40", defaults.disabled),
         hidden: cn("invisible", defaults.hidden),
@@ -51,7 +60,11 @@ function Calendar({ className, classNames, ...props }: React.ComponentProps<type
       components={{
         Chevron: ({ orientation, className: iconClass }) => {
           const Icon =
-            orientation === "left" ? ChevronLeftIcon : orientation === "right" ? ChevronRightIcon : ChevronDownIcon;
+            orientation === "left"
+              ? ChevronLeftIcon
+              : orientation === "right"
+                ? ChevronRightIcon
+                : ChevronDownIcon;
           return <Icon className={cn("size-4", iconClass)} aria-hidden="true" />;
         },
       }}

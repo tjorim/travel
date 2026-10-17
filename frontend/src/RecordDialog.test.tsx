@@ -47,7 +47,12 @@ it("runs the close callback after Escape dismisses a clean dialog", async () => 
   function EscapeFixture() {
     const [open, setOpen] = useState(true);
     return (
-      <RecordDialog open={open} title="Record" onDismiss={() => setOpen(false)} onAfterClose={afterClose}>
+      <RecordDialog
+        open={open}
+        title="Record"
+        onDismiss={() => setOpen(false)}
+        onAfterClose={afterClose}
+      >
         <p>Inhoud</p>
       </RecordDialog>
     );
@@ -68,13 +73,17 @@ it("asks before dismissing dirty content and keeps the editor open while the pro
   fireEvent.click(screen.getByRole("button", { name: "Record sluiten" }));
   const prompt = screen.getByRole("alertdialog", { name: "Wijzigingen verwerpen?" });
   await waitFor(() =>
-    expect(document.activeElement).toBe(within(prompt).getByRole("button", { name: "Verder bewerken" })),
+    expect(document.activeElement).toBe(
+      within(prompt).getByRole("button", { name: "Verder bewerken" }),
+    ),
   );
   fireEvent.keyDown(document, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   expect(dismiss).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Record sluiten" }));
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Wijzigingen verwerpen" }));
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Wijzigingen verwerpen" }),
+  );
   expect(dismiss).toHaveBeenCalledTimes(1);
 });
 
@@ -87,7 +96,9 @@ it("keeps a nested delete confirmation in front and focuses its safe cancel acti
     </RecordDialog>,
   );
   const prompt = screen.getByRole("alertdialog", { name: "Record verwijderen?" });
-  await waitFor(() => expect(document.activeElement).toBe(within(prompt).getByRole("button", { name: "Annuleren" })));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(within(prompt).getByRole("button", { name: "Annuleren" })),
+  );
   fireEvent.click(within(prompt).getByRole("button", { name: "Verwijderen" }));
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(cancel).not.toHaveBeenCalled();
@@ -103,6 +114,8 @@ it("routes an outside press through the dirty dismissal policy", async () => {
   fireEvent.mouseDown(document.body, { button: 0 });
   fireEvent.mouseUp(document.body, { button: 0 });
   fireEvent.click(document.body);
-  await waitFor(() => expect(screen.getByRole("alertdialog", { name: "Wijzigingen verwerpen?" })).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByRole("alertdialog", { name: "Wijzigingen verwerpen?" })).toBeTruthy(),
+  );
   expect(dismiss).not.toHaveBeenCalled();
 });

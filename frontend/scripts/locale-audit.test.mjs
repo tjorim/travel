@@ -14,10 +14,14 @@ it("finds JSX copy, single-word labels, validators, enum prose and template frag
     "Naam",
     "Zoeken",
   ]);
-  expect(sourceCandidates('const labels = { title: "Welkom" };').map((item) => item.text)).toEqual(["Welkom"]);
+  expect(sourceCandidates('const labels = { title: "Welkom" };').map((item) => item.text)).toEqual([
+    "Welkom",
+  ]);
   expect(sourceCandidates('const serverFields = { title: "title" };')).toEqual([]);
   expect(sourceCandidates('const config = { serverFields: { label: "label" } };')).toEqual([]);
-  expect(sourceCandidates('const id = "protocol-key";', "source.ts", true)[0].text).toBe("protocol-key");
+  expect(sourceCandidates('const id = "protocol-key";', "source.ts", true)[0].text).toBe(
+    "protocol-key",
+  );
 });
 
 it("ignores diagnostics, directives, colours, media queries and class lists", () => {
@@ -26,16 +30,22 @@ it("ignores diagnostics, directives, colours, media queries and class lists", ()
     const box = <i className="[&_svg:not([class*='size-'])]:size-4 data-[size=sm]/dialog:grid" />;`;
   expect(sourceCandidates(source)).toEqual([]);
   expect(
-    sourceCandidates('const base = cva("uppercase tracking wide", { variants: { size: { sm: "text xs" } } });'),
+    sourceCandidates(
+      'const base = cva("uppercase tracking wide", { variants: { size: { sm: "text xs" } } });',
+    ),
   ).toEqual([]);
   expect(sourceCandidates("throw new RangeError(`Invalid value: ${value}`);")).toEqual([]);
-  expect(sourceCandidates('toast.error("Could not load");').map((item) => item.text)).toEqual(["Could not load"]);
+  expect(sourceCandidates('toast.error("Could not load");').map((item) => item.text)).toEqual([
+    "Could not load",
+  ]);
 });
 
 it("rejects module-level translations while allowing deferred functions and getters", () => {
   expect(frozenMessageCalls("const copy = m.settings();")).toEqual([1]);
   expect(frozenMessageCalls("const labels = { title: m.settings() };")).toEqual([1]);
   expect(
-    frozenMessageCalls("const labels = { get title() { return m.settings(); } }; const notice = () => m.settings();"),
+    frozenMessageCalls(
+      "const labels = { get title() { return m.settings(); } }; const notice = () => m.settings();",
+    ),
   ).toEqual([]);
 });

@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const placeholders = (text) => [...new Set([...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort();
+const placeholders = (text) =>
+  [...new Set([...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort();
 
 /** Compare declarations as well as interpolation: an unused input is still part of the typed contract. */
 export function catalogueErrors(base, translation) {
@@ -33,15 +34,23 @@ export function catalogueErrors(base, translation) {
 
 /** Check every locale in project.inlang/settings.json against the base locale. */
 export function projectErrors(root) {
-  const settings = JSON.parse(fs.readFileSync(path.join(root, "project.inlang/settings.json"), "utf8"));
+  const settings = JSON.parse(
+    fs.readFileSync(path.join(root, "project.inlang/settings.json"), "utf8"),
+  );
   const pattern = settings["plugin.inlang.messageFormat"].pathPattern;
-  const load = (locale) => JSON.parse(fs.readFileSync(path.join(root, pattern.replace("{locale}", locale)), "utf8"));
+  const load = (locale) =>
+    JSON.parse(fs.readFileSync(path.join(root, pattern.replace("{locale}", locale)), "utf8"));
   const directory = path.join(root, path.dirname(pattern));
-  const known = new Set(settings.locales.map((locale) => path.basename(pattern.replace("{locale}", locale))));
+  const known = new Set(
+    settings.locales.map((locale) => path.basename(pattern.replace("{locale}", locale))),
+  );
   const errors = fs
     .readdirSync(directory)
     .filter((file) => file.endsWith(".json") && !known.has(file))
-    .map((file) => `${path.relative(root, path.join(directory, file))}: file is not listed in project.inlang locales`);
+    .map(
+      (file) =>
+        `${path.relative(root, path.join(directory, file))}: file is not listed in project.inlang locales`,
+    );
   const base = load(settings.baseLocale);
   for (const locale of settings.locales.filter((candidate) => candidate !== settings.baseLocale))
     for (const error of catalogueErrors(base, load(locale))) errors.push(`${locale}: ${error}`);
@@ -53,5 +62,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (errors.length) {
     process.stderr.write(`${errors.join("\n")}\n`);
     process.exitCode = 1;
-  } else process.stdout.write(`Message parity passed: ${locales} locales, ${keys} keys in the base catalogue.\n`);
+  } else
+    process.stdout.write(
+      `Message parity passed: ${locales} locales, ${keys} keys in the base catalogue.\n`,
+    );
 }

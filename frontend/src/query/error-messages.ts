@@ -1,6 +1,10 @@
 import { m } from "../paraglide/messages.js";
 
-export type ErrorDescriptor = { code: string; params: Record<string, string | number>; path: (string | number)[] };
+export type ErrorDescriptor = {
+  code: string;
+  params: Record<string, string | number>;
+  path: (string | number)[];
+};
 
 export function descriptorMessage(error: ErrorDescriptor): string | null {
   const p = error.params;
@@ -214,7 +218,9 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "supply_both_coordinates_or_neither":
       return m.api_supply_both_coordinates_or_neither();
     case "resource_in_use":
-      return typeof p.count === "number" ? m.api_resource_in_use({ count: p.count }) : m.api_operation_failed();
+      return typeof p.count === "number"
+        ? m.api_resource_in_use({ count: p.count })
+        : m.api_operation_failed();
     case "keep_id_cannot_also_be_a_duplicate":
       return m.api_keep_id_cannot_also_be_a_duplicate();
     case "add_an_address_before_sharing_it":
@@ -268,7 +274,9 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
         ? m.api_string_too_short({ min_length: p.min_length })
         : m.api_invalid_input();
     case "greater_than_equal":
-      return typeof p.ge === "number" ? m.api_greater_than_equal({ ge: p.ge }) : m.api_invalid_input();
+      return typeof p.ge === "number"
+        ? m.api_greater_than_equal({ ge: p.ge })
+        : m.api_invalid_input();
     case "less_than_equal":
       return typeof p.le === "number" ? m.api_less_than_equal({ le: p.le }) : m.api_invalid_input();
     case "greater_than":

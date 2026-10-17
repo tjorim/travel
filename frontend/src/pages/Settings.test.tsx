@@ -29,7 +29,9 @@ beforeEach(() => {
     return undefined;
   });
   api.on("DELETE", /^\/api\/provider-tokens\/([^/]+)$/, (_body, match) => {
-    providers = providers.map((item) => (item.provider === match[1] ? { ...item, connected: false } : item));
+    providers = providers.map((item) =>
+      item.provider === match[1] ? { ...item, connected: false } : item,
+    );
     return undefined;
   });
 });
@@ -44,7 +46,9 @@ afterEach(() => {
 it("asks to sign in before showing provider state", () => {
   auth.session = null;
   renderWithOwner(<Settings />);
-  expect(screen.getByText("Meld aan om de status van je private mediaproviders te bekijken.")).toBeTruthy();
+  expect(
+    screen.getByText("Meld aan om de status van je private mediaproviders te bekijken."),
+  ).toBeTruthy();
   expect(api.requests).toEqual([]);
 });
 
@@ -81,7 +85,11 @@ it("explains that provider import is unavailable when no provider is configured"
 });
 
 it("completes a Google OAuth return and clears the code from the address", async () => {
-  window.history.replaceState(null, "", "/admin/settings?code=authorization-code&state=one-time-state");
+  window.history.replaceState(
+    null,
+    "",
+    "/admin/settings?code=authorization-code&state=one-time-state",
+  );
   renderWithOwner(<Settings />);
   await screen.findByText("Google Photos is verbonden voor private imports.");
   expect(api.lastBody("POST /api/provider-tokens/google_photos_picker/oauth/complete")).toEqual({
@@ -99,7 +107,9 @@ it("disconnects after confirmation", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Loskoppelen" }));
   await answerConfirmation("Loskoppelen");
   await screen.findByText("Google Photos is losgekoppeld.");
-  await waitFor(() => expect(screen.getByRole("button", { name: "Verbinden met Google" })).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Verbinden met Google" })).toBeTruthy(),
+  );
 });
 
 it("keeps the connection when revocation fails", async () => {

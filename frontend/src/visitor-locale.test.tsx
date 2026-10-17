@@ -28,7 +28,9 @@ function projection(): Projection {
     places: [{ id: "place", label: "Mijn plek", latitude: 25, longitude: 121 }],
     stays: [],
     navigation: [{ id: "place" }],
-    updates: [{ id: "stable-story", title: "Mijn verhaal", story_date: "2054", date_precision: "year" }],
+    updates: [
+      { id: "stable-story", title: "Mijn verhaal", story_date: "2054", date_precision: "year" },
+    ],
     routes: [
       {
         id: "route",
@@ -39,7 +41,9 @@ function projection(): Projection {
         departure: { label: "Mijn vertrek" },
       },
     ],
-    media: [{ id: "image", image: { id: "image" }, alt_text: "Mijn foto", caption: "Mijn onderschrift" }],
+    media: [
+      { id: "image", image: { id: "image" }, alt_text: "Mijn foto", caption: "Mijn onderschrift" },
+    ],
   };
 }
 
@@ -52,7 +56,9 @@ afterEach(() => {
 });
 
 it("switches projection chrome, dates and map alternatives while keeping authored content, URLs and anchors", () => {
-  const view = render(<ProjectionView projection={projection()} audience="share" identifier={token} />);
+  const view = render(
+    <ProjectionView projection={projection()} audience="share" identifier={token} />,
+  );
   expect(screen.getByText("april 2054 – mei 2054")).toBeTruthy();
   const img = screen.getByRole("img", { name: "Mijn foto" });
   const url = img.getAttribute("src");
@@ -63,7 +69,9 @@ it("switches projection chrome, dates and map alternatives while keeping authore
   expect(screen.getByText("2 April 2054")).toBeTruthy();
   expect(screen.getByText(/3 Apr 2054, 07:30/)).toBeTruthy();
   expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
-  expect(screen.getByRole("link", { name: "Visit: Mijn bezoek" }).getAttribute("href")).toBe("#visit-visit");
+  expect(screen.getByRole("link", { name: "Visit: Mijn bezoek" }).getAttribute("href")).toBe(
+    "#visit-visit",
+  );
   expect(screen.getByRole("link", { name: "Directions" }).getAttribute("href")).toBe(
     `/api/shared/${token}/navigation/place`,
   );
@@ -118,7 +126,9 @@ it("retranslates retained image/video failures and retries only the selected ima
   expect(screen.getByText("This video is unavailable.")).toBeTruthy();
   expect(screen.getByRole("button", { name: m.retry() })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: m.retry() }));
-  expect(screen.getByRole("img", { name: "Mijn foto" }).getAttribute("src")).toBe(`/api/shared/${token}/files/image`);
+  expect(screen.getByRole("img", { name: "Mijn foto" }).getAttribute("src")).toBe(
+    `/api/shared/${token}/files/image`,
+  );
   expect(screen.queryByText("This image is unavailable.")).toBeNull();
 });
 
@@ -126,7 +136,9 @@ it("reports denied saved-link storage without losing the trip or refetching on a
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
     throw new Error("denied");
   });
-  const fetcher = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify(projection())));
+  const fetcher = vi.fn(
+    async (_input: RequestInfo | URL) => new Response(JSON.stringify(projection())),
+  );
   vi.stubGlobal("fetch", fetcher);
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("heading", { name: "Authored reis" });
@@ -139,7 +151,10 @@ it("reports denied saved-link storage without losing the trip or refetching on a
 
 it("sets a long authored trip title in a smaller, looser heading than a short one", async () => {
   const short = projection();
-  const long = { ...projection(), title: "Een reis met een bijzonder lange titel die over meerdere regels moet lopen" };
+  const long = {
+    ...projection(),
+    title: "Een reis met een bijzonder lange titel die over meerdere regels moet lopen",
+  };
   for (const [data, looser] of [
     [short, false],
     [long, true],
@@ -177,29 +192,41 @@ it("uses the same translated projection in owner previews without visitor resour
   expect(fetcher).not.toHaveBeenCalled();
 });
 
-it.each(["/", "/trips/"])("translates public cards at %s without changing slug paths", async (path) => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify([{ slug: "authored-slug", title: "Mijn reis", summary: null, dates: projection().dates }]),
-        ),
-    ),
-  );
-  render(<VisitorRoutes initialEntries={[path]} />);
-  const card = await screen.findByRole("link", { name: /Mijn reis/ });
-  act(() => changeLocale("en"));
-  expect(card.textContent).toContain("April 2054 – May 2054");
-  expect(card.getAttribute("href")).toBe("/trips/authored-slug");
-});
+it.each(["/", "/trips/"])(
+  "translates public cards at %s without changing slug paths",
+  async (path) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                slug: "authored-slug",
+                title: "Mijn reis",
+                summary: null,
+                dates: projection().dates,
+              },
+            ]),
+          ),
+      ),
+    );
+    render(<VisitorRoutes initialEntries={[path]} />);
+    const card = await screen.findByRole("link", { name: /Mijn reis/ });
+    act(() => changeLocale("en"));
+    expect(card.textContent).toContain("April 2054 – May 2054");
+    expect(card.getAttribute("href")).toBe("/trips/authored-slug");
+  },
+);
 
 it.each(["invalid", "revoked", "expired"])(
   "keeps an unavailable %s share ambiguous in both languages",
   async (reason) => {
     const fetcher = vi.fn(
       async (_input: RequestInfo | URL, _init?: RequestInit) =>
-        new Response(JSON.stringify({ detail: reason, errors: [{ code: reason }] }), { status: 404 }),
+        new Response(JSON.stringify({ detail: reason, errors: [{ code: reason }] }), {
+          status: 404,
+        }),
     );
     vi.stubGlobal("fetch", fetcher);
     rememberSharedTrip(token, projection());
@@ -246,7 +273,9 @@ it("keeps a saved shortcut visible when forgetting is denied and translates its 
   fireEvent.click(screen.getByRole("button", { name: m.forget_trip() }));
   act(() => changeLocale("en"));
   expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
-  expect(screen.getByRole("link", { name: /Authored reis/ }).getAttribute("href")).toBe(`/share/${token}`);
+  expect(screen.getByRole("link", { name: /Authored reis/ }).getAttribute("href")).toBe(
+    `/share/${token}`,
+  );
 });
 
 it.each(["/missing", "/share/", "/trips/withdrawn"])(
@@ -257,8 +286,12 @@ it.each(["/missing", "/share/", "/trips/withdrawn"])(
       vi.fn(async () => new Response(null, { status: 404 })),
     );
     render(<VisitorRoutes initialEntries={[path]} />);
-    await screen.findByText(path === "/trips/withdrawn" ? m.unavailable_trip() : m.page_unavailable());
+    await screen.findByText(
+      path === "/trips/withdrawn" ? m.unavailable_trip() : m.page_unavailable(),
+    );
     act(() => changeLocale("en"));
-    expect(screen.getByText(path === "/trips/withdrawn" ? m.unavailable_trip() : m.page_unavailable())).toBeTruthy();
+    expect(
+      screen.getByText(path === "/trips/withdrawn" ? m.unavailable_trip() : m.page_unavailable()),
+    ).toBeTruthy();
   },
 );

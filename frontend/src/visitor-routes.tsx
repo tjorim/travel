@@ -22,7 +22,12 @@ import {
   type Projection,
   type ProjectionItem,
 } from "./ProjectionView";
-import { forgetSharedTrip, readSavedSharedTrips, rememberSharedTrip, type SavedSharedTrip } from "./saved-shared-trips";
+import {
+  forgetSharedTrip,
+  readSavedSharedTrips,
+  rememberSharedTrip,
+  type SavedSharedTrip,
+} from "./saved-shared-trips";
 
 /** A long authored title would otherwise fill the first screen at display size with no room between lines. */
 const LONG_TITLE_LENGTH = 40;
@@ -134,7 +139,11 @@ function TripIndex() {
         {state.kind === "error" && (
           <div className="travel-card" role="alert">
             <h2>{m.trips_error()}</h2>
-            <p>{state.failure ? errorMessage(state.failure, m.retry_description) : m.retry_description()}</p>
+            <p>
+              {state.failure
+                ? errorMessage(state.failure, m.retry_description)
+                : m.retry_description()}
+            </p>
             <Button type="button" onClick={() => setAttempt((current) => current + 1)}>
               {m.retry()}
             </Button>
@@ -188,7 +197,11 @@ function TripIndex() {
                     {m.view_trip()} <span aria-hidden="true">→</span>
                   </span>
                 </Link>
-                <Button className="secondary compact" type="button" onClick={() => forget(trip.token)}>
+                <Button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => forget(trip.token)}
+                >
                   {m.forget_trip()}
                 </Button>
               </li>
@@ -252,7 +265,8 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   }, [audience, identifier, attempt]);
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
-  const title = state.kind === "ready" && state.projection.title ? state.projection.title : m.shared_trip();
+  const title =
+    state.kind === "ready" && state.projection.title ? state.projection.title : m.shared_trip();
   return (
     <main className="travel-shell pt-6!">
       <Preferences />
@@ -275,7 +289,11 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
       {state.kind === "error" && (
         <section className="travel-card" role="alert">
           <h2>{m.trip_error()}</h2>
-          <p>{state.failure ? errorMessage(state.failure, m.retry_description) : m.retry_description()}</p>
+          <p>
+            {state.failure
+              ? errorMessage(state.failure, m.retry_description)
+              : m.retry_description()}
+          </p>
           <Button type="button" onClick={retry}>
             {m.retry()}
           </Button>
@@ -307,8 +325,16 @@ function VisitorRoute({ audience }: { audience: Audience }) {
 }
 
 const visitorRootRoute = createRootRoute({ component: Outlet });
-const visitorIndexRoute = createRoute({ getParentRoute: () => visitorRootRoute, path: "/", component: TripIndex });
-const visitorTripsRoute = createRoute({ getParentRoute: () => visitorRootRoute, path: "trips", component: TripIndex });
+const visitorIndexRoute = createRoute({
+  getParentRoute: () => visitorRootRoute,
+  path: "/",
+  component: TripIndex,
+});
+const visitorTripsRoute = createRoute({
+  getParentRoute: () => visitorRootRoute,
+  path: "trips",
+  component: TripIndex,
+});
 const visitorTripRoute = createRoute({
   getParentRoute: () => visitorRootRoute,
   path: "trips/$slug",

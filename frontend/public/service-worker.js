@@ -1,5 +1,11 @@
 const CACHE = "travel-admin-shell-v4";
-const SHELL = ["/admin/", "/admin/manifest.webmanifest", "/admin/icon.svg", "/admin/appearance.js", "/admin/locale.js"];
+const SHELL = [
+  "/admin/",
+  "/admin/manifest.webmanifest",
+  "/admin/icon.svg",
+  "/admin/appearance.js",
+  "/admin/locale.js",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -12,7 +18,9 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((key) => key.startsWith("travel-admin-shell-") && key !== CACHE).map((key) => caches.delete(key)),
+          keys
+            .filter((key) => key.startsWith("travel-admin-shell-") && key !== CACHE)
+            .map((key) => caches.delete(key)),
         ),
       ),
   );
@@ -21,15 +29,25 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (["/admin/appearance.js", "/admin/locale.js"].includes(new URL(event.request.url).pathname)) {
-    event.respondWith(fetch(event.request).catch(async () => (await caches.match(event.request)) || Response.error()));
+    event.respondWith(
+      fetch(event.request).catch(
+        async () => (await caches.match(event.request)) || Response.error(),
+      ),
+    );
     return;
   }
-  if (event.request.mode !== "navigate" || !new URL(event.request.url).pathname.startsWith("/admin/")) return;
+  if (
+    event.request.mode !== "navigate" ||
+    !new URL(event.request.url).pathname.startsWith("/admin/")
+  )
+    return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {
         if (response.ok && response.headers.get("Content-Type")?.includes("text/html")) {
-          event.waitUntil(caches.open(CACHE).then((cache) => cache.put("/admin/", response.clone())));
+          event.waitUntil(
+            caches.open(CACHE).then((cache) => cache.put("/admin/", response.clone())),
+          );
         }
         return response;
       })

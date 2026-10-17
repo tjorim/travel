@@ -79,10 +79,16 @@ function storeSession(session: TrackerSession): void {
 }
 
 export function shouldRestoreSession(): boolean {
-  return localStorage.getItem(restoreMarkerKey) === "1" && sessionStorage.getItem(silentRestoreKey) !== "1";
+  return (
+    localStorage.getItem(restoreMarkerKey) === "1" &&
+    sessionStorage.getItem(silentRestoreKey) !== "1"
+  );
 }
 
-export async function beginSignIn(returnPath: string, { silent = false }: SignInOptions = {}): Promise<void> {
+export async function beginSignIn(
+  returnPath: string,
+  { silent = false }: SignInOptions = {},
+): Promise<void> {
   const codeVerifier = randomValue();
   const state = randomValue();
   sessionStorage.setItem(
@@ -105,14 +111,17 @@ export async function beginSignIn(returnPath: string, { silent = false }: SignIn
   window.location.assign(`${issuer}/protocol/openid-connect/auth?${parameters}`);
 }
 
-export async function completeSignIn(search: string): Promise<{ returnPath: string; session: TrackerSession }> {
+export async function completeSignIn(
+  search: string,
+): Promise<{ returnPath: string; session: TrackerSession }> {
   const parameters = new URLSearchParams(search);
   const error = parameters.get("error");
   const code = parameters.get("code");
   const state = parameters.get("state");
   const stored = sessionStorage.getItem(transactionKey);
   sessionStorage.removeItem(transactionKey);
-  if (!state || !stored) throw new FeedbackError(() => m.owner_the_sign_in_session_is_missing_or_has_expired());
+  if (!state || !stored)
+    throw new FeedbackError(() => m.owner_the_sign_in_session_is_missing_or_has_expired());
 
   let transaction: PkceTransaction;
   try {
@@ -128,7 +137,9 @@ export async function completeSignIn(search: string): Promise<{ returnPath: stri
       // There is no longer a Keycloak SSO session to recover. Do not retry on
       // every rendered route; the owner can choose the normal sign-in action.
       localStorage.removeItem(restoreMarkerKey);
-      throw new FeedbackError(() => m.owner_your_sign_in_session_has_expired_sign_in_again_to_continue());
+      throw new FeedbackError(() =>
+        m.owner_your_sign_in_session_has_expired_sign_in_again_to_continue(),
+      );
     }
     throw new FeedbackError(() => m.owner_sign_in_was_cancelled_or_denied());
   }
@@ -145,11 +156,18 @@ export async function completeSignIn(search: string): Promise<{ returnPath: stri
       redirect_uri: callbackUrl(),
     }),
   });
-  if (!response.ok) throw new FeedbackError(() => m.owner_the_sign_in_code_could_not_be_exchanged());
+  if (!response.ok)
+    throw new FeedbackError(() => m.owner_the_sign_in_code_could_not_be_exchanged());
 
-  const token = (await response.json()) as { access_token?: unknown; expires_in?: unknown; id_token?: unknown };
+  const token = (await response.json()) as {
+    access_token?: unknown;
+    expires_in?: unknown;
+    id_token?: unknown;
+  };
   if (typeof token.access_token !== "string" || typeof token.expires_in !== "number") {
-    throw new FeedbackError(() => m.owner_the_identity_server_did_not_return_a_valid_access_token());
+    throw new FeedbackError(() =>
+      m.owner_the_identity_server_did_not_return_a_valid_access_token(),
+    );
   }
   const session: TrackerSession = {
     accessToken: token.access_token,

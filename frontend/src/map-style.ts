@@ -5,7 +5,12 @@ export type MapCamera = { center: [number, number]; zoom: number; pitch: number;
 
 export function readCamera(instance: MapLibreMap): MapCamera {
   const { lng, lat } = instance.getCenter();
-  return { center: [lng, lat], zoom: instance.getZoom(), pitch: instance.getPitch(), bearing: instance.getBearing() };
+  return {
+    center: [lng, lat],
+    zoom: instance.getZoom(),
+    pitch: instance.getPitch(),
+    bearing: instance.getBearing(),
+  };
 }
 
 const defaultStyleUrl = "https://tiles.openfreemap.org/styles/liberty";
@@ -25,17 +30,24 @@ export async function loadMapStyle(
   theme = "light",
 ): Promise<string | StyleSpecification> {
   if (styleUrl !== defaultStyleUrl || import.meta.env.VITE_MAP_STYLE_URL) return styleUrl;
-  const response = await fetch(theme === "dark" ? "https://tiles.openfreemap.org/styles/dark" : styleUrl, {
-    signal,
-    referrerPolicy: "no-referrer",
-    credentials: "omit",
-  });
+  const response = await fetch(
+    theme === "dark" ? "https://tiles.openfreemap.org/styles/dark" : styleUrl,
+    {
+      signal,
+      referrerPolicy: "no-referrer",
+      credentials: "omit",
+    },
+  );
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const style = (await response.json()) as StyleSpecification;
   for (const layer of style.layers ?? []) {
     const property = numericFilters[layer.id];
     if (property && "filter" in layer && layer.filter)
-      layer.filter = ["all", ["==", ["typeof", ["get", property]], "number"], layer.filter] as typeof layer.filter;
+      layer.filter = [
+        "all",
+        ["==", ["typeof", ["get", property]], "number"],
+        layer.filter,
+      ] as typeof layer.filter;
   }
   return style;
 }
@@ -55,5 +67,9 @@ export function styleLabelFont(style: Pick<StyleSpecification, "layers"> | undef
       ? [font as string[]]
       : [];
   });
-  return stacks.find((stack) => !/bold|italic|oblique/i.test(stack.join(" "))) ?? stacks[0] ?? FALLBACK_LABEL_FONT;
+  return (
+    stacks.find((stack) => !/bold|italic|oblique/i.test(stack.join(" "))) ??
+    stacks[0] ??
+    FALLBACK_LABEL_FONT
+  );
 }

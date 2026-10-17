@@ -46,15 +46,23 @@ function stubFetch(entries: EmergencyInfoEntry[]): {
     vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const method = init?.method ?? "GET";
-      const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : undefined;
+      const body =
+        typeof init?.body === "string"
+          ? (JSON.parse(init.body) as Record<string, unknown>)
+          : undefined;
       state.calls.push({ url, method, body });
       if (method !== "GET" && state.failNext) {
         const failure = state.failNext;
         state.failNext = null;
-        return Promise.resolve(new Response(JSON.stringify(failure.body), { status: failure.status }));
+        return Promise.resolve(
+          new Response(JSON.stringify(failure.body), { status: failure.status }),
+        );
       }
       if (method === "POST" && url === "/api/library/emergency-info") {
-        const created = entry({ id: `entry-${state.entries.length + 1}`, ...(body as Partial<EmergencyInfoEntry>) });
+        const created = entry({
+          id: `entry-${state.entries.length + 1}`,
+          ...(body as Partial<EmergencyInfoEntry>),
+        });
         state.entries = [...state.entries, created];
         return Promise.resolve(new Response(JSON.stringify(created), { status: 201 }));
       }
@@ -63,7 +71,9 @@ function stubFetch(entries: EmergencyInfoEntry[]): {
           url.endsWith(item.id) ? { ...item, ...(body as Partial<EmergencyInfoEntry>) } : item,
         );
         return Promise.resolve(
-          new Response(JSON.stringify(state.entries.find((item) => url.endsWith(item.id))), { status: 200 }),
+          new Response(JSON.stringify(state.entries.find((item) => url.endsWith(item.id))), {
+            status: 200,
+          }),
         );
       }
       if (method === "DELETE") {
@@ -110,7 +120,9 @@ it("shows an empty state without any emergency-info entry", async () => {
       <EmergencyInfoManager />
     </AuthProvider>,
   );
-  await screen.findByText("Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.");
+  await screen.findByText(
+    "Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.",
+  );
 });
 
 it("deletes an entry after explicit confirmation", async () => {
@@ -125,11 +137,17 @@ it("deletes an entry after explicit confirmation", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Noodinformatie Mom bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
 
-  await screen.findByText("Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.");
+  await screen.findByText(
+    "Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.",
+  );
   expect(
-    state.calls.some((call) => call.method === "DELETE" && call.url === "/api/library/emergency-info/entry-1"),
+    state.calls.some(
+      (call) => call.method === "DELETE" && call.url === "/api/library/emergency-info/entry-1",
+    ),
   ).toBe(true);
 });
 
@@ -154,7 +172,10 @@ it("lets the owner pin an emergency-info entry for offline access and unpin it a
 
 it("opens the editor with the saved entry and shows the edited one at once", async () => {
   withSession();
-  stubFetch([entry(), entry({ id: "entry-2", label: "Ambassade", value: "+886 2 0000 0000", notes: "Kantooruren" })]);
+  stubFetch([
+    entry(),
+    entry({ id: "entry-2", label: "Ambassade", value: "+886 2 0000 0000", notes: "Kantooruren" }),
+  ]);
   renderWithOwner(
     <AuthProvider>
       <EmergencyInfoManager />
@@ -166,7 +187,9 @@ it("opens the editor with the saved entry and shows the edited one at once", asy
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect((screen.getByLabelText("Label") as HTMLInputElement).value).toBe("Ambassade");
   expect((screen.getByLabelText("Waarde") as HTMLInputElement).value).toBe("+886 2 0000 0000");
-  expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe("Kantooruren");
+  expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe(
+    "Kantooruren",
+  );
   fireEvent.change(screen.getByLabelText("Label"), { target: { value: "Ambassade Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Opslaan" }));
   await screen.findByText("Ambassade Taipei");
@@ -184,7 +207,9 @@ it("adds an entry after validating the required fields, and keeps the input when
       <EmergencyInfoManager />
     </AuthProvider>,
   );
-  await screen.findByText("Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.");
+  await screen.findByText(
+    "Nog geen noodinformatie. Voeg een contact, nummer of medische notitie toe.",
+  );
   fireEvent.click(screen.getByRole("button", { name: "Nieuwe invoer" }));
   fireEvent.click(screen.getByRole("button", { name: "Toevoegen" }));
   await screen.findByText("Geef de invoer een label.");
@@ -195,7 +220,10 @@ it("adds an entry after validating the required fields, and keeps the input when
   fireEvent.change(screen.getByLabelText("Waarde"), { target: { value: "+32 3 000 00 00" } });
   state.failNext = {
     status: 422,
-    body: { detail: "diagnostic", errors: [{ code: "invalid_input", path: ["body", "value"], params: {} }] },
+    body: {
+      detail: "diagnostic",
+      errors: [{ code: "invalid_input", path: ["body", "value"], params: {} }],
+    },
   };
   fireEvent.click(screen.getByRole("button", { name: "Toevoegen" }));
   await screen.findByText("Deze invoer is niet geldig.", { selector: ".field-error" });

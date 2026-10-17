@@ -14,8 +14,12 @@ function Harness({ initial = { day: "2054-11-16", time: "", moment: "" } }: { in
   const record = useRecordForm({ defaultValues: initial, submit, fallback: () => "failed" });
   return (
     <RecordForm record={record} submitLabel="Opslaan" pendingLabel="Opslaan…">
-      <record.form.Field name="day">{(field) => <DateField field={field} label="Dag" optional />}</record.form.Field>
-      <record.form.Field name="time">{(field) => <TimeField field={field} label="Tijd" optional />}</record.form.Field>
+      <record.form.Field name="day">
+        {(field) => <DateField field={field} label="Dag" optional />}
+      </record.form.Field>
+      <record.form.Field name="time">
+        {(field) => <TimeField field={field} label="Tijd" optional />}
+      </record.form.Field>
       <record.form.Field name="moment">
         {(field) => <DateTimeField field={field} label="Moment" optional />}
       </record.form.Field>
@@ -32,7 +36,8 @@ afterEach(() => {
 });
 
 const text = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value;
-const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
+const type = (label: string, value: string) =>
+  fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const save = () => fireEvent.click(screen.getByRole("button", { name: "Opslaan" }));
 
 it("shows the saved date in the interface language and saves ISO", async () => {
@@ -82,7 +87,9 @@ it("joins the date and time of a date-time, and refuses half of one", async () =
   render(<Harness />);
   type("Moment, datum", "2054-12-06");
   save();
-  expect(await screen.findByText("Vul zowel een datum als een tijd in, of laat beide leeg.")).toBeTruthy();
+  expect(
+    await screen.findByText("Vul zowel een datum als een tijd in, of laat beide leeg."),
+  ).toBeTruthy();
   expect(submit).not.toHaveBeenCalled();
   type("Moment, tijd", "8:05");
   save();
@@ -102,7 +109,9 @@ it("picks a day in a calendar in the interface language and returns to the input
   expect(await screen.findByText("november 2054")).toBeTruthy();
   fireEvent.click(await screen.findByRole("button", { name: /vrijdag 20 november 2054/ }));
   await waitFor(() => expect(text("Dag (optioneel)")).toBe("20 nov 2054"));
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Dag (optioneel)")));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByLabelText("Dag (optioneel)")),
+  );
   save();
   await waitFor(() => expect(submit).toHaveBeenCalled());
   expect(submit.mock.calls[0][0].day).toBe("2054-11-20");

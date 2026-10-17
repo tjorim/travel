@@ -19,10 +19,12 @@ type RecordDialogProps = {
 };
 
 const backdrop = "fixed inset-0 bg-travel-backdrop/50";
-const viewport = "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto max-[620px]:items-end";
+const viewport =
+  "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto max-[620px]:items-end";
 const popup =
   "box-border mx-4 max-h-dvh w-full max-w-170 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-5.5 text-travel-ink shadow-2xl max-[620px]:mb-0 max-[620px]:max-w-none max-[620px]:rounded-b-none max-[620px]:p-4.5";
-const confirmation = "grid gap-3 rounded-xl border-2 border-travel-warning bg-travel-warning-surface p-4";
+const confirmation =
+  "grid gap-3 rounded-xl border-2 border-travel-warning bg-travel-warning-surface p-4";
 const compactButton = "cursor-pointer rounded-lg px-3 py-2 text-sm font-bold";
 const secondaryButton = "border border-travel-control-border bg-transparent text-travel-forest";
 const dangerButton = "border-0 bg-travel-danger text-travel-on-action";
@@ -83,10 +85,17 @@ export function RecordDialog({
       <Dialog.Portal>
         <Dialog.Backdrop className={backdrop} />
         <Dialog.Viewport className={viewport}>
-          <Dialog.Popup className={cn(popup, className)} finalFocus={() => origin.current} aria-label={title}>
+          <Dialog.Popup
+            className={cn(popup, className)}
+            finalFocus={() => origin.current}
+            aria-label={title}
+          >
             <div className="mb-4.5 flex items-start justify-between gap-4">
               <Dialog.Title className="m-0">{title}</Dialog.Title>
-              <Dialog.Close className={cn(compactButton, secondaryButton)} aria-label={m.owner_close({ p0: title })}>
+              <Dialog.Close
+                className={cn(compactButton, secondaryButton)}
+                aria-label={m.owner_close({ p0: title })}
+              >
                 {m.owner_close_2()}
               </Dialog.Close>
             </div>
@@ -108,8 +117,13 @@ export function RecordDialog({
               <AlertDialog.Portal>
                 <AlertDialog.Backdrop className={backdrop} />
                 <AlertDialog.Viewport className={viewport}>
-                  <AlertDialog.Popup className={cn(popup, confirmation, "max-w-md")} initialFocus={continueEditing}>
-                    <AlertDialog.Title className="m-0">{m.owner_discard_changes()}</AlertDialog.Title>
+                  <AlertDialog.Popup
+                    className={cn(popup, confirmation, "max-w-md")}
+                    initialFocus={continueEditing}
+                  >
+                    <AlertDialog.Title className="m-0">
+                      {m.owner_discard_changes()}
+                    </AlertDialog.Title>
                     <AlertDialog.Description className="m-0">
                       {m.owner_your_unsaved_changes_will_be_lost()}
                     </AlertDialog.Description>
@@ -124,7 +138,10 @@ export function RecordDialog({
                       >
                         {m.owner_discard_changes_2()}
                       </Button>
-                      <AlertDialog.Close className={cn(compactButton, secondaryButton)} ref={continueEditing}>
+                      <AlertDialog.Close
+                        className={cn(compactButton, secondaryButton)}
+                        ref={continueEditing}
+                      >
                         {m.owner_continue_editing()}
                       </AlertDialog.Close>
                     </div>

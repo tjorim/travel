@@ -25,7 +25,8 @@ const REASONS: Record<DuplicateReason, () => string> = {
   address: m.owner_same_address,
 };
 /** The reasons two records look alike, as one phrase. */
-export const reasonsText = (reasons: DuplicateReason[]) => reasons.map((reason) => REASONS[reason]()).join(", ");
+export const reasonsText = (reasons: DuplicateReason[]) =>
+  reasons.map((reason) => REASONS[reason]()).join(", ");
 const audienceText = (names: string[]) =>
   names
     .map((name) => {
@@ -69,7 +70,14 @@ export function MergeDialog({ kind, request, onClose, ...rest }: MergeProps) {
       onDismiss={onClose}
     >
       {request && (
-        <MergeBody key={request.token} kind={kind} request={request} onClose={onClose} setError={setError} {...rest} />
+        <MergeBody
+          key={request.token}
+          kind={kind}
+          request={request}
+          onClose={onClose}
+          setError={setError}
+          {...rest}
+        />
       )}
     </RecordDialog>
   );
@@ -94,14 +102,19 @@ function MergeBody({
   const [keepId, setKeepId] = useState(request.keepId);
   const [picked, setPicked] = useState(request.duplicateIds);
   // The records as they were when previewed: the lists refetch before a merge settles, and the duplicates are gone by then.
-  const [previewed, setPreviewed] = useState<{ result: MergeResult; records: MergeRecord[] } | null>(null);
+  const [previewed, setPreviewed] = useState<{
+    result: MergeResult;
+    records: MergeRecord[];
+  } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const path = `${tripPath(trip.id, locations ? "locations" : "areas")}/merge`;
   const body = (confirm: boolean) => ({ keep_id: keepId, duplicate_ids: picked, confirm });
   const previewFailure = locations
     ? m.owner_the_location_merge_could_not_be_previewed
     : m.owner_the_area_merge_could_not_be_previewed;
-  const mergeFailure = locations ? m.owner_the_locations_could_not_be_merged : m.owner_the_areas_could_not_be_merged;
+  const mergeFailure = locations
+    ? m.owner_the_locations_could_not_be_merged
+    : m.owner_the_areas_could_not_be_merged;
   const check = useOwnerMutation<undefined, MergeResult>({
     fallback: previewFailure,
     request: () => ({ path, method: "POST", body: body(false) }),
@@ -120,7 +133,8 @@ function MergeBody({
     .filter((record) => record.id !== keepId)
     .map((record) => ({ record, likely: group?.ids.includes(record.id) ?? false }))
     .sort((a, b) => Number(b.likely) - Number(a.likely));
-  const areaLabel = (id: string | undefined) => areas.find((area) => area.id === id)?.label ?? m.owner_unknown_area();
+  const areaLabel = (id: string | undefined) =>
+    areas.find((area) => area.id === id)?.label ?? m.owner_unknown_area();
 
   async function run(confirm: boolean) {
     setError(null);
@@ -150,7 +164,11 @@ function MergeBody({
             p1: audienceText(duplicate.narrowed_audiences),
           }),
         );
-      if ("area_id" in duplicate && duplicate.area_id !== keepArea && (duplicate.visits > 0 || duplicate.routes > 0))
+      if (
+        "area_id" in duplicate &&
+        duplicate.area_id !== keepArea &&
+        (duplicate.visits > 0 || duplicate.routes > 0)
+      )
         warnings.push(m.owner_merge_moves_to_area({ p0: name, p1: areaLabel(keepArea) }));
     }
     if ("city_level_location_ids" in preview && preview.city_level_location_ids.length)
@@ -168,9 +186,13 @@ function MergeBody({
           >
             <strong>{m.owner_merge_into({ p0: nameOf(duplicate.id) })}</strong>
             <ul className="m-0 grid list-none gap-0.5 p-0">
-              {"locations" in duplicate && <li>{m.owner_merge_count_locations({ p0: duplicate.locations })}</li>}
+              {"locations" in duplicate && (
+                <li>{m.owner_merge_count_locations({ p0: duplicate.locations })}</li>
+              )}
               <li>{m.owner_merge_count_visits({ p0: duplicate.visits })}</li>
-              {"stays" in duplicate && <li>{m.owner_merge_count_stays({ p0: duplicate.stays })}</li>}
+              {"stays" in duplicate && (
+                <li>{m.owner_merge_count_stays({ p0: duplicate.stays })}</li>
+              )}
               <li>{m.owner_merge_count_routes({ p0: duplicate.routes })}</li>
               <li>{m.owner_merge_count_travel_updates({ p0: duplicate.travel_updates })}</li>
             </ul>
@@ -185,9 +207,18 @@ function MergeBody({
         ) : (
           <p className="help">{m.owner_merge_no_warnings()}</p>
         )}
-        <p>{locations ? m.owner_merge_location_cannot_be_undone() : m.owner_merge_area_cannot_be_undone()}</p>
+        <p>
+          {locations
+            ? m.owner_merge_location_cannot_be_undone()
+            : m.owner_merge_area_cannot_be_undone()}
+        </p>
         <div className="button-row">
-          <Button className="danger" type="button" disabled={pending} onClick={() => setConfirming(true)}>
+          <Button
+            className="danger"
+            type="button"
+            disabled={pending}
+            onClick={() => setConfirming(true)}
+          >
             {pending ? m.owner_merging() : m.owner_merge()}
           </Button>
           <Button
@@ -229,7 +260,9 @@ function MergeBody({
         void run(false);
       }}
     >
-      <p className="help">{locations ? m.owner_merge_location_intro() : m.owner_merge_area_intro()}</p>
+      <p className="help">
+        {locations ? m.owner_merge_location_intro() : m.owner_merge_area_intro()}
+      </p>
       <Field>
         <FieldLabel>{locations ? m.owner_location_to_keep() : m.owner_area_to_keep()}</FieldLabel>
         <SearchSelect
@@ -259,7 +292,9 @@ function MergeBody({
                 checked={picked.includes(record.id)}
                 onCheckedChange={(checked) =>
                   setPicked((current) =>
-                    checked ? [...current, record.id] : current.filter((candidate) => candidate !== record.id),
+                    checked
+                      ? [...current, record.id]
+                      : current.filter((candidate) => candidate !== record.id),
                   )
                 }
               />
@@ -269,7 +304,9 @@ function MergeBody({
                   <span className="text-sm font-normal">
                     {[
                       record.detail,
-                      likely && group ? m.owner_probably_the_same({ p0: reasonsText(group.reasons) }) : "",
+                      likely && group
+                        ? m.owner_probably_the_same({ p0: reasonsText(group.reasons) })
+                        : "",
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -293,4 +330,6 @@ function MergeBody({
 }
 
 export const mergedNotice = (kind: MergeKind, merged: number) =>
-  textNotice(() => (kind === "location" ? m.owner_locations_merged : m.owner_areas_merged)({ count: merged }));
+  textNotice(() =>
+    (kind === "location" ? m.owner_locations_merged : m.owner_areas_merged)({ count: merged }),
+  );

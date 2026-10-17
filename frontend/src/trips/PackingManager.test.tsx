@@ -9,7 +9,14 @@ import { __resetOfflineStoreForTests, listOfflineCopies } from "../offline/offli
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
+const trip: Trip = {
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: null,
+  ends_on: null,
+  travel_updates: [],
+};
 const bag = (
   id: string,
   name: string,
@@ -51,7 +58,8 @@ let items: ReturnType<typeof item>[];
 let failToggle: boolean;
 let failLists: boolean;
 const calls: { method: string; url: string; body: Record<string, unknown> }[] = [];
-const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
+const json = (value: unknown, status = 200) =>
+  Promise.resolve(new Response(JSON.stringify(value), { status }));
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   bags = [bag("cabin", "Handbagage", 0, 1000), bag("checked", "Ruimbagage", 1)];
@@ -73,13 +81,22 @@ beforeEach(() => {
         return failLists ? json({ detail: "Oops" }, 500) : json([{ id: "list", name: "Paklijst" }]);
       if (url.endsWith("/packing-list-sources") && method === "GET")
         return json([{ id: "source", name: "Paklijst", trip_id: "other", trip_title: "Japan" }]);
-      if (url.endsWith("/packing-templates") && method === "GET") return json([{ id: "template", name: "Weekend" }]);
+      if (url.endsWith("/packing-templates") && method === "GET")
+        return json([{ id: "template", name: "Weekend" }]);
       if (url.endsWith("/suggestions") && method === "GET")
         return json([
-          { label: "Oplader", category: "Elektronica", prior_trips: 3, usually_cabin: true, usually_essential: false },
+          {
+            label: "Oplader",
+            category: "Elektronica",
+            prior_trips: 3,
+            usually_cabin: true,
+            usually_essential: false,
+          },
         ]);
-      if (url.endsWith("/packing-lists") && method === "POST") return json({ id: "new-list", name: body.name }, 201);
-      if (url.endsWith("/packing-lists/list") && method === "GET") return json({ id: "list", name: "Paklijst" });
+      if (url.endsWith("/packing-lists") && method === "POST")
+        return json({ id: "new-list", name: body.name }, 201);
+      if (url.endsWith("/packing-lists/list") && method === "GET")
+        return json({ id: "list", name: "Paklijst" });
       if (url.endsWith("/bags") && method === "GET") return json(bags);
       if (url.endsWith("/items") && method === "GET") return json(items);
       if (url.endsWith("/bags") && method === "POST") {
@@ -88,7 +105,12 @@ beforeEach(() => {
         return json(next, 201);
       }
       if (url.endsWith("/items") && method === "POST") {
-        const next = item(`new-${items.length}`, String(body.label), body.bag_id as string | null, items.length);
+        const next = item(
+          `new-${items.length}`,
+          String(body.label),
+          body.bag_id as string | null,
+          items.length,
+        );
         items.push(next);
         return json(next, 201);
       }
@@ -120,15 +142,23 @@ afterEach(async () => {
 
 it("groups canonical items, filters unpacked and shows known weight", async () => {
   renderWithOwner(<PackingManager trip={trip} />);
-  expect(within(await screen.findByRole("region", { name: "Niet toegewezen" })).getByText("Paspoort")).toBeTruthy();
+  expect(
+    within(await screen.findByRole("region", { name: "Niet toegewezen" })).getByText("Paspoort"),
+  ).toBeTruthy();
   expect(screen.getByText(/600 g bekend/)).toBeTruthy();
-  expect(screen.getByRole("progressbar", { name: "Totale inpakvoortgang" }).getAttribute("aria-valuenow")).toBe("1");
+  expect(
+    screen
+      .getByRole("progressbar", { name: "Totale inpakvoortgang" })
+      .getAttribute("aria-valuenow"),
+  ).toBe("1");
   fireEvent.click(screen.getByRole("radio", { name: "Per categorie" }));
   expect(screen.getByRole("region", { name: "Kleding" })).toBeTruthy();
   expect(screen.getAllByText("2 × Sokken")).toHaveLength(1);
   fireEvent.click(screen.getByRole("radio", { name: "Niet ingepakt" }));
   expect(screen.queryByText("Boek")).toBeNull();
-  expect(screen.getByRole("radio", { name: "Niet ingepakt" }).getAttribute("aria-checked")).toBe("true");
+  expect(screen.getByRole("radio", { name: "Niet ingepakt" }).getAttribute("aria-checked")).toBe(
+    "true",
+  );
 });
 
 it("shows owner-authored departure warnings and filters last-minute items", async () => {
@@ -154,7 +184,9 @@ it("copies a list from another trip with packed state reset", async () => {
   fireEvent.click(await screen.findByRole("option", { name: "Japan · Paklijst" }));
   fireEvent.click(screen.getByRole("button", { name: "Nieuwe paklijst maken" }));
   await waitFor(() =>
-    expect(calls.some((call) => call.method === "POST" && call.body.copy_from_list_id === "source")).toBe(true),
+    expect(
+      calls.some((call) => call.method === "POST" && call.body.copy_from_list_id === "source"),
+    ).toBe(true),
   );
 });
 
@@ -173,7 +205,9 @@ it("retains a failed toggle for retry", async () => {
   const checkbox = await screen.findByRole("checkbox", { name: "2 × Sokken ingepakt" });
   fireEvent.click(checkbox);
   fireEvent.click(await screen.findByRole("button", { name: "Opnieuw proberen: Sokken" }));
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Opnieuw proberen: Sokken" })).toBeNull());
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Opnieuw proberen: Sokken" })).toBeNull(),
+  );
   expect(checkbox.getAttribute("aria-checked")).toBe("true");
 });
 
@@ -189,13 +223,18 @@ it("moves items through edit and quick adds into a bag without order controls", 
   expect(screen.queryByRole("button", { name: "Paspoort omhoog" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Handbagage omhoog" })).toBeNull();
   fireEvent.click(
-    within(screen.getByRole("region", { name: "Handbagage" })).getByRole("button", { name: "Snel toevoegen" }),
+    within(screen.getByRole("region", { name: "Handbagage" })).getByRole("button", {
+      name: "Snel toevoegen",
+    }),
   );
   fireEvent.change(screen.getByRole("textbox", { name: "Naam" }), { target: { value: "Camera" } });
   fireEvent.click(screen.getByRole("button", { name: "Opslaan" }));
   await waitFor(() =>
     expect(
-      calls.some((call) => call.method === "POST" && call.body.label === "Camera" && call.body.bag_id === "cabin"),
+      calls.some(
+        (call) =>
+          call.method === "POST" && call.body.label === "Camera" && call.body.bag_id === "cabin",
+      ),
     ).toBe(true),
   );
 });
@@ -207,9 +246,12 @@ it("keeps bulk selection out of item rows until requested", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Items selecteren" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Selecteer Sokken" }));
   expect(screen.getByText("1 geselecteerd")).toBeTruthy();
-  fireEvent.keyDown(screen.getByRole("combobox", { name: "Geselecteerde items verplaatsen naar" }), {
-    key: "ArrowDown",
-  });
+  fireEvent.keyDown(
+    screen.getByRole("combobox", { name: "Geselecteerde items verplaatsen naar" }),
+    {
+      key: "ArrowDown",
+    },
+  );
   fireEvent.click(screen.getByRole("option", { name: "Ruimbagage" }));
   await waitFor(() => expect(items.find((row) => row.id === "a")?.bag_id).toBe("checked"));
   expect(screen.getByText("0 geselecteerd")).toBeTruthy();
@@ -234,7 +276,9 @@ it("shows loading and empty states, then adds a bag without navigation", async (
   expect(screen.getByRole("status").textContent).toContain("Paklijsten laden");
   expect(await screen.findByText("Nog geen items. Voeg je eerste item toe.")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Tas toevoegen" }));
-  fireEvent.change(screen.getByRole("textbox", { name: "Naam" }), { target: { value: "Overnachtingstas" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Naam" }), {
+    target: { value: "Overnachtingstas" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Opslaan" }));
   expect(await screen.findByRole("region", { name: "Overnachtingstas" })).toBeTruthy();
 });
@@ -252,16 +296,22 @@ it("saves a private read-only snapshot and restores its filters offline", async 
   renderWithOwner(<PackingManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Offline bewaren" }));
   await screen.findByText(/Paklijst offline bewaard op dit toestel/);
-  expect((await listOfflineCopies("owner-1")).map((copy) => copy.resourceKind)).toEqual(["packing_list"]);
+  expect((await listOfflineCopies("owner-1")).map((copy) => copy.resourceKind)).toEqual([
+    "packing_list",
+  ]);
 
   Object.defineProperty(window.navigator, "onLine", { value: false, configurable: true });
   window.dispatchEvent(new Event("offline"));
   const offlineView = await screen.findByRole("region", { name: "Offline paklijst Paklijst" });
   expect(within(offlineView).getByText(/bewaard op/)).toBeTruthy();
-  expect(within(offlineView).getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/)).toBeTruthy();
-  expect(within(offlineView).getByRole("checkbox", { name: "Sokken ingepakt" }).getAttribute("aria-disabled")).toBe(
-    "true",
-  );
+  expect(
+    within(offlineView).getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/),
+  ).toBeTruthy();
+  expect(
+    within(offlineView)
+      .getByRole("checkbox", { name: "Sokken ingepakt" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
   expect(screen.queryByRole("button", { name: "Tas toevoegen" })).toBeNull();
   fireEvent.click(within(offlineView).getByRole("radio", { name: "Per categorie" }));
   expect(within(offlineView).getByRole("region", { name: "Kleding" })).toBeTruthy();

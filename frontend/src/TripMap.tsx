@@ -10,7 +10,13 @@ import type { FeatureCollection, LineString, Point } from "geojson";
 import type { FilterSpecification, GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { configuredMapStyleUrl, loadMapStyle, readCamera, styleLabelFont, type MapCamera } from "./map-style";
+import {
+  configuredMapStyleUrl,
+  loadMapStyle,
+  readCamera,
+  styleLabelFont,
+  type MapCamera,
+} from "./map-style";
 import { ROUTE_MODE_LABELS, type RouteMode } from "./tracker-model";
 
 export type MapLink = { label: string; href?: string; onOpen?: () => void };
@@ -44,18 +50,29 @@ export type MapPerspective = {
 };
 
 const terrainUrl = "https://tiles.mapterhorn.com/tilejson.json";
-const satelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const satelliteUrl =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const attribution = (
   <>
     <a href="https://openfreemap.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
       © OpenFreeMap
     </a>{" "}
     ·{" "}
-    <a href="https://openmaptiles.org" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+    <a
+      href="https://openmaptiles.org"
+      target="_blank"
+      rel="noreferrer"
+      referrerPolicy="no-referrer"
+    >
       OpenMapTiles
     </a>{" "}
     ·{" "}
-    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+    <a
+      href="https://www.openstreetmap.org/copyright"
+      target="_blank"
+      rel="noreferrer"
+      referrerPolicy="no-referrer"
+    >
       © OpenStreetMap
     </a>
   </>
@@ -78,12 +95,27 @@ const focusFilter = (areaId: string): FilterSpecification => [
   ["==", ["get", "areaId"], areaId],
 ];
 
-function applyTerrain(instance: MapLibreMap, on: boolean, perspective: MapPerspective | undefined, animate: boolean) {
+function applyTerrain(
+  instance: MapLibreMap,
+  on: boolean,
+  perspective: MapPerspective | undefined,
+  animate: boolean,
+) {
   if (on) {
     if (!instance.getSource("terrain"))
-      instance.addSource("terrain", { type: "raster-dem", url: terrainUrl, tileSize: 512, encoding: "terrarium" });
+      instance.addSource("terrain", {
+        type: "raster-dem",
+        url: terrainUrl,
+        tileSize: 512,
+        encoding: "terrarium",
+      });
     instance.setTerrain({ source: "terrain", exaggeration: perspective?.exaggeration ?? 1.35 });
-    if (animate) instance.easeTo({ pitch: Math.min(perspective?.pitch ?? 55, 60), duration: 700, essential: true });
+    if (animate)
+      instance.easeTo({
+        pitch: Math.min(perspective?.pitch ?? 55, 60),
+        duration: 700,
+        essential: true,
+      });
   } else {
     instance.setTerrain(null);
     if (animate) instance.easeTo({ pitch: 0, duration: 700, essential: true });
@@ -92,13 +124,19 @@ function applyTerrain(instance: MapLibreMap, on: boolean, perspective: MapPerspe
 
 function applySatellite(instance: MapLibreMap, on: boolean) {
   if (!instance.getSource("satellite"))
-    instance.addSource("satellite", { type: "raster", tiles: [satelliteUrl], tileSize: 256, maxzoom: 19 });
+    instance.addSource("satellite", {
+      type: "raster",
+      tiles: [satelliteUrl],
+      tileSize: 256,
+      maxzoom: 19,
+    });
   if (!instance.getLayer("satellite")) {
     const layers = instance.getStyle().layers;
     const buildingLayer = layers.find(
       (layer) => layer.type === "fill-extrusion" && layer["source-layer"] === "building",
     );
-    const beforeLayer = buildingLayer?.id ?? layers.find((layer) => layer.type === "symbol")?.id ?? "route-flight";
+    const beforeLayer =
+      buildingLayer?.id ?? layers.find((layer) => layer.type === "symbol")?.id ?? "route-flight";
     instance.addLayer(
       {
         id: "satellite",
@@ -123,7 +161,8 @@ function fitToData(
   const bounds = new Bounds();
   points.forEach((point) => bounds.extend(point.coordinates));
   lines.forEach((line) => line.coordinates.forEach((coordinate) => bounds.extend(coordinate)));
-  if (!bounds.isEmpty()) instance.fitBounds(bounds, { padding: 45, maxZoom: 10, duration, pitch: 0, bearing: 0 });
+  if (!bounds.isEmpty())
+    instance.fitBounds(bounds, { padding: 45, maxZoom: 10, duration, pitch: 0, bearing: 0 });
 }
 
 /** The owner-only points to frame when an area is focused. */
@@ -168,8 +207,10 @@ export function TripMap({
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedKind, setSelectedKind] = useState<"point" | "line" | null>(null);
   const [hovered, setHovered] = useState("");
-  const selectedPoint = selectedKind === "point" ? points.find((point) => point.id === selected) : undefined;
-  const selectedLine = selectedKind === "line" ? lines.find((line) => line.id === selected) : undefined;
+  const selectedPoint =
+    selectedKind === "point" ? points.find((point) => point.id === selected) : undefined;
+  const selectedLine =
+    selectedKind === "line" ? lines.find((line) => line.id === selected) : undefined;
   const hasGeometry = points.length > 0 || lines.length > 0;
   // The cleanup of a rebuild reads the latest view here and leaves a snapshot for the next build to restore.
   const view = useRef({ terrain, satellite, globe, selected, selectedKind });
@@ -186,7 +227,9 @@ export function TripMap({
     const controller = new AbortController();
     // A theme change keeps the viewed region, selection and layer toggles; anything else starts over.
     const restore =
-      snapshot.current?.geometryKey === geometryKey && snapshot.current.styleUrl === styleUrl ? snapshot.current : null;
+      snapshot.current?.geometryKey === geometryKey && snapshot.current.styleUrl === styleUrl
+        ? snapshot.current
+        : null;
     snapshot.current = null;
     let loaded = false;
     setReady(false);
@@ -201,16 +244,22 @@ export function TripMap({
     }
     try {
       if (!window.WebGLRenderingContext) {
-        setError(textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()));
+        setError(
+          textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()),
+        );
         return;
       }
       const probe = document.createElement("canvas");
       if (!probe.getContext("webgl2") && !probe.getContext("webgl")) {
-        setError(textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()));
+        setError(
+          textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()),
+        );
         return;
       }
     } catch {
-      setError(textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()));
+      setError(
+        textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()),
+      );
       return;
     }
     void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal, theme)])
@@ -244,22 +293,28 @@ export function TripMap({
             type: "FeatureCollection",
             features: points.map((point) => ({
               type: "Feature",
-              properties: { id: point.id, label: point.label, kind: point.kind ?? "place", areaId: point.areaId ?? "" },
+              properties: {
+                id: point.id,
+                label: point.label,
+                kind: point.kind ?? "place",
+                areaId: point.areaId ?? "",
+              },
               geometry: { type: "Point", coordinates: point.coordinates },
             })),
           };
           instance.addSource("routes", { type: "geojson", data: routeData });
           instance.addSource("stops", { type: "geojson", data: pointData });
-          const routeStyles: Record<RouteMode, { color: string; width: number; dash?: number[] }> = {
-            flight: { color: themeColor("map-marker"), width: 3, dash: [2, 2] },
-            train: { color: themeColor("map-blue"), width: 4, dash: [2, 1.4] },
-            bus: { color: themeColor("map-gold"), width: 4 },
-            car: { color: themeColor("map-orange"), width: 4 },
-            ferry: { color: themeColor("map-cyan"), width: 4, dash: [3, 1.5] },
-            bike: { color: themeColor("link"), width: 4, dash: [1.5, 1.2] },
-            walk: { color: themeColor("map-olive"), width: 3, dash: [0.6, 1.6] },
-            other: { color: themeColor("map-grey"), width: 3 },
-          };
+          const routeStyles: Record<RouteMode, { color: string; width: number; dash?: number[] }> =
+            {
+              flight: { color: themeColor("map-marker"), width: 3, dash: [2, 2] },
+              train: { color: themeColor("map-blue"), width: 4, dash: [2, 1.4] },
+              bus: { color: themeColor("map-gold"), width: 4 },
+              car: { color: themeColor("map-orange"), width: 4 },
+              ferry: { color: themeColor("map-cyan"), width: 4, dash: [3, 1.5] },
+              bike: { color: themeColor("link"), width: 4, dash: [1.5, 1.2] },
+              walk: { color: themeColor("map-olive"), width: 3, dash: [0.6, 1.6] },
+              other: { color: themeColor("map-grey"), width: 3 },
+            };
           for (const [transport, routeStyle] of Object.entries(routeStyles)) {
             instance.addLayer({
               id: `route-${transport}`,
@@ -285,7 +340,11 @@ export function TripMap({
             type: "circle",
             source: "stops",
             filter: ["!=", ["get", "kind"], "location"],
-            paint: { "circle-radius": 12, "circle-color": themeColor("map-blue"), "circle-opacity": 0.22 },
+            paint: {
+              "circle-radius": 12,
+              "circle-color": themeColor("map-blue"),
+              "circle-opacity": 0.22,
+            },
           });
           instance.addLayer({
             id: "stops",
@@ -351,7 +410,11 @@ export function TripMap({
               "text-offset": [0, 1.3],
               "text-anchor": "top",
             },
-            paint: { "text-color": themeColor("ink"), "text-halo-color": themeColor("surface"), "text-halo-width": 2 },
+            paint: {
+              "text-color": themeColor("ink"),
+              "text-halo-color": themeColor("surface"),
+              "text-halo-width": 2,
+            },
           });
           instance.addLayer(
             {
@@ -383,26 +446,40 @@ export function TripMap({
               if (restore.terrain) applyTerrain(instance, true, perspectiveRef.current, false);
               if (restore.globe) instance.setProjection({ type: "globe" });
               const area = data.current.points.find((point) => point.id === restore.selected);
-              if (restore.selectedKind === "point" && owner && (area?.kind === "area" || area?.kind === "derived"))
+              if (
+                restore.selectedKind === "point" &&
+                owner &&
+                (area?.kind === "area" || area?.kind === "derived")
+              )
                 instance.setFilter("focused-locations", focusFilter(area.id));
             } catch {
               setTerrain(false);
               setSatellite(false);
               setGlobe(false);
-              setError(textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()));
+              setError(
+                textNotice(() =>
+                  m.owner_the_interactive_map_is_unavailable_use_the_route_in_words(),
+                ),
+              );
             }
           } else fitToData(instance, maplibregl.LngLatBounds, points, lines);
           loaded = true;
           instance.on("click", "stops", (event) => {
-            const point = data.current.points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const point = data.current.points.find(
+              (candidate) => candidate.id === event.features?.[0]?.properties?.id,
+            );
             if (point) selectPoint(point);
           });
           instance.on("click", "locations", (event) => {
-            const point = data.current.points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const point = data.current.points.find(
+              (candidate) => candidate.id === event.features?.[0]?.properties?.id,
+            );
             if (point) selectPoint(point);
           });
           instance.on("click", "focused-locations", (event) => {
-            const point = data.current.points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const point = data.current.points.find(
+              (candidate) => candidate.id === event.features?.[0]?.properties?.id,
+            );
             if (point) selectPoint(point);
           });
           instance.on("mouseenter", "stops", () => {
@@ -415,15 +492,20 @@ export function TripMap({
           instance.on("click", routeLayers, (event) => {
             // Markers sit above routes. Keep a tap on an overlapping marker a point selection.
             if (
-              instance?.queryRenderedFeatures(event.point, { layers: ["stops", "locations", "focused-locations"] })
-                .length
+              instance?.queryRenderedFeatures(event.point, {
+                layers: ["stops", "locations", "focused-locations"],
+              }).length
             )
               return;
-            const line = data.current.lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const line = data.current.lines.find(
+              (candidate) => candidate.id === event.features?.[0]?.properties?.id,
+            );
             if (line) selectLine(line);
           });
           instance.on("mousemove", routeLayers, (event) => {
-            const line = data.current.lines.find((candidate) => candidate.id === event.features?.[0]?.properties?.id);
+            const line = data.current.lines.find(
+              (candidate) => candidate.id === event.features?.[0]?.properties?.id,
+            );
             setHovered(line?.label ?? "");
             if (instance) instance.getCanvas().style.cursor = "pointer";
           });
@@ -432,9 +514,14 @@ export function TripMap({
             if (instance) instance.getCanvas().style.cursor = "";
           });
           instance.on("mousemove", ["stops", "locations", "focused-locations"], (event) => {
-            setHovered(points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id)?.label ?? "");
+            setHovered(
+              points.find((candidate) => candidate.id === event.features?.[0]?.properties?.id)
+                ?.label ?? "",
+            );
           });
-          instance.on("mouseleave", ["stops", "locations", "focused-locations"], () => setHovered(""));
+          instance.on("mouseleave", ["stops", "locations", "focused-locations"], () =>
+            setHovered(""),
+          );
           setReady(true);
         });
         created.on("error", () => {
@@ -449,7 +536,10 @@ export function TripMap({
         });
       })
       .catch(() => {
-        if (!disposed) setError(textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()));
+        if (!disposed)
+          setError(
+            textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()),
+          );
       });
     return () => {
       disposed = true;
@@ -467,7 +557,12 @@ export function TripMap({
       type: "FeatureCollection",
       features: points.map((point) => ({
         type: "Feature",
-        properties: { id: point.id, label: point.label, kind: point.kind ?? "place", areaId: point.areaId ?? "" },
+        properties: {
+          id: point.id,
+          label: point.label,
+          kind: point.kind ?? "place",
+          areaId: point.areaId ?? "",
+        },
         geometry: { type: "Point", coordinates: point.coordinates },
       })),
     });
@@ -498,7 +593,9 @@ export function TripMap({
       setTerrain(!terrain);
       setError("");
     } catch {
-      setError(textNotice(() => m.owner_3d_terrain_could_not_be_loaded_the_route_map_remains_available()));
+      setError(
+        textNotice(() => m.owner_3d_terrain_could_not_be_loaded_the_route_map_remains_available()),
+      );
     }
   }
 
@@ -510,7 +607,11 @@ export function TripMap({
       setGlobe(!globe);
       setError("");
     } catch {
-      setError(textNotice(() => m.owner_the_globe_view_could_not_be_shown_the_route_map_remains_available()));
+      setError(
+        textNotice(() =>
+          m.owner_the_globe_view_could_not_be_shown_the_route_map_remains_available(),
+        ),
+      );
     }
   }
 
@@ -522,7 +623,11 @@ export function TripMap({
       setSatellite(!satellite);
       setError("");
     } catch {
-      setError(textNotice(() => m.owner_satellite_imagery_could_not_be_loaded_the_route_map_remains_available()));
+      setError(
+        textNotice(() =>
+          m.owner_satellite_imagery_could_not_be_loaded_the_route_map_remains_available(),
+        ),
+      );
     }
   }
 
@@ -607,7 +712,12 @@ export function TripMap({
           owner && "min-[960px]:h-map-owner-canvas",
         )}
       >
-        <div ref={canvas} className="size-full" role="img" aria-label={m.owner_map_with_points_and_routes()} />
+        <div
+          ref={canvas}
+          className="size-full"
+          role="img"
+          aria-label={m.owner_map_with_points_and_routes()}
+        />
         {hovered && (
           <span
             className="pointer-events-none absolute top-3 left-3 max-w-full rounded-md bg-travel-surface px-2.25 py-1.25 text-sm text-travel-ink shadow-md"
@@ -641,7 +751,12 @@ export function TripMap({
             <>
               {" "}
               ·{" "}
-              <a href="https://www.esri.com/" target="_blank" rel="noreferrer" referrerPolicy="no-referrer">
+              <a
+                href="https://www.esri.com/"
+                target="_blank"
+                rel="noreferrer"
+                referrerPolicy="no-referrer"
+              >
                 © Esri
               </a>
               , Maxar, Earthstar Geographics, and the GIS User Community
@@ -661,7 +776,8 @@ export function TripMap({
         <Button
           className={cn(
             "secondary compact",
-            terrain && "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
+            terrain &&
+              "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
           )}
           type="button"
           aria-pressed={terrain}
@@ -674,7 +790,8 @@ export function TripMap({
         <Button
           className={cn(
             "secondary compact",
-            satellite && "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
+            satellite &&
+              "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
           )}
           type="button"
           aria-pressed={satellite}
@@ -687,7 +804,8 @@ export function TripMap({
         <Button
           className={cn(
             "secondary compact",
-            globe && "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
+            globe &&
+              "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
           )}
           type="button"
           aria-pressed={globe}
@@ -699,9 +817,13 @@ export function TripMap({
         </Button>
       </div>
       {satellite && (
-        <p className="help">{m.owner_zoom_in_on_a_city_to_see_the_3d_buildings_above_the_satellite_imagery()}</p>
+        <p className="help">
+          {m.owner_zoom_in_on_a_city_to_see_the_3d_buildings_above_the_satellite_imagery()}
+        </p>
       )}
-      <p className="m-0 text-sm">{m.owner_map_tiles_show_the_viewed_region_to_openfreemap_when_enabled_3d_terrain()}</p>
+      <p className="m-0 text-sm">
+        {m.owner_map_tiles_show_the_viewed_region_to_openfreemap_when_enabled_3d_terrain()}
+      </p>
       {(selectedPoint || selectedLine) && (
         <div
           className="rounded-travel-media border border-travel-border bg-travel-map-detail px-4 py-3.5 [&_a]:font-bold [&_a]:text-travel-forest [&_p]:mt-1.25 [&_p]:mb-0 [&_ul]:mt-2.5 [&_ul]:mb-0 [&_ul]:flex [&_ul]:list-none [&_ul]:flex-wrap [&_ul]:gap-x-4 [&_ul]:gap-y-2 [&_ul]:p-0"
@@ -710,12 +832,17 @@ export function TripMap({
           <strong>{selectedPoint?.label ?? selectedLine?.label}</strong>
           {(selectedLine?.from || selectedLine?.to) && (
             <p>
-              {selectedLine.from ?? m.owner_unknown_departure()} → {selectedLine.to ?? m.owner_unknown_arrival()}
+              {selectedLine.from ?? m.owner_unknown_departure()} →{" "}
+              {selectedLine.to ?? m.owner_unknown_arrival()}
             </p>
           )}
           {selectedLine?.transport && <p>{ROUTE_MODE_LABELS[selectedLine.transport]}</p>}
           {(selectedPoint?.detail || selectedPoint?.dates || selectedLine?.dates) && (
-            <p>{[selectedPoint?.detail, selectedPoint?.dates, selectedLine?.dates].filter(Boolean).join(" · ")}</p>
+            <p>
+              {[selectedPoint?.detail, selectedPoint?.dates, selectedLine?.dates]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
           )}
           {links.length > 0 && (
             <ul>
@@ -733,7 +860,11 @@ export function TripMap({
             </ul>
           )}
           {selectedPoint?.kind === "derived" && onUseDerived && (
-            <Button className="secondary compact" type="button" onClick={() => onUseDerived(selectedPoint)}>
+            <Button
+              className="secondary compact"
+              type="button"
+              onClick={() => onUseDerived(selectedPoint)}
+            >
               {m.owner_use_as_point()}
             </Button>
           )}

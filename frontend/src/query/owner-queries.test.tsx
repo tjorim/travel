@@ -14,7 +14,8 @@ const auth = vi.hoisted(() => ({
 }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
+const json = (value: unknown, status = 200) =>
+  Promise.resolve(new Response(JSON.stringify(value), { status }));
 
 beforeEach(() => {
   auth.session = { accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 };
@@ -79,7 +80,11 @@ it("aborts an in-flight read when its screen goes away", async () => {
 it("keeps one owner's records out of another owner's cache", async () => {
   const fetcher = vi.fn((_url: string, init: RequestInit) =>
     json([
-      { id: (init.headers as Record<string, string>).Authorization.includes(testToken("owner-1")) ? "mine" : "theirs" },
+      {
+        id: (init.headers as Record<string, string>).Authorization.includes(testToken("owner-1"))
+          ? "mine"
+          : "theirs",
+      },
     ]),
   );
   vi.stubGlobal("fetch", fetcher);

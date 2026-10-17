@@ -145,12 +145,19 @@ it("evaluates every catalogue plural at zero, one and multiple with authored int
           const inputs = Object.fromEntries(
             variant.declarations
               .filter((item) => item.startsWith("input "))
-              .map((item) => [item.slice(6), item === "input count" ? count : "Authored <é> {text}"]),
+              .map((item) => [
+                item.slice(6),
+                item === "input count" ? count : "Authored <é> {text}",
+              ]),
           );
-          const renderMessage = m[key as keyof typeof m] as (inputs: Record<string, string | number>) => string;
+          const renderMessage = m[key as keyof typeof m] as (
+            inputs: Record<string, string | number>,
+          ) => string;
           const selector = count === 1 ? "countPlural=one" : "countPlural=other";
           const pattern = variant.match[selector as keyof typeof variant.match];
-          expect(renderMessage(inputs)).toBe(pattern.replace(/\{(\w+)\}/g, (_, input) => String(inputs[input])));
+          expect(renderMessage(inputs)).toBe(
+            pattern.replace(/\{(\w+)\}/g, (_, input) => String(inputs[input])),
+          );
         }
       }
     }
@@ -162,7 +169,12 @@ it("keeps install-time metadata and machine routing fixed across runtime switche
   const before = JSON.parse(manifest);
   act(() => changeLocale("en"));
   expect(JSON.parse(manifest)).toEqual(before);
-  expect(before).toMatchObject({ name: "Travel", short_name: "Travel", start_url: "/admin/", scope: "/admin/" });
+  expect(before).toMatchObject({
+    name: "Travel",
+    short_name: "Travel",
+    start_url: "/admin/",
+    scope: "/admin/",
+  });
   for (const html of [indexHtml, landingHtml, publicHtml, shareHtml]) {
     expect(html).toContain('lang="nl"');
     expect(html).toContain("/locale.js");

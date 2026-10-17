@@ -117,7 +117,12 @@ export function Boundary({ children }: { children: ReactNode }) {
               <strong className="text-travel-ink">{m.signed_in()}</strong>
             </p>
             <p className="help">{m.session_notice()}</p>
-            <Button className="secondary mt-2 w-full" type="button" role="menuitem" onClick={() => void signOut()}>
+            <Button
+              className="secondary mt-2 w-full"
+              type="button"
+              role="menuitem"
+              onClick={() => void signOut()}
+            >
               {m.sign_out()}
             </Button>
           </Collapsible.Panel>

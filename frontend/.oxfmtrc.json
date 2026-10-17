@@ -1,8 +1,4 @@
 {
-  "printWidth": 120,
-  "tabWidth": 2,
-  "useTabs": false,
-  "singleQuote": false,
-  "semi": true,
-  "sortPackageJson": false
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["**/node_modules", "**/dist", "**/build", "**/coverage"]
 }

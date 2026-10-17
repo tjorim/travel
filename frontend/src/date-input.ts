@@ -10,7 +10,12 @@ const pad = (value: number) => String(value).padStart(2, "0");
 
 const isoDate = (year: number, month: number, day: number): string | null => {
   const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  )
+    return null;
   return `${String(year).padStart(4, "0")}-${pad(month)}-${pad(day)}`;
 };
 
@@ -36,7 +41,9 @@ function monthNumber(word: string): number | null {
   const exact = monthNames.get(name);
   if (exact) return exact;
   if (name.length < 3) return null;
-  const matches = new Set([...monthNames].filter(([known]) => known.startsWith(name)).map(([, month]) => month));
+  const matches = new Set(
+    [...monthNames].filter(([known]) => known.startsWith(name)).map(([, month]) => month),
+  );
   return matches.size === 1 ? [...matches][0] : null;
 }
 
@@ -87,7 +94,8 @@ export function splitDateTime(value: string): { date: string; time: string } {
 }
 
 /** The date-time value when both parts are valid, else an empty string. */
-export const joinDateTime = (date: string, time: string): string => (date && time ? `${date}T${time}` : "");
+export const joinDateTime = (date: string, time: string): string =>
+  date && time ? `${date}T${time}` : "";
 
 /** `YYYY-MM-DD` to a local-midnight `Date` for the calendar, and back. */
 export const dateFromIso = (iso: string): Date | undefined => {

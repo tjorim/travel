@@ -23,7 +23,12 @@ const fromTrip = (trip: Trip): Values => ({
   startsOn: trip.starts_on ?? "",
   endsOn: trip.ends_on ?? "",
 });
-const serverFields = { title: "title", summary: "summary", starts_on: "startsOn", ends_on: "endsOn" };
+const serverFields = {
+  title: "title",
+  summary: "summary",
+  starts_on: "startsOn",
+  ends_on: "endsOn",
+};
 
 /**
  * Creates or edits one trip in a dialog. Mount it with `key={trip?.id ?? "new"}`:
@@ -65,7 +70,10 @@ export function TripEditor({
   });
   const remove = useOwnerMutation<Trip>({
     fallback: m.owner_the_trip_could_not_be_deleted,
-    request: (target) => ({ path: `/api/trips/${encodeURIComponent(target.id)}`, method: "DELETE" }),
+    request: (target) => ({
+      path: `/api/trips/${encodeURIComponent(target.id)}`,
+      method: "DELETE",
+    }),
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
 
@@ -118,7 +126,11 @@ export function TripEditor({
           pendingLabel={trip ? m.owner_saving_trip() : m.owner_creating_trip()}
           actions={
             trip && (
-              <Button className="danger compact" type="button" onClick={() => setConfirmDelete(true)}>
+              <Button
+                className="danger compact"
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+              >
                 {m.owner_delete_trip()}
               </Button>
             )
@@ -131,10 +143,20 @@ export function TripEditor({
               onSubmit: requiredText(m.owner_give_the_trip_a_title),
             }}
           >
-            {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
+            {(field) => (
+              <TextField field={field} label={m.owner_title()} required maxLength={160} />
+            )}
           </form.Field>
           <form.Field name="summary">
-            {(field) => <MarkdownField field={field} label={m.owner_summary()} optional maxLength={4000} rows={4} />}
+            {(field) => (
+              <MarkdownField
+                field={field}
+                label={m.owner_summary()}
+                optional
+                maxLength={4000}
+                rows={4}
+              />
+            )}
           </form.Field>
           <div className="field-row">
             <form.Field name="startsOn">

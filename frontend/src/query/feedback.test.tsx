@@ -11,12 +11,19 @@ afterEach(() => {
   cleanup();
   act(() => changeLocale("nl"));
 });
-const descriptor = (code: string, params = {}, path: (string | number)[] = []) => ({ code, params, path });
+const descriptor = (code: string, params = {}, path: (string | number)[] = []) => ({
+  code,
+  params,
+  path,
+});
 
 it("updates an already-visible mutation error without replacing the input or losing focus", async () => {
   const error = await apiFailure(
     new Response(
-      JSON.stringify({ detail: "private diagnostic", errors: [descriptor("arrival_must_be_after_departure")] }),
+      JSON.stringify({
+        detail: "private diagnostic",
+        errors: [descriptor("arrival_must_be_after_departure")],
+      }),
       { status: 422 },
     ),
     "fallback",
@@ -44,7 +51,9 @@ it("updates an already-visible mutation error without replacing the input or los
 });
 
 it("rerenders mapped validation fields and clears the rejection when the submitted values change", async () => {
-  const error = new ApiError("fallback", 422, [descriptor("string_too_long", { max_length: 3 }, ["body", "label"])]);
+  const error = new ApiError("fallback", 422, [
+    descriptor("string_too_long", { max_length: 3 }, ["body", "label"]),
+  ]);
   function Editor() {
     const record = useRecordForm({
       defaultValues: { name: "Authored" },
@@ -85,7 +94,9 @@ it("handles known conflicts, provider and dependency failures, unknown codes and
       const error = new ApiError("fallback", 409, [descriptor(code)]);
       expect(error.message).not.toBe(m.api_operation_failed());
     }
-    expect(new ApiError("remote prose", 409, [descriptor("future")]).message).toBe(m.api_operation_failed());
+    expect(new ApiError("remote prose", 409, [descriptor("future")]).message).toBe(
+      m.api_operation_failed(),
+    );
     for (const count of [0, 1, 3]) {
       const error = new ApiError("fallback", 409, [descriptor("resource_in_use", { count })]);
       expect(error.message).toBe(m.api_resource_in_use({ count }));
@@ -116,8 +127,11 @@ it("uses a current-locale fallback for unexpected diagnostics and preserves expl
     act(() => changeLocale(locale));
     expect(errorMessage(remote, m.api_operation_failed)).toBe(m.api_operation_failed());
     expect(errorMessage(local, m.api_operation_failed)).toBe(m.owner_also_enter_a_start_time());
-    expect(errorMessage(new ApiError(m.retry_description, 409, [descriptor("future_code")]), m.retry_description)).toBe(
-      m.retry_description(),
-    );
+    expect(
+      errorMessage(
+        new ApiError(m.retry_description, 409, [descriptor("future_code")]),
+        m.retry_description,
+      ),
+    ).toBe(m.retry_description());
   }
 });

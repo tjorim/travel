@@ -26,7 +26,11 @@ export function OfflineSnapshotView({ kind, text }: { kind: OfflineResourceKind;
   }
   if (!value || typeof value !== "object") return <p role="alert">{m.assets_invalid_snapshot()}</p>;
   const data = value as Record<string, unknown>;
-  if (kind === "emergency_info" && typeof data.label === "string" && typeof data.value === "string") {
+  if (
+    kind === "emergency_info" &&
+    typeof data.label === "string" &&
+    typeof data.value === "string"
+  ) {
     return (
       <div className="grid gap-3">
         <p>

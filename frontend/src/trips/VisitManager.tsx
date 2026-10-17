@@ -87,7 +87,8 @@ function visitNights(visit: Pick<Visit, "starts_on" | "ends_on">, trip: TripDate
     night <= (visit.ends_on ?? visit.starts_on) && nights.length < 60;
     night = addDays(night, 1)
   ) {
-    if ((!trip.starts_on || night >= trip.starts_on) && (!trip.ends_on || night < trip.ends_on)) nights.push(night);
+    if ((!trip.starts_on || night >= trip.starts_on) && (!trip.ends_on || night < trip.ends_on))
+      nights.push(night);
   }
   return nights;
 }
@@ -109,7 +110,9 @@ export function overnights(
 const clock = (time: string | null): string => (time ? time.slice(0, 5) : "");
 
 /** "21 nov – 22 nov · 18:30–21:00", or "Nog geen dag". */
-export function visitWhen(visit: Pick<Visit, "starts_on" | "ends_on" | "start_time" | "end_time">): string {
+export function visitWhen(
+  visit: Pick<Visit, "starts_on" | "ends_on" | "start_time" | "end_time">,
+): string {
   if (!visit.starts_on) return m.owner_no_day_yet();
   const times = visit.start_time
     ? ` · ${clock(visit.start_time)}${visit.end_time ? `–${clock(visit.end_time)}` : ""}`
@@ -207,7 +210,9 @@ export function VisitManager({
   useDialogFocus(focusId, dialog.inspect);
   const { selected, editing, editingId } = dialog;
   const [message, setMessage] = useFeedback<string>(
-    textNotice(() => m.owner_a_visit_is_a_stop_on_your_trip_an_area_or_location_and_when_it_stays_pri()),
+    textNotice(() =>
+      m.owner_a_visit_is_a_stop_on_your_trip_an_area_or_location_and_when_it_stays_pri(),
+    ),
   );
   // A place is only rewritten when the editor changed it.
   const baseline = useRef<Values>(blank());
@@ -221,12 +226,20 @@ export function VisitManager({
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Visit>({
     fallback: m.owner_the_visit_could_not_be_saved,
-    request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
+    request: ({ id, payload }) => ({
+      path: id ? `${path}/${id}` : path,
+      method: id ? "PATCH" : "POST",
+      body: payload,
+    }),
     invalidate,
   });
   const move = useOwnerMutation<{ visit: Visit; position: number }, Visit>({
     fallback: m.owner_the_visit_could_not_be_moved,
-    request: ({ visit, position }) => ({ path: `${path}/${visit.id}`, method: "PATCH", body: { position } }),
+    request: ({ visit, position }) => ({
+      path: `${path}/${visit.id}`,
+      method: "PATCH",
+      body: { position },
+    }),
     invalidate,
   });
   const remove = useOwnerMutation<Visit>({
@@ -245,7 +258,8 @@ export function VisitManager({
         throw new FeedbackError(() => m.owner_choose_where_the_visit_is_an_area_or_location());
       if (values.startTime && !values.startsOn)
         throw new FeedbackError(() => m.owner_a_time_belongs_to_a_day_choose_the_first_day_first());
-      if (values.endTime && !values.startTime) throw new FeedbackError(() => m.owner_also_enter_a_start_time());
+      if (values.endTime && !values.startTime)
+        throw new FeedbackError(() => m.owner_also_enter_a_start_time());
       await save.mutateAsync({
         id,
         payload: {
@@ -260,7 +274,9 @@ export function VisitManager({
           summary: values.summary.trim() || null,
           share_time: values.shareTime,
           share_date_precision: values.shareDatePrecision,
-          ...(!id || !samePlace(values.place, baseline.current.place) ? placeFields(values.place) : {}),
+          ...(!id || !samePlace(values.place, baseline.current.place)
+            ? placeFields(values.place)
+            : {}),
           ...(id ? {} : { position: visits.length }),
         },
       });
@@ -297,7 +313,8 @@ export function VisitManager({
   };
 
   /** The map point for a visit: its location when that has a point, else its area. */
-  const mapPointFor = (visit: Visit): string => (visit.location?.latitude != null ? visit.location.id : visit.area.id);
+  const mapPointFor = (visit: Visit): string =>
+    visit.location?.latitude != null ? visit.location.id : visit.area.id;
 
   function shift(visit: Visit, direction: -1 | 1) {
     const position = visit.position + direction;
@@ -321,7 +338,9 @@ export function VisitManager({
   async function toggleOffline(visit: Visit) {
     if (offline.isPinned("visit", visit.id)) {
       await offline.removeByResource("visit", visit.id);
-      setMessage(textNotice(() => m.owner_is_no_longer_available_offline({ p0: visitTitle(visit) })));
+      setMessage(
+        textNotice(() => m.owner_is_no_longer_available_offline({ p0: visitTitle(visit) })),
+      );
       return;
     }
     await offline.pin({
@@ -332,7 +351,9 @@ export function VisitManager({
       contentType: "application/json",
       bytes: new TextEncoder().encode(JSON.stringify(visit)).buffer as ArrayBuffer,
     });
-    setMessage(textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: visitTitle(visit) })));
+    setMessage(
+      textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: visitTitle(visit) })),
+    );
   }
 
   const readError = visitsQuery.error ?? staysQuery.error;
@@ -367,7 +388,9 @@ export function VisitManager({
       <div className="capture-heading">
         <div>
           <h3 id="visits-title">{m.owner_visits()}</h3>
-          <p>{m.owner_stops_on_your_trip_an_area_or_location_and_when_you_are_there_share_them()}</p>
+          <p>
+            {m.owner_stops_on_your_trip_an_area_or_location_and_when_you_are_there_share_them()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.owner_new_visit()}
@@ -391,7 +414,11 @@ export function VisitManager({
                 aria-label={m.owner_view_visit({ p0: visitTitle(visit) })}
               >
                 <strong>{visitTitle(visit)}</strong>
-                <span>{[dayLine(visit), visitPlace(visit), visibilityLabel(visit.visibility)].join(" · ")}</span>
+                <span>
+                  {[dayLine(visit), visitPlace(visit), visibilityLabel(visit.visibility)].join(
+                    " · ",
+                  )}
+                </span>
               </Button>
               {sleeping(visit)}
               <RestatedRoutesNote routes={visit.possible_route_duplicates ?? []} />
@@ -409,14 +436,20 @@ export function VisitManager({
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => void toggleOffline(visit).catch(fail(m.owner_the_visit_could_not_be_saved_offline))}
+                  onClick={() =>
+                    void toggleOffline(visit).catch(
+                      fail(m.owner_the_visit_could_not_be_saved_offline),
+                    )
+                  }
                   aria-label={
                     offline.isPinned("visit", visit.id)
                       ? m.owner_remove_visit_offline({ name: visitTitle(visit) })
                       : m.owner_save_visit_offline({ name: visitTitle(visit) })
                   }
                 >
-                  {offline.isPinned("visit", visit.id) ? m.owner_remove_offline_copy() : m.owner_save_offline()}
+                  {offline.isPinned("visit", visit.id)
+                    ? m.owner_remove_offline_copy()
+                    : m.owner_save_offline()}
                 </Button>
                 <Button
                   className="secondary compact"
@@ -497,7 +530,11 @@ export function VisitManager({
               <Button type="button" onClick={() => edit(selected)}>
                 {m.owner_edit()}
               </Button>
-              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button
+                className="danger"
+                type="button"
+                onClick={() => dialog.setConfirmDelete(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -545,7 +582,11 @@ export function VisitManager({
                 {(startsOn) => (
                   <record.form.Field
                     name="endsOn"
-                    validators={{ onChangeListenTo: ["startsOn"], onChange: lastDay, onSubmit: lastDay }}
+                    validators={{
+                      onChangeListenTo: ["startsOn"],
+                      onChange: lastDay,
+                      onSubmit: lastDay,
+                    }}
                   >
                     {(field) => (
                       <DateField
@@ -564,15 +605,31 @@ export function VisitManager({
               {(startsOn) => (
                 <div className="field-row">
                   <record.form.Field name="startTime">
-                    {(field) => <TimeField field={field} label={m.owner_start_time()} optional disabled={!startsOn} />}
+                    {(field) => (
+                      <TimeField
+                        field={field}
+                        label={m.owner_start_time()}
+                        optional
+                        disabled={!startsOn}
+                      />
+                    )}
                   </record.form.Field>
                   <record.form.Field name="endTime">
-                    {(field) => <TimeField field={field} label={m.owner_end_time()} optional disabled={!startsOn} />}
+                    {(field) => (
+                      <TimeField
+                        field={field}
+                        label={m.owner_end_time()}
+                        optional
+                        disabled={!startsOn}
+                      />
+                    )}
                   </record.form.Field>
                 </div>
               )}
             </record.form.Subscribe>
-            <p className="help">{m.owner_times_are_local_to_the_visit_in_the_area_s_time_zone_visitors_at_home_al()}</p>
+            <p className="help">
+              {m.owner_times_are_local_to_the_visit_in_the_area_s_time_zone_visitors_at_home_al()}
+            </p>
             <div className="field-row">
               <record.form.Field name="status">
                 {(field) => (
@@ -598,7 +655,9 @@ export function VisitManager({
                 )}
               </record.form.Field>
             </div>
-            <p className="help">{m.owner_the_status_is_only_for_you_and_is_never_shared_put_idea_or_draft_here_ra()}</p>
+            <p className="help">
+              {m.owner_the_status_is_only_for_you_and_is_never_shared_put_idea_or_draft_here_ra()}
+            </p>
             <record.form.Field name="notes">
               {(field) => (
                 <MarkdownField
@@ -651,7 +710,8 @@ export function VisitManager({
                     field={field}
                     label={
                       <>
-                        {m.owner_show_the_time_to_visitors()} <small>{m.owner_only_with_full_dates()}</small>
+                        {m.owner_show_the_time_to_visitors()}{" "}
+                        <small>{m.owner_only_with_full_dates()}</small>
                       </>
                     }
                   />

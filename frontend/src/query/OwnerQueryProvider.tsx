@@ -10,7 +10,11 @@ import { createOwnerQueryClient } from "./client";
 // import is behind a build-time constant, so no devtools code ships in production.
 const Devtools =
   import.meta.env.DEV && import.meta.env.VITE_QUERY_DEVTOOLS === "1"
-    ? lazy(() => import("@tanstack/react-query-devtools").then((module) => ({ default: module.ReactQueryDevtools })))
+    ? lazy(() =>
+        import("@tanstack/react-query-devtools").then((module) => ({
+          default: module.ReactQueryDevtools,
+        })),
+      )
     : null;
 
 /**
@@ -18,7 +22,13 @@ const Devtools =
  * to the signed-in subject: sign-out, a different subject or a 401 discard it.
  * The visitor routes never mount this provider.
  */
-export function OwnerQueryProvider({ children, client }: { children: ReactNode; client?: QueryClient }) {
+export function OwnerQueryProvider({
+  children,
+  client,
+}: {
+  children: ReactNode;
+  client?: QueryClient;
+}) {
   const { session, setSession } = useAuth();
   const endSession = useRef(() => {});
   endSession.current = () => {
@@ -31,7 +41,9 @@ export function OwnerQueryProvider({ children, client }: { children: ReactNode; 
   const subject = session ? decodeSubject(session.accessToken) : null;
 
   useEffect(() => {
-    queryClient.removeQueries({ predicate: (query) => query.queryKey[0] === "owner" && query.queryKey[1] !== subject });
+    queryClient.removeQueries({
+      predicate: (query) => query.queryKey[0] === "owner" && query.queryKey[1] !== subject,
+    });
   }, [queryClient, subject]);
 
   return (

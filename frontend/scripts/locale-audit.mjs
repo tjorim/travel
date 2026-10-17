@@ -6,9 +6,12 @@ import { parseSync } from "oxc-parser";
 import { projectErrors } from "./check-message-parity.mjs";
 import { diagnosticCallees, excludedFiles, exclusions } from "./locale-audit-exclusions.mjs";
 
-const copyAttribute = /^(?:aria-label|aria-description|title|label|ariaLabel|placeholder|alt|description)$/;
+const copyAttribute =
+  /^(?:aria-label|aria-description|title|label|ariaLabel|placeholder|alt|description)$/;
 const machine = (text) =>
-  /^(?:rgba?|hsla?|oklch|oklab|color-mix|(?:repeating-)?(?:linear|radial|conic)-gradient)\(/.test(text) ||
+  /^(?:rgba?|hsla?|oklch|oklab|color-mix|(?:repeating-)?(?:linear|radial|conic)-gradient)\(/.test(
+    text,
+  ) ||
   /^\((?:prefers|min|max)-[\w-]+: [^)]+\)$/.test(text) ||
   // Day.js format tokens and separators; one linear pattern, no nested quantifiers.
   /^[DMYHhmsZd][DMYHhmsZd ,:\-]*$/.test(text) ||
@@ -17,9 +20,18 @@ const machine = (text) =>
     .every(
       (token) =>
         /^(?:[\w:[\]!./%&()*=,'>#@^$~+-]*-)[\w:[\]!./%&()*=,'>#@^$~+-]+$/.test(token) ||
-        ["block", "grid", "fixed", "relative", "flex", "border", "rounded", "peer", "secondary", "compact"].includes(
-          token,
-        ),
+        [
+          "block",
+          "grid",
+          "fixed",
+          "relative",
+          "flex",
+          "border",
+          "rounded",
+          "peer",
+          "secondary",
+          "compact",
+        ].includes(token),
     );
 
 const functionLike = new Set([
@@ -64,7 +76,8 @@ export function sourceCandidates(source, file = "source.tsx", all = false) {
         ancestor.callee.type === "Identifier" &&
         /^(?:cn|cva|clsx|twMerge)$/.test(ancestor.callee.name),
     );
-    const directive = parent?.type === "ExpressionStatement" && typeof parent.directive === "string";
+    const directive =
+      parent?.type === "ExpressionStatement" && typeof parent.directive === "string";
     // Console and logger output and Error messages are developer diagnostics, never interface copy.
     // An application that renders `error.message` must route it through its own translated fallback.
     const diagnostic = ancestors.some(
@@ -82,7 +95,10 @@ export function sourceCandidates(source, file = "source.tsx", all = false) {
     );
     const templateCopy = templateFragment && /\s/.test(text) && /[A-Za-zÀ-ž]{2}/.test(trimmed);
     const fieldMapping = ancestors
-      .slice(0, ancestors.findIndex((ancestor) => functionLike.has(ancestor.type)) + 1 || ancestors.length)
+      .slice(
+        0,
+        ancestors.findIndex((ancestor) => functionLike.has(ancestor.type)) + 1 || ancestors.length,
+      )
       .some(
         (ancestor) =>
           (ancestor.type === "Property" && keyName(ancestor) === "serverFields") ||
@@ -94,21 +110,31 @@ export function sourceCandidates(source, file = "source.tsx", all = false) {
       parent.value === node &&
       /^(?:label|title|placeholder|description|alt)$/.test(keyName(parent));
     const visible =
-      templateCopy || isJsxText || parent?.type === "JSXElement" || copyAttribute.test(attr) || propertyCopy;
+      templateCopy ||
+      isJsxText ||
+      parent?.type === "JSXElement" ||
+      copyAttribute.test(attr) ||
+      propertyCopy;
     if (
       /[A-Za-zÀ-ž]/.test(trimmed) &&
       !imported &&
       (all || (!directive && !diagnostic && !styling)) &&
       (all || visible || /\s/.test(trimmed)) &&
       (all ||
-        (!/^(?:className|rel|target|href|src|srcSet|id|htmlFor|role|type|name|data-.+)$/.test(attr) &&
+        (!/^(?:className|rel|target|href|src|srcSet|id|htmlFor|role|type|name|data-.+)$/.test(
+          attr,
+        ) &&
           (visible || !machine(trimmed))))
     ) {
-      result.push({ line: lineAt(source, start + text.length - text.trimStart().length), text: trimmed });
+      result.push({
+        line: lineAt(source, start + text.length - text.trimStart().length),
+        text: trimmed,
+      });
     }
   }
   walk(parse(source, file), (node, ancestors) => {
-    if (node.type === "Literal" && typeof node.value === "string") consider(node, ancestors, node.value, node.start);
+    if (node.type === "Literal" && typeof node.value === "string")
+      consider(node, ancestors, node.value, node.start);
     else if (node.type === "JSXText") consider(node, ancestors, node.value, node.start);
     else if (node.type === "TemplateLiteral") {
       const single = node.quasis.length === 1;
@@ -116,7 +142,13 @@ export function sourceCandidates(source, file = "source.tsx", all = false) {
         // A template without substitutions behaves like a string literal; fragments of a substituted one are copy hints.
         single
           ? consider(node, ancestors, quasi.value.cooked ?? quasi.value.raw, quasi.start, false)
-          : consider(quasi, [node, ...ancestors], quasi.value.cooked ?? quasi.value.raw, quasi.start, true);
+          : consider(
+              quasi,
+              [node, ...ancestors],
+              quasi.value.cooked ?? quasi.value.raw,
+              quasi.start,
+              true,
+            );
     }
   });
   return result;
@@ -140,7 +172,10 @@ function files(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(directory, entry.name);
     if (entry.isDirectory()) return entry.name === "paraglide" ? [] : files(file);
-    return /\.(?:tsx?|js)$/.test(file) && !/(?:\.test\.|\.spec\.|test-|fake-api|test-utils)/.test(file) ? [file] : [];
+    return /\.(?:tsx?|js)$/.test(file) &&
+      !/(?:\.test\.|\.spec\.|test-|fake-api|test-utils)/.test(file)
+      ? [file]
+      : [];
   });
 }
 function main() {
@@ -157,7 +192,9 @@ function main() {
   for (const file of reviewed) {
     const relative = path.relative(path.join(root, "src"), file);
     for (const line of frozenMessageCalls(fs.readFileSync(file, "utf8"), relative))
-      errors.push(`${relative}:${line}: module-level translated snapshot; retain the message function`);
+      errors.push(
+        `${relative}:${line}: module-level translated snapshot; retain the message function`,
+      );
     for (const candidate of sourceCandidates(fs.readFileSync(file, "utf8"), relative, all)) {
       const reason = exclusions[relative]?.[candidate.text];
       const entry = `${relative}:${candidate.line} ${JSON.stringify(candidate.text)}`;

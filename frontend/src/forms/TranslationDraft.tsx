@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { ownerRequest } from "../query/api";
-import { errorNotice, noticeMessage, textNotice, type ErrorNotice, type MessageNotice } from "../query/feedback";
+import {
+  errorNotice,
+  noticeMessage,
+  textNotice,
+  type ErrorNotice,
+  type MessageNotice,
+} from "../query/feedback";
 import { useOwner } from "../query/owner-queries";
 import { Field, FieldLabel } from "../ui/field";
 import { TravelTextarea } from "../ui/TravelTextarea";
@@ -39,7 +45,8 @@ export function TranslationDraft({
 }) {
   useLocale();
   const [run, setRun] = useState<Run | null>(null);
-  const start = (direction: Direction) => setRun((previous) => ({ ...direction, id: (previous?.id ?? 0) + 1 }));
+  const start = (direction: Direction) =>
+    setRun((previous) => ({ ...direction, id: (previous?.id ?? 0) + 1 }));
 
   return (
     <div className="grid gap-2">
@@ -52,7 +59,9 @@ export function TranslationDraft({
             disabled={!value.trim()}
             onClick={() => start(direction)}
           >
-            {direction.target === "en" ? m.owner_translate_to_english() : m.owner_translate_to_dutch()}
+            {direction.target === "en"
+              ? m.owner_translate_to_english()
+              : m.owner_translate_to_dutch()}
           </Button>
         ))}
       </div>
@@ -112,7 +121,10 @@ function TranslationRun({
         if (!controller.signal.aborted)
           setState({
             kind: "error",
-            notice: errorNotice(error, m.owner_the_translation_could_not_be_made_your_text_is_unchanged),
+            notice: errorNotice(
+              error,
+              m.owner_the_translation_could_not_be_made_your_text_is_unchanged,
+            ),
           });
       });
     return () => controller.abort();
@@ -144,7 +156,9 @@ function TranslationRun({
   return (
     <section className="grid gap-2 rounded-lg border border-dashed border-travel-control-border p-3">
       <h4 className="m-0 text-sm font-bold">{m.owner_machine_translated_draft()}</h4>
-      <p className="help m-0">{m.owner_check_names_of_places_and_dishes_and_expressions_before_using_the_draft()}</p>
+      <p className="help m-0">
+        {m.owner_check_names_of_places_and_dishes_and_expressions_before_using_the_draft()}
+      </p>
       <Field>
         <FieldLabel>
           <span>{m.owner_translation_draft_for({ p0: label })}</span>
@@ -156,7 +170,12 @@ function TranslationRun({
         />
       </Field>
       <div className="flex flex-wrap gap-1">
-        <Button type="button" className="compact" disabled={!state.text.trim()} onClick={() => onAppend(state.text)}>
+        <Button
+          type="button"
+          className="compact"
+          disabled={!state.text.trim()}
+          onClick={() => onAppend(state.text)}
+        >
           {m.owner_add_below_the_text()}
         </Button>
         <Button type="button" className="compact secondary" onClick={close}>

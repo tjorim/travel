@@ -21,7 +21,10 @@ function initialLocale(): Locale {
   } catch {
     /* Storage is optional. */
   }
-  return resolveLocale(stored, navigator.languages?.length ? navigator.languages : [navigator.language]);
+  return resolveLocale(
+    stored,
+    navigator.languages?.length ? navigator.languages : [navigator.language],
+  );
 }
 let current = initialLocale();
 const listeners = new Set<() => void>();

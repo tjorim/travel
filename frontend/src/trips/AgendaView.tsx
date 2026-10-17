@@ -72,8 +72,12 @@ export function AgendaView({
                   kind: m.owner_route(),
                   title: routeTitle(route),
                   first: route.departs_on,
-                  last: route.arrives_at ? localDate(route.arrives_at, route.arrival_timezone) : null,
-                  time: route.departs_at ? wallClock(route.departs_at, route.departure_timezone).slice(11, 16) : null,
+                  last: route.arrives_at
+                    ? localDate(route.arrives_at, route.arrival_timezone)
+                    : null,
+                  time: route.departs_at
+                    ? wallClock(route.departs_at, route.departure_timezone).slice(11, 16)
+                    : null,
                   where: route.departure_area.label,
                 },
               ]
@@ -101,7 +105,8 @@ export function AgendaView({
         // order for same-day, same-time ties instead of an opaque id breaking it arbitrarily.
       ].sort(
         (left, right) =>
-          left.first.localeCompare(right.first) || (left.time ?? "99:99").localeCompare(right.time ?? "99:99"),
+          left.first.localeCompare(right.first) ||
+          (left.time ?? "99:99").localeCompare(right.time ?? "99:99"),
       ),
     [locale, staysQuery.data, routesQuery.data, visitsQuery.data],
   );
@@ -154,7 +159,9 @@ export function AgendaView({
           {item.kind}: {item.title}
         </span>{" "}
         <small>
-          {item.last && item.last !== item.first ? `${formatDayRange(item.first, item.last)} · ` : ""}
+          {item.last && item.last !== item.first
+            ? `${formatDayRange(item.first, item.last)} · `
+            : ""}
           {item.where}
         </small>
       </Button>
@@ -166,7 +173,9 @@ export function AgendaView({
       <div className="capture-heading">
         <div>
           <h3 id="agenda-title">{m.owner_agenda()}</h3>
-          <p>{m.owner_everything_by_day_in_order_anything_without_a_day_is_listed_at_the_botto()}</p>
+          <p>
+            {m.owner_everything_by_day_in_order_anything_without_a_day_is_listed_at_the_botto()}
+          </p>
         </div>
       </div>
       {items.length === 0 && undated.length === 0 ? (

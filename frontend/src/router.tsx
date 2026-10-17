@@ -22,7 +22,16 @@ declare module "@tanstack/react-router" {
     notice?: "trip_deleted";
     /** Set by the private overview so the matching manager opens that record's dialog on arrival. */
     openRecord?: {
-      kind: "stay" | "route" | "visit" | "area" | "location" | "task" | "update" | "document" | "media";
+      kind:
+        | "stay"
+        | "route"
+        | "visit"
+        | "area"
+        | "location"
+        | "task"
+        | "update"
+        | "document"
+        | "media";
       id: string;
     };
   }
@@ -36,7 +45,10 @@ export const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }
   component: () => <Outlet />,
 });
 
-export const callbackRoute = createRoute({ getParentRoute: () => rootRoute, path: "auth/callback" });
+export const callbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "auth/callback",
+});
 
 export const trackerLayoutRoute = createRoute({
   id: "tracker-layout",
@@ -52,7 +64,9 @@ export const homeRoute = createRoute({ getParentRoute: () => trackerLayoutRoute,
 export const tripsRoute = createRoute({
   getParentRoute: () => trackerLayoutRoute,
   path: "trips",
-  validateSearch: (search: Record<string, unknown>): { new?: "1" } => ({ new: parseFlagParam(search.new) }),
+  validateSearch: (search: Record<string, unknown>): { new?: "1" } => ({
+    new: parseFlagParam(search.new),
+  }),
   loader: async ({ context }) => {
     // Best-effort prefetch only, mirroring the pattern in tjorim/champagnefestival's
     // venue-plan loader: no signed-in owner (yet), or the prefetch itself fails, and
@@ -67,15 +81,30 @@ export const tripsRoute = createRoute({
     }
   },
 });
-export const tripRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "trips/$tripId" });
+export const tripRoute = createRoute({
+  getParentRoute: () => trackerLayoutRoute,
+  path: "trips/$tripId",
+});
 export const tripSectionRoute = createRoute({
   getParentRoute: () => trackerLayoutRoute,
   path: "trips/$tripId/$section",
 });
-export const tripDetailRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "trips/$tripId/details" });
-export const captureRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "capture" });
-export const libraryRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "library" });
-export const settingsRoute = createRoute({ getParentRoute: () => trackerLayoutRoute, path: "settings" });
+export const tripDetailRoute = createRoute({
+  getParentRoute: () => trackerLayoutRoute,
+  path: "trips/$tripId/details",
+});
+export const captureRoute = createRoute({
+  getParentRoute: () => trackerLayoutRoute,
+  path: "capture",
+});
+export const libraryRoute = createRoute({
+  getParentRoute: () => trackerLayoutRoute,
+  path: "library",
+});
+export const settingsRoute = createRoute({
+  getParentRoute: () => trackerLayoutRoute,
+  path: "settings",
+});
 export const trackerNotFoundRoute = createRoute({
   getParentRoute: () => trackerLayoutRoute,
   path: "$",
@@ -125,6 +154,8 @@ export function createTrackerRouter(
     routeTree,
     basepath: options.basepath,
     context: { queryClient: options.queryClient },
-    history: options.initialEntries ? createMemoryHistory({ initialEntries: options.initialEntries }) : undefined,
+    history: options.initialEntries
+      ? createMemoryHistory({ initialEntries: options.initialEntries })
+      : undefined,
   });
 }

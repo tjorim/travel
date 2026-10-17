@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -27,13 +32,13 @@ jobs:
             backend:
               - 'backend/**'
               - 'dist/*/private/app-import.json'
-              - '.github/workflows/ci.yaml'
+              - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
-              - '.github/workflows/ci.yaml'
+              - '.github/workflows/ci.yml'
             archive:
               - 'dist/**'
-              - '.github/workflows/ci.yaml'
+              - '.github/workflows/ci.yml'
 
   backend:
     name: Backend
@@ -175,3 +180,19 @@ jobs:
           done < <(git ls-files -z -- 'dist/*.json' 'dist/**/*.json')
       - name: Check whitespace
         run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+
+  gate:
+    name: CI gate
+    if: always()
+    needs:
+      - changes
+      - backend
+      - frontend
+      - frontend-e2e
+      - static-archive
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every job to have passed or been skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null

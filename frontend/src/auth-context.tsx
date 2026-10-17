@@ -20,7 +20,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const restoring = useRef(false);
 
   useEffect(() => {
-    if (session || restoring.current || !shouldRestoreSession() || window.location.pathname.endsWith("/auth/callback"))
+    if (
+      session ||
+      restoring.current ||
+      !shouldRestoreSession() ||
+      window.location.pathname.endsWith("/auth/callback")
+    )
       return;
     restoring.current = true;
     const returnPath = window.location.pathname.replace(/^\/admin(?=\/|$)/, "") || "/";

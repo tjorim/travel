@@ -103,9 +103,16 @@ export function TravelUpdateManager({
     ownerKeys.tripResource(subject, trip.id, "areas"),
   ];
 
-  const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, TravelUpdate>({
+  const save = useOwnerMutation<
+    { id: string | null; payload: Record<string, unknown> },
+    TravelUpdate
+  >({
     fallback: m.owner_the_travel_update_could_not_be_saved,
-    request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
+    request: ({ id, payload }) => ({
+      path: id ? `${path}/${id}` : path,
+      method: id ? "PATCH" : "POST",
+      body: payload,
+    }),
     invalidate,
   });
   const remove = useOwnerMutation<TravelUpdate>({
@@ -174,7 +181,9 @@ export function TravelUpdateManager({
       <div className="capture-heading">
         <div>
           <h3 id="updates-title">{m.owner_travel_updates()}</h3>
-          <p>{m.owner_what_happened_with_a_private_and_a_shared_part_your_notes_location_and_p()}</p>
+          <p>
+            {m.owner_what_happened_with_a_private_and_a_shared_part_your_notes_location_and_p()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.owner_new_update()}
@@ -195,8 +204,8 @@ export function TravelUpdateManager({
               >
                 <strong>{item.title}</strong>
                 <span>
-                  {updateDateLabel(item.occurred_at, item.date_precision)} · {visibilityLabel(item.visibility)} ·{" "}
-                  {item.area?.label ?? m.owner_no_place()}
+                  {updateDateLabel(item.occurred_at, item.date_precision)} ·{" "}
+                  {visibilityLabel(item.visibility)} · {item.area?.label ?? m.owner_no_place()}
                 </span>
               </Button>
             </article>
@@ -237,7 +246,10 @@ export function TravelUpdateManager({
                 {[
                   selected.location
                     ? m.owner_location_2({
-                        p0: selected.location.display_name ?? selected.location.locality ?? m.owner_unnamed_location(),
+                        p0:
+                          selected.location.display_name ??
+                          selected.location.locality ??
+                          m.owner_unnamed_location(),
                       })
                     : null,
                   m.owner_linked_media_count({ count: selected.media_asset_ids.length }),
@@ -257,7 +269,11 @@ export function TravelUpdateManager({
               <Button type="button" onClick={() => edit(selected)}>
                 {m.owner_edit()}
               </Button>
-              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button
+                className="danger"
+                type="button"
+                onClick={() => dialog.setConfirmDelete(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -283,11 +299,17 @@ export function TravelUpdateManager({
                 onSubmit: requiredText(m.owner_give_the_travel_update_a_title),
               }}
             >
-              {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
+              {(field) => (
+                <TextField field={field} label={m.owner_title()} required maxLength={160} />
+              )}
             </record.form.Field>
             <record.form.Field
               name="body"
-              validators={{ onChangeListenTo: ["visibility"], onChange: bodyToShare, onSubmit: bodyToShare }}
+              validators={{
+                onChangeListenTo: ["visibility"],
+                onChange: bodyToShare,
+                onSubmit: bodyToShare,
+              }}
             >
               {(field) => (
                 <MarkdownField
@@ -307,7 +329,9 @@ export function TravelUpdateManager({
                   onSubmit: requiredText(m.owner_enter_the_date_and_time),
                 }}
               >
-                {(field) => <DateTimeField field={field} label={m.owner_date_and_time()} required />}
+                {(field) => (
+                  <DateTimeField field={field} label={m.owner_date_and_time()} required />
+                )}
               </record.form.Field>
               <record.form.Field name="datePrecision">
                 {(field) => (

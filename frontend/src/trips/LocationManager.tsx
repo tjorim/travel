@@ -4,7 +4,14 @@ import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@base-ui/react/button";
 import { useEffect, useMemo, useState } from "react";
 
-import { CheckboxField, RecordForm, requiredText, SelectField, TextAreaField, TextField } from "../forms/fields";
+import {
+  CheckboxField,
+  RecordForm,
+  requiredText,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "../forms/fields";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { isResourceInUse } from "../query/api";
@@ -68,7 +75,13 @@ const fromPlace = (place: Location): Values => ({
 const addressFields = (value: Values | Location) =>
   "addressLine1" in value
     ? [value.addressLine1, value.addressLine2, value.postalCode, value.locality, value.adminArea]
-    : [value.address_line1, value.address_line2, value.postal_code, value.locality, value.admin_area];
+    : [
+        value.address_line1,
+        value.address_line2,
+        value.postal_code,
+        value.locality,
+        value.admin_area,
+      ];
 const address = (value: Values | Location) => addressFields(value).filter(Boolean).join(", ");
 const shareableAddress = (value: Values | Location) => addressFields(value).some(Boolean);
 const addressProjection = (value: Values | Location) => {
@@ -109,14 +122,19 @@ function recipients(
 ): string[] {
   if (place.visibility === "private") return [];
   const included = (scope: PublicProjectionStatus["scope"]) =>
-    place.visibility === "everyone" || scope.items?.some((item) => item.kind === "location" && item.id === place.id);
+    place.visibility === "everyone" ||
+    scope.items?.some((item) => item.kind === "location" && item.id === place.id);
   const now = Date.now();
   return [
-    ...(status?.surface_state === "published" && included(status.scope) ? [m.owner_public_page()] : []),
+    ...(status?.surface_state === "published" && included(status.scope)
+      ? [m.owner_public_page()]
+      : []),
     ...(links ?? [])
       .filter(
         (link) =>
-          link.state === "active" && (!link.expires_at || Date.parse(link.expires_at) > now) && included(link.scope),
+          link.state === "active" &&
+          (!link.expires_at || Date.parse(link.expires_at) > now) &&
+          included(link.scope),
       )
       .map((link) => m.owner_share_link({ p0: link.label })),
   ];
@@ -136,7 +154,8 @@ function mapTarget(latitude: number | null | undefined, longitude: number | null
     </p>
   );
 }
-export const ownerLocationName = (place: Location) => place.display_name?.split(",")[0]?.trim() || locationName(place);
+export const ownerLocationName = (place: Location) =>
+  place.display_name?.split(",")[0]?.trim() || locationName(place);
 /** The name two locations are compared by; an unnamed location has none, so it never matches by name. */
 export const matchableLocationName = (place: Location) =>
   place.display_name || place.label || place.locality ? ownerLocationName(place) : "";
@@ -183,7 +202,10 @@ export function LocationManager({
   const [merge, setMerge] = useState<MergeRequest | null>(null);
   // The last delete was refused because the location is still used, so merging is the way to tidy up.
   const [inUse, setInUse] = useState(false);
-  const suggestions = useMemo(() => duplicateLocations(locations, matchableLocationName), [locations]);
+  const suggestions = useMemo(
+    () => duplicateLocations(locations, matchableLocationName),
+    [locations],
+  );
   const [notice, setNotice] = useFeedback<string>("");
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Location>({
     fallback: m.owner_the_location_could_not_be_saved,
@@ -196,7 +218,10 @@ export function LocationManager({
   });
   const remove = useOwnerMutation<Location>({
     fallback: m.owner_the_location_could_not_be_deleted,
-    request: (place) => ({ path: `${tripPath(trip.id, "locations")}/${place.id}`, method: "DELETE" }),
+    request: (place) => ({
+      path: `${tripPath(trip.id, "locations")}/${place.id}`,
+      method: "DELETE",
+    }),
     invalidate: (subject) => [ownerKeys.trip(subject, trip.id), ownerKeys.trips(subject)],
   });
   const record = useRecordForm<Values, Location>({
@@ -309,7 +334,8 @@ export function LocationManager({
       postalCode: result.postal_code,
       countryCode: result.country_code,
     };
-    for (const [key, value] of Object.entries(proposed)) record.form.setFieldValue(key as keyof Values, value ?? "");
+    for (const [key, value] of Object.entries(proposed))
+      record.form.setFieldValue(key as keyof Values, value ?? "");
   }
   const { selected, editing, editingId } = dialog;
   const addressPreview = addressProjection(record.values);
@@ -321,7 +347,9 @@ export function LocationManager({
     <Button
       className={refused ? undefined : "secondary"}
       type="button"
-      onClick={() => selected && setMerge({ keepId: selected.id, duplicateIds: [], token: Date.now() })}
+      onClick={() =>
+        selected && setMerge({ keepId: selected.id, duplicateIds: [], token: Date.now() })
+      }
     >
       {m.owner_merge_with_other_locations()}
     </Button>
@@ -343,7 +371,13 @@ export function LocationManager({
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? m.owner_edit_location() : m.owner_add_location()) : m.owner_location()}
+        title={
+          editing
+            ? editingId
+              ? m.owner_edit_location()
+              : m.owner_add_location()
+            : m.owner_location()
+        }
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -356,7 +390,9 @@ export function LocationManager({
                 {m.owner_your_name()} {selected.display_name || m.owner_no_name_of_your_own()}
               </p>
               <p>
-                {m.owner_area_2()} {areas.find((area) => area.id === selected.area_id)?.label ?? m.owner_unknown_area()}{" "}
+                {m.owner_area_2()}{" "}
+                {areas.find((area) => area.id === selected.area_id)?.label ??
+                  m.owner_unknown_area()}{" "}
                 · {visibilityLabel(selected.visibility)}
               </p>
               <p>
@@ -397,11 +433,15 @@ export function LocationManager({
                 {m.owner_sharing_the_address_does_not_change_visibility_or_recipients()}
               </p>
               <p>
-                {selected.share_address ? m.owner_address_sharing_is_on() : m.owner_address_sharing_is_off()}{" "}
+                {selected.share_address
+                  ? m.owner_address_sharing_is_on()
+                  : m.owner_address_sharing_is_off()}{" "}
                 {shareableAddress(selected)
-                  ? m.owner_address_shown_to_visitors_when_address_sharing_is_on_and_this_location_r({
-                      p0: projectionText(addressProjection(selected)),
-                    })
+                  ? m.owner_address_shown_to_visitors_when_address_sharing_is_on_and_this_location_r(
+                      {
+                        p0: projectionText(addressProjection(selected)),
+                      },
+                    )
                   : m.owner_no_shareable_address()}{" "}
                 {m.owner_your_name_and_private_notes_are_not_shown()}
               </p>
@@ -419,7 +459,11 @@ export function LocationManager({
                 {m.owner_edit()}
               </Button>
               {locations.length > 1 && !refused && mergeButton}
-              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button
+                className="danger"
+                type="button"
+                onClick={() => dialog.setConfirmDelete(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -435,7 +479,9 @@ export function LocationManager({
               records={locations.map((place) => ({
                 id: place.id,
                 name: ownerLocationName(place),
-                detail: [place.address_line1, place.locality, areaLabel(place.area_id)].filter(Boolean).join(" · "),
+                detail: [place.address_line1, place.locality, areaLabel(place.area_id)]
+                  .filter(Boolean)
+                  .join(" · "),
                 areaId: place.area_id,
               }))}
               areas={areas}
@@ -541,37 +587,70 @@ export function LocationManager({
               </>
             )}
             <record.form.Field name="displayName">
-              {(field) => <TextField field={field} label={m.owner_your_name_2()} optional maxLength={500} />}
+              {(field) => (
+                <TextField field={field} label={m.owner_your_name_2()} optional maxLength={500} />
+              )}
             </record.form.Field>
             <record.form.Field name="label">
-              {(field) => <TextField field={field} label={m.owner_public_name_2()} optional maxLength={120} />}
+              {(field) => (
+                <TextField field={field} label={m.owner_public_name_2()} optional maxLength={120} />
+              )}
             </record.form.Field>
             <div className="field-row">
               <record.form.Field name="addressLine1">
-                {(field) => <TextField field={field} label={m.owner_address_line_1()} optional maxLength={160} />}
+                {(field) => (
+                  <TextField
+                    field={field}
+                    label={m.owner_address_line_1()}
+                    optional
+                    maxLength={160}
+                  />
+                )}
               </record.form.Field>
               <record.form.Field name="addressLine2">
-                {(field) => <TextField field={field} label={m.owner_address_line_2()} optional maxLength={160} />}
+                {(field) => (
+                  <TextField
+                    field={field}
+                    label={m.owner_address_line_2()}
+                    optional
+                    maxLength={160}
+                  />
+                )}
               </record.form.Field>
             </div>
             <div className="field-row">
               <record.form.Field name="postalCode">
-                {(field) => <TextField field={field} label={m.owner_postal_code()} optional maxLength={20} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_postal_code()} optional maxLength={20} />
+                )}
               </record.form.Field>
               <record.form.Field name="locality">
-                {(field) => <TextField field={field} label={m.owner_city()} optional maxLength={120} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_city()} optional maxLength={120} />
+                )}
               </record.form.Field>
             </div>
             <div className="field-row">
               <record.form.Field name="adminArea">
-                {(field) => <TextField field={field} label={m.owner_region()} optional maxLength={120} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_region()} optional maxLength={120} />
+                )}
               </record.form.Field>
               <record.form.Field name="countryCode">
-                {(field) => <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />
+                )}
               </record.form.Field>
             </div>
             <record.form.Field name="notes">
-              {(field) => <TextAreaField field={field} label={m.owner_private_notes_2()} optional maxLength={2000} />}
+              {(field) => (
+                <TextAreaField
+                  field={field}
+                  label={m.owner_private_notes_2()}
+                  optional
+                  maxLength={2000}
+                />
+              )}
             </record.form.Field>
             {editingId && (
               <>
@@ -600,9 +679,11 @@ export function LocationManager({
                     : statusQuery.isError || linksQuery.isError
                       ? m.owner_recipients_could_not_be_checked()
                       : currentRecipients.length
-                        ? m.owner_current_recipients_a_saved_address_change_appears_immediately_for_them_w({
-                            p0: currentRecipients.join(", "),
-                          })
+                        ? m.owner_current_recipients_a_saved_address_change_appears_immediately_for_them_w(
+                            {
+                              p0: currentRecipients.join(", "),
+                            },
+                          )
                         : m.owner_this_location_currently_reaches_no_visitors_address_sharing_alone_does_n()}
                 </p>
                 <p className="help">

@@ -58,7 +58,10 @@ export function rememberSharedTrip(token: string, projection: Projection): boole
     summary: projection.summary_text ?? projection.summary,
     lastVisitedAt: new Date().toISOString(),
   };
-  return writeSavedSharedTrips([current, ...readSavedSharedTrips().filter((trip) => trip.token !== token)]);
+  return writeSavedSharedTrips([
+    current,
+    ...readSavedSharedTrips().filter((trip) => trip.token !== token),
+  ]);
 }
 
 export function forgetSharedTrip(token: string): boolean {

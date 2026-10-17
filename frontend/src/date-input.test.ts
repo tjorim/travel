@@ -1,6 +1,12 @@
 import { expect, it } from "vitest";
 
-import { formatDateInput, joinDateTime, parseDateInput, parseTimeInput, splitDateTime } from "./date-input";
+import {
+  formatDateInput,
+  joinDateTime,
+  parseDateInput,
+  parseTimeInput,
+  splitDateTime,
+} from "./date-input";
 
 it("reads a date from the displayed form, day-first numbers and ISO", () => {
   for (const text of [
@@ -24,7 +30,16 @@ it("reads a date from the displayed form, day-first numbers and ISO", () => {
 });
 
 it("rejects text that is not a real date", () => {
-  for (const text of ["", "16 nov", "31-02-2054", "2054-02-30", "32 nov 2054", "16 xyz 2054", "16 ma 2054", "11/16/26"])
+  for (const text of [
+    "",
+    "16 nov",
+    "31-02-2054",
+    "2054-02-30",
+    "32 nov 2054",
+    "16 xyz 2054",
+    "16 ma 2054",
+    "11/16/26",
+  ])
     expect(parseDateInput(text), text).toBeNull();
 });
 

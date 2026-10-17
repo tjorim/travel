@@ -5,7 +5,12 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { renderRoutesWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
+import {
+  renderRoutesWithOwner,
+  restoreObjectUrls,
+  stubObjectUrls,
+  testToken,
+} from "../query/test-utils";
 import type { Trip } from "../tracker-model";
 import { TripDetail } from "./TripDetail";
 
@@ -64,7 +69,8 @@ function seed(overrides: Record<string, unknown[]> = {}) {
   api = fakeApi();
   api.collection("/api/trips", [trip as never]);
   api.collection("/api/library/documents?linked_trip_id=trip", []);
-  for (const [resource, rows] of Object.entries(collections)) api.collection(path(resource), rows as never[]);
+  for (const [resource, rows] of Object.entries(collections))
+    api.collection(path(resource), rows as never[]);
 }
 const renderDetail = () => renderRoutesWithOwner(routeTree, ["/trips/trip/details"]);
 
@@ -92,7 +98,16 @@ it("shows the whole private trip once every read has arrived", async () => {
         booking_reference: "ABC",
       },
     ],
-    "trip-tasks": [{ id: "t1", title: "Visum regelen", due_date: null, completed_at: null, notes: null, links: [] }],
+    "trip-tasks": [
+      {
+        id: "t1",
+        title: "Visum regelen",
+        due_date: null,
+        completed_at: null,
+        notes: null,
+        links: [],
+      },
+    ],
   });
   renderDetail();
   await screen.findByRole("heading", { name: "Exampleland" });
@@ -100,13 +115,23 @@ it("shows the whole private trip once every read has arrived", async () => {
   expect(screen.getByText("Hotel Royal")).toBeTruthy();
   expect(screen.getByText("Boekingsreferentie: ABC")).toBeTruthy();
   expect(screen.getByText("Visum regelen")).toBeTruthy();
-  expect(screen.getByRole("link", { name: "Naar reisbeheer" }).getAttribute("href")).toBe("/trips/trip");
+  expect(screen.getByRole("link", { name: "Naar reisbeheer" }).getAttribute("href")).toBe(
+    "/trips/trip",
+  );
   expect(api.unexpected).toEqual([]);
 });
 
 it("shows a saved location's own name instead of its repeated locality", async () => {
   seed({
-    locations: [{ id: "l1", label: "Longshan Temple", display_name: null, locality: "Taipei", country_code: "TW" }],
+    locations: [
+      {
+        id: "l1",
+        label: "Longshan Temple",
+        display_name: null,
+        locality: "Taipei",
+        country_code: "TW",
+      },
+    ],
   });
   renderDetail();
   await screen.findByRole("heading", { name: "Exampleland" });
@@ -187,7 +212,9 @@ it("shows saved travel context, linked documents, and update media in the privat
       },
     ],
   });
-  api.collection("/api/trips", [{ ...trip, travel_updates: [{ ...trip.travel_updates[0], media_asset_ids: ["p1"] }] }]);
+  api.collection("/api/trips", [
+    { ...trip, travel_updates: [{ ...trip.travel_updates[0], media_asset_ids: ["p1"] }] },
+  ]);
   api.collection("/api/library/documents?linked_trip_id=trip", [
     {
       id: "ld1",
@@ -205,19 +232,28 @@ it("shows saved travel context, linked documents, and update media in the privat
   expect(screen.getByText("Inchecken 15:30 · Uitchecken 10:00 (Asia/Taipei)")).toBeTruthy();
   expect(screen.getByText(/Amsterdam → Taipei/)).toBeTruthy();
   expect(
-    screen.getByText(/16 nov 2054, 10:40 \(Europe\/Amsterdam\) → 17 nov 2054, 06:25 \(Asia\/Taipei\)/),
+    screen.getByText(
+      /16 nov 2054, 10:40 \(Europe\/Amsterdam\) → 17 nov 2054, 06:25 \(Asia\/Taipei\)/,
+    ),
   ).toBeTruthy();
   expect(
-    screen.getByRole("heading", { name: "Hotel · Main Street 1 · Floor 2 · 1000 · Brussels · Brussels-Capital · BE" }),
+    screen.getByRole("heading", {
+      name: "Hotel · Main Street 1 · Floor 2 · 1000 · Brussels · Brussels-Capital · BE",
+    }),
   ).toBeTruthy();
   expect(screen.getByText(/Herinnering:/)).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Verzekering" })).toBeTruthy();
   await waitFor(() =>
-    expect(screen.getByRole("group", { name: "Media bij Eerste avond" }).querySelector("img")).toBeTruthy(),
+    expect(
+      screen.getByRole("group", { name: "Media bij Eerste avond" }).querySelector("img"),
+    ).toBeTruthy(),
   );
-  expect(screen.getByRole("group", { name: "Media bij Eerste avond" }).querySelector("a")?.getAttribute("href")).toBe(
-    "/trips/trip/media",
-  );
+  expect(
+    screen
+      .getByRole("group", { name: "Media bij Eerste avond" })
+      .querySelector("a")
+      ?.getAttribute("href"),
+  ).toBe("/trips/trip/media");
   fireEvent.click(screen.getByRole("button", { name: "Bibliotheekdocument openen" }));
   await waitFor(() => expect(open).toHaveBeenCalledWith("blob:preview", "_blank", "noopener"));
   expect(api.unexpected).toEqual([]);
@@ -272,9 +308,9 @@ it("opens a private document with the authenticated download", async () => {
   renderDetail();
   fireEvent.click(await screen.findByRole("button", { name: "Document openen" }));
   await waitFor(() => expect(open).toHaveBeenCalledWith("blob:doc", "_blank", "noopener"));
-  const [, init] = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls.find(([url]) =>
-    url.endsWith("/original"),
-  )!;
+  const [, init] = (
+    fetch as unknown as { mock: { calls: [string, RequestInit][] } }
+  ).mock.calls.find(([url]) => url.endsWith("/original"))!;
   expect((init.headers as Record<string, string>).Authorization).toMatch(/^Bearer /);
 });
 
@@ -299,7 +335,9 @@ it("reports a document that cannot be opened without leaving the page", async ()
     "fetch",
     vi.fn((url: string, init?: RequestInit) =>
       url.endsWith("/original")
-        ? Promise.resolve(new Response(JSON.stringify({ detail: "Bestand ontbreekt." }), { status: 404 }))
+        ? Promise.resolve(
+            new Response(JSON.stringify({ detail: "Bestand ontbreekt." }), { status: 404 }),
+          )
         : original(url, init),
     ),
   );

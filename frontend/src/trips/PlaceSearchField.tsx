@@ -8,7 +8,12 @@ import { useRef, useState } from "react";
 import { AsyncSearchSelect } from "../forms/fields";
 
 import { tripPath, useLocationSearch, useOwnerMutation } from "../query/owner-queries";
-import { locationName, type Location, type PlaceSearchResponse, type PlaceSearchResult } from "../tracker-model";
+import {
+  locationName,
+  type Location,
+  type PlaceSearchResponse,
+  type PlaceSearchResult,
+} from "../tracker-model";
 import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
 /** Owner-only place lookup that never persists a selected result by itself. */
@@ -115,7 +120,11 @@ export function PlaceSearchField({
         <Field className="contents">
           <FieldLabel className="min-[560px]:flex-1">
             {inputLabel}
-            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={placeholder}
+            />
           </FieldLabel>
         </Field>
         <div className="flex items-end">

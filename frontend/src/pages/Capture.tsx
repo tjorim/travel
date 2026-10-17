@@ -10,7 +10,8 @@ import type { TravelUpdateCandidateIntent } from "../tracker-model";
 export function Capture() {
   const location = useLocation();
   const navigate = useNavigate();
-  const candidate = (location.state as { candidate?: TravelUpdateCandidateIntent } | undefined)?.candidate ?? null;
+  const candidate =
+    (location.state as { candidate?: TravelUpdateCandidateIntent } | undefined)?.candidate ?? null;
 
   function close() {
     void navigate({ to: "/trips" });

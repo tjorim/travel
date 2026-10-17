@@ -7,7 +7,13 @@ import { choosePreferences, mockApi, ownerTrip, sharedToken, signInOwner } from 
 const themes = ["light", "dark"] as const;
 const narrow = { width: 360, height: 740 };
 
-async function open(page: Page, path: string, locale: Locale, theme: (typeof themes)[number], owner = false) {
+async function open(
+  page: Page,
+  path: string,
+  locale: Locale,
+  theme: (typeof themes)[number],
+  owner = false,
+) {
   await mockApi(page);
   if (owner) await signInOwner(page);
   await choosePreferences(page, locale, theme);
@@ -17,7 +23,9 @@ async function open(page: Page, path: string, locale: Locale, theme: (typeof the
 }
 
 async function expectNoAxeViolations(page: Page) {
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
   expect(
     results.violations.map((violation) => ({
       id: violation.id,
@@ -68,7 +76,9 @@ test.describe("visitor views", () => {
     await expect(page.getByRole("heading", { name: ownerTrip.title, level: 1 })).toBeVisible();
   });
 
-  test("an unlisted share link renders its trip and unknown links are unavailable", async ({ page }) => {
+  test("an unlisted share link renders its trip and unknown links are unavailable", async ({
+    page,
+  }) => {
     await open(page, `/share/${sharedToken}`, "en", "light");
     await expect(page.getByRole("heading", { name: "Shared Exampleland", level: 1 })).toBeVisible();
     // The capability route is never cached or sent on as a referrer (vite.config.ts mirrors Caddy).
@@ -82,7 +92,9 @@ test.describe("visitor views", () => {
     await page.route("**/api/shared/gone", (route) => route.fulfill({ status: 404, body: "{}" }));
     await choosePreferences(page, "nl", "light");
     await page.goto("/share/gone");
-    await expect(page.getByRole("heading", { name: message("nl", "unavailable_trip") })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: message("nl", "unavailable_trip") }),
+    ).toBeVisible();
   });
 });
 
@@ -113,7 +125,10 @@ test.describe("owner navigation", () => {
     ] as const) {
       await tabs.getByRole("link", { name: message("en", key) }).click();
       await expect(page).toHaveURL(new RegExp(`/admin/trips/${ownerTrip.id}/${section}$`));
-      await expect(tabs.getByRole("link", { name: message("en", key) })).toHaveAttribute("aria-current", "page");
+      await expect(tabs.getByRole("link", { name: message("en", key) })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
       await expect(page.getByRole("heading", { name: ownerTrip.title, level: 2 })).toBeVisible();
     }
   });
@@ -124,7 +139,9 @@ test.describe("accessibility", () => {
   for (const locale of locales) {
     for (const theme of themes) {
       for (const screen of screens(locale)) {
-        test(`${screen.name} has no axe violations (${locale}, ${theme}, narrow)`, async ({ page }) => {
+        test(`${screen.name} has no axe violations (${locale}, ${theme}, narrow)`, async ({
+          page,
+        }) => {
           await open(page, screen.path, locale, theme, screen.owner);
           await expect(screen.ready(page).first()).toBeVisible();
           await expectNoAxeViolations(page);

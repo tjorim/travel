@@ -37,14 +37,19 @@ it("suggests locations on the same map point or street address, and joins overla
     ],
     nameOf,
   );
-  expect(groups).toEqual([{ ids: ["a", "b", "c", "d"], reasons: ["name", "coordinates", "address"] }]);
+  expect(groups).toEqual([
+    { ids: ["a", "b", "c", "d"], reasons: ["name", "coordinates", "address"] },
+  ]);
 });
 
 it("never matches records that have no name, point or address to compare", () => {
   expect(duplicateLocations([place("a"), place("b")], nameOf)).toEqual([]);
-  expect(duplicateLocations([place("a", { address_line1: "  " }), place("b", { address_line1: "" })], nameOf)).toEqual(
-    [],
-  );
+  expect(
+    duplicateLocations(
+      [place("a", { address_line1: "  " }), place("b", { address_line1: "" })],
+      nameOf,
+    ),
+  ).toEqual([]);
 });
 
 it("suggests areas by name within a country, or by the same map point", () => {

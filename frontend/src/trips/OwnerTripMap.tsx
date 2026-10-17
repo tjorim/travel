@@ -38,13 +38,17 @@ export function OwnerTripMap({
       method: "PATCH",
       body: { latitude, longitude },
     }),
-    invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "areas"), ownerKeys.trips(subject)],
+    invalidate: (subject) => [
+      ownerKeys.tripResource(subject, trip.id, "areas"),
+      ownerKeys.trips(subject),
+    ],
   });
 
   // The map answers from the pinned copy when the live reads cannot: offline, or the server refused them.
   const queries = [routesQuery, placesQuery];
   const unavailable =
-    queries.some((query) => query.isError) || (!offline.online && queries.some((query) => query.data === undefined));
+    queries.some((query) => query.isError) ||
+    (!offline.online && queries.some((query) => query.data === undefined));
   const copy = offline.copies.find(
     (candidate) => candidate.resourceKind === "route_data" && candidate.resourceId === trip.id,
   );
@@ -80,10 +84,21 @@ export function OwnerTripMap({
         areas.flatMap((area): [string, MapPoint][] => {
           if (area.latitude !== null && area.longitude !== null)
             return [
-              [area.id, { id: area.id, label: area.label, coordinates: [area.longitude, area.latitude], kind: "area" }],
+              [
+                area.id,
+                {
+                  id: area.id,
+                  label: area.label,
+                  coordinates: [area.longitude, area.latitude],
+                  kind: "area",
+                },
+              ],
             ];
           const locations = (placesQuery.data ?? []).filter(
-            (location) => location.area_id === area.id && location.latitude !== null && location.longitude !== null,
+            (location) =>
+              location.area_id === area.id &&
+              location.latitude !== null &&
+              location.longitude !== null,
           );
           if (!locations.length) return [];
           return [
@@ -93,8 +108,10 @@ export function OwnerTripMap({
                 id: area.id,
                 label: area.label,
                 coordinates: [
-                  locations.reduce((total, location) => total + location.longitude!, 0) / locations.length,
-                  locations.reduce((total, location) => total + location.latitude!, 0) / locations.length,
+                  locations.reduce((total, location) => total + location.longitude!, 0) /
+                    locations.length,
+                  locations.reduce((total, location) => total + location.latitude!, 0) /
+                    locations.length,
                 ],
                 kind: "derived",
                 detail: m.owner_derived_from_private_locations(),
@@ -128,11 +145,14 @@ export function OwnerTripMap({
   const liveLines = useMemo<MapLine[]>(
     () =>
       (routesQuery.data ?? []).flatMap((route): MapLine[] => {
-        const ends = [route.departure_area, route.arrival_area].flatMap((area): [number, number][] =>
-          areaPoints.has(area.id) ? [areaPoints.get(area.id)!.coordinates] : [],
+        const ends = [route.departure_area, route.arrival_area].flatMap(
+          (area): [number, number][] =>
+            areaPoints.has(area.id) ? [areaPoints.get(area.id)!.coordinates] : [],
         );
         const coordinates = route.geometry?.coordinates ?? (ends.length === 2 ? ends : null);
-        return coordinates ? [{ id: route.id, label: routeTitle(route), coordinates, transport: route.mode }] : [];
+        return coordinates
+          ? [{ id: route.id, label: routeTitle(route), coordinates, transport: route.mode }]
+          : [];
       }),
     [locale, routesQuery.data, areaPoints],
   );
@@ -161,14 +181,17 @@ export function OwnerTripMap({
           ...updates.map((update) => ({
             label: m.owner_update({
               p0: update.title,
-              p1: update.media_asset_ids.length ? m.owner_photos_media({ p0: update.media_asset_ids.length }) : "",
+              p1: update.media_asset_ids.length
+                ? m.owner_photos_media({ p0: update.media_asset_ids.length })
+                : "",
             }),
             onOpen: () => openRecord?.("update", update.id),
           })),
         ];
         return {
           ...point,
-          detail: point.kind === "derived" ? m.owner_derived_from_private_locations() : point.detail,
+          detail:
+            point.kind === "derived" ? m.owner_derived_from_private_locations() : point.detail,
           links,
         };
       }),
@@ -183,7 +206,9 @@ export function OwnerTripMap({
           from: route?.departure_area.label ?? line.from,
           to: route?.arrival_area.label ?? line.to,
           dates: route?.departs_on ?? line.dates,
-          links: route ? [{ label: m.owner_open_route(), onOpen: () => openRecord?.("route", route.id) }] : [],
+          links: route
+            ? [{ label: m.owner_open_route(), onOpen: () => openRecord?.("route", route.id) }]
+            : [],
           transport: route?.mode ?? line.transport,
         };
       }),
@@ -214,7 +239,11 @@ export function OwnerTripMap({
         }),
       ).buffer as ArrayBuffer,
     });
-    setNotice(textNotice(() => m.owner_map_and_route_data_are_saved_offline_on_this_device_map_tiles_are_not_co()));
+    setNotice(
+      textNotice(() =>
+        m.owner_map_and_route_data_are_saved_offline_on_this_device_map_tiles_are_not_co(),
+      ),
+    );
   }
 
   const readError = queries.find((query) => query.isError)?.error;
@@ -235,10 +264,15 @@ export function OwnerTripMap({
         focus={focus}
         onUseDerived={(point) =>
           void savePoint
-            .mutateAsync({ id: point.id, latitude: point.coordinates[1], longitude: point.coordinates[0] })
+            .mutateAsync({
+              id: point.id,
+              latitude: point.coordinates[1],
+              longitude: point.coordinates[0],
+            })
             .then(
               () => setNotice(textNotice(() => m.owner_area_point_saved())),
-              (error: unknown) => setNotice(errorNotice(error, m.owner_the_area_point_could_not_be_saved)),
+              (error: unknown) =>
+                setNotice(errorNotice(error, m.owner_the_area_point_could_not_be_saved)),
             )
         }
       />
@@ -253,10 +287,14 @@ export function OwnerTripMap({
             )
           }
         >
-          {offline.isPinned("route_data", trip.id) ? m.owner_remove_offline_copy() : m.owner_save_map_offline()}
+          {offline.isPinned("route_data", trip.id)
+            ? m.owner_remove_offline_copy()
+            : m.owner_save_map_offline()}
         </Button>
       </div>
-      <p className="help">{m.owner_only_the_private_geojson_map_data_are_deliberately_saved_map_tiles_are_n()}</p>
+      <p className="help">
+        {m.owner_only_the_private_geojson_map_data_are_deliberately_saved_map_tiles_are_n()}
+      </p>
       {status && (
         <p className="help" role="status">
           {status}

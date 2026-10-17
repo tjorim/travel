@@ -13,7 +13,10 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => ({ session: auth.session }) }));
 
 function json(value: unknown) {
-  return new Response(JSON.stringify(value), { status: 200, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function trip(id: string, title: string, startsOn: string | null, endsOn: string | null) {
@@ -32,7 +35,8 @@ afterEach(() => {
 
 it("shows active and planning-first trips with unread alerts", async () => {
   const now = new Date();
-  const day = (offset: number) => new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+  const day = (offset: number) =>
+    new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
   const trips = [trip("active", "Exampleland", day(-1), day(1)), trip("planned", "IJsland", null, null)];
   vi.stubGlobal(
     "fetch",
@@ -70,8 +74,12 @@ it("shows active and planning-first trips with unread alerts", async () => {
   expect(screen.getByText("Nu op reis")).toBeTruthy();
   expect(screen.getByText("Nog plannen")).toBeTruthy();
   expect(screen.getByText("Check in")).toBeTruthy();
-  expect(screen.getAllByRole("link", { name: "Open reis" })[0].getAttribute("href")).toBe("/trips/active");
-  expect(screen.getByRole("link", { name: "Publieke reizen bekijken" }).getAttribute("href")).toBe("/");
+  expect(screen.getAllByRole("link", { name: "Open reis" })[0].getAttribute("href")).toBe(
+    "/trips/active",
+  );
+  expect(screen.getByRole("link", { name: "Publieke reizen bekijken" }).getAttribute("href")).toBe(
+    "/",
+  );
 });
 
 it("offers a first private trip when the owner has none", async () => {
@@ -107,14 +115,16 @@ function inboxApi(patch: () => Response) {
   const now = new Date();
   let current = alert(now);
   // Keep the trip active without making the overview enumerate a millennium of nights.
-  const day = (offset: number) => new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+  const day = (offset: number) =>
+    new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
   return vi.fn((url: string, init: RequestInit = {}) => {
     if (init.method === "PATCH") {
       const response = patch();
       if (response.ok) current = { ...current, read_at: now.toISOString() };
       return Promise.resolve(response);
     }
-    if (url === "/api/trips") return Promise.resolve(json([trip("active", "Exampleland", day(-1), day(1))]));
+    if (url === "/api/trips")
+      return Promise.resolve(json([trip("active", "Exampleland", day(-1), day(1))]));
     if (url.includes("task-alerts")) return Promise.resolve(json([current]));
     return Promise.resolve(json([]));
   });
@@ -128,7 +138,8 @@ it("clears a reminder from the inbox at once and keeps it cleared once the serve
   await waitFor(() => expect(screen.queryByText("Check in")).toBeNull());
   expect(
     fetcher.mock.calls.some(
-      ([url, init]) => String(url).endsWith("/task-alerts/alert/read") && (init as RequestInit).method === "PATCH",
+      ([url, init]) =>
+        String(url).endsWith("/task-alerts/alert/read") && (init as RequestInit).method === "PATCH",
     ),
   ).toBe(true);
 });

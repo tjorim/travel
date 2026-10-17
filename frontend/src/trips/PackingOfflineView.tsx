@@ -26,7 +26,13 @@ export type PackingSnapshot = {
   savedAt: number;
 };
 
-export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; open: (id: string) => Promise<Blob> }) {
+export function PackingOfflineView({
+  copy,
+  open,
+}: {
+  copy: OfflineCopySummary;
+  open: (id: string) => Promise<Blob>;
+}) {
   const locale = useLocale();
   const openRef = useRef(open);
   openRef.current = open;
@@ -45,12 +51,18 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
       .then(
         async (blob) => {
           const value = JSON.parse(await blob.text()) as PackingSnapshot;
-          if (!value.list || !Array.isArray(value.bags) || !Array.isArray(value.items) || !value.savedAt)
+          if (
+            !value.list ||
+            !Array.isArray(value.bags) ||
+            !Array.isArray(value.items) ||
+            !value.savedAt
+          )
             throw new FeedbackError(() => m.assets_the_offline_packing_list_is_invalid());
           if (active) setSnapshot(value);
         },
         (reason: unknown) => {
-          if (active) setError(errorNotice(reason, m.assets_the_offline_packing_list_could_not_be_opened));
+          if (active)
+            setError(errorNotice(reason, m.assets_the_offline_packing_list_could_not_be_opened));
         },
       )
       .catch((reason: unknown) => {
@@ -66,7 +78,11 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
     const timer = window.setTimeout(
       () => {
         setSnapshot(null);
-        setError(textNotice(m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in));
+        setError(
+          textNotice(
+            m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in,
+          ),
+        );
       },
       Math.max(0, copy.leaseExpiresAt - Date.now()),
     );
@@ -77,7 +93,8 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
   if (!snapshot) return <p role="status">{m.assets_opening_offline_packing_list()}</p>;
   const visible = snapshot.items.filter(
     (item) =>
-      (filter === "all" || (filter === "last-minute" ? item.last_minute : item.packed === (filter === "packed"))) &&
+      (filter === "all" ||
+        (filter === "last-minute" ? item.last_minute : item.packed === (filter === "packed"))) &&
       `${item.label} ${item.category ?? ""} ${item.notes ?? ""}`
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
@@ -85,7 +102,9 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
   const groups =
     group === "bag"
       ? [
-          ...[...snapshot.bags].sort((a, b) => a.position - b.position).map((bag) => ({ id: bag.id, title: bag.name })),
+          ...[...snapshot.bags]
+            .sort((a, b) => a.position - b.position)
+            .map((bag) => ({ id: bag.id, title: bag.name })),
           { id: "", title: m.assets_unassigned() },
         ]
       : [...new Set(visible.map((item) => item.category?.trim() || ""))]
@@ -93,13 +112,20 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
           .map((category) => ({ id: category, title: category || m.assets_uncategorised() }));
 
   return (
-    <section className="space-y-4" aria-label={m.assets_offline_packing_list_2({ p0: snapshot.list.name })}>
+    <section
+      className="space-y-4"
+      aria-label={m.assets_offline_packing_list_2({ p0: snapshot.list.name })}
+    >
       <div>
         <h3 className="text-xl font-semibold">{snapshot.list.name}</h3>
         <p role="status" className="text-sm">
-          {m.assets_offline_copy_saved_on_line({ p0: formatInstant(new Date(snapshot.savedAt).toISOString()) })}
+          {m.assets_offline_copy_saved_on_line({
+            p0: formatInstant(new Date(snapshot.savedAt).toISOString()),
+          })}
         </p>
-        <p className="text-sm">{m.assets_view_only_checking_off_moving_and_editing_require_a_connection()}</p>
+        <p className="text-sm">
+          {m.assets_view_only_checking_off_moving_and_editing_require_a_connection()}
+        </p>
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <ChoiceGroup
@@ -125,14 +151,20 @@ export function PackingOfflineView({ copy, open }: { copy: OfflineCopySummary; o
         <Field className="contents">
           <FieldLabel>
             {m.owner_search()}{" "}
-            <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <Input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
           </FieldLabel>
         </Field>
       </div>
       {groups.map((section) => {
         const rows = visible
           .filter((item) =>
-            group === "bag" ? (item.bag_id ?? "") === section.id : (item.category?.trim() || "") === section.id,
+            group === "bag"
+              ? (item.bag_id ?? "") === section.id
+              : (item.category?.trim() || "") === section.id,
           )
           .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
         if (!rows.length && group === "category") return null;

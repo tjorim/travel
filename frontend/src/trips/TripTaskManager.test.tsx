@@ -45,7 +45,12 @@ function json(value: unknown, status = 200) {
 
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  api = { tasks: [task("a", "Visum regelen"), task("b", "Reisverzekering")], alerts: [], failNext: null, requests: [] };
+  api = {
+    tasks: [task("a", "Visum regelen"), task("b", "Reisverzekering")],
+    alerts: [],
+    failNext: null,
+    requests: [],
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init: RequestInit = {}) => {
@@ -75,7 +80,9 @@ beforeEach(() => {
             ? {
                 ...item,
                 ...("title" in body ? { title: String(body.title) } : {}),
-                ...("completed" in body ? { completed_at: body.completed ? "2054-09-24T10:00:00Z" : null } : {}),
+                ...("completed" in body
+                  ? { completed_at: body.completed ? "2054-09-24T10:00:00Z" : null }
+                  : {}),
               }
             : item,
         );
@@ -123,8 +130,12 @@ it("opens the editor with the saved task instead of a blank form", async () => {
   await openTask("Visum regelen");
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Visum regelen");
-  expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe("Bij de ambassade");
-  expect((screen.getByLabelText("Deadline (optioneel)") as HTMLInputElement).value).toBe("1 okt 2054");
+  expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe(
+    "Bij de ambassade",
+  );
+  expect((screen.getByLabelText("Deadline (optioneel)") as HTMLInputElement).value).toBe(
+    "1 okt 2054",
+  );
   expect((screen.getByLabelText("Adres") as HTMLInputElement).value).toBe("https://example.test");
 });
 
@@ -132,8 +143,12 @@ it("removes a deleted task at once and after the refetch", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
   await openTask("Reisverzekering");
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Taak Reisverzekering bekijken" })).toBeNull());
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Taak Reisverzekering bekijken" })).toBeNull(),
+  );
   expect(screen.getByText("Taak verwijderd.")).toBeTruthy();
   expect(api.tasks.map((item) => item.id)).toEqual(["a"]);
 });
@@ -161,13 +176,18 @@ it("refreshes the overview badge when a task is completed elsewhere on the scree
   fireEvent.click(screen.getAllByRole("button", { name: "Afvinken" })[0]);
   await screen.findByText("1 open");
   // One shared read per resource: overview and manager never fetch the tasks twice.
-  expect(api.requests.filter((request) => request === "GET /api/trips/trip/trip-tasks").length).toBeLessThanOrEqual(2);
+  expect(
+    api.requests.filter((request) => request === "GET /api/trips/trip/trip-tasks").length,
+  ).toBeLessThanOrEqual(2);
 });
 
 it("validates the form, keeps the editor open on a server error, and resets after success", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe taak" }));
-  const save = screen.getByRole("button", { name: "Taak toevoegen", description: "" }) as HTMLButtonElement;
+  const save = screen.getByRole("button", {
+    name: "Taak toevoegen",
+    description: "",
+  }) as HTMLButtonElement;
 
   fireEvent.click(save);
   const title = await screen.findByLabelText("Titel");
@@ -194,7 +214,9 @@ it("validates the form, keeps the editor open on a server error, and resets afte
 
   fireEvent.change(title, { target: { value: "Vliegtickets boeken" } });
   await waitFor(() =>
-    expect(screen.queryByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" })).toBeNull(),
+    expect(
+      screen.queryByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" }),
+    ).toBeNull(),
   );
   fireEvent.click(save);
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -213,7 +235,8 @@ it("disables submit while saving and asks before discarding a dirty form", async
     vi.fn((url: string, init: RequestInit = {}) =>
       init.method === "POST"
         ? new Promise<Response>((resolve) => {
-            release = () => resolve(new Response(JSON.stringify(task("z", "Nieuw")), { status: 201 }));
+            release = () =>
+              resolve(new Response(JSON.stringify(task("z", "Nieuw")), { status: 201 }));
           })
         : original(url, init),
     ),

@@ -18,7 +18,10 @@ import { TranslationDraft } from "./TranslationDraft";
 /** How the server renders the field: long-form Markdown, an inline-only caption, or contact details. */
 export type MarkdownFormat = "markdown" | "inline" | "contact";
 
-const SNIPPETS: Record<MarkdownFormat, { snippet: MarkdownSnippet; label: string; text: string }[]> = {
+const SNIPPETS: Record<
+  MarkdownFormat,
+  { snippet: MarkdownSnippet; label: string; text: string }[]
+> = {
   markdown: [
     {
       snippet: "bold",
@@ -127,15 +130,23 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
     }
     const controller = new AbortController();
     setState({ kind: "loading" });
-    ownerRequest<RenderResult>(owner.session, "/api/markdown/render", m.owner_the_preview_could_not_be_loaded, {
-      method: "POST",
-      body: { source, format },
-      signal: controller.signal,
-    })
+    ownerRequest<RenderResult>(
+      owner.session,
+      "/api/markdown/render",
+      m.owner_the_preview_could_not_be_loaded,
+      {
+        method: "POST",
+        body: { source, format },
+        signal: controller.signal,
+      },
+    )
       .then((result) => setState({ kind: "ready", result }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
-          setState({ kind: "error", message: errorNotice(error, m.owner_the_preview_could_not_be_loaded) });
+          setState({
+            kind: "error",
+            message: errorNotice(error, m.owner_the_preview_could_not_be_loaded),
+          });
       });
     return () => controller.abort();
   }, [owner, source, format]);
@@ -166,7 +177,12 @@ export function MarkdownField({
   optional,
   format = "markdown",
   ...input
-}: { field: AnyFieldApi; label: string; optional?: string | boolean; format?: MarkdownFormat } & Omit<
+}: {
+  field: AnyFieldApi;
+  label: string;
+  optional?: string | boolean;
+  format?: MarkdownFormat;
+} & Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
   "value" | "onChange" | "onBlur" | "name" | "id"
 >) {
@@ -208,7 +224,11 @@ export function MarkdownField({
           </span>
         </FieldLabel>
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-          <div className="flex flex-wrap gap-1" role="group" aria-label={m.owner_view_for({ p0: label })}>
+          <div
+            className="flex flex-wrap gap-1"
+            role="group"
+            aria-label={m.owner_view_for({ p0: label })}
+          >
             <Button
               type="button"
               className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
@@ -227,7 +247,11 @@ export function MarkdownField({
             </Button>
           </div>
           {!previewing && SNIPPETS[format].length > 0 && (
-            <div className="flex flex-wrap gap-1" role="toolbar" aria-label={m.owner_formatting_for({ p0: label })}>
+            <div
+              className="flex flex-wrap gap-1"
+              role="toolbar"
+              aria-label={m.owner_formatting_for({ p0: label })}
+            >
               {SNIPPETS[format].map(({ snippet, label: name, text }) => (
                 <Button
                   key={snippet}
@@ -271,7 +295,9 @@ export function MarkdownField({
         <TranslationDraft
           label={label}
           value={value}
-          onAppend={(draft) => field.handleChange(value.trim() ? `${value.replace(/\s+$/, "")}\n\n${draft}` : draft)}
+          onAppend={(draft) =>
+            field.handleChange(value.trim() ? `${value.replace(/\s+$/, "")}\n\n${draft}` : draft)
+          }
         />
       )}
     </>

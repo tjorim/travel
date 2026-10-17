@@ -48,9 +48,16 @@ export function EmergencyInfoManager() {
   const path = libraryPath("emergency-info");
   const refresh = (subject: string) => [ownerKeys.library(subject, "emergency-info")];
 
-  const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, EmergencyInfoEntry>({
+  const save = useOwnerMutation<
+    { id: string | null; payload: Record<string, unknown> },
+    EmergencyInfoEntry
+  >({
     fallback: m.assets_the_emergency_information_could_not_be_saved,
-    request: ({ id, payload }) => ({ path: id ? `${path}/${id}` : path, method: id ? "PATCH" : "POST", body: payload }),
+    request: ({ id, payload }) => ({
+      path: id ? `${path}/${id}` : path,
+      method: id ? "PATCH" : "POST",
+      body: payload,
+    }),
     invalidate: refresh,
   });
   const remove = useOwnerMutation<EmergencyInfoEntry>({
@@ -92,7 +99,8 @@ export function EmergencyInfoManager() {
     record.load(fromEntry(entry));
     dialog.edit(entry.id);
   }
-  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const fail = (fallback: ErrorFallback) => (error: unknown) =>
+    setNotice(errorNotice(error, fallback));
   const failInDialog = (fallback: ErrorFallback) => (error: unknown) => {
     dialog.setConfirmDelete(false);
     dialog.setError(errorNotice(error, fallback));
@@ -112,7 +120,12 @@ export function EmergencyInfoManager() {
       setNotice(textNotice(() => m.owner_is_no_longer_available_offline({ p0: entry.label })));
       return;
     }
-    const snapshot = { kind: entry.kind, label: entry.label, value: entry.value, notes: entry.notes };
+    const snapshot = {
+      kind: entry.kind,
+      label: entry.label,
+      value: entry.value,
+      notes: entry.notes,
+    };
     await offline.pin({
       resourceKind: "emergency_info",
       resourceId: entry.id,
@@ -137,7 +150,9 @@ export function EmergencyInfoManager() {
       <div className="capture-heading">
         <div>
           <h3 id="emergency-info-title">{m.assets_emergency_information()}</h3>
-          <p>{m.assets_contacts_relevant_numbers_and_brief_medical_or_care_notes_separate_from_()}</p>
+          <p>
+            {m.assets_contacts_relevant_numbers_and_brief_medical_or_care_notes_separate_from_()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.assets_new_entry()}
@@ -206,7 +221,11 @@ export function EmergencyInfoManager() {
               <Button type="button" onClick={() => edit(selected)}>
                 {m.owner_edit()}
               </Button>
-              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button
+                className="danger"
+                type="button"
+                onClick={() => dialog.setConfirmDelete(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -273,7 +292,15 @@ export function EmergencyInfoManager() {
               )}
             </record.form.Field>
             <record.form.Field name="notes">
-              {(field) => <MarkdownField field={field} label={m.owner_notes()} optional maxLength={4000} rows={3} />}
+              {(field) => (
+                <MarkdownField
+                  field={field}
+                  label={m.owner_notes()}
+                  optional
+                  maxLength={4000}
+                  rows={3}
+                />
+              )}
             </record.form.Field>
           </RecordForm>
         )}

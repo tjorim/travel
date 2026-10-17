@@ -3,7 +3,14 @@ import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import { LocalTimes } from "./TripOverview";
-import { offsetLabel, utcOffsetMinutes, whereabouts, type Location, type Stay, type Route } from "../tracker-model";
+import {
+  offsetLabel,
+  utcOffsetMinutes,
+  whereabouts,
+  type Location,
+  type Stay,
+  type Route,
+} from "../tracker-model";
 
 afterEach(cleanup);
 
@@ -73,10 +80,27 @@ function route(
   };
 }
 
-const stays = [stay("Linkou", "2054-11-16", "2054-11-28"), stay("Alishan", "2054-11-29", "2054-11-30")];
+const stays = [
+  stay("Linkou", "2054-11-16", "2054-11-28"),
+  stay("Alishan", "2054-11-29", "2054-11-30"),
+];
 const routes = [
-  route("Amsterdam", "Taoyuan", "2054-11-16T09:40:00Z", "2054-11-16T22:25:00Z", "Europe/Amsterdam", "Asia/Taipei"),
-  route("Taoyuan", "Amsterdam", "2054-12-06T15:15:00Z", "2054-12-07T06:50:00Z", "Asia/Taipei", "Europe/Amsterdam"),
+  route(
+    "Amsterdam",
+    "Taoyuan",
+    "2054-11-16T09:40:00Z",
+    "2054-11-16T22:25:00Z",
+    "Europe/Amsterdam",
+    "Asia/Taipei",
+  ),
+  route(
+    "Taoyuan",
+    "Amsterdam",
+    "2054-12-06T15:15:00Z",
+    "2054-12-07T06:50:00Z",
+    "Asia/Taipei",
+    "Europe/Amsterdam",
+  ),
 ];
 
 it("includes daylight saving in each zone's offset", () => {

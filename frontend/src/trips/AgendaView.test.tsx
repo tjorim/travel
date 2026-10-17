@@ -22,7 +22,14 @@ const area = (id: string, label: string): Area => ({
 });
 const taipei = area("taipei", "Taipei"),
   linkou = area("linkou", "Linkou");
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
+const trip: Trip = {
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: null,
+  ends_on: null,
+  travel_updates: [],
+};
 let api: FakeApi;
 
 beforeEach(() => {
@@ -97,7 +104,15 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
         start_time: "18:30:00",
         end_time: null,
       },
-      { id: "v2", title: "Ooit", area: taipei, starts_on: null, ends_on: null, start_time: null, end_time: null },
+      {
+        id: "v2",
+        title: "Ooit",
+        area: taipei,
+        starts_on: null,
+        ends_on: null,
+        start_time: null,
+        end_time: null,
+      },
     ] as unknown as Visit[],
   );
   renderWithOwner(<AgendaView trip={trip} />);

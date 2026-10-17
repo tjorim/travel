@@ -79,7 +79,11 @@ export function useOfflineCopies(): UseOfflineCopies {
         if (loadedCopies.length > 0) setPersisted(storage);
       }
     } catch (error) {
-      if (mounted.current && currentSubject.current === subject && error instanceof OfflineUnsupportedError)
+      if (
+        mounted.current &&
+        currentSubject.current === subject &&
+        error instanceof OfflineUnsupportedError
+      )
         setUnsupported(true);
     } finally {
       if (mounted.current && currentSubject.current === subject) setLoaded(true);
@@ -135,7 +139,9 @@ export function useOfflineCopies(): UseOfflineCopies {
     disclosure,
     persisted,
     isPinned: (resourceKind, resourceId) =>
-      visibleCopies.some((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId),
+      visibleCopies.some(
+        (copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId,
+      ),
     async pin(input) {
       if (!subject) throw new FeedbackError(() => m.assets_sign_in_to_save_something_offline());
       await pinOfflineCopy({ ...input, subject });
@@ -143,7 +149,9 @@ export function useOfflineCopies(): UseOfflineCopies {
       await refresh();
     },
     async removeByResource(resourceKind, resourceId) {
-      const match = visibleCopies.find((copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId);
+      const match = visibleCopies.find(
+        (copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId,
+      );
       if (!match) return;
       await removeOfflineCopy(match.id);
       await refresh();

@@ -59,17 +59,24 @@ function stubFetch(
         state.documents = [...state.documents, created];
         return Promise.resolve(new Response(JSON.stringify(created), { status: 201 }));
       }
-      if (url === "/api/trips") return Promise.resolve(new Response(JSON.stringify(trips), { status: 200 }));
+      if (url === "/api/trips")
+        return Promise.resolve(new Response(JSON.stringify(trips), { status: 200 }));
       const original = state.documents.find((document) => url === document.file_url);
       if (original)
         return Promise.resolve(
-          new Response("private pdf bytes", { status: 200, headers: { "Content-Type": original.content_type } }),
+          new Response("private pdf bytes", {
+            status: 200,
+            headers: { "Content-Type": original.content_type },
+          }),
         );
       if (url.startsWith("/api/library/documents/"))
         return Promise.resolve(
-          new Response(JSON.stringify(state.documents.find((document) => url.endsWith(document.id)) ?? null), {
-            status: state.documents.some((document) => url.endsWith(document.id)) ? 200 : 404,
-          }),
+          new Response(
+            JSON.stringify(state.documents.find((document) => url.endsWith(document.id)) ?? null),
+            {
+              status: state.documents.some((document) => url.endsWith(document.id)) ? 200 : 404,
+            },
+          ),
         );
       return Promise.resolve(new Response(null, { status: 404 }));
     }),
@@ -127,7 +134,9 @@ it("shows an empty state when the library has no documents", async () => {
       <DocumentLibraryManager />
     </AuthProvider>,
   );
-  await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
+  await screen.findByText(
+    "Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.",
+  );
 });
 
 it("deletes a document after explicit confirmation", async () => {
@@ -142,12 +151,18 @@ it("deletes a document after explicit confirmation", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Document Insurance policy bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
-
-  await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
-  expect(state.calls.some((call) => call.method === "DELETE" && call.url === "/api/library/documents/doc-1")).toBe(
-    true,
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
   );
+
+  await screen.findByText(
+    "Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.",
+  );
+  expect(
+    state.calls.some(
+      (call) => call.method === "DELETE" && call.url === "/api/library/documents/doc-1",
+    ),
+  ).toBe(true);
 });
 
 it("lets the owner pin a document for offline access and unpin it again", async () => {
@@ -177,14 +192,18 @@ it("lists an uploaded document at once, linked to its trip, and closes the dialo
       <DocumentLibraryManager />
     </AuthProvider>,
   );
-  await screen.findByText("Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.");
+  await screen.findByText(
+    "Nog geen documenten. Upload een privébestand wanneer je het wilt bewaren.",
+  );
 
   expect(screen.queryByLabelText("Titel")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
   await screen.findByText("Geef het document een titel.");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Reisverzekering" } });
-  fireEvent.keyDown(await screen.findByLabelText("Gekoppelde reis (optioneel)"), { key: "ArrowDown" });
+  fireEvent.keyDown(await screen.findByLabelText("Gekoppelde reis (optioneel)"), {
+    key: "ArrowDown",
+  });
   await screen.findByRole("option", { name: "Exampleland 2054" });
   chooseOption("Gekoppelde reis (optioneel)", "Exampleland 2054");
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
@@ -195,7 +214,9 @@ it("lists an uploaded document at once, linked to its trip, and closes the dialo
   fireEvent.click(screen.getByRole("button", { name: "Document uploaden" }));
 
   await screen.findByText("Reisverzekering");
-  expect(screen.getByText((content) => content.includes("Exampleland 2054"), { selector: "span" })).toBeTruthy();
+  expect(
+    screen.getByText((content) => content.includes("Exampleland 2054"), { selector: "span" }),
+  ).toBeTruthy();
   expect(screen.getByText("Document toegevoegd aan je bibliotheek.")).toBeTruthy();
   expect(screen.queryByLabelText("Titel")).toBeNull();
   expect(state.calls.filter((call) => call.method === "POST")).toHaveLength(1);
@@ -205,7 +226,11 @@ it("opens a document with the bearer token in the request", async () => {
   withSession();
   const state = stubFetch([libraryDocument()]);
   const open = vi.spyOn(window, "open").mockReturnValue({} as Window);
-  Object.defineProperty(URL, "createObjectURL", { configurable: true, writable: true, value: () => "blob:doc" });
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    writable: true,
+    value: () => "blob:doc",
+  });
   renderWithOwner(
     <AuthProvider>
       <DocumentLibraryManager />
@@ -214,6 +239,8 @@ it("opens a document with the bearer token in the request", async () => {
   await screen.findByText("Insurance policy");
   screen.getByRole("button", { name: "Bekijken" }).click();
   await vi.waitFor(() => expect(open).toHaveBeenCalledWith("blob:doc", "_blank", "noopener"));
-  expect(state.calls.some((call) => call.url === "/api/library/documents/doc-1/original")).toBe(true);
+  expect(state.calls.some((call) => call.url === "/api/library/documents/doc-1/original")).toBe(
+    true,
+  );
   Reflect.deleteProperty(URL, "createObjectURL");
 });

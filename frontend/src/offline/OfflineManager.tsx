@@ -57,7 +57,10 @@ export function OfflineManager() {
 
   useEffect(() => {
     if (!viewingText) return;
-    const timer = window.setTimeout(() => setViewingText(null), Math.max(0, viewingText.leaseExpiresAt - Date.now()));
+    const timer = window.setTimeout(
+      () => setViewingText(null),
+      Math.max(0, viewingText.leaseExpiresAt - Date.now()),
+    );
     return () => window.clearTimeout(timer);
   }, [viewingText]);
 
@@ -112,7 +115,9 @@ export function OfflineManager() {
       confirmLabel: () => m.assets_clear_all(),
       onConfirm: async () => {
         await offline.clearAll();
-        setMessage(textNotice(() => m.assets_all_offline_copies_on_this_device_have_been_deleted()));
+        setMessage(
+          textNotice(() => m.assets_all_offline_copies_on_this_device_have_been_deleted()),
+        );
       },
     });
   }
@@ -124,7 +129,9 @@ export function OfflineManager() {
       <div className="capture-heading">
         <div>
           <h3 id="offline-title">{m.assets_offline()}</h3>
-          <p>{m.assets_deliberately_saved_copies_stay_on_this_device_only_and_disappear_when_yo()}</p>
+          <p>
+            {m.assets_deliberately_saved_copies_stay_on_this_device_only_and_disappear_when_yo()}
+          </p>
         </div>
         {offline.copies.length > 0 && (
           <Button className="danger compact" type="button" onClick={clearAll}>
@@ -135,16 +142,24 @@ export function OfflineManager() {
       <p className="help" role="status">
         {message ||
           (offline.unsupported && m.assets_offline_storage_is_not_supported_in_this_browser()) ||
-          (!offline.online && m.assets_you_are_offline_copies_will_be_checked_again_when_you_reconnect()) ||
+          (!offline.online &&
+            m.assets_you_are_offline_copies_will_be_checked_again_when_you_reconnect()) ||
           (offline.copies.length > 0
-            ? m.assets_offline_copies_count({ count: offline.copies.length, size: bytesLabel(totalBytes) })
+            ? m.assets_offline_copies_count({
+                count: offline.copies.length,
+                size: bytesLabel(totalBytes),
+              })
             : m.assets_no_offline_copies_yet())}
       </p>
       {offline.disclosure?.exportable && (
-        <p className="help">{m.assets_your_browser_cannot_store_the_offline_key_as_nonexportable_copies_use_be()}</p>
+        <p className="help">
+          {m.assets_your_browser_cannot_store_the_offline_key_as_nonexportable_copies_use_be()}
+        </p>
       )}
       {offline.persisted === false && (
-        <p className="help">{m.assets_your_browser_has_not_granted_persistent_storage_for_these_offline_copies()}</p>
+        <p className="help">
+          {m.assets_your_browser_has_not_granted_persistent_storage_for_these_offline_copies()}
+        </p>
       )}
       {!offline.copies.length && offline.loaded && (
         <p>{m.assets_enable_save_offline_on_a_document_emergency_information_media_item_map_v()}</p>
@@ -186,7 +201,11 @@ export function OfflineManager() {
               </div>
             </div>
             <OfflineSnapshotView kind={viewingText.kind} text={viewingText.text} />
-            <Button className="secondary compact" type="button" onClick={() => setViewingText(null)}>
+            <Button
+              className="secondary compact"
+              type="button"
+              onClick={() => setViewingText(null)}
+            >
               {m.owner_close_2()}
             </Button>
           </div>
@@ -194,7 +213,11 @@ export function OfflineManager() {
       {viewingPacking && offline.copies.some((copy) => copy.id === viewingPacking.id) && (
         <div className="rounded-xl border p-4">
           <PackingOfflineView copy={viewingPacking} open={offline.open} />
-          <Button className="secondary compact mt-3" type="button" onClick={() => setViewingPacking(null)}>
+          <Button
+            className="secondary compact mt-3"
+            type="button"
+            onClick={() => setViewingPacking(null)}
+          >
             {m.owner_close_2()}
           </Button>
         </div>

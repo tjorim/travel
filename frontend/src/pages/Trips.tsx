@@ -34,11 +34,18 @@ import { CaptureDialog } from "../trips/CaptureDialog";
 import { errorMessage } from "../query/api";
 import type { DialogFocusRequest } from "../forms/useRecordDialog";
 import { useTripResource, useTripsQuery } from "../query/owner-queries";
-import { formatDay, formatInstant, type Trip, type TravelUpdateCandidateIntent } from "../tracker-model";
+import {
+  formatDay,
+  formatInstant,
+  type Trip,
+  type TravelUpdateCandidateIntent,
+} from "../tracker-model";
 
 export type TripWorkspaceSection = "overview" | "plan" | "packing" | "story" | "media" | "sharing";
 
-export function Trips({ workspace }: { workspace?: { tripId: string; section: TripWorkspaceSection } } = {}) {
+export function Trips({
+  workspace,
+}: { workspace?: { tripId: string; section: TripWorkspaceSection } } = {}) {
   useLocale();
   const { session } = useAuth();
   const navigate = useNavigate();
@@ -52,21 +59,37 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   const [creating, setCreating] = useState(() => searchParams.new === "1");
   const [editing, setEditing] = useState(false);
   const [capturing, setCapturing] = useState(false);
-  const [captureCandidate, setCaptureCandidate] = useState<TravelUpdateCandidateIntent | null>(null);
+  const [captureCandidate, setCaptureCandidate] = useState<TravelUpdateCandidateIntent | null>(
+    null,
+  );
   const [notice, setNotice] = useFeedback<string | null>(null);
   // An Agenda row, or the private overview arriving from elsewhere, asks the matching manager below to open that record's dialog.
-  type RecordKind = AgendaRecordKind | "area" | "location" | "task" | "update" | "document" | "media";
-  const [recordFocus, setRecordFocus] = useState<({ kind: RecordKind } & DialogFocusRequest) | null>(null);
-  const openAgendaRecord = (kind: AgendaRecordKind, id: string) => setRecordFocus({ kind, id, token: Date.now() });
+  type RecordKind =
+    | AgendaRecordKind
+    | "area"
+    | "location"
+    | "task"
+    | "update"
+    | "document"
+    | "media";
+  const [recordFocus, setRecordFocus] = useState<
+    ({ kind: RecordKind } & DialogFocusRequest) | null
+  >(null);
+  const openAgendaRecord = (kind: AgendaRecordKind, id: string) =>
+    setRecordFocus({ kind, id, token: Date.now() });
   const openRecordRequest = location.state.openRecord;
   const openRecordKind = openRecordRequest?.kind;
   const openRecordId = openRecordRequest?.id;
   useEffect(() => {
-    if (openRecordKind && openRecordId) setRecordFocus({ kind: openRecordKind, id: openRecordId, token: Date.now() });
+    if (openRecordKind && openRecordId)
+      setRecordFocus({ kind: openRecordKind, id: openRecordId, token: Date.now() });
   }, [openRecordKind, openRecordId]);
   // "Toon op kaart" elsewhere in the workspace opens the overview, whose map focuses that point.
   const focusedPoint = location.state.mapFocus;
-  const mapFocus = useMemo(() => (focusedPoint ? { id: focusedPoint, request: 1 } : null), [focusedPoint]);
+  const mapFocus = useMemo(
+    () => (focusedPoint ? { id: focusedPoint, request: 1 } : null),
+    [focusedPoint],
+  );
   useEffect(() => {
     if (!focusedPoint) return;
     // The map mounts a little after the overview, so wait for it before scrolling.
@@ -81,7 +104,9 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   }, [focusedPoint]);
 
   // The list page only lists; a trip is worked on in its own workspace.
-  const selectedTrip = workspace ? (trips.find((trip) => trip.id === workspace.tripId) ?? null) : null;
+  const selectedTrip = workspace
+    ? (trips.find((trip) => trip.id === workspace.tripId) ?? null)
+    : null;
   const selectedId = selectedTrip?.id ?? null;
   const openMapRecord = useCallback(
     (kind: "area" | "location" | "visit" | "route" | "update", id: string) => {
@@ -95,7 +120,8 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
   );
   const areas = useTripResource(selectedId, "areas").data ?? [];
   // A page we were sent here from (a deleted trip) can leave a message behind.
-  const arrivalNotice = location.state.notice === "trip_deleted" ? m.owner_trip_deleted() : undefined;
+  const arrivalNotice =
+    location.state.notice === "trip_deleted" ? m.owner_trip_deleted() : undefined;
   const message =
     notice ??
     arrivalNotice ??
@@ -111,7 +137,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
 
   function showOnMap(pointId: string) {
     if (selectedTrip)
-      void navigate({ to: `/trips/${encodeURIComponent(selectedTrip.id)}`, state: { mapFocus: pointId } });
+      void navigate({
+        to: `/trips/${encodeURIComponent(selectedTrip.id)}`,
+        state: { mapFocus: pointId },
+      });
   }
 
   function newTrip() {
@@ -178,7 +207,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
             <Button className="secondary compact" type="button" onClick={() => setEditing(true)}>
               {m.owner_trip_details()}
             </Button>
-            <Link className="secondary action-link" to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}>
+            <Link
+              className="secondary action-link"
+              to={`/trips/${encodeURIComponent(selectedTrip.id)}/details`}
+            >
               {m.owner_complete_private_overview()}
             </Link>
             <Button className="action-link" type="button" onClick={() => setCapturing(true)}>
@@ -236,7 +268,12 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         {currentSection === "overview" && (
           <>
             <TripOverview trip={selectedTrip} />
-            <OwnerTripMap trip={selectedTrip} areas={areas} focus={mapFocus} onOpenRecord={openMapRecord} />
+            <OwnerTripMap
+              trip={selectedTrip}
+              areas={areas}
+              focus={mapFocus}
+              onOpenRecord={openMapRecord}
+            />
             <div className="grid gap-4.5 min-[680px]:grid-cols-2">
               <section className="travel-card grid content-start gap-4.5 [&_h3]:m-0 [&_p]:m-0">
                 <h3>{m.owner_travel_updates()}</h3>
@@ -292,8 +329,14 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
               areas={areas}
               focusId={recordFocus?.kind === "stay" ? recordFocus : null}
             />
-            <RouteManager trip={selectedTrip} focusId={recordFocus?.kind === "route" ? recordFocus : null} />
-            <TripTaskManager trip={selectedTrip} focusId={recordFocus?.kind === "task" ? recordFocus : null} />
+            <RouteManager
+              trip={selectedTrip}
+              focusId={recordFocus?.kind === "route" ? recordFocus : null}
+            />
+            <TripTaskManager
+              trip={selectedTrip}
+              focusId={recordFocus?.kind === "task" ? recordFocus : null}
+            />
           </>
         )}
         {currentSection === "story" && (
@@ -306,7 +349,10 @@ export function Trips({ workspace }: { workspace?: { tripId: string; section: Tr
         {currentSection === "packing" && <PackingManager trip={selectedTrip} />}
         {currentSection === "media" && (
           <>
-            <DocumentManager trip={selectedTrip} focusId={recordFocus?.kind === "document" ? recordFocus : null} />
+            <DocumentManager
+              trip={selectedTrip}
+              focusId={recordFocus?.kind === "document" ? recordFocus : null}
+            />
             <LinkedLibraryDocuments tripId={selectedTrip.id} />
             <MediaManager
               trip={selectedTrip}

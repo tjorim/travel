@@ -15,9 +15,15 @@ const tripsListRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "trips",
   component: Trips,
-  validateSearch: (search: Record<string, unknown>): { new?: "1" } => ({ new: parseFlagParam(search.new) }),
+  validateSearch: (search: Record<string, unknown>): { new?: "1" } => ({
+    new: parseFlagParam(search.new),
+  }),
 });
-const tripRoute = createRoute({ getParentRoute: () => rootRoute, path: "trips/$tripId", component: TripWorkspace });
+const tripRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "trips/$tripId",
+  component: TripWorkspace,
+});
 const tripSectionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "trips/$tripId/$section",
@@ -30,7 +36,13 @@ vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("../trips/DocumentManager", () => ({ DocumentManager: () => null }));
 vi.mock("../trips/VisitManager", () => ({
-  VisitManager: ({ onShowOnMap, focusId }: { onShowOnMap?: (id: string) => void; focusId?: { id: string } | null }) => (
+  VisitManager: ({
+    onShowOnMap,
+    focusId,
+  }: {
+    onShowOnMap?: (id: string) => void;
+    focusId?: { id: string } | null;
+  }) => (
     <>
       <button type="button" onClick={() => onShowOnMap?.("p1")}>
         Toon op kaart
@@ -44,25 +56,37 @@ vi.mock("../trips/LocationManager", () => ({ LocationManager: () => null }));
 vi.mock("../trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
 vi.mock("../trips/MediaManager", () => ({ MediaManager: () => null }));
 vi.mock("../trips/OwnerTripMap", () => ({
-  OwnerTripMap: ({ focus }: { focus?: { id: string } | null }) => <p>Kaartfocus {focus?.id ?? "geen"}</p>,
+  OwnerTripMap: ({ focus }: { focus?: { id: string } | null }) => (
+    <p>Kaartfocus {focus?.id ?? "geen"}</p>
+  ),
 }));
 vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
 vi.mock("../trips/StayManager", () => ({
-  StayManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Verblijffocus {focusId?.id ?? "geen"}</p>,
+  StayManager: ({ focusId }: { focusId?: { id: string } | null }) => (
+    <p>Verblijffocus {focusId?.id ?? "geen"}</p>
+  ),
 }));
 vi.mock("../trips/RouteManager", () => ({
-  RouteManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Routefocus {focusId?.id ?? "geen"}</p>,
+  RouteManager: ({ focusId }: { focusId?: { id: string } | null }) => (
+    <p>Routefocus {focusId?.id ?? "geen"}</p>
+  ),
 }));
 vi.mock("../trips/AgendaView", () => ({
-  AgendaView: ({ onOpenRecord }: { onOpenRecord?: (kind: "stay" | "route" | "visit", id: string) => void }) => (
+  AgendaView: ({
+    onOpenRecord,
+  }: {
+    onOpenRecord?: (kind: "stay" | "route" | "visit", id: string) => void;
+  }) => (
     <button type="button" onClick={() => onOpenRecord?.("stay", "s1")}>
       Agendaregel openen
     </button>
   ),
 }));
 vi.mock("../trips/TripTaskManager", () => ({
-  TripTaskManager: ({ focusId }: { focusId?: { id: string } | null }) => <p>Taakfocus {focusId?.id ?? "geen"}</p>,
+  TripTaskManager: ({ focusId }: { focusId?: { id: string } | null }) => (
+    <p>Taakfocus {focusId?.id ?? "geen"}</p>
+  ),
 }));
 vi.mock("../library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 vi.mock("../trips/TripOverview", () => ({ TripOverview: () => null }));
@@ -78,11 +102,15 @@ const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({
 });
 let trips: Trip[];
 let requests: string[];
-const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
+const json = (value: unknown, status = 200) =>
+  Promise.resolve(new Response(JSON.stringify(value), { status }));
 
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  trips = [trip("t1", "Exampleland", { starts_on: "2054-11-16", ends_on: "2054-12-06" }), trip("t2", "IJsland")];
+  trips = [
+    trip("t1", "Exampleland", { starts_on: "2054-11-16", ends_on: "2054-12-06" }),
+    trip("t2", "IJsland"),
+  ];
   requests = [];
   vi.stubGlobal(
     "fetch",
@@ -100,7 +128,11 @@ beforeEach(() => {
       if (match && method === "PATCH") {
         trips = trips.map((item) =>
           item.id === match[1]
-            ? { ...item, title: String(body.title), summary: (body.summary as string | null) ?? null }
+            ? {
+                ...item,
+                title: String(body.title),
+                summary: (body.summary as string | null) ?? null,
+              }
             : item,
         );
         return json(trips.find((item) => item.id === match[1]));
@@ -123,8 +155,10 @@ afterEach(() => {
 });
 
 // The trip dialogs share labels with the managers' forms; scope to the dialog.
-const editor = (name: "Reisgegevens" | "Nieuwe reis") => within(screen.getByRole("dialog", { name }));
-const openEditor = async () => fireEvent.click(await screen.findByRole("button", { name: "Reisgegevens" }));
+const editor = (name: "Reisgegevens" | "Nieuwe reis") =>
+  within(screen.getByRole("dialog", { name }));
+const openEditor = async () =>
+  fireEvent.click(await screen.findByRole("button", { name: "Reisgegevens" }));
 const renderTrips = (path = "/trips") => renderRoutesWithOwner(routeTree, [path]);
 
 it("lists trips only, and opens a trip's workspace from its row", async () => {
@@ -142,24 +176,32 @@ it("lists trips only, and opens a trip's workspace from its row", async () => {
 it("keeps the editor closed in the workspace until asked, then opens the trip with its saved values", async () => {
   renderTrips("/trips/t1");
   await screen.findByRole("heading", { name: "Exampleland" });
-  expect(screen.getByRole("link", { name: "Volledig privéoverzicht" }).getAttribute("href")).toBe("/trips/t1/details");
+  expect(screen.getByRole("link", { name: "Volledig privéoverzicht" }).getAttribute("href")).toBe(
+    "/trips/t1/details",
+  );
   expect(screen.queryByRole("heading", { name: "Reisgegevens" })).toBeNull();
   await openEditor();
   await waitFor(() =>
-    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"),
+    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe(
+      "Exampleland",
+    ),
   );
-  expect((editor("Reisgegevens").getByLabelText("Eerste reisdag (optioneel)") as HTMLInputElement).value).toBe(
-    "16 nov 2054",
-  );
+  expect(
+    (editor("Reisgegevens").getByLabelText("Eerste reisdag (optioneel)") as HTMLInputElement).value,
+  ).toBe("16 nov 2054");
 });
 
 it("shows the renamed trip in the workspace after saving, with one refreshed read", async () => {
   renderTrips("/trips/t1");
   await openEditor();
   await waitFor(() =>
-    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"),
+    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe(
+      "Exampleland",
+    ),
   );
-  fireEvent.change(editor("Reisgegevens").getByLabelText("Titel"), { target: { value: "Exampleland 2054" } });
+  fireEvent.change(editor("Reisgegevens").getByLabelText("Titel"), {
+    target: { value: "Exampleland 2054" },
+  });
   fireEvent.click(editor("Reisgegevens").getByRole("button", { name: "Reis opslaan" }));
   await screen.findByRole("heading", { name: "Exampleland 2054" });
   expect(screen.getByText("Reis opgeslagen.")).toBeTruthy();
@@ -171,10 +213,14 @@ it("drops a deleted trip and returns to the list", async () => {
   renderTrips("/trips/t1");
   await openEditor();
   await waitFor(() =>
-    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"),
+    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe(
+      "Exampleland",
+    ),
   );
   fireEvent.click(editor("Reisgegevens").getByRole("button", { name: "Reis verwijderen" }));
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
   await screen.findByRole("heading", { name: "Reizen" });
   await waitFor(() => expect(screen.queryByRole("button", { name: /Exampleland/ })).toBeNull());
   expect(screen.getByRole("button", { name: /IJsland/ })).toBeTruthy();
@@ -193,14 +239,18 @@ it("creates a trip and opens its workspace", async () => {
 
 it("opens the new-trip dialog straight from the home page link", async () => {
   renderTrips("/trips?new=1");
-  await waitFor(() => expect((editor("Nieuwe reis").getByLabelText("Titel") as HTMLInputElement).value).toBe(""));
+  await waitFor(() =>
+    expect((editor("Nieuwe reis").getByLabelText("Titel") as HTMLInputElement).value).toBe(""),
+  );
 });
 
 it("rejects an end date before the start date without calling the server", async () => {
   renderTrips("/trips/t1");
   await openEditor();
   await waitFor(() =>
-    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe("Exampleland"),
+    expect((editor("Reisgegevens").getByLabelText("Titel") as HTMLInputElement).value).toBe(
+      "Exampleland",
+    ),
   );
   fireEvent.change(editor("Reisgegevens").getByLabelText("Laatste reisdag (optioneel)"), {
     target: { value: "2054-11-01" },
@@ -229,7 +279,10 @@ it("opens a record's dialog when arriving from the private overview with one to 
   const { router } = renderTrips("/trips/t1/plan");
   expect(await screen.findByText("Taakfocus geen")).toBeTruthy();
   await act(async () => {
-    await router.navigate({ to: "/trips/t1/plan", state: { openRecord: { kind: "task", id: "tk1" } } });
+    await router.navigate({
+      to: "/trips/t1/plan",
+      state: { openRecord: { kind: "task", id: "tk1" } },
+    });
   });
   expect(await screen.findByText("Taakfocus tk1")).toBeTruthy();
   expect(screen.getByText("Verblijffocus geen")).toBeTruthy();
@@ -249,7 +302,9 @@ it("explains a failed trip load without hiding the retry path", async () => {
     vi.fn(() => json({ detail: "Database niet bereikbaar." }, 400)),
   );
   renderTrips();
-  expect((await screen.findAllByText("Je reizen konden niet worden geladen.")).length).toBeGreaterThan(0);
+  expect(
+    (await screen.findAllByText("Je reizen konden niet worden geladen.")).length,
+  ).toBeGreaterThan(0);
   // An empty-list hint would claim the account has no trips, which a failed load cannot know.
   expect(screen.queryByText("Je eerste reis blijft privé totdat je iets deelt.")).toBeNull();
 });

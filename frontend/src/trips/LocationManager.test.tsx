@@ -12,7 +12,14 @@ import { LocationManager } from "./LocationManager";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const trip: Trip = { id: "trip", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] };
+const trip: Trip = {
+  id: "trip",
+  title: "Exampleland",
+  summary: null,
+  starts_on: null,
+  ends_on: null,
+  travel_updates: [],
+};
 const location = {
   id: "e1",
   area_id: "a1",
@@ -41,7 +48,9 @@ const taipei = {
 let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  api = fakeApi().collection("/api/trips/trip/locations", [location], { update: (row, body) => ({ ...row, ...body }) });
+  api = fakeApi().collection("/api/trips/trip/locations", [location], {
+    update: (row, body) => ({ ...row, ...body }),
+  });
   api.value("/api/trips/trip/public-projection", {
     trip_id: "trip",
     surface_state: "unpublished",
@@ -60,12 +69,19 @@ afterEach(() => {
 
 it("opens saved details and edits the address with an explicit save", async () => {
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ id: "e1", token: 1 }}
+      onNeedArea={() => undefined}
+    />,
   );
   expect(await screen.findByText(/Opgeslagen adres: 12 Guangming Road/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "node 42" }).getAttribute("href")).toBe(location.osm_url);
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
-  fireEvent.change(screen.getByLabelText("Adresregel 1 (optioneel)"), { target: { value: "14 Guangming Road" } });
+  fireEvent.change(screen.getByLabelText("Adresregel 1 (optioneel)"), {
+    target: { value: "14 Guangming Road" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Locatie opslaan" }));
   await waitFor(() =>
     expect(api.lastBody("PATCH /api/trips/trip/locations/e1")).toMatchObject({
@@ -86,10 +102,19 @@ it("creates a manual location only after saving and keeps address sharing off", 
     })
     .value("/api/trips/trip/share-links", []);
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ areaId: "a1", token: 2 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ areaId: "a1", token: 2 }}
+      onNeedArea={() => undefined}
+    />,
   );
-  fireEvent.change(await screen.findByLabelText("Eigen naam (optioneel)"), { target: { value: "Warmwaterbron" } });
-  fireEvent.change(screen.getByLabelText("Adresregel 1 (optioneel)"), { target: { value: "12 Guangming Road" } });
+  fireEvent.change(await screen.findByLabelText("Eigen naam (optioneel)"), {
+    target: { value: "Warmwaterbron" },
+  });
+  fireEvent.change(screen.getByLabelText("Adresregel 1 (optioneel)"), {
+    target: { value: "12 Guangming Road" },
+  });
   expect(api.count("POST /api/trips/trip/locations")).toBe(0);
   fireEvent.click(screen.getByRole("button", { name: "Locatie opslaan" }));
   await waitFor(() =>
@@ -99,7 +124,9 @@ it("creates a manual location only after saving and keeps address sharing off", 
       address_line1: "12 Guangming Road",
     }),
   );
-  expect(api.lastBody<Record<string, unknown>>("POST /api/trips/trip/locations")?.share_address).toBeUndefined();
+  expect(
+    api.lastBody<Record<string, unknown>>("POST /api/trips/trip/locations")?.share_address,
+  ).toBeUndefined();
 });
 
 it("previews only projected address fields and names the live recipients", async () => {
@@ -125,7 +152,12 @@ it("previews only projected address fields and names the live recipients", async
       },
     ]);
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 3 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ id: "e1", token: 3 }}
+      onNeedArea={() => undefined}
+    />,
   );
   expect(await screen.findByText(/Bereikt momenteel: deellink “Familie”/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -134,7 +166,9 @@ it("previews only projected address fields and names the live recipients", async
       /Exact adresveld voor bezoekers als Adres delen aanstaat: Adresregel 1: 12 Guangming Road; Plaats: Taipei/,
     ),
   ).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Adresregel 2 (optioneel)"), { target: { value: "Floor 4" } });
+  fireEvent.change(screen.getByLabelText("Adresregel 2 (optioneel)"), {
+    target: { value: "Floor 4" },
+  });
   expect(screen.getByText(/Adresregel 2: Floor 4/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Locatie bewerken sluiten/ }));
   await answerConfirmation("Wijzigingen verwerpen");
@@ -143,7 +177,9 @@ it("previews only projected address fields and names the live recipients", async
 
 it("blocks address sharing without address parts", async () => {
   api = fakeApi()
-    .collection("/api/trips/trip/locations", [{ ...location, address_line1: null, locality: null, country_code: "TW" }])
+    .collection("/api/trips/trip/locations", [
+      { ...location, address_line1: null, locality: null, country_code: "TW" },
+    ])
     .value("/api/trips/trip/public-projection", {
       trip_id: "trip",
       surface_state: "unpublished",
@@ -152,7 +188,12 @@ it("blocks address sharing without address parts", async () => {
     })
     .value("/api/trips/trip/share-links", []);
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 4 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ id: "e1", token: 4 }}
+      onNeedArea={() => undefined}
+    />,
   );
   expect(await screen.findByText(/Geen adres vastgelegd/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -193,13 +234,22 @@ it("reviews and corrects an OSM snapshot without changing its saved point", asyn
     ],
   }));
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ areaId: "a1", token: 5 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ areaId: "a1", token: 5 }}
+      onNeedArea={() => undefined}
+    />,
   );
-  fireEvent.change(screen.getByLabelText("Zoek via OpenStreetMap"), { target: { value: "Hotel Taipei" } });
+  fireEvent.change(screen.getByLabelText("Zoek via OpenStreetMap"), {
+    target: { value: "Hotel Taipei" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Hotel Taipei" }));
   expect(screen.getByText(/Opgeslagen kaartpunt en navigatiedoel: 25.034, 121.565/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Adresregel 1 (optioneel)"), { target: { value: "2 New Road" } });
+  fireEvent.change(screen.getByLabelText("Adresregel 1 (optioneel)"), {
+    target: { value: "2 New Road" },
+  });
   fireEvent.change(screen.getByLabelText("Adresregel 2 (optioneel)"), { target: { value: "" } });
   fireEvent.click(screen.getByRole("button", { name: "Locatie opslaan" }));
   await waitFor(() =>
@@ -218,7 +268,12 @@ it("reviews and corrects an OSM snapshot without changing its saved point", asyn
 
 it("describes the shareable address in words, never as raw JSON", async () => {
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ id: "e1", token: 1 }}
+      onNeedArea={() => undefined}
+    />,
   );
   await screen.findByText(/Opgeslagen adres: 12 Guangming Road/);
   expect(screen.getByText(/Adresregel 1: 12 Guangming Road; Plaats: Taipei/)).toBeTruthy();
@@ -230,7 +285,12 @@ it("describes the shareable address in words, never as raw JSON", async () => {
 
 it("deletes an unused location after confirmation", async () => {
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ id: "e1", token: 1 }}
+      onNeedArea={() => undefined}
+    />,
   );
   await screen.findByText(/Opgeslagen adres/);
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
@@ -242,7 +302,12 @@ it("deletes an unused location after confirmation", async () => {
 
 it("keeps a location that is still in use and shows why", async () => {
   renderWithOwner(
-    <LocationManager trip={trip} areas={[taipei]} request={{ id: "e1", token: 1 }} onNeedArea={() => undefined} />,
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ id: "e1", token: 1 }}
+      onNeedArea={() => undefined}
+    />,
   );
   await screen.findByText(/Opgeslagen adres/);
   api.failNext = {
@@ -253,7 +318,9 @@ it("keeps a location that is still in use and shows why", async () => {
     },
   };
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
-  fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
   expect(await screen.findByText(/wordt nog gebruikt door 1 onderdeel/)).toBeTruthy();
   expect(screen.getByRole("dialog")).toBeTruthy();
 });

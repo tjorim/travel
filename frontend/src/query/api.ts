@@ -13,7 +13,12 @@ export class ApiError extends Error {
   readonly descriptors: ErrorDescriptor[];
   readonly diagnostic: unknown;
 
-  constructor(fallback: ErrorFallback, status: number, descriptors: ErrorDescriptor[] = [], diagnostic?: unknown) {
+  constructor(
+    fallback: ErrorFallback,
+    status: number,
+    descriptors: ErrorDescriptor[] = [],
+    diagnostic?: unknown,
+  ) {
     super(typeof fallback === "string" ? fallback : "");
     this.name = "ApiError";
     this.status = status;
@@ -40,7 +45,8 @@ export class ApiError extends Error {
       const path = descriptor.path.filter(
         (part, index) => index !== 0 || !["body", "query", "path"].includes(String(part)),
       );
-      if (path.length) fields[path.join(".")] = descriptorMessage(descriptor) ?? m.api_invalid_input();
+      if (path.length)
+        fields[path.join(".")] = descriptorMessage(descriptor) ?? m.api_invalid_input();
     }
     return fields;
   }
@@ -59,7 +65,8 @@ export class ApiError extends Error {
 
 /** The server refused because other records still point at this one. */
 export const isResourceInUse = (error: unknown): boolean =>
-  error instanceof ApiError && error.descriptors.some((descriptor) => descriptor.code === "resource_in_use");
+  error instanceof ApiError &&
+  error.descriptors.some((descriptor) => descriptor.code === "resource_in_use");
 
 function isDescriptor(value: unknown): value is ErrorDescriptor {
   if (!value || typeof value !== "object") return false;
@@ -71,13 +78,18 @@ function isDescriptor(value: unknown): value is ErrorDescriptor {
     !!descriptor.params &&
     typeof descriptor.params === "object" &&
     !Array.isArray(descriptor.params) &&
-    Object.values(descriptor.params).every((part) => typeof part === "string" || typeof part === "number")
+    Object.values(descriptor.params).every(
+      (part) => typeof part === "string" || typeof part === "number",
+    )
   );
 }
 
 /** Diagnostic prose stays separate and is never rendered or used as a lookup key. */
 export async function apiFailure(response: Response, fallback: ErrorFallback): Promise<ApiError> {
-  const body = (await response.json().catch(() => null)) as { detail?: unknown; errors?: unknown } | null;
+  const body = (await response.json().catch(() => null)) as {
+    detail?: unknown;
+    errors?: unknown;
+  } | null;
   const descriptors = Array.isArray(body?.errors) ? body.errors.filter(isDescriptor) : [];
   return new ApiError(fallback, response.status, descriptors, body?.detail);
 }
@@ -91,10 +103,16 @@ export type OwnerRequest = {
   credentials?: RequestCredentials;
 };
 
-const authorization = (session: TrackerSession) => ({ Authorization: `Bearer ${session.accessToken}` });
+const authorization = (session: TrackerSession) => ({
+  Authorization: `Bearer ${session.accessToken}`,
+});
 
 /** Sends the request; a transport failure is reported as offline and an abort is left alone. */
-async function send(url: string, init: RequestInit, signal: AbortSignal | undefined): Promise<Response> {
+async function send(
+  url: string,
+  init: RequestInit,
+  signal: AbortSignal | undefined,
+): Promise<Response> {
   try {
     return await fetch(url, { ...init, ...(signal ? { signal } : {}) });
   } catch (error) {
@@ -121,7 +139,9 @@ export async function ownerRequest<T>(
     {
       method,
       // A multipart body carries its own boundary in the Content-Type the browser sets.
-      headers: multipart ? authorization(session) : { ...authorization(session), "Content-Type": "application/json" },
+      headers: multipart
+        ? authorization(session)
+        : { ...authorization(session), "Content-Type": "application/json" },
       ...(body === undefined ? {} : { body: multipart ? body : JSON.stringify(body) }),
       ...(cache ? { cache } : {}),
       ...(credentials ? { credentials } : {}),
@@ -156,7 +176,11 @@ export async function ownerFile(
 ): Promise<Blob> {
   const response = await send(
     url,
-    { headers: authorization(session), ...(cache ? { cache } : {}), ...(credentials ? { credentials } : {}) },
+    {
+      headers: authorization(session),
+      ...(cache ? { cache } : {}),
+      ...(credentials ? { credentials } : {}),
+    },
     signal,
   );
   if (!response.ok) throw await apiFailure(response, fallback);
@@ -169,7 +193,11 @@ export async function ownerFile(
 }
 
 /** Opens a protected file in a new tab. */
-export async function openOwnerFile(session: TrackerSession, url: string, fallback: ErrorFallback): Promise<void> {
+export async function openOwnerFile(
+  session: TrackerSession,
+  url: string,
+  fallback: ErrorFallback,
+): Promise<void> {
   openBlobInNewTab(await ownerFile(session, url, fallback));
 }
 

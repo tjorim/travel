@@ -146,7 +146,11 @@ function DateInput({
   min,
   onFieldBlur,
   iso,
-}: Omit<EntryProps, "placeholder" | "numeric" | "inputRef"> & { label: string; min?: string; iso: string }) {
+}: Omit<EntryProps, "placeholder" | "numeric" | "inputRef"> & {
+  label: string;
+  min?: string;
+  iso: string;
+}) {
   const [open, setOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const selected = dateFromIso(iso);
@@ -215,7 +219,14 @@ function FieldFrame({
  * A date typed as "16 nov 2026" (or "16-11-2026", or ISO) with a calendar to pick from. The form value stays
  * `YYYY-MM-DD`. `min` greys out earlier days in the calendar; it does not validate.
  */
-export function DateField({ field, label, optional, required, disabled, min }: PickerProps & { min?: string }) {
+export function DateField({
+  field,
+  label,
+  optional,
+  required,
+  disabled,
+  min,
+}: PickerProps & { min?: string }) {
   const locale = useLocale();
   const value = entryValue(field);
   const entry = useTypedEntry({
@@ -327,7 +338,11 @@ export function DateTimeField({ field, label, optional, required, disabled }: Pi
         <FieldTitle label={label} optional={optional} />
       </FieldLegend>
       <div className="grid grid-cols-5 gap-2">
-        <Field className="col-span-3" name={`${field.name}-date`} invalid={invalid || Boolean(error)}>
+        <Field
+          className="col-span-3"
+          name={`${field.name}-date`}
+          invalid={invalid || Boolean(error)}
+        >
           <DateInput
             entry={dateEntry}
             unreadable={dateEntry.unreadable || missingDate}
@@ -339,7 +354,11 @@ export function DateTimeField({ field, label, optional, required, disabled }: Pi
             onFieldBlur={field.handleBlur}
           />
         </Field>
-        <Field className="col-span-2" name={`${field.name}-time`} invalid={invalid || Boolean(error)}>
+        <Field
+          className="col-span-2"
+          name={`${field.name}-time`}
+          invalid={invalid || Boolean(error)}
+        >
           <EntryInput
             entry={timeEntry}
             unreadable={timeEntry.unreadable || missingTime}

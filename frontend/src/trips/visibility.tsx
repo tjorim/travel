@@ -39,7 +39,10 @@ export const visibilityLabel = (visibility: Visibility): string => SHORT_LABELS[
 
 /** One request sets the choice for any kind, then refreshes everything on the trip, scopes included. */
 export function useSetVisibility(tripId: string) {
-  return useOwnerMutation<{ kind: ShareScopeKind; id: string; visibility: Visibility }, { visibility: Visibility }>({
+  return useOwnerMutation<
+    { kind: ShareScopeKind; id: string; visibility: Visibility },
+    { visibility: Visibility }
+  >({
     fallback: m.owner_visibility_save_failed,
     request: ({ kind, id, visibility }) => ({
       path: tripPath(tripId, `visibility/${kind}/${encodeURIComponent(id)}`),
@@ -74,7 +77,8 @@ export function VisibilityControl({
   useLocale();
   const save = useSetVisibility(tripId);
   const [error, setError] = useFeedback<string | null>(null);
-  if (followsUpdate) return <p className="help">{m.owner_shared_with_update({ title: followsUpdate })}</p>;
+  if (followsUpdate)
+    return <p className="help">{m.owner_shared_with_update({ title: followsUpdate })}</p>;
   const shown = save.isPending && save.variables ? save.variables.visibility : value;
   function choose(visibility: Visibility) {
     setError(null);

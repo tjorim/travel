@@ -104,8 +104,10 @@ function openDb(): Promise<IDBDatabase> {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
-        if (!db.objectStoreNames.contains(GENERATIONS_STORE)) db.createObjectStore(GENERATIONS_STORE);
-        if (!db.objectStoreNames.contains(KEYS_STORE)) db.createObjectStore(KEYS_STORE, { keyPath: "subject" });
+        if (!db.objectStoreNames.contains(GENERATIONS_STORE))
+          db.createObjectStore(GENERATIONS_STORE);
+        if (!db.objectStoreNames.contains(KEYS_STORE))
+          db.createObjectStore(KEYS_STORE, { keyPath: "subject" });
         if (!db.objectStoreNames.contains(COPIES_STORE)) {
           const store = db.createObjectStore(COPIES_STORE, { keyPath: "id" });
           store.createIndex(SUBJECT_INDEX, "subject", { unique: false });
@@ -118,7 +120,8 @@ function openDb(): Promise<IDBDatabase> {
         };
         resolve(request.result);
       };
-      request.onerror = () => reject(storageFailure(m.assets_the_offline_database_could_not_be_opened, request.error));
+      request.onerror = () =>
+        reject(storageFailure(m.assets_the_offline_database_could_not_be_opened, request.error));
     });
   }
   return dbPromise;
@@ -143,15 +146,18 @@ export async function __resetOfflineStoreForTests(): Promise<void> {
 function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(storageFailure(m.assets_the_offline_action_failed, request.error));
+    request.onerror = () =>
+      reject(storageFailure(m.assets_the_offline_action_failed, request.error));
   });
 }
 
 function promisifyTransaction(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(storageFailure(m.assets_the_offline_action_failed, transaction.error));
-    transaction.onabort = () => reject(storageFailure(m.assets_the_offline_action_was_aborted, transaction.error));
+    transaction.onerror = () =>
+      reject(storageFailure(m.assets_the_offline_action_failed, transaction.error));
+    transaction.onabort = () =>
+      reject(storageFailure(m.assets_the_offline_action_was_aborted, transaction.error));
   });
 }
 
@@ -159,12 +165,22 @@ async function getKeyRecord(
   db: IDBDatabase,
   subject: string,
 ): Promise<{ subject: string; key: CryptoKey; exportable: boolean; createdAt: number } | null> {
-  const record = await promisifyRequest(db.transaction(KEYS_STORE, "readonly").objectStore(KEYS_STORE).get(subject));
-  return (record as { subject: string; key: CryptoKey; exportable: boolean; createdAt: number } | undefined) ?? null;
+  const record = await promisifyRequest(
+    db.transaction(KEYS_STORE, "readonly").objectStore(KEYS_STORE).get(subject),
+  );
+  return (
+    (record as
+      | { subject: string; key: CryptoKey; exportable: boolean; createdAt: number }
+      | undefined) ?? null
+  );
 }
 
 async function getGeneration(db: IDBDatabase, subject: string): Promise<number> {
-  return (await promisifyRequest(db.transaction(GENERATIONS_STORE).objectStore(GENERATIONS_STORE).get(subject))) ?? 0;
+  return (
+    (await promisifyRequest(
+      db.transaction(GENERATIONS_STORE).objectStore(GENERATIONS_STORE).get(subject),
+    )) ?? 0
+  );
 }
 
 /** Compare the logout generation in the same transaction as the write, including across tabs. */
@@ -201,12 +217,28 @@ export async function getOrCreateDeviceKey(
 
   const createdAt = Date.now();
   try {
-    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-    await guardedPut(db, KEYS_STORE, subject, generation, { subject, key, exportable: false, createdAt });
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+    await guardedPut(db, KEYS_STORE, subject, generation, {
+      subject,
+      key,
+      exportable: false,
+      createdAt,
+    });
     return { key, exportable: false };
   } catch {
-    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-    await guardedPut(db, KEYS_STORE, subject, generation, { subject, key, exportable: true, createdAt });
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
+      "encrypt",
+      "decrypt",
+    ]);
+    await guardedPut(db, KEYS_STORE, subject, generation, {
+      subject,
+      key,
+      exportable: true,
+      createdAt,
+    });
     return { key, exportable: true };
   }
 }
@@ -214,7 +246,9 @@ export async function getOrCreateDeviceKey(
 export async function getKeyDisclosure(subject: string): Promise<KeyDisclosure | null> {
   const db = await openDb();
   const record = await getKeyRecord(db, subject);
-  return record ? { subject: record.subject, exportable: record.exportable, createdAt: record.createdAt } : null;
+  return record
+    ? { subject: record.subject, exportable: record.exportable, createdAt: record.createdAt }
+    : null;
 }
 
 async function getCopiesForSubject(db: IDBDatabase, subject: string): Promise<OfflineCopyRecord[]> {
@@ -227,7 +261,9 @@ async function getCopiesForSubject(db: IDBDatabase, subject: string): Promise<Of
 }
 
 async function getCopy(db: IDBDatabase, id: string): Promise<OfflineCopyRecord | null> {
-  const record = await promisifyRequest(db.transaction(COPIES_STORE, "readonly").objectStore(COPIES_STORE).get(id));
+  const record = await promisifyRequest(
+    db.transaction(COPIES_STORE, "readonly").objectStore(COPIES_STORE).get(id),
+  );
   return (record as OfflineCopyRecord | undefined) ?? null;
 }
 
@@ -264,9 +300,11 @@ export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummar
   const generation = await getGeneration(db, input.subject);
   const { key } = await getOrCreateDeviceKey(input.subject, generation);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, input.bytes).catch((cause: unknown) => {
-    throw storageFailure(m.assets_the_offline_action_failed, cause);
-  });
+  const ciphertext = await crypto.subtle
+    .encrypt({ name: "AES-GCM", iv }, key, input.bytes)
+    .catch((cause: unknown) => {
+      throw storageFailure(m.assets_the_offline_action_failed, cause);
+    });
   const now = Date.now();
   const existing = await findPinnedCopy(input.subject, input.resourceKind, input.resourceId);
   const record: OfflineCopyRecord = {
@@ -345,7 +383,9 @@ export async function openOfflineCopy(subject: string, id: string): Promise<Blob
   }
   if (record.leaseExpiresAt <= Date.now()) {
     await deleteCopy(db, id);
-    throw new FeedbackError(() => m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in());
+    throw new FeedbackError(() =>
+      m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in(),
+    );
   }
   const { key } = await getOrCreateDeviceKey(subject);
   const plaintext = await crypto.subtle

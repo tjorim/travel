@@ -22,7 +22,13 @@ export function RestatedRoutesNote({ routes }: { routes: RouteReference[] }) {
   );
 }
 
-type Draft = { place: PlaceValue; title: string; summary: string; startsOn: string; endsOn: string };
+type Draft = {
+  place: PlaceValue;
+  title: string;
+  summary: string;
+  startsOn: string;
+  endsOn: string;
+};
 
 /** What the server needs to judge a draft: a place it knows, and a day. Anything less cannot match a route. */
 function checkBody(draft: Draft) {
@@ -32,7 +38,9 @@ function checkBody(draft: Draft) {
       ? { area_id: id }
       : kind === "location"
         ? { location_id: id }
-        : draft.place.choice === "new" && draft.place.newAreaId && draft.place.newAreaId !== "__new__"
+        : draft.place.choice === "new" &&
+            draft.place.newAreaId &&
+            draft.place.newAreaId !== "__new__"
           ? { area_id: draft.place.newAreaId }
           : null;
   if (!where || !draft.startsOn) return null;
@@ -58,7 +66,11 @@ export function VisitRouteHint({ tripId, draft }: { tripId: string; draft: Draft
   }, [wanted]);
   const query = useQuery({
     // Below the routes list key, so editing a route refreshes the hint.
-    queryKey: [...ownerKeys.tripResource(owner?.subject ?? "", tripId, "routes"), "visit-check", settled],
+    queryKey: [
+      ...ownerKeys.tripResource(owner?.subject ?? "", tripId, "routes"),
+      "visit-check",
+      settled,
+    ],
     enabled: owner !== null && settled !== null,
     retry: false,
     staleTime: 30_000,
@@ -70,5 +82,7 @@ export function VisitRouteHint({ tripId, draft }: { tripId: string; draft: Draft
         { method: "POST", body: JSON.parse(settled!), signal },
       ),
   });
-  return settled !== null && settled === wanted ? <RestatedRoutesNote routes={query.data ?? []} /> : null;
+  return settled !== null && settled === wanted ? (
+    <RestatedRoutesNote routes={query.data ?? []} />
+  ) : null;
 }

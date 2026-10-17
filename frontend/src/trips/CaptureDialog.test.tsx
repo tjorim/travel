@@ -20,8 +20,22 @@ beforeEach(() => {
   clearDraft("t1");
   clearDraft("t2");
   trips = [
-    { id: "t1", title: "Exampleland", summary: null, starts_on: null, ends_on: null, travel_updates: [] },
-    { id: "t2", title: "IJsland", summary: null, starts_on: null, ends_on: null, travel_updates: [] },
+    {
+      id: "t1",
+      title: "Exampleland",
+      summary: null,
+      starts_on: null,
+      ends_on: null,
+      travel_updates: [],
+    },
+    {
+      id: "t2",
+      title: "IJsland",
+      summary: null,
+      starts_on: null,
+      ends_on: null,
+      travel_updates: [],
+    },
   ];
   api = fakeApi().collection("/api/trips/t1/media", []).collection("/api/trips/t2/media", []);
   api.on("GET", /^\/api\/trips$/, () => trips);
@@ -56,7 +70,13 @@ it("takes a media-review candidate even though the closed dialog already loaded 
   saveDraft({ ...emptyDraft("t1"), title: "Bewaard concept", notes: "" });
   api = fakeApi()
     .collection("/api/trips/t1/media", [
-      { id: "m1", media_kind: "photo", original_filename: "kust.jpg", byte_size: 10, captured_at: null },
+      {
+        id: "m1",
+        media_kind: "photo",
+        original_filename: "kust.jpg",
+        byte_size: 10,
+        captured_at: null,
+      },
     ])
     .collection("/api/trips/t2/media", []);
   api.on("GET", /^\/api\/trips$/, () => trips);
@@ -82,6 +102,8 @@ it("takes a media-review candidate even though the closed dialog already loaded 
   );
   const title = (await screen.findByLabelText("Titel")) as HTMLInputElement;
   await waitFor(() => expect(title.value).toBe(""));
-  expect((await screen.findByRole("checkbox", { name: /kust\.jpg/ })).getAttribute("aria-checked")).toBe("true");
+  expect(
+    (await screen.findByRole("checkbox", { name: /kust\.jpg/ })).getAttribute("aria-checked"),
+  ).toBe("true");
   expect(consumed).toHaveBeenCalled();
 });

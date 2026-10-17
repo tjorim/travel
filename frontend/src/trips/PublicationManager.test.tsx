@@ -117,7 +117,13 @@ beforeEach(() => {
       { id: "e2", label: null, display_name: "Hotel, 1 Main Street", visibility: "private" },
     ])
     .collection("/api/trips/trip/visits", [
-      { id: "v1", title: "Noordkust", area: { label: "Taipei" }, location: null, visibility: "custom" },
+      {
+        id: "v1",
+        title: "Noordkust",
+        area: { label: "Taipei" },
+        location: null,
+        visibility: "custom",
+      },
     ])
     .collection("/api/trips/trip/stays", [])
     .collection("/api/trips/trip/routes", [
@@ -132,8 +138,20 @@ beforeEach(() => {
     ])
     .collection("/api/trips/trip/media", [{ id: "p1", original_filename: "kust.jpg" }])
     .collection("/api/trips/trip/media/p1/derivatives", [
-      { id: "x1", review_state: "approved", purpose: "share", visibility: "custom", travel_update_id: null },
-      { id: "x2", review_state: "pending", purpose: "share", visibility: "private", travel_update_id: null },
+      {
+        id: "x1",
+        review_state: "approved",
+        purpose: "share",
+        visibility: "custom",
+        travel_update_id: null,
+      },
+      {
+        id: "x2",
+        review_state: "pending",
+        purpose: "share",
+        visibility: "private",
+        travel_update_id: null,
+      },
     ])
     .collection("/api/trips/trip/documents", []);
   api.on("PUT", /\/visibility\/[^/]+\/[^/]+$/, (body) => body);
@@ -213,7 +231,9 @@ it("says what reaches every audience anyway and offers no field checklist", asyn
   const scopeEditor = publicScope();
   await scopeEditor.findByText("Reisupdates");
   expect(
-    scopeEditor.getByText(/1 voor iedereen verschijnt hier altijd; 1 privé kun je hieronder aanvinken/),
+    scopeEditor.getByText(
+      /1 voor iedereen verschijnt hier altijd; 1 privé kun je hieronder aanvinken/,
+    ),
   ).toBeTruthy();
   await openPublicGroup("Reisupdates");
   fireEvent.click(scopeEditor.getByRole("checkbox", { name: /Stad ↔ natuur/ }));
@@ -228,7 +248,9 @@ it('checking a still-private record for an audience promotes it to "Zelf kiezen"
   expect(checkbox.getAttribute("aria-checked")).toBe("false");
   fireEvent.click(checkbox);
   await waitFor(() =>
-    expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({ visibility: "custom" }),
+    expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({
+      visibility: "custom",
+    }),
   );
   await waitFor(() =>
     expect(
@@ -252,7 +274,9 @@ it("sets who sees a record from Delen with the same control as its own editor", 
   expect(selectedOption("Zichtbaarheid van Aankomst")).toBe("Iedereen — alle bezoekers");
   chooseOption("Zichtbaarheid van Aankomst", "Privé — alleen ik");
   await waitFor(() =>
-    expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u2")).toEqual({ visibility: "private" }),
+    expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u2")).toEqual({
+      visibility: "private",
+    }),
   );
 });
 
@@ -260,7 +284,9 @@ it("offers a redacted route summary, without the owner-only booking fields", asy
   renderWithOwner(<PublicationManager trip={trip} />);
   const transport = await openPublicGroup("Routes");
   expect(transport.getByText("Vlucht: Zaventem → Taoyuan")).toBeTruthy();
-  expect(transport.getByText(/nooit boekingscode, reisklasse, notities of documenten/i)).toBeTruthy();
+  expect(
+    transport.getByText(/nooit boekingscode, reisklasse, notities of documenten/i),
+  ).toBeTruthy();
   fireEvent.click(transport.getByRole("button", { name: "Alles kiezen" }));
   fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
   await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
@@ -273,16 +299,28 @@ it("offers a redacted route summary, without the owner-only booking fields", asy
 it("groups records into collapsed sections with a count, and chooses or clears a whole section", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
   const group = async (title: string) =>
-    within((await publicScope().findByRole("button", { name: new RegExp(`^${title}`) })).closest("[data-disclosure]")!);
+    within(
+      (await publicScope().findByRole("button", { name: new RegExp(`^${title}`) })).closest(
+        "[data-disclosure]",
+      )!,
+    );
   const updates = await openPublicGroup("Reisupdates");
   // The group lists the still-private update alongside the already-custom one; the everyone update stays out.
   expect(updates.getByText("0 van 2 gekozen")).toBeTruthy();
-  expect((updates.getByRole("button", { name: "Niets kiezen" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(
+    (updates.getByRole("button", { name: "Niets kiezen" }) as HTMLButtonElement).disabled,
+  ).toBe(true);
   fireEvent.click(updates.getByRole("button", { name: "Alles kiezen" }));
   await waitFor(() => expect(updates.getByText("2 van 2 gekozen")).toBeTruthy());
-  expect(updates.getByRole("checkbox", { name: /Stad ↔ natuur/ }).getAttribute("aria-checked")).toBe("true");
-  expect(updates.getByRole("checkbox", { name: /Privé dagboek/ }).getAttribute("aria-checked")).toBe("true");
-  expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({ visibility: "custom" });
+  expect(
+    updates.getByRole("checkbox", { name: /Stad ↔ natuur/ }).getAttribute("aria-checked"),
+  ).toBe("true");
+  expect(
+    updates.getByRole("checkbox", { name: /Privé dagboek/ }).getAttribute("aria-checked"),
+  ).toBe("true");
+  expect(api.lastBody("PUT /api/trips/trip/visibility/travel_update/u1")).toEqual({
+    visibility: "custom",
+  });
   fireEvent.click(updates.getByRole("button", { name: "Niets kiezen" }));
   expect(updates.getByText("0 van 2 gekozen")).toBeTruthy();
   // The other sections are untouched.
@@ -297,7 +335,9 @@ it("chooses what it can when one record cannot be shared yet, and says which one
     status: 422,
     body: {
       detail: "sharing diagnostic",
-      errors: [{ code: "write_the_text_for_visitors_before_sharing_this_update", path: [], params: {} }],
+      errors: [
+        { code: "write_the_text_for_visitors_before_sharing_this_update", path: [], params: {} },
+      ],
     },
   };
   fireEvent.click(updates.getByRole("button", { name: "Alles kiezen" }));
@@ -336,18 +376,26 @@ it("groups a rotated URL under its current link instead of listing it as another
 it("asks before discarding an unsaved link scope when changing editors", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
-  fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Familie en vrienden" } });
+  fireEvent.change(screen.getByLabelText("Naam van de link"), {
+    target: { value: "Familie en vrienden" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Deellink bewerken sluiten" }));
   expect(await screen.findByText("Wijzigingen verwerpen?")).toBeTruthy();
-  expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe("Familie en vrienden");
+  expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe(
+    "Familie en vrienden",
+  );
   await answerConfirmation("Wijzigingen verwerpen");
   fireEvent.click(screen.getByRole("button", { name: "Nieuwe link" }));
-  await waitFor(() => expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe(""));
+  await waitFor(() =>
+    expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe(""),
+  );
 });
 
 it("saves the chosen public scope and shows the server's copy afterwards", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  const checkbox = (await openPublicGroup("Reisupdates")).getByRole("checkbox", { name: /Stad ↔ natuur/ });
+  const checkbox = (await openPublicGroup("Reisupdates")).getByRole("checkbox", {
+    name: /Stad ↔ natuur/,
+  });
   fireEvent.click(checkbox);
   fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
   await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
@@ -365,13 +413,18 @@ it("keeps unsaved public scope edits when the server copy is refreshed", async (
   const { client } = renderWithOwner(<PublicationManager trip={trip} />);
   await openPublicGroup("Reisupdates");
   fireEvent.click(
-    await within(await screen.findByRole("group", { name: "Wat iedereen mag zien" })).findByRole("checkbox", {
-      name: /Stad ↔ natuur/,
-    }),
+    await within(await screen.findByRole("group", { name: "Wat iedereen mag zien" })).findByRole(
+      "checkbox",
+      {
+        name: /Stad ↔ natuur/,
+      },
+    ),
   );
   status = { ...status, scope: { ...scope(), trip: { title: false, summary: true, dates: null } } };
   await act(async () => {
-    await client.invalidateQueries({ queryKey: ownerKeys.tripResource("owner-1", "trip", "public-projection") });
+    await client.invalidateQueries({
+      queryKey: ownerKeys.tripResource("owner-1", "trip", "public-projection"),
+    });
   });
   expect(
     publicScope()
@@ -416,11 +469,15 @@ it("saves a new link as a draft, letting its owner preview it before activating 
 
   fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Vrienden" } });
   fireEvent.click(screen.getByRole("button", { name: "Concept opslaan" }));
-  await screen.findByText("Concept opgeslagen. Bekijk het voorbeeld en activeer de link zodra je tevreden bent.");
+  await screen.findByText(
+    "Concept opgeslagen. Bekijk het voorbeeld en activeer de link zodra je tevreden bent.",
+  );
   // Saving a new link creates it as a draft: no live capability is minted yet.
   expect(api.count("POST /api/trips/trip/share-links")).toBe(1);
   expect(api.count("POST /api/trips/trip/share-links/l2/activate")).toBe(0);
-  expect(screen.getByRole("button", { name: /Vrienden/, hidden: true }).textContent).toContain("concept");
+  expect(screen.getByRole("button", { name: /Vrienden/, hidden: true }).textContent).toContain(
+    "concept",
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
   const previewDialog = await screen.findByRole("dialog", { name: "Preview van Vrienden" });
@@ -428,15 +485,24 @@ it("saves a new link as a draft, letting its owner preview it before activating 
   expect(api.count("POST /api/trips/trip/share-links/l2/preview")).toBe(1);
   // Previewing still hasn't activated the link.
   expect(api.count("POST /api/trips/trip/share-links/l2/activate")).toBe(0);
-  fireEvent.click(within(previewDialog).getByRole("button", { name: "Preview van Vrienden sluiten" }));
+  fireEvent.click(
+    within(previewDialog).getByRole("button", { name: "Preview van Vrienden sluiten" }),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: /Vrienden/ }));
   fireEvent.click(await screen.findByRole("button", { name: "Activeren" }));
   const reveal = await screen.findByRole("dialog", { name: "Deellink" });
   expect(within(reveal).getByText(`${window.location.origin}/share/${SECRET}`)).toBeTruthy();
-  expect(screen.getByText("De link is actief en kan later opnieuw worden gekopieerd.")).toBeTruthy();
-  expect(api.lastBody("POST /api/trips/trip/share-links/l2/activate")).toEqual({ expires_in_days: 30, reason: null });
-  expect(screen.getByRole("button", { name: /Vrienden/, hidden: true }).textContent).toContain("actief");
+  expect(
+    screen.getByText("De link is actief en kan later opnieuw worden gekopieerd."),
+  ).toBeTruthy();
+  expect(api.lastBody("POST /api/trips/trip/share-links/l2/activate")).toEqual({
+    expires_in_days: 30,
+    reason: null,
+  });
+  expect(screen.getByRole("button", { name: /Vrienden/, hidden: true }).textContent).toContain(
+    "actief",
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Sluiten" }));
   expect(screen.queryByText(`${window.location.origin}/share/${SECRET}`)).toBeNull();
@@ -456,15 +522,21 @@ it("revokes an active link and locks its editor", async () => {
   await answerConfirmation("Link intrekken");
   await screen.findByText("Deellink ingetrokken.");
   expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).disabled).toBe(true);
-  expect((screen.getByRole("button", { name: "Link opslaan" }) as HTMLButtonElement).disabled).toBe(true);
-  expect(screen.getByRole("button", { name: /Familie/, hidden: true }).textContent).toContain("ingetrokken");
+  expect((screen.getByRole("button", { name: "Link opslaan" }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+  expect(screen.getByRole("button", { name: /Familie/, hidden: true }).textContent).toContain(
+    "ingetrokken",
+  );
 });
 
 it("saves a renamed link and shows the new name in the list", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
   expect((screen.getByLabelText("Naam van de link") as HTMLInputElement).value).toBe("Familie");
-  fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Familie en vrienden" } });
+  fireEvent.change(screen.getByLabelText("Naam van de link"), {
+    target: { value: "Familie en vrienden" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Link opslaan" }));
   await screen.findByRole("button", { name: /Familie en vrienden/, hidden: true });
   expect(screen.queryByRole("button", { name: /^Familie ·/ })).toBeNull();
@@ -535,7 +607,11 @@ it("shows what each audience receives and words the review warnings in Dutch", a
       "De pagina voor iedereen krijgt 7 bezoeken, 1 reisupdate zonder kaartpunt, omdat hun gebied niet gedeeld is of geen punt heeft.",
     ),
   ).toBeTruthy();
-  expect(review.getByText(/Link “Familie” is actief maar krijgt geen enkel onderdeel/)).toBeTruthy();
+  expect(
+    review.getByText(/Link “Familie” is actief maar krijgt geen enkel onderdeel/),
+  ).toBeTruthy();
   expect(review.getByText(/toont “Chiayi · concept”/)).toBeTruthy();
-  expect(review.getByText("De pagina voor iedereen toont de reisdatums (alleen maanden).")).toBeTruthy();
+  expect(
+    review.getByText("De pagina voor iedereen toont de reisdatums (alleen maanden)."),
+  ).toBeTruthy();
 });

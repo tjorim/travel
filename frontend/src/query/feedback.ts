@@ -4,7 +4,11 @@ import { errorMessage, type ErrorFallback } from "./api";
 
 /** Store the thrown value, never a translated snapshot of an API failure. */
 export type ErrorNotice = { error: unknown; fallback: ErrorFallback; suffix?: () => string };
-export const errorNotice = (error: unknown, fallback: ErrorFallback, suffix?: () => string): ErrorNotice => ({
+export const errorNotice = (
+  error: unknown,
+  fallback: ErrorFallback,
+  suffix?: () => string,
+): ErrorNotice => ({
   error,
   fallback,
   suffix,
@@ -25,7 +29,10 @@ export function useFeedback<T extends string | null>(
 ): [T, Dispatch<SetStateAction<T | ErrorNotice | MessageNotice>>] {
   useLocale();
   const [value, setValue] = useState<T | ErrorNotice | MessageNotice>(initial);
-  return [typeof value === "object" && value !== null ? (noticeMessage(value) as T) : (value as T), setValue];
+  return [
+    typeof value === "object" && value !== null ? (noticeMessage(value) as T) : (value as T),
+    setValue,
+  ];
 }
 
 export { FeedbackError } from "./FeedbackError";

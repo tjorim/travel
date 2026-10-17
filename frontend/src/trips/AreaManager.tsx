@@ -27,7 +27,14 @@ type Values = {
   longitude: string;
   timezone: string;
 };
-const blank = (): Values => ({ label: "", countryCode: "", region: "", latitude: "", longitude: "", timezone: "" });
+const blank = (): Values => ({
+  label: "",
+  countryCode: "",
+  region: "",
+  latitude: "",
+  longitude: "",
+  timezone: "",
+});
 const fromArea = (area: Area): Values => ({
   label: area.label,
   countryCode: area.country_code ?? "",
@@ -96,7 +103,10 @@ function DuplicateSuggestions({
         {groups.map((group) => {
           const names = group.ids.map(nameOf).join(" · ");
           return (
-            <li className="flex flex-wrap items-center justify-between gap-2" key={group.ids.join()}>
+            <li
+              className="flex flex-wrap items-center justify-between gap-2"
+              key={group.ids.join()}
+            >
               <span>
                 {names} <span className="help">({reasonsText(group.reasons)})</span>
               </span>
@@ -143,11 +153,16 @@ export function AreaManager({
   // The last delete was refused because the area is still used, so merging is the way to tidy up.
   const [inUse, setInUse] = useState(false);
   const duplicateAreaGroups = useMemo(() => duplicateAreas(areas), [areas]);
-  const duplicateLocationGroups = useMemo(() => duplicateLocations(locations, matchableLocationName), [locations]);
+  const duplicateLocationGroups = useMemo(
+    () => duplicateLocations(locations, matchableLocationName),
+    [locations],
+  );
   const dialog = useRecordDialog(areas);
   useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useFeedback<string>(
-    textNotice(() => m.owner_an_area_is_a_city_or_region_without_an_address_it_is_not_automatically_p()),
+    textNotice(() =>
+      m.owner_an_area_is_a_city_or_region_without_an_address_it_is_not_automatically_p(),
+    ),
   );
 
   const save = useOwnerMutation<{ id: string | null; payload: Record<string, unknown> }, Area>({
@@ -158,12 +173,18 @@ export function AreaManager({
       body: payload,
     }),
     // Visits, stays and reisupdates embed the area, so the trip is refreshed with it.
-    invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "areas"), ownerKeys.trips(subject)],
+    invalidate: (subject) => [
+      ownerKeys.tripResource(subject, trip.id, "areas"),
+      ownerKeys.trips(subject),
+    ],
   });
   const remove = useOwnerMutation<Area>({
     fallback: m.owner_the_area_could_not_be_deleted,
     request: (area) => ({ path: `${tripPath(trip.id, "areas")}/${area.id}`, method: "DELETE" }),
-    invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "areas"), ownerKeys.trips(subject)],
+    invalidate: (subject) => [
+      ownerKeys.tripResource(subject, trip.id, "areas"),
+      ownerKeys.trips(subject),
+    ],
   });
 
   const record = useRecordForm<Values, Area>({
@@ -185,7 +206,11 @@ export function AreaManager({
     },
     onSuccess: (area) => {
       close();
-      setMessage(textNotice(() => m.owner_area_saved_you_can_deliberately_link_it_to_a_visit_travel_update_or_stay()));
+      setMessage(
+        textNotice(() =>
+          m.owner_area_saved_you_can_deliberately_link_it_to_a_visit_travel_update_or_stay(),
+        ),
+      );
       if (resumeLocation) {
         setResumeLocation(false);
         requestLocation(undefined, area.id);
@@ -221,12 +246,18 @@ export function AreaManager({
     );
   }
   function useSearchResult(result: PlaceSearchResult) {
-    record.form.setFieldValue("label", result.locality ?? result.admin_area ?? result.display_name ?? "");
+    record.form.setFieldValue(
+      "label",
+      result.locality ?? result.admin_area ?? result.display_name ?? "",
+    );
     record.form.setFieldValue("countryCode", result.country_code ?? "");
     record.form.setFieldValue("region", result.admin_area ?? "");
     // A Nominatim result can be a precise POI. Areas deliberately use a
     // roughly kilometre-sized map point; the owner can still edit every field.
-    record.form.setFieldValue("latitude", typeof result.latitude === "number" ? areaCoordinate(result.latitude) : "");
+    record.form.setFieldValue(
+      "latitude",
+      typeof result.latitude === "number" ? areaCoordinate(result.latitude) : "",
+    );
     record.form.setFieldValue(
       "longitude",
       typeof result.longitude === "number" ? areaCoordinate(result.longitude) : "",
@@ -234,7 +265,8 @@ export function AreaManager({
   }
 
   const summary = (area: Area) =>
-    [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") || m.owner_only_for_this_trip();
+    [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") ||
+    m.owner_only_for_this_trip();
   const { selected, editing, editingId } = dialog;
   // dialog.error is cleared whenever the dialog moves to another record.
   const refused = inUse && Boolean(dialog.error);
@@ -242,7 +274,9 @@ export function AreaManager({
     <Button
       className={refused ? undefined : "secondary"}
       type="button"
-      onClick={() => selected && setMerge({ keepId: selected.id, duplicateIds: [], token: Date.now() })}
+      onClick={() =>
+        selected && setMerge({ keepId: selected.id, duplicateIds: [], token: Date.now() })
+      }
     >
       {m.owner_merge_with_other_areas()}
     </Button>
@@ -254,7 +288,9 @@ export function AreaManager({
       <div className="capture-heading">
         <div>
           <h3 id="areas-title">{m.owner_areas_and_locations()}</h3>
-          <p>{m.owner_a_city_or_region_you_can_reuse_locations_stays_travel_updates_and_transp()}</p>
+          <p>
+            {m.owner_a_city_or_region_you_can_reuse_locations_stays_travel_updates_and_transp()}
+          </p>
         </div>
         <div className="button-row">
           <Button className="secondary compact" type="button" onClick={create}>
@@ -266,10 +302,14 @@ export function AreaManager({
         </div>
       </div>
       <p className="help" role="status">
-        {areasQuery.error ? errorMessage(areasQuery.error, m.owner_your_areas_could_not_be_loaded) : message}
+        {areasQuery.error
+          ? errorMessage(areasQuery.error, m.owner_your_areas_could_not_be_loaded)
+          : message}
       </p>
       {locationsQuery.error && (
-        <p role="status">{errorMessage(locationsQuery.error, m.owner_your_locations_could_not_be_loaded)}</p>
+        <p role="status">
+          {errorMessage(locationsQuery.error, m.owner_your_locations_could_not_be_loaded)}
+        </p>
       )}
       {locationsQuery.isPending && <p role="status">{m.owner_loading_locations()}</p>}
       <DuplicateSuggestions
@@ -289,7 +329,9 @@ export function AreaManager({
           const place = locations.find((candidate) => candidate.id === id);
           return place ? ownerLocationName(place) : "";
         }}
-        onReview={({ ids: [keepId, ...duplicateIds] }) => requestLocation(keepId, undefined, duplicateIds)}
+        onReview={({ ids: [keepId, ...duplicateIds] }) =>
+          requestLocation(keepId, undefined, duplicateIds)
+        }
       />
       {areas.length ? (
         <div className="saved-records mt-0.5">
@@ -310,7 +352,11 @@ export function AreaManager({
                     {summary(area)} · {visibilityLabel(area.visibility)}
                   </span>
                 </Button>
-                <Button className="secondary compact" type="button" onClick={() => requestLocation(undefined, area.id)}>
+                <Button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => requestLocation(undefined, area.id)}
+                >
                   {m.owner_add_location()}
                 </Button>
               </div>
@@ -327,7 +373,12 @@ export function AreaManager({
                       >
                         <strong>{ownerLocationName(place)}</strong>
                         <span>
-                          {[place.address_line1, place.locality, place.country_code, visibilityLabel(place.visibility)]
+                          {[
+                            place.address_line1,
+                            place.locality,
+                            place.country_code,
+                            visibilityLabel(place.visibility),
+                          ]
                             .filter(Boolean)
                             .join(" · ")}
                         </span>
@@ -396,7 +447,11 @@ export function AreaManager({
                 {m.owner_edit()}
               </Button>
               {areas.length > 1 && !refused && mergeButton}
-              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button
+                className="danger"
+                type="button"
+                onClick={() => dialog.setConfirmDelete(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -409,7 +464,11 @@ export function AreaManager({
             <MergeDialog
               trip={trip}
               kind="area"
-              records={areas.map((area) => ({ id: area.id, name: area.label, detail: summary(area) }))}
+              records={areas.map((area) => ({
+                id: area.id,
+                name: area.label,
+                detail: summary(area),
+              }))}
               suggestions={duplicateAreaGroups}
               request={merge}
               onClose={() => setMerge(null)}
@@ -429,7 +488,11 @@ export function AreaManager({
           </div>
         )}
         {editing && (
-          <RecordForm record={record} submitLabel={m.owner_save_area()} pendingLabel={m.owner_saving()}>
+          <RecordForm
+            record={record}
+            submitLabel={m.owner_save_area()}
+            pendingLabel={m.owner_saving()}
+          >
             <PlaceSearchField
               tripId={trip.id}
               legend={m.owner_search_city_or_region()}
@@ -446,17 +509,26 @@ export function AreaManager({
                   onSubmit: requiredText(m.owner_give_the_area_a_name),
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_name()} required maxLength={120} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_name()} required maxLength={120} />
+                )}
               </record.form.Field>
               <record.form.Field name="countryCode">
-                {(field) => <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />
+                )}
               </record.form.Field>
             </div>
             <div className="field-row">
               <record.form.Field name="region">
-                {(field) => <TextField field={field} label={m.owner_region()} optional maxLength={120} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_region()} optional maxLength={120} />
+                )}
               </record.form.Field>
-              <record.form.Field name="timezone" validators={{ onBlur: knownTimeZone, onSubmit: knownTimeZone }}>
+              <record.form.Field
+                name="timezone"
+                validators={{ onBlur: knownTimeZone, onSubmit: knownTimeZone }}
+              >
                 {(field) => (
                   <TimeZoneField
                     field={field}
@@ -488,7 +560,10 @@ export function AreaManager({
                   />
                 )}
               </record.form.Field>
-              <record.form.Field name="longitude" validators={{ onChange: longitudeRange, onSubmit: longitudeRange }}>
+              <record.form.Field
+                name="longitude"
+                validators={{ onChange: longitudeRange, onSubmit: longitudeRange }}
+              >
                 {(field) => (
                   <TextField
                     field={field}

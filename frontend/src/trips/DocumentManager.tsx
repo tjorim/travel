@@ -35,7 +35,13 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
 
-export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: DialogFocusRequest | null }) {
+export function DocumentManager({
+  trip,
+  focusId,
+}: {
+  trip: Trip;
+  focusId?: DialogFocusRequest | null;
+}) {
   useLocale();
   const owner = useOwner();
   const offline = useOfflineCopies();
@@ -51,12 +57,19 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
 
   const upload = useOwnerMutation<FormData, DocumentAsset>({
     fallback: m.assets_the_document_could_not_be_uploaded,
-    request: (body) => ({ path: `${tripPath(trip.id, "documents")}/uploads`, method: "POST", body }),
+    request: (body) => ({
+      path: `${tripPath(trip.id, "documents")}/uploads`,
+      method: "POST",
+      body,
+    }),
     invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "documents")],
   });
   const remove = useOwnerMutation<DocumentAsset>({
     fallback: m.assets_the_document_could_not_be_deleted,
-    request: (document) => ({ path: `${tripPath(trip.id, "documents")}/${document.id}`, method: "DELETE" }),
+    request: (document) => ({
+      path: `${tripPath(trip.id, "documents")}/${document.id}`,
+      method: "DELETE",
+    }),
     // A route drops the link to a deleted document on the server.
     invalidate: (subject) => [
       ownerKeys.tripResource(subject, trip.id, "documents"),
@@ -81,7 +94,8 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
     },
   });
 
-  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const fail = (fallback: ErrorFallback) => (error: unknown) =>
+    setNotice(errorNotice(error, fallback));
   const failInDialog = (fallback: ErrorFallback) => (error: unknown) => {
     dialog.setConfirmDelete(false);
     dialog.setError(errorNotice(error, fallback));
@@ -170,21 +184,26 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
               >
                 <strong>{document.title}</strong>
                 <span>
-                  {document.original_filename ?? m.owner_unnamed_file()} · {bytesLabel(document.byte_size)}
+                  {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                  {bytesLabel(document.byte_size)}
                 </span>
               </Button>
               <div className="button-row">
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => open(document.file_url, m.assets_the_private_original_could_not_be_opened)}
+                  onClick={() =>
+                    open(document.file_url, m.assets_the_private_original_could_not_be_opened)
+                  }
                 >
                   {m.assets_view_original()}
                 </Button>
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => void togglePin(document).catch(fail(m.assets_saving_offline_failed))}
+                  onClick={() =>
+                    void togglePin(document).catch(fail(m.assets_saving_offline_failed))
+                  }
                 >
                   {offline.isPinned("trip_document", document.id)
                     ? m.owner_remove_offline_copy()
@@ -207,11 +226,16 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
             <div>
               <h3>{selected.title}</h3>
               <p>
-                {selected.original_filename ?? m.owner_unnamed_file()} · {bytesLabel(selected.byte_size)}
+                {selected.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                {bytesLabel(selected.byte_size)}
               </p>
             </div>
             <div className="button-row">
-              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button
+                className="danger"
+                type="button"
+                onClick={() => dialog.setConfirmDelete(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -238,7 +262,9 @@ export function DocumentManager({ trip, focusId }: { trip: Trip; focusId?: Dialo
                   onSubmit: requiredText(m.assets_give_the_document_a_title),
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_title()} required maxLength={160} />
+                )}
               </uploadRecord.form.Field>
               <uploadRecord.form.Field name="kind">
                 {(field) => (

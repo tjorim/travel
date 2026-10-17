@@ -36,13 +36,20 @@ export type Location = {
 };
 
 /** A location to create, or with `existing_location_id` a location the trip already has (sent on its own). */
-export type LocationInput = Partial<Omit<Location, "id" | "visibility" | "area_id" | "share_address" | "osm_url">> & {
+export type LocationInput = Partial<
+  Omit<Location, "id" | "visibility" | "area_id" | "share_address" | "osm_url">
+> & {
   existing_location_id?: string;
 };
 
 /** What the owner calls a location: the first part of its name, never a full address line. */
-export const locationName = (place: Partial<Pick<Location, "display_name" | "locality" | "label">>): string =>
-  place.label || place.display_name?.split(",")[0]?.trim() || place.locality || m.owner_unnamed_location_2();
+export const locationName = (
+  place: Partial<Pick<Location, "display_name" | "locality" | "label">>,
+): string =>
+  place.label ||
+  place.display_name?.split(",")[0]?.trim() ||
+  place.locality ||
+  m.owner_unnamed_location_2();
 export type PlaceSearchResult = LocationInput;
 
 export type MediaAsset = {
@@ -218,11 +225,14 @@ export type Route = {
 /** A route whose schedule is known. */
 export type TimedRoute = Route & { departs_at: string; arrives_at: string };
 export const timedRoutes = (routes: Route[]): TimedRoute[] =>
-  routes.filter((route): route is TimedRoute => route.departs_at !== null && route.arrives_at !== null);
+  routes.filter(
+    (route): route is TimedRoute => route.departs_at !== null && route.arrives_at !== null,
+  );
 
 /** What a route is called: its label, else where it goes. */
-export const routeTitle = (route: Pick<Route, "label" | "departure_area" | "arrival_area">): string =>
-  route.label ?? `${route.departure_area.label} → ${route.arrival_area.label}`;
+export const routeTitle = (
+  route: Pick<Route, "label" | "departure_area" | "arrival_area">,
+): string => route.label ?? `${route.departure_area.label} → ${route.arrival_area.label}`;
 
 /** What kind of days a visit is: free days, or working ones. */
 export type VisitKind = "free" | "work";
@@ -401,7 +411,14 @@ export type ImportCompleteResult = {
 };
 
 /** Every kind of record that can be shared, and so can carry a visibility. */
-export type ShareScopeKind = "area" | "location" | "visit" | "route" | "stay" | "travel_update" | "media_derivative";
+export type ShareScopeKind =
+  | "area"
+  | "location"
+  | "visit"
+  | "route"
+  | "stay"
+  | "travel_update"
+  | "media_derivative";
 
 /** An audience lists only records whose visibility is custom; which fields show is fixed per kind. */
 export type ShareScopeItem = { kind: ShareScopeKind; id: string };
@@ -563,7 +580,10 @@ export function formatInstantDate(instant: string): string {
 }
 
 /** A reisupdate's date at its own precision, e.g. "14 maart 2026" or just "2026" — never the raw enum. */
-export function updateDateLabel(occurredAt: string, precision: TravelUpdate["date_precision"]): string {
+export function updateDateLabel(
+  occurredAt: string,
+  precision: TravelUpdate["date_precision"],
+): string {
   if (precision === "year") return dayjs(occurredAt).format("YYYY");
   if (precision === "month") return dayjs(occurredAt).format("MMMM YYYY");
   return formatInstant(occurredAt);
@@ -611,7 +631,8 @@ export function timeForViewer(
 }
 
 /** The city part of an IANA zone name: "Asia/Taipei" reads as "Taipei". */
-export const zoneName = (zone: string): string => zone.split("/").pop()?.replaceAll("_", " ") ?? zone;
+export const zoneName = (zone: string): string =>
+  zone.split("/").pop()?.replaceAll("_", " ") ?? zone;
 
 /** Minutes a zone is ahead of UTC at an instant, daylight saving included. */
 export function utcOffsetMinutes(instant: string, timeZone: string | null): number {
@@ -651,7 +672,11 @@ export function offsetLabel(minutes: number, compact = false): string {
       : m.owner_offset_minutes_behind({ minutes: rest });
 }
 
-export type Whereabouts = { kind: "travel" | "stay" | "between" | "home"; zone: string | null; label: string };
+export type Whereabouts = {
+  kind: "travel" | "stay" | "between" | "home";
+  zone: string | null;
+  label: string;
+};
 
 const stayZone = (stay: Stay) => stay.area.timezone ?? null;
 
@@ -665,7 +690,12 @@ function effectiveNight(instant: string, zone: string): string {
 /** Where the plan puts the owner at ``instant``: at home outside the trip
  * (first departure or check-in to last arrival or check-out), otherwise
  * travelling, at a stay, or between stays in the last known zone. */
-export function whereabouts(instant: string, stays: Stay[], routes: Route[], homeZone: string): Whereabouts {
+export function whereabouts(
+  instant: string,
+  stays: Stay[],
+  routes: Route[],
+  homeZone: string,
+): Whereabouts {
   const now = Date.parse(instant);
   const active = timedRoutes(routes).filter(routeInPlan);
   const zoned = stays.filter((stay) => stayInPlan(stay) && stayZone(stay));
@@ -677,7 +707,8 @@ export function whereabouts(instant: string, stays: Stay[], routes: Route[], hom
   const home: Whereabouts = { kind: "home", zone: homeZone, label: m.owner_home() };
   if (!bounds.length || now < Math.min(...bounds) || now >= Math.max(...bounds)) return home;
   const route = active.find(
-    (candidate) => Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at),
+    (candidate) =>
+      Date.parse(candidate.departs_at) <= now && now < Date.parse(candidate.arrives_at),
   );
   if (route)
     return {
@@ -685,7 +716,9 @@ export function whereabouts(instant: string, stays: Stay[], routes: Route[], hom
       zone: route.arrival_timezone,
       label: m.owner_on_the_way_to({ p0: route.arrival_area.label }),
     };
-  const current = zoned.find((stay) => stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)));
+  const current = zoned.find((stay) =>
+    stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)),
+  );
   if (current) return { kind: "stay", zone: stayZone(current), label: current.area.label };
   const last = [
     ...active
@@ -704,7 +737,9 @@ export function whereabouts(instant: string, stays: Stay[], routes: Route[], hom
         label: stay.area.label,
       })),
   ].sort((left, right) => right.at - left.at)[0];
-  return last ? { kind: "between", zone: last.zone, label: m.owner_between_stays_last_in({ p0: last.label }) } : home;
+  return last
+    ? { kind: "between", zone: last.zone, label: m.owner_between_stays_last_in({ p0: last.label }) }
+    : home;
 }
 
 export function localDateTime(value = new Date()): string {
@@ -774,12 +809,15 @@ export function bytesLabel(bytes: number): string {
 }
 
 // Types a browser shows without running anything from the file.
-const DISPLAYED_INLINE = /^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm)|application\/pdf|text\/plain)(;|$)/i;
+const DISPLAYED_INLINE =
+  /^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm)|application\/pdf|text\/plain)(;|$)/i;
 
 export function openBlobInNewTab(blob: Blob): void {
   // A private file shares the app's origin once opened as a blob, so anything that could run (HTML, SVG, scripts)
   // is handed over as an untyped download instead of being rendered.
-  const shown = DISPLAYED_INLINE.test(blob.type) ? blob : new Blob([blob], { type: "application/octet-stream" });
+  const shown = DISPLAYED_INLINE.test(blob.type)
+    ? blob
+    : new Blob([blob], { type: "application/octet-stream" });
   const objectUrl = URL.createObjectURL(shown);
   const preview = window.open(objectUrl, "_blank", "noopener");
   if (!preview) {

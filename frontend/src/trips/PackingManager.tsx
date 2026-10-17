@@ -28,7 +28,13 @@ type PackingSuggestion = {
   usually_cabin: boolean;
   usually_essential: boolean;
 };
-type Bag = { id: string; name: string; type: string | null; position: number; weight_limit_g: number | null };
+type Bag = {
+  id: string;
+  name: string;
+  type: string | null;
+  position: number;
+  weight_limit_g: number | null;
+};
 type Item = {
   id: string;
   label: string;
@@ -66,7 +72,9 @@ const emptyBag = (): BagDraft => ({ name: "", type: null, weight_limit_g: null }
 const ordered = <T extends { position: number; id: string }>(rows: T[]) =>
   [...rows].sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
 const grams = (value: number) =>
-  value >= 1000 ? `${formatNumber(value / 1000, { maximumFractionDigits: 2 })} kg` : `${formatNumber(value)} g`;
+  value >= 1000
+    ? `${formatNumber(value / 1000, { maximumFractionDigits: 2 })} kg`
+    : `${formatNumber(value)} g`;
 const count = (rows: Item[]) => {
   const packed = rows.filter((item) => item.packed).length;
   return m.assets_of_packed_to_go({ p0: packed, p1: rows.length, p2: rows.length - packed });
@@ -105,20 +113,24 @@ export function PackingManager({ trip }: { trip: Trip }) {
   const listsQuery = useQuery({
     queryKey: [...key, "lists"],
     enabled: !!owner,
-    queryFn: () => ownerRequest<PackingList[]>(owner!.session, base, m.assets_loading_packing_lists_failed),
+    queryFn: () =>
+      ownerRequest<PackingList[]>(owner!.session, base, m.assets_loading_packing_lists_failed),
   });
   const [chosenList, setChosenList] = useState<string | null>(null);
-  const list = listsQuery.data?.find((row) => row.id === chosenList) ?? listsQuery.data?.[0] ?? null;
+  const list =
+    listsQuery.data?.find((row) => row.id === chosenList) ?? listsQuery.data?.[0] ?? null;
   const path = list ? `${base}/${encodeURIComponent(list.id)}` : "";
   const bagsQuery = useQuery({
     queryKey: [...key, list?.id, "bags"],
     enabled: !!owner && !!list,
-    queryFn: () => ownerRequest<Bag[]>(owner!.session, `${path}/bags`, m.assets_loading_bags_failed),
+    queryFn: () =>
+      ownerRequest<Bag[]>(owner!.session, `${path}/bags`, m.assets_loading_bags_failed),
   });
   const itemsQuery = useQuery({
     queryKey: [...key, list?.id, "items"],
     enabled: !!owner && !!list,
-    queryFn: () => ownerRequest<Item[]>(owner!.session, `${path}/items`, m.assets_loading_packing_items_failed),
+    queryFn: () =>
+      ownerRequest<Item[]>(owner!.session, `${path}/items`, m.assets_loading_packing_items_failed),
   });
   const [group, setGroup] = useState<Group>("bag");
   const [filter, setFilter] = useState<Filter>("all");
@@ -146,29 +158,44 @@ export function PackingManager({ trip }: { trip: Trip }) {
     queryKey: [...key, "sources"],
     enabled: !!owner && reuseOpen,
     queryFn: () =>
-      ownerRequest<PackingSource[]>(owner!.session, "/api/packing-list-sources", m.assets_loading_source_lists_failed),
+      ownerRequest<PackingSource[]>(
+        owner!.session,
+        "/api/packing-list-sources",
+        m.assets_loading_source_lists_failed,
+      ),
   });
   const templatesQuery = useQuery({
     queryKey: [...key, "templates"],
     enabled: !!owner && reuseOpen,
     queryFn: () =>
-      ownerRequest<PackingTemplate[]>(owner!.session, "/api/packing-templates", m.assets_loading_templates_failed),
+      ownerRequest<PackingTemplate[]>(
+        owner!.session,
+        "/api/packing-templates",
+        m.assets_loading_templates_failed,
+      ),
   });
   const suggestionsQuery = useQuery({
     queryKey: [...key, list?.id, "suggestions"],
     enabled: !!owner && !!list && showSuggestions,
     queryFn: () =>
-      ownerRequest<PackingSuggestion[]>(owner!.session, `${path}/suggestions`, m.assets_loading_suggestions_failed),
+      ownerRequest<PackingSuggestion[]>(
+        owner!.session,
+        `${path}/suggestions`,
+        m.assets_loading_suggestions_failed,
+      ),
   });
   // Failed toggles remain visible at the requested state until the owner retries or reloads.
   const [unsaved, setUnsaved] = useState<Record<string, boolean>>({});
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const bags = ordered(bagsQuery.data ?? []);
   const serverItems = itemsQuery.data ?? [];
-  const items = serverItems.map((item) => (item.id in unsaved ? { ...item, packed: unsaved[item.id] } : item));
+  const items = serverItems.map((item) =>
+    item.id in unsaved ? { ...item, packed: unsaved[item.id] } : item,
+  );
   const visible = ordered(items).filter(
     (item) =>
-      (filter === "all" || (filter === "last-minute" ? item.last_minute : item.packed === (filter === "packed"))) &&
+      (filter === "all" ||
+        (filter === "last-minute" ? item.last_minute : item.packed === (filter === "packed"))) &&
       `${item.label} ${item.category ?? ""} ${item.notes ?? ""}`
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
@@ -206,7 +233,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
     setSavingIds((current) => [...current, item.id]);
     setNotice("");
     try {
-      const saved = await request<Item>(`${path}/items/${encodeURIComponent(item.id)}`, "PATCH", { packed });
+      const saved = await request<Item>(`${path}/items/${encodeURIComponent(item.id)}`, "PATCH", {
+        packed,
+      });
       client.setQueryData<Item[]>([...key, list?.id, "items"], (rows) =>
         rows?.map((row) => (row.id === item.id ? saved : row)),
       );
@@ -242,7 +271,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
     setItemDialog(item?.id ?? "new");
   };
   const startBag = (bag?: Bag) => {
-    setBagDraft(bag ? { name: bag.name, type: bag.type, weight_limit_g: bag.weight_limit_g } : emptyBag());
+    setBagDraft(
+      bag ? { name: bag.name, type: bag.type, weight_limit_g: bag.weight_limit_g } : emptyBag(),
+    );
     setBagDialog(bag?.id ?? "new");
   };
   async function bulk(packed?: boolean, bagId?: string | null, all = false) {
@@ -269,7 +300,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
         ]
       : [...new Set(visible.map((item) => item.category?.trim() || ""))]
           .sort((a, b) => a.localeCompare(b, locale))
-          .map((category) => ({ id: category, title: category || m.assets_uncategorised(), bag: null }));
+          .map((category) => ({
+            id: category,
+            title: category || m.assets_uncategorised(),
+            bag: null,
+          }));
   const unpackedEssentials = items.filter((item) => item.essential && !item.packed);
   const unpackedLastMinute = items.filter((item) => item.last_minute && !item.packed);
   const unassigned = items.filter((item) => !item.bag_id);
@@ -289,7 +324,8 @@ export function PackingManager({ trip }: { trip: Trip }) {
     (copy) => copy.resourceKind === "packing_list" && copy.metadataUrl.startsWith(`${base}/`),
   );
   const savedCopy = savedCopies.find((copy) => copy.resourceId === chosenList) ?? savedCopies[0];
-  const showingCopy = !offline.online || listsQuery.isError || (list && (bagsQuery.isError || itemsQuery.isError));
+  const showingCopy =
+    !offline.online || listsQuery.isError || (list && (bagsQuery.isError || itemsQuery.isError));
   async function saveOfflineCopy() {
     if (!owner || !list || !offline.online) return;
     setBusy(true);
@@ -314,7 +350,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
         contentType: "application/json",
         bytes: new TextEncoder().encode(JSON.stringify(snapshot)).buffer as ArrayBuffer,
       });
-      setNotice(textNotice(() => m.assets_packing_list_saved_offline_on_this_device_changes_require_a_connection()));
+      setNotice(
+        textNotice(() =>
+          m.assets_packing_list_saved_offline_on_this_device_changes_require_a_connection(),
+        ),
+      );
     } catch (error) {
       setNotice(errorNotice(error, m.assets_the_packing_list_could_not_be_saved_offline));
     } finally {
@@ -407,12 +447,20 @@ export function PackingManager({ trip }: { trip: Trip }) {
             {m.assets_reuse_list()}
           </Button>
           {list && (
-            <Button className="secondary compact" type="button" onClick={() => setTemplateName(list.name)}>
+            <Button
+              className="secondary compact"
+              type="button"
+              onClick={() => setTemplateName(list.name)}
+            >
               {m.assets_save_as_template()}
             </Button>
           )}
           {list && (
-            <Button className="secondary compact" type="button" onClick={() => setShowSuggestions(!showSuggestions)}>
+            <Button
+              className="secondary compact"
+              type="button"
+              onClick={() => setShowSuggestions(!showSuggestions)}
+            >
               {m.assets_suggestions_from_earlier_trips()}
             </Button>
           )}
@@ -423,18 +471,26 @@ export function PackingManager({ trip }: { trip: Trip }) {
               disabled={busy || offline.unsupported || !offline.online}
               onClick={() => void saveOfflineCopy()}
             >
-              {offline.isPinned("packing_list", list.id) ? m.assets_refresh_offline_copy() : m.owner_save_offline()}
+              {offline.isPinned("packing_list", list.id)
+                ? m.assets_refresh_offline_copy()
+                : m.owner_save_offline()}
             </Button>
           )}
           {list && offline.isPinned("packing_list", list.id) && (
-            <Button className="secondary compact" type="button" onClick={() => void removeOfflineCopy()}>
+            <Button
+              className="secondary compact"
+              type="button"
+              onClick={() => void removeOfflineCopy()}
+            >
               {m.owner_remove_offline_copy()}
             </Button>
           )}
         </div>
       </div>
       {list && offline.isPinned("packing_list", list.id) && (
-        <p className="text-sm">{m.assets_an_offline_copy_has_been_saved_refresh_after_changes_to_take_the_latest_()}</p>
+        <p className="text-sm">
+          {m.assets_an_offline_copy_has_been_saved_refresh_after_changes_to_take_the_latest_()}
+        </p>
       )}
       {!list ? (
         <div className="rounded-xl border p-5">
@@ -503,15 +559,25 @@ export function PackingManager({ trip }: { trip: Trip }) {
                     </p>
                   )}
                   {suggestionsQuery.data
-                    ?.filter((suggestion) => !dismissedSuggestions.includes(`${list.id}:${suggestion.label}`))
+                    ?.filter(
+                      (suggestion) =>
+                        !dismissedSuggestions.includes(`${list.id}:${suggestion.label}`),
+                    )
                     .map((suggestion) => (
-                      <div key={suggestion.label} className="flex flex-wrap items-center gap-2 border-t py-2">
+                      <div
+                        key={suggestion.label}
+                        className="flex flex-wrap items-center gap-2 border-t py-2"
+                      >
                         <p className="flex-1">
                           {m.assets_suggestion_summary({
                             name: suggestion.label,
                             trips: m.assets_prior_trips({ count: suggestion.prior_trips }),
-                            cabin: suggestion.usually_cabin ? m.assets_usually_in_cabin_baggage() : "",
-                            essential: suggestion.usually_essential ? m.assets_usually_essential() : "",
+                            cabin: suggestion.usually_cabin
+                              ? m.assets_usually_in_cabin_baggage()
+                              : "",
+                            essential: suggestion.usually_essential
+                              ? m.assets_usually_essential()
+                              : "",
                           })}
                         </p>
                         <Button
@@ -533,14 +599,19 @@ export function PackingManager({ trip }: { trip: Trip }) {
                           type="button"
                           className="secondary compact"
                           onClick={() =>
-                            setDismissedSuggestions((current) => [...current, `${list.id}:${suggestion.label}`])
+                            setDismissedSuggestions((current) => [
+                              ...current,
+                              `${list.id}:${suggestion.label}`,
+                            ])
                           }
                         >
                           {m.assets_dismiss()}
                         </Button>
                       </div>
                     ))}
-                  {suggestionsQuery.data?.length === 0 && <p>{m.assets_no_recurring_items_to_suggest_yet()}</p>}
+                  {suggestionsQuery.data?.length === 0 && (
+                    <p>{m.assets_no_recurring_items_to_suggest_yet()}</p>
+                  )}
                 </section>
               )}
               <Button
@@ -552,21 +623,31 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 {m.assets_departure_check()}
               </Button>
               {leavingSoon && (
-                <section aria-label={m.assets_departure_check()} className="space-y-3 rounded-xl border p-4">
+                <section
+                  aria-label={m.assets_departure_check()}
+                  className="space-y-3 rounded-xl border p-4"
+                >
                   <h4 className="text-lg font-semibold">{m.assets_departure_check()}</h4>
                   <p>{count(items)}</p>
                   <ul className="m-0 list-none space-y-1 p-0">
                     {bags.map((bag) => {
                       const rows = items.filter((item) => item.bag_id === bag.id);
-                      const known = rows.reduce((sum, item) => sum + (item.weight_g ?? 0) * item.quantity, 0);
+                      const known = rows.reduce(
+                        (sum, item) => sum + (item.weight_g ?? 0) * item.quantity,
+                        0,
+                      );
                       return (
                         <li key={bag.id}>
                           {m.assets_known_line({
                             p0: bag.name,
                             p1: count(rows),
                             p2: grams(known),
-                            p3: bag.weight_limit_g ? m.assets_limit({ p0: grams(bag.weight_limit_g) }) : "",
-                            p4: rows.some((item) => item.weight_g === null) ? m.assets_weight_incomplete() : "",
+                            p3: bag.weight_limit_g
+                              ? m.assets_limit({ p0: grams(bag.weight_limit_g) })
+                              : "",
+                            p4: rows.some((item) => item.weight_g === null)
+                              ? m.assets_weight_incomplete()
+                              : "",
                           })}
                         </li>
                       );
@@ -577,7 +658,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
                     !unpackedLastMinute.length &&
                     !unassigned.length &&
                     !conflicts.length &&
-                    !overweight.length && <p className="font-semibold">{m.assets_ready_to_leave()}</p>}
+                    !overweight.length && (
+                      <p className="font-semibold">{m.assets_ready_to_leave()}</p>
+                    )}
                   {!!unpackedEssentials.length && (
                     <p>
                       {m.assets_essential_still_to_pack_line({
@@ -587,17 +670,25 @@ export function PackingManager({ trip }: { trip: Trip }) {
                   )}
                   {!!unpackedLastMinute.length && (
                     <p>
-                      {m.assets_on_departure_day_line({ p0: unpackedLastMinute.map((item) => item.label).join(", ") })}
+                      {m.assets_on_departure_day_line({
+                        p0: unpackedLastMinute.map((item) => item.label).join(", "),
+                      })}
                     </p>
                   )}
                   {!!unassigned.length && (
-                    <p>{m.assets_still_without_a_bag_line({ p0: unassigned.map((item) => item.label).join(", ") })}</p>
+                    <p>
+                      {m.assets_still_without_a_bag_line({
+                        p0: unassigned.map((item) => item.label).join(", "),
+                      })}
+                    </p>
                   )}
                   {!!overweight.length && (
                     <p>
-                      {m.assets_known_weight_above_the_set_limit_unknown_weights_are_not_included_line({
-                        p0: overweight.map((bag) => bag.name).join(", "),
-                      })}
+                      {m.assets_known_weight_above_the_set_limit_unknown_weights_are_not_included_line(
+                        {
+                          p0: overweight.map((bag) => bag.name).join(", "),
+                        },
+                      )}
                     </p>
                   )}
                   {!!conflicts.length && (
@@ -607,27 +698,42 @@ export function PackingManager({ trip }: { trip: Trip }) {
                       })}
                     </p>
                   )}
-                  <p className="text-sm">{m.assets_baggage_flags_are_your_own_notes_not_official_travel_rules()}</p>
+                  <p className="text-sm">
+                    {m.assets_baggage_flags_are_your_own_notes_not_official_travel_rules()}
+                  </p>
                 </section>
               )}
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label={m.assets_progress_per_bag()}>
+              <div
+                className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+                aria-label={m.assets_progress_per_bag()}
+              >
                 {bags.map((bag) => {
                   const rows = items.filter((item) => item.bag_id === bag.id);
-                  const known = rows.reduce((sum, item) => sum + (item.weight_g ?? 0) * item.quantity, 0);
+                  const known = rows.reduce(
+                    (sum, item) => sum + (item.weight_g ?? 0) * item.quantity,
+                    0,
+                  );
                   const unknown = rows.some((item) => item.weight_g === null);
                   return (
                     <div key={bag.id} className="rounded-xl border p-3">
                       <strong>{bag.name}</strong>
                       {bag.type && (
-                        <p className="text-sm">{bagTypes().find(([type]) => type === bag.type)?.[1] ?? bag.type}</p>
+                        <p className="text-sm">
+                          {bagTypes().find(([type]) => type === bag.type)?.[1] ?? bag.type}
+                        </p>
                       )}
                       <p>{count(rows)}</p>
-                      <PackingProgress rows={rows} label={m.assets_packing_progress({ p0: bag.name })} />
+                      <PackingProgress
+                        rows={rows}
+                        label={m.assets_packing_progress({ p0: bag.name })}
+                      />
                       <p>
                         {m.assets_known_line_2({
                           p0: grams(known),
                           p1: unknown ? m.assets_weight_incomplete() : "",
-                          p2: bag.weight_limit_g ? m.assets_limit({ p0: grams(bag.weight_limit_g) }) : "",
+                          p2: bag.weight_limit_g
+                            ? m.assets_limit({ p0: grams(bag.weight_limit_g) })
+                            : "",
                         })}
                       </p>
                       {bag.weight_limit_g !== null && known > bag.weight_limit_g && (
@@ -663,17 +769,29 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 <Field className="contents">
                   <FieldLabel>
                     {m.owner_search()}{" "}
-                    <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
+                    <Input
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
                   </FieldLabel>
                 </Field>
               </div>
               {selecting && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
                   <span>{m.assets_selected_line({ p0: selected.length })}</span>
-                  <Button type="button" disabled={busy || !selected.length} onClick={() => void bulk(true)}>
+                  <Button
+                    type="button"
+                    disabled={busy || !selected.length}
+                    onClick={() => void bulk(true)}
+                  >
                     {m.owner_packing()}
                   </Button>
-                  <Button type="button" disabled={busy || !selected.length} onClick={() => void bulk(false)}>
+                  <Button
+                    type="button"
+                    disabled={busy || !selected.length}
+                    onClick={() => void bulk(false)}
+                  >
                     {m.assets_unpack()}
                   </Button>
                   <Field>
@@ -710,7 +828,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
               {!!items.length && (
                 <div className="flex flex-wrap gap-2">
                   {!selecting && (
-                    <Button type="button" className="secondary compact" onClick={() => setSelecting(true)}>
+                    <Button
+                      type="button"
+                      className="secondary compact"
+                      onClick={() => setSelecting(true)}
+                    >
                       {m.assets_select_items()}
                     </Button>
                   )}
@@ -753,7 +875,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
                   );
                   if (group === "category" && !sectionRows.length) return null;
                   return (
-                    <section key={section.id} className="rounded-xl border p-3 sm:p-4" aria-label={section.title}>
+                    <section
+                      key={section.id}
+                      className="rounded-xl border p-3 sm:p-4"
+                      aria-label={section.title}
+                    >
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <h4 className="text-lg font-semibold">{section.title}</h4>
@@ -792,13 +918,17 @@ export function PackingManager({ trip }: { trip: Trip }) {
                                 {selecting ? (
                                   <Field className="contents">
                                     <FieldLabel className="flex size-11 shrink-0 items-center justify-center">
-                                      <span className="sr-only">{m.assets_select_line({ p0: item.label })}</span>
+                                      <span className="sr-only">
+                                        {m.assets_select_line({ p0: item.label })}
+                                      </span>
                                       <TravelCheckbox
                                         className="size-6"
                                         checked={selected.includes(item.id)}
                                         onCheckedChange={(checked) =>
                                           setSelected((current) =>
-                                            checked ? [...current, item.id] : current.filter((id) => id !== item.id),
+                                            checked
+                                              ? [...current, item.id]
+                                              : current.filter((id) => id !== item.id),
                                           )
                                         }
                                       />
@@ -831,9 +961,12 @@ export function PackingManager({ trip }: { trip: Trip }) {
                                     {[
                                       item.category || m.assets_uncategorised(),
                                       group === "category"
-                                        ? (bags.find((bag) => bag.id === item.bag_id)?.name ?? m.assets_unassigned())
+                                        ? (bags.find((bag) => bag.id === item.bag_id)?.name ??
+                                          m.assets_unassigned())
                                         : null,
-                                      item.weight_g !== null ? m.assets_per_item({ p0: grams(item.weight_g) }) : null,
+                                      item.weight_g !== null
+                                        ? m.assets_per_item({ p0: grams(item.weight_g) })
+                                        : null,
                                     ]
                                       .filter(Boolean)
                                       .join(" · ")}
@@ -857,7 +990,10 @@ export function PackingManager({ trip }: { trip: Trip }) {
                                   )}
                                   {item.notes && <p className="mt-1 text-sm">{item.notes}</p>}
                                   {item.id in unsaved && !savingIds.includes(item.id) && (
-                                    <Button type="button" onClick={() => void toggle(item, unsaved[item.id])}>
+                                    <Button
+                                      type="button"
+                                      onClick={() => void toggle(item, unsaved[item.id])}
+                                    >
                                       {m.assets_try_again_line({ p0: item.label })}
                                     </Button>
                                   )}
@@ -929,7 +1065,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
                 max="99"
                 required
                 value={itemDraft.quantity}
-                onChange={(event) => setItemDraft({ ...itemDraft, quantity: Number(event.target.value) })}
+                onChange={(event) =>
+                  setItemDraft({ ...itemDraft, quantity: Number(event.target.value) })
+                }
               />
             </FieldLabel>
           </Field>
@@ -939,7 +1077,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
               <Input
                 maxLength={80}
                 value={itemDraft.category ?? ""}
-                onChange={(event) => setItemDraft({ ...itemDraft, category: event.target.value || null })}
+                onChange={(event) =>
+                  setItemDraft({ ...itemDraft, category: event.target.value || null })
+                }
               />
             </FieldLabel>
           </Field>
@@ -980,35 +1120,42 @@ export function PackingManager({ trip }: { trip: Trip }) {
               <TravelTextarea
                 maxLength={4000}
                 value={itemDraft.notes ?? ""}
-                onChange={(event) => setItemDraft({ ...itemDraft, notes: event.target.value || null })}
+                onChange={(event) =>
+                  setItemDraft({ ...itemDraft, notes: event.target.value || null })
+                }
               />
             </FieldLabel>
           </Field>
-          {(["essential", "last_minute", "valuable", "cabin_only", "checked_only"] as const).map((flag) => (
-            <Field className="contents" key={flag}>
-              <FieldLabel className="flex min-h-11 items-center gap-2">
-                <TravelCheckbox
-                  className="size-5"
-                  checked={itemDraft[flag]}
-                  onCheckedChange={(checked) => setItemDraft({ ...itemDraft, [flag]: checked })}
-                />{" "}
-                {
+          {(["essential", "last_minute", "valuable", "cabin_only", "checked_only"] as const).map(
+            (flag) => (
+              <Field className="contents" key={flag}>
+                <FieldLabel className="flex min-h-11 items-center gap-2">
+                  <TravelCheckbox
+                    className="size-5"
+                    checked={itemDraft[flag]}
+                    onCheckedChange={(checked) => setItemDraft({ ...itemDraft, [flag]: checked })}
+                  />{" "}
                   {
-                    essential: m.assets_essential(),
-                    last_minute: m.assets_departure_day_lastminute(),
-                    valuable: m.assets_valuable(),
-                    cabin_only: m.assets_cabin_baggage_only(),
-                    checked_only: m.assets_checked_baggage_only(),
-                  }[flag]
-                }
-              </FieldLabel>
-            </Field>
-          ))}
+                    {
+                      essential: m.assets_essential(),
+                      last_minute: m.assets_departure_day_lastminute(),
+                      valuable: m.assets_valuable(),
+                      cabin_only: m.assets_cabin_baggage_only(),
+                      checked_only: m.assets_checked_baggage_only(),
+                    }[flag]
+                  }
+                </FieldLabel>
+              </Field>
+            ),
+          )}
           {itemDraft.cabin_only && itemDraft.checked_only && (
             <p role="alert">{m.assets_choose_at_most_one_baggage_restriction()}</p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={busy || (itemDraft.cabin_only && itemDraft.checked_only)}>
+            <Button
+              type="submit"
+              disabled={busy || (itemDraft.cabin_only && itemDraft.checked_only)}
+            >
               {m.assets_save()}
             </Button>
             {itemDialog !== "new" && (
@@ -1140,7 +1287,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
           />
         )}
       </RecordDialog>
-      <RecordDialog open={reuseOpen} title={m.assets_reuse_packing_list()} onDismiss={() => setReuseOpen(false)}>
+      <RecordDialog
+        open={reuseOpen}
+        title={m.assets_reuse_packing_list()}
+        onDismiss={() => setReuseOpen(false)}
+      >
         <form
           className="space-y-3"
           onSubmit={(event) => {
@@ -1150,7 +1301,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
               async () => {
                 const created = await request<PackingList>(base, "POST", {
                   name: reuseName.trim(),
-                  ...(reuseMode === "copy" ? { copy_from_list_id: sourceId } : { template_ids: templateIds }),
+                  ...(reuseMode === "copy"
+                    ? { copy_from_list_id: sourceId }
+                    : { template_ids: templateIds }),
                 });
                 setChosenList(created.id);
                 setUnsaved({});
@@ -1173,7 +1326,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
           {reuseMode === "copy" ? (
             <Field>
               <FieldLabel className="block">{m.assets_packing_list()}</FieldLabel>
-              <SearchSelect ariaLabel={m.assets_source_packing_list()} value={sourceId} onChange={setSourceId}>
+              <SearchSelect
+                ariaLabel={m.assets_source_packing_list()}
+                value={sourceId}
+                onChange={setSourceId}
+              >
                 <option value="">{m.assets_choose_a_packing_list()}</option>
                 {sourcesQuery.data
                   ?.filter((source) => source.trip_id !== trip.id)
@@ -1195,7 +1352,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
                         checked={templateIds.includes(template.id)}
                         onCheckedChange={(checked) =>
                           setTemplateIds((current) =>
-                            checked ? [...current, template.id] : current.filter((id) => id !== template.id),
+                            checked
+                              ? [...current, template.id]
+                              : current.filter((id) => id !== template.id),
                           )
                         }
                       />{" "}
@@ -1233,7 +1392,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
           </p>
           <Button
             type="submit"
-            disabled={busy || !reuseName.trim() || (reuseMode === "copy" ? !sourceId : !templateIds.length)}
+            disabled={
+              busy || !reuseName.trim() || (reuseMode === "copy" ? !sourceId : !templateIds.length)
+            }
           >
             {m.assets_create_new_packing_list()}
           </Button>
@@ -1244,7 +1405,11 @@ export function PackingManager({ trip }: { trip: Trip }) {
             onCancel={() => setTemplateToDelete(null)}
             onConfirm={() => {
               void save(
-                () => request(`/api/packing-templates/${encodeURIComponent(templateToDelete)}`, "DELETE"),
+                () =>
+                  request(
+                    `/api/packing-templates/${encodeURIComponent(templateToDelete)}`,
+                    "DELETE",
+                  ),
                 () => m.assets_template_deleted(),
               ).then((ok) => {
                 if (ok) {

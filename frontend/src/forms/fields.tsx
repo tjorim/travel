@@ -176,7 +176,8 @@ export function TextAreaField({
   label,
   optional,
   ...input
-}: Common & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange" | "onBlur" | "name">) {
+}: Common &
+  Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange" | "onBlur" | "name">) {
   useLocale();
   const { message, invalid } = useFieldErrors(field);
   const { required, ...rest } = input;

@@ -25,7 +25,8 @@ function visitorRoutes(): Plugin {
       const setHeader = response.setHeader.bind(response);
       for (const [name, value] of Object.entries(shareHeaders)) setHeader(name, value);
       // Later middleware may not override these.
-      response.setHeader = (name, value) => (pinned.has(name.toLowerCase()) ? response : setHeader(name, value));
+      response.setHeader = (name, value) =>
+        pinned.has(name.toLowerCase()) ? response : setHeader(name, value);
     }
     next();
   };

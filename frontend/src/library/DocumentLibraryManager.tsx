@@ -6,7 +6,13 @@ import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 
-import { AsyncSearchSelect, RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import {
+  AsyncSearchSelect,
+  RecordForm,
+  requiredText,
+  SelectField,
+  TextField,
+} from "../forms/fields";
 import { useRecordDialog } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
@@ -52,7 +58,10 @@ export function DocumentLibraryManager() {
   });
   const remove = useOwnerMutation<OwnerDocument>({
     fallback: m.assets_the_document_could_not_be_deleted,
-    request: (document) => ({ path: `${libraryPath("documents")}/${document.id}`, method: "DELETE" }),
+    request: (document) => ({
+      path: `${libraryPath("documents")}/${document.id}`,
+      method: "DELETE",
+    }),
     invalidate: refresh,
   });
 
@@ -75,12 +84,14 @@ export function DocumentLibraryManager() {
     },
   });
 
-  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const fail = (fallback: ErrorFallback) => (error: unknown) =>
+    setNotice(errorNotice(error, fallback));
   const failInDialog = (fallback: ErrorFallback) => (error: unknown) => {
     dialog.setConfirmDelete(false);
     dialog.setError(errorNotice(error, fallback));
   };
-  const tripTitle = (tripId: string) => trips.find((trip) => trip.id === tripId)?.title ?? m.assets_deleted_trip();
+  const tripTitle = (tripId: string) =>
+    trips.find((trip) => trip.id === tripId)?.title ?? m.assets_deleted_trip();
 
   function close() {
     dialog.close();
@@ -141,7 +152,9 @@ export function DocumentLibraryManager() {
       <div className="capture-heading">
         <div>
           <h3 id="library-documents-title">{m.assets_documents()}</h3>
-          <p>{m.assets_reusable_essentials_such_as_an_insurance_policy_or_identity_copy_separat()}</p>
+          <p>
+            {m.assets_reusable_essentials_such_as_an_insurance_policy_or_identity_copy_separat()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.assets_new_document()}
@@ -181,7 +194,9 @@ export function DocumentLibraryManager() {
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => void togglePin(document).catch(fail(m.assets_saving_offline_failed))}
+                  onClick={() =>
+                    void togglePin(document).catch(fail(m.assets_saving_offline_failed))
+                  }
                 >
                   {offline.isPinned("library_document", document.id)
                     ? m.owner_remove_offline_copy()
@@ -209,7 +224,11 @@ export function DocumentLibraryManager() {
               <p>{summary(selected)}</p>
             </div>
             <div className="button-row">
-              <Button className="danger" type="button" onClick={() => dialog.setConfirmDelete(true)}>
+              <Button
+                className="danger"
+                type="button"
+                onClick={() => dialog.setConfirmDelete(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -223,7 +242,11 @@ export function DocumentLibraryManager() {
           </div>
         )}
         {editing && (
-          <RecordForm record={record} submitLabel={m.assets_upload_document()} pendingLabel={m.assets_uploading()}>
+          <RecordForm
+            record={record}
+            submitLabel={m.assets_upload_document()}
+            pendingLabel={m.assets_uploading()}
+          >
             <div className="field-row">
               <record.form.Field
                 name="title"
@@ -232,7 +255,9 @@ export function DocumentLibraryManager() {
                   onSubmit: requiredText(m.assets_give_the_document_a_title),
                 }}
               >
-                {(field) => <TextField field={field} label={m.owner_title()} required maxLength={160} />}
+                {(field) => (
+                  <TextField field={field} label={m.owner_title()} required maxLength={160} />
+                )}
               </record.form.Field>
               <record.form.Field name="kind">
                 {(field) => (
@@ -256,7 +281,9 @@ export function DocumentLibraryManager() {
                     ariaLabel={m.assets_linked_trip_optional()}
                     value={field.state.value}
                     selectedOption={
-                      field.state.value ? { value: field.state.value, label: tripTitle(field.state.value) } : null
+                      field.state.value
+                        ? { value: field.state.value, label: tripTitle(field.state.value) }
+                        : null
                     }
                     defaultOptions={[
                       { value: "", label: m.assets_no_link() },
@@ -265,7 +292,10 @@ export function DocumentLibraryManager() {
                     onChange={field.handleChange}
                     loadOptions={async (q) => [
                       { value: "", label: m.assets_no_link() },
-                      ...(await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title })),
+                      ...(await searchTrips(q)).map((trip) => ({
+                        value: trip.id,
+                        label: trip.title,
+                      })),
                     ]}
                   />
                 </Field>

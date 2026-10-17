@@ -101,8 +101,9 @@ it("shows an emergency-info snapshot inline instead of opening a new tab", async
     metadataUrl: "/api/library/emergency-info/entry-1",
     title: "Mom",
     contentType: "application/json",
-    bytes: new TextEncoder().encode(JSON.stringify({ label: "Mom", value: "+32 470 00 00 00" }, null, 2))
-      .buffer as ArrayBuffer,
+    bytes: new TextEncoder().encode(
+      JSON.stringify({ label: "Mom", value: "+32 470 00 00 00" }, null, 2),
+    ).buffer as ArrayBuffer,
   });
 
   const openSpy = vi.fn();
@@ -160,7 +161,9 @@ it("opens a packing copy as a read-only list", async () => {
   const checkbox = await screen.findByRole("checkbox", { name: "Paspoort ingepakt" });
   expect(checkbox.getAttribute("aria-checked")).toBe("true");
   expect(checkbox.getAttribute("aria-disabled")).toBe("true");
-  expect(screen.getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/)).toBeTruthy();
+  expect(
+    screen.getByText(/Voor afvinken, verplaatsen en bewerken is een verbinding nodig/),
+  ).toBeTruthy();
 });
 
 it("clears every pinned copy on this device after confirmation", async () => {
@@ -208,7 +211,10 @@ it("shows a disclosure when the browser declines persistent storage", async () =
   vi.stubGlobal("navigator", {
     ...navigator,
     onLine: true,
-    storage: { persist: vi.fn().mockResolvedValue(false), persisted: vi.fn().mockResolvedValue(false) },
+    storage: {
+      persist: vi.fn().mockResolvedValue(false),
+      persisted: vi.fn().mockResolvedValue(false),
+    },
   });
   await pinOfflineCopy({
     subject: SUBJECT,
@@ -239,5 +245,7 @@ it("tells the owner their copies are pending revalidation while offline", async 
       <OfflineManager />
     </AuthProvider>,
   );
-  await screen.findByText("Je bent offline. Kopieën worden opnieuw gecontroleerd zodra je weer verbinding hebt.");
+  await screen.findByText(
+    "Je bent offline. Kopieën worden opnieuw gecontroleerd zodra je weer verbinding hebt.",
+  );
 });

@@ -24,11 +24,16 @@ const roundedCoordinate = (value: number) => Math.round(value * 1_000) / 1_000;
 const lineData = (coordinates: RouteCoordinate[]): FeatureCollection<LineString> => ({
   type: "FeatureCollection",
   features:
-    coordinates.length < 2 ? [] : [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } }],
+    coordinates.length < 2
+      ? []
+      : [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } }],
 });
 const sameCoordinates = (left: RouteCoordinate[], right: RouteCoordinate[]) =>
   left.length === right.length &&
-  left.every(([longitude, latitude], index) => longitude === right[index]?.[0] && latitude === right[index]?.[1]);
+  left.every(
+    ([longitude, latitude], index) =>
+      longitude === right[index]?.[0] && latitude === right[index]?.[1],
+  );
 
 type ScreenPoint = { x: number; y: number };
 
@@ -47,7 +52,9 @@ export function insertionIndex(points: ScreenPoint[], target: ScreenPoint): numb
     const dy = to.y - from.y;
     const length = dx * dx + dy * dy;
     const along =
-      length === 0 ? 0 : Math.max(0, Math.min(1, ((target.x - from.x) * dx + (target.y - from.y) * dy) / length));
+      length === 0
+        ? 0
+        : Math.max(0, Math.min(1, ((target.x - from.x) * dx + (target.y - from.y) * dy) / length));
     const distance = Math.hypot(target.x - (from.x + along * dx), target.y - (from.y + along * dy));
     if (distance < bestDistance) {
       best = index;
@@ -121,7 +128,12 @@ export function RouteGeometryEditor({
   }, [coordinates, onChange, suggestions, mode]);
 
   useEffect(() => {
-    if (mode !== "edit" || coordinates.length || suggestions.length < 2 || (seededOnce.current && !seeded.current))
+    if (
+      mode !== "edit" ||
+      coordinates.length ||
+      suggestions.length < 2 ||
+      (seededOnce.current && !seeded.current)
+    )
       return;
     const endpoints = [suggestions[0].coordinates, suggestions[1].coordinates];
     if (sameCoordinates(endpoints, coordinatesRef.current)) return;
@@ -146,10 +158,17 @@ export function RouteGeometryEditor({
       const probe = document.createElement("canvas");
       if (!probe.getContext("webgl2") && !probe.getContext("webgl")) throw new Error();
     } catch {
-      setError(textNotice(() => m.owner_the_map_editor_is_unavailable_you_can_still_paste_coordinates_as_json_be()));
+      setError(
+        textNotice(() =>
+          m.owner_the_map_editor_is_unavailable_you_can_still_paste_coordinates_as_json_be(),
+        ),
+      );
       return;
     }
-    void Promise.all([import("maplibre-gl"), loadMapStyle(configuredMapStyleUrl, controller.signal, theme)])
+    void Promise.all([
+      import("maplibre-gl"),
+      loadMapStyle(configuredMapStyleUrl, controller.signal, theme),
+    ])
       .then(([maplibregl, style]) => {
         if (disposed || !canvas.current) return;
         maplibregl.setWorkerUrl(mapWorkerUrl);
@@ -167,7 +186,10 @@ export function RouteGeometryEditor({
         instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
         instance.on("load", () => {
           if (!instance || disposed) return;
-          instance.addSource("route-editor-line", { type: "geojson", data: lineData(coordinatesRef.current) });
+          instance.addSource("route-editor-line", {
+            type: "geojson",
+            data: lineData(coordinatesRef.current),
+          });
           instance.addLayer({
             id: "route-editor-line",
             type: "line",
@@ -180,7 +202,11 @@ export function RouteGeometryEditor({
           if (!restore) {
             if (coordinatesRef.current.length) showWholeRoute(instance);
             else if (suggestionsRef.current[0])
-              instance.flyTo({ center: suggestionsRef.current[0].coordinates, zoom: 7, essential: true });
+              instance.flyTo({
+                center: suggestionsRef.current[0].coordinates,
+                zoom: 7,
+                essential: true,
+              });
           }
           // A long press on touch screens ends in a click as well; do not let it add a point.
           const created = instance;
@@ -194,12 +220,18 @@ export function RouteGeometryEditor({
             const projected = current.map((coordinate) => created.project(coordinate));
             // A press on a numbered point is that point's gesture, even where the event names no element.
             if (
-              projected.some((point) => Math.hypot(point.x - event.point.x, point.y - event.point.y) < MARKER_RADIUS_PX)
+              projected.some(
+                (point) =>
+                  Math.hypot(point.x - event.point.x, point.y - event.point.y) < MARKER_RADIUS_PX,
+              )
             )
               return;
             if (Date.now() < gestureUntil.current) return;
             gestureUntil.current = Date.now() + GESTURE_GUARD_MS;
-            const next: RouteCoordinate = [roundedCoordinate(event.lngLat.lng), roundedCoordinate(event.lngLat.lat)];
+            const next: RouteCoordinate = [
+              roundedCoordinate(event.lngLat.lng),
+              roundedCoordinate(event.lngLat.lat),
+            ];
             const at = insertionIndex(projected, event.point);
             commit([...current.slice(0, at), next, ...current.slice(at)]);
           });
@@ -210,7 +242,10 @@ export function RouteGeometryEditor({
               event.originalEvent.target.closest("[data-route-marker]")
             )
               return;
-            const next: RouteCoordinate = [roundedCoordinate(event.lngLat.lng), roundedCoordinate(event.lngLat.lat)];
+            const next: RouteCoordinate = [
+              roundedCoordinate(event.lngLat.lng),
+              roundedCoordinate(event.lngLat.lat),
+            ];
             const updated = [...coordinatesRef.current, next];
             seeded.current = false;
             coordinatesRef.current = updated;
@@ -223,14 +258,18 @@ export function RouteGeometryEditor({
         instance.on("error", () => {
           if (!disposed && instance && !instance.isStyleLoaded())
             setError(
-              textNotice(() => m.owner_the_map_editor_could_not_be_loaded_you_can_still_paste_coordinates_as_js()),
+              textNotice(() =>
+                m.owner_the_map_editor_could_not_be_loaded_you_can_still_paste_coordinates_as_js(),
+              ),
             );
         });
       })
       .catch(() => {
         if (!disposed)
           setError(
-            textNotice(() => m.owner_the_map_editor_is_unavailable_you_can_still_paste_coordinates_as_json_be()),
+            textNotice(() =>
+              m.owner_the_map_editor_is_unavailable_you_can_still_paste_coordinates_as_json_be(),
+            ),
           );
       });
     return () => {
@@ -277,9 +316,13 @@ export function RouteGeometryEditor({
         "grid size-7 place-items-center rounded-full border-2 border-travel-ink bg-travel-map-marker text-xs font-extrabold text-travel-ink shadow-sm select-none";
       element.textContent = String(index + 1);
       const editable = modeRef.current === "edit";
-      element.title = editable ? m.owner_drag_route_point({ p0: index + 1 }) : m.owner_route_point({ p0: index + 1 });
+      element.title = editable
+        ? m.owner_drag_route_point({ p0: index + 1 })
+        : m.owner_route_point({ p0: index + 1 });
       element.setAttribute("aria-label", element.title);
-      const marker = new library.Marker({ element, draggable: editable }).setLngLat(coordinate).addTo(instance);
+      const marker = new library.Marker({ element, draggable: editable })
+        .setLngLat(coordinate)
+        .addTo(instance);
       if (editable) {
         element.addEventListener("contextmenu", (event) => {
           event.preventDefault();
@@ -295,9 +338,11 @@ export function RouteGeometryEditor({
           timer = setTimeout(() => removePoint(index), LONG_PRESS_MS);
         });
         element.addEventListener("pointermove", (event) => {
-          if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > LONG_PRESS_SLOP_PX) cancel();
+          if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > LONG_PRESS_SLOP_PX)
+            cancel();
         });
-        for (const type of ["pointerup", "pointercancel", "pointerleave"]) element.addEventListener(type, cancel);
+        for (const type of ["pointerup", "pointercancel", "pointerleave"])
+          element.addEventListener(type, cancel);
         marker.on("dragstart", cancel);
         marker.on("dragend", () => {
           const position = marker.getLngLat();
@@ -336,7 +381,11 @@ export function RouteGeometryEditor({
 
   function addSuggestion(suggestion: RouteSuggestion) {
     commit([...editorCoordinates, suggestion.coordinates]);
-    map.current?.flyTo({ center: suggestion.coordinates, zoom: Math.max(map.current.getZoom(), 7), essential: true });
+    map.current?.flyTo({
+      center: suggestion.coordinates,
+      zoom: Math.max(map.current.getZoom(), 7),
+      essential: true,
+    });
   }
 
   return (

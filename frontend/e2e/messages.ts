@@ -6,7 +6,9 @@ export const locales: Locale[] = ["nl", "en"];
 const catalogues = Object.fromEntries(
   locales.map((locale) => [
     locale,
-    JSON.parse(readFileSync(new URL(`../messages/${locale}.json`, import.meta.url), "utf8")) as Record<string, string>,
+    JSON.parse(
+      readFileSync(new URL(`../messages/${locale}.json`, import.meta.url), "utf8"),
+    ) as Record<string, string>,
   ]),
 ) as Record<Locale, Record<string, string>>;
 

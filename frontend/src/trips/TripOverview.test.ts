@@ -54,15 +54,24 @@ it("counts confirmed day-only journeys alongside timed journeys", () => {
     badges([
       route("planned"),
       route("confirmed", { status: "confirmed" }),
-      route("timed", { status: "confirmed", departs_at: "2054-10-16T08:00:00Z", arrives_at: "2054-10-16T09:00:00Z" }),
+      route("timed", {
+        status: "confirmed",
+        departs_at: "2054-10-16T08:00:00Z",
+        arrives_at: "2054-10-16T09:00:00Z",
+      }),
       route("cancelled", { status: "cancelled" }),
       route("unscheduled", { departs_on: null }),
     ]),
   ).toEqual([{ label: "Vervoer", value: "2/3 bevestigd", done: false }]);
-  expect(badges([route("first", { status: "confirmed" }), route("second", { status: "confirmed" })])).toEqual([
-    { label: "Vervoer", value: "bevestigd", done: true },
-  ]);
-  expect(badges([route("cancelled", { status: "cancelled" }), route("unscheduled", { departs_on: null })])).toEqual([]);
+  expect(
+    badges([route("first", { status: "confirmed" }), route("second", { status: "confirmed" })]),
+  ).toEqual([{ label: "Vervoer", value: "bevestigd", done: true }]);
+  expect(
+    badges([
+      route("cancelled", { status: "cancelled" }),
+      route("unscheduled", { departs_on: null }),
+    ]),
+  ).toEqual([]);
 });
 
 const stay = (id: string, status: Stay["status"], checkIn: string, checkOut: string): Stay =>
@@ -76,16 +85,26 @@ const stay = (id: string, status: Stay["status"], checkIn: string, checkOut: str
 
 it("never counts a stay idea as covering a night", () => {
   const trip = { starts_on: "2054-11-28", ends_on: "2054-11-30" };
-  const ideas = [stay("a", "idea", "2054-11-28", "2054-11-30"), stay("b", "idea", "2054-11-28", "2054-11-30")];
+  const ideas = [
+    stay("a", "idea", "2054-11-28", "2054-11-30"),
+    stay("b", "idea", "2054-11-28", "2054-11-30"),
+  ];
   expect(stayCoversNight(ideas[0], "2054-11-28")).toBe(false);
-  expect(stayCoversNight(stay("c", "planned", "2054-11-28", "2054-11-30"), "2054-11-28")).toBe(true);
+  expect(stayCoversNight(stay("c", "planned", "2054-11-28", "2054-11-30"), "2054-11-28")).toBe(
+    true,
+  );
   // Ideas alone leave both nights missing and the badge unfinished.
   const [alone] = tripBadges(trip, ideas, [], []);
   expect(alone).toMatchObject({ label: "Nachten", done: false });
   expect(alone.value).toContain("0/2 bevestigd");
   expect(alone.value).toContain("2");
   // Once one candidate is confirmed, only its night counts; the alternatives change nothing.
-  const [partial] = tripBadges(trip, [...ideas, stay("d", "confirmed", "2054-11-28", "2054-11-29")], [], []);
+  const [partial] = tripBadges(
+    trip,
+    [...ideas, stay("d", "confirmed", "2054-11-28", "2054-11-29")],
+    [],
+    [],
+  );
   expect(partial.value).toContain("1/2 bevestigd");
   // Without trip dates the stay badge counts only the plan, not its candidates.
   expect(tripBadges({ starts_on: null, ends_on: null }, ideas, [], [])).toEqual([]);
@@ -117,7 +136,8 @@ it("leaves route ideas out of booking progress and whereabouts", () => {
     arrival_timezone: "Asia/Taipei",
   });
   expect(whereabouts("2054-11-28T05:00:00Z", [], [timed], "Europe/Amsterdam").kind).toBe("home");
-  expect(whereabouts("2054-11-28T05:00:00Z", [], [{ ...timed, status: "planned" }], "Europe/Amsterdam").kind).toBe(
-    "travel",
-  );
+  expect(
+    whereabouts("2054-11-28T05:00:00Z", [], [{ ...timed, status: "planned" }], "Europe/Amsterdam")
+      .kind,
+  ).toBe("travel");
 });

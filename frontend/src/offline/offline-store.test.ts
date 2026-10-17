@@ -130,11 +130,15 @@ it("keeps explicitly pinned media, map data, visits and packing private across a
     "visit",
   ]);
   await expect(
-    (await openOfflineCopy(OWNER, copies.find((copy) => copy.resourceKind === "media_asset")!.id)).text(),
+    (
+      await openOfflineCopy(OWNER, copies.find((copy) => copy.resourceKind === "media_asset")!.id)
+    ).text(),
   ).resolves.toBe("media bytes");
   await removeOfflineCopy(copies.find((copy) => copy.resourceKind === "route_data")!.id);
   expect(await listOfflineCopies(OTHER_OWNER)).toHaveLength(0);
-  expect((await listOfflineCopies(OWNER)).map((copy) => copy.resourceKind)).not.toContain("route_data");
+  expect((await listOfflineCopies(OWNER)).map((copy) => copy.resourceKind)).not.toContain(
+    "route_data",
+  );
 });
 
 it("removes an individual copy", async () => {
@@ -146,7 +150,9 @@ it("removes an individual copy", async () => {
 it("clears all copies for the current subject without touching another subject's copies", async () => {
   await pinOfflineCopy(pinInput({ subject: OWNER, resourceId: "doc-1" }));
   await pinOfflineCopy(pinInput({ subject: OWNER, resourceId: "doc-2", title: "Second doc" }));
-  await pinOfflineCopy(pinInput({ subject: OTHER_OWNER, resourceId: "doc-3", title: "Other owner doc" }));
+  await pinOfflineCopy(
+    pinInput({ subject: OTHER_OWNER, resourceId: "doc-3", title: "Other owner doc" }),
+  );
 
   await clearOfflineCopies(OWNER);
 
@@ -211,7 +217,9 @@ it("blocks opening and purges a copy once its lease has expired", async () => {
   // Mock only Date.now (not fake timers): IndexedDB's own async scheduling
   // must keep running normally for pin/open to resolve.
   const dateSpy = vi.spyOn(Date, "now").mockReturnValue(0);
-  const pinned = await pinOfflineCopy(pinInput({ resourceKind: "packing_list", resourceId: "list-1" }));
+  const pinned = await pinOfflineCopy(
+    pinInput({ resourceKind: "packing_list", resourceId: "list-1" }),
+  );
   dateSpy.mockReturnValue(OFFLINE_LEASE_MS + 1);
 
   await expect(openOfflineCopy(OWNER, pinned.id)).rejects.toThrow(/verlopen/);
@@ -231,7 +239,9 @@ it("wipeOfflineData removes both the copies and the device key for that subject"
 });
 
 it("findPinnedCopy locates a copy by resource kind and id", async () => {
-  await pinOfflineCopy(pinInput({ resourceKind: "emergency_info", resourceId: "visit-1", title: "Mama" }));
+  await pinOfflineCopy(
+    pinInput({ resourceKind: "emergency_info", resourceId: "visit-1", title: "Mama" }),
+  );
   expect(await findPinnedCopy(OWNER, "emergency_info", "visit-1")).toMatchObject({ title: "Mama" });
   expect(await findPinnedCopy(OWNER, "emergency_info", "entry-missing")).toBeNull();
 });

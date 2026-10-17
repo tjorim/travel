@@ -23,26 +23,41 @@ it("keeps the route and stop controls usable when WebGL is unavailable", () => {
     />,
   );
   expect(
-    screen.getByText("Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de puntknoppen."),
+    screen.getByText(
+      "Interactieve kaart niet beschikbaar. Gebruik de route in woorden en de puntknoppen.",
+    ),
   ).toBeTruthy();
   expect(screen.getByRole("button", { name: "Area city" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Area route" })).toBeTruthy();
   const words = screen.getByRole("heading", { name: "Route in woorden" }).parentElement!;
   expect(within(words).getByRole("button", { name: "Area route" })).toBeTruthy();
   expect(within(words).queryByText("Area city")).toBeNull();
-  expect((screen.getByRole("button", { name: "3D-terrein" }) as HTMLButtonElement).disabled).toBe(true);
-  expect((screen.getByRole("button", { name: "Satelliet" }) as HTMLButtonElement).disabled).toBe(true);
-  expect((screen.getByRole("button", { name: "Wereldbol" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "3D-terrein" }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+  expect((screen.getByRole("button", { name: "Satelliet" }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+  expect((screen.getByRole("button", { name: "Wereldbol" }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
 });
 
 it("offers the same non-sensitive map-layer controls to visitors", () => {
-  render(<TripMap points={[{ id: "city", label: "Area city", coordinates: [121, 25] }]} lines={[]} />);
+  render(
+    <TripMap points={[{ id: "city", label: "Area city", coordinates: [121, 25] }]} lines={[]} />,
+  );
   expect(screen.getByRole("button", { name: "3D-terrein" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Satelliet" })).toBeTruthy();
 });
 
 it("frames only the locations filed under the focused area", () => {
-  const area = { id: "a", label: "Area", coordinates: [121, 25] as [number, number], kind: "area" as const };
+  const area = {
+    id: "a",
+    label: "Area",
+    coordinates: [121, 25] as [number, number],
+    kind: "area" as const,
+  };
   const nearby = {
     id: "l1",
     label: "Nearby",
@@ -91,13 +106,19 @@ it("keeps point and route cards synchronized with the textual controls and reset
   );
   fireEvent.click(screen.getByRole("button", { name: "Lisbon" }));
   expect(screen.getByText("september 2054")).toBeTruthy();
-  expect(screen.getByRole("link", { name: "Bezoek bekijken" }).getAttribute("href")).toBe("#visit-1");
+  expect(screen.getByRole("link", { name: "Bezoek bekijken" }).getAttribute("href")).toBe(
+    "#visit-1",
+  );
   expect(screen.getByRole("button", { name: "Lisbon" }).getAttribute("aria-pressed")).toBe("true");
   fireEvent.click(screen.getByRole("button", { name: /Lisbon–Coimbra/ }));
   expect(screen.getByText("Trein")).toBeTruthy();
-  expect(screen.getByRole("link", { name: "Route bekijken" }).getAttribute("href")).toBe("#route-1");
+  expect(screen.getByRole("link", { name: "Route bekijken" }).getAttribute("href")).toBe(
+    "#route-1",
+  );
   expect(screen.getByRole("button", { name: "Lisbon" }).getAttribute("aria-pressed")).toBe("false");
   fireEvent.click(screen.getByRole("button", { name: "Hele reis tonen" }));
   expect(screen.queryByRole("link", { name: "Route bekijken" })).toBeNull();
-  expect(screen.getByRole("button", { name: /Lisbon–Coimbra/ }).getAttribute("aria-pressed")).toBe("false");
+  expect(screen.getByRole("button", { name: /Lisbon–Coimbra/ }).getAttribute("aria-pressed")).toBe(
+    "false",
+  );
 });

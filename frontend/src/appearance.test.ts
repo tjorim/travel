@@ -36,7 +36,9 @@ describe("device appearance bootstrap", () => {
     const state = boot("dark");
     expect(state.root.dataset).toEqual({ appearance: "dark", theme: "dark" });
     expect(state.color()).toBe("#101c18");
-    state.window.dispatchEvent(Object.assign(new Event("travel-appearance-set"), { detail: "light" }));
+    state.window.dispatchEvent(
+      Object.assign(new Event("travel-appearance-set"), { detail: "light" }),
+    );
     expect(state.root.dataset.theme).toBe("light");
     expect(state.stored()).toBe("light");
     expect(state.color()).toBe("#f5f0e8");
@@ -46,14 +48,18 @@ describe("device appearance bootstrap", () => {
     state.media.matches = true;
     state.media.dispatchEvent(new Event("change"));
     expect(state.root.dataset.theme).toBe("dark");
-    state.window.dispatchEvent(Object.assign(new Event("travel-appearance-set"), { detail: "light" }));
+    state.window.dispatchEvent(
+      Object.assign(new Event("travel-appearance-set"), { detail: "light" }),
+    );
     state.media.dispatchEvent(new Event("change"));
     expect(state.root.dataset.theme).toBe("light");
   });
   it("works when device storage is unavailable", () => {
     const state = boot(null, true, true);
     expect(state.root.dataset.theme).toBe("dark");
-    state.window.dispatchEvent(Object.assign(new Event("travel-appearance-set"), { detail: "light" }));
+    state.window.dispatchEvent(
+      Object.assign(new Event("travel-appearance-set"), { detail: "light" }),
+    );
     expect(state.root.dataset.theme).toBe("light");
   });
   it("synchronizes other tabs and storage clearing", () => {

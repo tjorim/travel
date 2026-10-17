@@ -9,7 +9,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 
 import type { TrackerSession } from "../auth";
-import { AsyncSearchSelect, RecordForm, SearchSelect, SelectField, TextField } from "../forms/fields";
+import {
+  AsyncSearchSelect,
+  RecordForm,
+  SearchSelect,
+  SelectField,
+  TextField,
+} from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -88,7 +94,10 @@ export function OwnerImage({
     const controller = new AbortController();
     let objectUrl: string | null = null;
     setSrc(null);
-    ownerFile(session, url, m.assets_the_preview_could_not_be_loaded, { cache: "no-store", signal: controller.signal })
+    ownerFile(session, url, m.assets_the_preview_could_not_be_loaded, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob);
         setSrc(objectUrl);
@@ -101,12 +110,21 @@ export function OwnerImage({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [session, url]);
-  if (!src) return <span className={`${className ?? ""} media-thumbnail-placeholder`} aria-hidden="true" />;
+  if (!src)
+    return <span className={`${className ?? ""} media-thumbnail-placeholder`} aria-hidden="true" />;
   return <img className={className} src={src} alt={alt} />;
 }
 
-type DerivativeValues = { purpose: MediaDerivative["purpose"]; maxDimension: string; removeAudio: boolean };
-const blankDerivative = (): DerivativeValues => ({ purpose: "share", maxDimension: "1600", removeAudio: false });
+type DerivativeValues = {
+  purpose: MediaDerivative["purpose"];
+  maxDimension: string;
+  removeAudio: boolean;
+};
+const blankDerivative = (): DerivativeValues => ({
+  purpose: "share",
+  maxDimension: "1600",
+  removeAudio: false,
+});
 const dimensionInRange = ({ value }: { value: string }) => {
   const size = Number(value);
   return value.trim() && Number.isInteger(size) && size >= 64 && size <= 4000
@@ -114,7 +132,13 @@ const dimensionInRange = ({ value }: { value: string }) => {
     : m.assets_choose_a_maximum_side_between_64_and_4000_px;
 };
 
-type PresentationValues = { travelUpdateId: string; caption: string; altText: string; focalX: string; focalY: string };
+type PresentationValues = {
+  travelUpdateId: string;
+  caption: string;
+  altText: string;
+  focalX: string;
+  focalY: string;
+};
 const blankPresentation = (): PresentationValues => ({
   travelUpdateId: "",
   caption: "",
@@ -130,7 +154,9 @@ const fromDerivative = (derivative: MediaDerivative): PresentationValues => ({
   focalY: derivative.focal_y?.toString() ?? "",
 });
 const percentage = ({ value }: { value: string }) =>
-  value === "" || (Number(value) >= 0 && Number(value) <= 100) ? undefined : m.assets_choose_a_value_between_0_and_100;
+  value === "" || (Number(value) >= 0 && Number(value) <= 100)
+    ? undefined
+    : m.assets_choose_a_value_between_0_and_100;
 
 /** The copy's presentation fields, with a live focal-point preview when the copy can be shown inline. */
 function PresentationFields({
@@ -189,7 +215,9 @@ function PresentationFields({
               }
               defaultOptions={[
                 { value: "", label: m.assets_standalone_gallery_photo() },
-                ...updates.slice(0, 50).map((update) => ({ value: update.id, label: update.title })),
+                ...updates
+                  .slice(0, 50)
+                  .map((update) => ({ value: update.id, label: update.title })),
               ]}
               onChange={field.handleChange}
               loadOptions={async (q) => {
@@ -208,17 +236,47 @@ function PresentationFields({
         )}
       </record.form.Field>
       <record.form.Field name="caption">
-        {(field) => <MarkdownField field={field} format="inline" label={m.assets_caption()} maxLength={500} rows={2} />}
+        {(field) => (
+          <MarkdownField
+            field={field}
+            format="inline"
+            label={m.assets_caption()}
+            maxLength={500}
+            rows={2}
+          />
+        )}
       </record.form.Field>
       <record.form.Field name="altText">
         {(field) => <TextField field={field} label={m.assets_alternative_text()} maxLength={300} />}
       </record.form.Field>
       <div className="field-row">
-        <record.form.Field name="focalX" validators={{ onChange: percentage, onSubmit: percentage }}>
-          {(field) => <TextField field={field} label={m.assets_horizontal_focus()} type="number" min="0" max="100" />}
+        <record.form.Field
+          name="focalX"
+          validators={{ onChange: percentage, onSubmit: percentage }}
+        >
+          {(field) => (
+            <TextField
+              field={field}
+              label={m.assets_horizontal_focus()}
+              type="number"
+              min="0"
+              max="100"
+            />
+          )}
         </record.form.Field>
-        <record.form.Field name="focalY" validators={{ onChange: percentage, onSubmit: percentage }}>
-          {(field) => <TextField field={field} label={m.assets_vertical_focus()} type="number" min="0" max="100" />}
+        <record.form.Field
+          name="focalY"
+          validators={{ onChange: percentage, onSubmit: percentage }}
+        >
+          {(field) => (
+            <TextField
+              field={field}
+              label={m.assets_vertical_focus()}
+              type="number"
+              min="0"
+              max="100"
+            />
+          )}
         </record.form.Field>
       </div>
     </>
@@ -226,7 +284,10 @@ function PresentationFields({
 }
 
 /** Which part of the asset dialog is showing: the asset with its copies, a new copy's form, or one copy's detail/edit. */
-type CopyView = { kind: "asset" } | { kind: "create" } | { kind: "copy"; id: string; edit: boolean };
+type CopyView =
+  | { kind: "asset" }
+  | { kind: "create" }
+  | { kind: "copy"; id: string; edit: boolean };
 
 export function MediaManager({
   trip,
@@ -259,7 +320,8 @@ export function MediaManager({
     selected && selected.id !== deletingId ? selected.id : null,
   );
   const derivatives = derivativesQuery.data ?? [];
-  const selectedDerivative = view.kind === "copy" ? (derivatives.find((item) => item.id === view.id) ?? null) : null;
+  const selectedDerivative =
+    view.kind === "copy" ? (derivatives.find((item) => item.id === view.id) ?? null) : null;
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useFeedback<string | null>(null);
   const [uploadKey, setUploadKey] = useState(0);
@@ -269,7 +331,9 @@ export function MediaManager({
   const providers = (useProviderConnections().data ?? []).filter((item) => item.available);
   const [selection, setSelection] = useState<string[]>([]);
   const reviewSelection = selection.filter((id) => assets.some((asset) => asset.id === id));
-  const [candidateReview, setCandidateReview] = useState<TravelUpdateCandidatesResponse | null>(null);
+  const [candidateReview, setCandidateReview] = useState<TravelUpdateCandidatesResponse | null>(
+    null,
+  );
   const [candidateTimes, setCandidateTimes] = useState<Record<string, string>>({});
   const [candidateLocations, setCandidateLocations] = useState<Record<string, string>>({});
   const [candidateAttachments, setCandidateAttachments] = useState<Record<string, string>>({});
@@ -294,7 +358,12 @@ export function MediaManager({
     invalidate: (subject) => [...refreshMedia(subject), ownerKeys.trips(subject)],
   });
   const requestDerivative = useOwnerMutation<
-    { assetId: string; purpose: MediaDerivative["purpose"]; maxDimension: number; removeAudio: boolean },
+    {
+      assetId: string;
+      purpose: MediaDerivative["purpose"];
+      maxDimension: number;
+      removeAudio: boolean;
+    },
     MediaDerivative
   >({
     fallback: m.assets_the_copy_could_not_be_created,
@@ -309,7 +378,10 @@ export function MediaManager({
     }),
     invalidate: refreshDerivatives,
   });
-  const approve = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>({
+  const approve = useOwnerMutation<
+    { assetId: string; derivative: MediaDerivative },
+    MediaDerivative
+  >({
     fallback: m.assets_the_copy_could_not_be_approved,
     request: ({ assetId, derivative }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/approve`,
@@ -317,14 +389,16 @@ export function MediaManager({
     }),
     invalidate: refreshDerivatives,
   });
-  const retry = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>({
-    fallback: m.assets_the_video_could_not_be_processed_again,
-    request: ({ assetId, derivative }) => ({
-      path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/retry`,
-      method: "POST",
-    }),
-    invalidate: refreshDerivatives,
-  });
+  const retry = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>(
+    {
+      fallback: m.assets_the_video_could_not_be_processed_again,
+      request: ({ assetId, derivative }) => ({
+        path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/retry`,
+        method: "POST",
+      }),
+      invalidate: refreshDerivatives,
+    },
+  );
   const presentation = useOwnerMutation<
     { assetId: string; derivative: MediaDerivative; values: Record<string, unknown> },
     MediaDerivative
@@ -381,7 +455,10 @@ export function MediaManager({
       method: "PATCH",
       body: { media_asset_ids: mediaAssetIds },
     }),
-    invalidate: (subject) => [ownerKeys.trips(subject), [...ownerKeys.trip(subject, trip.id), "travel-updates"]],
+    invalidate: (subject) => [
+      ownerKeys.trips(subject),
+      [...ownerKeys.trip(subject, trip.id), "travel-updates"],
+    ],
   });
 
   const derivativeRecord = useRecordForm<DerivativeValues>({
@@ -399,7 +476,9 @@ export function MediaManager({
     },
     onSuccess: () => {
       setView({ kind: "asset" });
-      setNotice(textNotice(() => m.assets_copy_started_check_the_copy_and_then_explicitly_approve_it()));
+      setNotice(
+        textNotice(() => m.assets_copy_started_check_the_copy_and_then_explicitly_approve_it()),
+      );
     },
   });
   const presentationRecord = useRecordForm<PresentationValues>({
@@ -428,7 +507,11 @@ export function MediaManager({
     },
     onSuccess: () => {
       setView({ kind: "asset" });
-      setNotice(textNotice(() => m.assets_presentation_saved_only_fields_selected_in_a_sharing_scope_become_visibl()));
+      setNotice(
+        textNotice(() =>
+          m.assets_presentation_saved_only_fields_selected_in_a_sharing_scope_become_visibl(),
+        ),
+      );
     },
   });
 
@@ -440,7 +523,8 @@ export function MediaManager({
     return () => window.clearInterval(timer);
   }, [derivatives, derivativesQuery]);
 
-  const fail = (fallback: ErrorFallback) => (error: unknown) => setNotice(errorNotice(error, fallback));
+  const fail = (fallback: ErrorFallback) => (error: unknown) =>
+    setNotice(errorNotice(error, fallback));
   const failInDialog = (fallback: ErrorFallback) => (error: unknown) => {
     setConfirmDeleteAsset(false);
     setConfirmDeleteCopy(false);
@@ -474,7 +558,11 @@ export function MediaManager({
       (saved) => {
         closeUpload();
         inspectAsset(saved.id);
-        setNotice(textNotice(() => m.assets_private_media_uploaded_you_can_now_link_them_to_a_travel_update()));
+        setNotice(
+          textNotice(() =>
+            m.assets_private_media_uploaded_you_can_now_link_them_to_a_travel_update(),
+          ),
+        );
       },
       (error: unknown) => {
         setNotice("");
@@ -528,7 +616,11 @@ export function MediaManager({
         await offline.removeByResource("media_asset", asset.id);
         closeAsset();
         setDeletingId(null);
-        setNotice(textNotice(() => m.assets_private_media_deleted_links_to_travel_updates_have_also_been_removed()));
+        setNotice(
+          textNotice(() =>
+            m.assets_private_media_deleted_links_to_travel_updates_have_also_been_removed(),
+          ),
+        );
       },
       (error: unknown) => {
         setDeletingId(null);
@@ -543,7 +635,9 @@ export function MediaManager({
       await offline.removeByResource("media_asset", asset.id);
       setNotice(
         textNotice(() =>
-          m.owner_is_no_longer_available_offline({ p0: asset.original_filename ?? m.assets_this_media_item() }),
+          m.owner_is_no_longer_available_offline({
+            p0: asset.original_filename ?? m.assets_this_media_item(),
+          }),
         ),
       );
       return;
@@ -566,7 +660,9 @@ export function MediaManager({
     });
     setNotice(
       textNotice(() =>
-        m.owner_is_saved_offline_on_this_device({ p0: asset.original_filename ?? m.assets_this_media_item() }),
+        m.owner_is_saved_offline_on_this_device({
+          p0: asset.original_filename ?? m.assets_this_media_item(),
+        }),
       ),
     );
   }
@@ -582,9 +678,14 @@ export function MediaManager({
       setNotice(textNotice(() => m.assets_the_offline_copy_has_been_removed()));
       return;
     }
-    const blob = await ownerFile(owner.session, derivative.file_url, m.assets_the_copy_could_not_be_saved_offline, {
-      cache: "no-store",
-    });
+    const blob = await ownerFile(
+      owner.session,
+      derivative.file_url,
+      m.assets_the_copy_could_not_be_saved_offline,
+      {
+        cache: "no-store",
+      },
+    );
     await offline.pin({
       resourceKind: "media_derivative",
       resourceId: derivative.id,
@@ -610,7 +711,9 @@ export function MediaManager({
       setImportSession(created);
       setNotice(
         textNotice(() =>
-          m.assets_choose_media_in_then_return_here_to_import_your_selection({ p0: providerLabel[provider] }),
+          m.assets_choose_media_in_then_return_here_to_import_your_selection({
+            p0: providerLabel[provider],
+          }),
         ),
       );
     }, fail(m.assets_the_import_session_could_not_be_started));
@@ -622,7 +725,9 @@ export function MediaManager({
     completeImport.mutateAsync(importSession).then((outcome) => {
       if (!outcome.ready) {
         setNotice(
-          textNotice(() => m.assets_your_selection_is_not_ready_at_the_provider_yet_try_again_when_you_are_d()),
+          textNotice(() =>
+            m.assets_your_selection_is_not_ready_at_the_provider_yet_try_again_when_you_are_d(),
+          ),
         );
         return;
       }
@@ -631,7 +736,9 @@ export function MediaManager({
         textNotice(
           () =>
             m.assets_imported_count({ count: outcome.imported.length }) +
-            (outcome.failed.length ? m.assets_import_failed_count({ count: outcome.failed.length }) : "."),
+            (outcome.failed.length
+              ? m.assets_import_failed_count({ count: outcome.failed.length })
+              : "."),
         ),
       );
     }, fail(m.assets_the_import_session_could_not_be_completed));
@@ -647,7 +754,9 @@ export function MediaManager({
 
   function review() {
     if (reviewSelection.length === 0) {
-      setNotice(textNotice(() => m.assets_choose_private_media_first_to_review_possible_travel_updates()));
+      setNotice(
+        textNotice(() => m.assets_choose_private_media_first_to_review_possible_travel_updates()),
+      );
       return;
     }
     reviewCandidates.mutateAsync(reviewSelection).then((result) => {
@@ -668,7 +777,11 @@ export function MediaManager({
 
   function candidateAssetNames(candidate: TravelUpdateCandidate) {
     return candidate.media_asset_ids
-      .map((id) => assets.find((asset) => asset.id === id)?.original_filename ?? m.assets_unnamed_media_item())
+      .map(
+        (id) =>
+          assets.find((asset) => asset.id === id)?.original_filename ??
+          m.assets_unnamed_media_item(),
+      )
       .join(", ");
   }
 
@@ -678,12 +791,14 @@ export function MediaManager({
       setNotice(textNotice(() => m.assets_choose_a_gps_option_first()));
       return;
     }
-    const location = candidate.location_options[locationIndex === undefined ? 0 : Number(locationIndex)];
+    const location =
+      candidate.location_options[locationIndex === undefined ? 0 : Number(locationIndex)];
     if (!location) return;
     suggestArea
       .mutateAsync({ latitude: location.latitude, longitude: location.longitude })
       .then(
-        (suggestion) => setCandidateAreas((current) => ({ ...current, [candidate.id]: suggestion })),
+        (suggestion) =>
+          setCandidateAreas((current) => ({ ...current, [candidate.id]: suggestion })),
         fail(m.owner_an_area_could_not_be_suggested),
       );
   }
@@ -694,11 +809,19 @@ export function MediaManager({
       (candidate.time_options.length === 1 ? candidate.time_options[0].captured_at : "");
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.time_options.length > 1 && !time) {
-      setNotice(textNotice(() => m.assets_choose_which_capture_time_to_use_for_this_candidate_visit_first()));
+      setNotice(
+        textNotice(() =>
+          m.assets_choose_which_capture_time_to_use_for_this_candidate_visit_first(),
+        ),
+      );
       return;
     }
     if (candidate.location_options.length > 1 && locationIndex === undefined) {
-      setNotice(textNotice(() => m.assets_the_gps_metadata_differs_choose_a_location_option_yourself_first_or_igno()));
+      setNotice(
+        textNotice(() =>
+          m.assets_the_gps_metadata_differs_choose_a_location_option_yourself_first_or_igno(),
+        ),
+      );
       return;
     }
     const selectedLocation =
@@ -709,23 +832,36 @@ export function MediaManager({
       tripId: trip.id,
       mediaAssetIds: candidate.media_asset_ids,
       occurredAt: time || undefined,
-      occurredAtLocal: candidate.time_options.find((option) => option.captured_at === time)?.captured_local,
-      gps: selectedLocation && { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude },
+      occurredAtLocal: candidate.time_options.find((option) => option.captured_at === time)
+        ?.captured_local,
+      gps: selectedLocation && {
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+      },
     });
   }
 
   function attachCandidate(candidate: TravelUpdateCandidate) {
     const update = foundUpdates[candidateAttachments[candidate.id]];
     if (!update) {
-      setNotice(textNotice(() => m.assets_choose_an_existing_travel_update_to_link_the_private_media_to_first()));
+      setNotice(
+        textNotice(() =>
+          m.assets_choose_an_existing_travel_update_to_link_the_private_media_to_first(),
+        ),
+      );
       return;
     }
     const mediaAssetIds = [...new Set([...update.media_asset_ids, ...candidate.media_asset_ids])];
     attach.mutateAsync({ updateId: update.id, mediaAssetIds }).then(() => {
-      setFoundUpdates((current) => ({ ...current, [update.id]: { ...update, media_asset_ids: mediaAssetIds } }));
+      setFoundUpdates((current) => ({
+        ...current,
+        [update.id]: { ...update, media_asset_ids: mediaAssetIds },
+      }));
       setNotice(
         textNotice(() =>
-          m.assets_private_media_linked_to_no_location_or_shareable_content_was_created({ p0: update.title }),
+          m.assets_private_media_linked_to_no_location_or_shareable_content_was_created({
+            p0: update.title,
+          }),
         ),
       );
     }, fail(m.assets_the_private_media_could_not_be_linked_to_the_travel_update));
@@ -768,7 +904,9 @@ export function MediaManager({
       <div className="capture-heading">
         <div>
           <h3 id="media-title">{m.assets_media_library()}</h3>
-          <p>{m.assets_originals_and_metadata_stay_private_only_a_separate_metadatafree_and_app()}</p>
+          <p>
+            {m.assets_originals_and_metadata_stay_private_only_a_separate_metadatafree_and_app()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={openUpload}>
           {m.assets_upload_media()}
@@ -807,12 +945,18 @@ export function MediaManager({
       {assets.length > 0 && (
         <div className="saved-records mt-0.5">
           {assets.map((asset) => (
-            <article className="excerpt-row" data-selected={asset.id === selected?.id ? "" : undefined} key={asset.id}>
+            <article
+              className="excerpt-row"
+              data-selected={asset.id === selected?.id ? "" : undefined}
+              key={asset.id}
+            >
               <Button
                 className="document-select flex items-center gap-3"
                 type="button"
                 onClick={() => inspectAsset(asset.id)}
-                aria-label={m.assets_view_2({ p0: asset.original_filename ?? m.owner_unnamed_media_item() })}
+                aria-label={m.assets_view_2({
+                  p0: asset.original_filename ?? m.owner_unnamed_media_item(),
+                })}
               >
                 {asset.thumbnail_url && owner ? (
                   <OwnerImage
@@ -832,8 +976,11 @@ export function MediaManager({
                 <div className="min-w-0">
                   <strong>{asset.original_filename ?? m.owner_unnamed_media_item()}</strong>
                   <span>
-                    {asset.media_kind === "photo" ? m.assets_photo() : m.assets_video()} · {bytesLabel(asset.byte_size)}
-                    {asset.captured_at ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}` : ""}
+                    {asset.media_kind === "photo" ? m.assets_photo() : m.assets_video()} ·{" "}
+                    {bytesLabel(asset.byte_size)}
+                    {asset.captured_at
+                      ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}`
+                      : ""}
                   </span>
                 </div>
               </Button>
@@ -885,10 +1032,19 @@ export function MediaManager({
         )}
         {importSession && (
           <aside className="grid gap-2.25 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.5 text-sm leading-normal text-travel-warning-ink [&_.action-link]:w-fit [&_button]:w-fit">
-            <strong>{m.assets_selection_line({ p0: providerLabel[importSession.provider] })}</strong>
-            <span>{m.assets_first_choose_only_the_media_you_want_to_copy_to_this_private_trip()}</span>
+            <strong>
+              {m.assets_selection_line({ p0: providerLabel[importSession.provider] })}
+            </strong>
+            <span>
+              {m.assets_first_choose_only_the_media_you_want_to_copy_to_this_private_trip()}
+            </span>
             {importSession.picker_uri && (
-              <a className="action-link" href={importSession.picker_uri} target="_blank" rel="noreferrer">
+              <a
+                className="action-link"
+                href={importSession.picker_uri}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {m.assets_open_selection()}
               </a>
             )}
@@ -915,7 +1071,9 @@ export function MediaManager({
           </Button>
           {candidateReview?.unavailable_media_asset_ids.length ? (
             <p className="help">
-              {m.assets_metadata_unavailable({ count: candidateReview.unavailable_media_asset_ids.length })}
+              {m.assets_metadata_unavailable({
+                count: candidateReview.unavailable_media_asset_ids.length,
+              })}
             </p>
           ) : null}
           {candidateReview?.candidates.map((candidate) => (
@@ -932,7 +1090,9 @@ export function MediaManager({
                   <SearchSelect
                     ariaLabel={m.assets_use_capture_time()}
                     value={candidateTimes[candidate.id] ?? ""}
-                    onChange={(value) => setCandidateTimes((current) => ({ ...current, [candidate.id]: value }))}
+                    onChange={(value) =>
+                      setCandidateTimes((current) => ({ ...current, [candidate.id]: value }))
+                    }
                   >
                     <option value="">{m.assets_choose_a_time_yourself()}</option>
                     {candidate.time_options.map((option) => (
@@ -949,12 +1109,16 @@ export function MediaManager({
                   <SearchSelect
                     ariaLabel={m.assets_gps_choice()}
                     value={candidateLocations[candidate.id] ?? ""}
-                    onChange={(value) => setCandidateLocations((current) => ({ ...current, [candidate.id]: value }))}
+                    onChange={(value) =>
+                      setCandidateLocations((current) => ({ ...current, [candidate.id]: value }))
+                    }
                   >
                     <option value="">{m.owner_dismiss_location()}</option>
                     {candidate.location_options.map((option, index) => (
                       <option key={option.media_asset_ids.join("-")} value={index}>
-                        {m.assets_location_from_media_items_line({ p0: option.media_asset_ids.length })}
+                        {m.assets_location_from_media_items_line({
+                          p0: option.media_asset_ids.length,
+                        })}
                       </option>
                     ))}
                   </SearchSelect>
@@ -969,7 +1133,11 @@ export function MediaManager({
                 </p>
               )}
               {candidate.location_options.length > 0 && (
-                <Button className="secondary compact" type="button" onClick={() => suggestCandidateArea(candidate)}>
+                <Button
+                  className="secondary compact"
+                  type="button"
+                  onClick={() => suggestCandidateArea(candidate)}
+                >
                   {m.assets_suggest_area_and_visit()}
                 </Button>
               )}
@@ -980,7 +1148,9 @@ export function MediaManager({
                       ? m.assets_existing_area({ p0: candidateAreas[candidate.id].area.label })
                       : m.assets_new_area_possible({
                           p0: candidateAreas[candidate.id].area.label,
-                          p1: candidateAreas[candidate.id].area.timezone ?? m.assets_unknown_timezone(),
+                          p1:
+                            candidateAreas[candidate.id].area.timezone ??
+                            m.assets_unknown_timezone(),
                         }),
                     p1:
                       visits
@@ -1017,7 +1187,10 @@ export function MediaManager({
                             : null
                         }
                         onChange={(value) =>
-                          setCandidateAttachments((current) => ({ ...current, [candidate.id]: value }))
+                          setCandidateAttachments((current) => ({
+                            ...current,
+                            [candidate.id]: value,
+                          }))
                         }
                         loadOptions={async (q) => {
                           const updates = await searchUpdates(q);
@@ -1032,7 +1205,11 @@ export function MediaManager({
                         }}
                       />
                     </Field>
-                    <Button className="secondary" type="button" onClick={() => attachCandidate(candidate)}>
+                    <Button
+                      className="secondary"
+                      type="button"
+                      onClick={() => attachCandidate(candidate)}
+                    >
                       {m.assets_link_to_travel_update()}
                     </Button>
                   </>
@@ -1064,14 +1241,18 @@ export function MediaManager({
               <p>
                 {selected.media_kind === "photo" ? m.assets_photo() : m.assets_video()} ·{" "}
                 {bytesLabel(selected.byte_size)}
-                {selected.captured_at ? ` · ${formatCapture(selected.captured_at, selected.captured_local)}` : ""}
+                {selected.captured_at
+                  ? ` · ${formatCapture(selected.captured_at, selected.captured_local)}`
+                  : ""}
               </p>
             </div>
             <div className="button-row">
               <Button
                 className="secondary compact"
                 type="button"
-                onClick={() => open(selected.file_url, m.assets_the_private_original_could_not_be_opened)}
+                onClick={() =>
+                  open(selected.file_url, m.assets_the_private_original_could_not_be_opened)
+                }
               >
                 {m.assets_view_original()}
               </Button>
@@ -1079,12 +1260,20 @@ export function MediaManager({
                 className="secondary compact"
                 type="button"
                 onClick={() =>
-                  void toggleOffline(selected).catch(fail(m.assets_the_private_media_item_could_not_be_saved_offline))
+                  void toggleOffline(selected).catch(
+                    fail(m.assets_the_private_media_item_could_not_be_saved_offline),
+                  )
                 }
               >
-                {offline.isPinned("media_asset", selected.id) ? m.owner_remove_offline_copy() : m.owner_save_offline()}
+                {offline.isPinned("media_asset", selected.id)
+                  ? m.owner_remove_offline_copy()
+                  : m.owner_save_offline()}
               </Button>
-              <Button className="danger compact" type="button" onClick={() => setConfirmDeleteAsset(true)}>
+              <Button
+                className="danger compact"
+                type="button"
+                onClick={() => setConfirmDeleteAsset(true)}
+              >
                 {m.owner_delete()}
               </Button>
             </div>
@@ -1111,8 +1300,10 @@ export function MediaManager({
               {derivatives.length > 0 ? (
                 <div className="saved-records mt-0.5">
                   {derivatives.map((item) => {
-                    const canPreview = item.processing_state !== "processing" && item.processing_state !== "failed";
-                    const previewUrl = item.media_kind === "video" ? (item.poster_url ?? null) : item.file_url;
+                    const canPreview =
+                      item.processing_state !== "processing" && item.processing_state !== "failed";
+                    const previewUrl =
+                      item.media_kind === "video" ? (item.poster_url ?? null) : item.file_url;
                     return (
                       <article className="excerpt-row" key={item.id}>
                         <Button
@@ -1168,7 +1359,9 @@ export function MediaManager({
           <RecordForm
             record={derivativeRecord}
             submitLabel={
-              selected.media_kind === "video" ? m.assets_create_safe_video_copy() : m.assets_create_metadatafree_copy()
+              selected.media_kind === "video"
+                ? m.assets_create_safe_video_copy()
+                : m.assets_create_metadatafree_copy()
             }
             pendingLabel={m.assets_creating_copy()}
             actions={cancelAction}
@@ -1224,7 +1417,8 @@ export function MediaManager({
           !view.edit &&
           (() => {
             const canPreview =
-              selectedDerivative.processing_state !== "processing" && selectedDerivative.processing_state !== "failed";
+              selectedDerivative.processing_state !== "processing" &&
+              selectedDerivative.processing_state !== "failed";
             const previewUrl =
               selectedDerivative.media_kind === "video"
                 ? (selectedDerivative.poster_url ?? null)
@@ -1270,7 +1464,9 @@ export function MediaManager({
                       value={selectedDerivative.visibility}
                       name={m.assets_copy_of({ p0: selected.original_filename ?? "foto" })}
                       followsUpdate={
-                        trip.travel_updates.find((update) => update.id === selectedDerivative.travel_update_id)?.title
+                        trip.travel_updates.find(
+                          (update) => update.id === selectedDerivative.travel_update_id,
+                        )?.title
                       }
                     />
                   )}
@@ -1279,9 +1475,16 @@ export function MediaManager({
                     <Button
                       className="secondary compact"
                       type="button"
-                      onClick={() => open(selectedDerivative.file_url, m.assets_the_private_copy_could_not_be_opened)}
+                      onClick={() =>
+                        open(
+                          selectedDerivative.file_url,
+                          m.assets_the_private_copy_could_not_be_opened,
+                        )
+                      }
                     >
-                      {selectedDerivative.media_kind === "video" ? m.assets_check_video_and_audio() : m.assets_view()}
+                      {selectedDerivative.media_kind === "video"
+                        ? m.assets_check_video_and_audio()
+                        : m.assets_view()}
                     </Button>
                   )}
                   {canPreview && (
@@ -1296,7 +1499,9 @@ export function MediaManager({
                     >
                       {offline.isPinned("media_derivative", selectedDerivative.id)
                         ? m.owner_remove_offline_copy()
-                        : m.assets_save_offline({ p0: bytesLabel(selectedDerivative.byte_size ?? 0) })}
+                        : m.assets_save_offline({
+                            p0: bytesLabel(selectedDerivative.byte_size ?? 0),
+                          })}
                     </Button>
                   )}
                   {selectedDerivative.processing_state === "failed" && (
@@ -1322,7 +1527,9 @@ export function MediaManager({
                           .then(
                             () =>
                               setNotice(
-                                textNotice(() => m.assets_copy_explicitly_approved_now_choose_who_can_see_it()),
+                                textNotice(() =>
+                                  m.assets_copy_explicitly_approved_now_choose_who_can_see_it(),
+                                ),
                               ),
                             fail(m.assets_the_copy_could_not_be_approved),
                           )
@@ -1331,12 +1538,21 @@ export function MediaManager({
                       {m.assets_explicitly_approve()}
                     </Button>
                   )}
-                  {selectedDerivative.purpose === "share" && selectedDerivative.processing_state !== "processing" && (
-                    <Button className="secondary compact" type="button" onClick={() => editCopy(selectedDerivative)}>
-                      {m.assets_edit_presentation()}
-                    </Button>
-                  )}
-                  <Button className="danger compact" type="button" onClick={() => setConfirmDeleteCopy(true)}>
+                  {selectedDerivative.purpose === "share" &&
+                    selectedDerivative.processing_state !== "processing" && (
+                      <Button
+                        className="secondary compact"
+                        type="button"
+                        onClick={() => editCopy(selectedDerivative)}
+                      >
+                        {m.assets_edit_presentation()}
+                      </Button>
+                    )}
+                  <Button
+                    className="danger compact"
+                    type="button"
+                    onClick={() => setConfirmDeleteCopy(true)}
+                  >
                     {m.owner_delete()}
                   </Button>
                 </div>
