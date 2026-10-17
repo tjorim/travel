@@ -36,7 +36,7 @@
     "@axe-core/playwright": "^4.13.0",
     "@inlang/paraglide-js": "^2.27.0",
     "@playwright/test": "^1.64.0",
-    "@shadcn/lint": "^0.2.0",
+    "@shadcn/lint": "^0.2.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query-devtools": "^5.104.2",
     "@testing-library/dom": "^10.4.2",
