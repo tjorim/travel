@@ -172,7 +172,13 @@ def _merge_exif(raw_metadata: dict, exif: dict) -> tuple[dict, datetime | None]:
 
 
 def _store_bytes(
-    session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes, content_type: str
+    session: Session,
+    storage: ObjectStorage,
+    *,
+    trip_id: str,
+    data: bytes,
+    content_type: str,
+    object_key: str | None = None,
 ) -> StoredObject:
     digest = sha256_hex(data)
     # Serialize reuse of a pending object with the purge's final deletion.
@@ -182,7 +188,7 @@ def _store_bytes(
     if existing is not None and existing.state == ObjectState.AVAILABLE:
         return existing
 
-    key = existing.object_key if existing is not None else f"{trip_id}/{opaque_id()}"
+    key = existing.object_key if existing is not None else (object_key or f"{trip_id}/{opaque_id()}")
     storage.put(key, data)
     verified = sha256_hex(storage.get(key)) == digest
 
@@ -528,7 +534,13 @@ def queue_video_derivative(
         processing_started_at=datetime.now(UTC),
         review_state=DerivativeReviewState.PENDING,
     )
+    derivative.processing_backend = settings.video_processing_backend
     session.add(derivative)
+    session.flush()
+    if derivative.processing_backend == "remote":
+        from .worker import enqueue
+
+        enqueue(session, derivative)
     session.commit()
     return derivative
 
@@ -582,7 +594,11 @@ def process_video_derivative(session: Session, storage: ObjectStorage, *, deriva
 
 def _process_video_derivative(session: Session, storage: ObjectStorage, *, derivative_id: str) -> None:
     derivative = session.get(MediaDerivative, derivative_id)
-    if derivative is None or derivative.processing_state != DerivativeProcessingState.PROCESSING:
+    if (
+        derivative is None
+        or derivative.processing_backend == "remote"
+        or derivative.processing_state != DerivativeProcessingState.PROCESSING
+    ):
         return
     # The stalled clock measures the transform, not the wait for the slot.
     derivative.processing_started_at = datetime.now(UTC)
@@ -737,6 +753,7 @@ def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDe
         item
         for item in derivatives
         if item.processing_state == DerivativeProcessingState.PROCESSING
+        and item.processing_backend != "remote"
         and item.id not in waiting
         and item.processing_started_at is not None
         and _aware_utc(item.processing_started_at) < cutoff
@@ -831,6 +848,13 @@ def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
     # reisupdate that might later be mistaken for a publishable reference.
     for link in list(media_asset.update_links):
         session.delete(link)
+    from .worker import retire
+
+    for derivative in media_asset.derivatives:
+        if derivative.processing_backend == "remote":
+            retire(session, derivative.id)
+            if derivative.processing_state == DerivativeProcessingState.PROCESSING:
+                derivative.processing_state = DerivativeProcessingState.FAILED
     media_asset.deleted_at = datetime.now(UTC)
     session.commit()
 
@@ -841,6 +865,11 @@ def delete_media_derivative(session: Session, storage: ObjectStorage, *, derivat
     Original media gets a recoverable-deletion period. Generated derivatives
     do not: once the owner deletes one it must disappear immediately.
     """
+    from .worker import retire
+
+    retire(session, derivative.id)
+    # A dispatcher may have committed output while deletion waited for its job lock.
+    session.refresh(derivative)
     object_ids = [value for value in (derivative.object_id, derivative.poster_object_id) if value]
     session.delete(derivative)
     session.flush()

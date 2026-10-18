@@ -1,3 +1,5 @@
+from typing import Literal
+
 from cryptography.fernet import Fernet
 from limits import parse_many
 from pydantic import AnyHttpUrl, Field, field_validator, model_validator
@@ -50,6 +52,11 @@ class Settings(BaseSettings):
     # Refuses a direct upload or a single provider-imported item larger than
     # this many bytes, before any bytes are written to storage.
     media_max_upload_bytes: int = 200 * 1024 * 1024
+    # Explicit choice for NEW derivatives only; outstanding remote jobs always reconcile remotely.
+    video_processing_backend: Literal["local", "remote"] = "local"
+    media_worker_url: str = ""
+    media_worker_token_file: str = "/run/secrets/media_travel_token"
+    media_worker_profile: Literal["travel-video-v1"] = "travel-video-v1"
     # The GoPro Cloud beta API is not generally available. The adapter exists
     # behind this flag so the product remains fully usable without it; no
     # code path may require it.

@@ -7,6 +7,7 @@ from sqlalchemy import Connection, Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..auth import current_subject
+from ..config import settings
 from ..database import get_session
 from ..errors import ApiException, service_exception
 from ..media import oauth
@@ -315,7 +316,8 @@ def add_derivative(
             derivative = queue_video_derivative(
                 session, media_asset=asset, purpose=payload.purpose, remove_audio=payload.remove_audio
             )
-            background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
+            if derivative.processing_backend == "local":
+                background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
         else:
             derivative = create_derivative(
                 session, storage, media_asset=asset, purpose=payload.purpose, max_dimension=payload.max_dimension
@@ -348,10 +350,17 @@ def retry_derivative(
         raise ApiException(
             status_code=409, detail="Only failed videos can be retried", code="only_failed_videos_can_be_retried"
         )
+    from ..media.worker import enqueue, retire
+
+    retire(session, derivative.id)
+    derivative.processing_backend = settings.video_processing_backend
     derivative.processing_state = DerivativeProcessingState.PROCESSING
+    if derivative.processing_backend == "remote":
+        enqueue(session, derivative)
     derivative.processing_started_at = datetime.now(UTC)
     session.commit()
-    background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
+    if derivative.processing_backend == "local":
+        background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
     return _derivative_response(derivative, trip_id)
 
 

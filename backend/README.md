@@ -5,6 +5,15 @@ owner-authenticated MCP server. MCP tools use the application's typed owner
 handlers and storage services; they do not read the static archive's JSON,
 documents, or protected files directly.
 
+## Video processing
+
+Video derivatives default to explicit local processing. The optional private
+`travel-video-v1` adapter uses a database outbox and a separately supervised
+`python -m app.media.worker` dispatcher; it never polls inside a request.
+See [configuration, retry/privacy and rollback](../docs/media-worker.md) and
+[the configuration example](media-worker.env.example). Migration 011 is required;
+VPS activation is tracked in [apps#275](https://github.com/tjorim/apps/issues/275).
+
 ## API contract
 
 Application routes use the unversioned `/api` prefix. Owner routes require a

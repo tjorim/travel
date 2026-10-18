@@ -6,6 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Optional private media-worker processing for existing video derivatives
+  (#457): a durable database dispatcher submits/reconciles `travel-video-v1`,
+  verifies bounded video/poster results, preserves pending owner review and
+  resumes cancellation/cleanup after restarts. Explicit local mode remains the
+  default and rollback path. Migration 011 and `docs/media-worker.md` describe
+  configuration, retry/privacy guarantees and the apps#275 production gates.
+
 - Lazy-loaded owner routes and workspace tabs (#403): the shell, router, query
   client, home and sign-in stay in the owner entry, while Trips, trip details,
   Capture, Library, Settings and the Plan, Story, Packing, Media and Sharing

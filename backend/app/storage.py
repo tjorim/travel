@@ -51,8 +51,23 @@ class LocalObjectStorage:
         path = self._path_for(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = path.with_suffix(path.suffix + ".tmp")
-        tmp_path.write_bytes(data)
+        with tmp_path.open("wb") as output:
+            output.write(data)
+            output.flush()
+            os.fsync(output.fileno())
         os.replace(tmp_path, path)
+        # A database commit/remote ACK must not outlive an unflushed rename.
+        # Sync each newly possible directory entry through the storage root.
+        directory = path.parent
+        while True:
+            descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            if directory == self.root.parent:
+                break
+            directory = directory.parent
 
     def get(self, key: str) -> bytes:
         return self._path_for(key).read_bytes()

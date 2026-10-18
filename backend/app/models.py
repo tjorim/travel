@@ -963,6 +963,7 @@ class MediaDerivative(Base):
         default=DerivativeProcessingState.READY,
         nullable=False,
     )
+    processing_backend: Mapped[str] = mapped_column(String(10), default="local", server_default="local")
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remove_audio: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -1095,3 +1096,24 @@ class EmergencyInfoEntry(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class MediaWorkerJob(Base):
+    """Private durable outbox; survives derivative/asset deletion to cancel and ACK remote work."""
+
+    __tablename__ = "media_worker_jobs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    derivative_id: Mapped[str | None] = mapped_column(
+        ForeignKey("media_derivatives.id", ondelete="SET NULL"), unique=True, nullable=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    profile: Mapped[str] = mapped_column(String(40), default="travel-video-v1")
+    remove_audio: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    source_key: Mapped[str] = mapped_column(String(300))
+    source_sha256: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    error_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
