@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { parseFlagParam } from "../router/search-params";
 import type { Trip } from "../tracker-model";
-import { TripWorkspace } from "./TripWorkspace";
+import { TripWorkspace, TripWorkspaceView } from "./TripWorkspace";
 import { changeLocale } from "../locale";
 import { Trips } from "./Trips";
 
@@ -60,6 +60,7 @@ vi.mock("../trips/OwnerTripMap", () => ({
     <p>Kaartfocus {focus?.id ?? "geen"}</p>
   ),
 }));
+vi.mock("../trips/PackingManager", () => ({ PackingManager: () => null }));
 vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
 vi.mock("../trips/StayManager", () => ({
@@ -170,13 +171,16 @@ it("lists trips only, and opens a trip's workspace from its row", async () => {
   expect(screen.queryByLabelText("Titel")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /IJsland/ }));
   await screen.findByRole("heading", { name: "IJsland" });
-  expect(screen.getByRole("link", { name: "← Alle reizen" })).toBeTruthy();
+  // The trip header says where the owner is: Trips › the trip.
+  const here = within(screen.getByRole("navigation", { name: "Kruimelpad" }));
+  expect(here.getByRole("link", { name: "Reizen" }).getAttribute("href")).toBe("/trips");
+  expect(here.getByText("IJsland").getAttribute("aria-current")).toBe("page");
 });
 
 it("keeps the editor closed in the workspace until asked, then opens the trip with its saved values", async () => {
   renderTrips("/trips/t1");
   await screen.findByRole("heading", { name: "Exampleland" });
-  expect(screen.getByRole("link", { name: "Volledig privéoverzicht" }).getAttribute("href")).toBe(
+  expect(screen.getByRole("link", { name: "Volledige samenvatting" }).getAttribute("href")).toBe(
     "/trips/t1/details",
   );
   expect(screen.queryByRole("heading", { name: "Reisgegevens" })).toBeNull();
@@ -262,6 +266,7 @@ it("rejects an end date before the start date without calling the server", async
 
 it("shows a step on the map by opening the overview, whose map focuses that point", async () => {
   renderTrips("/trips/t1/plan");
+  fireEvent.click(await screen.findByRole("button", { name: /^Bezoeken/ }));
   fireEvent.click(await screen.findByRole("button", { name: "Toon op kaart" }));
   await screen.findByText("Kaartfocus p1");
 });
@@ -276,21 +281,80 @@ it("opens only the matching manager's dialog when an agenda row is clicked", asy
 });
 
 it("opens a record's dialog when arriving from the private overview with one to open", async () => {
-  const { router } = renderTrips("/trips/t1/plan");
+  const { router } = renderTrips("/trips/t1/prepare");
   expect(await screen.findByText("Taakfocus geen")).toBeTruthy();
   await act(async () => {
     await router.navigate({
-      to: "/trips/t1/plan",
+      to: "/trips/t1/prepare",
       state: { openRecord: { kind: "task", id: "tk1" } },
     });
   });
   expect(await screen.findByText("Taakfocus tk1")).toBeTruthy();
-  expect(screen.getByText("Verblijffocus geen")).toBeTruthy();
+  // Stays are planned on the plan tab, not here.
+  expect(screen.queryByText(/Verblijffocus/)).toBeNull();
+});
+
+it("keeps the old media link working, and sends an unknown tab to the overview", async () => {
+  const media = renderTrips("/trips/t1/media");
+  await waitFor(() => expect(media.router.state.location.pathname).toBe("/trips/t1/story"));
+  cleanup();
+  const unknown = renderTrips("/trips/t1/nonsense");
+  await waitFor(() => expect(unknown.router.state.location.pathname).toBe("/trips/t1"));
+});
+
+/** The search popup opens after the key press has been handled, so the option is awaited. */
+async function choose(optionName: string) {
+  fireEvent.keyDown(await screen.findByRole("combobox", { name: "Ga naar" }), {
+    key: "ArrowDown",
+  });
+  fireEvent.click(await screen.findByRole("option", { name: optionName }));
+}
+
+const bar = (name: RegExp) => screen.getByRole("button", { name });
+
+it("opens only the first block of the plan tab, and each block can be expanded", async () => {
+  renderTrips("/trips/t1/plan");
+  await screen.findByText("Verblijffocus geen");
+  expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("true");
+  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(bar(/Verblijven/));
+  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true");
+});
+
+it("expands the block a link names with #id on arrival", async () => {
+  renderTrips("/trips/t1/plan#routes");
+  await screen.findByText("Routefocus geen");
+  await waitFor(() => expect(bar(/Routes/).getAttribute("aria-expanded")).toBe("true"));
+  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
+});
+
+it("expands the block that hosts a record whose dialog is asked to open", async () => {
+  const { router } = renderTrips("/trips/t1/plan");
+  await screen.findByText("Verblijffocus geen");
+  await act(async () => {
+    await router.navigate({
+      to: "/trips/t1/plan",
+      state: { openRecord: { kind: "stay", id: "s1" } },
+    });
+  });
+  expect(await screen.findByText("Verblijffocus s1")).toBeTruthy();
+  await waitFor(() => expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true"));
+});
+
+it("jumps to a block from the search, even one that was collapsed again", async () => {
+  renderTrips("/trips/t1/plan");
+  await screen.findByRole("combobox", { name: "Ga naar" });
+  await choose("Plan › Verblijven");
+  await waitFor(() => expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true"));
+  fireEvent.click(bar(/Verblijven/));
+  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
+  await choose("Plan › Verblijven");
+  await waitFor(() => expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true"));
 });
 
 it("says so when a workspace trip does not exist for this account", async () => {
   const missingRoot = createRootRoute({
-    component: () => <Trips workspace={{ tripId: "missing", section: "overview" }} />,
+    component: () => <TripWorkspaceView tripId="missing" section="overview" />,
   });
   renderRoutesWithOwner(missingRoot, ["/"]);
   expect(await screen.findByRole("heading", { name: "Reis niet gevonden" })).toBeTruthy();
@@ -319,7 +383,11 @@ it("counts travel updates in the selected language, in the list and in the works
   expect(await screen.findByText("1 reisupdate")).toBeTruthy();
   act(() => changeLocale("en"));
   expect(screen.getByText("1 travel update")).toBeTruthy();
-  fireEvent.click(screen.getByRole("link", { name: "← All trips" }));
+  fireEvent.click(
+    within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", {
+      name: "Trips",
+    }),
+  );
   expect(await screen.findByText("0 travel updates")).toBeTruthy();
 });
 

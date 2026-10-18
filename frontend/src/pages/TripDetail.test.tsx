@@ -253,7 +253,7 @@ it("shows saved travel context, linked documents, and update media in the privat
       .getByRole("group", { name: "Media bij Eerste avond" })
       .querySelector("a")
       ?.getAttribute("href"),
-  ).toBe("/trips/trip/media");
+  ).toBe("/trips/trip/story");
   fireEvent.click(screen.getByRole("button", { name: "Bibliotheekdocument openen" }));
   await waitFor(() => expect(open).toHaveBeenCalledWith("blob:preview", "_blank", "noopener"));
   expect(api.unexpected).toEqual([]);

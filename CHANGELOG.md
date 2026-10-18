@@ -6,6 +6,18 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Lazy-loaded owner routes and workspace tabs (#403): the shell, router, query
+  client, home and sign-in stay in the owner entry, while Trips, trip details,
+  Capture, Library, Settings and the Plan, Story, Packing, Media and Sharing
+  tabs load on first use. The owner entry's initial JavaScript drops from
+  1280.70 kB (380.33 kB gzip) to 494.54 kB (161.80 kB gzip). Deferred views
+  show a localized loading status and, if their module cannot be fetched, a
+  recovery alert whose reload action replays no write. The owner service
+  worker now keeps fetched `/admin/assets/*` files (shell cache `v5`), so a view
+  opened once reopens offline; a never-opened view does not. Shared labels and
+  `OwnerImage` moved out of the editor modules, `pnpm bundle:check` enforces
+  `bundle-budget.json` in CI, and the measurements and offline behaviour are in
+  `docs/decisions/403-owner-code-splitting.md`.
 - Documented owner MCP CLI checks with FastMCP 4.1's encrypted OAuth credential
   reuse, a local key outside Git, and read-only discovery commands (#381).
 - Playwright smoke checks for the PWA (#371): `pnpm e2e` in `frontend/` starts

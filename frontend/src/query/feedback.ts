@@ -16,6 +16,9 @@ export const errorNotice = (
 export type MessageNotice = { message: () => string };
 export const textNotice = (message: () => string): MessageNotice => ({ message });
 
+/** Anything a feedback state accepts: plain text, a message to translate later, or a thrown error. */
+export type Notice = string | null | ErrorNotice | MessageNotice;
+
 export function noticeMessage(value: string | ErrorNotice | MessageNotice): string {
   return typeof value === "string"
     ? value

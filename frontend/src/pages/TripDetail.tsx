@@ -15,15 +15,22 @@ import {
   useTripsQuery,
 } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
-import { EmptyState } from "../tracker-routes";
-import { DOCUMENT_KIND_LABELS } from "../trips/DocumentManager";
-import { MEDIA_KIND_LABELS, OwnerImage } from "../trips/MediaManager";
-import { ROUTE_STATUS_LABELS } from "../trips/RouteManager";
-import { stayStateLabel } from "../trips/StayManager";
+import { EmptyState } from "../ui/EmptyState";
+import {
+  DOCUMENT_KIND_LABELS,
+  MEDIA_KIND_LABELS,
+  ROUTE_STATUS_LABELS,
+  VISIT_KIND_LABELS,
+  VISIT_STATUS_LABELS,
+  stayStateLabel,
+  visitWhen,
+} from "../trips/labels";
+import { OwnerImage } from "../trips/OwnerImage";
 import { OwnerTripMap } from "../trips/OwnerTripMap";
 import { TripOverview } from "../trips/TripOverview";
-import { visitWhen, VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../trips/VisitManager";
+import type { RecordKind } from "../trips/record-focus";
 import { visibilityLabel } from "../trips/visibility";
+import { sectionForRecord } from "../trips/workspace-sections";
 import {
   ROUTE_MODE_LABELS,
   bytesLabel,
@@ -38,29 +45,6 @@ import {
   type Location,
   type MediaAsset,
 } from "../tracker-model";
-
-type RecordKind =
-  | "stay"
-  | "route"
-  | "visit"
-  | "area"
-  | "location"
-  | "task"
-  | "update"
-  | "document"
-  | "media";
-/** Which workspace tab a record kind's dialog opens in. */
-const RECORD_SECTION: Record<RecordKind, "plan" | "story" | "media"> = {
-  stay: "plan",
-  route: "plan",
-  visit: "plan",
-  area: "plan",
-  location: "plan",
-  task: "plan",
-  update: "story",
-  document: "media",
-  media: "media",
-};
 
 /** A link to the trip workspace that opens the given record's dialog there. */
 function RecordLink({
@@ -78,7 +62,7 @@ function RecordLink({
   return (
     <Link
       className="action-link compact"
-      to={`/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`}
+      to={`/trips/${encodeURIComponent(tripId)}/${sectionForRecord(kind)}`}
       state={{ openRecord: { kind, id } }}
     >
       {children}
@@ -248,7 +232,7 @@ export function TripDetail() {
     (kind: "area" | "location" | "visit" | "route" | "update", recordId: string) => {
       if (tripId)
         void navigate({
-          to: `/trips/${encodeURIComponent(tripId)}/${RECORD_SECTION[kind]}`,
+          to: `/trips/${encodeURIComponent(tripId)}/${sectionForRecord(kind)}`,
           state: { openRecord: { kind, id: recordId } },
         });
     },

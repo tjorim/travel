@@ -279,7 +279,7 @@ export function TripTaskManager({
   );
 
   return (
-    <section className="travel-card manager" id="tasks" aria-labelledby="tasks-title">
+    <section className="travel-card manager" aria-labelledby="tasks-title">
       <div className="capture-heading">
         <div>
           <h3 id="tasks-title">{m.owner_things_to_arrange()}</h3>

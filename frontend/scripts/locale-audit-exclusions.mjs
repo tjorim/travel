@@ -23,7 +23,7 @@ export const exclusions = {
     "Travel tracker authentication context is missing.": "internal invariant diagnostic",
   },
   "tracker-model.ts": { kB: "file size unit" },
-  "trips/PackingManager.tsx": { kg: "SI weight unit" },
+  "trips/packing/model.ts": { kg: "SI weight unit" },
   "auth.ts": { "openid profile email": "OIDC scopes" },
   "map-style.ts": {
     "Noto Sans Regular": "provider glyph font",
@@ -38,10 +38,11 @@ export const exclusions = {
   "trips/merge-candidates.ts": {
     "public page": "audience name the API returns, translated where it is shown",
   },
-  "trips/MediaManager.tsx": {
-    "media-thumbnail-placeholder": "CSS class fragment",
+  "trips/media/labels.ts": {
     "Google Photos": "provider brand",
     "GoPro Cloud": "provider brand",
+  },
+  "trips/media/CopyView.tsx": {
     "s ·": "SI seconds unit and metadata separator",
   },
   "offline/OfflineSnapshotView.tsx": {

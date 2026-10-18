@@ -323,4 +323,6 @@ it("saves a private read-only snapshot and restores its filters offline", async 
   window.dispatchEvent(new Event("online"));
   fireEvent.click(await screen.findByRole("button", { name: "Offline verwijderen" }));
   await waitFor(async () => expect(await listOfflineCopies("owner-1")).toHaveLength(0));
+  // The notice follows the store write; ending the test before it would update the component after teardown.
+  await screen.findByText("Paklijst is niet langer offline beschikbaar.");
 });

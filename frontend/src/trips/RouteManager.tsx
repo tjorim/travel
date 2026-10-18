@@ -33,6 +33,7 @@ import {
   type TimedRoute,
   type Trip,
 } from "../tracker-model";
+import { ROUTE_STATUS_LABELS } from "./labels";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import {
   emptyPlace,
@@ -46,20 +47,6 @@ import {
 import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
 import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
 
-export const ROUTE_STATUS_LABELS: Record<Route["status"], string> = {
-  get idea() {
-    return m.owner_idea();
-  },
-  get planned() {
-    return m.owner_planned();
-  },
-  get confirmed() {
-    return m.owner_confirmed();
-  },
-  get cancelled() {
-    return m.owner_cancelled();
-  },
-};
 const STATUS_LABELS = ROUTE_STATUS_LABELS;
 
 /** "16 nov 10:40" in the end's own zone (browser zone when none is known). */
@@ -445,7 +432,7 @@ export function RouteManager({
   };
 
   return (
-    <section className="travel-card manager" id="routes" aria-labelledby="routes-title">
+    <section className="travel-card manager" aria-labelledby="routes-title">
       <div className="capture-heading">
         <div>
           <h3 id="routes-title">{m.owner_routes()}</h3>

@@ -8,7 +8,7 @@ import { renderWithOwner, testToken } from "./query/test-utils";
 import { useFeedback, textNotice } from "./query/feedback";
 import { m } from "./paraglide/messages.js";
 import { bytesLabel, ROUTE_MODE_LABELS } from "./tracker-model";
-import { VISIT_STATUS_LABELS } from "./trips/VisitManager";
+import { VISIT_STATUS_LABELS } from "./trips/labels";
 import { completeSignIn } from "./auth";
 import { mapMessages } from "./map-messages";
 

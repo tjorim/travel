@@ -128,6 +128,8 @@ jobs:
         run: pnpm test --maxWorkers=2
       - name: Build
         run: pnpm build
+      - name: Check bundle budgets
+        run: pnpm bundle:check
 
   frontend-e2e:
     name: Frontend end-to-end

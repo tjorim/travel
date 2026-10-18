@@ -17,21 +17,6 @@ import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
 import { Field, FieldLabel } from "../ui/field";
 
-export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string> = {
-  get booking() {
-    return m.assets_booking();
-  },
-  get itinerary() {
-    return m.assets_itinerary();
-  },
-  get receipt() {
-    return m.assets_receipt();
-  },
-  get other() {
-    return m.owner_other();
-  },
-};
-
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });
 

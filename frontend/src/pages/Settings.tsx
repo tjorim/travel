@@ -10,7 +10,7 @@ import { useConfirmation } from "../forms/useConfirmation";
 import { ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { useOwnerMutation, useProviderConnections } from "../query/owner-queries";
-import { EmptyState } from "../tracker-routes";
+import { EmptyState } from "../ui/EmptyState";
 import type { ProviderConnectionStatus } from "../tracker-model";
 
 const labels = { google_photos_picker: "Google Photos", gopro_cloud: "GoPro Cloud" } as const;

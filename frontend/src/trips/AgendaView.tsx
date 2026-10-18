@@ -169,7 +169,7 @@ export function AgendaView({
   );
 
   return (
-    <section className="travel-card manager" id="agenda" aria-labelledby="agenda-title">
+    <section className="travel-card manager" aria-labelledby="agenda-title">
       <div className="capture-heading">
         <div>
           <h3 id="agenda-title">{m.owner_agenda()}</h3>

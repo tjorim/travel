@@ -283,7 +283,7 @@ export function AreaManager({
   );
 
   return (
-    <section className="travel-card manager" id="areas" aria-labelledby="areas-title">
+    <section className="travel-card manager" aria-labelledby="areas-title">
       <span id="locations" />
       <div className="capture-heading">
         <div>

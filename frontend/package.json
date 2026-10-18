@@ -12,6 +12,8 @@
     "format:check": "oxfmt --check",
     "test": "pnpm paraglide:compile && vitest run",
     "preview": "vite preview",
+    "bundle": "node scripts/bundle-report.mjs",
+    "bundle:check": "node scripts/bundle-report.mjs --check",
     "e2e": "playwright test",
     "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy custom-travel baseLocale --emit-ts-declarations",
     "locale:audit": "node scripts/locale-audit.mjs",

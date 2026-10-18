@@ -8,7 +8,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
 import { dayjs } from "../dayjs";
-import { EmptyState } from "../tracker-routes";
+import { EmptyState } from "../ui/EmptyState";
 
 import { errorMessage } from "../query/api";
 import {
@@ -211,9 +211,6 @@ export function OwnerHome() {
           <a className="secondary action-link" href="/">
             {m.owner_view_public_trips()}
           </a>
-          <Link className="action-link" to="/trips" search={{ new: "1" }}>
-            {m.owner_new_trip()}
-          </Link>
         </div>
       </header>
       {!online && (

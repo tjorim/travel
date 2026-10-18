@@ -17,7 +17,6 @@ import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import {
   addDays,
-  formatDayRange,
   locationName,
   stayCoversNight,
   stayLabel,
@@ -37,31 +36,10 @@ import {
   samePlace,
   type PlaceValue,
 } from "./PlacePicker";
+import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS, clock, visitWhen } from "./labels";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { RestatedRoutesNote, VisitRouteHint } from "./VisitRouteHint";
 
-export const VISIT_KIND_LABELS: Record<VisitKind, string> = {
-  get free() {
-    return m.owner_leisure();
-  },
-  get work() {
-    return m.owner_work();
-  },
-};
-export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
-  get idea() {
-    return m.owner_idea();
-  },
-  get planned() {
-    return m.owner_planned();
-  },
-  get confirmed() {
-    return m.owner_confirmed();
-  },
-  get cancelled() {
-    return m.owner_cancelled();
-  },
-};
 const KIND_LABELS = VISIT_KIND_LABELS;
 const STATUS_LABELS = VISIT_STATUS_LABELS;
 const PRECISION_LABELS = {
@@ -105,19 +83,6 @@ export function overnights(
     stays: covering,
     uncovered: nights.filter((night) => !stays.some((stay) => stayCoversNight(stay, night))).length,
   };
-}
-
-const clock = (time: string | null): string => (time ? time.slice(0, 5) : "");
-
-/** "21 nov – 22 nov · 18:30–21:00", or "Nog geen dag". */
-export function visitWhen(
-  visit: Pick<Visit, "starts_on" | "ends_on" | "start_time" | "end_time">,
-): string {
-  if (!visit.starts_on) return m.owner_no_day_yet();
-  const times = visit.start_time
-    ? ` · ${clock(visit.start_time)}${visit.end_time ? `–${clock(visit.end_time)}` : ""}`
-    : "";
-  return `${formatDayRange(visit.starts_on, visit.ends_on)}${times}`;
 }
 
 /** Where a visit is: its location when it has one, else its area. */
@@ -384,7 +349,7 @@ export function VisitManager({
   }
 
   return (
-    <section className="travel-card manager" id="visits" aria-labelledby="visits-title">
+    <section className="travel-card manager" aria-labelledby="visits-title">
       <div className="capture-heading">
         <div>
           <h3 id="visits-title">{m.owner_visits()}</h3>

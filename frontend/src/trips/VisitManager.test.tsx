@@ -12,7 +12,8 @@ import {
   testToken,
 } from "../query/test-utils";
 import type { Area, Location, Stay, Trip, Visit } from "../tracker-model";
-import { VisitManager, overnights, visitWhen } from "./VisitManager";
+import { visitWhen } from "./labels";
+import { VisitManager, overnights } from "./VisitManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));

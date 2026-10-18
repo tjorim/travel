@@ -3,7 +3,7 @@ import { m } from "../paraglide/messages.js";
 import { Markdown } from "../Markdown";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
 import { formatDay, type Visit } from "../tracker-model";
-import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../trips/VisitManager";
+import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../trips/labels";
 import type { OfflineResourceKind } from "./offline-store";
 
 /** Legacy emergency snapshots stored this schema-owned enum as a Dutch display label. */

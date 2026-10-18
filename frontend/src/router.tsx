@@ -13,6 +13,7 @@ import {
 import { Boundary } from "./Boundary";
 import { currentStoredOwner, tripsQueryOptions } from "./query/owner-queries";
 import { parseFlagParam } from "./router/search-params";
+import type { RecordKind } from "./trips/record-focus";
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
@@ -20,18 +21,11 @@ declare module "@tanstack/react-router" {
     mapFocus?: string;
     /** A serializable message code evaluated by the destination in its current locale. */
     notice?: "trip_deleted";
+    /** Set by the jump search so the named block of a workspace tab expands and scrolls into view. */
+    openSection?: { id: string; token: number };
     /** Set by the private overview so the matching manager opens that record's dialog on arrival. */
     openRecord?: {
-      kind:
-        | "stay"
-        | "route"
-        | "visit"
-        | "area"
-        | "location"
-        | "task"
-        | "update"
-        | "document"
-        | "media";
+      kind: RecordKind;
       id: string;
     };
   }

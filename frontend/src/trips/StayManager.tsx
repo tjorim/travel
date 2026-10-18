@@ -28,29 +28,10 @@ import {
   type Trip,
 } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
+import { STAY_STATUS_LABELS, stayStateLabel } from "./labels";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 
-const STATUS_LABELS: Record<Stay["status"], string> = {
-  get idea() {
-    return m.owner_idea();
-  },
-  get planned() {
-    return m.owner_planned();
-  },
-  get confirmed() {
-    return m.owner_confirmed();
-  },
-  get cancelled() {
-    return m.owner_cancelled();
-  },
-};
-
-/** The archive's hotel states: still choosing, proposed, or settled. */
-export function stayStateLabel(stay: Stay): string {
-  if (stay.status === "planned")
-    return stay.property_name ? m.owner_suggested() : m.owner_still_to_choose();
-  return STATUS_LABELS[stay.status];
-}
+const STATUS_LABELS = STAY_STATUS_LABELS;
 
 type StayValues = {
   propertyName: string;
@@ -334,7 +315,7 @@ export function StayManager({
   const currentPlace = locationLine(stays.find((stay) => stay.id === editingStayId)?.location);
 
   return (
-    <section className="travel-card manager" id="stays" aria-labelledby="stays-title">
+    <section className="travel-card manager" aria-labelledby="stays-title">
       <div className="capture-heading">
         <div>
           <h3 id="stays-title">{m.owner_stays()}</h3>
