@@ -40,9 +40,17 @@ translated message with **Try again**; the field's text is unchanged.
   pieces in one request are translated once.
 - The service is CPU-bound, so only one owner request is translated at a time;
   others wait for their turn.
-- `TRAVEL_TRANSLATION_API_BASE` (unset disables the feature) and
-  `TRAVEL_TRANSLATION_TIMEOUT_SECONDS` (120, per request; covers the cold start
-  of the on-demand service, about 15-30 s, plus one piece).
+- `TRAVEL_TRANSLATION_API_BASE` (unset disables the feature).
+  `TRAVEL_TRANSLATION_API_KEY_FILE` names the mounted per-app credential sent as
+  LibreTranslate's JSON `api_key`; a configured but unreadable or malformed file
+  fails closed, never anonymously. Leave it unset only for a local engine without
+  authentication.
+- `TRAVEL_TRANSLATION_TIMEOUT_SECONDS` (120) is one total deadline for the whole
+  owner request: queue wait, the on-demand cold start (about 15-30 s) and every
+  piece. `TRAVEL_TRANSLATION_CONNECT_TIMEOUT_SECONDS` (5) bounds connecting.
+- Redirects, proxy environment variables and automatic retries are disabled.
+  Logs hold only fixed `translation_failed code=…` values and
+  `translation_completed duration_ms=…`.
 
 The text goes only to the configured internal service. Errors carry no text,
 URL or remote body, and the application does not log request bodies.

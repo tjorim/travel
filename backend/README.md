@@ -16,6 +16,18 @@ VPS activation is tracked in [apps#275](https://github.com/tjorim/apps/issues/27
 
 ## API contract
 
+Owner-only translation drafts use the configured private
+`TRAVEL_TRANSLATION_API_BASE`. In production,
+`TRAVEL_TRANSLATION_API_KEY_FILE=/run/secrets/translation_travel_token` supplies
+the native JSON `api_key`; an unreadable/invalid configured file fails closed.
+Local unauthenticated engines may omit the file setting. Connection timeout is
+five seconds (`TRAVEL_TRANSLATION_CONNECT_TIMEOUT_SECONDS`); the 120-second default
+`TRAVEL_TRANSLATION_TIMEOUT_SECONDS` covers queue wait and all paragraph requests.
+The caller disables ambient proxies, redirects and automatic retries. Fixed
+`translation_failed code=…` logs and INFO `translation_completed duration_ms=…`
+timing contain no content, credentials or URLs. Coordinate caller release with
+Apps before activating required engine keys; publication rules are unaffected.
+
 Application routes use the unversioned `/api` prefix. Owner routes require a
 bearer token whose validated OpenID Connect `sub` matches the trip owner:
 

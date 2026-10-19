@@ -4,6 +4,14 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Private translation drafts support a mounted per-app engine credential
+  (`TRAVEL_TRANSLATION_API_KEY_FILE`, #459), fail closed when its configured file
+  is unavailable, and use a total request deadline with a separate connection
+  timeout. Redirects, ambient proxies and automatic retries are disabled;
+  operational events contain only codes and timing.
+
 ### Added
 
 - Optional private media-worker processing for existing video derivatives

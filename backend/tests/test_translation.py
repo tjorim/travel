@@ -3,6 +3,7 @@ import json
 import logging
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 from test_publication import client_for
 
@@ -11,6 +12,7 @@ from app.main import app
 from app.translation import (
     Piece,
     TranslationCancelled,
+    TranslationError,
     TranslationService,
     chunks,
     get_translation_service,
@@ -135,6 +137,7 @@ def test_service_errors_and_malformed_answers_are_typed_failures() -> None:
             "translation_service_returned_an_invalid_response",
         ),
         (httpx.Response(200, json={"translatedText": 3}), "translation_service_returned_an_invalid_response"),
+        (httpx.Response(200, json={"translatedText": "  "}), "translation_service_returned_an_invalid_response"),
         (httpx.Response(200, json=[SECRET]), "translation_service_returned_an_invalid_response"),
     ):
         client = use(service_with(lambda request, reply=reply: reply))
@@ -204,3 +207,71 @@ def test_concurrent_requests_are_translated_one_at_a_time() -> None:
 def test_only_prose_is_translated_and_whitespace_is_kept() -> None:
     assert plan("12:30\n  Hallo  ") == [["", "12:30"], ["  ", Piece("", "Hallo", "  ")]]
     assert plan("Hallo\r\nDag") == [["", Piece("", "Hallo", "")], ["", Piece("", "Dag", "")]]
+
+
+def test_backend_key_is_sent_only_in_body_and_failures_are_sanitized(tmp_path, caplog) -> None:
+    key_file = tmp_path / "translation-key"
+    key_file.write_text("t" * 64)
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        assert json.loads(request.content)["api_key"] == "t" * 64
+        assert "t" * 64 not in str(request.url)
+        return httpx.Response(403, text=SECRET + "t" * 64)
+
+    client = use(service_with(handler, translation_api_key_file=str(key_file)))
+    with caplog.at_level(logging.DEBUG):
+        response = client.post("/api/translation/drafts", json={"text": SECRET, "source": "nl", "target": "en"})
+    assert response.status_code == 503 and len(calls) == 1
+    assert "t" * 64 not in response.text + caplog.text
+    assert SECRET not in response.text + caplog.text
+    key_file.unlink()
+    response = client.post("/api/translation/drafts", json={"text": SECRET, "source": "nl", "target": "en"})
+    assert response.status_code == 503 and len(calls) == 1
+
+
+def test_redirects_are_not_followed_or_retried() -> None:
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(307, headers={"Location": "https://untrusted.invalid/translate"})
+
+    client = use(service_with(handler))
+    response = client.post("/api/translation/drafts", json={"text": SECRET, "source": "nl", "target": "en"})
+    assert response.status_code == 503 and len(calls) == 1
+
+
+def test_total_deadline_includes_all_pieces_and_queue_wait() -> None:
+    calls = []
+
+    async def handler(request):
+        calls.append(request)
+        await asyncio.sleep(0.02)
+        return httpx.Response(200, json={"translatedText": "Hello"})
+
+    service = service_with(handler, translation_timeout_seconds=0.03)
+
+    async def run():
+        with pytest.raises(TranslationError):
+            await service.translate("Een\nTwee", "nl", "en")
+        assert len(calls) == 2 and not service._turn.locked()
+        async with service._turn:
+            with pytest.raises(TranslationError):
+                await service.translate("Wacht", "nl", "en")
+        assert len(calls) == 2
+
+    asyncio.run(run())
+
+
+def test_transport_configuration_ignores_ambient_proxy(monkeypatch) -> None:
+    real_client = httpx.AsyncClient
+
+    def client_factory(**kwargs):
+        assert kwargs["trust_env"] is False and kwargs["follow_redirects"] is False
+        assert kwargs["timeout"].connect == 5
+        return real_client(**kwargs)
+
+    monkeypatch.setattr("app.translation.httpx.AsyncClient", client_factory)
+    assert asyncio.run(service_with(fake_translate([])).translate("Hallo", "nl", "en")) == "EN(Hallo)"

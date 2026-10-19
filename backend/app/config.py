@@ -81,10 +81,12 @@ class Settings(BaseSettings):
 
     # Base URL of the self-hosted LibreTranslate instance (tjorim/apps#252),
     # reached only over the internal network. Unset disables draft translation.
-    # The service starts on demand, so the timeout must cover a cold start
-    # (about 15-30 s) plus the translation of one paragraph-sized request.
+    # The total deadline covers queue wait, a cold start (about 15-30 s)
+    # and every paragraph in the owner's request.
     translation_api_base: str | None = None
-    translation_timeout_seconds: float = 120.0
+    translation_api_key_file: str | None = None
+    translation_timeout_seconds: float = Field(default=120.0, gt=0)
+    translation_connect_timeout_seconds: float = Field(default=5.0, gt=0)
     # One owner request is sent to the CPU-bound service in requests of about
     # this many characters, one at a time.
     translation_segment_characters: int = 1000

@@ -9,16 +9,21 @@ a cache that outlives the request.
 """
 
 import asyncio
+import logging
 import re
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
 
 from .config import Settings, settings
 from .errors import ServiceError
+
+logger = logging.getLogger(__name__)
 
 
 class TranslationError(ServiceError, RuntimeError):
@@ -115,16 +120,36 @@ class TranslationService:
         lines = plan(text)
         translated: dict[str, str] = {}
         timeout = self.config.translation_timeout_seconds
-        async with self._turn, httpx.AsyncClient(timeout=timeout, transport=self.transport) as client:
-            for part in (part for line in lines for part in line):
-                if not isinstance(part, Piece) or part.body in translated:
-                    continue
-                results = []
-                for chunk in chunks(part.body, self.config.translation_segment_characters):
-                    if cancelled is not None and await cancelled():
-                        raise TranslationCancelled
-                    results.append(await self._request(client, base, chunk, source, target))
-                translated[part.body] = " ".join(results)
+        started = time.monotonic()
+        try:
+            # One total deadline includes waiting for the slot and every piece.
+            # Proxy environment variables and redirects must never route drafts
+            # or backend credentials to a different destination.
+            async with (
+                asyncio.timeout(timeout),
+                self._turn,
+                httpx.AsyncClient(
+                    timeout=httpx.Timeout(timeout, connect=self.config.translation_connect_timeout_seconds),
+                    transport=self.transport,
+                    trust_env=False,
+                    follow_redirects=False,
+                ) as client,
+            ):
+                for part in (part for line in lines for part in line):
+                    if not isinstance(part, Piece) or part.body in translated:
+                        continue
+                    results = []
+                    for chunk in chunks(part.body, self.config.translation_segment_characters):
+                        if cancelled is not None and await cancelled():
+                            raise TranslationCancelled
+                        results.append(await self._request(client, base, chunk, source, target))
+                    translated[part.body] = " ".join(results)
+        except TimeoutError:
+            logger.warning("translation_failed code=timeout")
+            raise TranslationError(
+                "Translation service is unavailable", code="translation_service_is_unavailable"
+            ) from None
+        logger.info("translation_completed duration_ms=%d", int((time.monotonic() - started) * 1000))
         return "\n".join(
             "".join(
                 f"{part.lead}{translated[part.body]}{part.trail}" if isinstance(part, Piece) else part for part in line
@@ -133,13 +158,24 @@ class TranslationService:
         )
 
     async def _request(self, client: httpx.AsyncClient, base: str, piece: str, source: str, target: str) -> str:
+        payload = {"q": piece, "source": source, "target": target, "format": "text"}
+        if self.config.translation_api_key_file:
+            try:
+                key = Path(self.config.translation_api_key_file).read_text().strip()
+                if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", key):
+                    raise ValueError
+            except (OSError, ValueError):
+                logger.warning("translation_failed code=credential_unavailable")
+                raise TranslationError(
+                    "Translation service is unavailable", code="translation_service_is_unavailable"
+                ) from None
+            payload["api_key"] = key
         try:
-            response = await client.post(
-                f"{base}/translate", json={"q": piece, "source": source, "target": target, "format": "text"}
-            )
+            response = await client.post(f"{base}/translate", json=payload)
             response.raise_for_status()
             payload = response.json()
         except httpx.HTTPError:
+            logger.warning("translation_failed code=service_unavailable")
             # Neither the exception text nor the request may reach a log or a response.
             raise TranslationError(
                 "Translation service is unavailable", code="translation_service_is_unavailable"
@@ -147,7 +183,8 @@ class TranslationService:
         except ValueError:
             payload = None
         translated = payload.get("translatedText") if isinstance(payload, dict) else None
-        if not isinstance(translated, str):
+        if not isinstance(translated, str) or not translated.strip():
+            logger.warning("translation_failed code=invalid_response")
             raise TranslationError(
                 "Translation service returned an invalid response",
                 code="translation_service_returned_an_invalid_response",
