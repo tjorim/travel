@@ -12,11 +12,8 @@ for import provenance, so re-running an interrupted import is always safe.
 """
 
 import io
-import json
 import subprocess
 import sys
-import tempfile
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -25,7 +22,6 @@ from typing import BinaryIO
 
 from PIL import Image, ImageOps
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -490,21 +486,17 @@ VIDEO_MAX_DIMENSION = 1280
 VIDEO_MAX_DURATION_SECONDS = 90
 VIDEO_PROCESS_TIMEOUT_SECONDS = 300
 VIDEO_STALLED_AFTER_SECONDS = VIDEO_PROCESS_TIMEOUT_SECONDS + 60
-# One ffmpeg process at a time keeps the worst case at a single transcode plus the
-# API inside the container's memory limit. Further jobs wait for the slot.
-VIDEO_CONCURRENCY = 1
 VIDEO_MAX_INPUT_BYTES = 200 * 1024 * 1024
-# ffmpeg shares the host with every other app: cap decoder and encoder threads
-# and run at a lower priority so a transcode never starves the other services.
-VIDEO_THREADS = 2
+# ffprobe, which verifies worker output, shares the host with every other app: run it
+# at a lower priority with bounded CPU, output and memory.
 VIDEO_NICENESS = 10
-# RLIMIT_CPU counts every thread, so the budget covers decoder and encoder
-# threads running for the full wall-clock timeout.
-VIDEO_CPU_SECONDS = VIDEO_PROCESS_TIMEOUT_SECONDS * 2 * VIDEO_THREADS
+# RLIMIT_CPU counts every thread, so the budget covers a probe running for the full
+# wall-clock timeout.
+VIDEO_CPU_SECONDS = VIDEO_PROCESS_TIMEOUT_SECONDS * 2 * 2
 VIDEO_MAX_OUTPUT_BYTES = 80 * 1024 * 1024
 VIDEO_MAX_MEMORY_BYTES = 2 * 1024 * 1024 * 1024
-# Limits are applied in a fresh interpreter that then execs ffmpeg: a
-# `preexec_fn` is unsafe here because background jobs run on worker threads.
+# Limits are applied in a fresh interpreter that then execs ffprobe: a
+# `preexec_fn` is unsafe here because the dispatcher and API use threads.
 _LIMITED_EXEC = (
     "import os, resource, sys\n"
     "cpu, size, memory, niceness = map(int, sys.argv[1:5])\n"
@@ -534,13 +526,12 @@ def queue_video_derivative(
         processing_started_at=datetime.now(UTC),
         review_state=DerivativeReviewState.PENDING,
     )
-    derivative.processing_backend = settings.video_processing_backend
+    derivative.processing_backend = "remote"
     session.add(derivative)
     session.flush()
-    if derivative.processing_backend == "remote":
-        from .worker import enqueue
+    from .worker import enqueue
 
-        enqueue(session, derivative)
+    enqueue(session, derivative)
     session.commit()
     return derivative
 
@@ -570,191 +561,14 @@ def _copy_bounded(storage: ObjectStorage, key: str, target: Path) -> None:
             destination.write(chunk)
 
 
-_video_slots = threading.BoundedSemaphore(VIDEO_CONCURRENCY)
-# Jobs of this process that are waiting for a slot. They are still PROCESSING and
-# must not be expired as stalled; after a restart the set is empty, so a job that
-# was lost with the process does expire and becomes retryable.
-_waiting_video_ids: set[str] = set()
-_waiting_video_lock = threading.Lock()
-
-
-def process_video_derivative(session: Session, storage: ObjectStorage, *, derivative_id: str) -> None:
-    """Process one queued video once a slot is free. The row remains retryable after a failed transform."""
-    with _waiting_video_lock:
-        _waiting_video_ids.add(derivative_id)
-    try:
-        with _video_slots:
-            with _waiting_video_lock:
-                _waiting_video_ids.discard(derivative_id)
-            _process_video_derivative(session, storage, derivative_id=derivative_id)
-    finally:
-        with _waiting_video_lock:
-            _waiting_video_ids.discard(derivative_id)
-
-
-def _process_video_derivative(session: Session, storage: ObjectStorage, *, derivative_id: str) -> None:
-    derivative = session.get(MediaDerivative, derivative_id)
-    if (
-        derivative is None
-        or derivative.processing_backend == "remote"
-        or derivative.processing_state != DerivativeProcessingState.PROCESSING
-    ):
-        return
-    # The stalled clock measures the transform, not the wait for the slot.
-    derivative.processing_started_at = datetime.now(UTC)
-    session.commit()
-    try:
-        asset = derivative.media_asset
-        if asset.deleted_at is not None or asset.original_object.byte_size > VIDEO_MAX_INPUT_BYTES:
-            raise MediaImportError(
-                "Video original is unavailable or too large", code="video_original_is_unavailable_or_too_large"
-            )
-        with tempfile.TemporaryDirectory(prefix="travel-video-") as directory:
-            source = Path(directory) / "source"
-            output = Path(directory) / "share.mp4"
-            poster = Path(directory) / "poster.webp"
-            _copy_bounded(storage, asset.original_object.object_key, source)
-            scale = f"scale=w='min({VIDEO_MAX_DIMENSION},iw)':h='min({VIDEO_MAX_DIMENSION},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
-            threads = ["-threads", str(VIDEO_THREADS)]
-            command = [
-                "ffmpeg",
-                "-nostdin",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                *threads,
-                "-i",
-                str(source),
-                *threads,
-                "-filter_threads",
-                "1",
-                "-map",
-                "0:v:0",
-                "-map_metadata",
-                "-1",
-                "-map_metadata:s",
-                "-1",
-                "-map_chapters",
-                "-1",
-                "-dn",
-                "-sn",
-            ]
-            if derivative.remove_audio:
-                command += ["-an"]
-            else:
-                command += ["-map", "0:a:0?", "-c:a", "aac", "-b:a", "128k"]
-            command += [
-                "-vf",
-                scale,
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-preset",
-                "veryfast",
-                "-b:v",
-                "1800k",
-                "-maxrate",
-                "2000k",
-                "-bufsize",
-                "4000k",
-                "-t",
-                str(VIDEO_MAX_DURATION_SECONDS),
-                "-movflags",
-                "+faststart",
-                "-y",
-                str(output),
-            ]
-            _media_command(command)
-            _media_command(
-                [
-                    "ffmpeg",
-                    "-nostdin",
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    *threads,
-                    "-i",
-                    str(output),
-                    "-map",
-                    "0:v:0",
-                    "-frames:v",
-                    "1",
-                    "-vf",
-                    scale,
-                    "-an",
-                    "-sn",
-                    "-dn",
-                    "-map_metadata",
-                    "-1",
-                    "-map_metadata:s",
-                    "-1",
-                    "-y",
-                    str(poster),
-                ]
-            )
-            probe = json.loads(
-                _media_command(
-                    ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(output)]
-                ).stdout
-            )
-            streams = probe["streams"]
-            if any(
-                stream["codec_type"] not in ({"video"} if derivative.remove_audio else {"video", "audio"})
-                for stream in streams
-            ):
-                raise MediaImportError("Unexpected video stream", code="unexpected_video_stream")
-            video = next(stream for stream in streams if stream["codec_type"] == "video")
-            duration = float(probe["format"]["duration"])
-            if (
-                max(video["width"], video["height"]) > VIDEO_MAX_DIMENSION
-                or duration > VIDEO_MAX_DURATION_SECONDS + 0.1
-            ):
-                raise MediaImportError("Video transform exceeded limits", code="video_transform_exceeded_limits")
-            video_bytes, poster_bytes = output.read_bytes(), poster.read_bytes()
-        session.expire_all()
-        derivative = session.get(MediaDerivative, derivative_id)
-        if derivative is None or derivative.processing_state != DerivativeProcessingState.PROCESSING:
-            return
-        stored = _store_bytes(
-            session, storage, trip_id=derivative.trip_id, data=video_bytes, content_type=VIDEO_CONTENT_TYPE
-        )
-        still = _store_bytes(
-            session, storage, trip_id=derivative.trip_id, data=poster_bytes, content_type=DERIVATIVE_CONTENT_TYPE
-        )
-        derivative.object_id = stored.id
-        derivative.poster_object_id = still.id
-        derivative.width, derivative.height = video["width"], video["height"]
-        derivative.duration_seconds = duration
-        derivative.metadata_stripped_at = datetime.now(UTC)
-        derivative.processing_state = DerivativeProcessingState.READY
-        session.commit()
-    except (
-        MediaImportError,
-        OSError,
-        ValueError,
-        KeyError,
-        StopIteration,
-        subprocess.SubprocessError,
-        SQLAlchemyError,
-    ):
-        session.rollback()
-        derivative = session.get(MediaDerivative, derivative_id)
-        if derivative is not None:
-            derivative.processing_state = DerivativeProcessingState.FAILED
-            session.commit()
-
-
 def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDerivative]) -> None:
+    """Fail derivatives left PROCESSING by the retired in-process encoder; the worker owns remote deadlines."""
     cutoff = datetime.now(UTC) - timedelta(seconds=VIDEO_STALLED_AFTER_SECONDS)
-    with _waiting_video_lock:
-        waiting = set(_waiting_video_ids)
     stale = [
         item
         for item in derivatives
         if item.processing_state == DerivativeProcessingState.PROCESSING
         and item.processing_backend != "remote"
-        and item.id not in waiting
         and item.processing_started_at is not None
         and _aware_utc(item.processing_started_at) < cutoff
     ]

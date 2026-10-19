@@ -12,7 +12,7 @@ FROM python:3.14-slim
 
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=ffmpeg /ffmpeg /usr/local/bin/ffmpeg
+# Only ffprobe ships: it verifies worker output. Encoding happens in the apps media worker.
 COPY --from=ffmpeg /ffprobe /usr/local/bin/ffprobe
 COPY backend/app ./app
 COPY backend/alembic.ini ./alembic.ini

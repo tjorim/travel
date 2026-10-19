@@ -6,6 +6,16 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- **Breaking for operators:** the in-process video encoder is gone. Every new
+  video derivative (REST and MCP `create_media_derivative`, and owner retries) is
+  queued for the apps media worker (`travel-video-v1`) and finished by the
+  supervised dispatcher (`python -m app.media.worker`); `TRAVEL_VIDEO_PROCESSING_BACKEND`
+  no longer exists and the API image no longer ships `ffmpeg` (only `ffprobe`, which
+  verifies worker output). Configure `TRAVEL_MEDIA_WORKER_URL`, the token file and
+  the dispatcher first (apps#275); without a worker a new derivative stays
+  `processing`. A derivative the old encoder left `processing` fails after the
+  stalled window and can be retried. Roll back the encoder by redeploying the
+  previous release, which still has the local mode.
 - The route, stay, visit, location and area managers, the capture dialog and the
   trip detail page are split into feature folders (`trips/routes/`, `stays/`,
   `visits/`, `locations/`, `areas/`, `capture/`, `detail/`) with owner API hooks,

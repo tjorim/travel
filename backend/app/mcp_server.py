@@ -17,7 +17,6 @@ import base64
 import binascii
 import json
 import logging
-import threading
 import time
 from collections.abc import Callable, Sequence
 from io import BytesIO
@@ -25,7 +24,7 @@ from typing import Any, Literal, TypeVar
 from urllib.parse import quote
 
 import anyio.to_thread
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.datastructures import Headers, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastmcp import FastMCP
@@ -1080,19 +1079,14 @@ class TravelMcpBackend:
         self, trip_id: str, media_id: str, payload: schemas.MediaDerivativeCreate
     ) -> dict[str, Any]:
         """Generate a metadata-stripped derivative that remains pending owner approval."""
-        tasks = BackgroundTasks()
-        result = self._call(
+        return self._call(
             "media_derivative.create",
             "media_derivative",
             None,
             trip_id,
-            lambda s, sub: media.add_derivative(trip_id, media_id, payload, s, sub, get_storage(), tasks),
+            lambda s, sub: media.add_derivative(trip_id, media_id, payload, s, sub, get_storage()),
             lambda x: _model(x, schemas.MediaDerivativeResponse),
         )
-        # A video derivative is processed after the request in the API; run it the same way once it is committed.
-        for task in tasks.tasks:
-            threading.Thread(target=task.func, args=task.args, kwargs=task.kwargs, daemon=True).start()
-        return result
 
     def approve_media_derivative(
         self, trip_id: str, media_id: str, derivative_id: str, confirm: bool = False

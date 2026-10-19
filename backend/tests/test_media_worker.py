@@ -42,7 +42,6 @@ def database():
 
 @pytest.fixture
 def queued(tmp_path, monkeypatch):
-    monkeypatch.setattr(settings, "video_processing_backend", "remote")
     client = client_for("owner-1", tmp_path)
     trip = create_trip(client)
     storage = LocalObjectStorage(str(tmp_path))
@@ -56,10 +55,8 @@ def queued(tmp_path, monkeypatch):
             data=video_with_telemetry(tmp_path),
         )
         path = f"/api/trips/{trip['id']}/media/{asset.id}/derivatives"
-    # Remote API requests create only durable work, and never invoke ffmpeg/background transforms.
-    with monkeypatch.context() as request_patch:
-        request_patch.setattr(service, "_process_video_derivative", lambda *a, **k: pytest.fail("local fallback"))
-        response = client.post(path, json={"purpose": "share", "remove_audio": True})
+    # API requests create only durable work; encoding happens in the worker.
+    response = client.post(path, json={"purpose": "share", "remove_audio": True})
     assert response.status_code == 201, response.text
     assert "worker" not in response.text and "source_key" not in response.text
     return client, path, response.json()["id"], storage
@@ -179,18 +176,6 @@ def test_expired_or_failed_job_requires_explicit_retry(queued, transport, reply)
         assert session.get(MediaWorkerJob, old_key).derivative_id is None
         assert next(j for j in jobs if j.derivative_id).id != old_key
     assert len(calls) == 2
-
-
-def test_explicit_local_rollback_does_not_fallback_outstanding_remote_job(queued, transport, monkeypatch):
-    _, _, derivative_id, storage = queued
-    client, _, replies = transport
-    monkeypatch.setattr(settings, "video_processing_backend", "local")
-    with TestingSessionLocal() as session:
-        service.process_video_derivative(session, storage, derivative_id=derivative_id)
-    replies.append(status())
-    tick(storage, client)
-    with TestingSessionLocal() as session:
-        assert session.scalar(select(MediaWorkerJob)).worker_id == WORKER_ID
 
 
 @pytest.mark.parametrize(
@@ -468,7 +453,6 @@ def test_real_worker_privacy_audio_rotation_parity(tmp_path, monkeypatch, remove
     token_file = os.environ.get("TRAVEL_TEST_MEDIA_WORKER_TOKEN_FILE")
     if not url or not token_file:
         pytest.skip("disposable apps worker URL/token file not configured")
-    monkeypatch.setattr(settings, "video_processing_backend", "remote")
     monkeypatch.setattr(settings, "media_worker_url", url)
     monkeypatch.setattr(settings, "media_worker_token_file", token_file)
     owner = client_for("owner-1", tmp_path)

@@ -8,10 +8,13 @@ capture/import source, permission, public endpoint or automatic approval.
 
 ## Configuration and dispatch
 
-Apply `uv run alembic upgrade head` (revision `011_media_worker`). The default
-`TRAVEL_VIDEO_PROCESSING_BACKEND=local` preserves existing local processing.
-For remote NEW jobs, configure the API as shown in
+Apply `uv run alembic upgrade head` (revision `011_media_worker`). Every new
+video derivative is remote: configure the API and dispatcher as shown in
 [`backend/media-worker.env.example`](../backend/media-worker.env.example).
+There is no in-process encoder or backend switch; with no worker configured a
+new derivative stays `processing` and the dispatcher backs off. A derivative
+that the retired in-process encoder left `processing` fails after the stalled
+window and can be retried like any failed one.
 Only `travel-video-v1` is supported. The v1 worker has no capability-discovery
 endpoint; the fixed configured profile and every response's `api_version=v1`
 are validated. A changed contract needs a new adapter/profile version.
@@ -78,7 +81,7 @@ rotation side data, even dimensions at most 1280 and finite duration at most
 90.1 seconds. Evidence dimensions/duration must match. Pillow decodes the WebP,
 checks matching dimensions and rejects EXIF/XMP/ICC metadata. Encoder policy
 (90-second cap, bitrate, orientation baking and metadata stripping) remains the
-worker's immutable profile; local binaries remain for verification and rollback.
+worker's immutable profile; only `ffprobe` remains in the image, for verification.
 
 The derivative and asset rows are locked while accepting output; trip identity,
 original checksum, deletion and processing state are checked again. Video and
@@ -120,8 +123,9 @@ TRAVEL_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/t
   uv run pytest tests/test_media_worker.py tests/test_media_worker_postgres.py
 ```
 
-Use the pinned ffmpeg/ffprobe from `backend/Dockerfile` in the worker and test
-PATH for release parity (as CI does for the backend).
+Put the pinned ffmpeg/ffprobe from `backend/Dockerfile`'s base image on the test
+PATH (as CI does): tests generate fixture videos with `ffmpeg` and verify output
+with `ffprobe`; the production image carries only `ffprobe`.
 
 Reviewed the [publication safety checklist](publication-safety-check.md) for
 this integration: private originals and authored operational metadata never
@@ -133,16 +137,16 @@ checks remain rollout gates in apps#275.
 
 ## Rollout and rollback
 
-VPS service wiring and verification belong to apps#275. Start the dispatcher
-in local new-job mode, verify synthetic remote parity and worker/app restart,
-lost-response, deletion, expiry and contention cases from the real containers,
-then enable remote new work. Record timestamps/image IDs, resource/latency and
-cross-app/network-isolation evidence there before changing any resource limits.
+VPS service wiring and verification belong to apps#275 (cutover verified there
+before the local encoder was removed). Record timestamps/image IDs,
+resource/latency and cross-app/network-isolation evidence there before changing
+any resource limits.
 
-For rollback, set `TRAVEL_VIDEO_PROCESSING_BACKEND=local` for new requests.
-Keep the dispatcher and worker credentials available until all remote work is
-imported/ACKed or explicitly deleted/cancelled. Failed remote attempts can use
-the owner's existing retry action after reconciliation. Stop dispatchers and
-reconcile all outstanding jobs before rolling back migration 011. Retain pinned
-ffmpeg/ffprobe and current API headroom until cutover and rollback are verified;
-removing ffprobe also requires an alternative byte-level verification contract.
+To roll back the encoder, redeploy the previous Travel release, which still has
+the in-process encoder and `TRAVEL_VIDEO_PROCESSING_BACKEND=local`; migration 011
+is additive, so that release runs on the current schema. Keep the dispatcher
+(from this release) and worker credentials running until all remote work is
+imported/ACKed or explicitly deleted/cancelled; failed remote attempts can use the
+owner's existing retry action after reconciliation. Stop dispatchers and
+reconcile all outstanding jobs before rolling back migration 011. Removing
+`ffprobe` would need an alternative byte-level verification contract.

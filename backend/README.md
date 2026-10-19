@@ -7,9 +7,10 @@ documents, or protected files directly.
 
 ## Video processing
 
-Video derivatives default to explicit local processing. The optional private
-`travel-video-v1` adapter uses a database outbox and a separately supervised
-`python -m app.media.worker` dispatcher; it never polls inside a request.
+Video derivatives are encoded by the private apps media worker (`travel-video-v1`);
+the API image has no encoder. The adapter uses a database outbox and a separately
+supervised `python -m app.media.worker` dispatcher; it never polls inside a request.
+Without a configured worker a new video derivative stays `processing`.
 See [configuration, retry/privacy and rollback](../docs/media-worker.md) and
 [the configuration example](media-worker.env.example). Migration 011 is required;
 VPS activation is tracked in [apps#275](https://github.com/tjorim/apps/issues/275).

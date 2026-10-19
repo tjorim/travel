@@ -1,13 +1,12 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import Connection, Engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from ..auth import current_subject
-from ..config import settings
 from ..database import get_session
 from ..errors import ApiException, service_exception
 from ..media import oauth
@@ -28,7 +27,6 @@ from ..media.service import (
     direct_upload,
     expire_stalled_video_derivatives,
     generate_thumbnail,
-    process_video_derivative,
     queue_video_derivative,
     read_bounded_upload,
 )
@@ -308,7 +306,6 @@ def add_derivative(
     session: SessionDep,
     subject: SubjectDep,
     storage: StorageDep,
-    background_tasks: BackgroundTasks,
 ) -> MediaDerivativeResponse:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     try:
@@ -316,8 +313,6 @@ def add_derivative(
             derivative = queue_video_derivative(
                 session, media_asset=asset, purpose=payload.purpose, remove_audio=payload.remove_audio
             )
-            if derivative.processing_backend == "local":
-                background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
         else:
             derivative = create_derivative(
                 session, storage, media_asset=asset, purpose=payload.purpose, max_dimension=payload.max_dimension
@@ -327,11 +322,6 @@ def add_derivative(
     return _derivative_response(derivative, trip_id)
 
 
-def _process_video_job(bind: Engine | Connection, storage: ObjectStorage, derivative_id: str) -> None:
-    with sessionmaker(bind=bind, autocommit=False, autoflush=False)() as job_session:
-        process_video_derivative(job_session, storage, derivative_id=derivative_id)
-
-
 @router.post("/{media_id}/derivatives/{derivative_id}/retry", response_model=MediaDerivativeResponse)
 def retry_derivative(
     trip_id: str,
@@ -339,8 +329,6 @@ def retry_derivative(
     derivative_id: str,
     session: SessionDep,
     subject: SubjectDep,
-    storage: StorageDep,
-    background_tasks: BackgroundTasks,
 ) -> MediaDerivativeResponse:
     derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
     if (
@@ -353,14 +341,11 @@ def retry_derivative(
     from ..media.worker import enqueue, retire
 
     retire(session, derivative.id)
-    derivative.processing_backend = settings.video_processing_backend
+    derivative.processing_backend = "remote"
     derivative.processing_state = DerivativeProcessingState.PROCESSING
-    if derivative.processing_backend == "remote":
-        enqueue(session, derivative)
+    enqueue(session, derivative)
     derivative.processing_started_at = datetime.now(UTC)
     session.commit()
-    if derivative.processing_backend == "local":
-        background_tasks.add_task(_process_video_job, session.get_bind(), storage, derivative.id)
     return _derivative_response(derivative, trip_id)
 
 

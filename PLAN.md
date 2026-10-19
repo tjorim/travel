@@ -85,8 +85,8 @@ archive-content import in #40.
 ### v2 — Fresh VPS launch and live trip delivery
 
 - [ ] [#457](https://github.com/tjorim/travel/issues/457) Remote video derivative
-      adapter and durable dispatcher implemented locally; keep explicit local
-      mode and binaries until parity/cutover/rollback verification in
+      adapter and durable dispatcher; the in-process encoder is removed once
+      cutover and rollback are verified in
       [apps#275](https://github.com/tjorim/apps/issues/275). No new publication
       permissions or media sources.
 - [ ] [apps#226](https://github.com/tjorim/apps/issues/226) Wire the owner MCP
