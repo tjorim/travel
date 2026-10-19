@@ -6,6 +6,19 @@
 localhost {
 	encode zstd gzip
 
+	# Refuse oversized upload bodies before Starlette spools them to disk
+	# (apps#257). 201 MiB = media_max_upload_bytes (200 MiB) plus multipart
+	# framing; keep in step with that setting and infra/Caddyfile in tjorim/apps.
+	@uploads path /api/trips/*/media/uploads /api/trips/*/documents/uploads /api/library/documents/uploads
+	handle @uploads {
+		request_body {
+			max_size 201MiB
+		}
+		reverse_proxy travel-api:8000 {
+			header_up X-Real-IP {http.request.remote.host}
+		}
+	}
+
 	handle /api/* {
 		reverse_proxy travel-api:8000 {
 			header_up X-Real-IP {http.request.remote.host}

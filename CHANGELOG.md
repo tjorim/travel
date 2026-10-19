@@ -6,6 +6,10 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- `Caddyfile.example` caps request bodies on the three upload routes at 201 MiB
+  (`media_max_upload_bytes` plus multipart framing), so oversized or chunked
+  uploads are answered 413 before they are spooled to disk. Production does the
+  same in `tjorim/apps` (apps#257).
 - **Breaking for operators:** the in-process video encoder is gone. Every new
   video derivative (REST and MCP `create_media_derivative`, and owner retries) is
   queued for the apps media worker (`travel-video-v1`) and finished by the
