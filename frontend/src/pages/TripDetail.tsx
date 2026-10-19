@@ -1,228 +1,29 @@
-import { errorNotice, useFeedback } from "../query/feedback";
-import { m } from "../paraglide/messages.js";
-import { useLocale } from "../locale";
-import { Button } from "@base-ui/react/button";
-import { useCallback } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useCallback } from "react";
 
-import { dayjs } from "../dayjs";
 import { useAuth } from "../auth-context";
-import { errorMessage, openOwnerFile } from "../query/api";
-import {
-  useLinkedLibraryDocuments,
-  useOwner,
-  useTripResource,
-  useTripsQuery,
-} from "../query/owner-queries";
+import { useLocale } from "../locale";
 import { Markdown } from "../Markdown";
-import { EmptyState } from "../ui/EmptyState";
-import {
-  DOCUMENT_KIND_LABELS,
-  MEDIA_KIND_LABELS,
-  ROUTE_STATUS_LABELS,
-  VISIT_KIND_LABELS,
-  VISIT_STATUS_LABELS,
-  stayStateLabel,
-  visitWhen,
-} from "../trips/labels";
-import { OwnerImage } from "../trips/OwnerImage";
+import { m } from "../paraglide/messages.js";
+import { errorMessage, openOwnerFile } from "../query/api";
+import { errorNotice, useFeedback } from "../query/feedback";
+import { useOwner } from "../query/owner-queries";
+import { formatDayRange } from "../tracker-model";
+import { AreasBlock } from "../trips/detail/AreasBlock";
+import { DocumentsBlock } from "../trips/detail/DocumentsBlock";
+import { LocationsBlock } from "../trips/detail/LocationsBlock";
+import { MediaBlock } from "../trips/detail/MediaBlock";
+import { RoutesBlock } from "../trips/detail/RoutesBlock";
+import { SECTIONS } from "../trips/detail/sections";
+import { StaysBlock } from "../trips/detail/StaysBlock";
+import { TasksBlock } from "../trips/detail/TasksBlock";
+import { UpdatesBlock } from "../trips/detail/UpdatesBlock";
+import { useTripDetail } from "../trips/detail/use-trip-detail";
+import { VisitsBlock } from "../trips/detail/VisitsBlock";
 import { OwnerTripMap } from "../trips/OwnerTripMap";
 import { TripOverview } from "../trips/TripOverview";
-import type { RecordKind } from "../trips/record-focus";
-import { visibilityLabel } from "../trips/visibility";
 import { sectionForRecord } from "../trips/workspace-sections";
-import {
-  ROUTE_MODE_LABELS,
-  bytesLabel,
-  formatDay,
-  formatDayRange,
-  formatCapture,
-  formatInstant,
-  locationName,
-  routeTitle,
-  stayLabel,
-  visitTitle,
-  type Location,
-  type MediaAsset,
-} from "../tracker-model";
-
-/** A link to the trip workspace that opens the given record's dialog there. */
-function RecordLink({
-  tripId,
-  kind,
-  id,
-  children,
-}: {
-  tripId: string;
-  kind: RecordKind;
-  id: string;
-  children: React.ReactNode;
-}) {
-  useLocale();
-  return (
-    <Link
-      className="action-link compact"
-      to={`/trips/${encodeURIComponent(tripId)}/${sectionForRecord(kind)}`}
-      state={{ openRecord: { kind, id } }}
-    >
-      {children}
-    </Link>
-  );
-}
-
-/** A record's title beside a link to its dialog, kept out of the heading's own accessible name. */
-function RecordHeading({
-  tripId,
-  kind,
-  id,
-  children,
-}: {
-  tripId: string;
-  kind: RecordKind;
-  id: string;
-  children: React.ReactNode;
-}) {
-  useLocale();
-  return (
-    <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
-      <h3>{children}</h3>
-      <RecordLink tripId={tripId} kind={kind} id={id}>
-        {m.owner_open()}
-      </RecordLink>
-    </div>
-  );
-}
-
-function placeLabel(place: Location | null): string {
-  if (!place) return m.owner_no_location_captured();
-  const name = locationName(place);
-  const extra = [
-    place.address_line1,
-    place.address_line2,
-    place.postal_code,
-    place.locality,
-    place.admin_area,
-    place.country_code,
-  ].filter(
-    (value, index, values): value is string =>
-      Boolean(value) && value !== name && values.indexOf(value) === index,
-  );
-  return extra.length ? `${name} · ${extra.join(" · ")}` : name;
-}
-
-function timestamp(value: string | null): string {
-  return value ? formatInstant(value) : "—";
-}
-
-function endpointTime(instant: string, zone: string | null): string {
-  return zone
-    ? `${dayjs(instant).tz(zone).format("D MMM YYYY, HH:mm")} (${zone})`
-    : `${formatInstant(instant)} (${dayjs.tz.guess()})`;
-}
-
-function routeEndpoint(area: string, place: Location | null): string {
-  return place ? `${area} · ${placeLabel(place)}` : area;
-}
-
-function MediaPreview({
-  asset,
-  session,
-}: {
-  asset: MediaAsset;
-  session: NonNullable<ReturnType<typeof useOwner>>["session"];
-}) {
-  useLocale();
-  return asset.thumbnail_url ? (
-    <OwnerImage
-      session={session}
-      url={asset.thumbnail_url}
-      alt=""
-      className="block h-24 w-35 rounded-lg bg-travel-media-bg object-cover"
-    />
-  ) : (
-    <span
-      className="block h-24 w-35 rounded-lg bg-travel-media-bg object-cover media-thumbnail-placeholder"
-      aria-hidden="true"
-    >
-      {asset.media_kind === "video" ? "🎞" : "🖼"}
-    </span>
-  );
-}
-
-function Section({
-  id,
-  title,
-  children,
-}: {
-  id: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  useLocale();
-  return (
-    <section id={id} className="travel-card grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0">
-      <h2>{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-const SECTIONS: { id: string; label: string }[] = [
-  {
-    id: "updates",
-    get label() {
-      return m.owner_travel_updates();
-    },
-  },
-  {
-    id: "visits",
-    get label() {
-      return m.owner_visits();
-    },
-  },
-  {
-    id: "stays",
-    get label() {
-      return m.owner_stays();
-    },
-  },
-  {
-    id: "routes",
-    get label() {
-      return m.owner_routes();
-    },
-  },
-  {
-    id: "tasks",
-    get label() {
-      return m.owner_tasks();
-    },
-  },
-  {
-    id: "locations",
-    get label() {
-      return m.owner_locations();
-    },
-  },
-  {
-    id: "areas",
-    get label() {
-      return m.owner_areas();
-    },
-  },
-  {
-    id: "documents",
-    get label() {
-      return m.owner_private_documents();
-    },
-  },
-  {
-    id: "media",
-    get label() {
-      return m.owner_private_media();
-    },
-  },
-];
+import { EmptyState } from "../ui/EmptyState";
 
 export function TripDetail() {
   useLocale();
@@ -240,50 +41,26 @@ export function TripDetail() {
   );
   const { session } = useAuth();
   const owner = useOwner();
-  const tripsQuery = useTripsQuery();
-  const trip = tripId
-    ? (tripsQuery.data?.find((candidate) => candidate.id === tripId) ?? null)
-    : null;
-  // Nothing is read for a trip that does not exist.
-  const id = trip ? trip.id : null;
-  const placesQuery = useTripResource(id, "locations");
-  const areasQuery = useTripResource(id, "areas");
-  const routesQuery = useTripResource(id, "routes");
-  const staysQuery = useTripResource(id, "stays");
-  const visitsQuery = useTripResource(id, "visits");
-  const tasksQuery = useTripResource(id, "trip-tasks");
-  const documentsQuery = useTripResource(id, "documents");
-  const libraryDocumentsQuery = useLinkedLibraryDocuments(id);
-  const mediaQuery = useTripResource(id, "media");
+  const {
+    tripsLoaded,
+    trip,
+    places,
+    areas,
+    routes,
+    stays,
+    visits,
+    tasks,
+    documents,
+    libraryDocuments,
+    media,
+    readError,
+  } = useTripDetail(tripId);
   const [notice, setNotice] = useFeedback<string>("");
-
-  const places = placesQuery.data;
-  const areas = areasQuery.data;
-  const routes = routesQuery.data;
-  const stays = staysQuery.data;
-  const visits = visitsQuery.data;
-  const tasks = tasksQuery.data;
-  const documents = documentsQuery.data;
-  const libraryDocuments = libraryDocumentsQuery.data;
-  const media = mediaQuery.data;
   const mediaById = new Map(media?.map((asset) => [asset.id, asset]));
-
-  const readError = [
-    tripsQuery,
-    placesQuery,
-    areasQuery,
-    routesQuery,
-    staysQuery,
-    visitsQuery,
-    tasksQuery,
-    documentsQuery,
-    libraryDocumentsQuery,
-    mediaQuery,
-  ].find((query) => query.isError)?.error;
 
   if (!session) return <EmptyState title={m.private_trip()}>{m.sign_in_details()}</EmptyState>;
   if (!tripId) return <EmptyState title={m.trip_not_found()}>{m.invalid_trip_id()}</EmptyState>;
-  if (tripsQuery.isSuccess && !trip)
+  if (tripsLoaded && !trip)
     return <EmptyState title={m.trip_not_found()}>{m.owner_trip_unavailable()}</EmptyState>;
   // The page shows a whole trip or nothing: a partial page would read as if records were missing.
   if (
@@ -354,362 +131,20 @@ export function TripDetail() {
         </p>
       )}
 
-      <Section id="updates" title={m.owner_travel_updates()}>
-        {trip.travel_updates.length ? (
-          <div className="travel-detail-list">
-            {trip.travel_updates
-              .slice()
-              .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
-              .map((update) => (
-                <article key={update.id}>
-                  <RecordHeading tripId={trip.id} kind="update" id={update.id}>
-                    {update.title}
-                  </RecordHeading>
-                  <p>
-                    {timestamp(update.occurred_at)} · {placeLabel(update.location)} ·{" "}
-                    {visibilityLabel(update.visibility)}
-                  </p>
-                  <p className="markdown-label">{m.owner_for_visitors()}</p>
-                  {update.body ? (
-                    <Markdown html={update.body_html} text={update.body} />
-                  ) : (
-                    <p className="help">{m.owner_no_text_for_visitors_yet()}</p>
-                  )}
-                  {update.private_notes && (
-                    <>
-                      <p className="markdown-label">{m.owner_private_note()}</p>
-                      <Markdown html={update.private_notes_html} text={update.private_notes} />
-                    </>
-                  )}
-                  {update.media_asset_ids.length > 0 && (
-                    <div
-                      className="flex flex-wrap gap-3"
-                      role="group"
-                      aria-label={m.owner_media_for({ p0: update.title })}
-                    >
-                      {update.media_asset_ids.map((assetId) => {
-                        const asset = mediaById.get(assetId);
-                        return asset && owner ? (
-                          <div key={assetId} className="grid max-w-37.5 gap-1.25">
-                            <MediaPreview asset={asset} session={owner.session} />
-                            <RecordLink tripId={trip.id} kind="media" id={asset.id}>
-                              {asset.original_filename ?? m.owner_open_media_item()}
-                            </RecordLink>
-                          </div>
-                        ) : null;
-                      })}
-                    </div>
-                  )}
-                </article>
-              ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_travel_updates_captured()}</p>
-        )}
-      </Section>
-      <Section id="visits" title={m.owner_visits()}>
-        {visits.length ? (
-          <ol className="travel-detail-list">
-            {visits.map((visit) => (
-              <li key={visit.id}>
-                <RecordHeading tripId={trip.id} kind="visit" id={visit.id}>
-                  <strong>{visitTitle(visit)}</strong>
-                </RecordHeading>
-                <span>
-                  {visitWhen(visit)}
-                  {visit.kind ? ` · ${VISIT_KIND_LABELS[visit.kind]}` : ""}
-                  {visit.status ? ` · ${VISIT_STATUS_LABELS[visit.status]}` : ""} ·{" "}
-                  {visit.location ? `${placeLabel(visit.location)} · ` : ""}
-                  {visit.area.label}
-                </span>
-                <Markdown html={visit.notes_html} text={visit.notes} />
-                {visit.summary && (
-                  <>
-                    <p className="markdown-label">{m.owner_for_visitors()}</p>
-                    <Markdown html={visit.summary_html} text={visit.summary} />
-                  </>
-                )}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p>{m.owner_no_visits_yet()}</p>
-        )}
-      </Section>
-      <Section id="stays" title={m.owner_stays()}>
-        {stays.length ? (
-          <div className="travel-detail-list">
-            {stays
-              .slice()
-              .sort((a, b) => a.check_in_date.localeCompare(b.check_in_date))
-              .map((stay) => (
-                <article key={stay.id}>
-                  <RecordHeading tripId={trip.id} kind="stay" id={stay.id}>
-                    {stayLabel(stay)}
-                  </RecordHeading>
-                  <p>
-                    {formatDayRange(stay.check_in_date, stay.check_out_date)} ·{" "}
-                    {stayStateLabel(stay)}
-                  </p>
-                  {(stay.check_in_time || stay.check_out_time) && (
-                    <p>
-                      {[
-                        stay.check_in_time &&
-                          m.owner_check_in({ p0: stay.check_in_time.slice(0, 5) }),
-                        stay.check_out_time &&
-                          m.owner_check_out({ p0: stay.check_out_time.slice(0, 5) }),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                      {stay.area.timezone ? ` (${stay.area.timezone})` : ""}
-                    </p>
-                  )}
-                  <p>
-                    {placeLabel(stay.location)}
-                    {` · ${stay.area.label}`}
-                  </p>
-                  {stay.website_url && (
-                    <a href={stay.website_url} target="_blank" rel="noreferrer">
-                      {m.owner_accommodation_website()}
-                    </a>
-                  )}
-                  {stay.booking_reference && (
-                    <p>
-                      {m.owner_booking_reference()} {stay.booking_reference}
-                    </p>
-                  )}
-                  {stay.contact_details && (
-                    <>
-                      <p className="markdown-label">{m.owner_contact()}</p>
-                      <Markdown html={stay.contact_details_html} text={stay.contact_details} />
-                    </>
-                  )}
-                  <Markdown html={stay.notes_html} text={stay.notes} />
-                </article>
-              ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_stays_captured()}</p>
-        )}
-      </Section>
-      <Section id="routes" title={m.owner_routes()}>
-        {routes.length ? (
-          <div className="travel-detail-list">
-            {routes.map((route) => (
-              <article key={route.id}>
-                <RecordHeading tripId={trip.id} kind="route" id={route.id}>
-                  {routeTitle(route)}
-                </RecordHeading>
-                <p>
-                  {[
-                    ROUTE_MODE_LABELS[route.mode],
-                    ROUTE_STATUS_LABELS[route.status],
-                    route.departs_at && route.arrives_at
-                      ? `${endpointTime(route.departs_at, route.departure_timezone)} → ${endpointTime(route.arrives_at, route.arrival_timezone)}`
-                      : route.departs_on
-                        ? formatDay(route.departs_on)
-                        : null,
-                    route.geometry
-                      ? m.owner_line_with_points({ p0: route.geometry.coordinates.length })
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                <p>
-                  {routeEndpoint(route.departure_area.label, route.departure_location)} →{" "}
-                  {routeEndpoint(route.arrival_area.label, route.arrival_location)}
-                </p>
-                <p>
-                  {[route.carrier, route.service_reference, route.travel_class]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {route.booking_reference && (
-                  <p>
-                    {m.owner_booking_reference()} {route.booking_reference}
-                  </p>
-                )}
-                <Markdown html={route.notes_html} text={route.notes} />
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_routes_captured()}</p>
-        )}
-      </Section>
-      <Section id="tasks" title={m.owner_tasks()}>
-        {tasks.length ? (
-          <div className="travel-detail-list">
-            {tasks
-              .slice()
-              .sort(
-                (a, b) =>
-                  (a.completed_at ? 1 : 0) - (b.completed_at ? 1 : 0) ||
-                  (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"),
-              )
-              .map((task) => (
-                <article key={task.id}>
-                  <RecordHeading tripId={trip.id} kind="task" id={task.id}>
-                    {task.title}
-                  </RecordHeading>
-                  <p>
-                    {task.completed_at
-                      ? m.owner_completed_on({ p0: timestamp(task.completed_at) })
-                      : task.due_date
-                        ? m.owner_due({ p0: formatDay(task.due_date) })
-                        : m.owner_no_deadline()}
-                  </p>
-                  {task.remind_at && (
-                    <p>
-                      {m.owner_reminder()} {timestamp(task.remind_at)}
-                    </p>
-                  )}
-                  <Markdown html={task.notes_html} text={task.notes} />
-                  {task.links.map((link) => (
-                    <p key={link.url}>
-                      <a href={link.url} target="_blank" rel="noreferrer">
-                        {link.label}
-                      </a>
-                    </p>
-                  ))}
-                </article>
-              ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_tasks_captured()}</p>
-        )}
-      </Section>
-      <Section id="locations" title={m.owner_locations()}>
-        {places.length ? (
-          <div className="travel-detail-list">
-            {places.map((place) => (
-              <article key={place.id}>
-                <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
-                  <h3>{placeLabel(place)}</h3>
-                  <Link
-                    className="action-link compact"
-                    to={`/trips/${encodeURIComponent(trip.id)}/plan`}
-                  >
-                    {m.owner_go_to_planning()}
-                  </Link>
-                </div>
-                <Markdown html={place.notes_html} text={place.notes} />
-                {place.latitude != null && place.longitude != null && (
-                  <p>
-                    {m.owner_coordinates()} {place.latitude}, {place.longitude}
-                  </p>
-                )}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_locations_captured()}</p>
-        )}
-      </Section>
-      <Section id="areas" title={m.owner_areas()}>
-        {areas.length ? (
-          <div className="travel-detail-list">
-            {areas.map((place) => (
-              <article key={place.id}>
-                <RecordHeading tripId={trip.id} kind="area" id={place.id}>
-                  {place.label}
-                </RecordHeading>
-                <p>{[place.region, place.country_code].filter(Boolean).join(" · ")}</p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_areas_captured_yet()}</p>
-        )}
-      </Section>
-      <Section id="documents" title={m.owner_private_documents()}>
-        {documents.length || libraryDocuments.length ? (
-          <div className="travel-detail-list">
-            {documents.map((document) => (
-              <article key={document.id}>
-                <RecordHeading tripId={trip.id} kind="document" id={document.id}>
-                  {document.title}
-                </RecordHeading>
-                <p>
-                  {DOCUMENT_KIND_LABELS[document.document_kind]} ·{" "}
-                  {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
-                  {bytesLabel(document.byte_size)}
-                </p>
-                <Button
-                  className="secondary compact"
-                  type="button"
-                  onClick={() =>
-                    openFile(document.file_url, m.owner_the_private_document_could_not_be_opened())
-                  }
-                >
-                  {m.owner_open_document()}
-                </Button>
-              </article>
-            ))}
-            {libraryDocuments.map((document) => (
-              <article key={`library-${document.id}`}>
-                <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
-                  <h3>{document.title}</h3>
-                  <Link className="action-link compact" to="/library">
-                    {m.owner_go_to_library()}
-                  </Link>
-                </div>
-                <p>
-                  {m.owner_library()} {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
-                  {bytesLabel(document.byte_size)}
-                </p>
-                <Button
-                  className="secondary compact"
-                  type="button"
-                  onClick={() =>
-                    openFile(document.file_url, m.owner_the_library_document_could_not_be_opened())
-                  }
-                >
-                  {m.owner_open_library_document()}
-                </Button>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_private_documents_captured()}</p>
-        )}
-      </Section>
-      <Section id="media" title={m.owner_private_media()}>
-        {media.length ? (
-          <div className="travel-detail-list">
-            {media.map((asset) => (
-              <article key={asset.id}>
-                <RecordHeading tripId={trip.id} kind="media" id={asset.id}>
-                  {asset.original_filename ?? m.owner_unnamed_media_item()}
-                </RecordHeading>
-                {owner && <MediaPreview asset={asset} session={owner.session} />}
-                <p>
-                  {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)}{" "}
-                  {m.owner_captured()}{" "}
-                  {asset.captured_at ? formatCapture(asset.captured_at, asset.captured_local) : "—"}
-                </p>
-                {asset.gps && (
-                  <p>
-                    {m.owner_gps()} {asset.gps.latitude}, {asset.gps.longitude}
-                  </p>
-                )}
-                <Button
-                  className="secondary compact"
-                  type="button"
-                  onClick={() =>
-                    openFile(asset.file_url, m.owner_the_private_media_could_not_be_opened())
-                  }
-                >
-                  {m.owner_open_media()}
-                </Button>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>{m.owner_no_private_media_captured()}</p>
-        )}
-      </Section>
+      <UpdatesBlock trip={trip} mediaById={mediaById} session={owner?.session ?? null} />
+      <VisitsBlock trip={trip} visits={visits} />
+      <StaysBlock trip={trip} stays={stays} />
+      <RoutesBlock trip={trip} routes={routes} />
+      <TasksBlock trip={trip} tasks={tasks} />
+      <LocationsBlock trip={trip} places={places} />
+      <AreasBlock trip={trip} areas={areas} />
+      <DocumentsBlock
+        trip={trip}
+        documents={documents}
+        libraryDocuments={libraryDocuments}
+        openFile={openFile}
+      />
+      <MediaBlock trip={trip} media={media} session={owner?.session ?? null} openFile={openFile} />
     </main>
   );
 }

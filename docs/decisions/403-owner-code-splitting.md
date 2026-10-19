@@ -46,12 +46,27 @@ and fetches the rest when first used.
   (`PlanSection`, `StorySection`, `PackingSection`, `MediaSection`,
   `SharingSection`), loaded lazily by the registry. `trips/trips-status.ts` is
   the shared "loading your trips" message.
-- `MediaManager`, `PublicationManager` and `PackingManager` keep their public
-  entry points and tests, and delegate to feature folders (`trips/media/`,
-  `trips/publication/`, `trips/packing/`): data hooks for the owner API calls
-  and catalogs, section components that take explicit props, and dialogs. The
+- `MediaManager`, `PublicationManager`, `PackingManager`, `RouteManager`,
+  `StayManager`, `VisitManager`, `LocationManager`, `AreaManager` and
+  `CaptureDialog` keep their public entry points and tests, and delegate to
+  feature folders (`trips/media/`, `trips/publication/`, `trips/packing/`,
+  `trips/routes/`, `trips/stays/`, `trips/visits/`, `trips/locations/`,
+  `trips/areas/`, `trips/capture/`): data hooks for the owner API calls and
+  catalogs, section components that take explicit props, and dialogs. The
   manager keeps the state those pieces share. Add new sub-views to the folder,
-  not to the manager. `EmptyState` is in `ui/`.
+  not to the manager. In the place, route, stay and visit folders `model.ts`
+  holds the form values, validators and pure helpers, `*Details` is the
+  read-only dialog view and `*Form` the editor's fields. The route, stay, visit, location and area hooks wrap
+  `trips/use-record-mutations.ts`, which holds their shared save and delete.
+  `CaptureDialog` keeps the
+  draft state and delegates the place lookup (`use-place-search`) and the
+  photo list (`use-capture-media`) to hooks. `EmptyState` is in
+  `ui/`.
+- `pages/TripDetail.tsx` is the read-only complete overview: `trips/detail/`
+  holds one block per record kind (`UpdatesBlock`, `VisitsBlock`, ...), the
+  shared record links and `useTripDetail`, which reads everything the page
+  shows. It shares no presentation with the workspace editors, whose rows are
+  interactive; it must not import `*Manager` modules.
 
 ## Workspace tabs
 

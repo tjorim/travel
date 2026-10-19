@@ -1,49 +1,40 @@
-import { useLocale } from "../locale";
-import { m } from "../paraglide/messages.js";
-import { textNotice, FeedbackError, errorNotice, useFeedback } from "../query/feedback";
-import { TravelCheckbox } from "../ui/TravelCheckbox";
-import { Input } from "@base-ui/react/input";
 import { Button } from "@base-ui/react/button";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../auth-context";
-import { AsyncSearchSelect, requiredText, TextField } from "../forms/fields";
+import { requiredText, TextField } from "../forms/fields";
 import { DateTimeField } from "../forms/DateTimeFields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { blockUnreadableEntries } from "../forms/unreadable-entry";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
+import { useLocale } from "../locale";
+import { m } from "../paraglide/messages.js";
 import { errorMessage } from "../query/api";
-import { ownerKeys } from "../query/keys";
-import {
-  tripPath,
-  useOwnerMutation,
-  useTripResource,
-  useTripSearch,
-  useTripsQuery,
-} from "../query/owner-queries";
+import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/feedback";
+import { useTripSearch, useTripsQuery } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import {
+  captureInputValue,
   clearDraft,
   emptyDraft,
-  captureInputValue,
-  formatCapture,
-  formatInstant,
   localDateTime,
   readDraft,
   saveDraft,
   type MediaAsset,
-  type TravelUpdate,
-  type UpdateDraft,
-  type PlaceSearchResponse,
   type PlaceSearchResult,
+  type TravelUpdate,
   type TravelUpdateCandidateIntent,
+  type UpdateDraft,
 } from "../tracker-model";
-import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
-
-const timestamp = formatInstant;
-const SAVE_FALLBACK = m.api_capture_save;
+import { LocationSearch } from "./capture/LocationSearch";
+import { PhotoLinks } from "./capture/PhotoLinks";
+import { SavedUpdates } from "./capture/SavedUpdates";
+import { TripChoice } from "./capture/TripChoice";
+import { useCaptureMedia } from "./capture/use-capture-media";
+import { SAVE_FALLBACK, useCaptureMutations } from "./capture/use-capture-mutations";
+import { usePlaceSearch } from "./capture/use-place-search";
 
 export type CaptureDialogProps = {
   open: boolean;
@@ -76,66 +67,9 @@ export function CaptureDialog({
     textNotice(() => m.owner_loading_draft()),
   );
   const [saveState, setSaveState] = useFeedback<string>("");
-  const [placeQuery, setPlaceQuery] = useState("");
-  const [placeResults, setPlaceResults] = useState<PlaceSearchResponse | null>(null);
-  const [placeState, setPlaceState] = useFeedback<string>("");
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
-  const [candidateGps, setCandidateGps] = useState<{ latitude: number; longitude: number } | null>(
-    null,
-  );
   const initialized = useRef(false);
 
-  const saveUpdate = useOwnerMutation<
-    { tripId: string; updateId: string | null; payload: Record<string, unknown> },
-    TravelUpdate
-  >({
-    fallback: SAVE_FALLBACK,
-    request: ({ tripId, updateId, payload }) => ({
-      path: updateId
-        ? tripPath(tripId, `travel-updates/${updateId}`)
-        : tripPath(tripId, "travel-updates"),
-      method: updateId ? "PATCH" : "POST",
-      body: payload,
-    }),
-    // A travel update may create a reusable location and its derived area alongside the trip's embedded update list.
-    invalidate: (subject, { tripId }) => [
-      ownerKeys.trips(subject),
-      ownerKeys.tripResource(subject, tripId, "locations"),
-      ownerKeys.tripResource(subject, tripId, "areas"),
-    ],
-  });
-  const deleteUpdate = useOwnerMutation<{ tripId: string; updateId: string }>({
-    fallback: m.owner_the_travel_update_could_not_be_deleted,
-    request: ({ tripId, updateId }) => ({
-      path: tripPath(tripId, `travel-updates/${updateId}`),
-      method: "DELETE",
-    }),
-    invalidate: (subject) => [ownerKeys.trips(subject)],
-  });
-  // A search phrase or a photo's coordinates are private: those calls are dropped from the mutation cache once settled.
-  const searchPlaces = useOwnerMutation<{ tripId: string; query: string }, PlaceSearchResponse>({
-    fallback: m.owner_location_search_is_currently_unavailable,
-    request: ({ tripId, query }) => ({
-      path: tripPath(tripId, "places/search"),
-      method: "POST",
-      body: { query },
-    }),
-    invalidate: () => [],
-    gcTime: 0,
-  });
-  const reversePlaces = useOwnerMutation<
-    { tripId: string; latitude: number; longitude: number },
-    PlaceSearchResponse
-  >({
-    fallback: m.owner_this_photo_s_location_could_not_be_looked_up,
-    request: ({ tripId, latitude, longitude }) => ({
-      path: tripPath(tripId, "places/reverse"),
-      method: "POST",
-      body: { latitude, longitude },
-    }),
-    invalidate: () => [],
-    gcTime: 0,
-  });
+  const { saveUpdate, deleteUpdate } = useCaptureMutations();
 
   const record = useRecordForm<UpdateDraft, TravelUpdate>({
     defaultValues: emptyDraft(lockedTripId ?? candidate?.tripId ?? ""),
@@ -167,7 +101,7 @@ export function CaptureDialog({
       setDraftState(textNotice(() => m.owner_saved_to_your_private_trip()));
       setSaveState(textNotice(() => m.owner_travel_update_saved()));
       record.load(emptyDraft(values.tripId));
-      resetPlaceSearch();
+      places.reset();
     },
   });
   const draft = record.values;
@@ -181,28 +115,12 @@ export function CaptureDialog({
     () => (lockedTripId ? (trips.find((trip) => trip.id === lockedTripId) ?? null) : null),
     [lockedTripId, trips],
   );
-  // The dialog stays mounted (closed) over its workspace, so media is only fetched once it is actually open.
-  const mediaQuery = useTripResource(open && selectedTrip ? selectedTrip.id : null, "media");
-  const media = useMemo(
-    () => (mediaQuery.data ?? []).filter((asset) => asset.media_kind === "photo"),
-    [mediaQuery.data],
+  const { media, attachedMedia, mediaState } = useCaptureMedia(
+    selectedTrip?.id ?? null,
+    open,
+    draft.mediaAssetIds,
   );
-  const attachedMedia = useMemo(
-    () =>
-      draft.mediaAssetIds
-        .map((id) => media.find((asset) => asset.id === id))
-        .filter((asset): asset is MediaAsset => Boolean(asset)),
-    [draft.mediaAssetIds, media],
-  );
-  const mediaState = !selectedTrip
-    ? ""
-    : mediaQuery.error
-      ? errorMessage(mediaQuery.error, m.owner_your_media_could_not_be_loaded)
-      : mediaQuery.isPending
-        ? m.owner_loading_media()
-        : mediaQuery.data?.length
-          ? m.owner_choose_private_photos_to_link_to_this_travel_update()
-          : m.owner_no_photos_in_this_trip_yet();
+  const places = usePlaceSearch(selectedTrip?.id ?? null, Boolean(session));
 
   useEffect(() => {
     const updateConnection = () => setConnection(navigator.onLine);
@@ -231,7 +149,7 @@ export function CaptureDialog({
           : localDateTime(),
         mediaAssetIds: candidate.mediaAssetIds,
       });
-      setCandidateGps(candidate.gps ?? null);
+      places.setCandidateGps(candidate.gps ?? null);
       setDraftState(
         textNotice(() =>
           m.owner_candidate_copied_into_a_local_draft_choose_a_location_yourself_and_save(),
@@ -264,27 +182,19 @@ export function CaptureDialog({
     setSaveState("");
   }
 
-  function resetPlaceSearch() {
-    setPlaceQuery("");
-    setPlaceResults(null);
-    setPlaceState("");
-    setDismissedSuggestions([]);
-    setCandidateGps(null);
-  }
-
   function selectTrip(tripId: string) {
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
     setDraftState(
       textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())),
     );
-    resetPlaceSearch();
+    places.reset();
     setSaveState("");
   }
 
   function startNew() {
     record.load(emptyDraft(selectedTrip?.id ?? lockedTripId ?? trips[0]?.id ?? ""));
-    resetPlaceSearch();
+    places.reset();
     setSaveState("");
   }
 
@@ -298,7 +208,7 @@ export function CaptureDialog({
       location: update.location,
       mediaAssetIds: update.media_asset_ids,
     });
-    resetPlaceSearch();
+    places.reset();
     setSaveState(textNotice(() => m.owner_you_are_editing_a_saved_travel_update()));
   }
 
@@ -308,59 +218,19 @@ export function CaptureDialog({
         ? draft.mediaAssetIds.filter((id) => id !== assetId)
         : [...draft.mediaAssetIds, assetId],
     });
-    setDismissedSuggestions((current) => current.filter((id) => id !== assetId));
+    places.setDismissedSuggestions((current) => current.filter((id) => id !== assetId));
+  }
+
+  function adoptCaptureDate(asset: MediaAsset) {
+    updateDraft({ occurredAt: captureInputValue(asset.captured_at!, asset.captured_local) });
+    setSaveState(
+      textNotice(() => m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it()),
+    );
   }
 
   function selectPlace(result: PlaceSearchResult) {
     updateDraft({ location: result });
-    setPlaceState(
-      textNotice(() =>
-        m.owner_location_selected_it_will_only_be_created_when_you_save_the_travel_updat(),
-      ),
-    );
-    setPlaceResults(null);
-  }
-
-  function searchPlace() {
-    if (!session || !selectedTrip || placeQuery.trim().length < 2) {
-      setPlaceState(
-        textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()),
-      );
-      return;
-    }
-    setPlaceState(textNotice(() => m.owner_searching_locations()));
-    searchPlaces.mutateAsync({ tripId: selectedTrip.id, query: placeQuery.trim() }).then(
-      (result) => {
-        setPlaceResults(result);
-        setPlaceState(
-          textNotice(() =>
-            result.results.length
-              ? m.owner_choose_a_result_nothing_is_saved_yet()
-              : m.owner_no_locations_found(),
-          ),
-        );
-      },
-      (error: unknown) => setPlaceState(errorNotice(error, m.owner_location_search_failed)),
-    );
-  }
-
-  function reverseGeocode(gps: { latitude: number; longitude: number }) {
-    if (!session || !selectedTrip) return;
-    setPlaceState(textNotice(() => m.owner_looking_up_the_photo_location_only_for_you()));
-    reversePlaces.mutateAsync({ tripId: selectedTrip.id, ...gps }).then(
-      (result) => {
-        setPlaceResults(result);
-        setPlaceState(
-          textNotice(() =>
-            result.results.length
-              ? m.owner_choose_the_suggested_location_nothing_is_saved_yet()
-              : m.owner_no_place_found_for_this_photo_location(),
-          ),
-        );
-      },
-      (error: unknown) =>
-        setPlaceState(errorNotice(error, m.owner_this_photo_s_location_could_not_be_looked_up)),
-    );
+    places.chosen();
   }
 
   function removeUpdate() {
@@ -445,29 +315,14 @@ export function CaptureDialog({
               void form.handleSubmit();
             }}
           >
-            {lockedTrip ? (
-              <p className="m-0 font-bold text-travel-forest">
-                {m.owner_trip()} <strong>{lockedTrip.title}</strong>
-              </p>
-            ) : (
-              <Field>
-                <FieldLabel>{m.owner_trip_2()}</FieldLabel>
-                <AsyncSearchSelect
-                  ariaLabel={m.owner_trip()}
-                  value={draft.tripId}
-                  selectedOption={
-                    selectedTrip ? { value: selectedTrip.id, label: selectedTrip.title } : null
-                  }
-                  defaultOptions={trips
-                    .slice(0, 50)
-                    .map((trip) => ({ value: trip.id, label: trip.title }))}
-                  onChange={selectTrip}
-                  loadOptions={async (q) =>
-                    (await searchTrips(q)).map((trip) => ({ value: trip.id, label: trip.title }))
-                  }
-                />
-              </Field>
-            )}
+            <TripChoice
+              lockedTrip={lockedTrip}
+              selectedTrip={selectedTrip}
+              draftTripId={draft.tripId}
+              trips={trips}
+              search={searchTrips}
+              onSelect={selectTrip}
+            />
             {selectedTrip && (
               <aside className="publication" aria-label={m.owner_sharing_this_travel_update()}>
                 <strong>{m.owner_before_saving()}</strong>
@@ -520,183 +375,32 @@ export function CaptureDialog({
                 />
               )}
             </form.Field>
-            <FieldSet className="location">
-              <FieldLegend>{m.owner_link_private_photos()}</FieldLegend>
-              <p>
-                {m.owner_a_link_is_private_exif_is_only_used_below_as_a_suggestion_no_date_or_pla()}
-              </p>
-              <p className="help" role="status">
-                {mediaState}
-              </p>
-              {media.map((asset) => (
-                <Field className="contents" key={asset.id}>
-                  <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-travel-surface px-2.75 py-2.5 font-semibold">
-                    <TravelCheckbox
-                      checked={draft.mediaAssetIds.includes(asset.id)}
-                      onCheckedChange={() => toggleMedia(asset.id)}
-                    />
-                    {asset.original_filename ?? m.owner_unnamed_photo()}
-                    {asset.captured_at
-                      ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}`
-                      : ""}
-                  </FieldLabel>
-                </Field>
-              ))}
-              {attachedMedia.map(
-                (asset) =>
-                  !dismissedSuggestions.includes(asset.id) &&
-                  (asset.captured_at || asset.gps) && (
-                    <aside
-                      className="grid gap-2 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.25 text-sm leading-normal text-travel-warning-ink [&_span]:text-travel-warning-muted"
-                      key={`suggestion-${asset.id}`}
-                    >
-                      <strong>
-                        {m.owner_suggestion_from()}{" "}
-                        {asset.original_filename ?? m.owner_this_photo()}
-                      </strong>
-                      {asset.captured_at && (
-                        <span>
-                          {m.owner_captured_2()}{" "}
-                          {formatCapture(asset.captured_at, asset.captured_local)}.
-                        </span>
-                      )}
-                      <div className="button-row">
-                        {asset.captured_at && (
-                          <Button
-                            className="secondary compact"
-                            type="button"
-                            onClick={() => {
-                              updateDraft({
-                                occurredAt: captureInputValue(
-                                  asset.captured_at!,
-                                  asset.captured_local,
-                                ),
-                              });
-                              setSaveState(
-                                textNotice(() =>
-                                  m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it(),
-                                ),
-                              );
-                            }}
-                          >
-                            {m.owner_use_capture_date()}
-                          </Button>
-                        )}
-                        {asset.gps && (
-                          <Button
-                            className="secondary compact"
-                            type="button"
-                            onClick={() => reverseGeocode(asset.gps!)}
-                          >
-                            {m.owner_find_place_for_photo()}
-                          </Button>
-                        )}
-                        <Button
-                          className="secondary compact"
-                          type="button"
-                          onClick={() =>
-                            setDismissedSuggestions((current) => [...current, asset.id])
-                          }
-                        >
-                          {m.owner_dismiss_suggestion()}
-                        </Button>
-                      </div>
-                    </aside>
-                  ),
-              )}
-              {attachedMedia.filter((asset) => asset.captured_at || asset.gps).length > 1 && (
-                <p className="help">
-                  {m.owner_photos_can_differ_each_suggestion_remains_visible_separately_choose_at_m()}
-                </p>
-              )}
-            </FieldSet>
-            <FieldSet className="location">
-              <FieldLegend>{m.owner_location_entirely_optional()}</FieldLegend>
-              <p>
-                {m.owner_search_for_and_choose_a_location_it_is_only_created_as_a_private_locatio()}
-              </p>
-              {candidateGps && (
-                <aside className="grid gap-2 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.25 text-sm leading-normal text-travel-warning-ink [&_span]:text-travel-warning-muted">
-                  <strong>{m.owner_selected_location_from_candidate()}</strong>
-                  <span>
-                    {m.owner_this_exif_coordinate_stays_private_and_has_not_been_looked_up_or_saved_y()}
-                  </span>
-                  <div className="button-row">
-                    <Button
-                      className="secondary compact"
-                      type="button"
-                      onClick={() => reverseGeocode(candidateGps)}
-                    >
-                      {m.owner_search_this_candidate_place()}
-                    </Button>
-                    <Button
-                      className="secondary compact"
-                      type="button"
-                      onClick={() => setCandidateGps(null)}
-                    >
-                      {m.owner_dismiss_location()}
-                    </Button>
-                  </div>
-                </aside>
-              )}
-              <div className="field-row">
-                <Field className="contents">
-                  <FieldLabel>
-                    {m.owner_search_for_a_location()}
-                    <Input
-                      value={placeQuery}
-                      onChange={(event) => setPlaceQuery(event.target.value)}
-                      placeholder={m.owner_for_example_taipei_main_station()}
-                    />
-                  </FieldLabel>
-                </Field>
-                <div className="flex items-end">
-                  <Button className="secondary" type="button" onClick={searchPlace}>
-                    {m.owner_search()}
-                  </Button>
-                </div>
-              </div>
-              {draft.location && (
-                <p className="flex flex-wrap items-center gap-2">
-                  <strong>{m.owner_selected_location()}</strong>{" "}
-                  {draft.location.display_name ??
-                    draft.location.locality ??
-                    m.owner_unnamed_location()}{" "}
-                  <Button
-                    className="secondary compact"
-                    type="button"
-                    onClick={() => updateDraft({ location: null })}
-                  >
-                    {m.owner_delete()}
-                  </Button>
-                </p>
-              )}
-              {placeState && (
-                <p className="help" role="status">
-                  {placeState}
-                </p>
-              )}
-              {placeResults && (
-                <div className="grid gap-1.75">
-                  {placeResults.results.map((result) => (
-                    <Button
-                      className="w-full border border-travel-border bg-travel-surface text-left font-semibold text-travel-ink"
-                      type="button"
-                      key={`${result.osm_element_type}-${result.osm_element_id}`}
-                      onClick={() => selectPlace(result)}
-                    >
-                      {result.display_name}
-                    </Button>
-                  ))}
-                  <p className="help">
-                    {m.owner_search_results()}{" "}
-                    <a href={placeResults.attribution_url} target="_blank" rel="noreferrer">
-                      {placeResults.attribution}
-                    </a>
-                  </p>
-                </div>
-              )}
-            </FieldSet>
+            <PhotoLinks
+              mediaState={mediaState}
+              media={media}
+              attachedMedia={attachedMedia}
+              selectedIds={draft.mediaAssetIds}
+              dismissedSuggestions={places.dismissedSuggestions}
+              onToggle={toggleMedia}
+              onUseCaptureDate={adoptCaptureDate}
+              onFindPlace={places.reverseGeocode}
+              onDismiss={(assetId) =>
+                places.setDismissedSuggestions((current) => [...current, assetId])
+              }
+            />
+            <LocationSearch
+              candidateGps={places.candidateGps}
+              query={places.query}
+              location={draft.location}
+              state={places.state}
+              results={places.results}
+              onQueryChange={places.setQuery}
+              onSearch={places.search}
+              onSelect={selectPlace}
+              onClear={() => updateDraft({ location: null })}
+              onFindPlace={places.reverseGeocode}
+              onDismissCandidate={() => places.setCandidateGps(null)}
+            />
             <div className="flex flex-wrap items-center gap-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
               <Button type="submit" disabled={record.pending}>
                 {draft.updateId ? m.owner_save_changes() : m.owner_save_travel_update()}
@@ -705,28 +409,7 @@ export function CaptureDialog({
             </div>
           </form>
           {selectedTrip && selectedTrip.travel_updates.length > 0 && (
-            <section className="saved-records">
-              <h3>{m.owner_saved_travel_updates()}</h3>
-              {selectedTrip.travel_updates
-                .slice()
-                .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
-                .map((update) => (
-                  <Button
-                    className="grid w-full gap-0.75 border border-travel-card-border bg-travel-surface p-3.5 text-left text-travel-ink shadow-sm [&_span]:text-sm [&_span]:font-medium [&_span]:text-travel-muted"
-                    type="button"
-                    key={update.id}
-                    onClick={() => editUpdate(update)}
-                  >
-                    <strong>{update.title}</strong>
-                    <span>
-                      {timestamp(update.occurred_at)}
-                      {update.location
-                        ? ` · ${update.location.display_name}`
-                        : m.owner_without_location()}
-                    </span>
-                  </Button>
-                ))}
-            </section>
+            <SavedUpdates updates={selectedTrip.travel_updates} onEdit={editUpdate} />
           )}
         </>
       )}

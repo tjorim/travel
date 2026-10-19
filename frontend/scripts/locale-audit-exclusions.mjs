@@ -48,7 +48,7 @@ export const exclusions = {
   "offline/OfflineSnapshotView.tsx": {
     "Medische notitie": "legacy enum lookup key, never rendered literally",
   },
-  "trips/RouteManager.tsx": {
+  "trips/routes/RouteForm.tsx": {
     "Europe/Amsterdam": "IANA input example",
     "Asia/Taipei": "IANA input example",
     "BR-087": "service reference input example",
@@ -61,5 +61,5 @@ export const exclusions = {
       "CSS class list",
     "[&>button]:ring-2 [&>button]:ring-travel-forest [&>button]:ring-inset": "CSS class list",
   },
-  "trips/StayManager.tsx": { TW: "ISO country input example", "https://": "URL input example" },
+  "trips/stays/StayForm.tsx": { TW: "ISO country input example", "https://": "URL input example" },
 };

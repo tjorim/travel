@@ -13,7 +13,8 @@ import {
 } from "../query/test-utils";
 import type { Area, Location, Stay, Trip, Visit } from "../tracker-model";
 import { visitWhen } from "./labels";
-import { VisitManager, overnights } from "./VisitManager";
+import { VisitManager } from "./VisitManager";
+import { overnights } from "./visits/model";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));

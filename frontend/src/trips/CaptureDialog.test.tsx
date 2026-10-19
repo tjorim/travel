@@ -107,3 +107,66 @@ it("takes a media-review candidate even though the closed dialog already loaded 
   ).toBe("true");
   expect(consumed).toHaveBeenCalled();
 });
+
+const place = {
+  display_name: "Taipei Main Station",
+  osm_element_type: "way",
+  osm_element_id: 1,
+  latitude: 25.04,
+  longitude: 121.51,
+};
+
+it("asks for at least two characters, then searches, lists results and keeps the chosen place in the draft", async () => {
+  api.on("POST", /^\/api\/trips\/t1\/places\/search$/, () => ({
+    results: [place],
+    attribution: "OpenStreetMap",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+  }));
+  renderWithOwner(<CaptureDialog open lockedTripId="t1" onDismiss={() => undefined} />);
+  const query = await screen.findByLabelText("Zoek locatie");
+  fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
+  expect(await screen.findByText(/minstens twee tekens/)).toBeTruthy();
+
+  fireEvent.change(query, { target: { value: "Taipei" } });
+  fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Taipei Main Station" }));
+
+  expect(await screen.findByText(/Locatie geselecteerd/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Taipei Main Station" })).toBeNull();
+  expect(api.lastBody("POST /api/trips/t1/places/search")).toEqual({ query: "Taipei" });
+});
+
+it("offers a linked photo's capture date and place as private suggestions", async () => {
+  api = fakeApi().collection("/api/trips/t1/media", [
+    {
+      id: "m1",
+      media_kind: "photo",
+      original_filename: "kust.jpg",
+      byte_size: 10,
+      captured_at: "2054-11-20T10:15:00Z",
+      captured_local: false,
+      gps: { latitude: 25.04, longitude: 121.51 },
+    },
+  ]);
+  api.on("GET", /^\/api\/trips$/, () => trips);
+  api.on("POST", /^\/api\/trips\/t1\/places\/reverse$/, () => ({
+    results: [place],
+    attribution: "OpenStreetMap",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+  }));
+  renderWithOwner(<CaptureDialog open lockedTripId="t1" onDismiss={() => undefined} />);
+  fireEvent.click(await screen.findByRole("checkbox", { name: /kust\.jpg/ }));
+
+  fireEvent.click(await screen.findByRole("button", { name: "Gebruik opnamedatum" }));
+  expect(await screen.findByText(/Opnamedatum als voorstel overgenomen/)).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Zoek plaats bij foto" }));
+  expect(await screen.findByRole("button", { name: "Taipei Main Station" })).toBeTruthy();
+  expect(api.lastBody("POST /api/trips/t1/places/reverse")).toEqual({
+    latitude: 25.04,
+    longitude: 121.51,
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Voorstel negeren" }));
+  expect(screen.queryByRole("button", { name: "Gebruik opnamedatum" })).toBeNull();
+});

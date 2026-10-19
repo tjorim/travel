@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- The route, stay, visit, location and area managers, the capture dialog and the
+  trip detail page are split into feature folders (`trips/routes/`, `stays/`,
+  `visits/`, `locations/`, `areas/`, `capture/`, `detail/`) with owner API hooks,
+  section components and dialogs, as `MediaManager`, `PublicationManager` and
+  `PackingManager` were in #458 (#460). Entry points and tests are unchanged;
+  there is no behaviour change.
 - Private translation drafts support a mounted per-app engine credential
   (`TRAVEL_TRANSLATION_API_KEY_FILE`, #459), fail closed when its configured file
   is unavailable, and use a total request deadline with a separate connection
