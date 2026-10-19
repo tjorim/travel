@@ -2,9 +2,8 @@ import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
 import { Preferences } from "./Preferences";
 import { Button } from "@base-ui/react/button";
-import { Collapsible } from "@base-ui/react/collapsible";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { HouseIcon, LibraryIcon, MapPinIcon, PlusIcon, SettingsIcon } from "lucide-react";
 
@@ -12,6 +11,7 @@ import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
 import { useAuth } from "./auth-context";
 import { CaptureProvider, useCapture } from "./capture-context";
 import { wipeOfflineData } from "./offline/offline-store";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 /**
  * Capture is an action, not a place, so it is a button that is always at hand rather than a nav item. Inside a trip it
@@ -47,27 +47,6 @@ export function Boundary({ children }: { children: ReactNode }) {
 
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
-  const accountTrigger = useRef<HTMLButtonElement>(null);
-
-  // The account menu is a popup, not a section: Escape or a click elsewhere closes it, and Escape returns focus.
-  useEffect(() => {
-    if (!accountOpen) return;
-    const dismiss = (event: Event) => {
-      if (event instanceof KeyboardEvent) {
-        if (event.key !== "Escape") return;
-        accountTrigger.current?.focus();
-      } else if (accountRef.current?.contains(event.target as Node)) return;
-      setAccountOpen(false);
-    };
-    document.addEventListener("keydown", dismiss);
-    document.addEventListener("pointerdown", dismiss);
-    return () => {
-      document.removeEventListener("keydown", dismiss);
-      document.removeEventListener("pointerdown", dismiss);
-    };
-  }, [accountOpen]);
 
   function signIn() {
     void beginSignIn(window.location.pathname.replace(/^\/admin(?=\/|$)/, "") || "/");
@@ -121,23 +100,14 @@ export function Boundary({ children }: { children: ReactNode }) {
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <CaptureButton />
-            <Collapsible.Root
-              className="relative shrink-0"
-              open={accountOpen}
-              onOpenChange={setAccountOpen}
-              ref={accountRef}
-            >
-              <Collapsible.Trigger
-                ref={accountTrigger}
-                className="rounded-lg border border-travel-control-border bg-transparent px-3.5 py-2.25 font-bold text-travel-forest"
-                aria-haspopup="menu"
-              >
+            <Popover>
+              <PopoverTrigger className="rounded-lg border border-travel-control-border bg-transparent px-3.5 py-2.25 font-bold text-travel-forest">
                 {m.account()}
-              </Collapsible.Trigger>
-              <Collapsible.Panel
-                keepMounted
-                className="absolute top-full right-0 z-10 mt-2 grid w-full min-w-60 gap-1 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 text-sm text-travel-muted shadow-travel-card max-[679px]:fixed max-[679px]:inset-x-3 max-[679px]:top-auto max-[679px]:bottom-21 max-[679px]:w-auto"
-                role="menu"
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                sideOffset={8}
+                className="grid w-60 gap-1 rounded-xl border-travel-card-border bg-travel-surface p-3.5 text-travel-muted"
               >
                 <p className="m-0">
                   <strong className="text-travel-ink">{m.signed_in()}</strong>
@@ -146,13 +116,12 @@ export function Boundary({ children }: { children: ReactNode }) {
                 <Button
                   className="secondary mt-2 w-full"
                   type="button"
-                  role="menuitem"
                   onClick={() => void signOut()}
                 >
                   {m.sign_out()}
                 </Button>
-              </Collapsible.Panel>
-            </Collapsible.Root>
+              </PopoverContent>
+            </Popover>
           </div>
         </header>
         {children}

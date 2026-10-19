@@ -6,6 +6,11 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Reviewed the remaining custom UI against the shadcn registry (#469): `EmptyState`
+  and the lazy-view loading placeholder now use generated `empty` and `skeleton`
+  sources, and the account menu is a generated Popover instead of a hand-rolled
+  `role="menu"` collapsible. ChoiceGroup, the router-link navigation and the
+  dialog/field wrappers stay, with evidence in `docs/ui-components.md`.
 - `Caddyfile.example` caps request bodies on the three upload routes at 201 MiB
   (`media_max_upload_bytes` plus multipart framing), so oversized or chunked
   uploads are answered 413 before they are spooled to disk. Production does the

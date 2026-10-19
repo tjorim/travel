@@ -116,3 +116,13 @@ it("lets a page start the dialog from a media candidate for its trip", async () 
     expect(screen.getByRole("dialog").textContent).toBe("locked:t1 candidate:m1,m2"),
   );
 });
+
+it("opens the account popover from its trigger and returns focus when Escape closes it", async () => {
+  render("/trips");
+  const trigger = await screen.findByRole("button", { name: "Account" });
+  fireEvent.click(trigger);
+  expect(await screen.findByRole("button", { name: "Afmelden" })).toBeTruthy();
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Afmelden" })).toBeNull());
+  expect(document.activeElement).toBe(trigger);
+});

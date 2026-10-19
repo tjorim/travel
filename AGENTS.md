@@ -79,7 +79,10 @@ Use two-space indentation in TypeScript, CSS and JSON, and match the
 surrounding code. Keep Python to the Ruff configuration in
 `backend/pyproject.toml`.
 
-Generate new UI primitives on demand from `frontend/` with
+Check the shadcn registry and Base UI for a supported component or variant
+before writing a custom control or composition, and record a custom one that
+stays, with its reason, in `docs/ui-components.md`. Generate new UI primitives
+on demand from `frontend/` with
 `pnpm dlx shadcn@4.21.0 add <component> --yes`, then own and restyle the
 copied source. `components.json` pins Base UI (`base-nova`), Lucide and
 Tailwind v4. Initial setup used `pnpm dlx shadcn@4.21.0 init --base base

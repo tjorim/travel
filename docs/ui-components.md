@@ -41,6 +41,31 @@ overwrite all components merely to match the latest registry.
 | Date, time and date-time inputs | Replace with `DateField`, `TimeField`, `DateTimeField` | Native inputs draw in the browser's locale. The fields use generated Popover and Calendar (react-day-picker), restyled with Travel tokens; see decision 293. |
 | RecordDialog (Dialog and Alert Dialog) | Keep | Dirty-dismissal confirmation, async submission, nested dialogs and focus return are application behaviour beyond generated presentation shells. |
 
+## Registry review of application compositions (#469)
+
+Checked against the `base-nova` registry
+(`https://ui.shadcn.com/r/styles/base-nova/<name>.json`) and Base UI 1.9 with
+CLI 4.21.0. A component name alone was not a reason to replace anything; a
+custom control stays when the registry version would drop a requirement.
+
+| Composition | Outcome | Evidence |
+| --- | --- | --- |
+| EmptyState | Extend: `ui/empty.tsx` generated, `EmptyState` kept as the API wrapper | The registry `empty` supplies the Empty / Title / Description slots. Owned adaptation: a `section` with the Travel card surface, an `h2` title and a `p` description (the registry renders `div`s, which lose the heading), left-aligned like the cards around it. The unused media and content slots and the `class-variance-authority` dependency were dropped. |
+| Lazy-view loading placeholder | Extend: `ui/skeleton.tsx` generated | The three hand-written pulsing bars are now `Skeleton`, tokenised to `bg-travel-media-bg`, `rounded-travel-control` and `motion-reduce:animate-none`, and `aria-hidden`. The wrapper keeps `role="status"` and the delayed fade-in. Status-text loading cards stay: they carry the only accessible message. |
+| Account menu (Boundary) | Replace with the generated Popover | It was a Collapsible with `role="menu"`/`menuitem`, a hand-written Escape and outside-press listener and manual focus return, yet held a paragraph and one button, which is not a menu. `Popover` provides outside press, Escape, focus return and collision handling. The panel now anchors under the trigger at every width instead of floating above the bottom bar on narrow screens. |
+| ChoiceGroup | Keep | Registry `toggle-group` renders `aria-pressed` toggle buttons that can be deselected. The choices here (language, appearance, packing group and filter) are required single selections, so Base UI `RadioGroup` semantics and arrow-key navigation are correct. Not turned into optional toggles to match a component name. |
+| WorkspaceTabs, app navigation, overview section chips | Keep | Registry `tabs` is a panel switcher (`role="tab"` plus `tabpanel`) driven by component state. These are router links where the URL decides what is open and `aria-current="page"` marks it; `role="tab"` would misreport them and break opening a section in a new tab. `navigation-menu` is for flyout menus, which there are none of. |
+| Pagination | Not applicable | No screen pages records; lists render whole or by section. Add the registry `pagination` if one ever does. |
+| Spinner | Not applicable | Loading is announced as text in `role="status"` regions; a spinner would add no information. Progress is already Base UI (`PackingProgress`). |
+| RecordDialog, field.tsx, SearchCombobox, SuggestInput, TravelTextarea | Keep (unchanged) | The #279 reasons still hold: no registry component covers dirty dismissal, Base UI Field validity wiring, grouped option adaptation or free-text Autocomplete. |
+| Map and media rendering | Keep specialised | MapLibre and media or lightbox rendering have no registry equivalent. |
+
+Provenance: `empty.tsx` and `skeleton.tsx` came from
+`pnpm dlx shadcn@4.21.0 add empty skeleton --yes`, then were reformatted and
+restyled as above. Before adding a new custom control, check the registry
+(`pnpm dlx shadcn@4.21.0 search`, or the JSON endpoint above) and Base UI for a
+supported component or variant, and record the outcome here.
+
 ## Theme coordination
 
 Semantic tokens resolve through Travel tokens using `@theme inline`, including

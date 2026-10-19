@@ -4,6 +4,7 @@ import { Component, Suspense, lazy, type ComponentType, type FC, type ReactNode 
 
 import { useLocale } from "./locale";
 import { m } from "./paraglide/messages.js";
+import { Skeleton } from "./ui/skeleton";
 
 /** A deferred module that could not be fetched, as opposed to a view that failed while rendering. */
 export class ChunkLoadError extends Error {
@@ -32,18 +33,9 @@ function ViewLoading() {
       role="status"
     >
       <p className="m-0 text-sm font-bold text-travel-muted">{m.owner_view_loading()}</p>
-      <span
-        className="h-5 w-2/5 animate-pulse rounded-travel-control bg-travel-media-bg motion-reduce:animate-none"
-        aria-hidden="true"
-      />
-      <span
-        className="h-4 w-full animate-pulse rounded-travel-control bg-travel-media-bg motion-reduce:animate-none"
-        aria-hidden="true"
-      />
-      <span
-        className="h-4 w-3/4 animate-pulse rounded-travel-control bg-travel-media-bg motion-reduce:animate-none"
-        aria-hidden="true"
-      />
+      <Skeleton className="h-5 w-2/5" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
     </section>
   );
 }

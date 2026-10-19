@@ -253,3 +253,28 @@ test.describe("accessibility", () => {
     }
   }
 });
+
+test.describe("account popover", () => {
+  for (const viewport of [narrow, { width: 1280, height: 800 }]) {
+    for (const locale of locales) {
+      for (const theme of themes) {
+        test(`opens inside the viewport without axe violations (${locale}, ${theme}, ${viewport.width}px)`, async ({
+          page,
+        }) => {
+          await page.setViewportSize(viewport);
+          await open(page, "/admin/trips", locale, theme, true);
+          const trigger = page.getByRole("button", { name: message(locale, "account") });
+          await trigger.click();
+          const signOut = page.getByRole("button", { name: message(locale, "sign_out") });
+          await expect(signOut).toBeVisible();
+          const box = await signOut.boundingBox();
+          expect(box && box.x >= 0 && box.x + box.width <= viewport.width).toBe(true);
+          await expectNoAxeViolations(page);
+          await page.keyboard.press("Escape");
+          await expect(signOut).toBeHidden();
+          await expect(trigger).toBeFocused();
+        });
+      }
+    }
+  }
+});
