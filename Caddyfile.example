@@ -7,7 +7,9 @@ localhost {
 	encode zstd gzip
 
 	handle /api/* {
-		reverse_proxy travel-api:8000
+		reverse_proxy travel-api:8000 {
+			header_up X-Real-IP {http.request.remote.host}
+		}
 	}
 
 	handle /openapi.json {
