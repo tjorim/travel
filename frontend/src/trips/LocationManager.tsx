@@ -20,7 +20,7 @@ import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-quer
 
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import {
-  locationName,
+  ownerLocationName,
   type Area,
   type Location,
   type PlaceSearchResult,
@@ -154,8 +154,6 @@ function mapTarget(latitude: number | null | undefined, longitude: number | null
     </p>
   );
 }
-export const ownerLocationName = (place: Location) =>
-  place.display_name?.split(",")[0]?.trim() || locationName(place);
 /** The name two locations are compared by; an unnamed location has none, so it never matches by name. */
 export const matchableLocationName = (place: Location) =>
   place.display_name || place.label || place.locality ? ownerLocationName(place) : "";

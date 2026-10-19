@@ -50,6 +50,10 @@ export const locationName = (
   place.display_name?.split(",")[0]?.trim() ||
   place.locality ||
   m.owner_unnamed_location_2();
+/** What the owner sees a location called: the first part of its display name, else `locationName`. */
+export const ownerLocationName = (place: Location) =>
+  place.display_name?.split(",")[0]?.trim() || locationName(place);
+
 export type PlaceSearchResult = LocationInput;
 
 export type MediaAsset = {

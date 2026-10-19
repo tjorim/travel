@@ -128,11 +128,17 @@ export const sectionById = (id: TripWorkspaceSection): Section =>
 
 export const partsOf = (id: TripWorkspaceSection): readonly Part[] => sectionById(id).parts ?? [];
 
+/** The tab and block whose editor opens a record's dialog. */
+export const locateRecord = (kind: RecordKind) => {
+  for (const section of WORKSPACE_SECTIONS)
+    for (const part of (section as Section).parts ?? [])
+      if (part.records.includes(kind)) return { section, part };
+  return null;
+};
+
 /** Which section opens a record's dialog. */
 export const sectionForRecord = (kind: RecordKind): TripWorkspaceSection =>
-  WORKSPACE_SECTIONS.find((section) =>
-    ((section as Section).parts ?? []).some((part) => part.records.includes(kind)),
-  )?.id ?? DEFAULT_SECTION;
+  locateRecord(kind)?.section.id ?? DEFAULT_SECTION;
 
 /** `/trips/:id` for the overview, `/trips/:id/:section` for the rest. */
 export const sectionPath = (tripId: string, section: TripWorkspaceSection) =>

@@ -11,11 +11,11 @@ import { errorMessage, isResourceInUse } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { type Area, type PlaceSearchResult, type Trip } from "../tracker-model";
+import { ownerLocationName, type Area, type PlaceSearchResult, type Trip } from "../tracker-model";
 import { VisibilityControl, visibilityLabel } from "./visibility";
 import { PlaceSearchField } from "./PlaceSearchField";
 import { AreaContents } from "./AreaContents";
-import { LocationManager, matchableLocationName, ownerLocationName } from "./LocationManager";
+import { LocationManager, matchableLocationName } from "./LocationManager";
 import { duplicateAreas, duplicateLocations, type DuplicateGroup } from "./merge-candidates";
 import { MergeDialog, mergedNotice, reasonsText, type MergeRequest } from "./MergeDialog";
 

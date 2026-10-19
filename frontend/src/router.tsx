@@ -27,6 +27,8 @@ declare module "@tanstack/react-router" {
     openRecord?: {
       kind: RecordKind;
       id: string;
+      /** Set when the same record is asked for again, for example from the jump search. */
+      token?: number;
     };
   }
 }

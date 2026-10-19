@@ -212,6 +212,7 @@ export function AsyncSearchSelect({
   defaultOptions = [],
   onChange,
   loadOptions,
+  debounceMs = 250,
   isDisabled,
 }: {
   ariaLabel: string;
@@ -220,6 +221,8 @@ export function AsyncSearchSelect({
   defaultOptions?: Choice[];
   onChange: (value: string) => void;
   loadOptions: (query: string) => Promise<Choice[]>;
+  /** How long typing pauses before `loadOptions` runs; a search of data already in memory can use 0. */
+  debounceMs?: number;
   isDisabled?: boolean;
 }) {
   useLocale();
@@ -248,7 +251,7 @@ export function AsyncSearchSelect({
         .catch(() => {
           if (current === searchId.current) setResults([]);
         });
-    }, 250);
+    }, debounceMs);
   }
   return (
     <SearchCombobox

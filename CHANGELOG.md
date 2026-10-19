@@ -14,6 +14,15 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- The workspace "Jump to" search finds records as well as tabs and blocks (#461):
+  areas, locations, visits, stays, routes, tasks, documents, travel updates and
+  media by title, ignoring case and accents, labelled "Plan › Stays › Hotel
+  Taipei". Choosing one goes to its tab, expands its block and opens its dialog.
+  Matching runs in the browser over the owner lists already in the query cache;
+  no request carries the search words and nothing reaches published-trip
+  responses. Each kind shows at most five matches and counts the rest, so a large
+  media library cannot bury the other results.
+
 - Optional private media-worker processing for existing video derivatives
   (#457): a durable database dispatcher submits/reconciles `travel-video-v1`,
   verifies bounded video/poster results, preserves pending owner review and

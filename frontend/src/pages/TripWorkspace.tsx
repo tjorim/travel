@@ -60,10 +60,11 @@ export function TripWorkspaceView({
   const openRecordRequest = location.state.openRecord;
   const openRecordKind = openRecordRequest?.kind;
   const openRecordId = openRecordRequest?.id;
+  const openRecordToken = openRecordRequest?.token;
   useEffect(() => {
     if (openRecordKind && openRecordId)
       setRecordFocus({ kind: openRecordKind, id: openRecordId, token: Date.now() });
-  }, [openRecordKind, openRecordId]);
+  }, [openRecordKind, openRecordId, openRecordToken]);
   // "Toon op kaart" elsewhere in the workspace opens the overview, whose map focuses that point.
   const focusedPoint = location.state.mapFocus;
   const mapFocus = useMemo(

@@ -306,6 +306,7 @@
   "breadcrumb": "Breadcrumb",
   "owner_capture_in_trip": "Capture in this trip",
   "owner_jump_to": "Jump to",
+  "owner_jump_more_matches": "{p0} more in {p1}: keep typing to narrow down",
   "owner_prepare": "Prepare",
   "owner_manage_tasks_in_prepare": "Manage in Prepare",
   "owner_no_open_tasks": "Nothing left to arrange.",
