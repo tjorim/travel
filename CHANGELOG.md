@@ -6,6 +6,12 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- Every API response carries `Server-Timing: app;dur=…, db;desc="N queries";dur=…`
+  (visible in the browser devtools Network tab), and a request slower than
+  300 ms is logged as a warning with its method, route template (never the raw
+  path), status, duration and query count (apps#246). Queries are counted through
+  SQLAlchemy engine events, so N+1 patterns stand out. The same
+  `app/request_timing.py` is shared with Daynest, Worktime and Champagnefestival.
 - `python -m app.maintenance reconcile-objects` counts, and with `--delete`
   removes, stored files that no object row names and that are older than a
   grace period (default 24 hours): crash leftovers, and objects a running

@@ -18,6 +18,7 @@ from .mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
+from .request_timing import RequestTimingMiddleware
 from .routers.areas import router as areas_router
 from .routers.documents import router as documents_router
 from .routers.library import router as library_router
@@ -66,6 +67,8 @@ app = FastAPI(
 app.add_exception_handler(StarletteHTTPException, http_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RequestValidationError, validation_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty: ignore[invalid-argument-type]
+# Outermost, so its timing covers everything below it (apps#246).
+app.add_middleware(RequestTimingMiddleware)
 
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")
