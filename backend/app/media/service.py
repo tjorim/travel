@@ -44,7 +44,7 @@ from ..models import (
     opaque_id,
 )
 from ..secrets import SecretStore
-from ..storage import ObjectStorage, sha256_hex
+from ..storage import ObjectStorage, lock_object_deletion, sha256_hex
 from .oauth import access_token
 from .providers import MediaProvider, ProviderError
 
@@ -746,6 +746,7 @@ def _purge_pending_objects(session: Session, storage: ObjectStorage, *, object_i
             stored.state = ObjectState.AVAILABLE
             session.commit()
             continue
+        lock_object_deletion(session)
         storage.delete(stored.object_key)
         session.delete(stored)
         session.commit()

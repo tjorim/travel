@@ -11,6 +11,7 @@ from .audit import purge_expired_audit_events
 from .database import SessionLocal
 from .media.service import purge_deleted_media
 from .storage import get_storage
+from .storage_reconcile import remove_unreferenced_objects, unreferenced_objects
 
 
 def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -21,9 +22,18 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     commands.add_parser(
         "purge-expired-audit-events", help="permanently remove audit events past their retention window"
     )
+    reconcile = commands.add_parser(
+        "reconcile-objects", help="count, and with --delete remove, stored files no database row references"
+    )
+    reconcile.add_argument(
+        "--older-than-hours", type=int, default=24, help="ignore files modified more recently (default 24)"
+    )
+    reconcile.add_argument("--delete", action="store_true", help="remove the files instead of only counting them")
     arguments = parser.parse_args(argv)
     if arguments.command == "purge-deleted-media" and arguments.retention_days <= 0:
         parser.error("--retention-days must be greater than zero")
+    if arguments.command == "reconcile-objects" and arguments.older_than_hours <= 0:
+        parser.error("--older-than-hours must be greater than zero")
     return arguments
 
 
@@ -44,13 +54,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             # 24-month retention window; the scheduler must not duplicate it.
             purged = purge_expired_audit_events(session)
             completed = f"Travel audit purge completed: events_purged={purged}"
+        elif arguments.command == "reconcile-objects":
+            older_than = timedelta(hours=arguments.older_than_hours)
+            if arguments.delete:
+                removed = remove_unreferenced_objects(session, get_storage(), older_than=older_than)
+                completed = f"Travel object reconcile completed: unreferenced_objects_removed={removed}"
+            else:
+                found = len(unreferenced_objects(session, get_storage(), older_than=older_than))
+                completed = f"Travel object reconcile completed: unreferenced_objects={found} (dry run)"
         else:  # pragma: no cover - argparse enforces the choices above.
             return 64
     except Exception:
         session.rollback()
         # Object keys and filesystem paths are private implementation details;
         # systemd already records this command's non-zero exit for operators.
-        print("Travel maintenance purge failed", file=sys.stderr)
+        print("Travel maintenance command failed", file=sys.stderr)
         return 1
     finally:
         session.close()

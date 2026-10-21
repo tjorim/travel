@@ -4,8 +4,21 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Added
+
+- `python -m app.maintenance reconcile-objects` counts, and with `--delete`
+  removes, stored files that no object row names and that are older than a
+  grace period (default 24 hours): crash leftovers, and objects a running
+  backup archived after its database snapshot (apps#245). Run it after
+  restoring the media volume.
+
 ### Changed
 
+- Purges take PostgreSQL advisory lock 245 before deleting an object's bytes.
+  The apps backup holds it while it pins its database snapshot and hardlinks the
+  media volume, so a backup taken while Travel keeps running never references a
+  file it missed (apps#245). The storage rules the backup relies on are now in
+  `docs/object-storage.md`.
 - Reviewed the remaining custom UI against the shadcn registry (#469): `EmptyState`
   and the lazy-view loading placeholder now use generated `empty` and `skeleton`
   sources, and the account menu is a generated Popover instead of a hand-rolled

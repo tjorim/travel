@@ -113,6 +113,11 @@ owner-only; visitor views receive only fields an owner scope explicitly
 selects. Complete `docs/publication-safety-check.md` before publishing. Do not
 commit passwords, PINs, recovery codes, or payment-card details.
 
+Stored objects follow `docs/object-storage.md`: write before the row commits,
+never rewrite a referenced key, delete only after `purge_pending` commits and
+under `lock_object_deletion`, and no dot-entries. The apps backup depends on
+these rules; keep new file-backed features inside them.
+
 Tracker endpoints must enforce ownership from the authenticated subject and
 must not expose it through published-trip responses. Do not add GPS capture,
 precise addresses, media uploads, or automatic archive migration without an

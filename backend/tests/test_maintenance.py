@@ -47,7 +47,7 @@ def test_purge_command_rolls_back_and_hides_storage_details_on_failure(monkeypat
     assert maintenance.main(["purge-deleted-media", "--retention-days", "30"]) == 1
     assert session.rolled_back
     assert session.closed
-    assert capsys.readouterr().err == "Travel maintenance purge failed\n"
+    assert capsys.readouterr().err == "Travel maintenance command failed\n"
 
 
 def test_audit_purge_command_uses_the_application_policy_default(monkeypatch, capsys) -> None:

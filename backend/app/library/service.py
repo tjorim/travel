@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..media.service import MediaImportError, upload_too_large_error
 from ..models import DocumentKind, ObjectState, OwnerDocument, OwnerStoredObject, opaque_id
-from ..storage import ObjectStorage, sha256_hex
+from ..storage import ObjectStorage, lock_object_deletion, sha256_hex
 
 
 class LibraryError(MediaImportError):
@@ -117,6 +117,7 @@ def purge_owner_objects(session: Session, storage: ObjectStorage, *, object_ids:
             stored.state = ObjectState.AVAILABLE
             session.commit()
             continue
+        lock_object_deletion(session)
         storage.delete(stored.object_key)
         session.delete(stored)
         session.commit()

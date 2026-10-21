@@ -8,14 +8,33 @@ a filesystem adapter for local/test environments; production points
 
 import hashlib
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import BinaryIO, Protocol
 
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from .config import settings
+
+# PostgreSQL advisory lock held by every removal of a stored object's bytes,
+# and by the apps backup while it pins a database snapshot and hardlinks the
+# media volume (apps#245).  See docs/object-storage.md.
+OBJECT_DELETION_LOCK = 245
 
 
 def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def lock_object_deletion(session: Session) -> None:
+    """Wait until no backup is capturing the object set; released at commit.
+
+    Take it after the row lock and before deleting the bytes, so a backup's
+    snapshot never references a file that is gone before it is linked.
+    """
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": OBJECT_DELETION_LOCK})
 
 
 class ObjectStorage(Protocol):
@@ -28,6 +47,8 @@ class ObjectStorage(Protocol):
     def delete(self, key: str) -> None: ...
 
     def exists(self, key: str) -> bool: ...
+
+    def objects(self) -> Iterator[tuple[str, float]]: ...
 
 
 class LocalObjectStorage:
@@ -80,6 +101,24 @@ class LocalObjectStorage:
 
     def exists(self, key: str) -> bool:
         return self._path_for(key).exists()
+
+    def objects(self) -> Iterator[tuple[str, float]]:
+        """Yield every stored file as ``(key, modification time)``.
+
+        Dot-entries are skipped: no key starts with a dot, and the backup's
+        temporary hardlinks live in ``.backup-snapshot``.
+        """
+        for directory, subdirectories, files in os.walk(self.root):
+            subdirectories[:] = [name for name in subdirectories if not name.startswith(".")]
+            for name in files:
+                if name.startswith("."):
+                    continue
+                path = Path(directory, name)
+                try:
+                    modified = path.stat().st_mtime
+                except FileNotFoundError:  # removed while listing
+                    continue
+                yield path.relative_to(self.root).as_posix(), modified
 
 
 _default_storage = LocalObjectStorage()
