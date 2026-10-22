@@ -98,7 +98,7 @@ class NominatimSearchProvider:
                 viewport_west=west,
                 **_address(item),
             )
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             # One malformed provider item must not turn into a partial unsafe
             # record. The owner can refine a search or choose another point.
             return None

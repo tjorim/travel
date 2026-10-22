@@ -211,7 +211,7 @@ def test_only_prose_is_translated_and_whitespace_is_kept() -> None:
 
 def test_backend_key_is_sent_only_in_body_and_failures_are_sanitized(tmp_path, caplog) -> None:
     key_file = tmp_path / "translation-key"
-    key_file.write_text("t" * 64)
+    key_file.write_text("t" * 64, encoding="utf-8")
     calls = []
 
     def handler(request):

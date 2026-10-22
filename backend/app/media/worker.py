@@ -67,7 +67,7 @@ class TimedUpload:
 class WorkerClient:
     def __init__(self) -> None:
         try:
-            token = Path(settings.media_worker_token_file).read_text().strip()
+            token = Path(settings.media_worker_token_file).read_text(encoding="utf-8").strip()
         except OSError:
             raise WorkerUnavailable from None
         url = httpx.URL(settings.media_worker_url)
@@ -122,7 +122,7 @@ class WorkerClient:
             if result["api_version"] != "v1" or not ID.fullmatch(result["id"]) or result["state"] not in STATES:
                 raise ValueError
             return result
-        except (ValueError, KeyError, TypeError):
+        except ValueError, KeyError, TypeError:
             raise WorkerUnavailable from None
 
     def submit(self, job: MediaWorkerJob, source: Path | None) -> dict:
@@ -166,7 +166,7 @@ class WorkerClient:
             if len(data) != evidence["bytes"] or sha256_hex(data) != evidence["sha256"]:
                 raise InvalidOutput
             return data
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             raise InvalidOutput from None
 
     def cleanup(self, worker_id: str, *, cancel: bool) -> None:
@@ -353,7 +353,7 @@ def reconcile(session: Session, storage: ObjectStorage, job: MediaWorkerJob, cli
             poster = client.download(job.worker_id, "poster.webp", artifacts["poster.webp"])
             try:
                 width, height, duration = validate_output(video, poster, artifacts, job.remove_audio)
-            except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError):
+            except ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError:
                 raise InvalidOutput from None
             # Locks on derivative + asset span validation and attachment, preventing deletion races.
             stored = service._store_bytes(
@@ -439,7 +439,7 @@ def main() -> None:
                     worked = dispatch_one(session, get_storage(), client)
             finally:
                 client.close()
-        except (WorkerUnavailable, httpx.HTTPError, OSError, ValueError, SQLAlchemyError):
+        except WorkerUnavailable, httpx.HTTPError, OSError, ValueError, SQLAlchemyError:
             worked = False
         if not worked:
             time.sleep(5)

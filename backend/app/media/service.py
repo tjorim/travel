@@ -90,7 +90,7 @@ def _dms_to_decimal(dms: tuple | None, ref: str | None) -> float | None:
         return None
     try:
         degrees, minutes, seconds = (float(part) for part in dms)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     decimal = degrees + minutes / 60 + seconds / 3600
     return -decimal if ref in ("S", "W") else decimal

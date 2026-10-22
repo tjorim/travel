@@ -100,7 +100,7 @@ def test_provider_diagnostics_never_expose_urls_or_tokens():
 def test_every_app_owned_http_failure_declares_a_code():
     root = Path(__file__).parents[1] / "app"
     for path in [*root.joinpath("routers").glob("*.py"), root / "auth.py", root / "main.py", root / "media/ranges.py"]:
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 assert node.func.id != "HTTPException", (path, node.lineno)
                 if node.func.id == "ApiException":

@@ -20,6 +20,16 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- **Breaking for local development:** the backend now requires Python 3.15
+  (`requires-python >=3.15`, Ruff `py315`) and the container and CI run it
+  (#390). The backend is run from source and never installed as a library, so it
+  keeps no older minimum. Pydantic moves to 2.14.1 so pydantic-core ships a 3.15
+  wheel; h3 and PyYAML still build from source, so the builder stage alone
+  installs `gcc`. The runtime image has no toolchain. The image's uv moves from
+  0.10.12 to 0.13.5. Quoted forward references in annotations are now plain, and
+  every text file read passes an explicit UTF-8 encoding. `docs/profiling.md`
+  describes a local workflow for the standard-library sampling profiler on slow
+  routes.
 - FastMCP 4.1.3 (from 4.1.0). 4.1.2 applies component authorization after
   transforms, so tools hidden behind `search_tools`/`call_tool` are authorized
   the same way as listed ones, and 4.1.3 requires certifi 2026.10.19 after the

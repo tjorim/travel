@@ -308,26 +308,26 @@ class Trip(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    visits: Mapped[list["Visit"]] = relationship(
+    visits: Mapped[list[Visit]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="Visit.position"
     )
-    areas: Mapped[list["Area"]] = relationship(
+    areas: Mapped[list[Area]] = relationship(
         foreign_keys="Area.trip_id", cascade="all, delete-orphan", order_by="Area.created_at"
     )
-    locations: Mapped[list["Location"]] = relationship(
+    locations: Mapped[list[Location]] = relationship(
         foreign_keys="Location.trip_id", cascade="all, delete-orphan", order_by="Location.created_at"
     )
-    travel_updates: Mapped[list["TravelUpdate"]] = relationship(
+    travel_updates: Mapped[list[TravelUpdate]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="TravelUpdate.occurred_at"
     )
-    stays: Mapped[list["Stay"]] = relationship(
+    stays: Mapped[list[Stay]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="Stay.check_in_date"
     )
-    trip_tasks: Mapped[list["TripTask"]] = relationship(
+    trip_tasks: Mapped[list[TripTask]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="TripTask.created_at"
     )
-    packing_lists: Mapped[list["PackingList"]] = relationship(back_populates="trip", cascade="all, delete-orphan")
-    routes: Mapped[list["Route"]] = relationship(
+    packing_lists: Mapped[list[PackingList]] = relationship(back_populates="trip", cascade="all, delete-orphan")
+    routes: Mapped[list[Route]] = relationship(
         back_populates="trip",
         cascade="all, delete-orphan",
         # By day; within a day, day-only routes follow the timed ones, as in the Agenda.
@@ -339,7 +339,7 @@ class Trip(Base):
             Route.created_at,
         ),
     )
-    media_derivatives: Mapped[list["MediaDerivative"]] = relationship(
+    media_derivatives: Mapped[list[MediaDerivative]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
     )
 
@@ -360,8 +360,8 @@ class TravelUpdateMediaAsset(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    travel_update: Mapped["TravelUpdate"] = relationship(back_populates="media_links")
-    media_asset: Mapped["MediaAsset"] = relationship(back_populates="update_links")
+    travel_update: Mapped[TravelUpdate] = relationship(back_populates="media_links")
+    media_asset: Mapped[MediaAsset] = relationship(back_populates="update_links")
 
 
 class TravelUpdate(Base):
@@ -527,7 +527,7 @@ class Route(Base):
     arrival_area: Mapped[Area] = relationship(foreign_keys=[arrival_area_id])
     departure_location: Mapped[Location | None] = relationship(foreign_keys=[departure_location_id])
     arrival_location: Mapped[Location | None] = relationship(foreign_keys=[arrival_location_id])
-    document_links: Mapped[list["RouteDocumentAsset"]] = relationship(
+    document_links: Mapped[list[RouteDocumentAsset]] = relationship(
         back_populates="route", cascade="all, delete-orphan", order_by="RouteDocumentAsset.created_at"
     )
 
@@ -554,7 +554,7 @@ class RouteDocumentAsset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     route: Mapped[Route] = relationship(back_populates="document_links")
-    document_asset: Mapped["DocumentAsset"] = relationship()
+    document_asset: Mapped[DocumentAsset] = relationship()
 
 
 class Visit(Base):
@@ -623,8 +623,8 @@ class PackingList(Base):
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     trip: Mapped[Trip] = relationship(back_populates="packing_lists")
-    bags: Mapped[list["PackingBag"]] = relationship(back_populates="packing_list", cascade="all, delete-orphan")
-    items: Mapped[list["PackingItem"]] = relationship(back_populates="packing_list", cascade="all, delete-orphan")
+    bags: Mapped[list[PackingBag]] = relationship(back_populates="packing_list", cascade="all, delete-orphan")
+    items: Mapped[list[PackingItem]] = relationship(back_populates="packing_list", cascade="all, delete-orphan")
 
 
 class PackingTemplate(Base):
@@ -935,7 +935,7 @@ class MediaAsset(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     original_object: Mapped[StoredObject] = relationship(foreign_keys=[original_object_id])
-    derivatives: Mapped[list["MediaDerivative"]] = relationship(
+    derivatives: Mapped[list[MediaDerivative]] = relationship(
         back_populates="media_asset", cascade="all, delete-orphan"
     )
     update_links: Mapped[list[TravelUpdateMediaAsset]] = relationship(back_populates="media_asset")

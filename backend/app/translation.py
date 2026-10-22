@@ -135,7 +135,7 @@ class TranslationService:
                     follow_redirects=False,
                 ) as client,
             ):
-                for part in (part for line in lines for part in line):
+                for part in (*line for line in lines):
                     if not isinstance(part, Piece) or part.body in translated:
                         continue
                     results = []
@@ -161,10 +161,10 @@ class TranslationService:
         payload = {"q": piece, "source": source, "target": target, "format": "text"}
         if self.config.translation_api_key_file:
             try:
-                key = Path(self.config.translation_api_key_file).read_text().strip()
+                key = Path(self.config.translation_api_key_file).read_text(encoding="utf-8").strip()
                 if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", key):
                     raise ValueError
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 logger.warning("translation_failed code=credential_unavailable")
                 raise TranslationError(
                     "Translation service is unavailable", code="translation_service_is_unavailable"

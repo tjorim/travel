@@ -145,7 +145,7 @@ class LocationInput(LocationFields):
     route. It replaces creating a copy, so nothing else may be supplied with it."""
 
     existing_location_id: str | None = Field(default=None, min_length=1, max_length=32)
-    new_area: "AreaInput | None" = None
+    new_area: AreaInput | None = None
 
     @model_validator(mode="after")
     def reuse_supplies_nothing_else(self):
@@ -159,7 +159,7 @@ class LocationInput(LocationFields):
         return self
 
 
-def require_identified_location(location: "LocationInput | None") -> "LocationInput | None":
+def require_identified_location(location: LocationInput | None) -> LocationInput | None:
     """A stay's location must say where it is: a saved location, a name or address, a city or an area."""
     if location is None or location.existing_location_id is not None:
         return location
@@ -350,7 +350,7 @@ class TranslationDraftRequest(InputModel):
     target: TranslationLanguage
 
     @model_validator(mode="after")
-    def languages_differ(self) -> "TranslationDraftRequest":
+    def languages_differ(self) -> TranslationDraftRequest:
         if self.source == self.target:
             raise PydanticCustomError("translation_languages_must_differ", "Choose two different languages")
         return self

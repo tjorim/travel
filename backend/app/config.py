@@ -106,7 +106,7 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def validate_no_dev_bypass_outside_development(self) -> "Settings":
+    def validate_no_dev_bypass_outside_development(self) -> Settings:
         if self.dev_auth_bypass_token and self.environment != "development":
             raise ValueError("TRAVEL_DEV_AUTH_BYPASS_TOKEN must not be set outside TRAVEL_ENVIRONMENT=development.")
         if self.provider_secret_key:
@@ -124,7 +124,7 @@ class Settings(BaseSettings):
         return self.mcp_audience or self.mcp_resource_url
 
     @model_validator(mode="after")
-    def validate_mcp_audience_is_not_the_api_audience(self) -> "Settings":
+    def validate_mcp_audience_is_not_the_api_audience(self) -> Settings:
         if self.mcp_token_audience and self.mcp_token_audience == self.oidc_audience:
             raise ValueError("TRAVEL_MCP_AUDIENCE must differ from TRAVEL_OIDC_AUDIENCE.")
         return self

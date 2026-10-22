@@ -1874,7 +1874,7 @@ class ToolFailureMiddleware(Middleware):
     async def on_call_tool(self, context: MiddlewareContext[Any], call_next: Callable[..., Any]) -> Any:
         try:
             return await call_next(context)
-        except (NotFoundError, DisabledError):
+        except NotFoundError, DisabledError:
             raise
         except Exception as error:
             if getattr(error, _REPORTED, False):
@@ -2107,7 +2107,7 @@ def _unauthorized_reason(authorization: str | None) -> str:
         return f"bearer token is not a JWT ({len(parts)} segments)"
     try:
         header, claims = _jwt_segment(parts[0]), _jwt_segment(parts[1])
-    except (ValueError, binascii.Error):
+    except ValueError, binascii.Error:
         return "bearer token has an undecodable JWT header or payload"
     exp = claims.get("exp")
     expiry = f"{int(exp - time.time())}s" if isinstance(exp, int | float) else None

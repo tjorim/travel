@@ -38,7 +38,7 @@ def _words(text: str | None) -> set[str]:
 def _local_day(moment, timezone: str | None) -> date:
     try:
         zone = ZoneInfo(timezone) if timezone else None
-    except (ZoneInfoNotFoundError, ValueError):
+    except ZoneInfoNotFoundError, ValueError:
         zone = None
     return (moment.astimezone(zone) if zone else moment).date()
 

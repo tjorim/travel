@@ -65,7 +65,7 @@ def queued(tmp_path, monkeypatch):
 @pytest.fixture
 def transport(tmp_path, monkeypatch):
     token = tmp_path / "token"
-    token.write_text("t" * 64)
+    token.write_text("t" * 64, encoding="utf-8")
     monkeypatch.setattr(settings, "media_worker_url", "http://media-worker:8090")
     monkeypatch.setattr(settings, "media_worker_token_file", str(token))
     calls = []
@@ -334,7 +334,7 @@ def test_worker_credential_validation_fails_closed(tmp_path, monkeypatch):
     with pytest.raises(worker.WorkerUnavailable):
         worker.WorkerClient()
     token = tmp_path / "bad"
-    token.write_text("t" * 35 + "\nembedded")
+    token.write_text("t" * 35 + "\nembedded", encoding="utf-8")
     monkeypatch.setattr(settings, "media_worker_token_file", str(token))
     with pytest.raises(worker.WorkerUnavailable):
         worker.WorkerClient()

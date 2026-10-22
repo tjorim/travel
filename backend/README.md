@@ -406,6 +406,9 @@ verification: a request whose bearer token equals it acts as the fixed
 `TRAVEL_ENVIRONMENT=development`. It is the same contract as champagnefestival's
 and worktime's `DEV_AUTH_BYPASS_TOKEN`.
 
+To find out why a slow route is slow, profile it locally with Python 3.15's sampling
+profiler; see [docs/profiling.md](../docs/profiling.md).
+
 ### Owner MCP server
 
 Local stdio is deliberately development-only: set a development subject for
