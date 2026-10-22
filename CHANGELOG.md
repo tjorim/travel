@@ -6,6 +6,10 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- `uv run python -m app.dev_schema` builds the local SQLite database (the default
+  `TRAVEL_DATABASE_URL`) from the models, so a dev instance needs no PostgreSQL
+  container; `--reset` rebuilds it after a model change. The SQLite engine now enforces
+  foreign keys, like PostgreSQL. The migrations still target PostgreSQL only.
 - Every API response carries `Server-Timing: app;dur=…, db;desc="N queries";dur=…`
   (visible in the browser devtools Network tab), and a request slower than
   300 ms is logged as a warning with its method, route template (never the raw

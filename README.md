@@ -21,8 +21,10 @@ See [Application backend](#application-backend) and
 [backend/README.md](backend/README.md) for the API, `frontend/` for the PWA
 (`pnpm dev`), or the [local application stack](#local-application-stack)
 below. `pnpm dev` proxies `/api` to `http://localhost:8000`, so run the API
-there (PostgreSQL and `alembic upgrade head` are required; SQLite does not
-support the migrations). Locally no Keycloak is needed: export one
+there. Locally neither a database container nor Keycloak is needed: the API
+defaults to a SQLite file, built from the models with
+`cd backend && uv run python -m app.dev_schema` (add `--reset` after a model
+change). The Alembic migrations target PostgreSQL and do not run on SQLite. export one
 `TRAVEL_DEV_AUTH_BYPASS_TOKEN` (any string) for both processes and start the API
 with `TRAVEL_ENVIRONMENT=development`. `pnpm dev` then authenticates `/api`
 with it, and opening `http://localhost:5173/admin/` is already signed in as the
