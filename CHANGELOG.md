@@ -20,6 +20,10 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- FastMCP 4.1.3 (from 4.1.0). 4.1.2 applies component authorization after
+  transforms, so tools hidden behind `search_tools`/`call_tool` are authorized
+  the same way as listed ones, and 4.1.3 requires certifi 2026.10.19 after the
+  eMudhra CA compromise. No application change was needed.
 - Purges take PostgreSQL advisory lock 245 before deleting an object's bytes.
   The apps backup holds it while it pins its database snapshot and hardlinks the
   media volume, so a backup taken while Travel keeps running never references a
