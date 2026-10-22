@@ -15,8 +15,8 @@
   --tracking-travel-title-long: -0.03em;
   --spacing-travel-title: 10ch;
   --spacing-travel-shell: min(720px, calc(100% - 32px));
-  --spacing-travel-owner-shell: min(1240px, calc(100% - 64px));
-  --spacing-travel-index-shell: min(1000px, calc(100% - 32px));
+  --spacing-travel-owner-shell: calc(100% - 64px);
+  --spacing-travel-visitor-shell: calc(100% - 32px);
   --spacing-travel-home-title: 12ch;
   --tracking-travel-eyebrow: 0.13em;
   --tracking-travel-markdown-label: 0.08em;

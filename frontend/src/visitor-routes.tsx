@@ -122,7 +122,7 @@ function TripIndex() {
     return () => controller.abort();
   }, [attempt]);
   return (
-    <main className="travel-shell w-travel-index-shell! pt-6! [&_h1]:max-w-none [&_section]:mt-10">
+    <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell! [&_h1]:max-w-none [&_section]:mt-10">
       <Preferences />
       <header>
         <p className="travel-eyebrow">Travel</p>
@@ -268,7 +268,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   const title =
     state.kind === "ready" && state.projection.title ? state.projection.title : m.shared_trip();
   return (
-    <main className="travel-shell pt-6!">
+    <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
       <Preferences />
       <header>
         <p className="travel-eyebrow">Travel</p>
@@ -315,7 +315,7 @@ function VisitorRoute({ audience }: { audience: Audience }) {
   return identifier ? (
     <VisitorPage key={`${audience}:${identifier}`} audience={audience} identifier={identifier} />
   ) : (
-    <main className="travel-shell pt-6!">
+    <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
       <Preferences />
       <section className="travel-card" role="status">
         <h1>{m.unavailable_trip()}</h1>
@@ -351,7 +351,7 @@ const visitorNotFoundRoute = createRoute({
   component: () => {
     useLocale();
     return (
-      <main className="travel-shell pt-6!">
+      <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
         <Preferences />
         <section className="travel-card" role="status">
           <h1>{m.page_unavailable()}</h1>

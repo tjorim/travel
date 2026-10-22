@@ -22,8 +22,14 @@ All notable changes to the travel hub are documented here.
   backup archived after its database snapshot (apps#245). Run it after
   restoring the media volume.
 
+### Fixed
+
+- Public and shared visitor pages now declare the Travel favicon, matching the owner app.
+
 ### Changed
 
+- Owner and visitor pages use the available desktop width with 32px side margins,
+  removing their page-width caps while preserving narrower text and form layouts.
 - **Breaking for local development:** the backend now requires Python 3.15
   (`requires-python >=3.15`, Ruff `py315`) and the container and CI run it
   (#390). The backend is run from source and never installed as a library, so it

@@ -94,6 +94,19 @@ archive-content import in #40.
 - [ ] [apps#230](https://github.com/tjorim/apps/issues/230) Schedule the
       alert processor and configure the per-owner SMTP mapping on the VPS.
 
+### Visual refresh — Application follow-up
+
+Implement in order; preserve existing publication boundaries and owner workflows.
+
+- [ ] [#493](https://github.com/tjorim/travel/issues/493) Refine shared visual
+      foundations and responsive public trip listings, including favicon review.
+- [ ] [#494](https://github.com/tjorim/travel/issues/494) Add deliberate,
+      audience-authorized trip covers and refresh visitor headers, stories,
+      maps and galleries; depends on #493.
+- [ ] [#495](https://github.com/tjorim/travel/issues/495) Apply the refreshed
+      design to owner trip workspaces and complete cross-route visual review;
+      depends on #493 and #494.
+
 ## Confirmed release targets
 
 ### v1 — Private travel journal application
