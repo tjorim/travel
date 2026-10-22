@@ -4,6 +4,14 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Warmed the forest/paper palette, softened shared surfaces and clarified display
+  typography. Public `/` and `/trips/` listings now use a bounded responsive grid,
+  quieter date metadata and image-free cards with a gold accent; loading, empty
+  and error states share the same reading width. Saved share links retain their
+  separate forget action. The shared favicon uses the refreshed palette (#493).
+
 ### Added
 
 - `uv run python -m app.dev_schema` builds the local SQLite database (the default

@@ -122,22 +122,22 @@ function TripIndex() {
     return () => controller.abort();
   }, [attempt]);
   return (
-    <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell! [&_h1]:max-w-none [&_section]:mt-10">
+    <main className="travel-shell w-travel-visitor-shell! max-w-travel-listing pt-6! min-[960px]:w-travel-owner-shell! [&_section]:mt-travel-section">
       <Preferences />
-      <header>
+      <header className="border-b border-travel-divider pb-8 min-[680px]:pb-12">
         <p className="travel-eyebrow">Travel</p>
-        <h1>{m.on_the_road()}</h1>
-        <p className="max-w-145 leading-relaxed text-travel-muted">{m.public_intro()}</p>
+        <h1 className="max-w-travel-home-title!">{m.on_the_road()}</h1>
+        <p className="max-w-travel-reading leading-relaxed text-travel-muted">{m.public_intro()}</p>
       </header>
       <section aria-label={m.public_trips()} aria-live="polite">
         {state.kind === "loading" && (
-          <div className="travel-card" role="status">
+          <div className="travel-listing-state" role="status">
             <h2>{m.loading_trips()}</h2>
             <p>{m.wait()}</p>
           </div>
         )}
         {state.kind === "error" && (
-          <div className="travel-card" role="alert">
+          <div className="travel-listing-state" role="alert">
             <h2>{m.trips_error()}</h2>
             <p>
               {state.failure
@@ -150,20 +150,19 @@ function TripIndex() {
           </div>
         )}
         {state.kind === "ready" && state.trips.length === 0 && (
-          <div className="travel-card" role="status">
+          <div className="travel-listing-state" role="status">
             <h2>{m.no_public_trips()}</h2>
             <p>{m.come_back()}</p>
           </div>
         )}
         {state.kind === "ready" && state.trips.length > 0 && (
-          <ul className="m-0 grid list-none grid-cols-1 gap-4.5 p-0 min-[620px]:grid-cols-2 min-[960px]:grid-cols-3">
+          <ul className="travel-trip-grid">
             {state.trips.map((trip) => (
-              <li key={trip.slug}>
-                <Link
-                  className="travel-card flex h-full flex-col text-inherit no-underline transition-all hover:-translate-y-0.75 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus [&_h2]:mb-3 [&_h2]:text-2xl [&_p]:wrap-anywhere"
-                  to={`/trips/${encodeURIComponent(trip.slug)}`}
-                >
-                  <span className="travel-eyebrow">{tripDates(trip.dates) ?? m.public_trip()}</span>
+              <li key={trip.slug} className="min-w-0">
+                <Link className="travel-trip-card" to={`/trips/${encodeURIComponent(trip.slug)}`}>
+                  <span className="mb-4 text-sm font-medium text-travel-muted">
+                    {tripDates(trip.dates) ?? m.public_trip()}
+                  </span>
                   <h2>{trip.title ?? m.published_trip()}</h2>
                   {(trip.summary_text ?? trip.summary) && (
                     <p className="line-clamp-4">{trip.summary_text ?? trip.summary}</p>
@@ -180,16 +179,15 @@ function TripIndex() {
       {storageFailed && <p role="status">{m.visitor_storage_failed()}</p>}
       {savedTrips.length > 0 && (
         <section aria-label={m.saved_trips_label()}>
-          <h2>{m.saved_trips()}</h2>
+          <h2 className="text-travel-section tracking-tight">{m.saved_trips()}</h2>
           <p>{m.saved_trip_count({ count: savedTrips.length })}</p>
-          <p className="max-w-145 leading-relaxed text-travel-muted">{m.saved_notice()}</p>
-          <ul className="m-0 grid list-none grid-cols-1 gap-4.5 p-0 min-[620px]:grid-cols-2 min-[960px]:grid-cols-3">
+          <p className="max-w-travel-reading leading-relaxed text-travel-muted">
+            {m.saved_notice()}
+          </p>
+          <ul className="travel-trip-grid">
             {savedTrips.map((trip) => (
-              <li key={trip.token} className="grid gap-2 [&>button]:justify-self-start">
-                <Link
-                  className="travel-card flex h-full flex-col text-inherit no-underline transition-all hover:-translate-y-0.75 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus [&_h2]:mb-3 [&_h2]:text-2xl [&_p]:wrap-anywhere"
-                  to={`/share/${encodeURIComponent(trip.token)}`}
-                >
+              <li key={trip.token} className="grid min-w-0 gap-2 [&>button]:justify-self-start">
+                <Link className="travel-trip-card" to={`/share/${encodeURIComponent(trip.token)}`}>
                   <span className="travel-eyebrow">{m.unlisted_trip()}</span>
                   <h2>{trip.title ?? m.shared_trip()}</h2>
                   {trip.summary && <p className="line-clamp-4">{trip.summary}</p>}

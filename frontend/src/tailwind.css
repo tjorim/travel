@@ -9,15 +9,23 @@
   --text-travel-title: clamp(2.2rem, 9vw, 5.8rem);
   --text-travel-title-long: clamp(1.75rem, 6vw, 3.25rem);
   --text-travel-form-label: 0.9rem;
-  --leading-travel-title: 0.9;
+  --leading-travel-title: 1.02;
   --leading-travel-title-long: 1.05;
-  --tracking-travel-title: -0.07em;
+  --tracking-travel-title: -0.055em;
   --tracking-travel-title-long: -0.03em;
   --spacing-travel-title: 10ch;
   --spacing-travel-shell: min(720px, calc(100% - 32px));
   --spacing-travel-owner-shell: calc(100% - 64px);
   --spacing-travel-visitor-shell: calc(100% - 32px);
   --spacing-travel-home-title: 12ch;
+  --spacing-travel-reading: 65ch;
+  --spacing-travel-listing: 100rem;
+  --spacing-travel-grid-gap: clamp(1rem, 2vw, 2rem);
+  --spacing-travel-card-pad: clamp(1.25rem, 2vw, 2rem);
+  --spacing-travel-section: clamp(2.5rem, 5vw, 4rem);
+  --aspect-travel-cover: 3 / 2;
+  --text-travel-section: clamp(1.5rem, 2vw, 2rem);
+  --text-travel-card-title: clamp(1.5rem, 2vw, 1.75rem);
   --tracking-travel-eyebrow: 0.13em;
   --tracking-travel-markdown-label: 0.08em;
   --spacing-map-canvas: clamp(300px, 48vw, 480px);
@@ -37,20 +45,20 @@
     }
   }
   --color-travel-backdrop: #19342d;
-  --color-travel-on-action: #fffdf8;
+  --color-travel-on-action: #fffcf5;
   --color-travel-ink: #19342d;
   --color-travel-label: #27483e;
   --color-travel-input-border: #9eb4aa;
-  --color-travel-paper: #f5f0e8;
-  --color-travel-forest: #0f493b;
+  --color-travel-paper: #f6f1e7;
+  --color-travel-forest: #174c3c;
   --color-travel-muted: #4d665e;
   --color-travel-focus: #946900;
-  --color-travel-surface: #fffdf8;
+  --color-travel-surface: #fffcf5;
   --color-travel-border: #b7c9be;
   --color-travel-control-border: #87a096;
   --color-travel-danger: #a63b32;
   --color-travel-divider: #d6e0d9;
-  --color-travel-tint: #eef5ef;
+  --color-travel-tint: #edf1e8;
   --color-travel-map-bg: #e8eee8;
   --color-travel-map-detail: #f1f6f0;
   --color-travel-map-marker: #ff7a59;
@@ -90,24 +98,24 @@
   --color-travel-map-grey: #9aa5b1;
   --color-travel-map-mint: #6ee7c7;
   --color-travel-map-yellow: #ffd166;
-  --shadow-travel-card: 0 12px 35px #19342d12;
+  --shadow-travel-card: 0 3px 12px #19342d08;
 }
 
 :root[data-theme="dark"] {
   --color-travel-ink: #e0ece6;
   --color-travel-label: #d3e5dc;
   --color-travel-input-border: #819b90;
-  --color-travel-paper: #101c18;
+  --color-travel-paper: #121e19;
   --color-travel-forest: #99d7bd;
   --color-travel-muted: #b0c4ba;
   --color-travel-focus: #ffd166;
-  --color-travel-surface: #182923;
+  --color-travel-surface: #1b2d25;
   --color-travel-border: #647e71;
   --color-travel-control-border: #819b90;
   --color-travel-danger: #ffaaa1;
   --color-travel-divider: #3e594c;
   --color-travel-tint: #213b2e;
-  --color-travel-map-bg: #182923;
+  --color-travel-map-bg: #1b2d25;
   --color-travel-map-detail: #213b2e;
   --color-travel-map-marker: #ff977e;
   --color-travel-card-border: #496657;
@@ -139,7 +147,7 @@
   --color-travel-warning: #ffd166;
   --color-travel-warning-surface: #42371e;
   --color-travel-backdrop: #080f0c;
-  --color-travel-on-action: #101c18;
+  --color-travel-on-action: #121e19;
   --color-travel-map-blue: #63b3ff;
   --color-travel-map-gold: #d4a017;
   --color-travel-map-orange: #e37749;
@@ -502,7 +510,7 @@
 
 /* Shared surface used by owner and visitor cards. */
 @utility travel-card {
-  @apply rounded-travel-card border border-travel-card-border bg-travel-surface p-6 shadow-travel-card;
+  @apply rounded-travel-card bg-travel-surface p-6;
   & h2 {
     @apply mt-0;
   }
@@ -536,5 +544,30 @@
   }
   :root[data-theme="dark"] .maplibregl-ctrl-icon {
     filter: invert(1);
+  }
+}
+
+/* Editorial listing compositions: native links retain browser navigation semantics. */
+@utility travel-trip-grid {
+  @apply m-0 grid list-none grid-cols-1 gap-travel-grid-gap p-0 min-[680px]:grid-cols-2 min-[1100px]:grid-cols-3 min-[1500px]:grid-cols-4;
+}
+
+@utility travel-trip-card {
+  @apply relative flex h-full min-w-0 flex-col rounded-travel-card border-t-4 border-travel-warning-border bg-travel-surface p-travel-card-pad text-inherit no-underline shadow-travel-card transition-colors hover:bg-travel-hover focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus;
+  & h2 {
+    @apply mt-0 mb-3 line-clamp-4 text-travel-card-title leading-tight tracking-tight;
+  }
+  & p {
+    @apply m-0 max-w-travel-reading leading-relaxed text-travel-muted;
+  }
+}
+
+@utility travel-listing-state {
+  @apply max-w-travel-reading rounded-travel-card bg-travel-surface p-travel-card-pad;
+  & h2 {
+    @apply mt-0 mb-3 text-travel-section leading-tight;
+  }
+  & p {
+    @apply mb-5 leading-relaxed text-travel-muted;
   }
 }

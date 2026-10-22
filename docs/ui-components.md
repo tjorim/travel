@@ -77,3 +77,29 @@ Light/dark/auto appearance comes from #278 (PR #280), the base of this change.
 The root `data-theme` overrides feed the semantic tokens directly. Primary
 foreground uses `travel-on-action` so checked icons retain contrast against
 the light and dark action colours. No second theme system is introduced here.
+
+## Visual foundations and visitor listings (#493)
+
+The listing keeps native router links rather than adding a control. The existing
+registry Card is a surface composition, not a navigation primitive; Base UI does
+not supply a trip-grid layout. `travel-trip-grid`, `travel-trip-card` and
+`travel-listing-state` therefore own the responsive editorial composition while
+retaining native link keyboard behaviour. Cards use typography and a restrained
+gold top edge instead of an empty image box: no cover or private media is fetched.
+Shared surfaces no longer stack borders and shadows; interactive inputs retain
+their separate boundary tokens. Reading width, grid spacing, card padding,
+section spacing and the future cover ratio have named Tailwind tokens.
+
+The existing route-and-sun favicon is retained, with forest, paper and gold
+colours aligned to the light palette. All four HTML entries use the same SVG.
+
+Verification: the complete 57-test Playwright smoke/axe suite passed; the
+13 listing cases passed again after capping visible titles at four lines (the
+full text remains the accessible link name). The listing matrix covers Dutch
+and English, light and dark, and 360 / 820 / 1920 px, with synthetic long,
+unbroken and missing titles. Each matrix case saves `listing.png` under its
+`frontend/test-results/listing-listing-*` directory for visual review. Reviewed
+wide light and narrow/tablet dark captures for gutters, wrapping, focus rings,
+quiet metadata and sparse-card balance. Loading, empty, error and retry are
+covered separately. Lint, format:check, build and diff whitespace checks passed.
+No application messages or publication fields changed.
