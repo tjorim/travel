@@ -34,7 +34,9 @@ export function serveApi(respond: ApiResponder) {
         return await respond(location.pathname + location.search, {
           method: request.method,
           headers: request.headers,
-          body: await readBody(request),
+          // MSW reuses the resolver request when a handler falls through.
+          // Read our own clone so the next responder can still consume its body.
+          body: await readBody(request.clone()),
         });
       } catch {
         return HttpResponse.error();

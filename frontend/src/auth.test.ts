@@ -16,7 +16,20 @@ afterEach(() => {
 /** Answers the identity provider's token endpoint with a short-lived access token. */
 function serveToken() {
   server.use(
-    http.post("*/protocol/openid-connect/token", () =>
+    // Happy DOM sends a CORS preflight to the cross-origin identity provider.
+    http.options(
+      "https://auth.tjor.im/realms/travel/protocol/openid-connect/token",
+      () =>
+        new HttpResponse(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": window.location.origin,
+            "Access-Control-Allow-Methods": "POST",
+            "Access-Control-Allow-Headers": "content-type",
+          },
+        }),
+    ),
+    http.post("https://auth.tjor.im/realms/travel/protocol/openid-connect/token", () =>
       HttpResponse.json({ access_token: "access", expires_in: 60 }),
     ),
   );

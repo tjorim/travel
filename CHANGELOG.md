@@ -6,6 +6,10 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Repair frontend test mocks for the identity provider’s CORS preflight and
+  preserve request bodies when layered MSW responders fall through, keeping
+  strict unhandled-request enforcement (#508).
+
 - Group MapLibre Dependabot updates and bump `maplibre-gl` to 6.15.0 with
   `@maplibre/geojson-vt` 6.3.0, preserving unrelated dependency versions (#482, #497).
 
