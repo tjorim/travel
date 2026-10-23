@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
@@ -82,8 +82,11 @@ describe("locale foundation", () => {
     fireEvent.change(upload, { target: { files: [file] } });
     input.focus();
     const url = window.location.href;
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw Error();
+    vi.stubGlobal("localStorage", {
+      getItem: localStorage.getItem.bind(localStorage),
+      setItem: () => {
+        throw Error();
+      },
     });
     act(() => changeLocale("en"));
     expect(client.getQueryData(["owner", "fixture"])).toEqual({ title: "Private trip" });

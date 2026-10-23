@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { changeLocale } from "./locale";
@@ -133,8 +133,11 @@ it("retranslates retained image/video failures and retries only the selected ima
 });
 
 it("reports denied saved-link storage without losing the trip or refetching on a locale switch", async () => {
-  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-    throw new Error("denied");
+  vi.stubGlobal("localStorage", {
+    getItem: localStorage.getItem.bind(localStorage),
+    setItem: () => {
+      throw new Error("denied");
+    },
   });
   const fetcher = vi.fn(
     async (_input: RequestInfo | URL) => new Response(JSON.stringify(projection())),
@@ -261,8 +264,11 @@ it("retries a visitor network failure in the current locale", async () => {
 
 it("keeps a saved shortcut visible when forgetting is denied and translates its retained failure", async () => {
   rememberSharedTrip(token, projection());
-  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-    throw new Error("denied");
+  vi.stubGlobal("localStorage", {
+    getItem: localStorage.getItem.bind(localStorage),
+    setItem: () => {
+      throw new Error("denied");
+    },
   });
   vi.stubGlobal(
     "fetch",

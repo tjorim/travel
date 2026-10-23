@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { useForm } from "@tanstack/react-form";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";

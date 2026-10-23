@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";

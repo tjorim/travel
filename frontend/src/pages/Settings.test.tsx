@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -154,13 +154,12 @@ it("offers a retry when the provider status cannot be loaded", async () => {
 });
 
 it("sends the owner to the identity server's account page to manage passkeys", async () => {
-  const assign = vi.fn();
-  vi.stubGlobal("location", { ...window.location, origin: "https://travel.example", assign });
+  const assign = vi.spyOn(window.location, "assign").mockImplementation(() => undefined);
   renderWithOwner(<Settings />);
   fireEvent.click(await screen.findByRole("button", { name: "Passkeys en aanmelden beheren" }));
   expect(assign).toHaveBeenCalledTimes(1);
   const target = new URL(assign.mock.calls[0]?.[0] as string);
   expect(`${target.origin}${target.pathname}`).toBe("https://auth.tjor.im/realms/travel/account/");
   expect(target.searchParams.get("referrer")).toBe("travel-tracker");
-  expect(target.searchParams.get("referrer_uri")).toBe("https://travel.example/admin/");
+  expect(target.searchParams.get("referrer_uri")).toBe(`${window.location.origin}/admin/`);
 });

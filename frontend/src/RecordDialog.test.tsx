@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { StrictMode, useState } from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -25,7 +25,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("restores focus and scroll position after dismissal", () => {
+it("restores focus and scroll position after dismissal", async () => {
   const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
   Object.defineProperty(window, "scrollX", { configurable: true, value: 20 });
   Object.defineProperty(window, "scrollY", { configurable: true, value: 400 });
@@ -39,7 +39,7 @@ it("restores focus and scroll position after dismissal", () => {
   fireEvent.click(opener);
   fireEvent.click(screen.getByRole("button", { name: "Record sluiten" }));
   expect(document.activeElement).toBe(opener);
-  expect(scrollTo).toHaveBeenCalledWith(20, 400);
+  await waitFor(() => expect(scrollTo).toHaveBeenCalledWith(20, 400));
 });
 
 it("runs the close callback after Escape dismisses a clean dialog", async () => {

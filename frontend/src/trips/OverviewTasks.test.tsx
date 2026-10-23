@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";

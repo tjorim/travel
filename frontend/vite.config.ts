@@ -77,14 +77,14 @@ export default defineConfig({
     // Playwright specs in e2e/ run with `pnpm e2e`, not under Vitest.
     exclude: [...configDefaults.exclude, "e2e/**"],
     setupFiles: ["./src/test-setup.ts"],
-    // The jsdom suites render whole Base UI + TanStack form trees, and each file pays its own cold import of that
+    // The DOM suites render whole Base UI + TanStack form trees, and each file pays its own cold import of that
     // graph (isolation re-evaluates ~200 modules per file). Alone a test takes under 2 s, but on a busy host the same
     // test measured 5 to 30 s, so Vitest's 5 s default only reports load, not defects. A project-wide ceiling replaces
     // per-test overrides; a genuine hang still fails, just later. Keep it above testing-library's 5 s asyncUtilTimeout
     // in src/test-setup.ts so a missing element reports its own error before the test times out.
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    // Vitest sizes the pool to the host (39-41 workers observed), and every worker boots its own jsdom and module
+    // Vitest sizes the pool to the host (39-41 workers observed), and every worker boots its own DOM environment and module
     // graph. On a machine that is already busy that oversubscribes CPU and memory, so cap the pool; small hosts stay
     // at Vitest's own default of one worker per core minus one.
     maxWorkers: Math.min(Math.max(availableParallelism() - 1, 1), 8),

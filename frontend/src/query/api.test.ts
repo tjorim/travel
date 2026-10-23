@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 

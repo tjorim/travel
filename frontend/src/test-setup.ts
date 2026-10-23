@@ -7,7 +7,7 @@ import { server } from "./mocks/server";
 // Each test file runs in its own worker; on a busy machine the default one second is too tight for async UI.
 configure({ asyncUtilTimeout: 5000 });
 
-// jsdom has no layout or scrolling; Base UI may scroll a highlighted option into view.
+// The test DOM has no layout or scrolling; Base UI may scroll a highlighted option into view.
 if (typeof Element !== "undefined") Element.prototype.scrollTo = () => undefined;
 if (typeof window !== "undefined") window.scrollTo = () => undefined;
 
@@ -18,3 +18,28 @@ if (typeof document !== "undefined") document.documentElement.dataset.travelLoca
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
+
+// Happy DOM activates labels while bubbling, before React's delegated handlers can
+// cancel the click. Run label activation at document level, after React, so Base UI
+// checkboxes do not toggle twice when nested inside a label.
+if (typeof HTMLLabelElement !== "undefined") {
+  const dispatchLabelEvent = HTMLLabelElement.prototype.dispatchEvent;
+  HTMLLabelElement.prototype.dispatchEvent = function (event) {
+    return this.querySelector('[role="checkbox"]')
+      ? HTMLElement.prototype.dispatchEvent.call(this, event)
+      : dispatchLabelEvent.call(this, event);
+  };
+  document.addEventListener("click", (event) => {
+    // user-event owns activation when it has already cancelled the native event.
+    const nativePrevented = Object.getOwnPropertyDescriptor(
+      Event.prototype,
+      "defaultPrevented",
+    )?.get?.call(event);
+    if (nativePrevented || event.defaultPrevented || !(event.target instanceof Element)) return;
+    const label = event.target.closest("label");
+    const control = label?.querySelector('[role="checkbox"]') ? label.control : null;
+    if (control && event.target !== control && !control.contains(event.target)) {
+      control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }
+  });
+}
