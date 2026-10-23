@@ -6,6 +6,15 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Visitor and owner-preview trip pages now open with a header (cover when the
+  audience receives one, title, authorized dates and destinations) and read like
+  a journal: trip context sits beside a wider map on large screens and stacks in
+  reading order on phones, the story timeline has stronger titles, quieter dates
+  and a sticky in-page navigation, the gallery uses one consistent 4:3 preview
+  crop with more columns on wide screens, and secondary sections sit in a
+  two-column grid. The owner preview draws the same header and layout (#494).
+- Raised the admin entry bundle budget to 656 kB raw / 218 kB gzip: `main` already
+  measured 596 kB / 198 kB after the lazy-route split, above the old limits.
 - Warmed the forest/paper palette, softened shared surfaces and clarified display
   typography. Public `/` and `/trips/` listings now use a bounded responsive grid,
   quieter date metadata and image-free cards with a gold accent; loading, empty
@@ -14,6 +23,14 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- The owner can choose one ready share copy of a photo as the trip's cover
+  (**Gebruik als omslag van de reis** in the copy's detail; `PATCH /api/trips/{id}`
+  with `cover_derivative_id`, `is_cover` on the copy; migration `012_trip_cover`).
+  The choice publishes nothing: an audience's projection carries `cover` only when
+  that audience already receives the photo (everyone, custom and listed, or attached
+  to a delivered update), so the file route stays scoped, and removing the cover,
+  deleting the copy, making it private or revoking publication leaves a text-only
+  header. The sharing check notes an audience that receives no cover (#494).
 - `uv run python -m app.dev_schema` builds the local SQLite database (the default
   `TRAVEL_DATABASE_URL`) from the models, so a dev instance needs no PostgreSQL
   container; `--reset` rebuilds it after a model change. The SQLite engine now enforces

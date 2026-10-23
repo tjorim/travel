@@ -14,7 +14,7 @@ from typing import Any
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
 from .errors import ServiceError
 from .markdown import markdown_text, render_inline, render_markdown
-from .models import Area, Location, Trip, Visibility
+from .models import Area, Location, MediaDerivative, MediaKind, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
 
 
@@ -319,6 +319,19 @@ _DESTINATIONS = {
 }
 
 
+def _cover(trip: Trip, received: list[MediaDerivative]) -> str | None:
+    """The trip's chosen cover, only if this audience already receives that photo.
+
+    Nominating a cover never delivers it: a copy that is private, unapproved,
+    detached from a shared update or deleted is simply not among ``received``,
+    so the audience gets no cover and no way to request its file.
+    """
+    for item in received:
+        if item.is_cover and item.media_asset.media_kind == MediaKind.PHOTO:
+            return local_id("media_derivative", item)
+    return None
+
+
 def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
     """Render one complete public or unlisted document from its live scope."""
     records = delivered(trip, scope)
@@ -337,6 +350,7 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "summary_html": render_markdown(summary),
         "summary_text": markdown_text(summary),
         "dates": shared_trip_dates(trip, scope),
+        "cover": _cover(trip, records["media_derivative"]),
         "visits": [],
         "places": [],
         "updates": [],

@@ -98,14 +98,9 @@ archive-content import in #40.
 
 Implement in order; preserve existing publication boundaries and owner workflows.
 
-- [ ] [#493](https://github.com/tjorim/travel/issues/493) Refine shared visual
-      foundations and responsive public trip listings, including favicon review.
-- [ ] [#494](https://github.com/tjorim/travel/issues/494) Add deliberate,
-      audience-authorized trip covers and refresh visitor headers, stories,
-      maps and galleries; depends on #493.
 - [ ] [#495](https://github.com/tjorim/travel/issues/495) Apply the refreshed
       design to owner trip workspaces and complete cross-route visual review;
-      depends on #493 and #494.
+      depends on #493 and #494 (both delivered).
 
 ## Confirmed release targets
 
@@ -172,6 +167,12 @@ public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#494](https://github.com/tjorim/travel/issues/494) Added a deliberate,
+      audience-authorized trip cover and refreshed the visitor header, story
+      timeline, map layout and galleries. See [domain model](docs/domain-model.md).
+- [x] [#493](https://github.com/tjorim/travel/issues/493) Refined the shared
+      visual foundations and the responsive public trip listings.
 
 - [x] [#305](https://github.com/tjorim/travel/issues/305) Capped concurrent
       video derivative jobs and added explicit, reviewable Dutch/English draft

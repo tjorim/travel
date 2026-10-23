@@ -11,17 +11,19 @@ from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy import event, inspect, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from .errors import ServiceError
 from .live_scopes import remove_from_live_scopes
 from .models import (
     Area,
+    DerivativeProcessingState,
     DerivativePurpose,
     DerivativeReviewState,
     LinkState,
     Location,
     MediaDerivative,
+    MediaKind,
     PublicSurface,
     Route,
     RouteStatus,
@@ -115,6 +117,39 @@ def sharing_blocker(kind: str, record: Any) -> SharingBlocker | None:
     if kind == "media_derivative" and record.purpose != DerivativePurpose.SHARE:
         return SharingBlocker("Only a share copy can be shared", "only_a_share_copy_can_be_shared")
     return None
+
+
+def set_cover(trip: Trip, derivative_id: str | None) -> None:
+    """Nominate one of the trip's photo copies as its cover, or clear the choice.
+
+    Choosing a cover publishes nothing: an audience shows it only when it
+    already receives that copy (see ``projection``). So the copy need not be
+    approved or shared yet, but it must be something that could be: a ready
+    share copy of a photo whose original still exists.
+    """
+    if derivative_id is None:
+        for item in trip.media_derivatives:
+            item.is_cover = False
+        return
+    chosen = next((item for item in trip.media_derivatives if item.id == derivative_id), None)
+    if (
+        chosen is None
+        or chosen.purpose != DerivativePurpose.SHARE
+        or chosen.media_asset.media_kind != MediaKind.PHOTO
+        or chosen.processing_state != DerivativeProcessingState.READY
+        or chosen.object_id is None
+        or chosen.media_asset.deleted_at is not None
+    ):
+        raise ServiceError(
+            "Choose a finished share copy of a photo as the cover", code="choose_a_finished_share_copy_of_a_photo"
+        )
+    # Retire the old cover first: the one-cover-per-trip index is checked per statement.
+    for item in trip.media_derivatives:
+        if item is not chosen:
+            item.is_cover = False
+    if (session := object_session(trip)) is not None:
+        session.flush()
+    chosen.is_cover = True
 
 
 def is_delivered(kind: str, record: Any, chosen: set[str]) -> bool:

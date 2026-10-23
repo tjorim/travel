@@ -123,6 +123,7 @@ def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeri
         focal_x=derivative.focal_x,
         focal_y=derivative.focal_y,
         visibility=derivative.visibility,
+        is_cover=derivative.is_cover,
         created_at=derivative.created_at,
         file_url=f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/file",
     )

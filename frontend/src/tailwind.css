@@ -24,12 +24,16 @@
   --spacing-travel-card-pad: clamp(1.25rem, 2vw, 2rem);
   --spacing-travel-section: clamp(2.5rem, 5vw, 4rem);
   --aspect-travel-cover: 3 / 2;
+  --aspect-travel-hero: 21 / 9;
+  --spacing-travel-aside: 26rem;
+  --spacing-travel-story-nav: 15rem;
   --text-travel-section: clamp(1.5rem, 2vw, 2rem);
   --text-travel-card-title: clamp(1.5rem, 2vw, 1.75rem);
   --tracking-travel-eyebrow: 0.13em;
   --tracking-travel-markdown-label: 0.08em;
   --spacing-map-canvas: clamp(300px, 48vw, 480px);
   --spacing-map-owner-canvas: clamp(420px, 48vw, 620px);
+  --spacing-map-wide-canvas: clamp(420px, 36vw, 640px);
   --spacing-route-canvas: clamp(240px, 38vw, 360px);
   --spacing-route-preview-canvas: clamp(200px, 30vw, 300px);
   --radius-travel-media: 10px;
@@ -559,6 +563,22 @@
   }
   & p {
     @apply m-0 max-w-travel-reading leading-relaxed text-travel-muted;
+  }
+}
+
+/* Trip context beside the map, and the story navigation beside the timeline, once there is room for both. */
+@utility travel-aside-split {
+  @apply grid min-w-0 gap-travel-grid-gap;
+  @media (min-width: 1100px) {
+    grid-template-columns: minmax(0, var(--spacing-travel-aside)) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@utility travel-story-split {
+  @apply grid gap-8 min-[1100px]:gap-12;
+  @media (min-width: 1100px) {
+    grid-template-columns: minmax(0, var(--spacing-travel-story-nav)) minmax(0, 1fr);
   }
 }
 

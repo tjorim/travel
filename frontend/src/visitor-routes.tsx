@@ -263,15 +263,18 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   }, [audience, identifier, attempt]);
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
-  const title =
-    state.kind === "ready" && state.projection.title ? state.projection.title : m.shared_trip();
+  const title = m.shared_trip();
   return (
     <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
       <Preferences />
-      <header>
-        <p className="travel-eyebrow">Travel</p>
-        <h1 className={title.length > LONG_TITLE_LENGTH ? LONG_TITLE_CLASS : undefined}>{title}</h1>
-      </header>
+      {state.kind !== "ready" && (
+        <header>
+          <p className="travel-eyebrow">Travel</p>
+          <h1 className={title.length > LONG_TITLE_LENGTH ? LONG_TITLE_CLASS : undefined}>
+            {title}
+          </h1>
+        </header>
+      )}
       {state.kind === "loading" && (
         <section className="travel-card" role="status" aria-live="polite">
           <h2>{m.loading_trip()}</h2>

@@ -103,3 +103,19 @@ wide light and narrow/tablet dark captures for gutters, wrapping, focus rings,
 quiet metadata and sparse-card balance. Loading, empty, error and retry are
 covered separately. Lint, format:check, build and diff whitespace checks passed.
 No application messages or publication fields changed.
+
+## Trip covers and visitor story layouts (#494)
+
+The cover choice is a toggle `Button` (with `aria-pressed`) in the copy's detail
+view, beside the existing presentation and approval actions; no new control or
+picker was needed. The visitor header (`TripHeader`) is a custom composition:
+shadcn/Base UI have no page-header or hero primitive. It keeps a native `img` in a
+`figure` and falls back to a text-only panel with the listing cards' gold accent
+when there is no cover or it fails to load. `travel-aside-split` and
+`travel-story-split` are named Tailwind utilities because the arbitrary grid
+columns they need are rejected by the lint rule; their widths are theme tokens
+(`--spacing-travel-aside`, `--spacing-travel-story-nav`), as is the hero ratio
+(`--aspect-travel-hero`). The in-page story navigation stays a native `nav` list
+of anchors, sticky beside the timeline on wide screens. The visitor lightbox is the
+existing Base UI Dialog. Gallery thumbnails use one 4:3 crop with the owner's focal
+point; the full image remains in the lightbox.

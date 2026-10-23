@@ -174,6 +174,7 @@ export function TripMap({
   points,
   lines,
   owner = false,
+  wide = false,
   perspective,
   styleUrl = configuredMapStyleUrl,
   focus,
@@ -182,6 +183,8 @@ export function TripMap({
   points: MapPoint[];
   lines: MapLine[];
   owner?: boolean;
+  /** A visitor map beside the trip context: taller on wide screens, as the owner map is. */
+  wide?: boolean;
   perspective?: MapPerspective;
   styleUrl?: string;
   focus?: { id: string; request: number } | null;
@@ -710,6 +713,7 @@ export function TripMap({
         className={cn(
           "relative h-map-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
           owner && "min-[960px]:h-map-owner-canvas",
+          wide && "min-[1100px]:h-map-wide-canvas",
         )}
       >
         <div

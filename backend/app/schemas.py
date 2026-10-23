@@ -471,6 +471,11 @@ class TripUpdate(InputModel):
     summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     starts_on: date | None = None
     ends_on: date | None = None
+    cover_derivative_id: str | None = Field(
+        default=None,
+        description="The share copy of a photo to use as the trip's cover; null removes the cover. "
+        "Choosing a cover does not publish it: an audience shows it only if it already receives that photo.",
+    )
 
 
 def _require_unique_media_assets(values: list[str] | None) -> list[str] | None:
@@ -1108,6 +1113,7 @@ class TripResponse(BaseModel):
     summary: str | None
     starts_on: date | None
     ends_on: date | None
+    cover_derivative_id: str | None = None
     travel_updates: list[TravelUpdateResponse]
     model_config = ConfigDict(from_attributes=True)
 
@@ -1131,6 +1137,7 @@ class OverviewAudience(BaseModel):
     scope_items: int
     delivered: dict[str, int]
     without_map_point: dict[str, int]
+    shows_cover: bool = False
 
 
 class OverviewWarning(BaseModel):
@@ -1207,6 +1214,11 @@ class ProjectionDocument(BaseModel):
     summary_html: str | None = Field(default=None, description=_html_of("summary") + " Links are nofollow.")
     summary_text: str | None = Field(default=None, description="The summary as one line of plain text, for previews.")
     dates: dict | None
+    cover: str | None = Field(
+        default=None,
+        description="The id of the `media` photo this audience shows as the trip's cover, "
+        "or null when the owner chose none or this audience does not receive the chosen photo.",
+    )
     visits: list[dict]
     places: list[dict]
     updates: list[dict]
@@ -1349,6 +1361,7 @@ class MediaDerivativeResponse(BaseModel):
     focal_x: int | None
     focal_y: int | None
     visibility: Visibility
+    is_cover: bool = False
     created_at: datetime
     file_url: str
     model_config = ConfigDict(from_attributes=True)

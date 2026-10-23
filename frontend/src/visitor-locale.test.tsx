@@ -164,7 +164,7 @@ it("sets a long authored trip title in a smaller, looser heading than a short on
       vi.fn(async () => new Response(JSON.stringify(data))),
     );
     const view = render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
-    const heading = await screen.findByRole("heading", { level: 1 });
+    const heading = await screen.findByRole("heading", { level: 1, name: data.title ?? "" });
     expect(heading.classList.contains("text-travel-title-long")).toBe(looser);
     view.unmount();
   }

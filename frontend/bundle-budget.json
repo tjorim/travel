@@ -1,7 +1,7 @@
 {
-  "note": "Initial static JS (the entry's import closure) and total JS, in bytes, checked by `pnpm bundle:check` after a build. Set about 10% above the measured sizes (admin 494.5 kB raw / 161.8 kB gzip, visitor entries 530.8 / 178.2, total 848.8 gzip); raise a limit with the change that needs it, and say why.",
+  "note": "Initial static JS (the entry's import closure) and total JS, in bytes, checked by `pnpm bundle:check` after a build. Set about 10% above the measured sizes (admin 596.7 kB raw / 198.2 kB gzip, visitor entries 530.8 / 178.2, total 848.8 gzip); raise a limit with the change that needs it, and say why.",
   "entries": {
-    "admin": { "raw": 545000, "gzip": 178000 },
+    "admin": { "raw": 656000, "gzip": 218000 },
     "landing": { "raw": 585000, "gzip": 196000 },
     "public": { "raw": 585000, "gzip": 196000 },
     "share": { "raw": 585000, "gzip": 196000 }

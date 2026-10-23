@@ -51,6 +51,10 @@ function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): st
         p1: counts.join(", "),
       });
     }
+    case "cover_not_received":
+      return m.assets_receives_no_cover_because_the_chosen_photo_is_not_among_its_photos({
+        p0: name,
+      });
     case "undated_visit_duplicates_dated":
       return m.assets_visit_has_no_date_but_its_area_already_has_a_dated_visit_give_it_a_date_({
         p0: warning.text ?? "",

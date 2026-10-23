@@ -205,6 +205,8 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_a_stay_needs_an_area();
     case "one_or_more_media_assets_are_unavailable_for_this_trip":
       return m.api_one_or_more_media_assets_are_unavailable_for_this_trip();
+    case "choose_a_finished_share_copy_of_a_photo":
+      return m.api_choose_a_finished_share_copy_of_a_photo();
     case "the_trip_cannot_end_before_it_starts":
       return m.api_the_trip_cannot_end_before_it_starts();
     case "an_update_with_a_location_gets_its_area_from_that_location":

@@ -7,6 +7,7 @@ import { cn } from "cn";
 import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
 import { TripMap, type MapLine, type MapPoint } from "./TripMap";
+import { TripHeader, type TripCover } from "./TripHeader";
 import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
 
 export type ProjectionItem = { id: string; [field: string]: unknown };
@@ -19,6 +20,8 @@ export type Projection = {
   summary_html?: string | null;
   summary_text?: string | null;
   dates: ProjectionItem | null;
+  /** The id of the `media` photo this audience shows as the cover; absent or null when it receives none. */
+  cover?: string | null;
   visits: ProjectionItem[];
   places: ProjectionItem[];
   updates: ProjectionItem[];
@@ -53,6 +56,7 @@ export function isProjection(value: unknown, audience: Audience): value is Proje
     document.schema_version ===
       (audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1") &&
     (document.title === null || typeof document.title === "string") &&
+    (document.cover == null || typeof document.cover === "string") &&
     (document.summary === null || typeof document.summary === "string") &&
     (document.summary_html == null || typeof document.summary_html === "string") &&
     (document.summary_text == null || typeof document.summary_text === "string") &&
@@ -453,7 +457,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
       className={
         expanded
           ? "max-h-travel-lightbox w-full object-contain"
-          : "block aspect-4/3 h-auto max-h-90 w-full rounded-travel-media bg-travel-tint object-cover"
+          : "block aspect-4/3 h-auto w-full rounded-travel-media bg-travel-tint object-cover"
       }
       src={url}
       alt={alt}
@@ -554,17 +558,20 @@ function Gallery({
   items,
   fileUrl,
   title = m.visitor_gallery(),
+  heading = true,
 }: {
   items: ProjectionItem[];
   fileUrl: (item: ProjectionItem) => string | null;
   title?: string;
+  /** A gallery already under a heading of its own is named for assistive technology only. */
+  heading?: boolean;
 }) {
   useLocale();
   if (!items.length) return null;
   return (
-    <section className="mt-4.5 min-w-0" aria-label={title}>
-      <h3 className="mb-3 text-base">{title}</h3>
-      <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 sm:grid-cols-2 lg:grid-cols-3">
+    <section className={cn("min-w-0", heading && "mt-6")} aria-label={title}>
+      {heading && <h4 className="mb-3 text-base">{title}</h4>}
+      <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 min-[560px]:grid-cols-2 min-[960px]:grid-cols-3 min-[1500px]:grid-cols-4">
         {items.map((item) => (
           <li className="min-w-0" key={item.id}>
             <figure className="m-0">
@@ -611,53 +618,88 @@ function Updates({
   if (!updates.length) return null;
   return (
     <section className="travel-card" aria-label={m.visitor_updates()}>
-      <h2 className="mb-4.5">{m.visitor_updates()}</h2>
-      <nav aria-label={m.visitor_story_navigation()}>
-        <ol className="m-0 mb-6 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
+      <h2 className="mb-6">{m.visitor_updates()}</h2>
+      <div className="travel-story-split">
+        <nav
+          aria-label={m.visitor_story_navigation()}
+          className="min-w-0 self-start min-[1100px]:sticky min-[1100px]:top-6 min-[1100px]:max-h-travel-lightbox min-[1100px]:overflow-y-auto"
+        >
+          <ol className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0 min-[1100px]:flex-col min-[1100px]:gap-y-3">
+            {updates.map((item) => (
+              <li key={item.id}>
+                <a
+                  className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+                  href={`#${item.id}`}
+                >
+                  {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <ol
+          aria-label={m.visitor_timeline()}
+          className="m-0 grid min-w-0 list-none gap-10 border-l-2 border-travel-border py-0 pr-0 pl-6 min-[680px]:gap-12 min-[680px]:pl-8"
+        >
           {updates.map((item) => (
-            <li key={item.id}>
-              <a
-                className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
-                href={`#${item.id}`}
-              >
-                {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
-              </a>
+            <li className="relative min-w-0 scroll-mt-6" key={item.id} id={item.id} tabIndex={-1}>
+              <span
+                aria-hidden="true"
+                className="absolute top-2.5 -left-8.25 size-3 rounded-full bg-travel-forest min-[680px]:-left-10.25"
+              />
+              <article className="grid gap-3">
+                <h3 className="m-0 text-travel-card-title leading-tight font-extrabold tracking-tight">
+                  {text(item, "title") ?? m.visitor_update()}
+                </h3>
+                <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-sm text-travel-muted">
+                  {storyDate(item) ? (
+                    <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time>
+                  ) : precision(item) ? (
+                    <span>{precision(item)}</span>
+                  ) : null}
+                  {place(item.place) && <span>{place(item.place)}</span>}
+                </div>
+                <Markdown
+                  className="max-w-travel-reading leading-relaxed"
+                  html={text(item, "body_html")}
+                  text={text(item, "body")}
+                />
+                <Gallery
+                  items={media.filter((image) => image.update === item.id)}
+                  fileUrl={fileUrl}
+                  title={m.visitor_update_media()}
+                  heading={false}
+                />
+              </article>
             </li>
           ))}
         </ol>
-      </nav>
-      <ol
-        aria-label={m.visitor_timeline()}
-        className="m-0 grid list-none gap-6 border-l-2 border-travel-border py-0 pr-0 pl-5.5"
-      >
-        {updates.map((item) => (
-          <li className="relative min-w-0 scroll-mt-6" key={item.id} id={item.id} tabIndex={-1}>
-            <span
-              aria-hidden="true"
-              className="absolute top-2 -left-7.25 size-3 rounded-full bg-travel-forest"
-            />
-            <article>
-              <div className="flex flex-wrap gap-x-3.5 gap-y-1.25 text-sm font-bold text-travel-muted">
-                {storyDate(item) ? (
-                  <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time>
-                ) : precision(item) ? (
-                  <span>{precision(item)}</span>
-                ) : null}
-                {place(item.place) && <span>{place(item.place)}</span>}
-              </div>
-              <h3 className="my-1.5 text-xl">{text(item, "title") ?? m.visitor_update()}</h3>
-              <Markdown html={text(item, "body_html")} text={text(item, "body")} />
-              <Gallery
-                items={media.filter((image) => image.update === item.id)}
-                fileUrl={fileUrl}
-                title={m.visitor_update_media()}
-              />
-            </article>
-          </li>
-        ))}
-      </ol>
+      </div>
     </section>
   );
+}
+
+/** The areas this audience was shown, in the order the story meets them, for the header. */
+const HEADER_DESTINATIONS = 4;
+function tripDestinations(projection: Projection): string[] {
+  const labels = [
+    ...new Set(
+      [...projection.visits, ...projection.stays, ...projection.updates]
+        .map((item) => {
+          const area = item.place;
+          return area && typeof area === "object" && !Array.isArray(area)
+            ? text(area as ProjectionItem, "label")
+            : null;
+        })
+        .filter((label): label is string => label !== null),
+    ),
+  ];
+  return labels.length > HEADER_DESTINATIONS
+    ? [
+        ...labels.slice(0, HEADER_DESTINATIONS),
+        m.visitor_more_destinations({ count: labels.length - HEADER_DESTINATIONS }),
+      ]
+    : labels;
 }
 
 export function ProjectionView({
@@ -782,25 +824,75 @@ export function ProjectionView({
   );
   const empty = collections.every((key) => projection[key].length === 0);
   const dates = tripDates(projection.dates);
+  // The cover is a photo the server already delivers to this audience; nothing here can fetch another.
+  const coverItem =
+    typeof projection.cover === "string"
+      ? projection.media.find(
+          (item) => item.id === projection.cover && hasFileMarker(item, "image"),
+        )
+      : undefined;
+  const cover: TripCover | null = coverItem
+    ? {
+        url: fileUrl(coverItem),
+        alt: text(coverItem, "alt_text") ?? "",
+        caption: { html: text(coverItem, "caption_html"), text: text(coverItem, "caption") },
+        focalX: focus(coverItem, "focal_x"),
+        focalY: focus(coverItem, "focal_y"),
+        width: positiveSize(coverItem, "width"),
+        height: positiveSize(coverItem, "height"),
+      }
+    : null;
+  const hasMap = mapLines.length > 0 || mapPoints.length > 0;
+  const detailSections = [
+    projection.visits,
+    projection.places,
+    projection.stays,
+    projection.routes,
+    projection.navigation.filter((item) => !displayed.has(item.id)),
+  ].filter((items) => items.length > 0).length;
+  const header = (
+    <TripHeader
+      title={projection.title ?? m.shared_trip()}
+      eyebrow={previewResources ? m.assets_travel_preview() : "Travel"}
+      level={previewResources ? "h2" : "h1"}
+      dates={dates}
+      destinations={tripDestinations(projection)}
+      cover={cover}
+    />
+  );
   if (empty && !projection.summary && !dates)
     return (
-      <section className="travel-card" role="status">
-        <h2>{m.visitor_no_content()}</h2>
-        <p>{m.visitor_no_content_description()}</p>
-      </section>
+      <div className={cn("grid gap-travel-grid-gap", previewResources ? "mt-5" : "mt-2")}>
+        {header}
+        <section className="travel-card" role="status">
+          <h2>{m.visitor_no_content()}</h2>
+          <p>{m.visitor_no_content_description()}</p>
+        </section>
+      </div>
     );
 
   return (
-    <div className={cn("grid gap-4.5", previewResources ? "mt-5" : "mt-7.5")}>
-      {(projection.summary || dates) && (
-        <section className="travel-card">
-          <h2>{m.visitor_overview()}</h2>
-          {dates && <p className="travel-eyebrow">{dates}</p>}
-          <Markdown html={projection.summary_html} text={projection.summary} />
-        </section>
-      )}
-      {(mapLines.length > 0 || mapPoints.length > 0) && (
-        <TripMap points={mapPoints} lines={mapLines} />
+    <div className={cn("grid gap-travel-grid-gap", previewResources ? "mt-5" : "mt-2")}>
+      {header}
+      {(projection.summary || hasMap) && (
+        <div
+          className={cn(
+            "grid min-w-0 gap-travel-grid-gap",
+            projection.summary && hasMap && "travel-aside-split",
+          )}
+        >
+          {projection.summary && (
+            <section className="travel-card" aria-label={m.visitor_overview()}>
+              <h2>{m.visitor_overview()}</h2>
+              <Markdown
+                className="max-w-travel-reading leading-relaxed"
+                html={projection.summary_html}
+                text={projection.summary}
+              />
+            </section>
+          )}
+          {hasMap && <TripMap wide points={mapPoints} lines={mapLines} />}
+        </div>
       )}
       {empty && (
         <section className="travel-card" role="status">
@@ -808,79 +900,91 @@ export function ProjectionView({
           <p>{m.visitor_no_story_description()}</p>
         </section>
       )}
-      <ResourceSection
-        title={m.visitor_visits()}
-        anchor="visit"
-        items={projection.visits}
-        render={(item) => (
-          <article>
-            <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
-            {tripDates(item) && <p>{tripDates(item)}</p>}
-            {visitTimes(item) && <p>{visitTimes(item)}</p>}
-            <Markdown html={text(item, "summary_html")} text={text(item, "summary")} />
-            {place(item.place) && <p>{place(item.place)}</p>}
-          </article>
-        )}
-      />
-      <ResourceSection
-        title={m.visitor_places()}
-        anchor="place"
-        items={projection.places}
-        render={(item) => (
-          <article>
-            <h3>{text(item, "label") ?? m.visitor_location()}</h3>
-            {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
-              <p>
-                {[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}
-              </p>
-            )}
-            {navigationLink(item)}
-          </article>
-        )}
-      />
       <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
-      <ResourceSection
-        title={m.visitor_stays()}
-        anchor="stay"
-        items={projection.stays}
-        render={(item) => (
-          <article>
-            <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
-            {tripDates(item) ? (
-              <p>{tripDates(item)}</p>
-            ) : (
-              precision(item) && <p>{precision(item)}</p>
-            )}
-            {place(item.place) && <p>{place(item.place)}</p>}
-            {navigationLink(item)}
-          </article>
-        )}
-      />
-      <ResourceSection
-        title={m.visitor_routes()}
-        anchor="route"
-        items={projection.routes}
-        render={(item) => <RouteSummary item={item} />}
-      />
       {looseMedia.length > 0 && (
-        <section className="travel-card">
+        <section className="travel-card" aria-label={m.visitor_gallery()}>
           <h2 className="mb-4.5">{m.visitor_gallery()}</h2>
-          <Gallery items={looseMedia} fileUrl={fileUrl} title={m.visitor_shared_photos()} />
+          <Gallery
+            items={looseMedia}
+            fileUrl={fileUrl}
+            title={m.visitor_shared_photos()}
+            heading={false}
+          />
         </section>
       )}
-      {projection.navigation.some((item) => !displayed.has(item.id)) && (
+      <div
+        className={cn(
+          "grid min-w-0 items-start gap-travel-grid-gap",
+          detailSections > 1 && "min-[1100px]:grid-cols-2",
+        )}
+      >
         <ResourceSection
-          title={m.visitor_navigation()}
-          anchor="navigation"
-          items={projection.navigation.filter((item) => !displayed.has(item.id))}
+          title={m.visitor_visits()}
+          anchor="visit"
+          items={projection.visits}
           render={(item) => (
             <article>
-              <h3>{m.visitor_destination()}</h3>
+              <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
+              {tripDates(item) && <p>{tripDates(item)}</p>}
+              {visitTimes(item) && <p>{visitTimes(item)}</p>}
+              <Markdown html={text(item, "summary_html")} text={text(item, "summary")} />
+              {place(item.place) && <p>{place(item.place)}</p>}
+            </article>
+          )}
+        />
+        <ResourceSection
+          title={m.visitor_places()}
+          anchor="place"
+          items={projection.places}
+          render={(item) => (
+            <article>
+              <h3>{text(item, "label") ?? m.visitor_location()}</h3>
+              {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
+                <p>
+                  {[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}
+                </p>
+              )}
               {navigationLink(item)}
             </article>
           )}
         />
-      )}
+        <ResourceSection
+          title={m.visitor_stays()}
+          anchor="stay"
+          items={projection.stays}
+          render={(item) => (
+            <article>
+              <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
+              {tripDates(item) ? (
+                <p>{tripDates(item)}</p>
+              ) : (
+                precision(item) && <p>{precision(item)}</p>
+              )}
+              {place(item.place) && <p>{place(item.place)}</p>}
+              {navigationLink(item)}
+            </article>
+          )}
+        />
+        <ResourceSection
+          title={m.visitor_routes()}
+          anchor="route"
+          items={projection.routes}
+          render={(item) => <RouteSummary item={item} />}
+        />
+        {projection.navigation.some((item) => !displayed.has(item.id)) && (
+          <ResourceSection
+            title={m.visitor_navigation()}
+            anchor="navigation"
+            items={projection.navigation.filter((item) => !displayed.has(item.id))}
+            render={(item) => (
+              <article>
+                <h3>{m.visitor_destination()}</h3>
+                {navigationLink(item)}
+              </article>
+            )}
+          />
+        )}
+      </div>
     </div>
   );
 }

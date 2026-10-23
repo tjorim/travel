@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from ..access import set_visibility
+from ..access import set_cover, set_visibility
 from ..auth import current_subject
 from ..database import get_session
-from ..errors import ApiException, service_exception
+from ..errors import ApiException, ServiceError, service_exception
 from ..models import (
     Location,
     MediaAsset,
@@ -130,7 +130,13 @@ def get_trip_overview(trip_id: str, session: SessionDep, subject: SubjectDep) ->
 @router.patch("/{trip_id}", response_model=TripResponse)
 def update_trip(trip_id: str, payload: TripUpdate, session: SessionDep, subject: SubjectDep) -> Trip:
     trip = owned_trip(session, trip_id, subject)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if "cover_derivative_id" in changes:
+        try:
+            set_cover(trip, changes.pop("cover_derivative_id"))
+        except ServiceError as error:
+            raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+    for field, value in changes.items():
         setattr(trip, field, value)
     if trip.starts_on is not None and trip.ends_on is not None and trip.ends_on < trip.starts_on:
         raise ApiException(

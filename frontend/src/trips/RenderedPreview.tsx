@@ -121,12 +121,6 @@ export function RenderedPreview({
     return <p role="alert">{m.assets_the_preview_could_not_be_displayed_safely()}</p>;
   return (
     <div className="rounded-xl border border-travel-card-border bg-travel-paper p-5">
-      <header>
-        <p className="travel-eyebrow">{m.assets_travel_preview()}</p>
-        <h2 className="m-0 text-3xl leading-none tracking-tight">
-          {projection.title || m.shared_trip()}
-        </h2>
-      </header>
       {error && <p role="alert">{error}</p>}
       <ProjectionView
         projection={projection}

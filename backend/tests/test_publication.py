@@ -1175,3 +1175,131 @@ def test_leaving_custom_withdraws_any_kind_from_every_live_scope() -> None:
     # Choosing custom again does not restore an old listing.
     share(owner, trip["id"], "visit", stage["id"])
     assert owner.post(f"{trips_path}/public-projection/preview").json()["visits"] == []
+
+
+def _photo_copy(owner: TestClient, trip_id: str, purpose: str = "share", approve: bool = True) -> dict:
+    image_data = io.BytesIO()
+    Image.new("RGB", (40, 30), (20, 30, 40)).save(image_data, format="JPEG")
+    path = f"/api/trips/{trip_id}/media"
+    media = owner.post(f"{path}/uploads", files={"file": ("a.jpg", image_data.getvalue(), "image/jpeg")}).json()
+    derivative = owner.post(f"{path}/{media['id']}/derivatives", json={"purpose": purpose}).json()
+    if approve:
+        owner.post(f"{path}/{media['id']}/derivatives/{derivative['id']}/approve")
+    return {
+        "media": media,
+        "derivative": derivative,
+        "path": f"{path}/{media['id']}/derivatives/{derivative['id']}",
+        "trip": f"/api/trips/{trip_id}/visibility/media_derivative/{derivative['id']}",
+    }
+
+
+def test_a_cover_is_only_shown_to_audiences_that_already_receive_the_photo(tmp_path: Path) -> None:
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    photo = _photo_copy(owner, trip["id"])
+    other = _photo_copy(owner, trip["id"])
+
+    assert (
+        owner.patch(trips_path, json={"cover_derivative_id": photo["derivative"]["id"]}).json()["cover_derivative_id"]
+        == photo["derivative"]["id"]
+    )
+    assert owner.get(f"{photo['path']}").json()["is_cover"] is True
+    owner.put(f"{trips_path}/public-projection", json={"scope": scope()})
+    owner.post(f"{trips_path}/public-projection/publish")
+    slug = owner.get(f"{trips_path}/public-projection").json()["slug"]
+    visitor = TestClient(app)
+
+    # Choosing a cover does not publish it: the photo is still private.
+    assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+    assert owner.post(f"{trips_path}/public-projection/preview").json()["cover"] is None
+    overview = owner.get(f"{trips_path}/overview").json()
+    assert overview["audiences"][0]["shows_cover"] is False
+    assert "cover_not_received" in {warning["code"] for warning in overview["warnings"]}
+
+    # Once the owner shares that photo, it becomes the cover and its file is served.
+    assert owner.put(photo["trip"], json={"visibility": "everyone"}).status_code == 200
+    document = visitor.get(f"/api/public/trips/{slug}").json()
+    assert document["cover"] == document["media"][0]["id"]
+    assert visitor.get(f"/api/public/trips/{slug}/files/{document['cover']}").status_code == 200
+    assert owner.get(f"{trips_path}/overview").json()["audiences"][0]["shows_cover"] is True
+
+    # Moving the cover moves the flag; the other photo is private, so nothing is shown.
+    owner.patch(trips_path, json={"cover_derivative_id": other["derivative"]["id"]})
+    assert owner.get(photo["path"]).json()["is_cover"] is False
+    assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+
+    # Removing the cover, or withdrawing the photo, leaves no cover and no file.
+    owner.patch(trips_path, json={"cover_derivative_id": photo["derivative"]["id"]})
+    assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] == document["cover"]
+    owner.put(photo["trip"], json={"visibility": "private"})
+    assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+    assert visitor.get(f"/api/public/trips/{slug}/files/{document['cover']}").status_code == 404
+    owner.put(photo["trip"], json={"visibility": "everyone"})
+    removed = owner.patch(trips_path, json={"cover_derivative_id": None}).json()
+    assert removed["cover_derivative_id"] is None
+    assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+
+
+def test_a_custom_cover_reaches_only_the_link_that_lists_it(tmp_path: Path) -> None:
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    photo = _photo_copy(owner, trip["id"])
+    owner.put(photo["trip"], json={"visibility": "custom"})
+    owner.patch(trips_path, json={"cover_derivative_id": photo["derivative"]["id"]})
+    listed = owner.post(
+        f"{trips_path}/share-links",
+        json={"label": "Family", "scope": scope(item("media_derivative", photo["derivative"]["id"]))},
+    ).json()
+    unlisted = owner.post(f"{trips_path}/share-links", json={"label": "Friends", "scope": scope()}).json()
+
+    assert owner.post(f"{trips_path}/share-links/{listed['id']}/preview").json()["cover"] is not None
+    assert owner.post(f"{trips_path}/share-links/{unlisted['id']}/preview").json()["cover"] is None
+
+
+def test_deleting_the_cover_copy_leaves_the_trip_without_a_cover(tmp_path: Path) -> None:
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    photo = _photo_copy(owner, trip["id"])
+    owner.patch(trips_path, json={"cover_derivative_id": photo["derivative"]["id"]})
+
+    assert owner.delete(photo["path"]).status_code == 204
+    assert owner.get(trips_path).json()["cover_derivative_id"] is None
+
+
+def test_only_a_finished_share_copy_of_a_photo_of_this_trip_can_be_the_cover(tmp_path: Path) -> None:
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    foreign = create_trip(owner, "Other trip")
+    preview = _photo_copy(owner, trip["id"], purpose="owner_preview", approve=False)
+    elsewhere = _photo_copy(owner, foreign["id"])
+    trips_path = f"/api/trips/{trip['id']}"
+
+    for derivative_id in (preview["derivative"]["id"], elsewhere["derivative"]["id"], "missing"):
+        rejected = owner.patch(trips_path, json={"cover_derivative_id": derivative_id})
+        assert rejected.status_code == 422
+        assert rejected.json()["errors"][0]["code"] == "choose_a_finished_share_copy_of_a_photo"
+    assert owner.get(trips_path).json()["cover_derivative_id"] is None
+
+    # An unapproved share copy may be nominated, but it reaches nobody.
+    pending = _photo_copy(owner, trip["id"], approve=False)
+    assert owner.patch(trips_path, json={"cover_derivative_id": pending["derivative"]["id"]}).status_code == 200
+
+
+def test_another_owner_cannot_choose_a_cover(tmp_path: Path) -> None:
+    owner = client_for("owner-1")
+    app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
+    trip = create_trip(owner)
+    photo = _photo_copy(owner, trip["id"])
+    stranger = client_for("owner-2")
+
+    assert (
+        stranger.patch(f"/api/trips/{trip['id']}", json={"cover_derivative_id": photo["derivative"]["id"]}).status_code
+        == 404
+    )

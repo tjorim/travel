@@ -154,6 +154,8 @@ export type Trip = {
   summary_html?: string | null;
   starts_on: string | null;
   ends_on: string | null;
+  /** The share copy of a photo the owner chose as cover; it reaches an audience only if that audience receives the photo. */
+  cover_derivative_id?: string | null;
   travel_updates: TravelUpdate[];
 };
 
@@ -363,6 +365,7 @@ export type MediaDerivative = {
   focal_x: number | null;
   focal_y: number | null;
   visibility: Visibility;
+  is_cover?: boolean;
   created_at: string;
   file_url: string;
 };
@@ -446,6 +449,8 @@ export type OverviewAudience = {
   scope_items: number;
   delivered: Record<"visits" | "places" | "stays" | "routes" | "updates" | "media", number>;
   without_map_point: Record<"visits" | "stays" | "updates", number>;
+  /** Whether the trip's chosen cover photo is among the photos this audience receives. */
+  shows_cover: boolean;
 };
 
 export type OverviewWarning = {
@@ -454,6 +459,7 @@ export type OverviewWarning = {
     | "trip_dates_shared"
     | "planning_marker_visible"
     | "map_point_withheld"
+    | "cover_not_received"
     | "undated_visit_duplicates_dated"
     | "location_repeats_area"
     | "visit_restates_route";
@@ -501,6 +507,7 @@ export type ProjectionDocument = {
   title: string | null;
   summary: string | null;
   dates: Record<string, unknown> | null;
+  cover?: string | null;
   visits: Record<string, unknown>[];
   places: Record<string, unknown>[];
   updates: Record<string, unknown>[];

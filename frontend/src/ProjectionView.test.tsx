@@ -414,10 +414,11 @@ it("renders every resource kind using only supplied fields", () => {
     "Taoyuan",
     "Bevestigd",
     "Shared route",
-    "Gedeelde foto’s",
   ]) {
     expect(container.textContent).toContain(value);
   }
+  // The loose gallery sits under its own "Galerij" heading and is named once, for assistive technology.
+  expect(screen.getByRole("region", { name: "Gedeelde foto’s" })).toBeTruthy();
   for (const value of ["Secret booking", "Brussels Airport", "Taoyuan Airport"])
     expect(container.textContent).not.toContain(value);
   for (const value of [
@@ -597,7 +598,8 @@ it("renders dated updates in projection order with direct links and scoped photo
   expect(container.querySelectorAll('ol[aria-label="Reisupdates tijdlijn"] > li')[1]?.id).toBe(
     "update-first",
   );
-  expect(screen.getByText("Area coast")).toBeTruthy();
+  // The story shows its place, and the header lists the same area as a destination.
+  expect(screen.getAllByText("Area coast")).toHaveLength(2);
   expect(screen.getByText("2 april 2054")).toBeTruthy();
   expect(screen.getByRole("img", { name: "Train platform" }).getAttribute("src")).toBe(
     "/api/shared/token/files/media-1",
@@ -853,4 +855,103 @@ it("renders a caption's inline Markdown in its figcaption and falls back to its 
   expect(rendered.querySelector("p, div")).toBeNull();
   expect(source.textContent).toBe("*Temple*");
   expect(source.querySelector("em")).toBeNull();
+});
+
+const coverData = (): Projection => ({
+  ...projection(),
+  dates: { id: "dates", starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
+  cover: "media-cover",
+  visits: [{ id: "visit-1", title: "Harbour", place: { label: "Keelung" } }],
+  media: [
+    {
+      id: "media-cover",
+      image: { id: "media-cover" },
+      alt_text: "Fishing boats",
+      caption: "Dawn at the harbour",
+      width: 1600,
+      height: 900,
+      focal_x: 30,
+      focal_y: 70,
+    },
+  ],
+});
+
+it("opens the trip with its cover, title, dates and destinations", () => {
+  render(<ProjectionView projection={coverData()} audience="public" identifier="safe-slug" />);
+
+  const cover = screen.getAllByRole("img", { name: "Fishing boats" })[0];
+  expect(cover.getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media-cover");
+  expect(cover.getAttribute("style")).toContain("30% 70%");
+  expect(screen.getByRole("heading", { level: 1, name: "Selected trip" })).toBeTruthy();
+  expect(screen.getByText("1 november 2054 – 21 november 2054")).toBeTruthy();
+  expect(screen.getAllByText("Keelung")).toHaveLength(2); // in the header and under its visit
+  // The cover keeps its caption; the photo also stays in the gallery, so the caption repeats once.
+  expect(screen.getAllByText("Dawn at the harbour", { selector: "figcaption" })).toHaveLength(2);
+});
+
+it("falls back to the text-only header when there is no cover or the image fails", () => {
+  const withoutCover = { ...coverData(), cover: null };
+  const view = render(
+    <ProjectionView projection={withoutCover} audience="public" identifier="safe-slug" />,
+  );
+  // The photo is still a gallery photo; only the header has no image.
+  expect(view.container.querySelector("header img")).toBeNull();
+  expect(screen.getByRole("heading", { level: 1, name: "Selected trip" })).toBeTruthy();
+  view.unmount();
+
+  // A cover that names no delivered photo (or a video) never produces an image.
+  const unknown = { ...coverData(), cover: "media-other" };
+  const other = render(
+    <ProjectionView projection={unknown} audience="public" identifier="safe-slug" />,
+  );
+  expect(other.container.querySelector("header img")).toBeNull();
+  other.unmount();
+
+  const failing = render(
+    <ProjectionView projection={coverData()} audience="public" identifier="safe-slug" />,
+  );
+  fireEvent.error(failing.container.querySelector("header img")!);
+  expect(failing.container.querySelector("header img")).toBeNull();
+  expect(screen.getByRole("heading", { level: 1, name: "Selected trip" })).toBeTruthy();
+});
+
+it("keeps a sparse, untitled trip readable and truncates a long list of destinations", () => {
+  const data = projection();
+  data.title = null;
+  data.summary = null;
+  data.visits = ["A", "B", "C", "D", "E", "F"].map((label) => ({
+    id: `visit-${label}`,
+    place: { label },
+  }));
+  render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
+
+  expect(screen.getByRole("heading", { level: 1, name: "Gedeelde reis" })).toBeTruthy();
+  expect(screen.getByText(/A · B · C · D · \+2 meer/)).toBeTruthy();
+});
+
+it("draws the same header in an owner preview from the supplied cover file", () => {
+  render(
+    <ProjectionView
+      projection={coverData()}
+      audience="public"
+      identifier=""
+      previewResources={{
+        images: { "media-cover": "blob:cover" },
+        openFile: () => {},
+        openNavigation: () => {},
+      }}
+    />,
+  );
+
+  expect(screen.getByRole("heading", { level: 2, name: "Selected trip" })).toBeTruthy();
+  expect(screen.getAllByRole("img", { name: "Fishing boats" })[0].getAttribute("src")).toBe(
+    "blob:cover",
+  );
+});
+
+it("accepts a projection with or without a cover id and rejects a malformed one", () => {
+  expect(isProjection(projection(), "public")).toBe(true);
+  expect(isProjection({ ...projection(), cover: "media-1" }, "public")).toBe(true);
+  expect(isProjection({ ...projection(), cover: null }, "public")).toBe(true);
+  expect(isProjection({ ...projection(), cover: { id: "media-1" } }, "public")).toBe(false);
 });

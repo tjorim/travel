@@ -118,6 +118,7 @@ outside the allowlist can be selected.
 | Visit | title (else the shared location's name or the area's), the text for visitors, its area, the days at the precision chosen; the times only if the owner also chooses that (and only with full dates) | notes, the exact location (unless shared), the times (unless chosen) |
 | Route | mode, status, its two areas, name, schedule, carrier, service reference, the drawn line | booking reference, class, notes, documents, the exact locations (unless shared) |
 | Photo | an approved, metadata-stripped copy, with caption and alt text | the original and its EXIF |
+| Trip cover | the id of the one chosen photo, only if that audience already receives the photo | any photo the audience does not receive; the choice itself |
 | Document | never shared | the original and all metadata |
 
 ## Where a twin is still needed
@@ -140,6 +141,13 @@ sees it.
 
 A photo attached to a reisupdate travels with it (its approval is still the
 gate); a loose gallery photo follows its own visibility.
+
+The **trip cover** is the owner's choice of one ready share copy of a photo
+(`is_cover` on the copy, at most one per trip). It nominates; it never delivers:
+each projection includes `cover` only when the chosen copy is among the photos that
+audience already receives, so the cover can differ per audience or be absent, and
+the same scoped file route serves it. Without one, or after the copy is deleted,
+made private or withdrawn, the visitor page shows a text-only header.
 
 ## Behaviour to rely on
 

@@ -89,6 +89,7 @@ const audience = (overrides: Partial<OverviewAudience> = {}): OverviewAudience =
   scope_items: 0,
   delivered: { visits: 0, places: 0, stays: 0, routes: 0, updates: 0, media: 0 },
   without_map_point: { visits: 0, stays: 0, updates: 0 },
+  shows_cover: false,
   ...overrides,
 });
 const SECRET = "secret-token-123";
@@ -597,6 +598,16 @@ it("shows what each audience receives and words the review warnings in Dutch", a
         kind: null,
         id: null,
       },
+      {
+        code: "cover_not_received",
+        severity: "info",
+        message: "",
+        audience: "public",
+        audience_id: null,
+        text: null,
+        kind: null,
+        id: null,
+      },
     ],
   };
   renderWithOwner(<PublicationManager trip={trip} />);
@@ -611,6 +622,11 @@ it("shows what each audience receives and words the review warnings in Dutch", a
     review.getByText(/Link “Familie” is actief maar krijgt geen enkel onderdeel/),
   ).toBeTruthy();
   expect(review.getByText(/toont “Chiayi · concept”/)).toBeTruthy();
+  expect(
+    review.getByText(
+      /De pagina voor iedereen toont geen omslag omdat het de gekozen omslagfoto niet ontvangt/,
+    ),
+  ).toBeTruthy();
   expect(
     review.getByText("De pagina voor iedereen toont de reisdatums (alleen maanden)."),
   ).toBeTruthy();

@@ -81,6 +81,20 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     }),
     invalidate: refreshDerivatives,
   });
+  const setCover = useOwnerMutation<MediaDerivative | null>({
+    fallback: m.assets_the_cover_could_not_be_saved,
+    request: (derivative) => ({
+      path: `/api/trips/${encodeURIComponent(tripId)}`,
+      method: "PATCH",
+      body: { cover_derivative_id: derivative?.id ?? null },
+    }),
+    // The previous cover may belong to another asset, and each audience's overview shows whether it receives the cover.
+    invalidate: (subject) => [
+      ownerKeys.trips(subject),
+      ownerKeys.tripResource(subject, tripId, "media"),
+      ownerKeys.tripResource(subject, tripId, "overview"),
+    ],
+  });
   const removeDerivative = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }>({
     fallback: m.assets_the_copy_could_not_be_deleted,
     request: ({ assetId, derivative }) => ({
@@ -110,6 +124,7 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     approve,
     retry,
     presentation,
+    setCover,
     removeDerivative,
     startImport,
     completeImport,

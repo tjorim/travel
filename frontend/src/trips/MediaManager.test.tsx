@@ -213,6 +213,27 @@ it("shows an approved copy and drops a deleted one without a reload", async () =
   expect(screen.getByText("Nog geen kopieën voor dit medium.")).toBeTruthy();
 });
 
+it("chooses and removes a copy as the trip cover without publishing anything", async () => {
+  const bodies: unknown[] = [];
+  api.on("PATCH", /^\/api\/trips\/trip$/, (payload) => {
+    const body = payload as { cover_derivative_id: string | null };
+    bodies.push(body);
+    api.rows("/api/trips/trip/media/p1/derivatives")[0].is_cover =
+      body.cover_derivative_id === "x1";
+    return {};
+  });
+  renderMedia();
+  fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
+
+  fireEvent.click(await screen.findByRole("button", { name: "Gebruik als omslag van de reis" }));
+  await screen.findByText(/Omslag gekozen\. Er wordt niets gepubliceerd/);
+  fireEvent.click(await screen.findByRole("button", { name: "Verwijder als omslag van de reis" }));
+  await screen.findByText("Omslag verwijderd.");
+
+  expect(bodies).toEqual([{ cover_derivative_id: "x1" }, { cover_derivative_id: null }]);
+});
+
 it("opens the presentation form with the saved values, saves it and keeps the saved caption", async () => {
   api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => {
     const rows = api.rows("/api/trips/trip/media/p1/derivatives");

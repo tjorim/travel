@@ -92,6 +92,7 @@ export function MediaManager({
     approve,
     retry,
     presentation,
+    setCover,
     removeDerivative,
     startImport,
     completeImport,
@@ -555,6 +556,21 @@ export function MediaManager({
                 )
             }
             onEdit={() => editCopy(selectedDerivative)}
+            onToggleCover={() =>
+              setCover
+                .mutateAsync(selectedDerivative.is_cover ? null : selectedDerivative)
+                .then(
+                  () =>
+                    setNotice(
+                      textNotice(() =>
+                        selectedDerivative.is_cover
+                          ? m.assets_cover_removed()
+                          : m.assets_cover_chosen(),
+                      ),
+                    ),
+                  fail(m.assets_the_cover_could_not_be_saved),
+                )
+            }
             onAskDelete={() => setConfirmDeleteCopy(true)}
             onCancelDelete={() => setConfirmDeleteCopy(false)}
             onConfirmDelete={() => performEraseDerivative(selected, selectedDerivative)}

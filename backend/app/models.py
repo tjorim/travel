@@ -18,6 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
@@ -342,6 +343,11 @@ class Trip(Base):
     media_derivatives: Mapped[list[MediaDerivative]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
     )
+
+    @property
+    def cover_derivative_id(self) -> str | None:
+        """The photo copy the owner nominated as cover; ``None`` when there is none or it was deleted."""
+        return next((item.id for item in self.media_derivatives if item.is_cover), None)
 
 
 class TravelUpdateMediaAsset(Base):
@@ -950,6 +956,15 @@ class MediaDerivative(Base):
     usable for sharing only once the owner has explicitly reviewed it."""
 
     __tablename__ = "media_derivatives"
+    __table_args__ = (
+        Index(
+            "uq_media_derivatives_trip_cover",
+            "trip_id",
+            unique=True,
+            postgresql_where=text("is_cover"),
+            sqlite_where=text("is_cover"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -984,6 +999,10 @@ class MediaDerivative(Base):
     # A photo attached to a reisupdate is delivered with that update and this
     # choice is ignored; it only governs a loose gallery photo.
     visibility: Mapped[Visibility] = _visibility_column()
+    # The owner's choice of this photo as its trip's cover, at most one per trip.
+    # It only nominates the photo: an audience shows it only when it already
+    # receives this derivative, so it never grants publication on its own.
+    is_cover: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     trip: Mapped[Trip] = relationship(back_populates="media_derivatives")

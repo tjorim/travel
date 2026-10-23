@@ -37,6 +37,9 @@ enforces the scope; this check is about choosing it deliberately.
       close to a home or meeting point.
 - [ ] For every selected image, check the visible content and caption; only
       approved, metadata-stripped photo or video derivatives can be selected.
+- [ ] If the trip has a cover, check that photo like any other shared image:
+      choosing it publishes nothing, so it is shown only to audiences that already
+      receive it. The sharing check lists an audience that receives no cover.
 - [ ] Documents in the owner-wide library and trips have no scope choice, visitor field, or file route.
 - [ ] For a named link, choose the shortest sensible lifetime and send the
       capability only through a private channel.

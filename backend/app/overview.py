@@ -79,6 +79,7 @@ def _audience(
         "scope_items": len(scope.get("items", [])),
         "delivered": delivered,
         "without_map_point": unmapped,
+        "shows_cover": document["cover"] is not None,
     }
     name = "The public page" if kind == "public" else f"Link {label!r}"
     warnings: list[dict[str, Any]] = []
@@ -103,6 +104,13 @@ def _audience(
             f"{name} is {state} but receives no records"
             + (f", only the trip {' and '.join(shown)}" if shown else "")
             + ". Set records to everyone, or choose custom records for it.",
+        )
+    if live and trip.cover_derivative_id is not None and document["cover"] is None:
+        warn(
+            "cover_not_received",
+            "info",
+            f"{name} shows no cover: the chosen cover photo is not among the photos it receives. "
+            "Set the photo to everyone, attach it to a shared update, or choose it for this audience.",
         )
     if live and summary["dates_precision"]:
         warn(

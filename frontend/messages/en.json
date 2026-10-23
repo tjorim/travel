@@ -1921,5 +1921,15 @@
   ],
   "owner_route_alternatives_cancelled": "Alternatives cancelled.",
   "owner_a_route_idea_is_a_candidate_it_covers_no_journey_does_not_count_towards_booking_and_is_never_shared": "An idea is a candidate you are comparing. It covers no journey in the plan, does not count towards booking progress and is never shared.",
-  "api_a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "A route idea is only a candidate: make it planned before sharing it"
+  "api_a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "A route idea is only a candidate: make it planned before sharing it",
+  "assets_use_as_cover": "Use as trip cover",
+  "assets_remove_as_cover": "Remove as trip cover",
+  "assets_is_the_trip_cover": "This photo is the trip cover. Visitors only see it if they already receive this photo.",
+  "assets_cover_chosen": "Cover chosen. Nothing is published: an audience shows it only if it already receives this photo.",
+  "assets_cover_removed": "Cover removed.",
+  "assets_the_cover_could_not_be_saved": "The cover could not be saved.",
+  "assets_receives_no_cover_because_the_chosen_photo_is_not_among_its_photos": "{p0} shows no cover because it does not receive the chosen cover photo. Share the photo with everyone, attach it to a shared update, or choose it for this audience.",
+  "api_choose_a_finished_share_copy_of_a_photo": "Choose a finished share copy of a photo as the cover.",
+  "visitor_destinations": "Destinations",
+  "visitor_more_destinations": "+{count} more"
 }

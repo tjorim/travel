@@ -21,6 +21,7 @@ export function CopyView({
   onRetry,
   onApprove,
   onEdit,
+  onToggleCover,
   onAskDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -36,6 +37,7 @@ export function CopyView({
   onRetry: () => void;
   onApprove: () => void;
   onEdit: () => void;
+  onToggleCover: () => void;
   onAskDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -45,6 +47,11 @@ export function CopyView({
   const owner = useOwner();
   const canPreview =
     derivative.processing_state !== "processing" && derivative.processing_state !== "failed";
+  const canBeCover =
+    derivative.purpose === "share" &&
+    derivative.media_kind !== "video" &&
+    derivative.processing_state !== "processing" &&
+    derivative.processing_state !== "failed";
   const previewUrl =
     derivative.media_kind === "video" ? (derivative.poster_url ?? null) : derivative.file_url;
   return (
@@ -78,6 +85,7 @@ export function CopyView({
             ` · ${derivative.duration_seconds?.toFixed(1) ?? "?"} s · ${derivative.remove_audio ? m.assets_without_audio() : m.assets_with_audio()}`}
         </p>
       </div>
+      {derivative.is_cover && <p className="help">{m.assets_is_the_trip_cover()}</p>}
       {derivative.review_state === "approved" &&
         derivative.processing_state !== "failed" &&
         derivative.purpose === "share" && (
@@ -118,6 +126,16 @@ export function CopyView({
         {derivative.purpose === "share" && derivative.processing_state !== "processing" && (
           <Button className="secondary compact" type="button" onClick={onEdit}>
             {m.assets_edit_presentation()}
+          </Button>
+        )}
+        {canBeCover && (
+          <Button
+            className="secondary compact"
+            type="button"
+            aria-pressed={derivative.is_cover === true}
+            onClick={onToggleCover}
+          >
+            {derivative.is_cover ? m.assets_remove_as_cover() : m.assets_use_as_cover()}
           </Button>
         )}
         <Button className="danger compact" type="button" onClick={onAskDelete}>
