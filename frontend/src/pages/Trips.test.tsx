@@ -9,6 +9,7 @@ import type { Trip } from "../tracker-model";
 import { TripWorkspace, TripWorkspaceView } from "./TripWorkspace";
 import { changeLocale } from "../locale";
 import { Trips } from "./Trips";
+import { serveApi } from "../query/serve-api";
 
 const rootRoute = createRootRoute();
 const tripsListRoute = createRoute({
@@ -115,8 +116,7 @@ beforeEach(() => {
   ];
   requests = [];
   surfaceState = "unpublished";
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn((url: string, init: RequestInit = {}) => {
       const method = init.method ?? "GET";
       requests.push(`${method} ${url}`);
@@ -365,10 +365,7 @@ it("says so when a workspace trip does not exist for this account", async () => 
 });
 
 it("explains a failed trip load without hiding the retry path", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => json({ detail: "Database niet bereikbaar." }, 400)),
-  );
+  serveApi(vi.fn(() => json({ detail: "Database niet bereikbaar." }, 400)));
   renderTrips();
   expect(
     (await screen.findAllByText("Je reizen konden niet worden geladen.")).length,
@@ -440,12 +437,9 @@ it("shows the trip's state and whether its public page is live in the workspace 
 it("says a trip is not published, and draws its cover from the owner's own file", async () => {
   const coverUrl = "/api/trips/t1/media/m1/derivatives/d1/file";
   trips = [trip("t1", "Exampleland", { cover_url: coverUrl })];
-  const fetcher = vi.mocked(fetch);
-  const base = fetcher.getMockImplementation()!;
-  fetcher.mockImplementation((url, init) =>
-    url === coverUrl
-      ? Promise.resolve(new Response(new Blob(["x"], { type: "image/png" })))
-      : base(url, init),
+  // Layered over the default API: only the cover file is answered here, everything else falls through.
+  serveApi((url) =>
+    url === coverUrl ? new Response(new Blob(["x"], { type: "image/png" })) : undefined,
   );
   vi.stubGlobal(
     "URL",

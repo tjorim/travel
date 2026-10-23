@@ -1,27 +1,26 @@
 // @vitest-environment happy-dom
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw/http";
+import { afterEach, expect, it } from "vitest";
 import { changeLocale } from "./locale";
+import { server } from "./mocks/server";
 import { VisitorRoutes } from "./visitor-routes";
 
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
   act(() => changeLocale("nl"));
 });
 
 it("retains visitor error descriptors and reevaluates an already-visible failure", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            detail: "Private diagnostic",
-            errors: [{ code: "database_unavailable", params: {}, path: [] }],
-          }),
-          { status: 503 },
-        ),
+  server.use(
+    http.all("*", () =>
+      HttpResponse.json(
+        {
+          detail: "Private diagnostic",
+          errors: [{ code: "database_unavailable", params: {}, path: [] }],
+        },
+        { status: 503 },
+      ),
     ),
   );
   render(<VisitorRoutes initialEntries={["/trips/example"]} />);
@@ -33,17 +32,15 @@ it("retains visitor error descriptors and reevaluates an already-visible failure
 
 it("keeps 403 and 404 unavailable states uniform even if a server supplies distinct codes", async () => {
   for (const status of [403, 404]) {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              detail: "private reason",
-              errors: [{ code: "unauthorized", params: {}, path: [] }],
-            }),
-            { status },
-          ),
+    server.use(
+      http.all("*", () =>
+        HttpResponse.json(
+          {
+            detail: "private reason",
+            errors: [{ code: "unauthorized", params: {}, path: [] }],
+          },
+          { status },
+        ),
       ),
     );
     const view = render(<VisitorRoutes initialEntries={["/share/capability"]} />);

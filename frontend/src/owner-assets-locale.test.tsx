@@ -14,6 +14,7 @@ import { OfflineSnapshotView } from "./offline/OfflineSnapshotView";
 import { OfflineUnsupportedError, openOfflineCopy, pinOfflineCopy } from "./offline/offline-store";
 import type { OfflineCopySummary } from "./offline/offline-store";
 import type { Trip } from "./tracker-model";
+import { serveApi } from "./query/serve-api";
 
 const auth = vi.hoisted(() => ({ session: { accessToken: "" } }));
 vi.mock("./auth-context", () => ({ useAuth: () => auth }));
@@ -47,10 +48,7 @@ afterEach(async () => {
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
 
 it("keeps a selected upload, authored title, focus and discard confirmation when switching", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => Promise.resolve(json([]))),
-  );
+  serveApi(vi.fn(() => Promise.resolve(json([]))));
   renderWithOwner(<DocumentLibraryManager />);
   fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
   const title = screen.getByRole("textbox", { name: "Titel" }) as HTMLInputElement;
@@ -73,8 +71,7 @@ it("keeps a selected upload, authored title, focus and discard confirmation when
 });
 
 it("preserves a dirty sharing editor and confirmation without changing its scope or name", async () => {
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn((url: string) =>
       Promise.resolve(
         json(
@@ -147,7 +144,7 @@ it("keeps a pending packing toggle, retranslates its failure and submits canonic
       ),
     );
   });
-  vi.stubGlobal("fetch", request);
+  serveApi(request);
   renderWithOwner(<PackingManager trip={trip} />);
   const toggle = await screen.findByRole("checkbox", { name: "Eigen item ingepakt" });
   fireEvent.click(toggle);
@@ -291,10 +288,7 @@ it("clears an open packing view at lease expiry and retranslates the retained ex
 });
 
 it("hides an already decrypted emergency copy immediately when the authenticated subject changes", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => Promise.resolve(json({ id: "entry" }))),
-  );
+  serveApi(vi.fn(() => Promise.resolve(json({ id: "entry" }))));
   await pinOfflineCopy({
     subject: "owner-1",
     resourceKind: "emergency_info",

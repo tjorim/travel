@@ -6,6 +6,7 @@ import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Stay, Route, Trip, TripTask, TripTaskAlert } from "../tracker-model";
 import { TripOverview } from "./TripOverview";
 import { TripTaskManager } from "./TripTaskManager";
+import { serveApi } from "../query/serve-api";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
@@ -51,8 +52,7 @@ beforeEach(() => {
     failNext: null,
     requests: [],
   };
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn((url: string, init: RequestInit = {}) => {
       const method = init.method ?? "GET";
       api.requests.push(`${method} ${url}`);
@@ -229,17 +229,14 @@ it("validates the form, keeps the editor open on a server error, and resets afte
 
 it("disables submit while saving and asks before discarding a dirty form", async () => {
   let release: () => void = () => undefined;
-  const original = globalThis.fetch;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string, init: RequestInit = {}) =>
-      init.method === "POST"
-        ? new Promise<Response>((resolve) => {
-            release = () =>
-              resolve(new Response(JSON.stringify(task("z", "Nieuw")), { status: 201 }));
-          })
-        : original(url, init),
-    ),
+  // Layered over the default API: only the create is held back, everything else falls through.
+  serveApi((_url, init) =>
+    init.method === "POST"
+      ? new Promise<Response>((resolve) => {
+          release = () =>
+            resolve(new Response(JSON.stringify(task("z", "Nieuw")), { status: 201 }));
+        })
+      : undefined,
   );
   renderWithOwner(<TripTaskManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuwe taak" }));

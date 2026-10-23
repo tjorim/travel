@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, screen } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { server } from "../mocks/server";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import type { Trip, TripTask } from "../tracker-model";
 import { OverviewTasks } from "./OverviewTasks";
@@ -35,14 +37,11 @@ const render = () =>
   renderRoutesWithOwner(createRootRoute({ component: () => <OverviewTasks trip={trip} /> }), ["/"]);
 
 function serve(tasks: TripTask[] | number) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() =>
-      Promise.resolve(
-        typeof tasks === "number"
-          ? new Response("{}", { status: tasks })
-          : new Response(JSON.stringify(tasks), { status: 200 }),
-      ),
+  server.use(
+    http.all("*", () =>
+      typeof tasks === "number"
+        ? HttpResponse.json({}, { status: tasks })
+        : HttpResponse.json(tasks),
     ),
   );
 }
@@ -52,7 +51,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
 });
 
 it("lists the open tasks by deadline, tasks without one last, and hides finished ones", async () => {

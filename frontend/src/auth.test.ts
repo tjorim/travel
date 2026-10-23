@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw/http";
+import { afterEach, describe, expect, it } from "vitest";
 
+import { server } from "./mocks/server";
 import { clearSession, completeSignIn, readSession, shouldRestoreSession } from "./auth";
 
 const transactionKey = "travel-tracker-pkce-transaction";
@@ -9,8 +11,16 @@ const transactionKey = "travel-tracker-pkce-transaction";
 afterEach(() => {
   sessionStorage.clear();
   localStorage.clear();
-  vi.unstubAllGlobals();
 });
+
+/** Answers the identity provider's token endpoint with a short-lived access token. */
+function serveToken() {
+  server.use(
+    http.post("*/protocol/openid-connect/token", () =>
+      HttpResponse.json({ access_token: "access", expires_in: 60 }),
+    ),
+  );
+}
 
 function transaction(silent: boolean) {
   sessionStorage.setItem(
@@ -22,14 +32,7 @@ function transaction(silent: boolean) {
 describe("owner browser session recovery", () => {
   it("keeps only a non-secret restoration marker after a successful sign-in", async () => {
     transaction(false);
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 }),
-        ),
-    );
+    serveToken();
 
     await expect(completeSignIn("?code=code&state=state")).resolves.toMatchObject({
       returnPath: "/trips",
@@ -43,14 +46,7 @@ describe("owner browser session recovery", () => {
 
   it("requests silent recovery when browser session storage is unavailable", async () => {
     transaction(false);
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 }),
-        ),
-    );
+    serveToken();
     await completeSignIn("?code=code&state=state");
 
     sessionStorage.clear();
@@ -73,14 +69,7 @@ describe("owner browser session recovery", () => {
 
   it("removes both the credential and restoration marker on explicit sign-out", async () => {
     transaction(false);
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ access_token: "access", expires_in: 60 }), { status: 200 }),
-        ),
-    );
+    serveToken();
     await completeSignIn("?code=code&state=state");
 
     clearSession();

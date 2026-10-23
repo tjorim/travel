@@ -13,6 +13,7 @@ import {
 } from "../query/test-utils";
 import type { Trip } from "../tracker-model";
 import { TripDetail } from "./TripDetail";
+import { serveApi } from "../query/serve-api";
 
 const rootRoute = createRootRoute();
 const tripDetailRoute = createRoute({
@@ -261,8 +262,7 @@ it("shows saved travel context, linked documents, and update media in the privat
 
 it("shows a loading state, then an error rather than half a trip when one read fails", async () => {
   seed();
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn((url: string) =>
       Promise.resolve(
         url === "/api/trips"
@@ -328,16 +328,11 @@ it("reports a document that cannot be opened without leaving the page", async ()
   api.on("GET", /\/documents\/d1\/original$/, () => {
     throw new Error("unused");
   });
-  const original = globalThis.fetch;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string, init?: RequestInit) =>
-      url.endsWith("/original")
-        ? Promise.resolve(
-            new Response(JSON.stringify({ detail: "Bestand ontbreekt." }), { status: 404 }),
-          )
-        : original(url, init),
-    ),
+  // Layered over the default API: only the download fails, everything else falls through.
+  serveApi((url) =>
+    url.endsWith("/original")
+      ? new Response(JSON.stringify({ detail: "Bestand ontbreekt." }), { status: 404 })
+      : undefined,
   );
   renderDetail();
   fireEvent.click(await screen.findByRole("button", { name: "Document openen" }));

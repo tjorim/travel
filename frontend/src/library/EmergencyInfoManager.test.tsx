@@ -7,6 +7,7 @@ import { AuthProvider } from "../auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import type { EmergencyInfoEntry } from "../tracker-model";
 import { EmergencyInfoManager } from "./EmergencyInfoManager";
+import { serveApi } from "../query/serve-api";
 
 function fakeAccessToken(subject: string): string {
   const payload = btoa(JSON.stringify({ sub: subject }))
@@ -41,8 +42,7 @@ function stubFetch(entries: EmergencyInfoEntry[]): {
     calls: [] as { url: string; method: string; body?: Record<string, unknown> }[],
     failNext: null as { status: number; body: unknown } | null,
   };
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const method = init?.method ?? "GET";

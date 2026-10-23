@@ -7,6 +7,7 @@ import { AuthProvider } from "../auth-context";
 import { answerConfirmation } from "../test-confirm";
 import { OfflineManager } from "./OfflineManager";
 import { __resetOfflineStoreForTests, pinOfflineCopy } from "./offline-store";
+import { serveApi } from "../query/serve-api";
 
 function fakeAccessToken(subject: string): string {
   const payload = btoa(JSON.stringify({ sub: subject }))
@@ -41,8 +42,7 @@ function withSession(): void {
 }
 
 function stubMetadataFetch(): void {
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn(() => Promise.resolve(new Response(JSON.stringify({ id: "doc-1" }), { status: 200 }))),
   );
 }

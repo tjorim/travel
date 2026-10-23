@@ -7,6 +7,7 @@ import { AuthProvider } from "../auth-context";
 import { chooseOption, renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import type { OwnerDocument, Trip } from "../tracker-model";
 import { DocumentLibraryManager } from "./DocumentLibraryManager";
+import { serveApi } from "../query/serve-api";
 
 function fakeAccessToken(subject: string): string {
   const payload = btoa(JSON.stringify({ sub: subject }))
@@ -36,8 +37,7 @@ function stubFetch(
   trips: Partial<Trip>[] = [],
 ): { calls: { url: string; method: string }[] } {
   const state = { documents: documents.slice(), calls: [] as { url: string; method: string }[] };
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const method = init?.method ?? "GET";

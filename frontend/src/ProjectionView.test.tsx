@@ -12,6 +12,7 @@ import {
 import { timeForViewer } from "./tracker-model";
 import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
+import { serveApi } from "./query/serve-api";
 
 afterEach(() => {
   cleanup();
@@ -282,7 +283,7 @@ it("lists only server supplied public cards and opens their stable slugs", async
         ]),
       ),
   );
-  vi.stubGlobal("fetch", fetcher);
+  const sent = serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/"]} />);
   expect((await screen.findByRole("status")).textContent).toContain("Reizen laden");
   const first = await screen.findByRole("link", { name: /Visible journey/ });
@@ -294,7 +295,7 @@ it("lists only server supplied public cards and opens their stable slugs", async
     "/admin/",
   );
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips");
-  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit" });
+  expect(sent.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit" });
 });
 
 it("shows an empty index and retries a failed listing without using archive routes", async () => {
@@ -302,7 +303,7 @@ it("shows an empty index and retries a failed listing without using archive rout
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
     failed ? new Response(null, { status: 503 }) : new Response("[]"),
   );
-  vi.stubGlobal("fetch", fetcher);
+  serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/trips/"]} />);
   await screen.findByRole("alert");
   failed = false;
@@ -316,7 +317,7 @@ it("shows an empty index and retries a failed listing without using archive rout
 
 it("does not treat former archive paths as visitor trips", async () => {
   const fetcher = vi.fn();
-  vi.stubGlobal("fetch", fetcher);
+  serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/exampleland-2054/"]} />);
   expect(await screen.findByRole("heading", { name: "Pagina niet beschikbaar" })).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
@@ -490,14 +491,14 @@ it("requests a fresh scoped projection after navigation and shows live edits", a
     async (_input: RequestInfo | URL, _init?: RequestInit) =>
       new Response(JSON.stringify({ ...projection(), title }), { status: 200 }),
   );
-  vi.stubGlobal("fetch", fetcher);
+  const sent = serveApi(fetcher);
   const first = render(<VisitorRoutes initialEntries={["/trips/slug"]} />);
   await screen.findByRole("heading", { name: "Before edit" });
   expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe(
     "/admin/",
   );
   expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips/slug");
-  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+  expect(sent.mock.calls[0]?.[1]).toMatchObject({
     cache: "no-store",
     credentials: "omit",
     referrerPolicy: "no-referrer",
@@ -513,7 +514,7 @@ it("uses only the unlisted endpoint and a uniform unavailable state", async () =
   const fetcher = vi.fn(
     async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 404 }),
   );
-  vi.stubGlobal("fetch", fetcher);
+  serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/share/token"]} />);
   await screen.findByRole("heading", { name: "Reis niet beschikbaar" });
   expect(fetcher).toHaveBeenCalledTimes(1);
@@ -527,7 +528,7 @@ it("renders a successful unlisted response without requesting public or owner da
   const fetcher = vi.fn(
     async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(data)),
   );
-  vi.stubGlobal("fetch", fetcher);
+  serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/share/token"]} />);
   await screen.findByText("Shared update text");
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/shared/token"]);
@@ -541,7 +542,7 @@ it("automatically saves a successfully visited hidden trip on this browser's hom
     if (url === `/api/shared/${token}`) return new Response(JSON.stringify(data));
     return new Response("[]");
   });
-  vi.stubGlobal("fetch", fetcher);
+  serveApi(fetcher);
 
   const visited = render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("heading", { name: "Family trip" });
@@ -645,7 +646,7 @@ it("uses the visitor story renderer for an owner preview and requests only owner
         JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" }),
       ),
   );
-  vi.stubGlobal("fetch", fetcher);
+  const sent = serveApi(fetcher);
   vi.spyOn(window, "open").mockImplementation(() => null);
   const session = { accessToken: "owner-token", expiresAt: Date.now() + 60_000 };
   const preview = render(
@@ -670,7 +671,7 @@ it("uses the visitor story renderer for an owner preview and requests only owner
   expect(fetcher.mock.calls[0]?.[0]).toBe(
     "/api/trips/trip/share-links/draft-link/preview/navigation/area-1",
   );
-  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+  expect(sent.mock.calls[0]?.[1]).toMatchObject({
     credentials: "omit",
     cache: "no-store",
     headers: { Authorization: "Bearer owner-token" },
@@ -815,8 +816,7 @@ it("shows the server's sanitized Markdown and falls back to plain source text", 
 });
 
 it("shows a card's one-line plain-text summary instead of its Markdown", async () => {
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn(
       async () =>
         new Response(

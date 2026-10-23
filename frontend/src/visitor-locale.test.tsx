@@ -7,6 +7,7 @@ import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
 import { m } from "./paraglide/messages.js";
 import { rememberSharedTrip } from "./saved-shared-trips";
+import { serveApi } from "./query/serve-api";
 
 const token = "fictional-capability-for-locale-tests";
 function projection(): Projection {
@@ -142,7 +143,7 @@ it("reports denied saved-link storage without losing the trip or refetching on a
   const fetcher = vi.fn(
     async (_input: RequestInfo | URL) => new Response(JSON.stringify(projection())),
   );
-  vi.stubGlobal("fetch", fetcher);
+  serveApi(fetcher);
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("heading", { name: "Authored reis" });
   expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
@@ -162,10 +163,7 @@ it("sets a long authored trip title in a smaller, looser heading than a short on
     [short, false],
     [long, true],
   ] as const) {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify(data))),
-    );
+    serveApi(vi.fn(async () => new Response(JSON.stringify(data))));
     const view = render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
     const heading = await screen.findByRole("heading", { level: 1, name: data.title ?? "" });
     expect(heading.classList.contains("text-travel-title-long")).toBe(looser);
@@ -180,7 +178,7 @@ it("uses the same translated projection in owner previews without visitor resour
   data.places = [];
   data.routes = [];
   const fetcher = vi.fn();
-  vi.stubGlobal("fetch", fetcher);
+  const sent = serveApi(fetcher);
   render(
     <RenderedPreview
       projection={data}
@@ -198,8 +196,7 @@ it("uses the same translated projection in owner previews without visitor resour
 it.each(["/", "/trips/"])(
   "translates public cards at %s without changing slug paths",
   async (path) => {
-    vi.stubGlobal(
-      "fetch",
+    serveApi(
       vi.fn(
         async () =>
           new Response(
@@ -231,7 +228,7 @@ it.each(["invalid", "revoked", "expired"])(
           status: 404,
         }),
     );
-    vi.stubGlobal("fetch", fetcher);
+    const sent = serveApi(fetcher);
     rememberSharedTrip(token, projection());
     render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
     await screen.findByRole("heading", { name: m.unavailable_trip() });
@@ -239,7 +236,7 @@ it.each(["invalid", "revoked", "expired"])(
     expect(screen.getByRole("heading", { name: m.unavailable_trip() })).toBeTruthy();
     expect(document.body.textContent).not.toContain(reason);
     expect(localStorage.getItem("travel-saved-shared-trips@1")).toBe("[]");
-    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+    expect(sent.mock.calls[0]?.[1]).toMatchObject({
       cache: "no-store",
       credentials: "omit",
       redirect: "error",
@@ -252,7 +249,7 @@ it.each(["invalid", "revoked", "expired"])(
 it("retries a visitor network failure in the current locale", async () => {
   const fetcher = vi.fn(async () => new Response(JSON.stringify(projection())));
   fetcher.mockRejectedValueOnce(new Error("private network diagnostic"));
-  vi.stubGlobal("fetch", fetcher);
+  serveApi(fetcher);
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("button", { name: m.retry() });
   act(() => changeLocale("en"));
@@ -270,10 +267,7 @@ it("keeps a saved shortcut visible when forgetting is denied and translates its 
       throw new Error("denied");
     },
   });
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => new Response("[]")),
-  );
+  serveApi(vi.fn(async () => new Response("[]")));
   render(<VisitorRoutes initialEntries={["/"]} />);
   await screen.findByRole("heading", { name: "Authored reis" });
   fireEvent.click(screen.getByRole("button", { name: m.forget_trip() }));
@@ -287,10 +281,7 @@ it("keeps a saved shortcut visible when forgetting is denied and translates its 
 it.each(["/missing", "/share/", "/trips/withdrawn"])(
   "translates unavailable and not-found routes at %s",
   async (path) => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(null, { status: 404 })),
-    );
+    serveApi(vi.fn(async () => new Response(null, { status: 404 })));
     render(<VisitorRoutes initialEntries={[path]} />);
     await screen.findByText(
       path === "/trips/withdrawn" ? m.unavailable_trip() : m.page_unavailable(),

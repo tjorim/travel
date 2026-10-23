@@ -6,6 +6,7 @@ import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Trip } from "../tracker-model";
 import { PackingManager } from "./PackingManager";
 import { __resetOfflineStoreForTests, listOfflineCopies } from "../offline/offline-store";
+import { serveApi } from "../query/serve-api";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
@@ -71,8 +72,7 @@ beforeEach(() => {
   failToggle = false;
   failLists = false;
   calls.length = 0;
-  vi.stubGlobal(
-    "fetch",
+  serveApi(
     vi.fn((url: string, init: RequestInit = {}) => {
       const method = init.method ?? "GET";
       const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};

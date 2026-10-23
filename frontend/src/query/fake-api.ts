@@ -1,7 +1,6 @@
-import { http, HttpResponse } from "msw/http";
-import { vi } from "vitest";
+import { HttpResponse } from "msw/http";
 
-import { server } from "../mocks/server";
+import { serveApi } from "./serve-api";
 
 type Row = { id: string } & Record<string, unknown>;
 type Body = Record<string, unknown>;
@@ -80,38 +79,9 @@ export class FakeApi {
     return this.requests.filter((request) => request === key).length;
   }
 
-  /**
-   * Answers every request of the current test through the MSW server (it drops the handler when the test ends).
-   *
-   * Uploads are the exception: jsdom's `FormData` and `File` cannot be serialised by Node's `fetch`, so a request
-   * whose body is a `FormData` is answered here directly and the screen sees the same object it sent.
-   */
+  /** Answers every request of the current test through the MSW server (see `serveApi` for uploads). */
   install(): this {
-    server.use(
-      http.all("*", async ({ request }) => {
-        const location = new URL(request.url);
-        return this.respond(
-          request.method,
-          location.pathname + location.search,
-          await readBody(request),
-          request.headers,
-        );
-      }),
-    );
-    const network = globalThis.fetch;
-    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
-      if (typeof FormData === "undefined" || !(init?.body instanceof FormData))
-        return network(input, init);
-      const location = new URL(String(input), "http://localhost");
-      return Promise.resolve(
-        this.respond(
-          init.method ?? "GET",
-          location.pathname + location.search,
-          init.body,
-          new Headers(init.headers),
-        ),
-      );
-    });
+    serveApi((url, init) => this.respond(init.method, url, parseBody(init.body), init.headers));
     return this;
   }
 
@@ -166,16 +136,13 @@ export class FakeApi {
   }
 }
 
-/** JSON bodies are parsed and multipart bodies become `FormData`, as the screens send them. */
-async function readBody(request: Request): Promise<unknown> {
-  if ((request.headers.get("content-type") ?? "").startsWith("multipart/form-data"))
-    return request.formData();
-  const text = await request.text();
-  if (!text) return undefined;
+/** A JSON body is parsed (anything else is kept as sent), as the screens' own code would read it. */
+function parseBody(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw;
   try {
-    return JSON.parse(text) as unknown;
+    return JSON.parse(raw) as unknown;
   } catch {
-    return text;
+    return raw;
   }
 }
 

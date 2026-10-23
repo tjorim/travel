@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { act, cleanup, screen } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { server } from "../mocks/server";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { ownerKeys } from "../query/keys";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
@@ -26,7 +28,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
 });
 
 it("lists the library documents linked to this trip", async () => {
@@ -47,14 +48,15 @@ it("shows nothing without linked documents, or when they cannot be read", async 
   expect(container.textContent).toBe("");
   cleanup();
 
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() =>
-      Promise.resolve(new Response(JSON.stringify({ detail: "kapot" }), { status: 500 })),
-    ),
+  let asked = 0;
+  server.use(
+    http.all("*", () => {
+      asked += 1;
+      return HttpResponse.json({ detail: "kapot" }, { status: 500 });
+    }),
   );
   const failing = renderLinked();
-  await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+  await vi.waitFor(() => expect(asked).toBeGreaterThan(0));
   expect(failing.container.textContent).toBe("");
 });
 

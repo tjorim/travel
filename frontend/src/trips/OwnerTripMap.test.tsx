@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { server } from "../mocks/server";
 import { pinOfflineCopy } from "../offline/offline-store";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { ownerKeys } from "../query/keys";
@@ -124,13 +126,11 @@ it("falls back to the pinned map copy when the live reads are refused", async ()
   api.on("GET", /\/locations$/, () => {
     throw new Error("unused");
   });
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) =>
-      Promise.resolve(
-        new Response(JSON.stringify({ detail: "Niet beschikbaar" }), {
-          status: url.includes("/offline-map") ? 200 : 503,
-        }),
+  server.use(
+    http.all("*", ({ request }) =>
+      HttpResponse.json(
+        { detail: "Niet beschikbaar" },
+        { status: request.url.includes("/offline-map") ? 200 : 503 },
       ),
     ),
   );
