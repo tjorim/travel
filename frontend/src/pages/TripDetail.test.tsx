@@ -308,10 +308,8 @@ it("opens a private document with the authenticated download", async () => {
   renderDetail();
   fireEvent.click(await screen.findByRole("button", { name: "Document openen" }));
   await waitFor(() => expect(open).toHaveBeenCalledWith("blob:doc", "_blank", "noopener"));
-  const [, init] = (
-    fetch as unknown as { mock: { calls: [string, RequestInit][] } }
-  ).mock.calls.find(([url]) => url.endsWith("/original"))!;
-  expect((init.headers as Record<string, string>).Authorization).toMatch(/^Bearer /);
+  const original = api.requests.find((request) => request.endsWith("/original"))!;
+  expect(api.lastHeaders(original)?.get("authorization")).toMatch(/^Bearer /);
 });
 
 it("reports a document that cannot be opened without leaving the page", async () => {

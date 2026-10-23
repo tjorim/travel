@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { RouterProvider } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 
+import { server } from "./mocks/server";
 import { AuthProvider } from "./auth-context";
 import { createOwnerQueryClient } from "./query/client";
 import { OwnerQueryProvider } from "./query/OwnerQueryProvider";
@@ -28,8 +30,17 @@ vi.mock("./trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
 vi.mock("./library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 vi.mock("./trips/TripOverview", () => ({ TripOverview: () => null }));
 
-const json = (value: unknown) =>
-  Promise.resolve(new Response(JSON.stringify(value), { status: 200 }));
+/** Serves the trips list and returns the requests it received. */
+function serveTrips(trips: unknown[]): Request[] {
+  const requests: Request[] = [];
+  server.use(
+    http.get("/api/trips", ({ request }) => {
+      requests.push(request);
+      return HttpResponse.json(trips);
+    }),
+  );
+  return requests;
+}
 
 const routeComponents = {
   Callback: () => null,
@@ -48,7 +59,6 @@ const workspaceRouteComponents = { ...routeComponents, Trips, TripWorkspace };
 
 afterEach(() => {
   sessionStorage.clear();
-  vi.unstubAllGlobals();
 });
 
 it("prefetches the trips list through tripsRoute's loader before Trips reads it", async () => {
@@ -56,8 +66,7 @@ it("prefetches the trips list through tripsRoute's loader before Trips reads it"
     "travel-tracker-session",
     JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }),
   );
-  const fetcher = vi.fn(() => json([{ id: "t1", title: "Exampleland" }]));
-  vi.stubGlobal("fetch", fetcher);
+  const requests = serveTrips([{ id: "t1", title: "Exampleland" }]);
 
   const queryClient = createOwnerQueryClient();
   const routeTree = buildTrackerRouteTree(routeComponents);
@@ -74,12 +83,11 @@ it("prefetches the trips list through tripsRoute's loader before Trips reads it"
   await waitFor(() => expect(screen.getByText("Trips geladen")).toBeTruthy());
   // The loader's ensureQueryData and Trips' own useTripsQuery share one cache
   // entry (same queryOptions), so only one request should ever go out.
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(requests).toHaveLength(1);
 });
 
 it("skips the prefetch (and any request) when there is no signed-in owner", async () => {
-  const fetcher = vi.fn(() => json([{ id: "t1", title: "Exampleland" }]));
-  vi.stubGlobal("fetch", fetcher);
+  const requests = serveTrips([{ id: "t1", title: "Exampleland" }]);
 
   const queryClient = createOwnerQueryClient();
   const routeTree = buildTrackerRouteTree(routeComponents);
@@ -94,7 +102,7 @@ it("skips the prefetch (and any request) when there is no signed-in owner", asyn
   );
 
   await waitFor(() => expect(screen.getByText("Trips geladen")).toBeTruthy());
-  expect(fetcher).not.toHaveBeenCalled();
+  expect(requests).toHaveLength(0);
 });
 
 it("opens a trip workspace section directly without crashing (regression for #239)", async () => {
@@ -102,24 +110,17 @@ it("opens a trip workspace section directly without crashing (regression for #23
     "travel-tracker-session",
     JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }),
   );
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) => {
-      if (url === "/api/trips")
-        return json([
-          {
-            id: "t1",
-            title: "Exampleland",
-            summary: null,
-            starts_on: null,
-            ends_on: null,
-            travel_updates: [],
-          },
-        ]);
-      if (url.endsWith("/areas")) return json([]);
-      throw new Error(`unexpected request ${url}`);
-    }),
-  );
+  serveTrips([
+    {
+      id: "t1",
+      title: "Exampleland",
+      summary: null,
+      starts_on: null,
+      ends_on: null,
+      travel_updates: [],
+    },
+  ]);
+  server.use(http.get("/api/trips/:tripId/areas", () => HttpResponse.json([])));
 
   const queryClient = createOwnerQueryClient();
   const routeTree = buildTrackerRouteTree(workspaceRouteComponents);

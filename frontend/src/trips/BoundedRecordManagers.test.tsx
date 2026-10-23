@@ -143,7 +143,7 @@ it("deletes an unused area", async () => {
   await waitFor(() =>
     expect(screen.queryByRole("button", { name: "Gebied Taipei bekijken" })).toBeNull(),
   );
-  expect(screen.getByText("Gebied verwijderd.")).toBeTruthy();
+  expect(await screen.findByText("Gebied verwijderd.")).toBeTruthy();
   expect(api.count("DELETE /api/trips/trip/areas/area-1")).toBe(1);
 });
 
@@ -378,7 +378,7 @@ it("shows an edited stay and removes a deleted one without a reload", async () =
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   confirmDelete();
   await waitFor(() => expect(screen.queryByRole("button", { name: /Hostel/ })).toBeNull());
-  expect(screen.getByRole("button", { name: /Hotel Royal/ })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: /Hotel Royal/ })).toBeTruthy();
   expect(api.count("DELETE /api/trips/trip/stays/s2")).toBe(1);
 });
 

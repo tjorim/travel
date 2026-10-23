@@ -1,4 +1,7 @@
+import { http, HttpResponse } from "msw/http";
 import { vi } from "vitest";
+
+import { server } from "../mocks/server";
 
 type Row = { id: string } & Record<string, unknown>;
 type Body = Record<string, unknown>;
@@ -9,11 +12,11 @@ type Collection = {
 };
 type Handler = (body: unknown, match: RegExpExecArray) => unknown;
 
-const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
+const json = (value: unknown, status = 200) => HttpResponse.json(value as never, { status });
 
 /**
- * A stateful in-memory owner API for screen tests. Collections answer list,
- * create, update and delete the way the real service does, so a test can edit
+ * A stateful in-memory owner API for screen tests, served through the MSW test server (see src/mocks/server.ts).
+ * Collections answer list, create, update and delete the way the real service does, so a test can edit
  * or delete a record and assert what the screen shows afterwards.
  */
 export class FakeApi {
@@ -27,6 +30,7 @@ export class FakeApi {
   private singles = new Map<string, unknown>();
   private handlers: { method: string; pattern: RegExp; handler: Handler }[] = [];
   private bodies: { key: string; body: unknown }[] = [];
+  private received: { key: string; headers: Headers }[] = [];
 
   /** Registers a collection at `path` (list and create) and `path/:id` (update and delete). */
   collection<T extends Row>(
@@ -67,26 +71,54 @@ export class FakeApi {
     return this.bodies.filter((entry) => entry.key === key).at(-1)?.body as T | undefined;
   }
 
+  /** The headers of the last request that matched `key` ("METHOD /path"). */
+  lastHeaders(key: string): Headers | undefined {
+    return this.received.filter((entry) => entry.key === key).at(-1)?.headers;
+  }
+
   count(key: string): number {
     return this.requests.filter((request) => request === key).length;
   }
 
+  /**
+   * Answers every request of the current test through the MSW server (it drops the handler when the test ends).
+   *
+   * Uploads are the exception: jsdom's `FormData` and `File` cannot be serialised by Node's `fetch`, so a request
+   * whose body is a `FormData` is answered here directly and the screen sees the same object it sent.
+   */
   install(): this {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url: string, init: RequestInit = {}) =>
-        Promise.resolve(this.handle(String(url), init)),
-      ),
+    server.use(
+      http.all("*", async ({ request }) => {
+        const location = new URL(request.url);
+        return this.respond(
+          request.method,
+          location.pathname + location.search,
+          await readBody(request),
+          request.headers,
+        );
+      }),
     );
+    const network = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
+      if (typeof FormData === "undefined" || !(init?.body instanceof FormData))
+        return network(input, init);
+      const location = new URL(String(input), "http://localhost");
+      return Promise.resolve(
+        this.respond(
+          init.method ?? "GET",
+          location.pathname + location.search,
+          init.body,
+          new Headers(init.headers),
+        ),
+      );
+    });
     return this;
   }
 
-  private handle(url: string, init: RequestInit): Response {
-    const method = init.method ?? "GET";
+  private respond(method: string, url: string, body: unknown, headers: Headers): Response {
     const key = `${method} ${url}`;
     this.requests.push(key);
-    const raw = init.body;
-    const body = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
+    this.received.push({ key, headers });
     this.bodies.push({ key, body });
     if (method !== "GET" && this.failNext) {
       const failure = this.failNext;
@@ -97,7 +129,7 @@ export class FakeApi {
       const match = expected === method ? pattern.exec(url) : null;
       if (!match) continue;
       const result = handler(body, match);
-      return result === undefined ? new Response(null, { status: 204 }) : json(result);
+      return result === undefined ? new HttpResponse(null, { status: 204 }) : json(result);
     }
     if (method === "GET" && this.singles.has(url)) return json(this.singles.get(url));
     const own = this.collections.get(url);
@@ -126,11 +158,24 @@ export class FakeApi {
       }
       if (current && method === "DELETE") {
         parent.rows = parent.rows.filter((row) => row.id !== id);
-        return new Response(null, { status: 204 });
+        return new HttpResponse(null, { status: 204 });
       }
     }
     this.unexpected.push(key);
     return json({ detail: `unexpected request ${key}` }, 404);
+  }
+}
+
+/** JSON bodies are parsed and multipart bodies become `FormData`, as the screens send them. */
+async function readBody(request: Request): Promise<unknown> {
+  if ((request.headers.get("content-type") ?? "").startsWith("multipart/form-data"))
+    return request.formData();
+  const text = await request.text();
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
   }
 }
 

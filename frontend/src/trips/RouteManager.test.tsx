@@ -529,6 +529,6 @@ it("links documents to a route and forgets a deleted one after the in-app confir
     within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
   );
   await waitFor(() => expect(screen.queryByRole("button", { name: /Oostkust/ })).toBeNull());
-  expect(screen.getByRole("button", { name: /Amsterdam → Taoyuan/ })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: /Amsterdam → Taoyuan/ })).toBeTruthy();
   expect(api.count("DELETE /api/trips/trip/routes/r-line")).toBe(1);
 });

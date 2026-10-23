@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { changeLocale } from "./locale";
+import { server } from "./mocks/server";
 import { TripEditor } from "./trips/TripEditor";
 import { applyMarkdownSnippet } from "./forms/markdown-snippets";
 import { renderWithOwner, testToken } from "./query/test-utils";
@@ -20,7 +22,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
   act(() => changeLocale("nl"));
 });
 const props = {
@@ -56,19 +57,21 @@ it("rerenders client validation and dirty values without replacing focused contr
 
 it("keeps a pending save and submitted authored values across switches", async () => {
   let finish!: (response: Response) => void;
-  const request = vi.fn(
-    () =>
-      new Promise<Response>((resolve) => {
+  const sent: unknown[] = [];
+  server.use(
+    http.post("/api/trips", async ({ request }) => {
+      sent.push(await request.json());
+      return new Promise<Response>((resolve) => {
         finish = resolve;
-      }),
+      });
+    }),
   );
-  vi.stubGlobal("fetch", request);
   renderWithOwner(<TripEditor {...props} />);
   fireEvent.change(screen.getByRole("textbox", { name: "Titel" }), {
     target: { value: "Eigen reis" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Reis maken" }));
-  await waitFor(() => expect(request).toHaveBeenCalledOnce());
+  await waitFor(() => expect(sent).toHaveLength(1));
   act(() => changeLocale("en"));
   expect(
     (screen.getByRole("button", { name: "Creating trip…" }) as HTMLButtonElement).disabled,
@@ -76,11 +79,9 @@ it("keeps a pending save and submitted authored values across switches", async (
   expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe(
     "Eigen reis",
   );
-  expect(
-    JSON.parse(String((request.mock.calls[0] as unknown as [string, RequestInit])[1].body)).title,
-  ).toBe("Eigen reis");
+  expect((sent[0] as { title: string }).title).toBe("Eigen reis");
   await act(async () =>
-    finish(new Response(JSON.stringify({ id: "new", title: "Eigen reis", travel_updates: [] }))),
+    finish(HttpResponse.json({ id: "new", title: "Eigen reis", travel_updates: [] })),
   );
 });
 

@@ -1,22 +1,28 @@
+// @vitest-environment jsdom
+import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 
+import { server } from "../mocks/server";
 import { ApiError, apiFailure, ownerFile, ownerRequest } from "./api";
 import { shouldRetryQuery } from "./client";
 import { ownerKeys } from "./keys";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => vi.restoreAllMocks());
 
 const session = { accessToken: "secret-token", expiresAt: Date.now() + 60_000 };
-const reply = (status: number, body: unknown = {}) =>
-  Promise.resolve(new Response(JSON.stringify(body), { status }));
 
 it("sends the bearer token only in the request header", async () => {
-  const fetcher = vi.fn(() => reply(200, [1]));
-  vi.stubGlobal("fetch", fetcher);
+  let received: Request | undefined;
+  server.use(
+    http.get("/api/trips", ({ request }) => {
+      received = request;
+      return HttpResponse.json([1]);
+    }),
+  );
   await expect(ownerRequest(session, "/api/trips", "fallback")).resolves.toEqual([1]);
-  const [path, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
-  expect(path).toBe("/api/trips");
-  expect((init.headers as Record<string, string>).Authorization).toBe("Bearer secret-token");
+  expect(new URL(received!.url).pathname).toBe("/api/trips");
+  expect(received!.headers.get("authorization")).toBe("Bearer secret-token");
+  expect(received!.url).not.toContain("secret-token");
 });
 
 it("localizes descriptors, keeps safe diagnostics separate and never renders unknown prose", async () => {
@@ -62,10 +68,7 @@ it("localizes descriptors, keeps safe diagnostics separate and never renders unk
 });
 
 it("reports an unreachable server as offline and leaves aborts alone", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
-  );
+  server.use(http.get("/api/trips", () => HttpResponse.error()));
   const failure = await ownerRequest(session, "/api/trips", "fallback").catch(
     (error: unknown) => error,
   );
@@ -74,10 +77,6 @@ it("reports an unreachable server as offline and leaves aborts alone", async () 
 
   const controller = new AbortController();
   controller.abort();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => Promise.reject(new DOMException("Aborted", "AbortError"))),
-  );
   await expect(
     ownerRequest(session, "/api/trips", "fallback", { signal: controller.signal }),
   ).rejects.toMatchObject({
@@ -86,38 +85,50 @@ it("reports an unreachable server as offline and leaves aborts alone", async () 
 });
 
 it("sends an upload as multipart without forcing a JSON content type", async () => {
-  const fetcher = vi.fn(() => reply(201, { id: "doc" }));
-  vi.stubGlobal("fetch", fetcher);
+  let received: Request | undefined;
+  let title: FormDataEntryValue | null = null;
+  server.use(
+    http.post("/api/library/documents/uploads", async ({ request }) => {
+      received = request.clone();
+      title = (await request.formData()).get("title");
+      return HttpResponse.json({ id: "doc" }, { status: 201 });
+    }),
+  );
   const body = new FormData();
   body.set("title", "Polis");
   await ownerRequest(session, "/api/library/documents/uploads", "fallback", {
     method: "POST",
     body,
   });
-  const [, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
-  expect(init.body).toBe(body);
-  expect(init.headers).toEqual({ Authorization: "Bearer secret-token" });
+  expect(title).toBe("Polis");
+  // The browser sets the multipart boundary itself; a forced JSON type would break the upload.
+  expect(received!.headers.get("content-type")).toMatch(/^multipart\/form-data; boundary=/);
+  expect(received!.headers.get("authorization")).toBe("Bearer secret-token");
 });
 
 it("downloads a protected file as a blob with the same auth, failure and abort handling", async () => {
-  const fetcher = vi.fn(() =>
-    Promise.resolve(
-      new Response("pdf bytes", { status: 200, headers: { "Content-Type": "application/pdf" } }),
-    ),
+  // The cache mode is a client-side option that never reaches the network, so spy on the call rather than the request.
+  const fetchSpy = vi.spyOn(globalThis, "fetch");
+  let received: Request | undefined;
+  server.use(
+    http.get("/api/library/documents/1/original", ({ request }) => {
+      received = request;
+      return new HttpResponse("pdf bytes", {
+        status: 200,
+        headers: { "Content-Type": "application/pdf" },
+      });
+    }),
   );
-  vi.stubGlobal("fetch", fetcher);
   const blob = await ownerFile(session, "/api/library/documents/1/original", "fallback", {
     cache: "no-store",
   });
   expect(blob.type).toBe("application/pdf");
   expect(await blob.text()).toBe("pdf bytes");
-  const [, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
-  expect(init.headers).toEqual({ Authorization: "Bearer secret-token" });
-  expect(init.cache).toBe("no-store");
+  expect(received!.headers.get("authorization")).toBe("Bearer secret-token");
+  expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store" });
 
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => reply(404, { detail: "Bestand bestaat niet." })),
+  server.use(
+    http.get("/x", () => HttpResponse.json({ detail: "Bestand bestaat niet." }, { status: 404 })),
   );
   await expect(ownerFile(session, "/x", "fallback")).rejects.toMatchObject({
     message: "Dit kon niet worden uitgevoerd. Probeer opnieuw.",
@@ -126,10 +137,6 @@ it("downloads a protected file as a blob with the same auth, failure and abort h
 
   const controller = new AbortController();
   controller.abort();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => Promise.reject(new DOMException("Aborted", "AbortError"))),
-  );
   await expect(
     ownerFile(session, "/x", "fallback", { signal: controller.signal }),
   ).rejects.toMatchObject({
@@ -159,10 +166,7 @@ it("scopes every owner key by subject", () => {
 });
 
 it("does not render remote fragments from a malformed successful JSON response", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => new Response("secret-token malformed JSON", { status: 200 })),
-  );
+  server.use(http.get("/api/trips", () => new HttpResponse("secret-token malformed JSON")));
   const failure = await ownerRequest(session, "/api/trips", "fallback").catch(
     (error: unknown) => error,
   );

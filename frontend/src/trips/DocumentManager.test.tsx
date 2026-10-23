@@ -103,8 +103,10 @@ it("removes a deleted document from the screen", async () => {
   await waitFor(() =>
     expect(screen.queryByRole("button", { name: "Document Vliegticket bekijken" })).toBeNull(),
   );
-  expect(screen.getByRole("button", { name: "Document Hotelbevestiging bekijken" })).toBeTruthy();
-  expect(screen.getByText("Privédocument verwijderd.")).toBeTruthy();
+  expect(
+    await screen.findByRole("button", { name: "Document Hotelbevestiging bekijken" }),
+  ).toBeTruthy();
+  expect(await screen.findByText("Privédocument verwijderd.")).toBeTruthy();
   // Nothing stays open after a delete.
   expect(screen.queryByText("Geredigeerde afgeleiden")).toBeNull();
 });
@@ -115,10 +117,9 @@ it("pins a document through the authenticated download and unpins it again", asy
   await screen.findByText("Vliegticket");
   fireEvent.click(screen.getAllByRole("button", { name: "Offline bewaren" })[0]);
   await screen.findByText("“Vliegticket” is offline bewaard op dit toestel.");
-  const [, init] = (
-    fetch as unknown as { mock: { calls: [string, RequestInit][] } }
-  ).mock.calls.find(([url]) => url.endsWith("/original"))!;
-  expect((init.headers as Record<string, string>).Authorization).toMatch(/^Bearer /);
+  expect(
+    api.lastHeaders("GET /api/trips/trip/documents/d1/original")?.get("authorization"),
+  ).toMatch(/^Bearer /);
   fireEvent.click(await screen.findByRole("button", { name: "Offline verwijderen" }));
   await screen.findByText("“Vliegticket” is niet langer offline beschikbaar.");
 });

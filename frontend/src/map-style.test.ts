@@ -1,21 +1,25 @@
+import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 import type { StyleSpecification } from "maplibre-gl";
+import { server } from "./mocks/server";
 import { configuredMapStyleUrl, loadMapStyle, styleLabelFont } from "./map-style";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => vi.restoreAllMocks());
+
 it("loads the dark default basemap with the same defensive filter handling", async () => {
-  const fetch = vi.fn().mockResolvedValue(
-    new Response(
-      JSON.stringify({
+  // Credentials and referrer policy are client-side options that never reach the network: spy on the call.
+  const fetchSpy = vi.spyOn(globalThis, "fetch");
+  server.use(
+    http.get("https://tiles.openfreemap.org/styles/dark", () => {
+      return HttpResponse.json({
         version: 8,
         sources: {},
         layers: [{ id: "boundary_3", type: "line", filter: ["==", "admin_level", 3] }],
-      }),
-    ),
+      });
+    }),
   );
-  vi.stubGlobal("fetch", fetch);
   const style = await loadMapStyle(configuredMapStyleUrl, new AbortController().signal, "dark");
-  expect(fetch).toHaveBeenCalledWith(
+  expect(fetchSpy).toHaveBeenCalledWith(
     "https://tiles.openfreemap.org/styles/dark",
     expect.objectContaining({ credentials: "omit", referrerPolicy: "no-referrer" }),
   );
@@ -28,12 +32,11 @@ it("loads the dark default basemap with the same defensive filter handling", asy
     ]);
 });
 it("preserves custom styles in dark mode", async () => {
-  const fetch = vi.fn();
-  vi.stubGlobal("fetch", fetch);
+  const fetchSpy = vi.spyOn(globalThis, "fetch");
   expect(
     await loadMapStyle("https://example.com/style.json", new AbortController().signal, "dark"),
   ).toBe("https://example.com/style.json");
-  expect(fetch).not.toHaveBeenCalled();
+  expect(fetchSpy).not.toHaveBeenCalled();
 });
 
 const symbol = (id: string, font?: unknown) =>

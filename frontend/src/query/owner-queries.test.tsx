@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { server } from "../mocks/server";
 import { OwnerQueryProvider } from "./OwnerQueryProvider";
 import { createOwnerQueryClient } from "./client";
 import { useOwnerMutation, useTripResource, useTripsQuery } from "./owner-queries";
@@ -14,8 +16,19 @@ const auth = vi.hoisted(() => ({
 }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
-const json = (value: unknown, status = 200) =>
-  Promise.resolve(new Response(JSON.stringify(value), { status }));
+const TASKS = "/api/trips/trip/trip-tasks";
+
+/** Serves the tasks of the test trip and counts how often the API is asked. */
+function serveTasks(respond: () => Response = () => HttpResponse.json([{ id: "task" }])) {
+  const requests: Request[] = [];
+  server.use(
+    http.get(TASKS, ({ request }) => {
+      requests.push(request);
+      return respond();
+    }),
+  );
+  return requests;
+}
 
 beforeEach(() => {
   auth.session = { accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 };
@@ -23,7 +36,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
 });
 
 function TaskCount({ label }: { label: string }) {
@@ -36,8 +48,7 @@ function TaskCount({ label }: { label: string }) {
 }
 
 it("does not duplicate an in-flight identical owner read across screens", async () => {
-  const fetcher = vi.fn(() => json([{ id: "task" }]));
-  vi.stubGlobal("fetch", fetcher);
+  const requests = serveTasks();
   renderWithOwner(
     <>
       <TaskCount label="overview" />
@@ -46,28 +57,27 @@ it("does not duplicate an in-flight identical owner read across screens", async 
   );
   await waitFor(() => expect(screen.getByText("tasks: 1")).toBeTruthy());
   expect(screen.getByText("overview: 1")).toBeTruthy();
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(requests).toHaveLength(1);
 });
 
 it("reuses a fresh cached read when a screen remounts on route change", async () => {
-  const fetcher = vi.fn(() => json([{ id: "task" }]));
-  vi.stubGlobal("fetch", fetcher);
+  const requests = serveTasks();
   const client = testClient();
   const first = renderWithOwner(<TaskCount label="first" />, client);
   await waitFor(() => expect(screen.getByText("first: 1")).toBeTruthy());
   first.unmount();
   renderWithOwner(<TaskCount label="second" />, client);
   expect(screen.getByText("second: 1")).toBeTruthy();
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(requests).toHaveLength(1);
 });
 
 it("aborts an in-flight read when its screen goes away", async () => {
   let signal: AbortSignal | undefined;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((_url: string, init: RequestInit) => {
-      signal = init.signal ?? undefined;
-      return new Promise(() => undefined);
+  server.use(
+    http.get(TASKS, ({ request }) => {
+      signal = request.signal;
+      // Never answers, so the read stays in flight until its screen goes away.
+      return new Promise<Response>(() => undefined);
     }),
   );
   const { unmount } = renderWithOwner(<TaskCount label="tasks" />);
@@ -78,16 +88,17 @@ it("aborts an in-flight read when its screen goes away", async () => {
 });
 
 it("keeps one owner's records out of another owner's cache", async () => {
-  const fetcher = vi.fn((_url: string, init: RequestInit) =>
-    json([
-      {
-        id: (init.headers as Record<string, string>).Authorization.includes(testToken("owner-1"))
-          ? "mine"
-          : "theirs",
-      },
-    ]),
+  server.use(
+    http.get("/api/trips", ({ request }) =>
+      HttpResponse.json([
+        {
+          id: request.headers.get("authorization")?.includes(testToken("owner-1"))
+            ? "mine"
+            : "theirs",
+        },
+      ]),
+    ),
   );
-  vi.stubGlobal("fetch", fetcher);
   const client = testClient();
   function Trips() {
     return (
@@ -125,10 +136,7 @@ it("keeps one owner's records out of another owner's cache", async () => {
 });
 
 it("discards the owner cache on sign-out", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => json([{ id: "task" }])),
-  );
+  serveTasks();
   const client = testClient();
   const tree = () => (
     <QueryClientProvider client={client}>
@@ -153,8 +161,9 @@ it("discards the owner cache on sign-out", async () => {
 });
 
 it("ends the session once on a 401 and does not retry it", async () => {
-  const fetcher = vi.fn(() => json({ detail: "Not authenticated" }, 401));
-  vi.stubGlobal("fetch", fetcher);
+  const requests = serveTasks(() =>
+    HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }),
+  );
   sessionStorage.setItem("travel-tracker-session", "kept-until-cleared");
   const client = createOwnerQueryClient({ onUnauthorized: () => auth.setSession(null) });
   render(
@@ -163,14 +172,11 @@ it("ends the session once on a 401 and does not retry it", async () => {
     </QueryClientProvider>,
   );
   await waitFor(() => expect(auth.setSession).toHaveBeenCalledTimes(1));
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(requests).toHaveLength(1);
 });
 
 it("wires the provider's 401 handler to sign the owner out", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => json({ detail: "Not authenticated" }, 401)),
-  );
+  serveTasks(() => HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }));
   localStorage.setItem("travel-tracker-may-restore-session", "1");
   render(
     <OwnerQueryProvider>
@@ -182,8 +188,13 @@ it("wires the provider's 401 handler to sign the owner out", async () => {
 });
 
 it("fails a write immediately while offline instead of queueing it", async () => {
-  const fetcher = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")));
-  vi.stubGlobal("fetch", fetcher);
+  const requests: Request[] = [];
+  server.use(
+    http.post("/api/trips", ({ request }) => {
+      requests.push(request);
+      return HttpResponse.error();
+    }),
+  );
   let outcome: unknown;
   function Save() {
     const save = useOwnerMutation<string>({
@@ -207,5 +218,5 @@ it("fails a write immediately while offline instead of queueing it", async () =>
   screen.getByRole("button", { name: "Opslaan" }).click();
   await waitFor(() => expect(outcome).toBeDefined());
   expect((outcome as Error).message).toContain("Geen verbinding");
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(requests).toHaveLength(1);
 });

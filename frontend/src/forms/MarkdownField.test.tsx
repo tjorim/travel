@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 import { useForm } from "@tanstack/react-form";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw/http";
+import { afterEach, expect, it } from "vitest";
 
 import { AuthProvider } from "../auth-context";
+import { server } from "../mocks/server";
 import { testToken } from "../query/test-utils";
 import { MarkdownField, type MarkdownFormat } from "./MarkdownField";
 
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
   sessionStorage.clear();
 });
 
@@ -55,25 +56,22 @@ it("offers only bold, italic and link for a caption, and no toolbar for contact 
 });
 
 it("previews the server's rendering of the current text", async () => {
-  const fetch = vi.fn(
-    async () =>
-      new Response(
-        JSON.stringify({
-          html: "<table><tbody><tr><td><strong>Day 1</strong></td></tr></tbody></table>",
-          text: "Day 1",
-        }),
-      ),
+  const sent: unknown[] = [];
+  server.use(
+    http.post("/api/markdown/render", async ({ request }) => {
+      sent.push(await request.json());
+      return HttpResponse.json({
+        html: "<table><tbody><tr><td><strong>Day 1</strong></td></tr></tbody></table>",
+        text: "Day 1",
+      });
+    }),
   );
-  vi.stubGlobal("fetch", fetch);
   withOwner(<Editor initial="| **Day 1** |" format="markdown" />);
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
   await waitFor(() =>
     expect(document.querySelector(".markdown strong")?.textContent).toBe("Day 1"),
   );
-  const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
-  expect(url).toBe("/api/markdown/render");
-  expect(init.method).toBe("POST");
-  expect(JSON.parse(String(init.body))).toEqual({ source: "| **Day 1** |", format: "markdown" });
+  expect(sent).toEqual([{ source: "| **Day 1** |", format: "markdown" }]);
   expect((screen.getByLabelText("Notities") as HTMLTextAreaElement).hidden).toBe(true);
   expect(screen.queryByRole("toolbar")).toBeNull();
 
@@ -82,9 +80,8 @@ it("previews the server's rendering of the current text", async () => {
 });
 
 it("says so when the preview cannot be rendered", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => new Response(JSON.stringify({ detail: "Nope" }), { status: 422 })),
+  server.use(
+    http.post("/api/markdown/render", () => HttpResponse.json({ detail: "Nope" }, { status: 422 })),
   );
   withOwner(<Editor initial="x" format="contact" />);
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
@@ -93,27 +90,25 @@ it("says so when the preview cannot be rendered", async () => {
   );
 });
 
+/** Answers the translation endpoint with each reply in turn (a 500 once they run out) and records the bodies sent. */
 function answers(...replies: Response[]) {
-  const fetch = vi.fn(async () => replies.shift() ?? new Response("{}", { status: 500 }));
-  vi.stubGlobal("fetch", fetch);
-  return fetch;
+  const sent: unknown[] = [];
+  server.use(
+    http.post("/api/translation/drafts", async ({ request }) => {
+      sent.push(await request.json());
+      return replies.shift() ?? HttpResponse.json({}, { status: 500 });
+    }),
+  );
+  return sent;
 }
 
 it("offers an editable machine-translated draft that is only added on request", async () => {
-  const fetch = answers(
-    new Response(JSON.stringify({ text: "We arrived late.", source: "nl", target: "en" })),
-  );
+  const sent = answers(HttpResponse.json({ text: "We arrived late.", source: "nl", target: "en" }));
   withOwner(<Editor initial="Wij kwamen laat aan." />);
   const textarea = screen.getByLabelText("Notities") as HTMLTextAreaElement;
   fireEvent.click(screen.getByRole("button", { name: "Vertaal naar Engels" }));
   expect(await screen.findByText("Automatisch vertaald concept")).toBeTruthy();
-  const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
-  expect(url).toBe("/api/translation/drafts");
-  expect(JSON.parse(String(init.body))).toEqual({
-    text: "Wij kwamen laat aan.",
-    source: "nl",
-    target: "en",
-  });
+  expect(sent).toEqual([{ text: "Wij kwamen laat aan.", source: "nl", target: "en" }]);
   // Nothing changes until the owner adds the draft.
   expect(textarea.value).toBe("Wij kwamen laat aan.");
 
@@ -126,17 +121,15 @@ it("offers an editable machine-translated draft that is only added on request", 
 
 it("can discard a draft and leaves the text untouched when translating fails", async () => {
   answers(
-    new Response(JSON.stringify({ text: "Hello", source: "nl", target: "en" })),
-    new Response(
-      JSON.stringify({
+    HttpResponse.json({ text: "Hello", source: "nl", target: "en" }),
+    HttpResponse.json(
+      {
         detail: "x",
         errors: [{ code: "translation_service_is_unavailable", params: {}, path: [] }],
-      }),
-      {
-        status: 503,
       },
+      { status: 503 },
     ),
-    new Response(JSON.stringify({ text: "Hello again", source: "nl", target: "en" })),
+    HttpResponse.json({ text: "Hello again", source: "nl", target: "en" }),
   );
   withOwner(<Editor initial="Hallo" />);
   const textarea = screen.getByLabelText("Notities") as HTMLTextAreaElement;
@@ -155,22 +148,20 @@ it("can discard a draft and leaves the text untouched when translating fails", a
 });
 
 it("shows progress, can be cancelled, and is only offered for text in a long-form field", async () => {
-  const fetch = vi.fn((_url: string, init: RequestInit) => {
-    return new Promise((_resolve, reject) => {
-      init.signal?.addEventListener("abort", () =>
-        reject(new DOMException("aborted", "AbortError")),
-      );
-    });
-  });
-  vi.stubGlobal("fetch", fetch);
+  let signal: AbortSignal | undefined;
+  server.use(
+    http.post("/api/translation/drafts", ({ request }) => {
+      signal = request.signal;
+      // Never answers: the translation stays in progress until the owner cancels it.
+      return new Promise<Response>(() => undefined);
+    }),
+  );
   withOwner(<Editor initial="Hallo" />);
   fireEvent.click(screen.getByRole("button", { name: "Vertaal naar Nederlands" }));
   expect((await screen.findByRole("status")).textContent).toContain("Vertalen");
   fireEvent.click(screen.getByRole("button", { name: "Annuleren" }));
   expect(screen.queryByRole("status")).toBeNull();
-  expect(
-    ((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].signal as AbortSignal).aborted,
-  ).toBe(true);
+  await waitFor(() => expect(signal?.aborted).toBe(true));
   cleanup();
 
   render(<Editor initial="" />);
