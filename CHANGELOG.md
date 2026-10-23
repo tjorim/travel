@@ -6,6 +6,9 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Group Dependabot updates for `tldts` and `tldts-core`, and update both to
+  7.4.19 without changing unrelated frontend dependencies (#505, #507).
+
 - The owner experience now shares the refreshed identity (#495). The home continues
   the trip under way (or the next one) in a larger card with its cover and next step,
   lists the other trips below it and puts the inbox and recent captures in a column

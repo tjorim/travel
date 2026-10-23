@@ -88,6 +88,11 @@ updates:
       i18n:
         patterns:
           - "@inlang/*"
+      # tldts and its core package share one release train.
+      tldts:
+        patterns:
+          - "tldts"
+          - "tldts-core"
       # tailwindcss and its Vite plugin share one release train
       tailwind:
         patterns:
