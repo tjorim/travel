@@ -349,6 +349,14 @@ class Trip(Base):
         """The photo copy the owner nominated as cover; ``None`` when there is none or it was deleted."""
         return next((item.id for item in self.media_derivatives if item.is_cover), None)
 
+    @property
+    def cover_url(self) -> str | None:
+        """The owner-only file route of the cover copy; a visitor's cover comes from the audience's projection."""
+        cover = next((item for item in self.media_derivatives if item.is_cover), None)
+        if cover is None:
+            return None
+        return f"/api/trips/{self.id}/media/{cover.media_asset_id}/derivatives/{cover.id}/file"
+
 
 class TravelUpdateMediaAsset(Base):
     """An owner-only, explicit attachment of an ingested asset to a reisupdate.

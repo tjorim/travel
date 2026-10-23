@@ -6,6 +6,21 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- The owner experience now shares the refreshed identity (#495). The home continues
+  the trip under way (or the next one) in a larger card with its cover and next step,
+  lists the other trips below it and puts the inbox and recent captures in a column
+  beside them on wide screens. **Reizen** groups trips as now and soon, still to plan
+  and past, as cards that are plain links and show state, dates and the cover when the
+  trip has one. The trip workspace opens with the cover (or a text-only panel), a state
+  label and whether the public page is live; the overview puts the map beside the
+  glance, updates and tasks on wide screens and keeps the phone order glance, map,
+  updates, tasks. Navigation and workspace tabs use a quiet gold/forest underline,
+  nested card borders are gone from the overview lists, owner pages are capped at
+  96 rem, and message cards keep a reading width. A long trip title can no longer
+  widen the workspace on a phone.
+- The "Toon op kaart" scroll now finds the overview map (its selector matched nothing).
+- `PLAYWRIGHT_PORT` moves the Playwright dev server when another worktree holds 4173.
+
 - Visitor and owner-preview trip pages now open with a header (cover when the
   audience receives one, title, authorized dates and destinations) and read like
   a journal: trip context sits beside a wider map on large screens and stacks in
@@ -23,6 +38,9 @@ All notable changes to the travel hub are documented here.
 
 ### Added
 
+- `GET /api/trips` and `/api/trips/{id}` return `cover_url`, the owner-only file route
+  of the chosen cover copy (null without one), so the owner's screens can draw it. It
+  is not part of any visitor response or projection (#495).
 - The owner can choose one ready share copy of a photo as the trip's cover
   (**Gebruik als omslag van de reis** in the copy's detail; `PATCH /api/trips/{id}`
   with `cover_derivative_id`, `is_cover` on the copy; migration `012_trip_cover`).

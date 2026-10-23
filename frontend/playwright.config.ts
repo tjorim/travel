@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = 4173;
+// Another dev server may already hold the default port (for example from a second worktree).
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 4173);
 
 // Browser smoke checks against the Vite dev server with the API mocked in the page (see e2e/mock-api.ts), so no owner
 // session, database or media is needed. Authenticated runs against a real Keycloak realm are out of scope.

@@ -1114,6 +1114,10 @@ class TripResponse(BaseModel):
     starts_on: date | None
     ends_on: date | None
     cover_derivative_id: str | None = None
+    cover_url: str | None = Field(
+        default=None,
+        description="The owner-only file route of the chosen cover copy, or null; it is not what a visitor receives.",
+    )
     travel_updates: list[TravelUpdateResponse]
     model_config = ConfigDict(from_attributes=True)
 

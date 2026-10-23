@@ -119,3 +119,30 @@ columns they need are rejected by the lint rule; their widths are theme tokens
 of anchors, sticky beside the timeline on wide screens. The visitor lightbox is the
 existing Base UI Dialog. Gallery thumbnails use one 4:3 crop with the owner's focal
 point; the full image remains in the lightbox.
+
+## Owner workspaces (#495)
+
+No new interactive primitive was needed: trip cards are native router `Link`s (the
+whole card is the link, so it opens in a new tab and keeps keyboard behaviour), the
+state label is plain text with a decorative dot, and the publication state is a text
+badge, not a control. `HomeTripCard`, `ListTripCard`, `TripStatePill` and `TripCover`
+are therefore custom compositions: the registry `card` is a surface and `badge` a
+chip, neither adds behaviour, and the surfaces reuse the Travel tokens. `WorkspaceTabs`
+and the app navigation keep their router-link decision (see #469) and only change
+styling: the selected item has an underline instead of a filled tab. `TripCover`
+fetches the owner's `cover_url` with the session through `OwnerImage`, renders nothing
+when there is no cover, and is decorative (`alt=""`) because the title sits beside it.
+
+`travel-main-split` (main column plus the 26 rem context column) and
+`travel-overview-split` (three stacked blocks beside one tall block) are named
+utilities for the same reason as `travel-aside-split`: arbitrary grid columns or rows
+are rejected by the lint rule. `--spacing-travel-owner-max` caps owner pages.
+
+Verification: `e2e/owner.spec.ts` renders the home, trip list and workspace in Dutch
+and English, light and dark, at 360 / 820 / 1920 px with synthetic long, unbroken and
+missing-cover trips, asserting no horizontal overflow and no axe violations, and
+saves `owner.png` under `frontend/test-results/owner-owner-*`. Reviewed the wide
+light, wide dark and narrow/tablet captures for gutters, wrapping and contrast. The
+full 148-test Playwright suite (smoke, axe, listing and story specs, which cover the
+public and shared pages unchanged by this work), 493 unit tests, lint, format:check,
+locale audit, build and the bundle budget passed.

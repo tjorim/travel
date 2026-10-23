@@ -147,7 +147,9 @@ The **trip cover** is the owner's choice of one ready share copy of a photo
 each projection includes `cover` only when the chosen copy is among the photos that
 audience already receives, so the cover can differ per audience or be absent, and
 the same scoped file route serves it. Without one, or after the copy is deleted,
-made private or withdrawn, the visitor page shows a text-only header.
+made private or withdrawn, the visitor page shows a text-only header. The owner's own
+trip response carries `cover_url`, the authenticated file route of the chosen copy, for
+the owner's screens only; no projection or visitor response includes it.
 
 ## Behaviour to rely on
 

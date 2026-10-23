@@ -7,8 +7,9 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback } from "../query/feedback";
 import { useTripsQuery } from "../query/owner-queries";
-import type { Trip } from "../tracker-model";
 import { EmptyState } from "../ui/EmptyState";
+import { ListTripCard } from "../trips/OwnerTripCard";
+import { orderedTrips, today, tripState, type TripState } from "../trips/trip-state";
 import { TripEditor } from "../trips/TripEditor";
 import { tripsStatusMessage } from "../trips/trips-status";
 
@@ -40,14 +41,18 @@ export function Trips() {
     if (searchParams.new !== undefined) void navigate({ to: ".", search: {}, replace: true });
   }
 
-  function openTrip(trip: Trip) {
-    void navigate({ to: `/trips/${encodeURIComponent(trip.id)}` });
-  }
-
   if (!session) return <EmptyState title={m.trips()}>{message}</EmptyState>;
 
+  const day = today();
+  const ordered = orderedTrips(trips, day);
+  const groups: { state: TripState[]; title: string }[] = [
+    { state: ["active", "upcoming"], title: m.owner_now_and_soon() },
+    { state: ["planned"], title: m.owner_still_to_plan() },
+    { state: ["past"], title: m.owner_past_trips() },
+  ];
+
   return (
-    <section className="grid gap-4.5" aria-labelledby="trips-title">
+    <section className="grid grid-cols-1 gap-4.5" aria-labelledby="trips-title">
       <div className="capture-heading">
         <div>
           <p className="travel-eyebrow">{m.owner_private_trip_management()}</p>
@@ -57,26 +62,28 @@ export function Trips() {
           {m.owner_new_trip()}
         </Button>
       </div>
-      <p className="help" role="status">
+      <p className="help max-w-travel-reading" role="status">
         {message}
       </p>
-      <section
-        className="grid content-start gap-2 [&>p]:m-0 [&>p]:leading-normal [&>p]:text-travel-muted"
-        aria-label={m.your_trips()}
-      >
-        {trips.map((trip) => (
-          <Button
-            className="grid w-full gap-1 rounded-xl border border-travel-card-border bg-travel-surface p-3.5 text-left text-travel-ink shadow-sm [&_span]:text-sm [&_span]:font-medium [&_span]:text-travel-muted"
-            type="button"
-            key={trip.id}
-            onClick={() => openTrip(trip)}
-          >
-            <strong>{trip.title}</strong>
-            <span>{m.owner_travel_update_count({ count: trip.travel_updates.length })}</span>
-          </Button>
-        ))}
+      <section className="grid content-start gap-travel-section" aria-label={m.your_trips()}>
+        {groups.map(({ state, title }) => {
+          const shown = ordered.filter((trip) => state.includes(tripState(trip, day)));
+          if (!shown.length) return null;
+          return (
+            <div className="grid gap-4" key={title}>
+              <h3 className="m-0">{title}</h3>
+              <div className="travel-trip-grid">
+                {shown.map((trip) => (
+                  <ListTripCard key={trip.id} trip={trip} state={tripState(trip, day)} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
         {tripsQuery.isSuccess && !trips.length && (
-          <p>{m.owner_your_first_trip_stays_private_until_you_share_something()}</p>
+          <p className="m-0 max-w-travel-reading leading-normal text-travel-muted">
+            {m.owner_your_first_trip_stays_private_until_you_share_something()}
+          </p>
         )}
       </section>
       <TripEditor

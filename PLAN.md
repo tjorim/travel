@@ -94,14 +94,6 @@ archive-content import in #40.
 - [ ] [apps#230](https://github.com/tjorim/apps/issues/230) Schedule the
       alert processor and configure the per-owner SMTP mapping on the VPS.
 
-### Visual refresh — Application follow-up
-
-Implement in order; preserve existing publication boundaries and owner workflows.
-
-- [ ] [#495](https://github.com/tjorim/travel/issues/495) Apply the refreshed
-      design to owner trip workspaces and complete cross-route visual review;
-      depends on #493 and #494 (both delivered).
-
 ## Confirmed release targets
 
 ### v1 — Private travel journal application
@@ -168,6 +160,9 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#495](https://github.com/tjorim/travel/issues/495) Applied the refreshed
+      design to the owner home, trip list and trip workspace (state grouping,
+      owner cover, publication state, wide-screen overview columns).
 - [x] [#494](https://github.com/tjorim/travel/issues/494) Added a deliberate,
       audience-authorized trip cover and refreshed the visitor header, story
       timeline, map layout and galleries. See [domain model](docs/domain-model.md).

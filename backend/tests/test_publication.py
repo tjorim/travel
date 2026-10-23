@@ -1206,6 +1206,11 @@ def test_a_cover_is_only_shown_to_audiences_that_already_receive_the_photo(tmp_p
         == photo["derivative"]["id"]
     )
     assert owner.get(f"{photo['path']}").json()["is_cover"] is True
+    # The owner's own trip carries the cover's authenticated file route; it is an owner-only field.
+    cover_url = owner.get(trips_path).json()["cover_url"]
+    assert cover_url == f"{photo['path']}/file"
+    assert owner.get(cover_url).status_code == 200
+    assert "cover_url" not in owner.post(f"{trips_path}/public-projection/preview").json()
     owner.put(f"{trips_path}/public-projection", json={"scope": scope()})
     owner.post(f"{trips_path}/public-projection/publish")
     slug = owner.get(f"{trips_path}/public-projection").json()["slug"]
@@ -1239,6 +1244,7 @@ def test_a_cover_is_only_shown_to_audiences_that_already_receive_the_photo(tmp_p
     owner.put(photo["trip"], json={"visibility": "everyone"})
     removed = owner.patch(trips_path, json={"cover_derivative_id": None}).json()
     assert removed["cover_derivative_id"] is None
+    assert removed["cover_url"] is None
     assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
 
 

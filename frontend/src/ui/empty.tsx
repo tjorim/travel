@@ -5,7 +5,10 @@ function Empty({ className, ...props }: React.ComponentProps<"section">) {
   return (
     <section
       data-slot="empty"
-      className={cn("travel-card flex w-full min-w-0 flex-col items-start gap-2", className)}
+      className={cn(
+        "travel-card flex w-full min-w-0 max-w-travel-reading flex-col items-start gap-2",
+        className,
+      )}
       {...props}
     />
   );

@@ -103,6 +103,7 @@ const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({
 });
 let trips: Trip[];
 let requests: string[];
+let surfaceState: "published" | "unpublished";
 const json = (value: unknown, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(value), { status }));
 
@@ -113,6 +114,7 @@ beforeEach(() => {
     trip("t2", "IJsland"),
   ];
   requests = [];
+  surfaceState = "unpublished";
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init: RequestInit = {}) => {
@@ -143,6 +145,8 @@ beforeEach(() => {
         return Promise.resolve(new Response(null, { status: 204 }));
       }
       if (url.endsWith("/areas")) return json([]);
+      if (url.endsWith("/public-projection"))
+        return json({ trip_id: "t1", scope: {}, surface_state: surfaceState, slug: null });
       throw new Error(`unexpected request ${method} ${url}`);
     }),
   );
@@ -164,12 +168,12 @@ const renderTrips = (path = "/trips") => renderRoutesWithOwner(routeTree, [path]
 
 it("lists trips only, and opens a trip's workspace from its row", async () => {
   renderTrips();
-  await screen.findByRole("button", { name: /Exampleland/ });
+  await screen.findByRole("link", { name: /Exampleland/ });
   // The list page no longer stacks a trip's content or editor under the list.
   expect(screen.queryByText("Private inhoud")).toBeNull();
   expect(screen.queryByRole("button", { name: "Reisgegevens" })).toBeNull();
   expect(screen.queryByLabelText("Titel")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: /IJsland/ }));
+  fireEvent.click(screen.getByRole("link", { name: /IJsland/ }));
   await screen.findByRole("heading", { name: "IJsland" });
   // The trip header says where the owner is: Trips › the trip.
   const here = within(screen.getByRole("navigation", { name: "Kruimelpad" }));
@@ -226,14 +230,14 @@ it("drops a deleted trip and returns to the list", async () => {
     within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
   );
   await screen.findByRole("heading", { name: "Reizen" });
-  await waitFor(() => expect(screen.queryByRole("button", { name: /Exampleland/ })).toBeNull());
-  expect(screen.getByRole("button", { name: /IJsland/ })).toBeTruthy();
+  await waitFor(() => expect(screen.queryByRole("link", { name: /Exampleland/ })).toBeNull());
+  expect(screen.getByRole("link", { name: /IJsland/ })).toBeTruthy();
   expect(screen.getByText("Reis verwijderd.")).toBeTruthy();
 });
 
 it("creates a trip and opens its workspace", async () => {
   renderTrips();
-  await screen.findByRole("button", { name: /IJsland/ });
+  await screen.findByRole("link", { name: /IJsland/ });
   fireEvent.click(screen.getByRole("button", { name: "Nieuwe reis" }));
   fireEvent.change(editor("Nieuwe reis").getByLabelText("Titel"), { target: { value: "Japan" } });
   fireEvent.click(editor("Nieuwe reis").getByRole("button", { name: "Reis maken" }));
@@ -379,7 +383,7 @@ it("counts travel updates in the selected language, in the list and in the works
     trip("t2", "IJsland"),
   ];
   renderTrips();
-  fireEvent.click(await screen.findByRole("button", { name: /Exampleland/ }));
+  fireEvent.click(await screen.findByRole("link", { name: /Exampleland/ }));
   expect(await screen.findByText("1 reisupdate")).toBeTruthy();
   act(() => changeLocale("en"));
   expect(screen.getByText("1 travel update")).toBeTruthy();
@@ -401,4 +405,55 @@ it("retranslates a retained navigation notice without changing the route", async
   expect(screen.getByText("Trip deleted.")).toBeTruthy();
   expect(router.state.location.pathname).toBe("/trips");
   expect(router.state.location.state.notice).toBe("trip_deleted");
+});
+
+it("groups trips by state, with the one under way first", async () => {
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  trips = [
+    trip("past", "Ardennen", { starts_on: day(-30), ends_on: day(-28) }),
+    trip("planned", "IJsland"),
+    trip("soon", "Japan", { starts_on: day(20), ends_on: day(30) }),
+    trip("now", "Exampleland", { starts_on: day(-1), ends_on: day(2) }),
+  ];
+  renderTrips();
+  await screen.findByRole("link", { name: /Exampleland/ });
+  expect(
+    screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent),
+  ).toEqual(["Nu en binnenkort", "Nog plannen", "Afgelopen reizen"]);
+  const titles = screen.getAllByRole("heading", { level: 4 }).map((heading) => heading.textContent);
+  expect(titles).toEqual(["Exampleland", "Japan", "IJsland", "Ardennen"]);
+  expect(screen.getByRole("link", { name: /Exampleland/ }).textContent).toContain("Nu op reis");
+  expect(screen.getByRole("link", { name: /Ardennen/ }).textContent).toContain("Afgelopen reis");
+});
+
+it("shows the trip's state and whether its public page is live in the workspace header", async () => {
+  surfaceState = "published";
+  trips = [trip("t1", "Exampleland", { starts_on: "2020-01-01", ends_on: "2020-01-05" })];
+  renderTrips("/trips/t1");
+  expect(await screen.findByText("Afgelopen reis")).toBeTruthy();
+  expect(await screen.findByText("Publieke pagina live")).toBeTruthy();
+  act(() => changeLocale("en"));
+  expect(screen.getByText("Public page live")).toBeTruthy();
+});
+
+it("says a trip is not published, and draws its cover from the owner's own file", async () => {
+  const coverUrl = "/api/trips/t1/media/m1/derivatives/d1/file";
+  trips = [trip("t1", "Exampleland", { cover_url: coverUrl })];
+  const fetcher = vi.mocked(fetch);
+  const base = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation((url, init) =>
+    url === coverUrl
+      ? Promise.resolve(new Response(new Blob(["x"], { type: "image/png" })))
+      : base(url, init),
+  );
+  vi.stubGlobal(
+    "URL",
+    Object.assign(URL, { createObjectURL: () => "blob:cover", revokeObjectURL: () => undefined }),
+  );
+  renderTrips("/trips/t1");
+  expect(await screen.findByText("Niet gepubliceerd")).toBeTruthy();
+  await waitFor(() =>
+    expect(document.querySelector("header img")?.getAttribute("src")).toBe("blob:cover"),
+  );
 });

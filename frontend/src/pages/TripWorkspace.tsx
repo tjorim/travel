@@ -76,7 +76,7 @@ export function TripWorkspaceView({
     // The map mounts a little after the overview, so wait for it before scrolling.
     let attempts = 0;
     const timer = window.setInterval(() => {
-      const map = document.querySelector(".trip-workspace .trip-map");
+      const map = document.querySelector("[data-trip-map]");
       if (!map && ++attempts <= 30) return;
       window.clearInterval(timer);
       map?.scrollIntoView?.({ behavior: "smooth", block: "start" });
@@ -124,7 +124,7 @@ export function TripWorkspaceView({
 
   // Every trip-bound manager remounts per trip, so no editor or dialog carries one trip's record into another.
   return (
-    <section className="grid gap-4.5" aria-labelledby="trip-detail-title" key={trip.id}>
+    <section className="grid grid-cols-1 gap-4.5" aria-labelledby="trip-detail-title" key={trip.id}>
       <WorkspaceHeader trip={trip} onEdit={() => setEditing(true)} />
       <TripEditor
         key={`edit-${trip.id}`}

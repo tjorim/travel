@@ -15,12 +15,12 @@ export function WorkspaceTabs({
   useLocale();
   return (
     <nav
-      className="flex gap-1.5 overflow-x-auto border-b border-travel-divider pb-0.5 scrollbar-thin"
+      className="flex gap-1 overflow-x-auto border-b border-travel-divider scrollbar-thin"
       aria-label={m.owner_trip_sections()}
     >
       {WORKSPACE_SECTIONS.map(({ id, label, icon: Icon }) => (
         <Link
-          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-t-lg px-2.5 text-sm font-bold text-travel-muted no-underline aria-[current=page]:bg-travel-selected-bg aria-[current=page]:text-travel-forest"
+          className="-mb-px inline-flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 text-sm font-bold text-travel-muted no-underline hover:text-travel-ink aria-[current=page]:border-travel-forest aria-[current=page]:text-travel-forest"
           key={id}
           to={sectionPath(tripId, id)}
           activeOptions={{ exact: id === "overview" }}

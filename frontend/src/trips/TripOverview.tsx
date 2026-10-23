@@ -217,7 +217,8 @@ export function TripOverview({ trip }: { trip: Trip }) {
                     : "size-2 rounded-full bg-travel-status-pending"
                 }
               />
-              <span>{badge.label}</span> <strong className="text-travel-ink">{badge.value}</strong>
+              <span className="shrink-0">{badge.label}</span>{" "}
+              <strong className="text-travel-ink">{badge.value}</strong>
             </li>
           ))}
         </ul>

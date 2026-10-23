@@ -156,6 +156,8 @@ export type Trip = {
   ends_on: string | null;
   /** The share copy of a photo the owner chose as cover; it reaches an audience only if that audience receives the photo. */
   cover_derivative_id?: string | null;
+  /** The authenticated file route of that copy for the owner's own screens; visitors never receive it. */
+  cover_url?: string | null;
   travel_updates: TravelUpdate[];
 };
 

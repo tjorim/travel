@@ -79,7 +79,7 @@ export function Boundary({ children }: { children: ReactNode }) {
 
   return (
     <CaptureProvider>
-      <main className="travel-shell pt-6! min-[960px]:w-travel-owner-shell">
+      <main className="travel-shell max-w-travel-owner-max pt-6! min-[960px]:w-travel-owner-shell">
         <Preferences />
         <header className="mb-6 flex items-center justify-between gap-4">
           <nav
@@ -88,7 +88,7 @@ export function Boundary({ children }: { children: ReactNode }) {
           >
             {navigation.map(([to, label, Icon]) => (
               <Link
-                className="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 whitespace-nowrap text-xs font-bold text-travel-muted no-underline aria-[current=page]:text-travel-forest min-[680px]:min-h-0 min-[680px]:flex-none min-[680px]:text-sm"
+                className="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 border-t-2 border-transparent text-xs font-bold whitespace-nowrap text-travel-muted no-underline hover:text-travel-ink aria-[current=page]:border-travel-warning-border aria-[current=page]:text-travel-forest min-[680px]:min-h-0 min-[680px]:flex-none min-[680px]:border-t-0 min-[680px]:border-b-2 min-[680px]:pb-1 min-[680px]:text-sm"
                 key={to}
                 to={to}
                 activeOptions={{ exact: to === "/", includeSearch: false }}

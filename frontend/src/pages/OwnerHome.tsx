@@ -7,8 +7,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
-import { dayjs } from "../dayjs";
 import { EmptyState } from "../ui/EmptyState";
+import { HomeTripCard } from "../trips/OwnerTripCard";
+import { orderedTrips, today, tripState } from "../trips/trip-state";
 
 import { errorMessage } from "../query/api";
 import {
@@ -32,16 +33,6 @@ import {
 } from "../tracker-model";
 
 type TripSnapshot = { stays: Stay[]; routes: Route[]; tasks: TripTask[]; alerts: TripTaskAlert[] };
-
-function today(): string {
-  return dayjs().format("YYYY-MM-DD");
-}
-
-function tripState(trip: Trip, day: string): "active" | "upcoming" | "planned" | "past" {
-  if (!trip.starts_on) return "planned";
-  if (trip.starts_on <= day && (!trip.ends_on || trip.ends_on >= day)) return "active";
-  return trip.starts_on > day ? "upcoming" : "past";
-}
 
 function nextAction(trip: Trip, snapshot: TripSnapshot): string {
   if (!trip.starts_on) return m.owner_choose_travel_dates_and_a_destination_to_start_planning();
@@ -71,17 +62,6 @@ function nextAction(trip: Trip, snapshot: TripSnapshot): string {
   if (unbookedRoute) return m.owner_transport_still_needs_to_be_booked_or_confirmed();
   if (!trip.travel_updates.length) return m.owner_capture_your_first_travel_update();
   return m.owner_open_your_trip_overview();
-}
-
-function orderedTrips(trips: Trip[], day: string): Trip[] {
-  const rank = { active: 0, upcoming: 1, planned: 2, past: 3 };
-  return trips
-    .slice()
-    .sort(
-      (left, right) =>
-        rank[tripState(left, day)] - rank[tripState(right, day)] ||
-        (left.starts_on ?? "9999-12-31").localeCompare(right.starts_on ?? "9999-12-31"),
-    );
 }
 
 export function OwnerHome() {
@@ -195,15 +175,22 @@ export function OwnerHome() {
       </section>
     );
 
+  const [featured, ...others] = visibleTrips;
+  const nextStepOf = (trip: Trip) =>
+    nextAction(trip, snapshots[trip.id] ?? { stays: [], routes: [], tasks: [], alerts: [] });
+
   return (
-    <main className="grid gap-6.5" aria-labelledby="owner-home-title">
-      <header className="capture-heading">
+    <main className="grid grid-cols-1 gap-travel-section" aria-labelledby="owner-home-title">
+      <header className="capture-heading max-[620px]:flex-col max-[620px]:items-start">
         <div>
           <p className="travel-eyebrow">{m.owner_private_travel_workspace()}</p>
-          <h1 className="max-w-travel-home-title" id="owner-home-title">
+          <h1
+            className="text-travel-title-long leading-travel-title-long tracking-travel-title-long min-[680px]:max-w-travel-reading"
+            id="owner-home-title"
+          >
             {m.owner_where_would_you_like_to_continue()}
           </h1>
-          <p className="max-w-145 leading-relaxed text-travel-muted">
+          <p className="max-w-travel-reading leading-relaxed text-travel-muted">
             {m.owner_your_trips_things_to_arrange_and_memories_in_one_quiet_place()}
           </p>
         </div>
@@ -218,135 +205,124 @@ export function OwnerHome() {
           {m.owner_you_are_offline_the_displayed_information_may_be_outdated()}
         </p>
       )}
-      {unreadAlerts.length > 0 && (
-        <section className="travel-card" aria-labelledby="inbox-title">
-          <h2 className="m-0" id="inbox-title">
-            {m.owner_inbox()}
-          </h2>
-          <p>{m.owner_reminder_count({ count: unreadAlerts.length })}</p>
-          <div className="saved-records">
-            {unreadAlerts.map((alert) => (
-              <article className="excerpt-row" key={alert.id}>
-                <div>
-                  <strong>{alert.title}</strong>
-                  <span>
-                    {m.owner_reminder_scheduled({
-                      trip: alert.trip.title,
-                      time: formatInstant(alert.scheduled_for),
-                    })}
-                  </span>
-                </div>
-                <Button
-                  className="secondary compact"
-                  type="button"
-                  onClick={() =>
-                    markAlertRead
-                      .mutateAsync({ tripId: alert.trip.id, alertId: alert.id })
-                      .catch((error: unknown) =>
-                        setNotice(
-                          errorNotice(error, m.owner_the_notification_could_not_be_updated),
-                        ),
-                      )
-                  }
-                >
-                  {m.owner_read()}
-                </Button>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-      <section aria-labelledby="trip-list-title">
-        <div className="mb-3 flex items-baseline justify-between gap-4">
-          <h2 className="m-0" id="trip-list-title">
-            {m.owner_now_and_soon()}
-          </h2>
-          <Link className="font-bold text-travel-forest" to="/trips">
-            {m.owner_manage_all_trips()}
-          </Link>
-        </div>
-        {visibleTrips.length ? (
-          <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 min-[900px]:grid-cols-3">
-            {visibleTrips.map((trip) => {
-              const snapshot = snapshots[trip.id] ?? {
-                stays: [],
-                routes: [],
-                tasks: [],
-                alerts: [],
-              };
-              const status = tripState(trip, day);
-              return (
-                <article
-                  className="travel-card flex flex-col gap-3 [&_h3]:m-0 [&_p]:m-0"
-                  key={trip.id}
-                >
-                  <p className="travel-eyebrow">
-                    {status === "active"
-                      ? m.owner_travelling_now()
-                      : status === "upcoming"
-                        ? m.owner_coming_soon()
-                        : m.owner_still_to_plan()}
-                  </p>
-                  <h3>{trip.title}</h3>
-                  {trip.starts_on ? (
-                    <p>
-                      {formatDay(trip.starts_on, "D MMMM YYYY")}
-                      {trip.ends_on ? ` — ${formatDay(trip.ends_on, "D MMMM YYYY")}` : ""}
-                    </p>
-                  ) : (
-                    <p>{m.owner_choose_travel_dates_when_you_are_ready_to_plan()}</p>
-                  )}
-                  <p className="grid gap-0.75 rounded-travel-media bg-travel-tint px-3 py-2.75 text-sm text-travel-positive! [&_strong]:text-travel-ink">
-                    <strong>{m.owner_next_step()}</strong>
-                    {nextAction(trip, snapshot)}
-                  </p>
-                  <Link
-                    className="action-link mt-auto w-fit"
-                    to={`/trips/${encodeURIComponent(trip.id)}`}
-                  >
-                    {m.owner_open_trip()}
-                  </Link>
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <section className="travel-card">
-            <h3>
-              {trips.length
-                ? m.owner_no_active_or_upcoming_trips()
-                : m.owner_start_your_first_trip()}
-            </h3>
-            <p>{trips.length ? m.owner_past_trips_remain_available_under_manage() : message}</p>
-            <Link className="action-link" to="/trips" search={{ new: "1" }}>
-              {m.owner_new_trip()}
+      <div className="travel-main-split">
+        <section
+          className="grid min-w-0 gap-4 min-[1100px]:col-start-1 min-[1100px]:row-span-2 min-[1100px]:row-start-1"
+          aria-labelledby="trip-list-title"
+        >
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="m-0" id="trip-list-title">
+              {m.owner_now_and_soon()}
+            </h2>
+            <Link className="font-bold text-travel-forest" to="/trips">
+              {m.owner_manage_all_trips()}
             </Link>
+          </div>
+          {featured ? (
+            <>
+              <HomeTripCard
+                trip={featured}
+                state={tripState(featured, day)}
+                nextStep={nextStepOf(featured)}
+                featured
+              />
+              {others.length > 0 && (
+                <div className="grid gap-travel-grid-gap min-[680px]:grid-cols-2">
+                  {others.map((trip) => (
+                    <HomeTripCard
+                      key={trip.id}
+                      trip={trip}
+                      state={tripState(trip, day)}
+                      nextStep={nextStepOf(trip)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <section className="travel-card grid gap-3">
+              <h3 className="m-0">
+                {trips.length
+                  ? m.owner_no_active_or_upcoming_trips()
+                  : m.owner_start_your_first_trip()}
+              </h3>
+              <p className="m-0">
+                {trips.length ? m.owner_past_trips_remain_available_under_manage() : message}
+              </p>
+              <Link className="action-link w-fit" to="/trips" search={{ new: "1" }}>
+                {m.owner_new_trip()}
+              </Link>
+            </section>
+          )}
+        </section>
+        {unreadAlerts.length > 0 && (
+          <section
+            className="travel-card grid min-w-0 gap-3 min-[1100px]:col-start-2 min-[1100px]:row-start-1"
+            aria-labelledby="inbox-title"
+          >
+            <h2 className="m-0" id="inbox-title">
+              {m.owner_inbox()}
+            </h2>
+            <p>{m.owner_reminder_count({ count: unreadAlerts.length })}</p>
+            <div className="saved-records">
+              {unreadAlerts.map((alert) => (
+                <article className="excerpt-row" key={alert.id}>
+                  <div className="grid gap-0.5">
+                    <strong>{alert.title}</strong>
+                    <span>
+                      {m.owner_reminder_scheduled({
+                        trip: alert.trip.title,
+                        time: formatInstant(alert.scheduled_for),
+                      })}
+                    </span>
+                  </div>
+                  <Button
+                    className="secondary compact"
+                    type="button"
+                    onClick={() =>
+                      markAlertRead
+                        .mutateAsync({ tripId: alert.trip.id, alertId: alert.id })
+                        .catch((error: unknown) =>
+                          setNotice(
+                            errorNotice(error, m.owner_the_notification_could_not_be_updated),
+                          ),
+                        )
+                    }
+                  >
+                    {m.owner_read()}
+                  </Button>
+                </article>
+              ))}
+            </div>
           </section>
         )}
-      </section>
-      {recentUpdates.length > 0 && (
-        <section className="travel-card grid gap-3.5" aria-labelledby="activity-title">
-          <h2 className="m-0" id="activity-title">
-            {m.owner_recently_captured()}
-          </h2>
-          <div className="saved-records">
-            {recentUpdates.map((update) => (
-              <Link
-                className="grid gap-1 rounded-travel-media border border-travel-divider p-3 text-travel-ink no-underline hover:border-travel-forest hover:bg-travel-hover [&_span]:text-sm [&_span]:text-travel-muted"
-                key={update.id}
-                to={`/trips/${encodeURIComponent(update.trip.id)}`}
-              >
-                <strong>{update.title}</strong>
-                <span>
-                  {update.trip.title} · {formatInstant(update.occurred_at)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        {recentUpdates.length > 0 && (
+          <section
+            className="grid min-w-0 gap-3 min-[1100px]:col-start-2"
+            aria-labelledby="activity-title"
+          >
+            <h2 className="m-0" id="activity-title">
+              {m.owner_recently_captured()}
+            </h2>
+            <div className="saved-records">
+              {recentUpdates.map((update) => (
+                <Link
+                  className="grid gap-1 rounded-travel-media bg-travel-surface p-3.5 text-travel-ink no-underline shadow-travel-card hover:bg-travel-hover [&_span]:text-sm [&_span]:text-travel-muted"
+                  key={update.id}
+                  to={`/trips/${encodeURIComponent(update.trip.id)}`}
+                >
+                  <strong>{update.title}</strong>
+                  <span>
+                    {update.trip.title} · {formatInstant(update.occurred_at)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
       {message && (
-        <p className="help" role="status">
+        <p className="help max-w-travel-reading" role="status">
           {message}
         </p>
       )}
