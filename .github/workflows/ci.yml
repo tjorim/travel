@@ -116,6 +116,12 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate UI maintenance inventory
+        run: |
+          node --test scripts/ui-maintenance.verify.mjs
+          node scripts/ui-maintenance.mjs check
+
       - name: Lint frontend
         run: pnpm lint
       - name: Check frontend formatting

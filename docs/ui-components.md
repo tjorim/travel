@@ -146,3 +146,7 @@ light, wide dark and narrow/tablet captures for gutters, wrapping and contrast. 
 full 148-test Playwright suite (smoke, axe, listing and story specs, which cover the
 public and shared pages unchanged by this work), 493 unit tests, lint, format:check,
 locale audit, build and the bundle budget passed.
+
+## Dependency and upstream source maintenance
+
+Use the pinned CLI and review workflow in [ui-maintenance.md](ui-maintenance.md). Existing generator/version examples above describe the original adoption; current maintenance commands and captured revisions live in that workflow and the frontend inventory.

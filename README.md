@@ -117,3 +117,7 @@ Draft translation between Dutch and English is off until
 `TRAVEL_TRANSLATION_API_BASE` names the internal, on-demand LibreTranslate
 service from apps#252 (for example `http://translation-proxy:5000`). See
 [docs/translation-drafts.md](docs/translation-drafts.md).
+
+## UI maintenance
+
+See [UI dependency and component maintenance](docs/ui-maintenance.md) for package updates, component provenance, upstream review commands and validation.

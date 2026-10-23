@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "mode": "shadcn",
+  "style": "base-nova",
+  "directories": ["src/ui"],
+  "components": {
+    "ChoiceGroup": {
+      "files": ["src/ui/ChoiceGroup.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "EmptyState": {
+      "files": ["src/ui/EmptyState.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "SearchCombobox": {
+      "files": ["src/ui/SearchCombobox.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "SuggestInput": {
+      "files": ["src/ui/SuggestInput.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "TravelCheckbox": {
+      "files": ["src/ui/TravelCheckbox.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "TravelTextarea": {
+      "files": ["src/ui/TravelTextarea.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "calendar": {
+      "files": ["src/ui/calendar.tsx"],
+      "registry": "calendar",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/calendar.json",
+      "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
+      "reviewedAt": "2026-10-23T22:47:12.357560Z",
+      "reviewNote": "Compared current base-nova registry with the owned source. Keep Travel tokens, localisation and wrapper decisions; no required migration identified. Focused wrapper/date tests: 14 passed (2026-10-24).",
+      "upstreamSha256": "830084beb4b79290ce658fbc54572e4875c7d5f5f223c28511433fbff7be8a40",
+      "capturedAt": "2026-10-23T22:47:12.357560Z",
+      "reviewedLocalSha256": "bf1cd130d0e7f20cd894c08d6ba01f41d045145f20e42dbfe451585f92aca24b"
+    },
+    "checkbox": {
+      "files": ["src/ui/checkbox.tsx"],
+      "registry": "checkbox",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/checkbox.json",
+      "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
+      "reviewedAt": "2026-10-23T22:47:12.357560Z",
+      "reviewNote": "Compared current base-nova registry with the owned source. Keep Travel tokens, localisation and wrapper decisions; no required migration identified. Focused wrapper/date tests: 14 passed (2026-10-24).",
+      "upstreamSha256": "45f0ea21f6d5adba482e5ee184f180e2f8498da29346ac12e02600fed74ae199",
+      "capturedAt": "2026-10-23T22:47:12.357560Z",
+      "reviewedLocalSha256": "d46b55beb62d1bdac42dab553e69f675c236a5b9a783c5531bb372447edd0901"
+    },
+    "empty": {
+      "files": ["src/ui/empty.tsx"],
+      "registry": "empty",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/empty.json",
+      "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
+      "reviewedAt": null,
+      "reviewNote": null,
+      "upstreamSha256": "0d471de90562a99802b32e83002b0dc50935440619b6521dc5833c1eca9237ea",
+      "capturedAt": "2026-10-23T22:47:12.357560Z"
+    },
+    "field": {
+      "files": ["src/ui/field.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "popover": {
+      "files": ["src/ui/popover.tsx"],
+      "registry": "popover",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/popover.json",
+      "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
+      "reviewedAt": "2026-10-23T22:47:12.357560Z",
+      "reviewNote": "Compared current base-nova registry with the owned source. Keep Travel tokens, localisation and wrapper decisions; no required migration identified. Focused wrapper/date tests: 14 passed (2026-10-24).",
+      "upstreamSha256": "3c89b7e34758a7f402641a1b0a504247998464c140f9962e28e4ef4e11c190d7",
+      "capturedAt": "2026-10-23T22:47:12.357560Z",
+      "reviewedLocalSha256": "a1293061e5e2651345eca01bcc7f7a445c4eb4f1cae421e76a946403c84c53c0"
+    },
+    "skeleton": {
+      "files": ["src/ui/skeleton.tsx"],
+      "registry": "skeleton",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/skeleton.json",
+      "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
+      "reviewedAt": null,
+      "reviewNote": null,
+      "upstreamSha256": "7ce70cde3308e0806c1706b86f198992fd9b55e28530532e50511c858e1d48bf",
+      "capturedAt": "2026-10-23T22:47:12.357560Z"
+    },
+    "RecordDialog": {
+      "files": ["src/RecordDialog.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "App-specific Base UI composition; review direct primitive API changes and interaction tests.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "fields": {
+      "files": ["src/forms/fields.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "App-specific Base UI composition; review direct primitive API changes and interaction tests.",
+      "reviewedAt": null,
+      "reviewNote": null
+    }
+  }
+}

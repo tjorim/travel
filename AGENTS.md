@@ -88,7 +88,7 @@ Check the shadcn registry and Base UI for a supported component or variant
 before writing a custom control or composition, and record a custom one that
 stays, with its reason, in `docs/ui-components.md`. Generate new UI primitives
 on demand from `frontend/` with
-`pnpm dlx shadcn@4.21.0 add <component> --yes`, then own and restyle the
+`pnpm exec shadcn add <component> --yes`, then own and restyle the
 copied source. `components.json` pins Base UI (`base-nova`), Lucide and
 Tailwind v4. Initial setup used `pnpm dlx shadcn@4.21.0 init --base base
 --preset nova --yes --no-monorepo --no-reinstall`. Do not bulk-generate or
@@ -187,3 +187,7 @@ names, and dirty editor/upload/focus preservation. See
 `docs/interface-translations.md` for the repeatable audit and exclusions, and
 `docs/decisions/281-interface-translations.md` for translation decisions and
 source audit coverage.
+
+## UI dependency maintenance
+
+Follow [docs/ui-maintenance.md](docs/ui-maintenance.md) for Base UI/runtime updates and the pinned shadcn CLI, registry comparisons and review records. Run `pnpm ui:check` from `frontend/` after changing shared UI. Dependabot does not update owned component source; preserve the documented customisations and validate interactions and bundle budgets.
