@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useState } from "react";
 
 import { AsyncSearchSelect, SearchSelect } from "../../forms/fields";
@@ -19,7 +19,7 @@ import {
   type TravelUpdateCandidatesResponse,
   type Visit,
 } from "../../tracker-model";
-import { Field, FieldLabel } from "../../ui/field";
+import { Field, FieldLabel } from "@/ui/field";
 
 /**
  * Reviews the selected media for possible travel updates: nothing is stored, and a candidate only opens the capture

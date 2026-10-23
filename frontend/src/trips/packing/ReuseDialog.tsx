@@ -1,5 +1,5 @@
-import { Button } from "@base-ui/react/button";
-import { Input } from "@base-ui/react/input";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -9,9 +9,9 @@ import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "../../query/api";
 import { useOwner } from "../../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
-import { ChoiceGroup } from "../../ui/ChoiceGroup";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "../../ui/field";
-import { TravelCheckbox } from "../../ui/TravelCheckbox";
+import { ChoiceGroup } from "@/ui/ChoiceGroup";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import type {
   PackingList,
   PackingRequest,

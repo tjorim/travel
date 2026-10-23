@@ -1,6 +1,6 @@
 import { Field as BaseField } from "@base-ui/react/field";
 import { Fieldset } from "@base-ui/react/fieldset";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 import type { ComponentProps } from "react";
 
 /** shadcn's Field family, backed by Base UI so labels, errors and validity are wired to the control. */

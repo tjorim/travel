@@ -1,10 +1,10 @@
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
-import { TravelCheckbox } from "../ui/TravelCheckbox";
-import { Field, FieldError, FieldLabel } from "../ui/field";
-import { TravelTextarea } from "../ui/TravelTextarea";
-import { Input } from "@base-ui/react/input";
-import { Button } from "@base-ui/react/button";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldError, FieldLabel } from "@/ui/field";
+import { TravelTextarea } from "@/ui/TravelTextarea";
+import { Input } from "@/ui/input";
+import { Button } from "@/ui/button";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   createContext,
@@ -15,12 +15,12 @@ import {
   type RefObject,
   type TextareaHTMLAttributes,
 } from "react";
-import { SearchSelect } from "../ui/SearchCombobox";
-import { SuggestInput } from "../ui/SuggestInput";
+import { SearchSelect } from "@/ui/SearchCombobox";
+import { SuggestInput } from "@/ui/SuggestInput";
 import { timeZoneOptions } from "../tracker-model";
 import { blockUnreadableEntries } from "./unreadable-entry";
-export { SearchSelect, AsyncSearchSelect } from "../ui/SearchCombobox";
-export type { SearchSelectOption, SearchSelectGroup } from "../ui/SearchCombobox";
+export { SearchSelect, AsyncSearchSelect } from "@/ui/SearchCombobox";
+export type { SearchSelectOption, SearchSelectGroup } from "@/ui/SearchCombobox";
 
 const timeZones = timeZoneOptions();
 

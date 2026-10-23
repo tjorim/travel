@@ -1,6 +1,6 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { Input } from "@base-ui/react/input";
+import { Input } from "@/ui/input";
 import { useCallback, useRef } from "react";
 
 import {
@@ -26,7 +26,7 @@ import {
   type Visit,
 } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
-import { Field, FieldError, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
+import { Field, FieldError, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
 
 /**
  * Where something is: a whole area, a location in one, or a new location. A location is always

@@ -57,22 +57,22 @@
       "registry": "calendar",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/calendar.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
-      "reviewedAt": "2026-10-23T22:47:12.357560Z",
-      "reviewNote": "Compared current base-nova registry with the owned source. Keep Travel tokens, localisation and wrapper decisions; no required migration identified. Focused wrapper/date tests: 14 passed (2026-10-24).",
+      "reviewedAt": "2026-10-23T23:08:40.176Z",
+      "reviewNote": "Kept the previously reviewed implementation and app theme/localisation. Only cn now imports through the identical @/lib/utils re-export. Non-import AST is unchanged; 6 primitive/helper identity tests pass, full suite 494 passed with the 5 existing #508 failures.",
       "upstreamSha256": "830084beb4b79290ce658fbc54572e4875c7d5f5f223c28511433fbff7be8a40",
-      "capturedAt": "2026-10-23T22:47:12.357560Z",
-      "reviewedLocalSha256": "bf1cd130d0e7f20cd894c08d6ba01f41d045145f20e42dbfe451585f92aca24b"
+      "capturedAt": "2026-10-23T23:08:40.176Z",
+      "reviewedLocalSha256": "26427e64560fcda2855bfd5cee4837334ff0872d3cd97fc9b6f2def04a94c9f6"
     },
     "checkbox": {
       "files": ["src/ui/checkbox.tsx"],
       "registry": "checkbox",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/checkbox.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
-      "reviewedAt": "2026-10-23T22:47:12.357560Z",
-      "reviewNote": "Compared current base-nova registry with the owned source. Keep Travel tokens, localisation and wrapper decisions; no required migration identified. Focused wrapper/date tests: 14 passed (2026-10-24).",
+      "reviewedAt": "2026-10-23T23:08:39.845Z",
+      "reviewNote": "Kept the previously reviewed implementation and app theme/localisation. Only cn now imports through the identical @/lib/utils re-export. Non-import AST is unchanged; 6 primitive/helper identity tests pass, full suite 494 passed with the 5 existing #508 failures.",
       "upstreamSha256": "45f0ea21f6d5adba482e5ee184f180e2f8498da29346ac12e02600fed74ae199",
-      "capturedAt": "2026-10-23T22:47:12.357560Z",
-      "reviewedLocalSha256": "d46b55beb62d1bdac42dab553e69f675c236a5b9a783c5531bb372447edd0901"
+      "capturedAt": "2026-10-23T23:08:39.845Z",
+      "reviewedLocalSha256": "4c912ab8e9e8cd8a8b5d7f777f880677bb12476f5df9ab065cb382fee01151be"
     },
     "empty": {
       "files": ["src/ui/empty.tsx"],
@@ -97,11 +97,11 @@
       "registry": "popover",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/popover.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
-      "reviewedAt": "2026-10-23T22:47:12.357560Z",
-      "reviewNote": "Compared current base-nova registry with the owned source. Keep Travel tokens, localisation and wrapper decisions; no required migration identified. Focused wrapper/date tests: 14 passed (2026-10-24).",
+      "reviewedAt": "2026-10-23T23:08:39.603Z",
+      "reviewNote": "Kept the previously reviewed implementation and app theme/localisation. Only cn now imports through the identical @/lib/utils re-export. Non-import AST is unchanged; 6 primitive/helper identity tests pass, full suite 494 passed with the 5 existing #508 failures.",
       "upstreamSha256": "3c89b7e34758a7f402641a1b0a504247998464c140f9962e28e4ef4e11c190d7",
-      "capturedAt": "2026-10-23T22:47:12.357560Z",
-      "reviewedLocalSha256": "a1293061e5e2651345eca01bcc7f7a445c4eb4f1cae421e76a946403c84c53c0"
+      "capturedAt": "2026-10-23T23:08:39.603Z",
+      "reviewedLocalSha256": "05a181d840aeda20eba407babf0b08d5828dc8a93b7fe00d7757e41fc34cc8f8"
     },
     "skeleton": {
       "files": ["src/ui/skeleton.tsx"],
@@ -128,6 +128,56 @@
       "reason": "App-specific Base UI composition; review direct primitive API changes and interaction tests.",
       "reviewedAt": null,
       "reviewNote": null
+    },
+    "button": {
+      "files": ["src/ui/button.ts"],
+      "registry": null,
+      "origin": "https://base-ui.com/react/components/button",
+      "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "input": {
+      "files": ["src/ui/input.ts"],
+      "registry": null,
+      "origin": "https://base-ui.com/react/components/input",
+      "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "collapsible": {
+      "files": ["src/ui/collapsible.ts"],
+      "registry": null,
+      "origin": "https://base-ui.com/react/components/collapsible",
+      "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "progress": {
+      "files": ["src/ui/progress.ts"],
+      "registry": null,
+      "origin": "https://base-ui.com/react/components/progress",
+      "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "dialog": {
+      "files": ["src/ui/dialog.ts"],
+      "registry": null,
+      "origin": "https://base-ui.com/react/components/dialog",
+      "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
+      "reviewedAt": null,
+      "reviewNote": null
+    }
+  },
+  "importPolicy": {
+    "uiAlias": "@/ui",
+    "baseUiExceptions": {
+      "src/RecordDialog.tsx": {
+        "component": "RecordDialog",
+        "modules": ["@base-ui/react/dialog", "@base-ui/react/alert-dialog"],
+        "reason": "Shared editor owns dirty guards, nested confirmations and explicit focus return; consumers use RecordDialog."
+      }
     }
   }
 }

@@ -2,7 +2,7 @@ import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { useLocale } from "../locale";
 import { Preferences } from "../Preferences";
 import { m } from "../paraglide/messages.js";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 

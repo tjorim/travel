@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";

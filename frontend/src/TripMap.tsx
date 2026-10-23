@@ -3,7 +3,7 @@ import { textNotice, useFeedback } from "./query/feedback";
 import { useLocale } from "./locale";
 import { m } from "./paraglide/messages.js";
 import { themeColor, useTheme } from "./appearance";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import type { FeatureCollection, LineString, Point } from "geojson";

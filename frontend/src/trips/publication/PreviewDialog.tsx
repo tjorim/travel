@@ -1,4 +1,4 @@
-import { Collapsible } from "@base-ui/react/collapsible";
+import { Collapsible } from "@/ui/collapsible";
 
 import type { TrackerSession } from "../../auth";
 import type { Projection } from "../../ProjectionView";

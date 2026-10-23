@@ -53,7 +53,7 @@ TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel
 ```
 
 For frontend work, install the Node version in `frontend/.node-version` and
-run pnpm directly (CI uses pnpm 10.28.2):
+run pnpm directly (the package pins pnpm 10.33.0):
 
 ```bash
 cd frontend
@@ -191,3 +191,5 @@ source audit coverage.
 ## UI dependency maintenance
 
 Follow [docs/ui-maintenance.md](docs/ui-maintenance.md) for Base UI/runtime updates and the pinned shadcn CLI, registry comparisons and review records. Run `pnpm ui:check` from `frontend/` after changing shared UI. Dependabot does not update owned component source; preserve the documented customisations and validate interactions and bundle budgets.
+
+Application UI imports use `@/ui/<component>`. Direct Base UI subpath imports belong in inventoried UI adapters or exact documented composition exceptions. `pnpm ui:check` enforces the policy; `pnpm ui:test` tests it. Keep styles and application behaviour when aligning imports.

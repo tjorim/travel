@@ -18,11 +18,12 @@
     "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy custom-travel baseLocale --emit-ts-declarations",
     "locale:audit": "node scripts/locale-audit.mjs",
     "check-message-parity": "node scripts/check-message-parity.mjs",
-    "ui:check": "node scripts/ui-maintenance.mjs check",
+    "ui:check": "node scripts/ui-maintenance.mjs check && node scripts/ui-imports.mjs",
     "ui:upstream": "node scripts/ui-maintenance.mjs upstream",
     "ui:diff": "node scripts/ui-maintenance.mjs diff",
     "ui:record": "node scripts/ui-maintenance.mjs record",
-    "ui:test": "node --test scripts/ui-maintenance.verify.mjs"
+    "ui:test": "node --test scripts/ui-maintenance.verify.mjs scripts/ui-imports.verify.mjs",
+    "ui:usage": "node scripts/ui-imports.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -64,5 +65,9 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vitest": "^5.0.4"
-  }
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@10.33.0"
 }

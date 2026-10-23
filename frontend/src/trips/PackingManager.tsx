@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -10,7 +10,7 @@ import { ownerRequest } from "../query/api";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { tripPath, useOwner } from "../query/owner-queries";
 import type { Trip } from "../tracker-model";
-import { Field, FieldLabel } from "../ui/field";
+import { Field, FieldLabel } from "@/ui/field";
 import { BagDialog } from "./packing/BagDialog";
 import { BagSummaries } from "./packing/BagSummaries";
 import { DepartureCheck } from "./packing/DepartureCheck";

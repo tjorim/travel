@@ -1,7 +1,7 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback, textNotice, errorNotice } from "../query/feedback";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 
 import { DateTimeField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";

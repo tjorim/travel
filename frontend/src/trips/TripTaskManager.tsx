@@ -1,7 +1,7 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "../query/feedback";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useState } from "react";
 
 import { DateField, DateTimeField } from "../forms/DateTimeFields";
@@ -26,7 +26,7 @@ import {
   type Trip,
   type TripTask,
 } from "../tracker-model";
-import { FieldSet, FieldLegend } from "../ui/field";
+import { FieldSet, FieldLegend } from "@/ui/field";
 
 const MAX_LINKS = 5;
 type Values = {

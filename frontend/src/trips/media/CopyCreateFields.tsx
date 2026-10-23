@@ -3,8 +3,8 @@ import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import type { MediaAsset } from "../../tracker-model";
-import { Field, FieldLabel } from "../../ui/field";
-import { TravelCheckbox } from "../../ui/TravelCheckbox";
+import { Field, FieldLabel } from "@/ui/field";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { dimensionInRange, type DerivativeValues } from "./copy-form";
 
 /** The fields for a new shareable copy: its purpose, and a size for a photo or audio handling for a video. */

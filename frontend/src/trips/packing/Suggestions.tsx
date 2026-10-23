@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 

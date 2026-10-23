@@ -1,7 +1,7 @@
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { defineCustomClientStrategy, setLocale, type Locale } from "./paraglide/runtime.js";
 import { m } from "./paraglide/messages.js";
-import { ChoiceGroup } from "./ui/ChoiceGroup";
+import { ChoiceGroup } from "@/ui/ChoiceGroup";
 
 export function resolveLocale(stored: unknown, languages: readonly string[]): Locale {
   if (stored === "nl" || stored === "en") return stored;

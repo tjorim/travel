@@ -1,4 +1,4 @@
-import { Collapsible } from "@base-ui/react/collapsible";
+import { Collapsible } from "@/ui/collapsible";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";

@@ -1,4 +1,4 @@
-import { Progress } from "@base-ui/react/progress";
+import { Progress } from "@/ui/progress";
 
 import { useLocale } from "../../locale";
 import type { Item } from "./model";

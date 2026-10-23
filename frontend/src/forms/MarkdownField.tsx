@@ -1,9 +1,9 @@
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { textNotice, errorNotice, noticeMessage, type ErrorNotice } from "../query/feedback";
-import { Button } from "@base-ui/react/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
-import { TravelTextarea } from "../ui/TravelTextarea";
+import { Button } from "@/ui/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/ui/field";
+import { TravelTextarea } from "@/ui/TravelTextarea";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { cn } from "cn";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";

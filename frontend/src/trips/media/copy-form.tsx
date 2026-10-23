@@ -8,7 +8,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { useTravelUpdateSearch } from "../../query/owner-queries";
 import type { MediaDerivative, TravelUpdate } from "../../tracker-model";
-import { Field, FieldLabel } from "../../ui/field";
+import { Field, FieldLabel } from "@/ui/field";
 import { OwnerImage } from "../OwnerImage";
 
 export type DerivativeValues = {

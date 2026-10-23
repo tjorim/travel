@@ -1,7 +1,7 @@
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
 import { Preferences } from "./Preferences";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -11,7 +11,7 @@ import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
 import { useAuth } from "./auth-context";
 import { CaptureProvider, useCapture } from "./capture-context";
 import { wipeOfflineData } from "./offline/offline-store";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 
 /**
  * Capture is an action, not a place, so it is a button that is always at hand rather than a nav item. Inside a trip it

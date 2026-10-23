@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 
 import { RecordForm } from "../../forms/fields";
 import type { useRecordForm } from "../../forms/useRecordForm";

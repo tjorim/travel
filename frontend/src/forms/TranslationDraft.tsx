@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
 import { useLocale } from "../locale";
@@ -12,8 +12,8 @@ import {
   type MessageNotice,
 } from "../query/feedback";
 import { useOwner } from "../query/owner-queries";
-import { Field, FieldLabel } from "../ui/field";
-import { TravelTextarea } from "../ui/TravelTextarea";
+import { Field, FieldLabel } from "@/ui/field";
+import { TravelTextarea } from "@/ui/TravelTextarea";
 
 type Language = "nl" | "en";
 type Direction = { source: Language; target: Language };

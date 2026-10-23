@@ -1,6 +1,6 @@
 import { m } from "./paraglide/messages.js";
 import { LocaleControl, useLocale } from "./locale";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { cn } from "cn";

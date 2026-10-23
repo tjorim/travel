@@ -1,8 +1,8 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "../query/feedback";
-import { Input } from "@base-ui/react/input";
-import { Button } from "@base-ui/react/button";
+import { Input } from "@/ui/input";
+import { Button } from "@/ui/button";
 import { useRef, useState } from "react";
 
 import { AsyncSearchSelect } from "../forms/fields";
@@ -14,7 +14,7 @@ import {
   type PlaceSearchResponse,
   type PlaceSearchResult,
 } from "../tracker-model";
-import { Field, FieldLabel, FieldSet, FieldLegend } from "../ui/field";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
 
 /** Owner-only place lookup that never persists a selected result by itself. */
 export function PlaceSearchField({

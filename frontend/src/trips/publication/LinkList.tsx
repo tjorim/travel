@@ -1,5 +1,5 @@
-import { Button } from "@base-ui/react/button";
-import { Collapsible } from "@base-ui/react/collapsible";
+import { Button } from "@/ui/button";
+import { Collapsible } from "@/ui/collapsible";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";

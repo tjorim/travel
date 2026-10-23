@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
 import { SearchSelect } from "../forms/fields";
@@ -9,8 +9,8 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import type { Area, AreaMergeResult, LocationMergeResult, Trip } from "../tracker-model";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "../ui/field";
-import { TravelCheckbox } from "../ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { parseAudience, type DuplicateGroup, type DuplicateReason } from "./merge-candidates";
 
 export type MergeKind = "location" | "area";

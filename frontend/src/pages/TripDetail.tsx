@@ -23,7 +23,7 @@ import { VisitsBlock } from "../trips/detail/VisitsBlock";
 import { OwnerTripMap } from "../trips/OwnerTripMap";
 import { TripOverview } from "../trips/TripOverview";
 import { sectionForRecord } from "../trips/workspace-sections";
-import { EmptyState } from "../ui/EmptyState";
+import { EmptyState } from "@/ui/EmptyState";
 
 export function TripDetail() {
   useLocale();

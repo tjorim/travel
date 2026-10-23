@@ -8,7 +8,7 @@ import { m } from "../paraglide/messages.js";
 import { useFeedback } from "../query/feedback";
 import { useTripResource, useTripsQuery } from "../query/owner-queries";
 import type { TravelUpdateCandidateIntent } from "../tracker-model";
-import { EmptyState } from "../ui/EmptyState";
+import { EmptyState } from "@/ui/EmptyState";
 import type { AgendaRecordKind } from "../trips/AgendaView";
 import type { MapRecordKind, RecordFocus } from "../trips/record-focus";
 import { tripsStatusMessage } from "../trips/trips-status";

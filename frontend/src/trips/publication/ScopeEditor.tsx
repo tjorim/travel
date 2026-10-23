@@ -1,5 +1,5 @@
-import { Button } from "@base-ui/react/button";
-import { Collapsible } from "@base-ui/react/collapsible";
+import { Button } from "@/ui/button";
+import { Collapsible } from "@/ui/collapsible";
 import { useState } from "react";
 
 import { SearchSelect } from "../../forms/fields";
@@ -8,8 +8,8 @@ import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "../../query/api";
 import { FeedbackError } from "../../query/feedback";
 import type { ShareScope, ShareScopeKind } from "../../tracker-model";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "../../ui/field";
-import { TravelCheckbox } from "../../ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useSetVisibility } from "../visibility";
 import { DATE_PRECISIONS, GROUP_TITLES, groupBy, updateItem, type CatalogItem } from "./catalog";
 

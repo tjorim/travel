@@ -2,8 +2,8 @@ import type { ErrorFallback } from "../query/api";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { errorNotice, useFeedback, textNotice, FeedbackError } from "../query/feedback";
-import { Input } from "@base-ui/react/input";
-import { Button } from "@base-ui/react/button";
+import { Input } from "@/ui/input";
+import { Button } from "@/ui/button";
 import { useState } from "react";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
@@ -15,7 +15,7 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
-import { Field, FieldLabel } from "../ui/field";
+import { Field, FieldLabel } from "@/ui/field";
 
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
 const blankUpload = (): UploadValues => ({ title: "", kind: "booking" });

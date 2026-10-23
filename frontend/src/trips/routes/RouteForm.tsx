@@ -1,4 +1,4 @@
-import { Collapsible } from "@base-ui/react/collapsible";
+import { Collapsible } from "@/ui/collapsible";
 
 import { DateField, DateTimeField } from "../../forms/DateTimeFields";
 import {
@@ -18,8 +18,8 @@ import {
   type DocumentAsset,
   type Location,
 } from "../../tracker-model";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "../../ui/field";
-import { TravelCheckbox } from "../../ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { ROUTE_STATUS_LABELS } from "../labels";
 import { PlacePicker } from "../PlacePicker";
 import { RouteGeometryEditor } from "../RouteGeometryEditor";

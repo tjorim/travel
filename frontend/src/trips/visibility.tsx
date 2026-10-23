@@ -7,7 +7,7 @@ import { SearchSelect } from "../forms/fields";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import type { ShareScopeKind, Visibility } from "../tracker-model";
-import { Field, FieldError, FieldLabel } from "../ui/field";
+import { Field, FieldError, FieldLabel } from "@/ui/field";
 
 /** Who receives a record. The same three choices apply to everything that can be shared. */
 export const VISIBILITY_LABELS: Record<Visibility, string> = {

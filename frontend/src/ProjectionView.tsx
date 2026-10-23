@@ -1,7 +1,7 @@
 import { m } from "./paraglide/messages.js";
 import { LocaleControl, selectedLocale, useLocale } from "./locale";
-import { Dialog } from "@base-ui/react/dialog";
-import { Button } from "@base-ui/react/button";
+import { Dialog } from "@/ui/dialog";
+import { Button } from "@/ui/button";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { cn } from "cn";
 import { dayjs } from "./dayjs";

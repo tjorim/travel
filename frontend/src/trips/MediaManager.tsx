@@ -1,5 +1,5 @@
-import { Button } from "@base-ui/react/button";
-import { Input } from "@base-ui/react/input";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { RecordForm } from "../forms/fields";
@@ -19,7 +19,7 @@ import type {
   Trip,
   TravelUpdateCandidateIntent,
 } from "../tracker-model";
-import { Field, FieldLabel } from "../ui/field";
+import { Field, FieldLabel } from "@/ui/field";
 import { AssetView } from "./media/AssetView";
 import { CandidateReview } from "./media/CandidateReview";
 import {

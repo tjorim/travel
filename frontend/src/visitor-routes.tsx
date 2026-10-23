@@ -2,7 +2,7 @@ import { ApiError, apiFailure, errorMessage } from "./query/api";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
 import { Preferences } from "./Preferences";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createMemoryHistory,

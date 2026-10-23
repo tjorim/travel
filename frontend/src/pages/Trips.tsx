@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
@@ -7,7 +7,7 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback } from "../query/feedback";
 import { useTripsQuery } from "../query/owner-queries";
-import { EmptyState } from "../ui/EmptyState";
+import { EmptyState } from "@/ui/EmptyState";
 import { ListTripCard } from "../trips/OwnerTripCard";
 import { orderedTrips, today, tripState, type TripState } from "../trips/trip-state";
 import { TripEditor } from "../trips/TripEditor";

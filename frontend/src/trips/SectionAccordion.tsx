@@ -1,4 +1,4 @@
-import { Collapsible } from "@base-ui/react/collapsible";
+import { Collapsible } from "@/ui/collapsible";
 import { ChevronDownIcon } from "lucide-react";
 import type { ReactNode } from "react";
 

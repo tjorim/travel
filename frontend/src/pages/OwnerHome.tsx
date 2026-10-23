@@ -1,13 +1,13 @@
 import { errorNotice, useFeedback } from "../query/feedback";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
-import { EmptyState } from "../ui/EmptyState";
+import { EmptyState } from "@/ui/EmptyState";
 import { HomeTripCard } from "../trips/OwnerTripCard";
 import { orderedTrips, today, tripState } from "../trips/trip-state";
 

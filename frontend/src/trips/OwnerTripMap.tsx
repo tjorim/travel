@@ -1,7 +1,7 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { FeedbackError, textNotice, errorNotice, useFeedback } from "../query/feedback";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useOfflineCopies } from "../offline/useOfflineCopies";

@@ -1,4 +1,4 @@
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 /** A card-surfaced message for a view with nothing to show; owned adaptation of the registry `empty`. */
 function Empty({ className, ...props }: React.ComponentProps<"section">) {

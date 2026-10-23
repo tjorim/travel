@@ -2,7 +2,7 @@ import type { ErrorFallback } from "../query/api";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { errorNotice, useFeedback, textNotice } from "../query/feedback";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";

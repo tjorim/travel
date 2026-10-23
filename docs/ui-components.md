@@ -150,3 +150,13 @@ locale audit, build and the bundle budget passed.
 ## Dependency and upstream source maintenance
 
 Use the pinned CLI and review workflow in [ui-maintenance.md](ui-maintenance.md). Existing generator/version examples above describe the original adoption; current maintenance commands and captured revisions live in that workflow and the frontend inventory.
+
+## Local primitive exports
+
+`src/ui/button.ts`, `input.ts`, `collapsible.ts`, `progress.ts` and `dialog.ts`
+re-export the existing Base UI APIs unchanged. Screens use `@/ui/...`; these
+adapters introduce no styles, wrappers, default props or interaction changes.
+The custom `RecordDialog` remains the inventoried direct composition for guarded
+editors. The thin primitive exports are intentional; replacing them with fully
+styled registry defaults would change Travel's existing design and is not part
+of import alignment.

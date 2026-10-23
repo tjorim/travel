@@ -1,6 +1,6 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useMemo } from "react";
 
 import { useTripResource } from "../query/owner-queries";

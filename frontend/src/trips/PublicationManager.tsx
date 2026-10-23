@@ -1,4 +1,4 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RecordForm, requiredText, TextField } from "../forms/fields";

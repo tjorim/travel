@@ -1,10 +1,10 @@
-import { Button } from "@base-ui/react/button";
-import { Input } from "@base-ui/react/input";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import type { PlaceSearchResponse, PlaceSearchResult, UpdateDraft } from "../../tracker-model";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "../../ui/field";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { SuggestionAside } from "./SuggestionAside";
 
 type Gps = { latitude: number; longitude: number };

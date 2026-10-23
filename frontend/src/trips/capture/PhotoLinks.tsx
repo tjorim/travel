@@ -1,10 +1,10 @@
-import { Button } from "@base-ui/react/button";
+import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { formatCapture, type MediaAsset } from "../../tracker-model";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "../../ui/field";
-import { TravelCheckbox } from "../../ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { SuggestionAside } from "./SuggestionAside";
 
 type Gps = { latitude: number; longitude: number };

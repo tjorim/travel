@@ -1,6 +1,6 @@
 import { CalendarIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
-import { Input } from "@base-ui/react/input";
+import { Input } from "@/ui/input";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   dateFromIso,
@@ -14,9 +14,9 @@ import {
 } from "../date-input";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { Calendar } from "../ui/calendar";
-import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "../ui/field";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar } from "@/ui/calendar";
+import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { optionalNote, useFieldErrors } from "./fields";
 import { UNREADABLE_ENTRY } from "./unreadable-entry";
 
