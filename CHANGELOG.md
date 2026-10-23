@@ -6,6 +6,9 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Group MapLibre Dependabot updates and bump `maplibre-gl` to 6.15.0 with
+  `@maplibre/geojson-vt` 6.3.0, preserving unrelated dependency versions (#482, #497).
+
 - Group Dependabot updates for `tldts` and `tldts-core`, and update both to
   7.4.19 without changing unrelated frontend dependencies (#505, #507).
 

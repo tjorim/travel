@@ -88,6 +88,11 @@ updates:
       i18n:
         patterns:
           - "@inlang/*"
+      # Review the map renderer and its scoped dependencies together.
+      maplibre:
+        patterns:
+          - "maplibre-gl"
+          - "@maplibre/*"
       # tldts and its core package share one release train.
       tldts:
         patterns:
