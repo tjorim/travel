@@ -23,7 +23,7 @@ def test_only_locations_that_repeat_their_area_are_flagged() -> None:
     tpe = add(taoyuan, label="TPE", latitude=25.0793, longitude=121.2346, display_name="Taoyuan Airport (TPE)")
     city = add(taipei, latitude=25.05, longitude=121.51, display_name="Taipei", locality="Taipei")
     # Legitimate places: a hotel near the city centre, an airport hotel a couple of kilometres away.
-    add(taipei, latitude=25.047, longitude=121.51, display_name="Central Station Hotel", locality="Taipei")
+    add(taipei, latitude=25.047, longitude=121.51, display_name="Example Hotel Taipei North Gate", locality="Taipei")
     add(schiphol, latitude=52.3096, longitude=4.7555, display_name="Example Hotel Amsterdam Airport Schiphol")
     # Far from the area's point, even with an airport code.
     add(schiphol, label="AMS", latitude=52.9, longitude=4.9, display_name="Elders (AMS)")

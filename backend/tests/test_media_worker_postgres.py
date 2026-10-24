@@ -11,7 +11,6 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker
 from test_media_worker import outputs
 
-from app.config import settings
 from app.database import Base
 from app.media import service, worker
 from app.models import DerivativePurpose, MediaDerivative, MediaWorkerJob, StoredObject, Trip
@@ -19,7 +18,7 @@ from app.storage import LocalObjectStorage
 
 
 @pytest.fixture
-def postgres(tmp_path, monkeypatch):
+def postgres(tmp_path):
     url = os.environ.get("TRAVEL_TEST_DATABASE_URL")
     if not url:
         pytest.skip("local PostgreSQL test URL not configured")
@@ -32,7 +31,6 @@ def postgres(tmp_path, monkeypatch):
         Base.metadata.create_all(engine)
         sessions = sessionmaker(bind=engine)
         storage = LocalObjectStorage(str(tmp_path / "objects"))
-        monkeypatch.setattr(settings, "video_processing_backend", "remote")
         with sessions() as session:
             trip = Trip(owner_subject="owner-1", title="Synthetic test")
             session.add(trip)

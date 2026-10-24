@@ -31,7 +31,10 @@ it("shows active and planning-first trips with unread alerts", async () => {
   const now = new Date();
   const day = (offset: number) =>
     new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
-  const trips = [trip("active", "Exampleland", day(-1), day(1)), trip("planned", "IJsland", null, null)];
+  const trips = [
+    trip("active", "Exampleland", day(-1), day(1)),
+    trip("planned", "IJsland", null, null),
+  ];
   server.use(
     http.get("/api/trips", () => HttpResponse.json(trips)),
     http.get("/api/trips/:tripId/task-alerts", ({ params }) =>
@@ -107,7 +110,9 @@ function serveInbox(patch: () => Response) {
   const day = (offset: number) =>
     new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
   server.use(
-    http.get("/api/trips", () => HttpResponse.json([trip("active", "Exampleland", day(-1), day(1))])),
+    http.get("/api/trips", () =>
+      HttpResponse.json([trip("active", "Exampleland", day(-1), day(1))]),
+    ),
     http.get("/api/trips/:tripId/task-alerts", () => HttpResponse.json([current])),
     http.get("/api/trips/:tripId/:resource", () => HttpResponse.json([])),
     http.patch("/api/trips/:tripId/task-alerts/:alertId/read", ({ request }) => {

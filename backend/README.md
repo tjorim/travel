@@ -140,30 +140,6 @@ A trip's `starts_on`/`ends_on` are owner-only local dates. A share scope can
 include them with `trip.dates` set to `day`, `month` or `year`; the
 projection then truncates both dates to that precision.
 
-### Importing an archived trip
-
-`app.archive_import` loads one trip extracted from the retired `dist/`
-archive (#40), such as `dist/exampleland-2054/private/app-import.json`, through the
-owner API. The trip and everything in it arrive private and unpublished; a
-failed import deletes the partly created trip, and a second run with the same
-title is refused unless `--allow-duplicate` is passed. To complete a trip that
-already exists, `--trip-id TRIP_ID` adds only the records it does not have
-yet (matched by area label, visit area/title/day, stay area/check-in, route
-mode/areas, reisupdate title/date and task title); `--dry-run` with it reports
-what is present and what would be created without writing anything.
-
-```bash
-# Local development API (the token the API runs with as TRAVEL_DEV_AUTH_BYPASS_TOKEN)
-TRAVEL_API_TOKEN="$TRAVEL_DEV_AUTH_BYPASS_TOKEN" uv run python -m app.archive_import \
-  ../dist/exampleland-2054/private/app-import.json --api-url http://localhost:8000/api
-# Production: an owner access token, never committed
-TRAVEL_API_TOKEN=... uv run python -m app.archive_import ../dist/exampleland-2054/private/app-import.json \
-  --api-url https://travel.tjor.im/api
-```
-
-`tests/test_archive_import.py` imports the committed Taiwan file on every
-backend run, so it stays valid against the current API.
-
 `GET /api/health` checks database connectivity. FastAPI publishes the full
 OpenAPI description at `/openapi.json` and interactive development docs at
 `/docs`; production routing may choose not to expose the latter.

@@ -15,16 +15,16 @@ records to migrate or preserve. The live browser routes are defined in
 | `/api/*` | Travel API, including scoped public and unlisted projections. |
 | `/trips/{slug}` | Public visitor shell; requests only the current public projection. |
 | `/share/{token}` | Unlisted visitor shell; requests only the current capability projection. |
-| Former `dist/` trip, asset and private URLs, including `/exampleland-2054/` | Unavailable at launch (404 or 410); no static archive serving or live alias. |
+| Former static archive trip, asset and private URLs, including `/exampleland-2054/` | Unavailable at launch (404 or 410); no static archive serving or live alias. |
 | Other paths | Explicit application assets or 404. No catch-all trip fallback. |
 
 The owner creates trips in the application, selects each public or unlisted
 scope, and explicitly publishes or activates it. Public slugs and share tokens
-are issued by the application. No `dist/` trip data, document or media asset is
+are issued by the application. No static archive trip data, document or media asset is
 imported at launch. Old `/<trip-slug>/` URLs do not map to live views; there
 is no deep-link redirect, fragment mapping or static page fallback. Existing
 Git-backed archive content is not an application data source or a source of
-publication defaults. At launch the VPS stops serving `dist/` trip pages,
+publication defaults. At launch the VPS stops serving static archive trip pages,
 assets and protected files. The files can remain in the repository while
 offline; their disposition is independent of launch. Any later work on them is
 tracked separately in [#40](https://github.com/tjorim/travel/issues/40).
@@ -43,10 +43,10 @@ are checked at request time. The launch route check covers published,
 unpublished, missing, revoked and expired states, direct reloads, API errors,
 cache headers and private-path isolation. The unlisted shell and responses use
 the no-store, no-referrer, noindex and token-log protections in #103.
-Also verify that no `dist/` asset is reachable through the new route boundary.
+Also verify that no static archive asset is reachable through the new route boundary.
 
 [tjorim/apps#219](https://github.com/tjorim/apps/issues/219) added the new
-production routes without any `dist/` serving. There is no content-migration
+production routes without any static archive serving. There is no content-migration
 or rollback-parity dependency on #40.
 
 Two earlier launch requirements were dropped on 23 September 2026. Old archive

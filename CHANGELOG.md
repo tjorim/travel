@@ -6,6 +6,14 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Remove a retired video-backend setting from the optional PostgreSQL test
+  fixture so its locking checks can run against the current configuration.
+- Replace archive-derived fixture titles, flight references and travel years
+  with synthetic examples; use a generic accommodation placeholder. Add source
+  privacy guidance and a CI prevention check for operational files and recognizable
+  credentials (#499). Keep the retired archive as an ignored local copy while removing its importer,
+  tests and CI/documentation paths (#40). History cutover remains under #499.
+
 - Repair frontend test mocks for the identity provider’s CORS preflight and
   preserve request bodies when layered MSW responders fall through, keeping
   strict unhandled-request enforcement (#508).
@@ -257,7 +265,7 @@ All notable changes to the travel hub are documented here.
   badges and next action. Stays and routes are now `idea`, `planned`,
   `confirmed` or `cancelled`, matching visits' `confirmed`. The API, owner MCP tools and archive import still accept
   `booked` and store it as `confirmed`, so older clients and
-  `dist/exampleland-2054/private/app-import.json` keep working. The progress badges
+  static archive keep working. The progress badges
   now read "x/y confirmed" (**bevestigd**) and the public projection reports
   `confirmed` for a route that was `booked` (#316).
 - Stopped the frontend suite timing out on a busy machine. Vitest now has a
@@ -928,7 +936,7 @@ All notable changes to the travel hub are documented here.
 
 ### Removed
 
-- Removed the archive-authoring guidance now that `dist/` is retired and no
+- Removed the archive-authoring guidance now that static archive is retired and no
   longer deployed: the per-trip data contract, photo workflow and renderer
   sections of the README, `docs/media-assets.md`, and the unused Git LFS and
   derivative rules in `.gitattributes`. The static-page safety check became
@@ -997,7 +1005,7 @@ All notable changes to the travel hub are documented here.
 - Renamed `api/` to `backend/` to house the shared application service as
   HTTP and owner MCP interfaces evolve; updated build paths and documentation.
 - Revised the launch contract: create app content fresh, take the static
-  `dist/` trip offline, and provide no archive import or old URL alias.
+  archive trip offline, and provide no archive import or old URL alias.
   Defined direct live route ownership and launch verification.
   ([#101](https://github.com/tjorim/travel/issues/101), [#89](https://github.com/tjorim/travel/issues/89))
 - Removed the pre-launch `/api/published/trips/{public_id}` endpoint so
@@ -1022,7 +1030,7 @@ All notable changes to the travel hub are documented here.
 
 - Added `app.archive_import`, an owner-run importer that recreates an archived
   trip through the API as a private trip, and the extracted Taiwan data in
-  `dist/exampleland-2054/private/app-import.json` (flights, stays, day plan, tasks,
+  static archive (flights, stays, day plan, tasks,
   route, highlights and story). ([#40](https://github.com/tjorim/travel/issues/40))
 
 - Closed the remaining static-archive parity gaps. Stays are now nights
@@ -1445,7 +1453,7 @@ All notable changes to the travel hub are documented here.
   information.
 - Git-backed document manifest and in-app native document preview component.
 - Reusable international flight-map component with Taiwan AMS ↔ TPE flight data.
-- Reusable travel-component directory at `dist/assets/travel/`.
+- Reusable travel-component directory at static archive.
 - Public/private trip-data planning and implementation backlog.
 
 ### Changed

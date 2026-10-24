@@ -4,7 +4,7 @@ The application uses Dutch and English interface messages across owner, public
 and unlisted views. See [contributor guidance](../interface-translations.md) for
 the repeatable audit and [API descriptors](../api-errors.md) for error contracts.
 Catalogues contain application copy only; authored content and the retired
-`dist/` archive are excluded.
+static archive archive are excluded.
 
 ## Decisions
 

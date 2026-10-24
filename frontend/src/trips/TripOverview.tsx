@@ -103,7 +103,7 @@ export function tripZone(
   return null;
 }
 
-/** "Nu in Linkou: 21:15 · 7 u later dan hier" during the trip, and the
+/** "Nu in Voorbeeldstad: 21:15 · 7 u later dan hier" during the trip, and the
  * difference at the trip's own dates (daylight saving can change it). */
 export function LocalTimes({
   trip,

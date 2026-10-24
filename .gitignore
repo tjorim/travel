@@ -16,3 +16,21 @@ frontend/project.inlang/cache/
 
 # Playwright output.
 frontend/test-results/
+
+# Operational data and private audit/recovery material stay outside source.
+.env
+*.env
+*.db
+*.sqlite
+*.sqlite3
+*.bundle
+*.dump
+uploads/
+backups/
+privacy-audit/
+frontend/playwright-report/
+__pycache__/
+*.pyc
+
+# Personal-instance archive retained on disk, outside public source.
+/dist/

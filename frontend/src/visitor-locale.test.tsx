@@ -178,7 +178,7 @@ it("uses the same translated projection in owner previews without visitor resour
   data.places = [];
   data.routes = [];
   const fetcher = vi.fn();
-  const sent = serveApi(fetcher);
+  serveApi(fetcher);
   render(
     <RenderedPreview
       projection={data}

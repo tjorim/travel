@@ -73,7 +73,7 @@ The browser routes and response headers above are requirements for #102 and
 the VPS routing work in tjorim/apps#219. This repository's API tests cover
 the delivery behavior available now. The fresh-launch boundary and absence of
 archive migration or URL aliases are defined by #101. Any later work on old
-`dist/` content is tracked separately in #40.
+static archive content is tracked separately in #40.
 
 ## Visitor shell build handoff
 

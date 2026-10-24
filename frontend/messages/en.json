@@ -681,7 +681,7 @@
   "owner_accommodation": "Accommodation",
   "owner_search_stay": "Search stay",
   "owner_search_for_accommodation_or_an_address": "Search for accommodation or an address",
-  "owner_for_example_citizenm_taipei_north_gate": "For example: Central Station Hotel",
+  "owner_for_example_central_station_hotel": "For example: Central Station Hotel",
   "owner_a_stay_always_has_a_location_search_for_one_or_enter_an_address_or_city": "A stay always has a location: search for one, or enter an address or city below. The location automatically determines the area and stays private, even if you share the stay.",
   "owner_linked_location_choose_or_search_for_another_below_to_replace_it": "Linked location: {p0}. Choose or search for another below to replace it.",
   "owner_choose_the_first_night": "Choose the first night.",

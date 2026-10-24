@@ -78,7 +78,7 @@ No operational travel content belongs in Git.
 Catalogues contain application copy only. Authored fields, provider brands and
 attribution, language autonyms, diagnostic-only text, legacy enum lookup keys,
 styles, identifiers, formatting patterns and protocol examples are excluded.
-The retired `dist/` archive is excluded and never published.
+The retired static archive archive is excluded and never published.
 
 Generated `paraglide/` output is ignored and must compile from a clean checkout.
 Test fixtures/helpers and styling/type infrastructure contain no production copy.

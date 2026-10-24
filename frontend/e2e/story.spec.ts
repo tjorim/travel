@@ -66,7 +66,9 @@ const coverSvg = (index: number) =>
 
 async function open(page: Page, data: unknown, locale: "nl" | "en", theme: "light" | "dark") {
   await mockApi(page);
-  await page.route("**/api/public/trips/exampleland-2054", (route) => route.fulfill({ json: data }));
+  await page.route("**/api/public/trips/exampleland-2054", (route) =>
+    route.fulfill({ json: data }),
+  );
   await page.route("**/api/public/trips/exampleland-2054/files/*", (route) => {
     const id = Number(route.request().url().split("media-")[1]);
     return route.fulfill({ contentType: "image/svg+xml", body: coverSvg(id) });
@@ -147,7 +149,9 @@ test("wide screens put trip context beside the map and stack it on a phone", asy
 test("a cover that cannot load falls back to the text-only header", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1000 });
   await mockApi(page);
-  await page.route("**/api/public/trips/exampleland-2054", (route) => route.fulfill({ json: trip() }));
+  await page.route("**/api/public/trips/exampleland-2054", (route) =>
+    route.fulfill({ json: trip() }),
+  );
   await page.route("**/api/public/trips/exampleland-2054/files/media-0", (route) => route.abort());
   await choosePreferences(page, "en", "light");
   await page.goto("/trips/exampleland-2054");

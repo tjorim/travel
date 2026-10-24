@@ -3,10 +3,8 @@
 The Travel application: a FastAPI backend and a React owner PWA with live
 public and unlisted trip views. Trips are created in the application.
 
-`dist/` is the retired static archive. It is no longer deployed and receives
-no new content; its Taiwan trip is extracted into
-`dist/exampleland-2054/private/app-import.json` and imported into the application
-under #40, after which `dist/` is removed. Old archive URLs are not preserved.
+Retired archive data is preserved privately in application object storage.
+Old archive URLs are not preserved.
 
 - [PLAN.md](PLAN.md) — ordered work and TODOs
 - [CHANGELOG.md](CHANGELOG.md) — implemented changes
@@ -29,8 +27,7 @@ change). The Alembic migrations target PostgreSQL and do not run on SQLite. expo
 with `TRAVEL_ENVIRONMENT=development`. `pnpm dev` then authenticates `/api`
 with it, and opening `http://localhost:5173/admin/` is already signed in as the
 fixed development owner (restart `pnpm dev` after exporting it). Without the
-variable, `/admin/` uses Keycloak as in production. Until #40 removes it, the retained archive can still
-be browsed with `python3 -m http.server 8080 --directory dist`.
+variable, `/admin/` uses Keycloak as in production.
 
 ## Local application stack
 
@@ -40,7 +37,7 @@ Its VPS deployment playbook and upgrade script build `travel/frontend` with
 the provisioned Node 24 and direct `pnpm install --frozen-lockfile` and
 `pnpm build` commands.
 Caddy there serves the built PWA shells and proxies the API; it no longer
-serves `dist/`, so the archive's `private/` files are not published anywhere.
+serves static archive, so the archive's `private/` files are not published anywhere.
 Owner access uses the Keycloak `travel` realm; public and unlisted visitors
 use the application's scoped projection routes.
 
@@ -81,8 +78,6 @@ mistake.
 - `frontend/` — React source for the owner `/admin/` PWA and live public and unlisted trip views
 - `frontend/MAP-PROVIDER.md` — app map provider, attribution, privacy and failure policy
 - `backend/` — application service, FastAPI routes and future owner MCP workflows
-- `dist/` — retired static archive, not deployed; removed after the #40 import
-- `dist/exampleland-2054/private/app-import.json` — the whole Taiwan trip extracted for `app.archive_import` (#40)
 - `compose.yaml` — local Caddy, `travel-api` and PostgreSQL stack
 - `Caddyfile.example` — local copy of the production owner, public and unlisted routes
 

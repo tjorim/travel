@@ -16,13 +16,23 @@ permissions:
   pull-requests: read
 
 jobs:
+  source-privacy:
+    name: Source privacy prevention
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+      - run: python scripts/check-source-privacy.py
+      - run: python -m unittest discover -s scripts -p 'test_*.py'
+
   changes:
     name: Detect changed components
     runs-on: ubuntu-24.04
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
-      archive: ${{ steps.filter.outputs.archive }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: filter
@@ -31,13 +41,9 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-              - 'dist/*/private/app-import.json'
               - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
-              - '.github/workflows/ci.yml'
-            archive:
-              - 'dist/**'
               - '.github/workflows/ci.yml'
 
   backend:
@@ -165,40 +171,15 @@ jobs:
       - name: Run Playwright smoke and accessibility checks
         run: pnpm e2e
 
-  static-archive:
-    name: Static archive
-    needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.archive == 'true'
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: frontend/.node-version
-      - name: Check JavaScript syntax
-        shell: bash
-        run: |
-          while IFS= read -r -d '' file; do
-            node --check "$file"
-          done < <(git ls-files -z -- 'dist/assets/travel/*.js')
-      - name: Validate JSON
-        shell: bash
-        run: |
-          while IFS= read -r -d '' file; do
-            jq empty "$file"
-          done < <(git ls-files -z -- 'dist/*.json' 'dist/**/*.json')
-      - name: Check whitespace
-        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
-
   gate:
     name: CI gate
     if: always()
     needs:
+      - source-privacy
       - changes
       - backend
       - frontend
       - frontend-e2e
-      - static-archive
     runs-on: ubuntu-24.04
     steps:
       - name: Require every job to have passed or been skipped

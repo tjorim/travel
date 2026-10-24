@@ -81,7 +81,7 @@ export function StayForm({
         tripId={tripId}
         legend={m.owner_search_stay()}
         inputLabel={m.owner_search_for_accommodation_or_an_address()}
-        placeholder={m.owner_for_example_citizenm_taipei_north_gate()}
+        placeholder={m.owner_for_example_central_station_hotel()}
         help={m.owner_a_stay_always_has_a_location_search_for_one_or_enter_an_address_or_city()}
         onSelect={choosePlace}
         allowExisting

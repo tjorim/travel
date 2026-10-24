@@ -4,10 +4,10 @@
 
 This is the Travel application: a FastAPI backend and a React PWA. Trips,
 documents and media are created in the application, never committed to Git.
+Use synthetic fixtures and keep private review evidence outside Git. Follow
+`docs/source-privacy.md` and run the source privacy prevention check before
+submitting changes.
 
-- `dist/` is the retired static archive. It is not deployed and takes no new
-  content; `dist/exampleland-2054/private/app-import.json` is its extracted trip for
-  the owner-run `app.archive_import` (#40), after which `dist/` is removed.
 - `backend/app/` contains the application service and API; `backend/alembic/`
   contains its migrations.
 - `frontend/` is the React source for the owner PWA below `/admin/` and the
@@ -16,26 +16,8 @@ documents and media are created in the application, never committed to Git.
 
 ## Build, Test, and Development Commands
 
-The static archive has no package dependencies or build step. Serve it locally
-with:
-
-```bash
-python3 -m http.server 8080 --directory dist
-```
-
-Open `http://localhost:8080`. The archive is no longer deployed; production
-Caddy serves only the application routes, so never add a route that publishes
-`dist/` again. Before committing static archive changes, run the checks against
-every tracked file they cover:
-
-```bash
-git ls-files -z -- 'dist/assets/travel/*.js' | xargs -0 -r -n 1 node --check
-git ls-files -z -- 'dist/*.json' 'dist/**/*.json' | xargs -0 -r -n 1 jq empty
-git diff --check
-```
-
-Validate `Caddyfile.example` with a Caddy container when its routing changes,
-and keep it in step with the Travel block in `tjorim/apps` `infra/Caddyfile`.
+Validate `Caddyfile.example` when routing changes and keep it aligned with the
+Travel block in `tjorim/apps` `infra/Caddyfile`.
 
 For tracker API work, use the locked Python environment:
 

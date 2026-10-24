@@ -338,7 +338,7 @@ it("renders every resource kind using only supplied fields", () => {
       id: "place",
       label: "Shared place",
       region: "Region",
-      latitude: 5,
+      latitude: 17.123456,
       owner_note: "Secret place note",
     },
   ];
@@ -430,7 +430,7 @@ it("renders every resource kind using only supplied fields", () => {
     "Secret track",
     "Secret photo",
     "Secret PDF",
-    "5",
+    "17.123456",
   ]) {
     expect(container.textContent).not.toContain(value);
   }

@@ -12,9 +12,16 @@ record the delivered change in `CHANGELOG.md`.
 
 ## Product direction
 
+Source-publication preparation is tracked in [#499](https://github.com/tjorim/travel/issues/499).
+Synthetic fixtures and source privacy prevention are implemented. The private
+history/GitHub audit, reviewed cutover and final publication approval remain
+release gates under #499.
+See [source privacy](docs/source-privacy.md). Keep the repository private until
+those gates pass.
+
 The Travel app will become the source of truth for its trips, private assets
-and sharing rules. No new app content belongs in Git. The existing `dist/`
-archive remains in the repository, offline after launch, until #40 handles it.
+and sharing rules. No new app content belongs in Git. The retired archive is privately preserved in application object storage;
+#40 owns its verification and retirement.
 
 The Travel application is the live, server-filtered destination for deliberately
 published public and unlisted trip views. Its frontend code is deployed from
@@ -138,13 +145,13 @@ There is no archive import or old URL preservation requirement.
   generated trip page or user content from Git.
 - Wire the already-tested MCP service through the production Caddy and Keycloak
   boundary with the same owner authorization and audit rules.
-- Stop serving all `dist/` trip and private archive URLs at launch. Devices
+- Stop serving all static archive trip and private archive URLs at launch. Devices
   that saved archive documents offline are cleaned up manually (decision 101).
 
-v2 exit condition: no new app user content is added to Git and no `dist/`
+v2 exit condition: no new app user content is added to Git and no static archive
 trip content is served; public/unlisted routes are live and server-filtered,
 and the owner can use the already-tested MCP service through its production
-boundary. Old archive files remain in the repository for separate #40 work.
+boundary. Archive preservation and retirement are separately tracked in #40.
 
 ### v3 — No committed delivery scope
 
@@ -485,7 +492,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       Champagnefestival and Worktime. Record locale selection, unsaved-editor
       behavior, formatting and API-error boundaries before splitting implementation.
 - [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
-      whether and how to move old `dist/` content out of Git. It is not a
+      verify private preservation and retire the old archive. It is not a
       dependency of the fresh application launch or a source of URL aliases.
 - [x] [#229](https://github.com/tjorim/travel/issues/229) Adopt Tailwind CSS
       and Base UI primitives as the styling/behavior stack shared with
@@ -504,7 +511,7 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 - The app is the source of truth for its trip data, private assets and
   sharing policy. Add no new user content or deployable trip assets to Git;
-  the existing offline `dist/` archive is separately tracked in #40.
+  private archive preservation and retirement are tracked in #40.
 - Serve published trips live through the application boundary. Public and
   unlisted requests always receive only their server-filtered projection.
 - Do not use Git history as a document vault for sensitive documents.

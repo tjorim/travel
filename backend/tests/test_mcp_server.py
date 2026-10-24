@@ -534,7 +534,9 @@ def test_an_unknown_field_is_a_rejection_naming_it_and_the_value_is_not_audited(
 ) -> None:
     async def run() -> object:
         async with _protocol_client() as client:
-            trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Exampleland"}})).structured_content["id"]
+            trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Exampleland"}})).structured_content[
+                "id"
+            ]
             area = await client.call_tool("save_area", {"trip_id": trip_id, "payload": {"label": "Taipei"}})
             visit = await client.call_tool(
                 "create_visit", {"trip_id": trip_id, "payload": {"area_id": area.structured_content["id"]}}

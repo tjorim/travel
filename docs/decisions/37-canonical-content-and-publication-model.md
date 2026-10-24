@@ -28,7 +28,7 @@ Start with [the domain model](../domain-model.md) for the vocabulary.
   pages and their files stay behind a capability-checking application delivery
   layer, so revocation remains effective.
 
-`v1` means the first application-backed model. Existing `dist/` files are
+`v1` means the first application-backed model. Existing static archive files are
 archive material, not an import source or schema authority for the fresh launch.
 
 ## Versioning and common conventions
@@ -238,14 +238,14 @@ serving restored data.
 
 ## Fresh launch data
 
-The owner creates or enters application trip content directly. No `dist/`
+The owner creates or enters application trip content directly. No static archive
 JSON, documents, media, manifests or URL slugs are imported, mapped or
 published automatically. The application starts with its own canonical records,
 private files and explicitly chosen share scopes. Git-backed archive content
 is withdrawn from serving at launch while its files remain in the repository;
 it is not a source for live views or a compatibility route. See
 [#101](101-legacy-route-transition.md).
-Any later work on old `dist/` content belongs to
+Any later work on old static archive content belongs to
 [#40](https://github.com/tjorim/travel/issues/40) and does not gate launch.
 
 ## Implementation gates
