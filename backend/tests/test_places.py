@@ -214,7 +214,7 @@ def test_a_shared_location_needs_a_public_name_and_never_discloses_its_address()
             "osm_element_id": "7",
             "display_name": "Beitou Hot Spring, 12 Guangming Road, Taipei",
             "address_line1": "12 Guangming Road",
-            "postal_code": "112",
+            "postal_code": "TEST-112",
             "notes": "Booked for 3pm",
             "latitude": 25.137,
             "longitude": 121.507,
@@ -252,7 +252,8 @@ def test_a_shared_location_needs_a_public_name_and_never_discloses_its_address()
             "longitude": 121.507,
         }
     ]
-    for private in ("12 Guangming", "112", "Booked for 3pm", "osm_element", "Hot Spring, 12"):
+    # Use a distinctive postal code that cannot also occur in a generated hexadecimal public ID.
+    for private in ("12 Guangming", "TEST-112", "Booked for 3pm", "osm_element", "Hot Spring, 12"):
         assert private not in delivered.text
     marker = delivered.json()["navigation"][0]["id"]
     assert marker == delivered.json()["places"][0]["id"]

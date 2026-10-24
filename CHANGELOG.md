@@ -6,6 +6,8 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Use a distinctive synthetic postal code in the public-location privacy test to
+  prevent random public IDs from causing false disclosure failures.
 - Remove the custom source privacy scripts, their tests and CI job. Retain
   ignore rules, synthetic fixtures and brief contributor guidance.
 - Remove a retired video-backend setting from the optional PostgreSQL test
