@@ -80,7 +80,8 @@ jobs:
         run: uv sync --all-groups --frozen
       - name: Install pinned ffmpeg and ffprobe
         run: |
-          image=docker.io/mwader/static-ffmpeg:8.0.1@sha256:9a4bf2b7915ef1c4d725a176159438146b68485cc613bf6662e2786c661cd16d
+          image=$(awk '$1 == "FROM" && $NF == "ffmpeg" { print $2; exit }' Dockerfile)
+          test -n "$image"
           docker pull "$image"
           container=$(docker create "$image")
           docker cp "$container:/ffmpeg" /tmp/travel-ffmpeg
