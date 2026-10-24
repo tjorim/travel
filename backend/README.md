@@ -147,7 +147,7 @@ OpenAPI description at `/openapi.json` and interactive development docs at
 Ownership is an API boundary, not a client convention: a non-owner receives
 `404` for an owned resource. Browser delivery uses only the scoped
 public/unlisted projection routes above, per
-[#42](https://github.com/tjorim/travel/issues/42).
+[#42](https://github.com/tjorim/travel-private/issues/42).
 The live browser route and request sequence are defined in
 [the browser contract](../docs/decisions/103-live-browser-route-contract.md).
 

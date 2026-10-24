@@ -1,6 +1,6 @@
 # Travel canonical content and publication model
 
-Issue [#37](https://github.com/tjorim/travel/issues/37) defines the v1 model
+Issue [#37](https://github.com/tjorim/travel-private/issues/37) defines the v1 model
 for the private Travel application and the controlled path to a public archive.
 It implements, and is subordinate to, the [privacy, sharing, and offline
 policy](36-privacy-sharing-offline-policy.md). It is a design contract, not an
@@ -79,7 +79,7 @@ an asynchronous, audited purge after the database transaction.
 | `import_record` (`travel/import@1`) | `id`, `trip_id`, `provider` (`direct_device`, `google_photos_picker`, `gopro_cloud`), `state`, `requested_at`, `completed_at`, `failure_code` | Owner authorization/consent time, provider item reference and transfer checksum are owner-only. Provider access tokens are held in a secret store, never in this table or a browser response. An import completes only once copied and verified in `stored_object`; provider URLs are not retained as file delivery URLs. |
 | `public_surface` (`travel/public-surface@1`) | `trip_id` unique, `slug` unique, `scope_json`, `state` | The stable public URL reservation and its live, owner-selected scope. It has no capability; it is servable only while `state=published`. `scope_json` is validated as `travel/share-scope@1` and is a live field, editable whether or not the surface is currently published — every request renders it against current canonical data, so there is no separate frozen `publication_draft`/`projection_revision` pair to promote. |
 | `share_link` (`travel/share-link@1`) | `id`, `series_id`, `trip_id`, `label`, `token`, `token_verifier`, `scope_json`, `expires_at`, `state`, `activated_at`, `revoked_at` | Owner-only `label` and active URL token; the verifier is a keyed one-way digest used for anonymous delivery. `series_id` joins a replacement to the same owner-visible link history when it is rotated. State is `draft`, `active`, `revoked`, or `expired`. `scope_json` is likewise live: while `draft` or `active`, the owner can widen or narrow it at any time, and an `active` link reflects the change immediately for its existing token. Only `state` — minting, revoking, or rotating the token — is gated. |
-| `audit_event` (`travel/audit-event@1`, not yet implemented — [#48](https://github.com/tjorim/travel/issues/48)) | `id`, `trip_id`, `actor_subject`, `kind`, `target_type`, `target_id`, `occurred_at`, `details` | Owner-only audit without raw capability, recipient identity, or recipient IP. Publication/link activity follows the 24-month policy retention. |
+| `audit_event` (`travel/audit-event@1`, not yet implemented — [#48](https://github.com/tjorim/travel-private/issues/48)) | `id`, `trip_id`, `actor_subject`, `kind`, `target_type`, `target_id`, `occurred_at`, `details` | Owner-only audit without raw capability, recipient identity, or recipient IP. Publication/link activity follows the 24-month policy retention. |
 
 Database constraints enforce that every resource id referenced by a
 `scope_json` belongs to the same trip as the referencing `public_surface` or
@@ -178,7 +178,7 @@ next request, with no republish step.
    links.
 
 The public view is a live API response (delivered for trips/visits/reisupdates
-in [#42](https://github.com/tjorim/travel/issues/42)). The fresh-launch
+in [#42](https://github.com/tjorim/travel-private/issues/42)). The fresh-launch
 route boundary is defined by [#101](101-legacy-route-transition.md).
 
 ### Unlisted capability
@@ -246,12 +246,12 @@ is withdrawn from serving at launch while its files remain in the repository;
 it is not a source for live views or a compatibility route. See
 [#101](101-legacy-route-transition.md).
 Any later work on old static archive content belongs to
-[#40](https://github.com/tjorim/travel/issues/40) and does not gate launch.
+[#40](https://github.com/tjorim/travel-private/issues/40) and does not gate launch.
 
 ## Implementation gates
 
 Publication/share-link delivery for trips, visits, and reisupdates was
-implemented in [#42](https://github.com/tjorim/travel/issues/42): Alembic
+implemented in [#42](https://github.com/tjorim/travel-private/issues/42): Alembic
 migrations, owner/public/unlisted response models, scope validation, and
 capability delivery, with tests for each state transition. Because v1 renders
 scope and content live rather than freezing a revision, its tests instead
@@ -263,5 +263,5 @@ media, and tracks — and their object-store integration and
 export/purge workers — remain to be modeled and wired into the same
 `scope_json` mechanism by the issues that introduce them (`#43`, `#38`,
 `#34`). An owner-only audit trail
-([#48](https://github.com/tjorim/travel/issues/48)) remains a separate concern.
+([#48](https://github.com/tjorim/travel-private/issues/48)) remains a separate concern.
 There is no legacy importer in the launch plan; #40 is separate follow-up work.
