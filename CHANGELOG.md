@@ -6,12 +6,13 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Remove the custom source privacy scripts, their tests and CI job. Retain
+  ignore rules, synthetic fixtures and brief contributor guidance.
 - Remove a retired video-backend setting from the optional PostgreSQL test
   fixture so its locking checks can run against the current configuration.
 - Replace archive-derived fixture titles, flight references and travel years
-  with synthetic examples; use a generic accommodation placeholder. Add source
-  privacy guidance and a CI prevention check for operational files and recognizable
-  credentials (#499). Keep the retired archive as an ignored local copy while removing its importer,
+  with synthetic examples; use a generic accommodation placeholder and source
+  privacy guidance (#499). Keep the retired archive as an ignored local copy while removing its importer,
   tests and CI/documentation paths (#40). History cutover remains under #499.
 
 - Repair frontend test mocks for the identity provider’s CORS preflight and

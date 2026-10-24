@@ -12,12 +12,11 @@ record the delivered change in `CHANGELOG.md`.
 
 ## Product direction
 
-Source-publication preparation is tracked in [#499](https://github.com/tjorim/travel-private/issues/499).
-Synthetic fixtures and source privacy prevention are implemented. The private
-history/GitHub audit, reviewed cutover and final publication approval remain
-release gates under #499.
-See [source privacy](docs/source-privacy.md). Keep the repository private until
-those gates pass.
+This public source repository is separate from the personal instance and its
+private archive. Historical source-publication work is tracked in
+[#499](https://github.com/tjorim/travel-private/issues/499). Keep operational data
+out of public source and use synthetic fixtures; see the brief
+[source privacy guidance](docs/source-privacy.md).
 
 The Travel app will become the source of truth for its trips, private assets
 and sharing rules. No new app content belongs in Git. The retired archive is privately preserved in application object storage;
