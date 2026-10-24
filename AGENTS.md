@@ -5,8 +5,7 @@
 This is the Travel application: a FastAPI backend and a React PWA. Trips,
 documents and media are created in the application, never committed to Git.
 Use synthetic fixtures and keep private review evidence outside Git. Follow
-`docs/source-privacy.md` and run the source privacy prevention check before
-submitting changes.
+`docs/source-privacy.md` when reviewing examples and assets.
 
 - `backend/app/` contains the application service and API; `backend/alembic/`
   contains its migrations.

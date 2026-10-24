@@ -27,7 +27,7 @@ Git-backed archive content is not an application data source or a source of
 publication defaults. At launch the VPS stops serving static archive trip pages,
 assets and protected files. The files can remain in the repository while
 offline; their disposition is independent of launch. Any later work on them is
-tracked separately in [#40](https://github.com/tjorim/travel/issues/40).
+tracked separately in [#40](https://github.com/tjorim/travel-private/issues/40).
 
 A live request stays within its boundary. A 404, unavailable capability, API
 failure or network failure never falls through to a static file, owner route or

@@ -2,7 +2,7 @@
 
 Travel is the pilot for the shared MCP authentication contract of
 [tjorim/apps#265](https://github.com/tjorim/apps/issues/265); this records the
-application side ([#336](https://github.com/tjorim/travel/issues/336)).
+application side ([#336](https://github.com/tjorim/travel-private/issues/336)).
 
 ## Contract
 

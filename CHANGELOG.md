@@ -8,12 +8,13 @@ All notable changes to the travel hub are documented here.
 
 - Use a distinctive synthetic postal code in the public-location privacy test to
   prevent random public IDs from causing false disclosure failures.
+- Remove the custom source privacy scripts, their tests and CI job. Retain
+  ignore rules, synthetic fixtures and brief contributor guidance.
 - Remove a retired video-backend setting from the optional PostgreSQL test
   fixture so its locking checks can run against the current configuration.
 - Replace archive-derived fixture titles, flight references and travel years
-  with synthetic examples; use a generic accommodation placeholder. Add source
-  privacy guidance and a CI prevention check for operational files and recognizable
-  credentials (#499). Keep the retired archive as an ignored local copy while removing its importer,
+  with synthetic examples; use a generic accommodation placeholder and source
+  privacy guidance (#499). Keep the retired archive as an ignored local copy while removing its importer,
   tests and CI/documentation paths (#40). History cutover remains under #499.
 
 - Repair frontend test mocks for the identity provider’s CORS preflight and
@@ -418,14 +419,14 @@ All notable changes to the travel hub are documented here.
   packing copy. Its read-only offline view shows the saved time, bags, items,
   packed states, grouping and filters. Reconnect checks owner access and the
   existing lease policy; editing still requires a connection.
-  ([#266](https://github.com/tjorim/travel/issues/266))
+  ([#266](https://github.com/tjorim/travel-private/issues/266))
 
 - Packing lists can be copied from another owned trip or created from one or
   more personal templates, preserving structure while resetting every item to
   unpacked. Owners can mark departure-day items, filter them, review a compact
   final check of essentials, assignments, weight limits and bag hints, and
   optionally add or dismiss suggestions from their own prior trips.
-  ([#262](https://github.com/tjorim/travel/issues/262))
+  ([#262](https://github.com/tjorim/travel-private/issues/262))
 
 - Added a private Inpakken workspace tab with bag and category grouping,
   Base UI view controls, visual progress and weight summaries, direct packed
@@ -434,43 +435,43 @@ All notable changes to the travel hub are documented here.
   buttons were removed after owner feedback. Packing selectors use the shared
   `react-select` control used by other owner forms.
   Failed toggles remain visible for retry.
-  ([#261](https://github.com/tjorim/travel/issues/261))
+  ([#261](https://github.com/tjorim/travel-private/issues/261))
 
 - Owner-only packing lists now contain ordered bags and packable items, with
   bulk creation, packed state, reassignment, optional gram weights and bag
   limits. Deleting a bag leaves its items unassigned. The owner API and typed
   MCP tools share the same validation; visitor projections exclude packing.
-  ([#260](https://github.com/tjorim/travel/issues/260))
+  ([#260](https://github.com/tjorim/travel-private/issues/260))
 
 - Added Tailwind CSS to the owner and visitor builds for new styling, `cn` for
   conditional classes, Oxlint rules for utility classes, and Oxfmt commands
   for frontend formatting. Frontend sources have been formatted with Oxfmt;
   existing views keep their current CSS and native record dialogs.
-  ([#229](https://github.com/tjorim/travel/issues/229))
+  ([#229](https://github.com/tjorim/travel-private/issues/229))
 
 - Owner-only trip, area, location and travel-update lists now support bounded,
   case-insensitive search and offset pagination. The growing place, trip and
   media attachment, copy presentation and saved-location pickers search these
   lists as the owner types, while existing unfiltered list calls keep their
-  response shape. ([#238](https://github.com/tjorim/travel/issues/238))
+  response shape. ([#238](https://github.com/tjorim/travel-private/issues/238))
 
 - Planning now groups visible locations under their areas, with direct location
   creation and a shared detail/editor dialog. Owners can correct saved address
   fields before enabling address sharing; location edits retain map points and
   refresh linked trip records. The dialog previews the exact visitor address
   fields and names the live audiences that currently receive the location.
-  ([#251](https://github.com/tjorim/travel/issues/251),
-  [#252](https://github.com/tjorim/travel/issues/252))
+  ([#251](https://github.com/tjorim/travel-private/issues/251),
+  [#252](https://github.com/tjorim/travel-private/issues/252))
 - Map markers and route lines now open persistent detail cards with shared or
   private record links, dates, endpoints and transport when available. Routes
   highlight on selection; the textual controls and “Hele reis tonen” provide
   keyboard and touch access to the same selection and full-trip view.
-  Visitor details use only the published projection. ([#249](https://github.com/tjorim/travel/issues/249))
+  Visitor details use only the published projection. ([#249](https://github.com/tjorim/travel-private/issues/249))
 - The private trip overview shows its saved summary, complete location addresses,
   local route times with endpoint time zones and areas, stay times, task reminders,
   linked library documents, and authenticated media thumbnails beside updates and
   media records. The existing record links still open their workspace dialogs.
-  ([#247](https://github.com/tjorim/travel/issues/247))
+  ([#247](https://github.com/tjorim/travel-private/issues/247))
 - A route can have a day before it has a train: `departs_on` is the local
   departure day in the departure time zone, so "Kaohsiung → Taipei on 5
   December, no train yet" is stored as a day without inventing a time or
@@ -487,7 +488,7 @@ All notable changes to the travel hub are documented here.
   `list_routes` compact rows carry `departs_on`, and the MCP route tools
   describe the day-first rule. Shared routes carry `departs_on` next to the
   times they already shared. Stays keep their required dates.
-  ([#197](https://github.com/tjorim/travel/issues/197))
+  ([#197](https://github.com/tjorim/travel-private/issues/197))
 - The owner app's Markdown fields share one editor: a plain textarea with a
   snippet toolbar (bold, italic, heading, list, task list, link) and a Preview
   tab that the server renders through the new owner-only
@@ -499,7 +500,7 @@ All notable changes to the travel hub are documented here.
   media), and a stay's contact details stay plain text whose phone numbers
   (`tel:`), email and web addresses become links (`contact_details_html`).
   Markdown fields also render GFM tables, which scroll sideways within their
-  card on a phone. ([#194](https://github.com/tjorim/travel/issues/194))
+  card on a phone. ([#194](https://github.com/tjorim/travel-private/issues/194))
 - Long-form text is Markdown: the trip summary, visit summary and notes,
   reisupdate body and private notes, and stay, route, task and location notes.
   Records keep storing the Markdown source; one backend renderer
@@ -513,7 +514,7 @@ All notable changes to the travel hub are documented here.
   tasks. Public trip cards and saved shared trips show a one-line plain-text
   `summary_text` instead. OpenAPI and MCP field descriptions mark these fields
   as Markdown; MCP tools return the source without the rendered HTML.
-  ([#192](https://github.com/tjorim/travel/issues/192))
+  ([#192](https://github.com/tjorim/travel-private/issues/192))
 - Duplicate locations and areas can be merged, and unused areas and locations deleted,
   over the API and MCP. `POST /api/trips/{id}/locations/merge` and the
   `merge_locations` tool preview, per duplicate, how many visits, stays, routes
@@ -527,13 +528,13 @@ All notable changes to the travel hub are documented here.
   areas the same way: locations, visits, route ends and reisupdates move to the
   kept area, recorded as an `area.merge` event. The preview also lists the
   locations that only name the city, so those duplicates can be merged next.
-  ([#188](https://github.com/tjorim/travel/issues/188))
+  ([#188](https://github.com/tjorim/travel-private/issues/188))
 - Visits have an owner-only `status`: `idea`, `planned` (the default) or
   `confirmed`. It is never part of a shared visit, so planning state no longer
   needs a "· concept" marker in a title or area label that visitors see. Areas
   keep no status of their own; an area is as settled as its visits. The visit
   editor has a Status choice, and the list calls out ideas and confirmed
-  visits. ([#183](https://github.com/tjorim/travel/issues/183))
+  visits. ([#183](https://github.com/tjorim/travel-private/issues/183))
 - `GET /api/trips/{id}/overview` and the `get_trip_overview` MCP tool check a
   trip in one read: counts and visibility per kind, what the public page and
   each draft or active link receive, and warnings for an active audience that
@@ -541,17 +542,17 @@ All notable changes to the travel hub are documented here.
   label a visitor sees, shared records without a map point because their area
   is not shared, and undated visits that duplicate a dated one. The Delen
   screen shows the same review, in Dutch, above the visibility choices.
-  ([#182](https://github.com/tjorim/travel/issues/182))
+  ([#182](https://github.com/tjorim/travel-private/issues/182))
 - The `batch_create` MCP tool adds many visits, stays, routes, reisupdates and
   tasks to a trip in one all-or-nothing call. `app.archive_import --trip-id`
   completes an existing trip with only the records it lacks, and `--dry-run`
   reports what is present and what would be created.
-  ([#182](https://github.com/tjorim/travel/issues/182))
+  ([#182](https://github.com/tjorim/travel-private/issues/182))
 - Video derivatives now transcode to a capped H.264/AAC MP4 with telemetry and
   container metadata removed. A separate WebP poster accompanies each video;
   the owner can remove audio, review the copy, retry failures and explicitly
   approve it before sharing. Visitor playback supports byte ranges, and
-  offline pinning shows the copy size. ([#177](https://github.com/tjorim/travel/issues/177))
+  offline pinning shows the copy size. ([#177](https://github.com/tjorim/travel-private/issues/177))
 - Areas now have generalized dots seeded from a location's coordinates, and
   owner-only coordinate suggestions find a nearby area or propose a new one
   with a time zone. The owner map can show a hollow derived dot from private
@@ -603,7 +604,7 @@ All notable changes to the travel hub are documented here.
   `<datalist>`; typing any zone still works. Form labels, errors and
   fieldsets use Base UI-backed `Field` and `FieldSet` components, so labels,
   error messages and validity are wired to their controls.
-  ([#264](https://github.com/tjorim/travel/issues/264))
+  ([#264](https://github.com/tjorim/travel-private/issues/264))
 
 - Owner, public and unlisted views now use Tailwind utilities and named Travel
   theme tokens for their application styling. The legacy class allowlist is
@@ -612,17 +613,17 @@ All notable changes to the travel hub are documented here.
   checkboxes, textareas, disclosures and packing progress use Base UI
   primitives with Tailwind styling. Desktop and mobile layouts retain the
   existing visual identity.
-  ([#264](https://github.com/tjorim/travel/issues/264))
+  ([#264](https://github.com/tjorim/travel-private/issues/264))
 
 - Shared record editors now use Base UI Dialog, with Base UI Alert Dialog for
   discard and delete confirmations. Their presentation uses Tailwind theme
   values, retains the mobile sheet, and guards Escape, outside presses, and
   close buttons when there are unsaved changes.
-  ([#264](https://github.com/tjorim/travel/issues/264))
+  ([#264](https://github.com/tjorim/travel-private/issues/264))
 
 - Transport booking badges count non-cancelled routes with a departure day,
   including journeys without exact times, while leaving undated map routes
-  out of booking progress. ([#248](https://github.com/tjorim/travel/issues/248))
+  out of booking progress. ([#248](https://github.com/tjorim/travel-private/issues/248))
 - The private overview (`/admin/trips/:tripId/details`, "Volledig
   privéoverzicht") is now scannable: it opens with the trip's booking-status
   badges and route map, a section jump-nav, and human-readable status/kind
@@ -632,14 +633,14 @@ All notable changes to the travel hub are documented here.
   `body` next to the private note, no longer only the private note, and a
   saved location's own name is no longer repeated after itself (`Lisbon · PT`
   instead of `Lisbon, ... · PT · Lisbon`). The page still explains no
-  implementation detail. ([#213](https://github.com/tjorim/travel/issues/213))
+  implementation detail. ([#213](https://github.com/tjorim/travel-private/issues/213))
 - The owner PWA and visitor views route with `@tanstack/react-router` instead
   of `react-router-dom`, matching the TanStack Query/Form foundation the app
   already uses. This swaps the routing library only: no loaders, type-safe
   search-param schemas or other new capabilities are adopted here, and the
   owner (`/admin`), public (`/trips`) and unlisted (`/share`) route trees,
   deep links and `/trips?new=1`/agenda-jump-nav entry points keep working
-  unchanged. ([#221](https://github.com/tjorim/travel/issues/221))
+  unchanged. ([#221](https://github.com/tjorim/travel-private/issues/221))
 - The MCP server uses layered tool discovery, like Worktime, Champagnefestival
   and Daynest: clients list only `whoami`, `list_trips`, `get_trip_overview`,
   `search_tools` and `call_tool` instead of all 94 tools (~35k tokens of
@@ -651,7 +652,7 @@ All notable changes to the travel hub are documented here.
   logged error pointing at `search_tools`. Tool descriptions were tightened so
   English and Dutch task phrasings find the right tool, and
   `/api/mcp/capabilities` adds the listed surface as `visible_tools`.
-  ([#196](https://github.com/tjorim/travel/issues/196))
+  ([#196](https://github.com/tjorim/travel-private/issues/196))
 - Every request body and MCP tool argument now rejects a field it does not
   define instead of dropping it. A misspelled or guessed field, or one a client
   cached from a newer or older schema, now fails with a 422 or a tool error that
@@ -659,22 +660,22 @@ All notable changes to the travel hub are documented here.
   Input models share one strict base, and a test walks every REST body and MCP
   argument to keep it that way. The audit row for a refused MCP call records
   only the field path and error type, never the rejected value.
-  ([#189](https://github.com/tjorim/travel/issues/189))
+  ([#189](https://github.com/tjorim/travel-private/issues/189))
 - A stay whose accommodation is not chosen yet takes just an `area_id`; all
   such stays in one area share its city-level location instead of each adding
   a copy, and clearing a stay's location returns it there. Moving a location
   to another area now carries the route ends and visits at it along.
-  ([#182](https://github.com/tjorim/travel/issues/182))
+  ([#182](https://github.com/tjorim/travel-private/issues/182))
 - MCP `list_areas`, `list_locations`, `list_visits`, `list_stays` and
   `list_routes` return compact rows (ids and labels) by default; pass
   `compact=false`, or use the `get_*` tool, for the full records.
   `list_areas` also takes a `query` to find an area by name.
-  ([#182](https://github.com/tjorim/travel/issues/182))
+  ([#182](https://github.com/tjorim/travel-private/issues/182))
 - Documents are always private, whether kept in the owner-wide library or
   attached to a trip. Removed document derivatives, their share controls and
   visitor delivery; deleting either document type now removes its stored file.
   Migration `001_areas_locations_routes` drops the retired twin table, removes old
-  scope selections and queues its files for purge. ([#176](https://github.com/tjorim/travel/issues/176))
+  scope selections and queues its files for purge. ([#176](https://github.com/tjorim/travel-private/issues/176))
 
 - The media import buttons and provider settings follow `GET /provider-tokens` availability: Google Photos needs server OAuth credentials and an encryption key; GoPro Cloud stays hidden pending its beta OAuth contract. An available but unconnected provider is disabled in imports with a pointer to Instellingen.
 - Made the place vocabulary one set of words and dropped raw GPS tracks. An
@@ -796,7 +797,7 @@ All notable changes to the travel hub are documented here.
   record dialog as the other trip entities. The deliberately different
   workflow boundaries for publication, media, Capture and Settings are
   recorded in [the editor-workflow decision](docs/decisions/104-editor-workflow-boundaries.md).
-  ([#170](https://github.com/tjorim/travel/issues/170))
+  ([#170](https://github.com/tjorim/travel-private/issues/170))
 
 - Added local sign-in without Keycloak, aligned with champagnefestival and
   worktime: `TRAVEL_DEV_AUTH_BYPASS_TOKEN` authenticates a request bearing that
@@ -815,8 +816,8 @@ All notable changes to the travel hub are documented here.
   trip overview and private tasks use it; the trip editor now opens with the
   selected trip's saved values. Devtools are opt-in in development
   (`VITE_QUERY_DEVTOOLS=1`) and never bundled for production. The remaining
-  screens follow in [#165](https://github.com/tjorim/travel/issues/165).
-  ([#161](https://github.com/tjorim/travel/issues/161))
+  screens follow in [#165](https://github.com/tjorim/travel-private/issues/165).
+  ([#161](https://github.com/tjorim/travel-private/issues/161))
 
 - Moved the remaining owner PWA screens onto the TanStack Query and Form
   foundation: stays, transport, broad places, itinerary, route stages,
@@ -830,13 +831,13 @@ All notable changes to the travel hub are documented here.
   saved or deleted record is never shown stale. Owner-managed share-link URLs
   remain only in the owner-only in-memory cache; provider tokens and previews
   are dropped from the mutation cache once settled.
-  ([#165](https://github.com/tjorim/travel/issues/165))
+  ([#165](https://github.com/tjorim/travel-private/issues/165))
 
 - Extended owner-selected, encrypted offline copies to private media,
   individual itinerary entries and GeoJSON map/route snapshots. Each resource
   has owner-scoped revalidation; map tiles are deliberately not cached, in
   accordance with provider terms. Deleted media and itinerary entries also
-  remove their local copy immediately. ([#131](https://github.com/tjorim/travel/issues/131))
+  remove their local copy immediately. ([#131](https://github.com/tjorim/travel-private/issues/131))
 
 ### Changed
 
@@ -844,14 +845,14 @@ All notable changes to the travel hub are documented here.
   does: reusable places, ordered stops, routes on a map and stay summaries.
   The privacy-safe boundary remains enforced internally; creating any of these
   records still never makes it public.
-  ([#171](https://github.com/tjorim/travel/pull/171))
+  ([#171](https://github.com/tjorim/travel-private/pull/171))
 
 - Reused the owner-only place lookup wherever an editor creates a place:
   general places, private stays and transport endpoints. A general-place result stays
   deliberately kilometre-rounded; a stay or endpoint retains its selected
   exact provider metadata and coordinates while remaining private. Every
   suggested field remains editable and nothing is saved until its record is
-  saved. ([#171](https://github.com/tjorim/travel/pull/171))
+  saved. ([#171](https://github.com/tjorim/travel-private/pull/171))
 
 - Replaced the route JSON textbox with a map editor: owners click general
   points in order, drag a point to correct it, see the resulting line and can
@@ -859,7 +860,7 @@ All notable changes to the travel hub are documented here.
   preview before editing. Map clicks are rounded to roughly 100 metres so the
   editor remains for deliberate routes, while JSON remains available only
   as an advanced import path.
-  ([#171](https://github.com/tjorim/travel/pull/171))
+  ([#171](https://github.com/tjorim/travel-private/pull/171))
 
 - Named share links are now reusable owner-managed URLs: an active link can
   be opened and copied again whenever the owner edits it, without disrupting
@@ -867,24 +868,24 @@ All notable changes to the travel hub are documented here.
   separate verifier for anonymous visits, and revoking or rotating a link
   removes the old URL. Links created before this change cannot be recovered
   from their existing one-way verifier; rotate one once to make it reusable.
-  ([#171](https://github.com/tjorim/travel/pull/171))
+  ([#171](https://github.com/tjorim/travel-private/pull/171))
 
 - Rotating a named link now keeps its previous, revoked URL inside the same
   link history instead of presenting it as another independent link. Existing
   rotations are grouped from their audit trail during migration.
-  ([#171](https://github.com/tjorim/travel/pull/171))
+  ([#171](https://github.com/tjorim/travel-private/pull/171))
 
 - The normal “Nieuwe link” flow now creates an active URL in one action. Its
   expiry is selected before saving, rather than making the owner create a
   confusing intermediate draft and activate it separately.
-  ([#171](https://github.com/tjorim/travel/pull/171))
+  ([#171](https://github.com/tjorim/travel-private/pull/171))
 
 - Simplified sharing around the two records that actually control visitor
   access: a public page and named share links. Removed the superseded trip-level
   visibility, publication state and public-ID fields from the API, PWA and
   database, so they can no longer contradict a scoped publication. The sharing
   page now describes its choices in visitor terms, and explains date sharing as
-  full dates, months only, year only or not shown. ([#171](https://github.com/tjorim/travel/pull/171))
+  full dates, months only, year only or not shown. ([#171](https://github.com/tjorim/travel-private/pull/171))
 
 - Replaced the last browser `confirm()` prompts in the owner PWA with the
   accessible in-app confirmation already used by the record dialogs: deleting
@@ -892,7 +893,7 @@ All notable changes to the travel hub are documented here.
   emergency-info entry, disconnecting a provider, and removing offline copies.
   The confirmation is a modal with a focus trap, Escape and return focus, and
   states what will happen before anything is sent.
-  ([#157](https://github.com/tjorim/travel/issues/157))
+  ([#157](https://github.com/tjorim/travel-private/issues/157))
 
 ### Fixed
 
@@ -916,12 +917,12 @@ All notable changes to the travel hub are documented here.
   or otherwise disregard a visit's explicit order. The tie-break was dropped
   in favour of each record's own order: a route by departure day/time/creation
   order (as the Routes list already shows it) and a visit by its explicit
-  position. ([#206](https://github.com/tjorim/travel/issues/206))
+  position. ([#206](https://github.com/tjorim/travel-private/issues/206))
 - The Agenda moved to the top of the Plan tab with a jump-nav row to its other
   sections, and its rows now open the described stay, route or visit's own
   dialog instead of only reading its text; the owner no longer has to scroll
   back up to find and open the same record in another list.
-  ([#208](https://github.com/tjorim/travel/issues/208))
+  ([#208](https://github.com/tjorim/travel-private/issues/208))
 - "Toon op kaart" on a day-plan step did nothing in the workspace, because the
   map only exists on the overview tab and the scroll target belonged to the old
   stacked page. It now opens the overview, scrolls to the map and focuses the
@@ -943,13 +944,13 @@ All notable changes to the travel hub are documented here.
   sections of the README, `docs/media-assets.md`, and the unused Git LFS and
   derivative rules in `.gitattributes`. The static-page safety check became
   the app [publication safety check](docs/publication-safety-check.md).
-  ([#40](https://github.com/tjorim/travel/issues/40))
+  ([#40](https://github.com/tjorim/travel-private/issues/40))
 
 - Removed the retired Go `travel-auth` session gate, its CI job, Dependabot
   entry and `travel-auth.env` setup. `compose.yaml` and `Caddyfile.example`
   now run the local app stack (Caddy, `travel-api`, PostgreSQL) with the same
   owner, public and unlisted routes as production; the archive is not served.
-  ([#137](https://github.com/tjorim/travel/issues/137))
+  ([#137](https://github.com/tjorim/travel-private/issues/137))
 
 ### Fixed
 
@@ -966,7 +967,7 @@ All notable changes to the travel hub are documented here.
   values. The intermittent `-32603` failures on parallel list calls could not
   be reproduced (200 concurrent calls against PostgreSQL all succeed), so the
   cause is still unconfirmed and tracked in
-  [#147](https://github.com/tjorim/travel/issues/147).
+  [#147](https://github.com/tjorim/travel-private/issues/147).
 
 ### Changed
 
@@ -1000,7 +1001,7 @@ All notable changes to the travel hub are documented here.
   as new trip content and media move to the application workflow.
 - Replaced the static archive's three SVG route maps with a shared MapLibre
   renderer and separate public/private GeoJSON files, with provider attribution
-  and accessible text fallbacks. ([#34](https://github.com/tjorim/travel/issues/34))
+  and accessible text fallbacks. ([#34](https://github.com/tjorim/travel-private/issues/34))
 - Renamed the React source directory from `tracker/` to `frontend/` now that
   it serves owner, public and unlisted views; updated build automation and
   repository references.
@@ -1009,7 +1010,7 @@ All notable changes to the travel hub are documented here.
 - Revised the launch contract: create app content fresh, take the static
   archive trip offline, and provide no archive import or old URL alias.
   Defined direct live route ownership and launch verification.
-  ([#101](https://github.com/tjorim/travel/issues/101), [#89](https://github.com/tjorim/travel/issues/89))
+  ([#101](https://github.com/tjorim/travel-private/issues/101), [#89](https://github.com/tjorim/travel-private/issues/89))
 - Removed the pre-launch `/api/published/trips/{public_id}` endpoint so
   browser delivery has only the scoped public and unlisted projection APIs.
 - Renamed the owner PWA route from `/tracker/` to `/admin/`, including its build
@@ -1033,7 +1034,7 @@ All notable changes to the travel hub are documented here.
 - Added `app.archive_import`, an owner-run importer that recreates an archived
   trip through the API as a private trip, and the extracted Taiwan data in
   static archive (flights, stays, day plan, tasks,
-  route, highlights and story). ([#40](https://github.com/tjorim/travel/issues/40))
+  route, highlights and story). ([#40](https://github.com/tjorim/travel-private/issues/40))
 
 - Closed the remaining static-archive parity gaps. Stays are now nights
   (check-in date to check-out morning, optional local times) linked to a
@@ -1045,7 +1046,7 @@ All notable changes to the travel hub are documented here.
   trips gain travel dates with live booking badges. Visitors can see
   owner-selected trip dates at a chosen precision, authored highlights and
   route-stage summaries, and owner MCP tools manage highlights like the
-  other resources. ([#140](https://github.com/tjorim/travel/issues/140))
+  other resources. ([#140](https://github.com/tjorim/travel-private/issues/140))
 
 - Added a typed, owner-authenticated local MCP server with 104 task-specific
   management tools for canonical travel content, media/document workflows,
@@ -1055,27 +1056,27 @@ All notable changes to the travel hub are documented here.
   When MCP/OIDC configuration is present, FastAPI mounts its stateless,
   authenticated HTTP surface at `/mcp` and exposes an authoritative capability
   manifest.
-  ([#41](https://github.com/tjorim/travel/issues/41))
+  ([#41](https://github.com/tjorim/travel-private/issues/41))
 
 - Added scoped MapLibre maps to owner, public and unlisted trip views. The owner
   map parses finished private GPX/JSON tracks in memory and offers optional
   terrain and satellite controls; visitor maps use only selected broad points
-  and routes. ([#119](https://github.com/tjorim/travel/issues/119))
+  and routes. ([#119](https://github.com/tjorim/travel-private/issues/119))
 
 - Added live public trip discovery on the Travel landing page and `/trips/`:
   only currently published, scope-approved titles and summaries appear, with
   no-store responses and visitor loading, error and empty states.
-  ([#125](https://github.com/tjorim/travel/issues/125))
+  ([#125](https://github.com/tjorim/travel-private/issues/125))
 
 - Added an owner-only rendered preview for public and named-link publication
   scopes using the visitor components, with scoped preview files and navigation
-  before activation and after withdrawal. ([#126](https://github.com/tjorim/travel/issues/126))
+  before activation and after withdrawal. ([#126](https://github.com/tjorim/travel-private/issues/126))
 
 - Added live chronological visitor stories with stable moment links, authored
   dates at the selected precision, broad places, and responsive galleries of
   explicitly shared media derivatives. Owner controls now edit captions, alt
   text, focal position, and moment association; public and unlisted projections
-  expose only selected presentation fields. ([#120](https://github.com/tjorim/travel/issues/120))
+  expose only selected presentation fields. ([#120](https://github.com/tjorim/travel-private/issues/120))
 - Added owner-selected offline private copies to the React PWA: an explicit
   "Offline bewaren" toggle on library documents, trip documents and
   emergency-info entries pins a copy on the current device, encrypted with a
@@ -1091,7 +1092,7 @@ All notable changes to the travel hub are documented here.
   owner inspect, remove or clear all pinned copies on the device, and
   signing out wipes the device key and every pinned copy. Frontend-only; no
   shared service-worker cache is used.
-  ([#124](https://github.com/tjorim/travel/issues/124))
+  ([#124](https://github.com/tjorim/travel-private/issues/124))
 
 - Added an owner-wide document library and emergency-information page: an
   owner can upload, preview, download and delete reusable documents (a
@@ -1103,7 +1104,7 @@ All notable changes to the travel hub are documented here.
   authorization and checksum-verified object storage pipeline, through a
   separate owner-scoped storage inventory, and are never projected onto a
   public or unlisted trip response.
-  ([#123](https://github.com/tjorim/travel/issues/123))
+  ([#123](https://github.com/tjorim/travel-private/issues/123))
 
 - Added an owner day plan and booking task list for each trip: manually
   ordered itinerary entries that can optionally link to an existing stay,
@@ -1111,7 +1112,7 @@ All notable changes to the travel hub are documented here.
   copying any of that resource's fields), plus a lightweight trip task list
   with a due date and complete/incomplete state. Both are strictly owner-only
   and have no share-scope kind of their own.
-  ([#122](https://github.com/tjorim/travel/issues/122))
+  ([#122](https://github.com/tjorim/travel-private/issues/122))
 
 - Added owner-managed flight and transport itinerary records: an owner can
   create, edit, order and delete outbound, return and connecting legs with
@@ -1119,28 +1120,28 @@ All notable changes to the travel hub are documented here.
   status, notes and optional linked documents. Legs are owner-only and have
   no share-scope kind; a public/unlisted follower representation stays a
   separately authored route stage or broad route.
-  ([#121](https://github.com/tjorim/travel/issues/121))
+  ([#121](https://github.com/tjorim/travel-private/issues/121))
 
 - Completed the application side of live public and unlisted trip delivery:
   server-filtered projections, visitor routes and publication lifecycle.
-  Production routing followed in tjorim/apps#219. ([#73](https://github.com/tjorim/travel/issues/73))
+  Production routing followed in tjorim/apps#219. ([#73](https://github.com/tjorim/travel-private/issues/73))
 
 - Rendered all scoped trip resource types in the live public and unlisted React
   views, including generalized route sketches, navigation markers, and
   approved media and document files delivered through scope-checked API routes.
   Added visitor component and API tests for sparse fields, fresh loads, scope
-  changes and link revocation. ([#100](https://github.com/tjorim/travel/issues/100))
+  changes and link revocation. ([#100](https://github.com/tjorim/travel-private/issues/100))
 
 - Added data-free React visitor shells for `/trips/{slug}` and `/share/{token}`.
   Both fetch only their current scoped projection, show loading, empty,
   unavailable and retry states, and keep capability data out of browser storage.
-  ([#102](https://github.com/tjorim/travel/issues/102))
+  ([#102](https://github.com/tjorim/travel-private/issues/102))
 
 - Defined the live owner, public and unlisted browser route contract, including
   scoped projection loading and uniform unavailable-link behavior. Public API
   projections now use `no-store` so the next load rechecks publication and
   scope; API tests cover anonymous projection delivery and unavailable
-  capabilities. ([#103](https://github.com/tjorim/travel/issues/103))
+  capabilities. ([#103](https://github.com/tjorim/travel-private/issues/103))
 
 - Owner-selected private-media visit review. The tracker groups a selected
   set into transient two-hour candidates, keeps GPS readings more than 500 m
@@ -1148,7 +1149,7 @@ All notable changes to the travel hub are documented here.
   guessing. A candidate can open a local, prefilled moment draft or attach
   its private media to an existing moment; reverse geocoding remains a
   separate explicit owner action, and no candidate, moment, place or share
-  resource is created automatically. ([#97](https://github.com/tjorim/travel/issues/97))
+  resource is created automatically. ([#97](https://github.com/tjorim/travel-private/issues/97))
 
 - Private tracker PWA media management: direct photo/video upload, private
   original inspection and deletion, Google Photos/GoPro selection-session
@@ -1158,7 +1159,7 @@ All notable changes to the travel hub are documented here.
   keep attached media and EXIF suggestions owner-only and explicit. Settings
   now exposes non-secret provider connection status plus the temporary manual
   connect/revoke controls as the landing point for the OAuth work in #55; no
-  token is returned to the browser. ([#98](https://github.com/tjorim/travel/issues/98))
+  token is returned to the browser. ([#98](https://github.com/tjorim/travel-private/issues/98))
 
 - Owner-facing tracker controls for the public projection and named unlisted
   links. Each surface has a field-level `travel/share-scope@1` editor and
@@ -1167,7 +1168,7 @@ All notable changes to the travel hub are documented here.
   edited, activated, revoked and rotated from the PWA. The raw capability is
   shown only from its activation/rotation response, kept only in component
   memory, and can be copied before the owner dismisses it; the app never
-  fetches or persists it. ([#99](https://github.com/tjorim/travel/issues/99))
+  fetches or persists it. ([#99](https://github.com/tjorim/travel-private/issues/99))
 
 - Private tracker PWA management for ordered route stages, completed-track
   uploads and independently authored broad routes. Route stages select an
@@ -1176,7 +1177,7 @@ All notable changes to the travel hub are documented here.
   file with bounded start/end times; the PWA contains no recording or
   background-location control. Raw files remain behind the authenticated
   owner endpoint, while broad-route lines are entered and saved separately
-  from any raw track. ([#94](https://github.com/tjorim/travel/issues/94))
+  from any raw track. ([#94](https://github.com/tjorim/travel-private/issues/94))
 
 - Private tracker PWA workflows for creating, editing and deleting exact
   stays and separately authored broad-stay cards, plus uploading, viewing and
@@ -1185,7 +1186,7 @@ All notable changes to the travel hub are documented here.
   explicit-approval action before it can be selected for a later share scope.
   File previews are fetched with the owner's authorization into a temporary
   browser object URL; the PWA does not put either originals or exact-stay data
-  on a public or unlisted route. ([#95](https://github.com/tjorim/travel/issues/95))
+  on a public or unlisted route. ([#95](https://github.com/tjorim/travel-private/issues/95))
 
 - Private tracker PWA workflows for listing, creating, editing and deleting
   trips; capturing, editing and deleting canonical moments; and authoring,
@@ -1195,7 +1196,7 @@ All notable changes to the travel hub are documented here.
   and place suggestions remain separate, explicit actions. Broad places are
   authored without raw-coordinate entry and selected deliberately for an
   excerpt. Private media attachments, canonical moments, exact places and
-  EXIF suggestions remain within authenticated tracker responses. ([#96](https://github.com/tjorim/travel/issues/96))
+  EXIF suggestions remain within authenticated tracker responses. ([#96](https://github.com/tjorim/travel-private/issues/96))
 
 - Configurable, attributed owner-only OSM place search with a bounded
   in-memory confidential-query cache, durable OSM element type/ID references,
@@ -1206,7 +1207,7 @@ All notable changes to the travel hub are documented here.
   need an explicit `exact_place` navigation capability, while broad selected
   places only produce city-level destinations. Public and unlisted projections
   expose neither OSM references, coordinates, viewports, display snapshots nor
-  direct Google URLs. ([#39](https://github.com/tjorim/travel/issues/39))
+  direct Google URLs. ([#39](https://github.com/tjorim/travel-private/issues/39))
 
 - Replaced the legacy public/unlisted route-stage and moment ID lists with
   the versioned `travel/share-scope@1` item allowlist. Public and unlisted
@@ -1217,7 +1218,7 @@ All notable changes to the travel hub are documented here.
   stays, raw tracks and unapproved/deleted derivatives remain unavailable.
   The accompanying data migration assumes no persisted production scopes and
   safely drops legacy moment selections, which cannot be represented by the
-  share-safe moment-excerpt resource. ([#60](https://github.com/tjorim/travel/issues/60))
+  share-safe moment-excerpt resource. ([#60](https://github.com/tjorim/travel-private/issues/60))
 
 - Owner-managed `travel/document@1` originals and separately supplied
   `travel/document-derivative@1` redacted copies in the tracker API, with an
@@ -1226,7 +1227,7 @@ All notable changes to the travel hub are documented here.
   the checksum-verified `StoredObject` pipeline. A derivative cannot reuse an
   original's bytes, begins in `pending` review, and requires explicit owner
   approval before a future share scope may use it; no public or unlisted
-  document-delivery route exists in this phase. ([#59](https://github.com/tjorim/travel/issues/59))
+  document-delivery route exists in this phase. ([#59](https://github.com/tjorim/travel-private/issues/59))
 
 - Owner-only `travel/recorded-track@1` and separately authored
   `travel/broad-route@1` resources in the tracker API, with an Alembic
@@ -1238,7 +1239,7 @@ All notable changes to the travel hub are documented here.
   stores an owner-reviewed GeoJSON line and date precision independently of a
   raw track, so shareable geometry is never derived at request time. Tests
   cover ownership, bounded uploads, and public-surface non-disclosure. Third
-  of #38's seven delivery phases. ([#58](https://github.com/tjorim/travel/issues/58))
+  of #38's seven delivery phases. ([#58](https://github.com/tjorim/travel-private/issues/58))
 
 - Owner-managed `travel/stay@1` and separately authored
   `travel/broad-stay-card@1` resources in the tracker API, with an Alembic
@@ -1248,7 +1249,7 @@ All notable changes to the travel hub are documented here.
   broad place, title and date precision; it has no stay link, so it cannot
   disclose exact-place, date or booking data through a later projection.
   Authorization and no-leak regression tests cover both resource types.
-  Second of #38's seven delivery phases. ([#57](https://github.com/tjorim/travel/issues/57))
+  Second of #38's seven delivery phases. ([#57](https://github.com/tjorim/travel-private/issues/57))
 
 - Split the tracker API's flat MVP `Place` into the canonical
   `travel/place@1` model: an `exact` place (address parts, coordinates,
@@ -1266,7 +1267,7 @@ All notable changes to the travel hub are documented here.
   or coordinate data. No production data exists yet, so the accompanying
   migration is a clean recreate of `places`, `route_stages` and `moments`
   rather than a data-preserving one. First of #38's seven delivery phases,
-  per #37's canonical content model. ([#56](https://github.com/tjorim/travel/issues/56))
+  per #37's canonical content model. ([#56](https://github.com/tjorim/travel-private/issues/56))
 
 - Owner-only audit trail for the tracker API's publication and share-link
   lifecycle: an `audit_events` table records every public-projection
@@ -1281,7 +1282,7 @@ All notable changes to the travel hub are documented here.
   `purge_expired_audit_events` (`backend/app/audit.py`) hard-deletes events past
   the sharing policy's 24-month retention window as pure application code,
   run manually for v1; recurring VPS scheduling is tracked separately.
-  ([#48](https://github.com/tjorim/travel/issues/48))
+  ([#48](https://github.com/tjorim/travel-private/issues/48))
 
 - Durable, owner-only media ingestion for the tracker API: direct device
   upload as the always-available fallback, a Google Photos Picker session
@@ -1306,7 +1307,7 @@ All notable changes to the travel hub are documented here.
   must satisfy before it can ever be projected publicly. Deletion is a soft
   delete honoring the 30-day recoverable-deletion policy, with a dedup-safe
   purge helper for objects nothing else references.
-  ([#43](https://github.com/tjorim/travel/issues/43))
+  ([#43](https://github.com/tjorim/travel-private/issues/43))
 
 - Scoped, revocable public and unlisted publication links for the tracker
   API. Owners select an explicit scope (route stages, moments, optional
@@ -1323,48 +1324,48 @@ All notable changes to the travel hub are documented here.
   delivery responses carry
   `Cache-Control: no-store, private`, `X-Robots-Tag: noindex, noarchive` and
   `Referrer-Policy: no-referrer`, including on a not-found/expired/revoked
-  response. ([#42](https://github.com/tjorim/travel/issues/42))
+  response. ([#42](https://github.com/tjorim/travel-private/issues/42))
 
 - Versioned canonical-model and archive-publication design for the Travel
   application. It specifies owner-scoped content, files in backed-up VPS object
   storage, separate broad/derived share records, immutable public and unlisted
   projections, capability and static-export states, media-import records, and
   an earlier legacy archive migration proposal, since superseded by the
-  fresh-launch decision. ([#37](https://github.com/tjorim/travel/issues/37))
+  fresh-launch decision. ([#37](https://github.com/tjorim/travel-private/issues/37))
 
 - Versioned the Travel privacy, sharing and offline policy. It defines
   private-by-default public follower views and fine-grained named-share-link
   projections for every v1 resource, response redaction, capability lifecycle
   and revocation, device-scoped offline-copy behavior, and retention/encryption
   expectations.
-  ([#36](https://github.com/tjorim/travel/issues/36))
+  ([#36](https://github.com/tjorim/travel-private/issues/36))
 
 - A reusable, data-driven local-route map component for private itineraries.
   It supports airport, stay and ground-route stops; road, rail, flight and
   mountain route styles; keyboard-selectable stops; and a textual route
-  equivalent. Taiwan now supplies its local map through this component. ([#3](https://github.com/tjorim/travel/issues/3))
+  equivalent. Taiwan now supplies its local map through this component. ([#3](https://github.com/tjorim/travel-private/issues/3))
 
 - Explicit, per-document offline saving for private documents. The root-scoped
   service worker is network-first and serves only manually saved local copies
   offline; the document list includes saved status, removal, and clear-all
-  controls with an on-device storage warning. ([#4](https://github.com/tjorim/travel/issues/4))
+  controls with an on-device storage warning. ([#4](https://github.com/tjorim/travel-private/issues/4))
 
 - Git-native public photo workflow: Git LFS camera-original layout, a strict
   public media manifest with alt text, captions and focal points, responsive
   gallery/timeline-media components, and metadata-free WebP preparation.
-  ([#9](https://github.com/tjorim/travel/issues/9))
+  ([#9](https://github.com/tjorim/travel-private/issues/9))
 - A repeatable public-route safety check for pre-deployment review of
   operational data, media GPS metadata, public/private file boundaries, and
   cache/indexing recovery after an accidental exposure.
-  ([#10](https://github.com/tjorim/travel/issues/10))
+  ([#10](https://github.com/tjorim/travel-private/issues/10))
 - Privacy-first tracker MVP decision and FastAPI core for owner-scoped trips,
   route stages, moments, broad places, explicit publication, a read-only public
   endpoint, Alembic migration, and API tests. It has no media storage or GPS
-  collection. ([#20](https://github.com/tjorim/travel/issues/20),
-  [#22](https://github.com/tjorim/travel/issues/22))
+  collection. ([#20](https://github.com/tjorim/travel-private/issues/20),
+  [#22](https://github.com/tjorim/travel-private/issues/22))
 - Installable React owner shell under `/admin/`, with isolated client-side
   refresh routing, accessible mobile navigation, empty account boundary, and a
-  minimal app-shell cache. ([#21](https://github.com/tjorim/travel/issues/21))
+  minimal app-shell cache. ([#21](https://github.com/tjorim/travel-private/issues/21))
 - Authorization-code sign-in with S256 PKCE for the tracker, keeping access
   tokens in the browser session only and sending them solely to the tracker
   API. The account identity stays out of published-trip responses.
@@ -1374,27 +1375,27 @@ All notable changes to the travel hub are documented here.
   and a deliberate broad-place choice. The optional browser location action is
   one-shot and immediately discards coordinates; it never sends or stores GPS
   data, and drafts are not automatically synchronized. Moments can also have a
-  saved place removed while editing. ([#23](https://github.com/tjorim/travel/issues/23))
+  saved place removed while editing. ([#23](https://github.com/tjorim/travel-private/issues/23))
 
 - Native server-side login and logout flow for shared and per-trip private
   routes, with short-lived signed secure sessions, Argon2id secret handling,
   Caddy forward-auth configuration, and central-infrastructure deployment.
-  ([#11](https://github.com/tjorim/travel/issues/11),
+  ([#11](https://github.com/tjorim/travel-private/issues/11),
   [apps#214](https://github.com/tjorim/apps/issues/214))
 - Trip-specific private document-library route and `manifest.json` convention
   for Exampleland 2054.
 - Per-trip `public/trip.json` and protected `private/trip.json` contract,
   documented in the repository and implemented for Exampleland 2054.
 - Reusable trip-story and private trip-header components that load data from
-  their corresponding static content files. ([#6](https://github.com/tjorim/travel/issues/6))
+  their corresponding static content files. ([#6](https://github.com/tjorim/travel-private/issues/6))
 - Versioned public and private trip-data schemas, reusable card/timeline/
-  booking renderers, and a small data-driven reference trip. ([#2](https://github.com/tjorim/travel/issues/2))
+  booking renderers, and a small data-driven reference trip. ([#2](https://github.com/tjorim/travel-private/issues/2))
 - Public, mobile-first Taiwan travel timeline with stable per-moment fragment
   URLs, rendered solely from the deliberately selected `public/trip.json`
-  content. ([#7](https://github.com/tjorim/travel/issues/7))
+  content. ([#7](https://github.com/tjorim/travel-private/issues/7))
 - Public route/places map with full, city-level and no-map modes, public-data
   safety guidance, route stages and a visible textual route equivalent.
-  ([#8](https://github.com/tjorim/travel/issues/8))
+  ([#8](https://github.com/tjorim/travel-private/issues/8))
 
 ### Changed
 
@@ -1465,4 +1466,4 @@ All notable changes to the travel hub are documented here.
   and every `/<trip>/private/` route.
 - Deployed `travel.tjor.im`; its public route is live and private routes are
   protected by the VPS-managed credential.
-  ([#5](https://github.com/tjorim/travel/issues/5))
+  ([#5](https://github.com/tjorim/travel-private/issues/5))

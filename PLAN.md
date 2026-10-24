@@ -12,12 +12,11 @@ record the delivered change in `CHANGELOG.md`.
 
 ## Product direction
 
-Source-publication preparation is tracked in [#499](https://github.com/tjorim/travel/issues/499).
-Synthetic fixtures and source privacy prevention are implemented. The private
-history/GitHub audit, reviewed cutover and final publication approval remain
-release gates under #499.
-See [source privacy](docs/source-privacy.md). Keep the repository private until
-those gates pass.
+This public source repository is separate from the personal instance and its
+private archive. Historical source-publication work is tracked in
+[#499](https://github.com/tjorim/travel-private/issues/499). Keep operational data
+out of public source and use synthetic fixtures; see the brief
+[source privacy guidance](docs/source-privacy.md).
 
 The Travel app will become the source of truth for its trips, private assets
 and sharing rules. No new app content belongs in Git. The retired archive is privately preserved in application object storage;
@@ -85,13 +84,13 @@ archive-content import in #40.
 
 ### v1 — Private travel journal application
 
-- [ ] [#148](https://github.com/tjorim/travel/issues/148) Add generic
+- [ ] [#148](https://github.com/tjorim/travel-private/issues/148) Add generic
       owner-inbox and email reminders for trip tasks; a due date alone
       schedules nothing. Implementation is ready locally.
 
 ### v2 — Fresh VPS launch and live trip delivery
 
-- [ ] [#457](https://github.com/tjorim/travel/issues/457) Remote video derivative
+- [ ] [#457](https://github.com/tjorim/travel-private/issues/457) Remote video derivative
       adapter and durable dispatcher; the in-process encoder is removed once
       cutover and rollback are verified in
       [apps#275](https://github.com/tjorim/apps/issues/275). No new publication
@@ -167,43 +166,43 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
-- [x] [#495](https://github.com/tjorim/travel/issues/495) Applied the refreshed
+- [x] [#495](https://github.com/tjorim/travel-private/issues/495) Applied the refreshed
       design to the owner home, trip list and trip workspace (state grouping,
       owner cover, publication state, wide-screen overview columns).
-- [x] [#494](https://github.com/tjorim/travel/issues/494) Added a deliberate,
+- [x] [#494](https://github.com/tjorim/travel-private/issues/494) Added a deliberate,
       audience-authorized trip cover and refreshed the visitor header, story
       timeline, map layout and galleries. See [domain model](docs/domain-model.md).
-- [x] [#493](https://github.com/tjorim/travel/issues/493) Refined the shared
+- [x] [#493](https://github.com/tjorim/travel-private/issues/493) Refined the shared
       visual foundations and the responsive public trip listings.
 
-- [x] [#305](https://github.com/tjorim/travel/issues/305) Capped concurrent
+- [x] [#305](https://github.com/tjorim/travel-private/issues/305) Capped concurrent
       video derivative jobs and added explicit, reviewable Dutch/English draft
       translation of owner text on the on-demand service from
       [apps#250](https://github.com/tjorim/apps/issues/250) and apps#252. See
       [translation drafts](docs/translation-drafts.md).
 
-- [x] [#284](https://github.com/tjorim/travel/issues/284) Added the Dutch/English
+- [x] [#284](https://github.com/tjorim/travel-private/issues/284) Added the Dutch/English
       locale foundation and shared shell.
-- [x] [#285](https://github.com/tjorim/travel/issues/285) Added stable API error
+- [x] [#285](https://github.com/tjorim/travel-private/issues/285) Added stable API error
       codes and render-time localized feedback.
-- [x] [#286](https://github.com/tjorim/travel/issues/286) Translated owner
+- [x] [#286](https://github.com/tjorim/travel-private/issues/286) Translated owner
       workspaces, shared editors, capture and map controls.
-- [x] [#287](https://github.com/tjorim/travel/issues/287) Translated private
+- [x] [#287](https://github.com/tjorim/travel-private/issues/287) Translated private
       assets, publication, library and offline packing workflows.
-- [x] [#288](https://github.com/tjorim/travel/issues/288) Completed public and
+- [x] [#288](https://github.com/tjorim/travel-private/issues/288) Completed public and
       unlisted visitor presentation in Dutch and English.
-- [x] [#289](https://github.com/tjorim/travel/issues/289) Completed extraction
+- [x] [#289](https://github.com/tjorim/travel-private/issues/289) Completed extraction
       and locale regressions, with CI catalogue, type and string audit gates.
-- [x] [#281](https://github.com/tjorim/travel/issues/281) Recorded the
+- [x] [#281](https://github.com/tjorim/travel-private/issues/281) Recorded the
       [interface translation decisions](docs/decisions/281-interface-translations.md)
       and delivered the implementation sequence above.
 
-- [x] [#264](https://github.com/tjorim/travel/issues/264) Migrated owner,
+- [x] [#264](https://github.com/tjorim/travel-private/issues/264) Migrated owner,
       public and unlisted presentation to Tailwind utilities and named theme
       tokens, removed the legacy class allowlist, and moved shared record,
       discard and delete dialogs to Base UI while retaining dismissal safeguards.
 
-- [x] [#176](https://github.com/tjorim/travel/issues/176) Kept both library
+- [x] [#176](https://github.com/tjorim/travel-private/issues/176) Kept both library
       and trip documents owner-only; removed document twins, share choices,
       visitor fields and MCP derivative tools. Deleting a document now purges
       its stored original, and migration 001 hands retired twin files to the
@@ -227,18 +226,18 @@ Polarsteps-like features require a fresh product and privacy decision.
       maps style each line by mode. The Gebieden section absorbed the separate
       area overview, leaving Gebieden, Locaties and Bezoeken.
 
-- [x] [#140](https://github.com/tjorim/travel/issues/140) Closed the remaining
+- [x] [#140](https://github.com/tjorim/travel-private/issues/140) Closed the remaining
       static-archive parity gaps: stays as nights per city/area (also while
       still choosing), time-zone-aware transport legs, a richer day plan with
       per-night stays, trip dates and booking badges, task links, and
       scope-selected trip dates, highlights and stage summaries for visitors.
 
-- [x] [#137](https://github.com/tjorim/travel/issues/137) Removed the retired
+- [x] [#137](https://github.com/tjorim/travel-private/issues/137) Removed the retired
       Go `travel-auth` service, its CI and Dependabot paths, and the
       shared-password setup; the local Compose and Caddy example now mirror
       the production owner, public and unlisted routes.
 
-- [x] [#41](https://github.com/tjorim/travel/issues/41) Added and locally
+- [x] [#41](https://github.com/tjorim/travel-private/issues/41) Added and locally
       tested 104 typed owner MCP tools for canonical trip, place, itinerary,
       asset, audience, preview and lifecycle workflows. Calls use the same
       owner validation/storage handlers as the application, require explicit
@@ -253,63 +252,63 @@ Polarsteps-like features require a fresh product and privacy decision.
       verification, and scheduled retention purges in apps#223. Production MCP
       wiring moved to apps#226.
 
-- [x] [#119](https://github.com/tjorim/travel/issues/119) Added scoped
+- [x] [#119](https://github.com/tjorim/travel-private/issues/119) Added scoped
       MapLibre maps to the React owner, public and unlisted views. Visitor
       maps are built only from the delivered projection's selected area
       points and routes; the owner map adds locations, with optional Mapterhorn terrain and Esri
       imagery. Keyboard stop selection, route-in-words and WebGL/tile failure
       fallbacks are included.
 
-- [x] [#125](https://github.com/tjorim/travel/issues/125) Added live published-trip
+- [x] [#125](https://github.com/tjorim/travel-private/issues/125) Added live published-trip
       discovery at `/` and `/trips/`, with scope-filtered public cards, stable
       slugs, and accessible loading, error and empty states. Production routes
       were added in [apps#219](https://github.com/tjorim/apps/issues/219).
 
-- [x] [#126](https://github.com/tjorim/travel/issues/126) Added an owner-only
+- [x] [#126](https://github.com/tjorim/travel-private/issues/126) Added an owner-only
       rendered preview for public and named-link publication scopes using the
       visitor components, with scoped preview files and navigation before
       activation and after withdrawal.
 
-- [x] [#120](https://github.com/tjorim/travel/issues/120) Added live
+- [x] [#120](https://github.com/tjorim/travel-private/issues/120) Added live
       chronological visitor stories with stable moment links, authored dates at
       the selected precision, areas, and responsive galleries of
       explicitly shared media derivatives, plus owner controls for captions,
       alt text, focal position and moment association.
 
-- [x] [#124](https://github.com/tjorim/travel/issues/124) Added owner-selected
+- [x] [#124](https://github.com/tjorim/travel-private/issues/124) Added owner-selected
       offline private copies to the React PWA: explicit per-item pin, inspect,
       remove and clear-all controls for library documents, trip documents and
       emergency-info entries, encrypted on-device under #36's device-scoped
       offline policy with a short revalidated lease, no durable access token,
       and full wipe on sign-out.
 
-- [x] [#131](https://github.com/tjorim/travel/issues/131) Extended explicit
+- [x] [#131](https://github.com/tjorim/travel-private/issues/131) Extended explicit
       owner offline pinning to private media, GeoJSON map/route snapshots and
       individual itinerary entries, reusing the encrypted per-device store and
       short revalidated lease. Map snapshots have a dedicated owner-only
       revalidation endpoint and deliberately exclude provider map tiles.
 
-- [x] [#123](https://github.com/tjorim/travel/issues/123) Added an owner-wide
+- [x] [#123](https://github.com/tjorim/travel-private/issues/123) Added an owner-wide
       document library and emergency-information page: reusable documents and
       contacts/numbers/medical notes scoped directly to the owner subject
       rather than to a trip, with an optional link from a document to a trip.
       Neither resource is ever projected onto a public/unlisted trip response.
 
-- [x] [#122](https://github.com/tjorim/travel/issues/122) Built an owner day
+- [x] [#122](https://github.com/tjorim/travel-private/issues/122) Built an owner day
       plan and booking task list for each trip: manually ordered itinerary
       entries that can link to an existing stay, transport leg, route stage,
       location, document or moment, plus a lightweight task list with due
       dates and a complete/incomplete state. Both are owner-only, with no
       share-scope kind of their own.
 
-- [x] [#121](https://github.com/tjorim/travel/issues/121) Added owner-managed
+- [x] [#121](https://github.com/tjorim/travel-private/issues/121) Added owner-managed
       flight and transport itinerary records: departure/arrival locations,
       times, carrier/service reference, booking status, notes and optional
       linked documents, with owner API and React manager coverage. A leg has
       no share-scope kind of its own; a follower representation stays a
       separately authored route stage or route, never copied from it.
 
-- [x] [#73](https://github.com/tjorim/travel/issues/73) Built the Travel
+- [x] [#73](https://github.com/tjorim/travel-private/issues/73) Built the Travel
       application delivery contract and live, server-filtered public/unlisted
       visitor views through #89 and #90. Owner publication and link actions
       update database access state; trip content is fetched at request time
@@ -317,13 +316,13 @@ Polarsteps-like features require a fresh product and privacy decision.
       [apps#219](https://github.com/tjorim/apps/issues/219); richer app
       presentation and workflows followed in #119–#126.
 
-- [x] [#34](https://github.com/tjorim/travel/issues/34) Replaced the three
+- [x] [#34](https://github.com/tjorim/travel-private/issues/34) Replaced the three
       static archive SVG route maps with one MapLibre renderer and separate
       public/private GeoJSON files. The maps use geographic basemaps, visible
       provider attribution, keyboard-operable stops and textual fallbacks;
       public route data remains approximate under #36's privacy contract.
 
-- [x] [#38](https://github.com/tjorim/travel/issues/38) Evolved the tracker
+- [x] [#38](https://github.com/tjorim/travel-private/issues/38) Evolved the tracker
       API and PWA into the private Travel content app through its seven
       ordered phases: canonical places and excerpts, stays and stay
       cards, recorded tracks and routes, documents, generic share
@@ -339,10 +338,10 @@ Polarsteps-like features require a fresh product and privacy decision.
       route stages; upload finished GPX/point-array tracks; and author
       routes. The client uses the existing PKCE session, keeps exact
       data and files behind owner-only endpoints, and provides no continuous
-      location-capture control. ([#61](https://github.com/tjorim/travel/issues/61),
-      [#94](https://github.com/tjorim/travel/issues/94),
-      [#95](https://github.com/tjorim/travel/issues/95),
-      [#96](https://github.com/tjorim/travel/issues/96))
+      location-capture control. ([#61](https://github.com/tjorim/travel-private/issues/61),
+      [#94](https://github.com/tjorim/travel-private/issues/94),
+      [#95](https://github.com/tjorim/travel-private/issues/95),
+      [#96](https://github.com/tjorim/travel-private/issues/96))
 
 - [x] Added configurable, attributed, owner-only OSM place search with a
       bounded in-memory confidential-query cache; locations now retain the
@@ -353,7 +352,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       generated only after owner or public/unlisted scope resolution. Exact
       destinations require an explicit `location` navigation capability;
       other selected navigation markers resolve only to city-level targets.
-      ([#39](https://github.com/tjorim/travel/issues/39))
+      ([#39](https://github.com/tjorim/travel-private/issues/39))
 
 - [x] Added private `travel/recorded-track@1` records and separately authored
       `travel/route@1` records to the tracker API. A finished GPX or
@@ -364,7 +363,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       instead stores the owner's reviewed GeoJSON line and date precision,
       with no raw-track link or request-time derivation path. Owner-only and
       public-surface regression tests enforce both boundaries. Third of #38's
-      seven delivery phases. ([#58](https://github.com/tjorim/travel/issues/58))
+      seven delivery phases. ([#58](https://github.com/tjorim/travel-private/issues/58))
 
 - [x] Added owner-managed `travel/stay@1` records and separately authored
       `travel/stay-card@1` records to the tracker API. Stays retain an
@@ -373,7 +372,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       an owner-selected area, title and date precision, with no link
       back to a stay. Owner CRUD, cross-owner 404s, and projection no-leak
       tests enforce that a card cannot disclose stay data. Second of #38's
-      seven delivery phases. ([#57](https://github.com/tjorim/travel/issues/57))
+      seven delivery phases. ([#57](https://github.com/tjorim/travel-private/issues/57))
 
 - [x] Split the tracker API's flat MVP `Place` into the canonical
       `travel/place@1` `location`/`area` model and added the standalone
@@ -381,7 +380,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       place, a moment always references a `location`, and an owner can
       create, edit and delete a moment excerpt independent of its source
       moment's lifecycle. First of #38's seven delivery phases.
-      ([#56](https://github.com/tjorim/travel/issues/56))
+      ([#56](https://github.com/tjorim/travel-private/issues/56))
 
 - [x] Added an owner-only audit trail for the tracker API's publication and
       share-link lifecycle: an `audit_events` table records every
@@ -393,7 +392,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       `GET /trips/{trip_id}/audit-events` endpoint reads a trip's history.
       `purge_expired_audit_events` hard-deletes events past the sharing
       policy's 24-month retention window as pure application code, run
-      manually for v1. ([#48](https://github.com/tjorim/travel/issues/48))
+      manually for v1. ([#48](https://github.com/tjorim/travel-private/issues/48))
 
 - [x] Added a durable, owner-only media ingestion pipeline: direct device
       upload (the always-available fallback), a Google Photos Picker session
@@ -412,7 +411,7 @@ Polarsteps-like features require a fresh product and privacy decision.
       a share scope. Deletion is a soft delete with a dedup-safe purge
       helper for the recoverable-deletion window. Tests use provider fakes
       throughout; no
-      test makes a real network call. ([#43](https://github.com/tjorim/travel/issues/43))
+      test makes a real network call. ([#43](https://github.com/tjorim/travel-private/issues/43))
 
 - [x] Implemented scoped, revocable public and unlisted publication links for
       the tracker API's trips and moments: an explicit, owner-selected scope
@@ -426,34 +425,34 @@ Polarsteps-like features require a fresh product and privacy decision.
       `no-referrer` delivery headers; and
       tests covering public, valid-link, revoked-link, rotated-link,
       expired-link and out-of-scope-resource responses.
-      ([#42](https://github.com/tjorim/travel/issues/42))
+      ([#42](https://github.com/tjorim/travel-private/issues/42))
 
 - [x] Defined the versioned canonical Travel content model: owner-scoped
       resources and object storage, separately authored, derived share
       representations, immutable public and unlisted projections, capability
       lifecycle and import records. The later fresh-launch decision removes
-      the legacy migration design. ([#37](https://github.com/tjorim/travel/issues/37))
+      the legacy migration design. ([#37](https://github.com/tjorim/travel-private/issues/37))
 - [x] Defined the Travel application privacy contract: owner-only canonical
       data, private-by-default public follower views and fine-grained
       custom-link projections, server-side redaction, capability lifecycle,
       device-scoped offline copies, and VPS retention/security expectations.
-      ([#36](https://github.com/tjorim/travel/issues/36))
+      ([#36](https://github.com/tjorim/travel-private/issues/36))
 
 - [x] Added a repeatable public-route safety review covering operational data,
       media GPS metadata, file-layout separation, and cache/indexing recovery.
-      ([#10](https://github.com/tjorim/travel/issues/10))
+      ([#10](https://github.com/tjorim/travel-private/issues/10))
 
 - [x] Defined the privacy-first tracker MVP: one owner, private-by-default
       trips, explicit publication, area labels only, and no automatic
-      archive migration. ([#20](https://github.com/tjorim/travel/issues/20))
+      archive migration. ([#20](https://github.com/tjorim/travel-private/issues/20))
 
 - [x] Added the FastAPI tracker API with authenticated owner CRUD, deliberately
       published read-only trips, Alembic migration, and a local test contract.
-      ([#22](https://github.com/tjorim/travel/issues/22))
+      ([#22](https://github.com/tjorim/travel-private/issues/22))
 
 - [x] Added the installable React PWA shell under `/admin/`, with client-side
       routing, mobile navigation, authenticated-app boundary, and app-shell
-      offline cache while preserving the archive. ([#21](https://github.com/tjorim/travel/issues/21))
+      offline cache while preserving the archive. ([#21](https://github.com/tjorim/travel-private/issues/21))
 
 - [x] Added individual Travel tracker accounts with PKCE, a dedicated API
       audience, and an owner-only subject boundary.
@@ -461,40 +460,40 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 - [x] Added mobile moment capture with local drafts, deliberate area
       controls, an explicit one-shot location action, and clear sharing state.
-      ([#23](https://github.com/tjorim/travel/issues/23))
+      ([#23](https://github.com/tjorim/travel-private/issues/23))
 
 - [x] Integrated the native Travel session gate into the central infrastructure
       deployment. ([apps#214](https://github.com/tjorim/apps/issues/214))
 
 - [x] Added a native server-side login and logout flow for shared and per-trip
       private routes, with signed secure sessions and Argon2id verification.
-      ([#11](https://github.com/tjorim/travel/issues/11))
+      ([#11](https://github.com/tjorim/travel-private/issues/11))
 
 - [x] Added an accessible public route/places map driven solely by selected
-      public trip data. ([#8](https://github.com/tjorim/travel/issues/8))
+      public trip data. ([#8](https://github.com/tjorim/travel-private/issues/8))
 
 - [x] Deployed and smoke-tested `travel.tjor.im` on the VPS: `/` is public,
       while `/private/` and every `/<trip>/private/` route are password
-      protected. ([#5](https://github.com/tjorim/travel/issues/5))
+      protected. ([#5](https://github.com/tjorim/travel-private/issues/5))
 - [x] Defined the per-trip public/private JSON contract and updated Taiwan to
-      render from it. ([#6](https://github.com/tjorim/travel/issues/6))
+      render from it. ([#6](https://github.com/tjorim/travel-private/issues/6))
 - [x] Added a reusable, data-driven trip page contract: summary, route stages,
-      moments, stays and booking status. ([#2](https://github.com/tjorim/travel/issues/2))
+      moments, stays and booking status. ([#2](https://github.com/tjorim/travel-private/issues/2))
 - [x] Built Taiwan's public chronological trip timeline with stable moment
-      URLs and a public-data-only renderer. ([#7](https://github.com/tjorim/travel/issues/7))
+      URLs and a public-data-only renderer. ([#7](https://github.com/tjorim/travel-private/issues/7))
 - [x] Established Git/LFS camera-original storage, public derivative metadata,
       responsive gallery and timeline-media components, and an EXIF-stripping
-      preparation workflow. ([#9](https://github.com/tjorim/travel/issues/9))
+      preparation workflow. ([#9](https://github.com/tjorim/travel-private/issues/9))
 
 ## Later
-- [ ] [#281](https://github.com/tjorim/travel/issues/281) Plan Dutch and English
+- [ ] [#281](https://github.com/tjorim/travel-private/issues/281) Plan Dutch and English
       interface translations with Paraglide/Inlang, following Bordertax,
       Champagnefestival and Worktime. Record locale selection, unsaved-editor
       behavior, formatting and API-error boundaries before splitting implementation.
-- [ ] [#40](https://github.com/tjorim/travel/issues/40) Decide separately
+- [ ] [#40](https://github.com/tjorim/travel-private/issues/40) Decide separately
       verify private preservation and retire the old archive. It is not a
       dependency of the fresh application launch or a source of URL aliases.
-- [x] [#229](https://github.com/tjorim/travel/issues/229) Adopt Tailwind CSS
+- [x] [#229](https://github.com/tjorim/travel-private/issues/229) Adopt Tailwind CSS
       and Base UI primitives as the styling/behavior stack shared with
       `bordertax`, `champagnefestival`, `daynest` and `worktime`, alongside
       `cn` and a shared Tailwind lint config. This repo has no Bootstrap to
@@ -503,9 +502,9 @@ Polarsteps-like features require a fresh product and privacy decision.
       Equivalent app work is tracked in bordertax#248,
       champagnefestival#1103, daynest#933 and worktime#1376.
 - [x] Generalized the Taiwan-only local SVG route map into a reusable,
-      data-driven component with selectable route stops. ([#3](https://github.com/tjorim/travel/issues/3))
+      data-driven component with selectable route stops. ([#3](https://github.com/tjorim/travel-private/issues/3))
 - [x] Added opt-in offline copies for selected private documents, with
-      per-document removal and a clear-all local-copy action. ([#4](https://github.com/tjorim/travel/issues/4))
+      per-document removal and a clear-all local-copy action. ([#4](https://github.com/tjorim/travel-private/issues/4))
 
 ## Conventions
 

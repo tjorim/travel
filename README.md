@@ -3,6 +3,11 @@
 The Travel application: a FastAPI backend and a React owner PWA with live
 public and unlisted trip views. Trips are created in the application.
 
+This public repository starts with cleaned code history. Historical issue and
+pull-request references belong to a private archive and are not publicly
+accessible; new reports and contributions use this repository. Personal
+instance data and recovery copies remain outside public source.
+
 Retired archive data is preserved privately in application object storage.
 Old archive URLs are not preserved.
 

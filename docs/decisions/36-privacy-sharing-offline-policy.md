@@ -1,8 +1,8 @@
 # Travel privacy, sharing, and offline policy
 
-Issue [#36](https://github.com/tjorim/travel/issues/36) defines the v1 privacy
+Issue [#36](https://github.com/tjorim/travel-private/issues/36) defines the v1 privacy
 contract for the Travel application. It is the authority for application API,
-PWA, storage, map, static-export, and MCP work. Issue [#37](https://github.com/tjorim/travel/issues/37)
+PWA, storage, map, static-export, and MCP work. Issue [#37](https://github.com/tjorim/travel-private/issues/37)
 defines the data model that implements it; it must not weaken this policy.
 
 ## Status and terms

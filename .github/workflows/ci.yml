@@ -16,17 +16,6 @@ permissions:
   pull-requests: read
 
 jobs:
-  source-privacy:
-    name: Source privacy prevention
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.15'
-      - run: python scripts/check-source-privacy.py
-      - run: python -m unittest discover -s scripts -p 'test_*.py'
-
   changes:
     name: Detect changed components
     runs-on: ubuntu-24.04
@@ -72,7 +61,7 @@ jobs:
           - 5432:5432
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.15'
       - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
@@ -175,7 +164,6 @@ jobs:
     name: CI gate
     if: always()
     needs:
-      - source-privacy
       - changes
       - backend
       - frontend

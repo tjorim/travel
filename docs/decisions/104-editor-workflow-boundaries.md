@@ -45,4 +45,4 @@ state their interaction boundary here (or in their own decision record) and
 test the important failure and secret-handling paths instead of being forced
 into a record dialog.
 
-This records the resolution of [#170](https://github.com/tjorim/travel/issues/170).
+This records the resolution of [#170](https://github.com/tjorim/travel-private/issues/170).
