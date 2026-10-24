@@ -6,6 +6,8 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Use a distinctive synthetic postal code in the public-location privacy test to
+  prevent random public IDs from causing false disclosure failures.
 - Remove a retired video-backend setting from the optional PostgreSQL test
   fixture so its locking checks can run against the current configuration.
 - Replace archive-derived fixture titles, flight references and travel years
