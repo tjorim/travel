@@ -2,9 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, object_session, selectinload
 
-from ..access import set_cover, set_visibility
+from ..access import receivers, set_cover, set_visibility
+from ..audit import delivering_audiences, record_visibility_change
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, ServiceError, service_exception
@@ -225,7 +226,7 @@ def create_travel_update(
     session.add(update)
     session.flush()
     if payload.visibility != Visibility.PRIVATE:
-        _choose_visibility(trip, update, payload.visibility)
+        _choose_visibility(trip, update, payload.visibility, subject)
     session.commit()
     return _loaded(session, update.id)
 
@@ -237,11 +238,24 @@ def owned_update(trip: Trip, update_id: Identifier) -> TravelUpdate:
     return update
 
 
-def _choose_visibility(trip: Trip, update: TravelUpdate, visibility: Visibility) -> None:
+def _choose_visibility(trip: Trip, update: TravelUpdate, visibility: Visibility, subject: str) -> None:
+    session = object_session(trip)
+    assert session is not None
+    before = update.visibility or Visibility.PRIVATE
+    before_receivers = receivers("travel_update", update, delivering_audiences(session, trip.id))
     try:
         set_visibility(trip, "travel_update", update.id, visibility)
     except ValueError as error:
         raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+    record_visibility_change(
+        session,
+        trip_id=trip.id,
+        actor_subject=subject,
+        kind="travel_update",
+        record=update,
+        before=before,
+        before_receivers=before_receivers,
+    )
 
 
 @router.patch("/{trip_id}/travel-updates/{update_id}", response_model=TravelUpdateResponse)
@@ -277,7 +291,7 @@ def update_travel_update(
             )
         setattr(update, field, value)
     if payload.visibility is not None:
-        _choose_visibility(trip, update, payload.visibility)
+        _choose_visibility(trip, update, payload.visibility, subject)
     elif update.visibility != Visibility.PRIVATE and not update.body.strip():
         # An update cannot keep reaching visitors once its text is emptied.
         raise ApiException(

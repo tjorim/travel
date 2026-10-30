@@ -168,3 +168,106 @@ def test_purge_expired_audit_events_keeps_recent_and_removes_events_past_the_win
         purged = purge_expired_audit_events(session, older_than=timedelta(seconds=-1))
         assert purged == 1
         assert session.scalar(select(AuditEvent).where(AuditEvent.trip_id == trip["id"])) is None
+
+
+SCOPE = {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}
+
+
+def kinds(client: TestClient, trip_id: str) -> list[str]:
+    return [event["kind"] for event in audit_events(client, trip_id)]
+
+
+def add_update(client: TestClient, trip_id: str, visibility: str = "private") -> dict:
+    response = client.post(
+        f"/api/trips/{trip_id}/travel-updates",
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z",
+            "date_precision": "day",
+            "title": "Secret title",
+            "body": "Secret body",
+            "visibility": visibility,
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def test_public_scope_change_is_audited_only_while_published_and_when_it_changes() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    path = f"/api/trips/{trip['id']}/public-projection"
+    owner.put(path, json=SCOPE)
+    assert "public_projection.scope_change" not in kinds(owner, trip["id"])
+    owner.post(f"{path}/publish")
+    owner.put(path, json=SCOPE)
+    assert "public_projection.scope_change" not in kinds(owner, trip["id"])
+    owner.put(path, json={**SCOPE, "trip": {"title": False, "summary": True}})
+    event = next(e for e in audit_events(owner, trip["id"]) if e["kind"] == "public_projection.scope_change")
+    assert set(event["details"]) == {"scope_version_before", "scope_version_after"}
+    assert event["details"]["scope_version_before"] != event["details"]["scope_version_after"]
+
+
+def test_invalid_scope_records_nothing() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    path = f"/api/trips/{trip['id']}/public-projection"
+    owner.post(f"{path}/publish")
+    bad = {**SCOPE, "items": [{"kind": "travel_update", "id": "missing"}]}
+    assert owner.put(path, json=bad).status_code == 422
+    assert "public_projection.scope_change" not in kinds(owner, trip["id"])
+
+
+def test_share_link_scope_change_is_audited_for_active_links_only() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}/share-links"
+    link = owner.post(base, json={"label": "Family", "scope": SCOPE}).json()
+    narrowed = {**SCOPE, "trip": {"title": False, "summary": True}}
+    assert owner.patch(f"{base}/{link['id']}", json={"scope": narrowed}).status_code == 200
+    assert "share_link.scope_change" not in kinds(owner, trip["id"])
+    assert owner.post(f"{base}/{link['id']}/activate", json={}).status_code == 200
+    assert owner.patch(f"{base}/{link['id']}", json={"label": "Renamed"}).status_code == 200
+    assert owner.patch(f"{base}/{link['id']}", json={"scope": SCOPE}).status_code == 200
+    bad = {**SCOPE, "items": [{"kind": "travel_update", "id": "missing"}]}
+    assert owner.patch(f"{base}/{link['id']}", json={"scope": bad}).status_code == 422
+    events = [e for e in audit_events(owner, trip["id"]) if e["kind"] == "share_link.scope_change"]
+    assert len(events) == 1
+    assert events[0]["target_id"] == link["id"]
+
+
+def test_visibility_changes_name_the_audiences_reached_without_content() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
+    update = add_update(owner, trip["id"])
+    path = f"/api/trips/{trip['id']}/visibility/travel_update/{update['id']}"
+    assert owner.put(path, json={"visibility": "private"}).status_code == 200
+    assert "record.visibility_change" not in kinds(owner, trip["id"])
+    assert owner.put(path, json={"visibility": "everyone"}).status_code == 200
+    assert (
+        owner.put(
+            "/api/trips/" + trip["id"] + "/visibility/travel_update/missing", json={"visibility": "everyone"}
+        ).status_code
+        == 404
+    )
+    assert owner.put(path, json={"visibility": "private"}).status_code == 200
+    events = [e for e in audit_events(owner, trip["id"]) if e["kind"] == "record.visibility_change"]
+    assert len(events) == 2
+    reached = next(e for e in events if e["details"]["to"] == "everyone")
+    assert reached["target_type"] == "record"
+    assert reached["target_id"] == update["id"]
+    assert reached["details"]["record_kind"] == "travel_update"
+    assert reached["details"]["newly_reached"] == ["public"]
+    withdrawn = next(e for e in events if e["details"]["to"] == "private")
+    assert withdrawn["details"]["no_longer_reached"] == ["public"]
+    assert "Secret" not in str(events)
+
+
+def test_travel_update_visibility_through_create_and_patch_is_audited() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    update = add_update(owner, trip["id"], "everyone")
+    assert kinds(owner, trip["id"]) == ["record.visibility_change"]
+    patch = f"/api/trips/{trip['id']}/travel-updates/{update['id']}"
+    assert owner.patch(patch, json={"visibility": "private"}).status_code == 200
+    assert kinds(owner, trip["id"]).count("record.visibility_change") == 2
