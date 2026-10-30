@@ -1,13 +1,14 @@
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
-import { Field, FieldError, FieldLabel } from "@/ui/field";
+import { Field, FieldError, FieldLabel, FieldSet } from "@/ui/field";
 import { TravelTextarea } from "@/ui/TravelTextarea";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   createContext,
+  useEffect,
   useContext,
   type ComponentProps,
   type InputHTMLAttributes,
@@ -21,6 +22,8 @@ import { timeZoneOptions } from "../tracker-model";
 import { blockUnreadableEntries } from "./unreadable-entry";
 export { SearchSelect, AsyncSearchSelect } from "@/ui/SearchCombobox";
 export type { SearchSelectOption, SearchSelectGroup } from "@/ui/SearchCombobox";
+
+import { PendingEditContext } from "./navigation-guard";
 
 const timeZones = timeZoneOptions();
 
@@ -52,6 +55,11 @@ export function RecordForm({
   children: ReactNode;
 }) {
   const { form, formRef, serverError, serverFieldErrors, pending } = record;
+  const setPending = useContext(PendingEditContext);
+  useEffect(() => {
+    setPending?.(pending);
+    return () => setPending?.(false);
+  }, [setPending, pending]);
   return (
     <ServerFieldErrors.Provider value={serverFieldErrors}>
       <form
@@ -62,22 +70,27 @@ export function RecordForm({
         onSubmit={(event) => {
           event.preventDefault();
           event.stopPropagation();
+          if (pending) return;
           if (blockUnreadableEntries(formRef.current)) return;
           void form.handleSubmit();
         }}
       >
-        {children}
-        {serverError && (
-          <p className="form-error" role="alert">
-            {serverError}
-          </p>
-        )}
-        <div className="button-row">
-          <Button type="submit" disabled={pending || disabled}>
-            {pending ? pendingLabel : submitLabel}
-          </Button>
-          {actions}
-        </div>
+        <FieldSet disabled={pending} className="contents">
+          <div inert={pending} className="contents">
+            {children}
+          </div>
+          {serverError && (
+            <p className="form-error" role="alert">
+              {serverError}
+            </p>
+          )}
+          <div className="button-row">
+            <Button type="submit" disabled={pending || disabled}>
+              {pending ? pendingLabel : submitLabel}
+            </Button>
+            {actions}
+          </div>
+        </FieldSet>
       </form>
     </ServerFieldErrors.Provider>
   );

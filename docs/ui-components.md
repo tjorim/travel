@@ -160,3 +160,28 @@ The custom `RecordDialog` remains the inventoried direct composition for guarded
 editors. The thin primitive exports are intentional; replacing them with fully
 styled registry defaults would change Travel's existing design and is not part
 of import alignment.
+
+### Unsaved record guards (#12)
+
+The existing Base UI RecordDialog/Alert Dialog composition also supplies the
+router-level confirmation; no new control is needed. RecordForm uses the Base UI
+FieldSet disabled contract and an inert content wrapper while saving, including
+custom editor content. Dialog dismissal waits for the request. Inline
+useRecordForm consumers (including publication settings) register with the same
+router blocker.
+
+Audited consumers: TripEditor, CaptureDialog, AreaManager, LocationManager,
+StayManager, RouteManager, VisitManager, TripTaskManager, TravelUpdateManager,
+DocumentManager, DocumentLibraryManager, EmergencyInfoManager, MediaManager
+(derivative/presentation forms), and PublicationManager (public/link forms).
+All shared RecordForm consumers previously disabled only Submit and could lose
+post-submit edits on reset/success; the pending contract now covers all of them.
+
+Back/Forward and internal route changes require explicit discard; pending writes
+must finish first. Reload/close uses the browser's native unload warning. Because
+mobile browsers can skip it, JSON-only drafts are recovered from tab-scoped
+session storage when the same owner, path and saved baseline are reopened.
+Recovery never submits automatically. Intentional in-app departure, reset,
+successful save and sign-out clear the snapshot. File selections cannot be
+serialised and must be selected again after reload; authored non-JSON values are
+never stored. Drafts are not retained after the browser closes the tab.
