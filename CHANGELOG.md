@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Owner share-link reads now show links past their expiry as expired and record the expiry audit event at the real expiry time, without waiting for a visit.
+
 ### Changed
 
 - Protect record drafts during pending saves, browser navigation and reload recovery (#12).

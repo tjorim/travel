@@ -49,6 +49,7 @@ def record_audit_event(
     target_type: AuditTargetType,
     target_id: str,
     details: dict[str, Any] | None = None,
+    occurred_at: datetime | None = None,
 ) -> AuditEvent:
     event = AuditEvent(
         trip_id=trip_id,
@@ -58,6 +59,8 @@ def record_audit_event(
         target_id=target_id,
         details=details or {},
     )
+    if occurred_at is not None:
+        event.occurred_at = occurred_at
     session.add(event)
     session.flush()
     return event

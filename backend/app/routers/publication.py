@@ -243,11 +243,38 @@ def _public_status(surface: PublicSurface) -> PublicProjectionStatusResponse:
 EDITABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
 
 
+def _expire_link(session: Session, link: ShareLink) -> None:
+    """Persist the active -> expired transition, stamping the audit event with
+    the real expiry time rather than the time someone noticed."""
+    link.state = LinkState.EXPIRED
+    record_audit_event(
+        session,
+        trip_id=link.trip_id,
+        actor_subject=SYSTEM_ACTOR,
+        kind=AuditEventKind.SHARE_LINK_EXPIRE,
+        target_type=AuditTargetType.SHARE_LINK,
+        target_id=link.id,
+        details={},
+        occurred_at=link.expires_at,
+    )
+    session.commit()
+
+
+def _settle_expired(session: Session, links: list[ShareLink]) -> None:
+    """Lazy write for owner reads: an active link past `expires_at` is stored as
+    expired the first time the owner (or a visitor) sees it. No sweep job runs."""
+    now = datetime.now(UTC)
+    for link in links:
+        if link.state == LinkState.ACTIVE and link.expires_at is not None and _aware_utc(link.expires_at) <= now:
+            _expire_link(session, link)
+
+
 def owned_link(session: Session, trip_id: Identifier, subject: str, link_id: Identifier) -> ShareLink:
     owned_trip(session, trip_id, subject)
     link = session.scalar(select(ShareLink).where(ShareLink.id == link_id, ShareLink.trip_id == trip_id))
     if link is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Share link not found", code="not_found")
+    _settle_expired(session, [link])
     return link
 
 
@@ -284,9 +311,11 @@ def list_audit_events(trip_id: Identifier, session: SessionDep, subject: Subject
 @router.get("/share-links", response_model=list[ShareLinkResponse])
 def list_share_links(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[ShareLink]:
     owned_trip(session, trip_id, subject)
-    return list(
+    links = list(
         session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id).order_by(ShareLink.created_at.desc()))
     )
+    _settle_expired(session, links)
+    return links
 
 
 @router.get("/share-links/{link_id}", response_model=ShareLinkResponse)
@@ -652,17 +681,7 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
     if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
-        link.state = LinkState.EXPIRED
-        record_audit_event(
-            session,
-            trip_id=link.trip_id,
-            actor_subject=SYSTEM_ACTOR,
-            kind=AuditEventKind.SHARE_LINK_EXPIRE,
-            target_type=AuditTargetType.SHARE_LINK,
-            target_id=link.id,
-            details={},
-        )
-        session.commit()
+        _expire_link(session, link)
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     if trip is None:
@@ -683,17 +702,7 @@ def get_shared_navigation(request: Request, token: str, local_id: str, session: 
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
     if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
-        link.state = LinkState.EXPIRED
-        record_audit_event(
-            session,
-            trip_id=link.trip_id,
-            actor_subject=SYSTEM_ACTOR,
-            kind=AuditEventKind.SHARE_LINK_EXPIRE,
-            target_type=AuditTargetType.SHARE_LINK,
-            target_id=link.id,
-            details={},
-        )
-        session.commit()
+        _expire_link(session, link)
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     target = scoped_navigation_url(trip, link.scope, local_id) if trip is not None else None

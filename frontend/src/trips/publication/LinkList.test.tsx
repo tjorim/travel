@@ -21,13 +21,13 @@ const link = (id: string): ShareLink => ({
   activated_at: null,
   revoked_at: null,
 });
-const show = (versions: number) =>
+const show = (versions: number, current: ShareLink = link("current")) =>
   render(
     <LinkList
       series={[
         {
           id: "series",
-          current: link("current"),
+          current,
           history: Array.from({ length: versions }, (_, index) => link(`old-${index}`)),
         },
       ]}
@@ -52,4 +52,13 @@ it.each([
   act(() => changeLocale(locale));
   show(count);
   expect(screen.getByRole("button", { name })).toBeTruthy();
+});
+
+it.each([
+  ["en", "expired"],
+  ["nl", "verlopen"],
+] as const)("labels a time-expired link as expired in %s", (locale, label) => {
+  act(() => changeLocale(locale));
+  show(0, { ...link("current"), state: "expired", expires_at: "2026-01-02T00:00:00Z" });
+  expect(screen.getByText(new RegExp(label, "i"))).toBeTruthy();
 });

@@ -851,6 +851,30 @@ def test_expired_share_link_token_is_rejected() -> None:
     assert response.status_code == 404
 
 
+def test_owner_reads_show_time_expired_link_as_expired_with_real_audit_time() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    link_id = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": scope()}).json()[
+        "id"
+    ]
+    activate(owner, trip["id"], link_id, expires_in_days=1)
+    expired_at = datetime.now(UTC) - timedelta(days=1)
+    with TestingSessionLocal() as session:
+        session.scalar(select(ShareLink).where(ShareLink.id == link_id)).expires_at = expired_at
+        session.commit()
+
+    listed = owner.get(f"/api/trips/{trip['id']}/share-links").json()
+    assert [link["state"] for link in listed] == ["expired"]
+    assert owner.get(f"/api/trips/{trip['id']}/share-links/{link_id}").json()["state"] == "expired"
+    assert owner.patch(f"/api/trips/{trip['id']}/share-links/{link_id}", json={"label": "x"}).status_code == 409
+
+    events = [e for e in owner.get(f"/api/trips/{trip['id']}/audit-events").json() if e["kind"] == "share_link.expire"]
+    assert len(events) == 1
+    assert datetime.fromisoformat(events[0]["occurred_at"]).replace(tzinfo=UTC) == expired_at.replace(
+        microsecond=expired_at.microsecond
+    )
+
+
 def test_share_link_can_remain_active_until_its_owner_revokes_it() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
