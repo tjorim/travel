@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 
 from ..errors import ApiException
 from ..models import Area, Location
-from ..schemas import LocationInput
+from ..schemas import Identifier, LocationInput
 
 
-def selected_area(session: Session, trip_id: str, area_id: str) -> Area:
+def selected_area(session: Session, trip_id: Identifier, area_id: Identifier) -> Area:
     area = session.scalar(select(Area).where(Area.id == area_id, Area.trip_id == trip_id))
     if area is None:
         raise ApiException(
@@ -20,7 +20,7 @@ def selected_area(session: Session, trip_id: str, area_id: str) -> Area:
     return area
 
 
-def area_for_location(session: Session, trip_id: str, location: Location) -> Area:
+def area_for_location(session: Session, trip_id: Identifier, location: Location) -> Area:
     """The area a new location belongs to, found or made from the location's own city.
 
     An existing area with the same name (and a compatible country) is reused, so
@@ -72,7 +72,7 @@ def is_city_level(location: Location) -> bool:
     return all(getattr(location, field) is None for field in _IDENTIFYING)
 
 
-def area_location(session: Session, trip_id: str, area: Area) -> Location:
+def area_location(session: Session, trip_id: Identifier, area: Area) -> Location:
     """The one location that means just "in this area", created on first use.
 
     A stay whose accommodation is still undecided needs a location, and every
@@ -96,7 +96,7 @@ def area_location(session: Session, trip_id: str, area: Area) -> Location:
     return location
 
 
-def location_from_input(session: Session, trip_id: str, payload: LocationInput) -> Location:
+def location_from_input(session: Session, trip_id: Identifier, payload: LocationInput) -> Location:
     """Create a location in its area, or return the location the trip already has."""
     if payload.existing_location_id is not None:
         existing = session.scalar(
@@ -126,7 +126,7 @@ def location_from_input(session: Session, trip_id: str, payload: LocationInput) 
 
 
 def resolve_place(
-    session: Session, trip_id: str, area_id: str | None, location: LocationInput | None
+    session: Session, trip_id: Identifier, area_id: Identifier | None, location: LocationInput | None
 ) -> tuple[Area, Location | None]:
     """The area and optional location of a place a record points at.
 

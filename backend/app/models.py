@@ -30,6 +30,10 @@ def opaque_id() -> str:
     return uuid.uuid4().hex
 
 
+# SQLAlchemy Integer is a signed 32-bit column on PostgreSQL.
+INTEGER_MAX = 2**31 - 1
+
+
 class SurfaceState(StrEnum):
     UNPUBLISHED = "unpublished"
     PUBLISHED = "published"

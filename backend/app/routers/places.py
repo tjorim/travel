@@ -9,7 +9,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..errors import service_exception
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
-from ..schemas import PlaceReverseGeocodeRequest, PlaceSearchRequest, PlaceSearchResponse
+from ..schemas import Identifier, PlaceReverseGeocodeRequest, PlaceSearchRequest, PlaceSearchResponse
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["places"])
@@ -21,7 +21,11 @@ SearchServiceDep = Annotated[CachedPlaceSearchService, Depends(get_place_search_
 
 @router.post("/places/search", response_model=PlaceSearchResponse)
 def search_places(
-    trip_id: str, payload: PlaceSearchRequest, session: SessionDep, subject: SubjectDep, service: SearchServiceDep
+    trip_id: Identifier,
+    payload: PlaceSearchRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    service: SearchServiceDep,
 ) -> PlaceSearchResponse:
     # Resolve ownership before the remote call. A rejected caller must never
     # turn this endpoint into an arbitrary-query proxy.
@@ -34,7 +38,7 @@ def search_places(
 
 @router.post("/places/reverse", response_model=PlaceSearchResponse)
 def reverse_geocode_place(
-    trip_id: str,
+    trip_id: Identifier,
     payload: PlaceReverseGeocodeRequest,
     session: SessionDep,
     subject: SubjectDep,

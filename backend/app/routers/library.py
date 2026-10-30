@@ -24,8 +24,10 @@ from ..schemas import (
     EmergencyInfoEntryCreate,
     EmergencyInfoEntryResponse,
     EmergencyInfoEntryUpdate,
+    Identifier,
     OwnerDocumentResponse,
     OwnerDocumentUpdate,
+    SafeText,
 )
 from ..storage import ObjectStorage, get_storage
 from .trips import owned_trip
@@ -53,7 +55,7 @@ def _document_response(document: OwnerDocument) -> OwnerDocumentResponse:
     )
 
 
-def owned_library_document(session: Session, subject: str, document_id: str) -> OwnerDocument:
+def owned_library_document(session: Session, subject: str, document_id: Identifier) -> OwnerDocument:
     document = session.scalar(
         select(OwnerDocument).where(
             OwnerDocument.id == document_id,
@@ -66,7 +68,7 @@ def owned_library_document(session: Session, subject: str, document_id: str) -> 
     return document
 
 
-def owned_emergency_entry(session: Session, subject: str, entry_id: str) -> EmergencyInfoEntry:
+def owned_emergency_entry(session: Session, subject: str, entry_id: Identifier) -> EmergencyInfoEntry:
     entry = session.scalar(
         select(EmergencyInfoEntry).where(EmergencyInfoEntry.id == entry_id, EmergencyInfoEntry.owner_subject == subject)
     )
@@ -83,10 +85,10 @@ def upload_library_document(
     subject: SubjectDep,
     storage: StorageDep,
     response: Response,
-    title: Annotated[str, Form(min_length=1, max_length=160)],
+    title: Annotated[SafeText, Form(min_length=1, max_length=160)],
     document_kind: Annotated[DocumentKind, Form()],
     file: Annotated[UploadFile, File()],
-    linked_trip_id: Annotated[str | None, Form()] = None,
+    linked_trip_id: Annotated[Identifier | None, Form()] = None,
 ) -> OwnerDocumentResponse:
     if linked_trip_id:
         owned_trip(session, linked_trip_id, subject)
@@ -116,7 +118,7 @@ def upload_library_document(
 
 @router.get("/documents", response_model=list[OwnerDocumentResponse])
 def list_library_documents(
-    session: SessionDep, subject: SubjectDep, linked_trip_id: str | None = None
+    session: SessionDep, subject: SubjectDep, linked_trip_id: Identifier | None = None
 ) -> list[OwnerDocumentResponse]:
     query = select(OwnerDocument).where(OwnerDocument.owner_subject == subject, OwnerDocument.deleted_at.is_(None))
     if linked_trip_id is not None:
@@ -126,13 +128,13 @@ def list_library_documents(
 
 
 @router.get("/documents/{document_id}", response_model=OwnerDocumentResponse)
-def get_library_document(document_id: str, session: SessionDep, subject: SubjectDep) -> OwnerDocumentResponse:
+def get_library_document(document_id: Identifier, session: SessionDep, subject: SubjectDep) -> OwnerDocumentResponse:
     return _document_response(owned_library_document(session, subject, document_id))
 
 
 @router.patch("/documents/{document_id}", response_model=OwnerDocumentResponse)
 def update_library_document(
-    document_id: str, payload: OwnerDocumentUpdate, session: SessionDep, subject: SubjectDep
+    document_id: Identifier, payload: OwnerDocumentUpdate, session: SessionDep, subject: SubjectDep
 ) -> OwnerDocumentResponse:
     document = owned_library_document(session, subject, document_id)
     updates = payload.model_dump(exclude_unset=True)
@@ -147,7 +149,7 @@ def update_library_document(
 
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_library_document(
-    document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+    document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
     delete_owner_document(session, storage, document=owned_library_document(session, subject, document_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -155,7 +157,7 @@ def remove_library_document(
 
 @router.get("/documents/{document_id}/original")
 def get_library_document_original(
-    document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+    document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> StreamingResponse:
     original = owned_library_document(session, subject, document_id).original_object
     return StreamingResponse(
@@ -188,13 +190,13 @@ def create_emergency_info(
 
 
 @router.get("/emergency-info/{entry_id}", response_model=EmergencyInfoEntryResponse)
-def get_emergency_info_entry(entry_id: str, session: SessionDep, subject: SubjectDep) -> EmergencyInfoEntry:
+def get_emergency_info_entry(entry_id: Identifier, session: SessionDep, subject: SubjectDep) -> EmergencyInfoEntry:
     return owned_emergency_entry(session, subject, entry_id)
 
 
 @router.patch("/emergency-info/{entry_id}", response_model=EmergencyInfoEntryResponse)
 def update_emergency_info(
-    entry_id: str, payload: EmergencyInfoEntryUpdate, session: SessionDep, subject: SubjectDep
+    entry_id: Identifier, payload: EmergencyInfoEntryUpdate, session: SessionDep, subject: SubjectDep
 ) -> EmergencyInfoEntry:
     entry = owned_emergency_entry(session, subject, entry_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -205,7 +207,7 @@ def update_emergency_info(
 
 
 @router.delete("/emergency-info/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_emergency_info(entry_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_emergency_info(entry_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     session.delete(owned_emergency_entry(session, subject, entry_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

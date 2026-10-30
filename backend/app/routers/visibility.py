@@ -9,7 +9,7 @@ from ..access import set_visibility
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, service_exception
-from ..schemas import ShareScopeKind, VisibilityUpdate
+from ..schemas import Identifier, ShareScopeKind, VisibilityUpdate
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["visibility"])
@@ -20,9 +20,9 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 @router.put("/visibility/{kind}/{record_id}", response_model=VisibilityUpdate)
 def put_visibility(
-    trip_id: str,
+    trip_id: Identifier,
     kind: ShareScopeKind,
-    record_id: str,
+    record_id: Identifier,
     payload: VisibilityUpdate,
     session: SessionDep,
     subject: SubjectDep,

@@ -12,7 +12,15 @@ from ..database import get_session
 from ..errors import ApiException, service_exception
 from ..models import Location, Trip, Visibility, Visit, VisitStatus
 from ..route_overlap import overlapping_routes, route_title
-from ..schemas import RouteReference, VisitCreate, VisitResponse, VisitRouteCheck, VisitUpdate, require_visit_times
+from ..schemas import (
+    Identifier,
+    RouteReference,
+    VisitCreate,
+    VisitResponse,
+    VisitRouteCheck,
+    VisitUpdate,
+    require_visit_times,
+)
 from .placement import resolve_place, selected_area
 from .trips import owned_trip
 
@@ -26,7 +34,7 @@ def _visit_query():
     return select(Visit).options(selectinload(Visit.area), selectinload(Visit.location).selectinload(Location.area))
 
 
-def owned_visit(trip: Trip, visit_id: str) -> Visit:
+def owned_visit(trip: Trip, visit_id: Identifier) -> Visit:
     visit = next((item for item in trip.visits if item.id == visit_id), None)
     if visit is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found", code="not_found")
@@ -70,14 +78,14 @@ def _move(session: Session, trip: Trip, visit: Visit, position: int) -> None:
 
 
 @router.get("/visits", response_model=list[VisitResponse])
-def list_visits(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[Visit]:
+def list_visits(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Visit]:
     trip = owned_trip(session, trip_id, subject)
     flag_route_overlaps(trip, *trip.visits)
     return list(trip.visits)
 
 
 @router.post("/visits", response_model=VisitResponse, status_code=status.HTTP_201_CREATED)
-def create_visit(trip_id: str, payload: VisitCreate, session: SessionDep, subject: SubjectDep) -> Visit:
+def create_visit(trip_id: Identifier, payload: VisitCreate, session: SessionDep, subject: SubjectDep) -> Visit:
     trip = owned_trip(session, trip_id, subject)
     area, location = resolve_place(session, trip.id, payload.area_id, payload.location)
     end = len(trip.visits)
@@ -100,7 +108,7 @@ def create_visit(trip_id: str, payload: VisitCreate, session: SessionDep, subjec
 
 @router.post("/visits/route-check", response_model=list[RouteReference])
 def check_visit_against_routes(
-    trip_id: str, payload: VisitRouteCheck, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, payload: VisitRouteCheck, session: SessionDep, subject: SubjectDep
 ) -> list[dict[str, str]]:
     """Which routes a visit that is not saved yet would restate. Saves nothing and never blocks the save."""
     trip = owned_trip(session, trip_id, subject)
@@ -128,7 +136,7 @@ def check_visit_against_routes(
 
 
 @router.get("/visits/{visit_id}", response_model=VisitResponse)
-def get_visit(trip_id: str, visit_id: str, session: SessionDep, subject: SubjectDep) -> Visit:
+def get_visit(trip_id: Identifier, visit_id: Identifier, session: SessionDep, subject: SubjectDep) -> Visit:
     trip = owned_trip(session, trip_id, subject)
     visit = owned_visit(trip, visit_id)
     flag_route_overlaps(trip, visit)
@@ -159,7 +167,9 @@ def _update_place(session: Session, trip: Trip, visit: Visit, payload: VisitUpda
 
 
 @router.patch("/visits/{visit_id}", response_model=VisitResponse)
-def update_visit(trip_id: str, visit_id: str, payload: VisitUpdate, session: SessionDep, subject: SubjectDep) -> Visit:
+def update_visit(
+    trip_id: Identifier, visit_id: Identifier, payload: VisitUpdate, session: SessionDep, subject: SubjectDep
+) -> Visit:
     trip = owned_trip(session, trip_id, subject)
     visit = owned_visit(trip, visit_id)
     _update_place(session, trip, visit, payload)
@@ -195,7 +205,7 @@ def update_visit(trip_id: str, visit_id: str, payload: VisitUpdate, session: Ses
 
 
 @router.delete("/visits/{visit_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_visit(trip_id: str, visit_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_visit(trip_id: Identifier, visit_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     trip = owned_trip(session, trip_id, subject)
     visit = owned_visit(trip, visit_id)
     session.delete(visit)

@@ -20,7 +20,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
 from ..models import Area, DocumentAsset, Location, Route, RouteDocumentAsset, RouteStatus, Trip, Visibility
-from ..schemas import RouteCreate, RouteResponse, RouteUpdate
+from ..schemas import Identifier, RouteCreate, RouteResponse, RouteUpdate
 from .placement import resolve_place, selected_area
 from .trips import owned_trip
 
@@ -40,7 +40,7 @@ def _route_query():
     )
 
 
-def owned_route(trip: Trip, route_id: str) -> Route:
+def owned_route(trip: Trip, route_id: Identifier) -> Route:
     route = next((item for item in trip.routes if item.id == route_id), None)
     if route is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found", code="not_found")
@@ -136,7 +136,9 @@ def settle_departure_day(route: Route, requested: date | None, given: bool) -> N
     route.departs_on = local
 
 
-def document_links_from_ids(session: Session, trip_id: str, document_asset_ids: list[str]) -> list[RouteDocumentAsset]:
+def document_links_from_ids(
+    session: Session, trip_id: Identifier, document_asset_ids: list[str]
+) -> list[RouteDocumentAsset]:
     """Resolve attachments inside the already-authorized trip boundary.
 
     A client can only attach non-deleted documents owned by this trip.
@@ -163,12 +165,12 @@ def document_links_from_ids(session: Session, trip_id: str, document_asset_ids: 
 
 
 @router.get("/routes", response_model=list[RouteResponse])
-def list_routes(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[Route]:
+def list_routes(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Route]:
     return list(owned_trip(session, trip_id, subject).routes)
 
 
 @router.post("/routes", response_model=RouteResponse, status_code=status.HTTP_201_CREATED)
-def create_route(trip_id: str, payload: RouteCreate, session: SessionDep, subject: SubjectDep) -> Route:
+def create_route(trip_id: Identifier, payload: RouteCreate, session: SessionDep, subject: SubjectDep) -> Route:
     trip = owned_trip(session, trip_id, subject)
     departs_at = arrives_at = None
     if payload.departs_at is not None and payload.arrives_at is not None:
@@ -211,7 +213,7 @@ def create_route(trip_id: str, payload: RouteCreate, session: SessionDep, subjec
 
 
 @router.get("/routes/{route_id}", response_model=RouteResponse)
-def get_route(trip_id: str, route_id: str, session: SessionDep, subject: SubjectDep) -> Route:
+def get_route(trip_id: Identifier, route_id: Identifier, session: SessionDep, subject: SubjectDep) -> Route:
     return owned_route(owned_trip(session, trip_id, subject), route_id)
 
 
@@ -242,7 +244,9 @@ def _update_end(session: Session, trip: Trip, route: Route, payload: RouteUpdate
 
 
 @router.patch("/routes/{route_id}", response_model=RouteResponse)
-def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: SessionDep, subject: SubjectDep) -> Route:
+def update_route(
+    trip_id: Identifier, route_id: Identifier, payload: RouteUpdate, session: SessionDep, subject: SubjectDep
+) -> Route:
     trip = owned_trip(session, trip_id, subject)
     route = owned_route(trip, route_id)
     _update_end(session, trip, route, payload, "departure")
@@ -310,7 +314,7 @@ def update_route(trip_id: str, route_id: str, payload: RouteUpdate, session: Ses
 
 
 @router.delete("/routes/{route_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_route(trip_id: str, route_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_route(trip_id: Identifier, route_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     session.delete(owned_route(owned_trip(session, trip_id, subject), route_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

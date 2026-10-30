@@ -11,7 +11,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
 from ..models import Trip, TripTask, TripTaskAlert
-from ..schemas import TripTaskAlertResponse, TripTaskCreate, TripTaskResponse, TripTaskUpdate
+from ..schemas import Identifier, TripTaskAlertResponse, TripTaskCreate, TripTaskResponse, TripTaskUpdate
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["trip-tasks"])
@@ -20,7 +20,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 
 
-def owned_task(trip: Trip, task_id: str) -> TripTask:
+def owned_task(trip: Trip, task_id: Identifier) -> TripTask:
     task = next((item for item in trip.trip_tasks if item.id == task_id), None)
     if task is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip task not found", code="not_found")
@@ -28,12 +28,14 @@ def owned_task(trip: Trip, task_id: str) -> TripTask:
 
 
 @router.get("/trip-tasks", response_model=list[TripTaskResponse])
-def list_trip_tasks(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[TripTask]:
+def list_trip_tasks(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[TripTask]:
     return list(owned_trip(session, trip_id, subject).trip_tasks)
 
 
 @router.post("/trip-tasks", response_model=TripTaskResponse, status_code=status.HTTP_201_CREATED)
-def create_trip_task(trip_id: str, payload: TripTaskCreate, session: SessionDep, subject: SubjectDep) -> TripTask:
+def create_trip_task(
+    trip_id: Identifier, payload: TripTaskCreate, session: SessionDep, subject: SubjectDep
+) -> TripTask:
     trip = owned_trip(session, trip_id, subject)
     task = TripTask(trip=trip, **payload.model_dump(exclude={"links"}), links=payload.model_dump(mode="json")["links"])
     session.add(task)
@@ -43,13 +45,13 @@ def create_trip_task(trip_id: str, payload: TripTaskCreate, session: SessionDep,
 
 
 @router.get("/trip-tasks/{task_id}", response_model=TripTaskResponse)
-def get_trip_task(trip_id: str, task_id: str, session: SessionDep, subject: SubjectDep) -> TripTask:
+def get_trip_task(trip_id: Identifier, task_id: Identifier, session: SessionDep, subject: SubjectDep) -> TripTask:
     return owned_task(owned_trip(session, trip_id, subject), task_id)
 
 
 @router.patch("/trip-tasks/{task_id}", response_model=TripTaskResponse)
 def update_trip_task(
-    trip_id: str, task_id: str, payload: TripTaskUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, task_id: Identifier, payload: TripTaskUpdate, session: SessionDep, subject: SubjectDep
 ) -> TripTask:
     trip = owned_trip(session, trip_id, subject)
     task = owned_task(trip, task_id)
@@ -80,7 +82,7 @@ def update_trip_task(
 
 
 @router.delete("/trip-tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_trip_task(trip_id: str, task_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_trip_task(trip_id: Identifier, task_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     trip = owned_trip(session, trip_id, subject)
     session.delete(owned_task(trip, task_id))
     session.commit()
@@ -88,7 +90,7 @@ def delete_trip_task(trip_id: str, task_id: str, session: SessionDep, subject: S
 
 
 @router.get("/task-alerts", response_model=list[TripTaskAlertResponse])
-def list_task_alerts(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[TripTaskAlert]:
+def list_task_alerts(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[TripTaskAlert]:
     trip = owned_trip(session, trip_id, subject)
     return list(
         session.scalars(
@@ -101,7 +103,9 @@ def list_task_alerts(trip_id: str, session: SessionDep, subject: SubjectDep) -> 
 
 
 @router.patch("/task-alerts/{alert_id}/read", response_model=TripTaskAlertResponse)
-def mark_task_alert_read(trip_id: str, alert_id: str, session: SessionDep, subject: SubjectDep) -> TripTaskAlert:
+def mark_task_alert_read(
+    trip_id: Identifier, alert_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> TripTaskAlert:
     trip = owned_trip(session, trip_id, subject)
     alert = session.scalar(
         select(TripTaskAlert)

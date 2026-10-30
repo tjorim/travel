@@ -23,6 +23,7 @@ from ..models import (
 )
 from ..navigation import location_navigation_url
 from ..schemas import (
+    Identifier,
     LocationInput,
     LocationMergeDuplicate,
     LocationMergeResult,
@@ -40,7 +41,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 
 
-def owned_location(session: Session, trip_id: str, subject: str, location_id: str) -> Location:
+def owned_location(session: Session, trip_id: Identifier, subject: str, location_id: Identifier) -> Location:
     owned_trip(session, trip_id, subject)
     location = session.scalar(select(Location).where(Location.id == location_id, Location.trip_id == trip_id))
     if location is None:
@@ -50,7 +51,7 @@ def owned_location(session: Session, trip_id: str, subject: str, location_id: st
 
 @router.get("/locations", response_model=list[LocationResponse])
 def list_locations(
-    trip_id: str,
+    trip_id: Identifier,
     session: SessionDep,
     subject: SubjectDep,
     q: str | None = None,
@@ -69,7 +70,7 @@ def list_locations(
 
 
 @router.post("/locations", response_model=LocationResponse, status_code=status.HTTP_201_CREATED)
-def save_location(trip_id: str, payload: LocationInput, session: SessionDep, subject: SubjectDep) -> Location:
+def save_location(trip_id: Identifier, payload: LocationInput, session: SessionDep, subject: SubjectDep) -> Location:
     trip = owned_trip(session, trip_id, subject)
     location = location_from_input(session, trip.id, payload)
     session.commit()
@@ -148,7 +149,7 @@ def _apply_map_target(location: Location, payload: LocationUpdate) -> None:
 
 @router.patch("/locations/{location_id}", response_model=LocationResponse)
 def update_location(
-    trip_id: str, location_id: str, payload: LocationUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, location_id: Identifier, payload: LocationUpdate, session: SessionDep, subject: SubjectDep
 ) -> Location:
     """Correct a saved location, or apply a verified place-search result to it, in place.
 
@@ -204,7 +205,9 @@ def update_location(
 
 
 @router.get("/locations/{location_id}/navigation", response_model=NavigationResponse)
-def owner_navigation(location_id: str, trip_id: str, session: SessionDep, subject: SubjectDep) -> NavigationResponse:
+def owner_navigation(
+    location_id: Identifier, trip_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> NavigationResponse:
     location = owned_location(session, trip_id, subject, location_id)
     url = location_navigation_url(location)
     if url is None:
@@ -216,7 +219,7 @@ def owner_navigation(location_id: str, trip_id: str, session: SessionDep, subjec
     return NavigationResponse(url=url, exact=True)
 
 
-def _referencing(session: Session, trip_id: str, location_id: str) -> dict[str, list]:
+def _referencing(session: Session, trip_id: Identifier, location_id: Identifier) -> dict[str, list]:
     """Every record that points at this location, by kind."""
 
     def rows(model, *conditions) -> list:
@@ -241,7 +244,7 @@ _REFERENCE_NAMES = {
 
 
 @router.delete("/locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_location(trip_id: str, location_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_location(trip_id: Identifier, location_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     """Delete an unused location; refuse while any visit, stay, route or reisupdate still points at it."""
     location = owned_location(session, trip_id, subject, location_id)
     found_by_kind = _referencing(session, trip_id, location.id)
@@ -266,7 +269,7 @@ def delete_location(trip_id: str, location_id: str, session: SessionDep, subject
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def merge_locations(trip_id: str, payload: MergeRequest, session: Session, subject: str) -> LocationMergeResult:
+def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session, subject: str) -> LocationMergeResult:
     """Preview, or with ``confirm`` apply, folding duplicates into one kept location.
 
     Every visit, stay, route end and reisupdate at a duplicate moves to the kept
@@ -346,7 +349,7 @@ def merge_locations(trip_id: str, payload: MergeRequest, session: Session, subje
 
 @router.post("/locations/merge", response_model=LocationMergeResult)
 def merge_locations_endpoint(
-    trip_id: str, payload: MergeRequest, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, payload: MergeRequest, session: SessionDep, subject: SubjectDep
 ) -> LocationMergeResult:
     result = merge_locations(trip_id, payload, session, subject)
     session.commit()
