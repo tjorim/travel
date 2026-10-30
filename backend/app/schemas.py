@@ -329,7 +329,7 @@ class AreaMergeDuplicate(BaseModel):
     """What merging one duplicate area moves to the kept area, and what it may hide."""
 
     id: str
-    label: str
+    label: str | None
     locations: int
     visits: int
     routes: int
@@ -446,7 +446,7 @@ class AreaInput(InputModel):
     """A deliberately authored area: label, country/region and an
     optional approved generalized point. Shareable, unlike a location."""
 
-    label: str = Field(min_length=1, max_length=120)
+    label: str | None = Field(default=None, min_length=1, max_length=120, description="Null leaves the area unnamed.")
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)

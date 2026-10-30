@@ -1,3 +1,4 @@
+import { areaName } from "../../tracker-model";
 import { Button } from "@/ui/button";
 
 import {
@@ -78,7 +79,7 @@ export function LocationForm({
             <option value="">{m.owner_choose_an_area_2()}</option>
             {areas.map((area) => (
               <option key={area.id} value={area.id}>
-                {area.label}
+                {areaName(area)}
               </option>
             ))}
           </SelectField>

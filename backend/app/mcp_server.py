@@ -710,7 +710,7 @@ class TravelMcpBackend:
 
         def found(values: list[Any]) -> list[Any]:
             needle = (query or "").strip().casefold()
-            return [area for area in values if needle in area.label.casefold()]
+            return [area for area in values if needle in (area.label or "").casefold()]
 
         return self._call(
             "area.list",

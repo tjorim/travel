@@ -75,12 +75,27 @@ class SharingBlocker(str):
         return value
 
 
+def _areas_of(record: Any) -> list[Any]:
+    """The areas a record shows to visitors as its place."""
+    if hasattr(record, "departure_area"):
+        return [record.departure_area, record.arrival_area]
+    return [record.area]
+
+
 def sharing_blocker(kind: str, record: Any) -> SharingBlocker | None:
     """Why this record cannot be shared yet, or ``None`` when it can.
 
     This gate applies both when the owner chooses a visibility and again at
     delivery, so a record that stops qualifying is never served.
     """
+    if kind == "area" and not record.label:
+        return SharingBlocker("Name this area before sharing it", "name_this_area_before_sharing_it")
+    if kind in {"visit", "stay", "route", "travel_update"} and any(
+        area is not None and not area.label for area in _areas_of(record)
+    ):
+        return SharingBlocker(
+            "Name the area of this record before sharing it", "name_the_area_of_this_record_before_sharing_it"
+        )
     if kind == "location" and not record.label:
         return SharingBlocker(
             "Give this location a public name before sharing it", "give_this_location_a_public_name_before_sharing_it"

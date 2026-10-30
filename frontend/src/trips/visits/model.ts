@@ -8,6 +8,7 @@ import {
   type Visit,
   type VisitKind,
   type VisitStatus,
+  areaName,
 } from "../../tracker-model";
 import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS, clock, visitWhen } from "../labels";
 import { emptyPlace, placeOfVisit, type PlaceValue } from "../PlacePicker";
@@ -46,7 +47,9 @@ export function overnights(
 
 /** Where a visit is: its location when it has one, else its area. */
 export const visitPlace = (visit: Pick<Visit, "area" | "location">): string =>
-  visit.location ? `${locationName(visit.location)} · ${visit.area.label}` : visit.area.label;
+  visit.location
+    ? `${locationName(visit.location)} · ${areaName(visit.area)}`
+    : areaName(visit.area);
 
 export type Values = {
   place: PlaceValue;

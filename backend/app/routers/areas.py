@@ -71,12 +71,10 @@ def suggest_area(
     except PlaceSearchError as error:
         raise service_exception(status.HTTP_503_SERVICE_UNAVAILABLE, error) from error
     place = result[0] if result else None
-    label = (
-        payload.city or (place.locality or place.admin_area if place else None) or "Nieuw gebied"
-    ).strip() or "Nieuw gebied"
+    label = (payload.city or (place.locality or place.admin_area if place else None) or "").strip()
     return AreaSuggestion(
         area=AreaInput(
-            label=label[:120],
+            label=label[:120] or None,
             country_code=place.country_code if place else None,
             region=place.admin_area if place else None,
             latitude=payload.latitude,
@@ -248,7 +246,7 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
         narrowed = sorted(receivers("area", duplicate, audiences) - kept_by)
         if narrowed:
             warnings.append(
-                f"{duplicate.label} reaches {', '.join(narrowed)} but the kept area does not; "
+                f"{duplicate.label or 'An unnamed area'} reaches {', '.join(narrowed)} but the kept area does not; "
                 "after the merge they no longer see it. Share the kept area first to avoid that."
             )
         summaries.append(

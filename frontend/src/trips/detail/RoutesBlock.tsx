@@ -10,6 +10,7 @@ import {
   type Location,
   type Route,
   type Trip,
+  areaName,
 } from "../../tracker-model";
 import { ROUTE_STATUS_LABELS } from "../labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
@@ -52,8 +53,8 @@ export function RoutesBlock({ trip, routes }: { trip: Trip; routes: Route[] }) {
                 .join(" · ")}
             </p>
             <p>
-              {routeEndpoint(route.departure_area.label, route.departure_location)} →{" "}
-              {routeEndpoint(route.arrival_area.label, route.arrival_location)}
+              {routeEndpoint(areaName(route.departure_area), route.departure_location)} →{" "}
+              {routeEndpoint(areaName(route.arrival_area), route.arrival_location)}
             </p>
             <p>
               {[route.carrier, route.service_reference, route.travel_class]

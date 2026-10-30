@@ -1,7 +1,7 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
-import { visitTitle, type Trip, type Visit } from "../../tracker-model";
+import { visitTitle, type Trip, type Visit, areaName } from "../../tracker-model";
 import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS, visitWhen } from "../labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
@@ -21,7 +21,7 @@ export function VisitsBlock({ trip, visits }: { trip: Trip; visits: Visit[] }) {
               {visit.kind ? ` · ${VISIT_KIND_LABELS[visit.kind]}` : ""}
               {visit.status ? ` · ${VISIT_STATUS_LABELS[visit.status]}` : ""} ·{" "}
               {visit.location ? `${placeLabel(visit.location)} · ` : ""}
-              {visit.area.label}
+              {areaName(visit.area)}
             </span>
             <Markdown html={visit.notes_html} text={visit.notes} />
             {visit.summary && (

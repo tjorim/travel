@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
 
-import { captureInputValue, formatCapture, openBlobInNewTab } from "./tracker-model";
+import { setLocale } from "./paraglide/runtime.js";
+import { areaName, captureInputValue, formatCapture, openBlobInNewTab } from "./tracker-model";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -52,4 +53,16 @@ it("keeps showing other capture times as instants in the viewer's zone", () => {
   vi.stubEnv("TZ", "Asia/Taipei");
   expect(formatCapture("2054-11-20T10:15:00Z", false)).toBe("20 nov 2054, 18:15");
   expect(captureInputValue("2054-11-20T10:15:00Z", false)).toBe("2054-11-20T18:15");
+});
+
+it("names an unnamed area in the selected locale and keeps a given name as written", () => {
+  try {
+    setLocale("en", { reload: false });
+    expect(areaName({ label: null })).toBe("Unnamed area");
+    setLocale("nl", { reload: false });
+    expect(areaName({ label: null })).toBe("Naamloos gebied");
+    expect(areaName({ label: "Taipei" })).toBe("Taipei");
+  } finally {
+    setLocale("en", { reload: false });
+  }
 });

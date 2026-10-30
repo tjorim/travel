@@ -19,7 +19,7 @@ export const blank = (): Values => ({
   timezone: "",
 });
 export const fromArea = (area: Area): Values => ({
-  label: area.label,
+  label: area.label ?? "",
   countryCode: area.country_code ?? "",
   region: area.region ?? "",
   latitude: area.latitude?.toString() ?? "",

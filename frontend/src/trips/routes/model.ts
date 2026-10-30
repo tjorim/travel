@@ -13,6 +13,7 @@ import {
   type Route,
   type RouteMode,
   type TimedRoute,
+  areaName,
 } from "../../tracker-model";
 import { hasPlace, emptyPlace, placeOf, type PlaceValue } from "../PlacePicker";
 import type { RouteCoordinate } from "../RouteGeometryEditor";
@@ -171,7 +172,7 @@ export function routeEntries(routes: Route[]): { routes: Route[]; journey?: stri
     if (group.length < 2) return [{ routes: [route] }];
     if (group.some((item) => shown.has(item.id))) return [];
     group.forEach((item) => shown.add(item.id));
-    const places = `${route.departure_area.label} → ${route.arrival_area.label}`;
+    const places = `${areaName(route.departure_area)} → ${areaName(route.arrival_area)}`;
     return [
       {
         routes: group,
@@ -232,13 +233,13 @@ export const areaPoint = (
   ) {
     return [
       {
-        label: value.newAreaCandidate.label,
+        label: areaName(value.newAreaCandidate),
         coordinates: [value.newAreaCandidate.longitude, value.newAreaCandidate.latitude],
       },
     ];
   }
   const area = areas.find((candidate) => candidate.id === areaIdOf(value, locations));
   return area && area.latitude !== null && area.longitude !== null
-    ? [{ label: area.label, coordinates: [area.longitude, area.latitude] }]
+    ? [{ label: areaName(area), coordinates: [area.longitude, area.latitude] }]
     : [];
 };

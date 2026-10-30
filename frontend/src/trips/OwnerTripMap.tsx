@@ -9,7 +9,7 @@ import { errorMessage } from "../query/api";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { ownerKeys } from "../query/keys";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
-import { locationName, routeTitle, type Area, type Trip } from "../tracker-model";
+import { locationName, routeTitle, type Area, type Trip, areaName } from "../tracker-model";
 
 type OfflineSnapshot = { points: MapPoint[]; lines: MapLine[] };
 
@@ -88,7 +88,7 @@ export function OwnerTripMap({
                 area.id,
                 {
                   id: area.id,
-                  label: area.label,
+                  label: areaName(area),
                   coordinates: [area.longitude, area.latitude],
                   kind: "area",
                 },
@@ -106,7 +106,7 @@ export function OwnerTripMap({
               area.id,
               {
                 id: area.id,
-                label: area.label,
+                label: areaName(area),
                 coordinates: [
                   locations.reduce((total, location) => total + location.longitude!, 0) /
                     locations.length,
@@ -175,7 +175,7 @@ export function OwnerTripMap({
             ? [{ label: m.owner_open_location(), onOpen: () => openRecord?.("location", point.id) }]
             : []),
           ...visits.map((visit) => ({
-            label: m.owner_visit_2({ p0: visit.title ?? visit.area.label }),
+            label: m.owner_visit_2({ p0: visit.title ?? areaName(visit.area) }),
             onOpen: () => openRecord?.("visit", visit.id),
           })),
           ...updates.map((update) => ({
@@ -203,8 +203,8 @@ export function OwnerTripMap({
         const route = (routesQuery.data ?? []).find((item) => item.id === line.id);
         return {
           ...line,
-          from: route?.departure_area.label ?? line.from,
-          to: route?.arrival_area.label ?? line.to,
+          from: route ? areaName(route.departure_area) : line.from,
+          to: route ? areaName(route.arrival_area) : line.to,
           dates: route?.departs_on ?? line.dates,
           links: route
             ? [{ label: m.owner_open_route(), onOpen: () => openRecord?.("route", route.id) }]
