@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -51,7 +52,6 @@ from ..storage import ObjectStorage, get_storage
 from .trips import owned_trip, trip_query
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
-delivery_router = APIRouter(tags=["sharing-delivery"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
@@ -473,6 +473,26 @@ def rotate_share_link(
     )
     session.commit()
     return ShareLinkActivateResponse.model_validate(new_link)
+
+
+def _validate_delivery_path(request: Request) -> None:
+    # Validate before any lookup or token hashing. Do not include submitted values
+    # in diagnostics: these paths are anonymous and may contain capability tokens.
+    patterns = {
+        "slug": r"[A-Za-z0-9_-]{1,32}",
+        "token": r"[A-Za-z0-9_-]{43}",
+        "local_id": r"[A-Za-z0-9_-]{1,80}",
+    }
+    if any(re.fullmatch(patterns[name], value) is None for name, value in request.path_params.items()):
+        raise ApiException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+            headers=UNLISTED_HEADERS if "token" in request.path_params else {"Cache-Control": "no-store"},
+            code="not_found",
+        )
+
+
+delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(_validate_delivery_path)])
 
 
 # --- Anonymous delivery -------------------------------------------------------------
