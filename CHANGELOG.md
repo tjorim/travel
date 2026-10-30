@@ -9,6 +9,8 @@ All notable changes to the travel hub are documented here.
 - Localize the share-link "previous versions" label with a plural-aware message
   and make the locale audit flag string-literal ternaries in message arguments
   (#18).
+- Keep share-link capability tokens out of MCP metadata responses; only activation
+  and rotation return capabilities, preserving owner REST responses (#23).
 
 - Use a distinctive synthetic postal code in the public-location privacy test to
   prevent random public IDs from causing false disclosure failures.
