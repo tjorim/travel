@@ -9,6 +9,8 @@ cache would retain a searchable history of confidential owner queries.
 from collections import OrderedDict
 from dataclasses import dataclass
 from functools import lru_cache
+from math import ceil
+from threading import Lock
 from time import monotonic
 from typing import Protocol
 from urllib.parse import urlsplit
@@ -25,6 +27,17 @@ NOMINATIM_ATTRIBUTION_URL = "https://www.openstreetmap.org/copyright"
 
 class PlaceSearchError(ServiceError, RuntimeError):
     """A provider failure that deliberately contains no search query."""
+
+    status_code = 503
+    retry_after = 1
+
+
+class PlaceSearchBusy(PlaceSearchError):
+    status_code = 429
+
+    def __init__(self, retry_after: int = 1) -> None:
+        super().__init__("Place search is busy; retry later", code="operation_failed")
+        self.retry_after = retry_after
 
 
 class PlaceSearchProvider(Protocol):
@@ -144,6 +157,9 @@ class CachedPlaceSearchService:
     def __init__(self, provider: PlaceSearchProvider, config: Settings = settings) -> None:
         self.provider = provider
         self.config = config
+        self._lock = Lock()
+        self._cache_lock = Lock()
+        self._next_request_at = 0.0
         self.cache: OrderedDict[str, _CacheEntry] = OrderedDict()
 
     def search(self, query: str) -> PlaceSearchResponse:
@@ -158,30 +174,40 @@ class CachedPlaceSearchService:
         )
 
     def _lookup(self, key: str, lookup) -> PlaceSearchResponse:
-        cached = self.cache.get(key)
-        now = monotonic()
-        if cached is not None and cached.expires_at > now:
-            self.cache.move_to_end(key)
-            return cached.response
-        results = lookup()
-        response = PlaceSearchResponse(
-            provider=self.provider.name,
-            attribution=self.provider.attribution,
-            attribution_url=self.provider.attribution_url,
-            results=results,
-        )
-        self.cache[key] = _CacheEntry(now + self.config.osm_place_search_cache_ttl_seconds, response)
-        self.cache.move_to_end(key)
-        while len(self.cache) > self.config.osm_place_search_cache_max_entries:
-            self.cache.popitem(last=False)
-        return response
+        with self._cache_lock:
+            cached = self.cache.get(key)
+            if cached is not None and cached.expires_at > monotonic():
+                self.cache.move_to_end(key)
+                return cached.response
+        if not self._lock.acquire(blocking=False):
+            raise PlaceSearchBusy()
+        try:
+            now = monotonic()
+            if now < self._next_request_at:
+                raise PlaceSearchBusy(max(1, ceil(self._next_request_at - now)))
+            self._next_request_at = now + 1.0
+            results = lookup()
+            response = PlaceSearchResponse(
+                provider=self.provider.name,
+                attribution=self.provider.attribution,
+                attribution_url=self.provider.attribution_url,
+                results=results,
+            )
+            with self._cache_lock:
+                self.cache[key] = _CacheEntry(monotonic() + self.config.osm_place_search_cache_ttl_seconds, response)
+                self.cache.move_to_end(key)
+                while len(self.cache) > self.config.osm_place_search_cache_max_entries:
+                    self.cache.popitem(last=False)
+            return response
+        finally:
+            self._lock.release()
 
 
 PLACE_SEARCH_PROVIDERS = {"nominatim": NominatimSearchProvider}
 
 
 @lru_cache
-def get_place_search_service() -> CachedPlaceSearchService:
+def _cached_place_search_service() -> CachedPlaceSearchService:
     provider_factory = PLACE_SEARCH_PROVIDERS.get(settings.osm_place_search_provider)
     if provider_factory is None:
         return CachedPlaceSearchService(UnavailablePlaceSearchProvider())
@@ -189,3 +215,12 @@ def get_place_search_service() -> CachedPlaceSearchService:
     # contracted provider by registering a factory under its configured name;
     # the API itself is intentionally independent of Nominatim.
     return CachedPlaceSearchService(provider_factory())
+
+
+_service_lock = Lock()
+
+
+def get_place_search_service() -> CachedPlaceSearchService:
+    # lru_cache alone may run its factory twice on concurrent first requests.
+    with _service_lock:
+        return _cached_place_search_service()

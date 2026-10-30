@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
@@ -33,7 +33,9 @@ def search_places(
     try:
         return service.search(payload.query)
     except PlaceSearchError as error:
-        raise service_exception(status.HTTP_503_SERVICE_UNAVAILABLE, error) from error
+        exception = service_exception(error.status_code, error)
+        exception.headers = {"Retry-After": str(error.retry_after)}
+        raise exception from error
 
 
 @router.post("/places/reverse", response_model=PlaceSearchResponse)
@@ -50,4 +52,6 @@ def reverse_geocode_place(
     try:
         return service.reverse(payload.latitude, payload.longitude)
     except PlaceSearchError as error:
-        raise service_exception(status.HTTP_503_SERVICE_UNAVAILABLE, error) from error
+        exception = service_exception(error.status_code, error)
+        exception.headers = {"Retry-After": str(error.retry_after)}
+        raise exception from error

@@ -40,6 +40,8 @@ export function PlaceSearchField({
   current?: string;
 }) {
   useLocale();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResponse | null>(null);
   const [state, setState] = useFeedback<string>("");
@@ -58,10 +60,13 @@ export function PlaceSearchField({
     gcTime: 0,
   });
   function find() {
+    if (search.isPending) return;
     if (query.trim().length < 2) {
       setState(textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()));
       return;
     }
+    setFailed(false);
+    setResults(null);
     setState(textNotice(() => m.owner_searching_locations()));
     search.mutateAsync({ query: query.trim() }).then(
       (response) => {
@@ -74,7 +79,10 @@ export function PlaceSearchField({
           ),
         );
       },
-      (error: unknown) => setState(errorNotice(error, m.owner_location_search_failed)),
+      (error: unknown) => {
+        setFailed(true);
+        setState(errorNotice(error, m.owner_location_search_failed));
+      },
     );
   }
   function choose(result: PlaceSearchResult) {
@@ -121,14 +129,21 @@ export function PlaceSearchField({
           <FieldLabel className="min-[560px]:flex-1">
             {inputLabel}
             <Input
+              ref={inputRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  find();
+                }
+              }}
               placeholder={placeholder}
             />
           </FieldLabel>
         </Field>
         <div className="flex items-end">
-          <Button className="secondary" type="button" onClick={find}>
+          <Button className="secondary" type="button" disabled={search.isPending} onClick={find}>
             {m.owner_search()}
           </Button>
         </div>
@@ -137,6 +152,18 @@ export function PlaceSearchField({
         <p className="help" role="status">
           {state || current}
         </p>
+      )}
+      {failed && (
+        <Button
+          type="button"
+          onClick={() => {
+            inputRef.current?.focus();
+            find();
+          }}
+          disabled={search.isPending}
+        >
+          {m.owner_search_retry()}
+        </Button>
       )}
       {results && (
         <div className="grid gap-1.75">
