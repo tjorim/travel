@@ -145,6 +145,7 @@ export function VisitManager({
     }
     await offline.pin({
       resourceKind: "visit",
+      contentMetadata: visit,
       resourceId: visit.id,
       metadataUrl: `/api/trips/${trip.id}/visits/${visit.id}`,
       title: visitTitle(visit),

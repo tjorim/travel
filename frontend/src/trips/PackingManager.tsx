@@ -215,6 +215,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
       };
       await offline.pin({
         resourceKind: "packing_list",
+        contentMetadata: { metadata: freshList, bags: freshBags, items: freshItems },
         resourceId: list.id,
         metadataUrl: path,
         title: `${trip.title} · ${freshList.name}`,

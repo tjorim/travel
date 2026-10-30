@@ -128,6 +128,7 @@ export function EmergencyInfoManager() {
     };
     await offline.pin({
       resourceKind: "emergency_info",
+      contentMetadata: entry,
       resourceId: entry.id,
       metadataUrl: `${path}/${entry.id}`,
       title: entry.label,

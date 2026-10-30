@@ -11,6 +11,7 @@ import {
   isStoragePersisted,
   listOfflineCopies,
   openOfflineCopy,
+  offlineContentValidator,
   pinOfflineCopy,
   removeOfflineCopy,
   requestPersistentStorage,
@@ -21,6 +22,30 @@ import {
   type OfflineResourceKind,
   type PinInput,
 } from "./offline-store";
+
+/** Composite snapshots need validators for their child records as well as their parent. */
+async function readOfflineMetadata(
+  session: Parameters<typeof ownerRequest>[0],
+  url: string,
+): Promise<unknown> {
+  const read = (path: string) =>
+    ownerRequest(session, path, m.assets_the_offline_copy_could_not_be_checked, {
+      cache: "no-store",
+    });
+  const metadata = await read(url);
+  if (/\/packing-lists\/[^/]+$/.test(url))
+    return { metadata, bags: await read(`${url}/bags`), items: await read(`${url}/items`) };
+  if (url.endsWith("/offline-map")) {
+    const base = url.slice(0, -"/offline-map".length);
+    return {
+      areas: await read(`${base}/areas`),
+      locations: await read(`${base}/locations`),
+      routes: await read(`${base}/routes`),
+      visits: await read(`${base}/visits`),
+    };
+  }
+  return metadata;
+}
 
 export type UseOfflineCopies = {
   subject: string | null;
@@ -111,13 +136,13 @@ export function useOfflineCopies(): UseOfflineCopies {
 
   useEffect(() => {
     if (!subject || !session || !online) return;
-    // Only the status matters: a refused or missing record removes its copy, an unreachable server leaves it.
+    // Check access and metadata without replacing saved content.
     const probe = (url: string) =>
-      ownerRequest(session, url, m.assets_the_offline_copy_could_not_be_checked).then(
-        () => new Response(null, { status: 200 }),
+      readOfflineMetadata(session, url).then(
+        (metadata) => Response.json(metadata),
         (error: unknown) => {
-          if (!(error instanceof ApiError)) return new Response(null, { status: 200 });
-          if (error.offline) throw error;
+          if (!(error instanceof ApiError)) throw error;
+          if (error.offline || error.status < 400) throw error;
           return new Response(null, { status: error.status });
         },
       );
@@ -144,7 +169,14 @@ export function useOfflineCopies(): UseOfflineCopies {
       ),
     async pin(input) {
       if (!subject) throw new FeedbackError(() => m.assets_sign_in_to_save_something_offline());
-      await pinOfflineCopy({ ...input, subject });
+      if (!session) return;
+      const metadata =
+        input.contentMetadata ?? (await readOfflineMetadata(session, input.metadataUrl));
+      await pinOfflineCopy({
+        ...input,
+        subject,
+        contentValidator: await offlineContentValidator(metadata),
+      });
       setPersisted(await requestPersistentStorage());
       await refresh();
     },

@@ -289,6 +289,7 @@ export function MediaManager({
     );
     await offline.pin({
       resourceKind: "media_asset",
+      contentMetadata: asset,
       resourceId: asset.id,
       metadataUrl: `${mediaPath}/${asset.id}`,
       title: asset.original_filename ?? m.owner_unnamed_media_item(),
@@ -325,6 +326,7 @@ export function MediaManager({
     );
     await offline.pin({
       resourceKind: "media_derivative",
+      contentMetadata: derivative,
       resourceId: derivative.id,
       metadataUrl: `${mediaPath}/${selected.id}/derivatives/${derivative.id}`,
       title: selected.original_filename ?? m.assets_media_copy(),

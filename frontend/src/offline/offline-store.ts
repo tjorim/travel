@@ -38,6 +38,8 @@ export type OfflineCopyRecord = {
   byteSize: number;
   iv: Uint8Array;
   ciphertext: ArrayBuffer;
+  contentValidator?: string;
+  newerVersionAvailable?: boolean;
   pinnedAt: number;
   lastValidatedAt: number;
   leaseExpiresAt: number;
@@ -54,6 +56,8 @@ export type PinInput = {
   title: string;
   contentType: string;
   bytes: ArrayBuffer;
+  contentMetadata?: unknown;
+  contentValidator?: string;
 };
 
 export type KeyDisclosure = { subject: string; exportable: boolean; createdAt: number };
@@ -318,7 +322,9 @@ export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummar
     byteSize: input.bytes.byteLength,
     iv,
     ciphertext,
-    pinnedAt: existing?.pinnedAt ?? now,
+    pinnedAt: now,
+    contentValidator: input.contentValidator,
+    newerVersionAvailable: false,
     lastValidatedAt: now,
     leaseExpiresAt: now + OFFLINE_LEASE_MS,
     schemaVersion: OFFLINE_SCHEMA_VERSION,
@@ -396,6 +402,25 @@ export async function openOfflineCopy(subject: string, id: string): Promise<Blob
   return new Blob([plaintext], { type: record.contentType });
 }
 
+/** Hash metadata without storing its private fields in plaintext. */
+export async function offlineContentValidator(value: unknown): Promise<string> {
+  function canonical(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === "object")
+      return Object.fromEntries(
+        Object.entries(value)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, value]) => [key, canonical(value)]),
+      );
+    return value;
+  }
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(canonical(value))),
+  );
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export type RevalidateFetch = (metadataUrl: string) => Promise<Response>;
 
 /**
@@ -426,8 +451,18 @@ export async function revalidateOfflineCopies(
         continue;
       }
       if (!response.ok) continue;
+      let newerVersionAvailable = record.newerVersionAvailable;
+      if (record.contentValidator) {
+        try {
+          newerVersionAvailable =
+            record.contentValidator !== (await offlineContentValidator(await response.json()));
+        } catch {
+          // Missing metadata cannot establish content freshness.
+        }
+      }
       await guardedPut(db, COPIES_STORE, subject, generation, {
         ...record,
+        newerVersionAvailable,
         lastValidatedAt: now,
         leaseExpiresAt: now + OFFLINE_LEASE_MS,
       });
