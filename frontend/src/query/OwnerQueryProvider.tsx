@@ -1,7 +1,7 @@
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
-import { clearSession, decodeSubject } from "../auth";
+import { decodeSubject } from "../auth";
 import { useAuth } from "../auth-context";
 import { createOwnerQueryClient } from "./client";
 
@@ -19,7 +19,7 @@ const Devtools =
 
 /**
  * Owner-only query cache. It lives in memory (never persisted) and is scoped
- * to the signed-in subject: sign-out, a different subject or a 401 discard it.
+ * to the signed-in subject: sign-out, or a different subject discard it.
  * The visitor routes never mount this provider.
  */
 export function OwnerQueryProvider({
@@ -29,15 +29,8 @@ export function OwnerQueryProvider({
   children: ReactNode;
   client?: QueryClient;
 }) {
-  const { session, setSession } = useAuth();
-  const endSession = useRef(() => {});
-  endSession.current = () => {
-    clearSession();
-    setSession(null);
-  };
-  const [queryClient] = useState(
-    () => client ?? createOwnerQueryClient({ onUnauthorized: () => endSession.current() }),
-  );
+  const { session } = useAuth();
+  const [queryClient] = useState(() => client ?? createOwnerQueryClient());
   const subject = session ? decodeSubject(session.accessToken) : null;
 
   useEffect(() => {

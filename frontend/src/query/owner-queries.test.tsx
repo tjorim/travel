@@ -175,16 +175,19 @@ it("ends the session once on a 401 and does not retry it", async () => {
   expect(requests).toHaveLength(1);
 });
 
-it("wires the provider's 401 handler to sign the owner out", async () => {
-  serveTasks(() => HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }));
+it("preserves the session and restore marker on a final 401", async () => {
+  const requests = serveTasks(() =>
+    HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }),
+  );
   localStorage.setItem("travel-tracker-may-restore-session", "1");
   render(
     <OwnerQueryProvider>
       <TaskCount label="tasks" />
     </OwnerQueryProvider>,
   );
-  await waitFor(() => expect(auth.setSession).toHaveBeenCalledWith(null));
-  expect(localStorage.getItem("travel-tracker-may-restore-session")).toBeNull();
+  await waitFor(() => expect(requests).toHaveLength(1));
+  expect(auth.setSession).not.toHaveBeenCalled();
+  expect(localStorage.getItem("travel-tracker-may-restore-session")).toBe("1");
 });
 
 it("fails a write immediately while offline instead of queueing it", async () => {
@@ -219,4 +222,15 @@ it("fails a write immediately while offline instead of queueing it", async () =>
   await waitFor(() => expect(outcome).toBeDefined());
   expect((outcome as Error).message).toContain("Geen verbinding");
   expect(requests).toHaveLength(1);
+});
+
+vi.mock("../auth", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../auth")>();
+  return {
+    ...original,
+    freshSession: async (session: unknown, force: boolean) => {
+      if (force) throw new Error("Sign-in required");
+      return session;
+    },
+  };
 });

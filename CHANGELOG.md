@@ -11,6 +11,7 @@ All notable changes to the travel hub are documented here.
   (#18).
 - Keep share-link capability tokens out of MCP metadata responses; only activation
   and rotation return capabilities, preserving owner REST responses (#23).
+- Renew owner sessions before expiry and keep open editors on unauthorized requests (#36).
 
 - Update vulnerable backend and Router/seroval dependencies; audit both lockfiles
   in CI and weekly, blocking high/critical or unclassified advisories (#35).

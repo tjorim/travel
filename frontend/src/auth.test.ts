@@ -68,7 +68,7 @@ describe("owner browser session recovery", () => {
     expect(shouldRestoreSession()).toBe(true);
   });
 
-  it("does not retry a failed silent recovery and removes its marker", async () => {
+  it("does not loop after refused recovery and retains its restore marker", async () => {
     localStorage.setItem("travel-tracker-may-restore-session", "1");
     transaction(true);
 
@@ -77,7 +77,7 @@ describe("owner browser session recovery", () => {
     );
 
     expect(shouldRestoreSession()).toBe(false);
-    expect(localStorage.getItem("travel-tracker-may-restore-session")).toBeNull();
+    expect(localStorage.getItem("travel-tracker-may-restore-session")).toBe("1");
   });
 
   it("removes both the credential and restoration marker on explicit sign-out", async () => {
