@@ -1678,7 +1678,16 @@
   "assets_for_everyone_always_appears_here_you_can_select_private_items_bel_line": "{p0} for everyone always appear here; you can select the {p1} private items below for this audience, which automatically sets them to “Choose in Sharing”.",
   "assets_of_is_set_to_everyone_or_choose_in_sharing_line": "{p0} of {p1} is set to “Everyone” or “Choose in Sharing”",
   "assets_expires_line": "{p0} · expires {p1} {p2}",
-  "assets_previous_view_line": "View {p0} previous {p1}",
+  "assets_previous_view_line": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "View {count} previous version",
+        "countPlural=other": "View {count} previous versions"
+      }
+    }
+  ],
   "assets_only_for_you_line": "Only for you · {p0}",
   "assets_known_line": "{p0}: {p1} · {p2} known {p3} {p4}",
   "assets_essential_still_to_pack_line": "Essential, still to pack: {p0}",

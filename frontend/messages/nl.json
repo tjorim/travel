@@ -1678,7 +1678,16 @@
   "assets_for_everyone_always_appears_here_you_can_select_private_items_bel_line": "{p0} voor iedereen verschijnt hier altijd; {p1} privé kun je hieronder aanvinken om het voor dit publiek te kiezen, wat het automatisch op “Zelf kiezen in Delen” zet.",
   "assets_of_is_set_to_everyone_or_choose_in_sharing_line": "{p0} van {p1} staat op “Iedereen” of “Zelf kiezen”",
   "assets_expires_line": "{p0} · verloopt {p1} {p2}",
-  "assets_previous_view_line": "{p0} eerdere {p1} bekijken",
+  "assets_previous_view_line": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} eerdere versie bekijken",
+        "countPlural=other": "{count} eerdere versies bekijken"
+      }
+    }
+  ],
   "assets_only_for_you_line": "Alleen voor jou · {p0}",
   "assets_known_line": "{p0}: {p1} · {p2} bekend {p3} {p4}",
   "assets_essential_still_to_pack_line": "Essentieel, nog in te pakken: {p0}",

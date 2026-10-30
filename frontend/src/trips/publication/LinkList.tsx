@@ -58,10 +58,7 @@ export function LinkList({
               {history.length > 0 && (
                 <Collapsible.Root className="border-l-2 border-travel-divider pl-3">
                   <Collapsible.Trigger className="bg-transparent p-0 text-left text-sm font-bold text-travel-muted">
-                    {m.assets_previous_view_line({
-                      p0: history.length,
-                      p1: history.length === 1 ? "versie" : "versies",
-                    })}
+                    {m.assets_previous_view_line({ count: history.length })}
                   </Collapsible.Trigger>
                   <Collapsible.Panel keepMounted className="mt-2 grid gap-2">
                     {history.map((link) => (
