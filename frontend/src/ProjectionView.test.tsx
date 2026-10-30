@@ -9,10 +9,16 @@ import {
   visitTimes,
   type Projection,
 } from "./ProjectionView";
-import { timeForViewer } from "./tracker-model";
+import { timeForViewer, type ShareScope } from "./tracker-model";
 import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
 import { serveApi } from "./query/serve-api";
+
+const previewScope: ShareScope = {
+  schema_version: "travel/share-scope@1",
+  trip: { title: true, summary: true, dates: null },
+  items: [],
+};
 
 afterEach(() => {
   cleanup();
@@ -655,6 +661,7 @@ it("uses the visitor story renderer for an owner preview and requests only owner
       audience="share"
       tripId="trip"
       linkId="draft-link"
+      scope={previewScope}
       session={session}
     />,
   );
@@ -672,6 +679,7 @@ it("uses the visitor story renderer for an owner preview and requests only owner
     "/api/trips/trip/share-links/draft-link/preview/navigation/area-1",
   );
   expect(sent.mock.calls[0]?.[1]).toMatchObject({
+    method: "POST",
     credentials: "omit",
     cache: "no-store",
     headers: { Authorization: "Bearer owner-token" },

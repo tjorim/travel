@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import type { TrackerSession } from "../auth";
 import { ProjectionView, isProjection, type Audience, type Projection } from "../ProjectionView";
+import type { ShareScope } from "../tracker-model";
 import { ownerFile, ownerRequest } from "../query/api";
 
 export function RenderedPreview({
@@ -12,12 +13,15 @@ export function RenderedPreview({
   audience,
   tripId,
   linkId,
+  scope,
   session,
 }: {
   projection: Projection;
   audience: Audience;
   tripId: string;
   linkId?: string;
+  /** The unsaved candidate scope being previewed; resolves files and directions without saving it. */
+  scope: ShareScope;
   session: TrackerSession;
 }) {
   useLocale();
@@ -41,6 +45,8 @@ export function RenderedPreview({
           `${base}/files/${encodeURIComponent(id)}`,
           m.assets_media_unavailable,
           {
+            method: "POST",
+            body: scope,
             cache: "no-store",
             credentials: "omit",
             signal: controller.signal,
@@ -63,7 +69,7 @@ export function RenderedPreview({
       controller.abort();
       urls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [base, projection, session]);
+  }, [base, projection, scope, session]);
 
   async function openFile(id: string) {
     try {
@@ -72,6 +78,8 @@ export function RenderedPreview({
         `${base}/files/${encodeURIComponent(id)}`,
         m.assets_document_unavailable,
         {
+          method: "POST",
+          body: scope,
           cache: "no-store",
           credentials: "omit",
         },
@@ -104,7 +112,7 @@ export function RenderedPreview({
         session,
         `${base}/navigation/${encodeURIComponent(id)}`,
         m.assets_navigation_unavailable,
-        { cache: "no-store", credentials: "omit" },
+        { method: "POST", body: scope, cache: "no-store", credentials: "omit" },
       );
       const url = (target as { url?: unknown }).url;
       if (typeof url !== "string" || !url.startsWith("https://www.google.com/maps/dir/?"))

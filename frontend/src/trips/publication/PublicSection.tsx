@@ -17,6 +17,7 @@ export function PublicSection({
   record,
   catalog,
   toggling,
+  previewing,
   onScopeChange,
   onError,
   onCopyLink,
@@ -28,6 +29,7 @@ export function PublicSection({
   record: ReturnType<typeof useRecordForm<PublicValues, PublicProjectionStatus>>;
   catalog: CatalogItem[];
   toggling: boolean;
+  previewing: boolean;
   onScopeChange: () => void;
   onError: (error: unknown) => void;
   onCopyLink: () => void;
@@ -77,7 +79,7 @@ export function PublicSection({
                 {m.assets_copy_link_2()}
               </Button>
             )}
-            <Button className="secondary" type="button" onClick={onPreview}>
+            <Button className="secondary" type="button" disabled={previewing} onClick={onPreview}>
               {m.assets_view_as_visitor()}
             </Button>
             <Button

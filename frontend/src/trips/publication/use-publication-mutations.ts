@@ -35,9 +35,10 @@ export function usePublicationMutations(tripId: string) {
     request: (scope) => ({ path, method: "PUT", body: scope }),
     invalidate: refreshStatus,
   });
-  const previewPublicScope = useOwnerMutation<void, ProjectionDocument>({
+  const previewPublicScope = useOwnerMutation<ShareScope, ProjectionDocument>({
     fallback: m.assets_the_public_preview_could_not_be_loaded,
-    request: () => ({ path: `${path}/preview`, method: "POST" }),
+    // The unsaved candidate scope is rendered and never stored.
+    request: (scope) => ({ path: `${path}/preview`, method: "POST", body: scope }),
     invalidate: () => [],
     // A preview is shown once and not kept.
     gcTime: 0,
@@ -66,9 +67,16 @@ export function usePublicationMutations(tripId: string) {
     }),
     invalidate: refreshLinks,
   });
-  const previewLinkScope = useOwnerMutation<ShareLink, ProjectionDocument>({
+  const previewLinkScope = useOwnerMutation<
+    { link: ShareLink; scope: ShareScope },
+    ProjectionDocument
+  >({
     fallback: m.assets_the_link_preview_could_not_be_loaded,
-    request: (link) => ({ path: `${linksPath}/${link.id}/preview`, method: "POST" }),
+    request: ({ link, scope }) => ({
+      path: `${linksPath}/${link.id}/preview`,
+      method: "POST",
+      body: scope,
+    }),
     invalidate: () => [],
     gcTime: 0,
   });
