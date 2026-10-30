@@ -401,17 +401,14 @@ export function RouteGeometryEditor({
         </p>
       </div>
       <div
+        role="region"
+        aria-label={preview ? m.owner_map_preview_of_route() : m.owner_map_editor_for_route()}
         className={cn(
           "relative h-route-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
           preview && "h-route-preview-canvas",
         )}
       >
-        <div
-          ref={canvas}
-          role="region"
-          className="size-full"
-          aria-label={preview ? m.owner_map_preview_of_route() : m.owner_map_editor_for_route()}
-        />
+        <div ref={canvas} className="size-full" />
         {error && (
           <p className="absolute inset-0 m-0 grid place-content-center bg-travel-map-bg p-6 text-center">
             {preview
