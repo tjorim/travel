@@ -1,6 +1,12 @@
+import os
+
 import pytest
 
-from app.ratelimit import limiter
+# Configure development before importing application modules: production startup
+# deliberately refuses the public development share-link secret.
+os.environ["TRAVEL_ENVIRONMENT"] = "development"
+
+from app.ratelimit import limiter  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

@@ -1,8 +1,10 @@
 """Unlisted share-link capability tokens.
 
 A capability is 256 bits of CSPRNG entropy encoded URL-safe. Its separate
-keyed HMAC-SHA256 verifier is what anonymous delivery queries use; the URL
-itself is available only through owner-authenticated link management.
+keyed HMAC-SHA256 verifier is what anonymous delivery queries use. The raw
+token is also stored so the owner can recover the URL through authenticated
+link management. The HMAC verifier does not protect against database or backup
+readers, who can recover the stored token.
 """
 
 import hashlib

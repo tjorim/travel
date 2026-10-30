@@ -46,6 +46,7 @@ jobs:
       run:
         working-directory: backend
     env:
+      TRAVEL_ENVIRONMENT: development
       TRAVEL_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/travel
     services:
       postgres:

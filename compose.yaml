@@ -47,6 +47,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
+      TRAVEL_ENVIRONMENT: development
       TRAVEL_DATABASE_URL: postgresql+psycopg://travel:travel@postgres:5432/travel
       TRAVEL_MEDIA_STORAGE_ROOT: /var/lib/travel/media
       TRAVEL_OIDC_ISSUER_URL: https://auth.tjor.im/realms/travel
