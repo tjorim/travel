@@ -313,6 +313,8 @@ def direct_upload(
     """
     if len(data) > settings.media_max_upload_bytes:
         raise upload_too_large_error()
+    if not data:
+        raise MediaImportError("Het bestand is leeg.", code="file_empty")
     media_kind, content_type = _validated_content_type(data, content_type)
 
     stored = store_uploaded_object(session, storage, trip_id=trip_id, data=data, content_type=content_type)
