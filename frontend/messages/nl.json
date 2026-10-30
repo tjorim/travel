@@ -1381,7 +1381,6 @@
   "assets_audience_only_people_with_the_active_hidden_link": "Doelgroep: alleen wie de actieve verborgen link heeft",
   "assets_currently_shared": "nu gedeeld",
   "assets_not_shared_yet": "nog niet gedeeld",
-  "assets_only_selected_fields_appear_below_private_data_bookings_and_other_unsele": "Alleen geselecteerde velden verschijnen hieronder. Privégegevens, boekingen en andere niet-geselecteerde velden blijven verborgen. Dit voorbeeld deelt niets en maakt geen toegangscode aan.",
   "assets_inspect_delivered_fields": "Geleverde velden inspecteren",
   "assets_media_unavailable": "Media niet beschikbaar.",
   "assets_document_unavailable": "Document niet beschikbaar.",
@@ -1993,5 +1992,7 @@
   "owner_save_in_progress": "Opslaan bezig",
   "owner_wait_for_save": "Wacht tot het opslaan klaar is voordat je deze pagina verlaat.",
   "packing_trip_metadata_unavailable": "Live reisinformatie is niet beschikbaar. Hieronder kun je opgeslagen paklijsten bekijken; maak opnieuw verbinding om te bewerken.",
-  "packing_no_valid_offline_copy": "Er is geen geldige opgeslagen paklijst voor deze reis. Kopieën waarvan de offline geldigheid is verlopen, worden verwijderd. Maak opnieuw verbinding om een kopie op te slaan."
+  "packing_no_valid_offline_copy": "Er is geen geldige opgeslagen paklijst voor deze reis. Kopieën waarvan de offline geldigheid is verlopen, worden verwijderd. Maak opnieuw verbinding om een kopie op te slaan.",
+  "sharing_preview_unsaved_note": "Alleen geselecteerde velden verschijnen hieronder. Privégegevens, boekingen en andere niet-geselecteerde velden blijven verborgen. Dit voorbeeld toont je huidige selectie, ook als die nog niet is opgeslagen. Het wijzigt niets voor bezoekers en maakt geen toegangscode aan; sla de selectie op om haar toe te passen.",
+  "sharing_draft_saved_but_preview_failed": "Het concept van de link is opgeslagen, maar het voorbeeld kon niet worden geladen."
 }

@@ -5,7 +5,7 @@ import type { Projection } from "../../ProjectionView";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { RecordDialog } from "../../RecordDialog";
-import type { ShareLink } from "../../tracker-model";
+import type { ShareLink, ShareScope } from "../../tracker-model";
 import { RenderedPreview } from "../RenderedPreview";
 import { LINK_STATE_LABELS, projectionSummary } from "./catalog";
 
@@ -13,6 +13,8 @@ export type Preview = {
   name: string | (() => string);
   audience: "public" | "share";
   linkId?: string;
+  /** The candidate scope that was rendered; files and directions are resolved against the same scope. */
+  scope: ShareScope;
   document: Projection;
 };
 
@@ -56,14 +58,13 @@ export function PreviewDialog({
             : LINK_STATE_LABELS[links.find((link) => link.id === preview.linkId)?.state ?? "draft"]}
         </p>
         <p>{projectionSummary(preview.document)}</p>
-        <p className="help">
-          {m.assets_only_selected_fields_appear_below_private_data_bookings_and_other_unsele()}
-        </p>
+        <p className="help">{m.sharing_preview_unsaved_note()}</p>
         <RenderedPreview
           projection={preview.document}
           audience={preview.audience}
           tripId={tripId}
           linkId={preview.linkId}
+          scope={preview.scope}
           session={session}
         />
         <Collapsible.Root>

@@ -476,14 +476,79 @@ it("publishes and withdraws the public page", async () => {
   expect(screen.queryByRole("button", { name: "Kopieer link" })).toBeNull();
 });
 
-it("previews the public page after saving its scope", async () => {
+it("previews the unsaved public selection without saving it, keeping the draft", async () => {
   renderWithOwner(<PublicationManager trip={trip} />);
-  await screen.findByRole("group", { name: "Wat iedereen mag zien" });
+  const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
+  fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
   fireEvent.click(screen.getByRole("button", { name: "Bekijk als bezoeker" }));
   const dialog = await screen.findByRole("dialog", { name: "Publieke preview" });
   expect(within(dialog).getByText("Weergegeven preview")).toBeTruthy();
-  expect(api.count("PUT /api/trips/trip/public-projection")).toBe(1);
+  expect(within(dialog).getByText(/Dit voorbeeld toont je huidige selectie/)).toBeTruthy();
+  expect(api.count("PUT /api/trips/trip/public-projection")).toBe(0);
   expect(api.count("POST /api/trips/trip/public-projection/preview")).toBe(1);
+  expect(
+    api.lastBody<ShareScope>("POST /api/trips/trip/public-projection/preview")?.trip.summary,
+  ).toBe(false);
+  // The live scope is untouched and the edit is still pending.
+  expect(status.scope.trip.summary).toBe(true);
+  fireEvent.click(within(dialog).getByRole("button", { name: "Publieke preview sluiten" }));
+  expect(
+    within(screen.getByRole("group", { name: "Wat iedereen mag zien" }))
+      .getByRole("checkbox", { name: "Samenvatting" })
+      .getAttribute("aria-checked"),
+  ).toBe("false");
+  expect(screen.getByRole("button", { name: "Keuze bewaren" })).toBeTruthy();
+});
+
+it("reports a failed public preview and keeps the unsaved selection", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
+  fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
+  server.use(
+    http.post("/api/trips/trip/public-projection/preview", () =>
+      HttpResponse.json({ detail: "x" }, { status: 503 }),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Bekijk als bezoeker" }));
+  await screen.findByText(/^Voorbeeld laden lukte niet\./);
+  expect(screen.queryByRole("dialog", { name: "Publieke preview" })).toBeNull();
+  expect(api.count("PUT /api/trips/trip/public-projection")).toBe(0);
+  expect(
+    within(screen.getByRole("group", { name: "Wat iedereen mag zien" }))
+      .getByRole("checkbox", { name: "Samenvatting" })
+      .getAttribute("aria-checked"),
+  ).toBe("false");
+});
+
+it("previews an existing link's unsaved scope without saving it", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
+  const editor = await screen.findByRole("group", { name: "Scope voor verborgen link" });
+  fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
+  await screen.findByRole("dialog", { name: "Preview van Familie" });
+  expect(api.count("PATCH /api/trips/trip/share-links/l1")).toBe(0);
+  expect(api.count("POST /api/trips/trip/share-links/l1/preview")).toBe(1);
+  expect(
+    api.lastBody<ShareScope>("POST /api/trips/trip/share-links/l1/preview")?.trip.summary,
+  ).toBe(false);
+  expect((api.rows("/api/trips/trip/share-links")[0].scope as ShareScope).trip.summary).toBe(true);
+});
+
+it("says a new draft link was saved when its first preview fails", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe link" }));
+  fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Vrienden" } });
+  server.use(
+    http.post("/api/trips/trip/share-links/l2/preview", () =>
+      HttpResponse.json({ detail: "x" }, { status: 503 }),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
+  await screen.findByText(
+    "Het concept van de link is opgeslagen, maar het voorbeeld kon niet worden geladen.",
+  );
+  expect(api.count("POST /api/trips/trip/share-links")).toBe(1);
 });
 
 it("saves a new link as a draft, letting its owner preview it before activating it explicitly", async () => {
@@ -514,6 +579,7 @@ it("saves a new link as a draft, letting its owner preview it before activating 
   fireEvent.click(
     within(previewDialog).getByRole("button", { name: "Preview van Vrienden sluiten" }),
   );
+  fireEvent.click(screen.getByRole("button", { name: "Deellink bewerken sluiten" }));
 
   fireEvent.click(screen.getByRole("button", { name: /Vrienden/ }));
   fireEvent.click(await screen.findByRole("button", { name: "Activeren" }));

@@ -96,6 +96,16 @@ def _apply_scope(session: Session, trip_id: Identifier, subject: str, scope: Sha
     return scope_dict
 
 
+def _preview_scope(
+    session: Session, trip_id: Identifier, subject: str, candidate: ShareScopeInput | None, saved: dict
+) -> dict:
+    """The scope a preview renders: the owner's unsaved candidate, validated like a save, else the saved one.
+
+    Nothing is stored and no audit event is recorded, so a preview never changes what a live audience receives.
+    """
+    return saved if candidate is None else _apply_scope(session, trip_id, subject, candidate)
+
+
 def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurface:
     surface = session.get(PublicSurface, trip_id)
     if surface is None:
@@ -140,12 +150,17 @@ def set_public_projection_scope(
 
 @router.post("/public-projection/preview", response_model=ProjectionDocument)
 def preview_public_projection(
-    trip_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response
+    trip_id: Identifier,
+    session: SessionDep,
+    subject: SubjectDep,
+    response: Response,
+    payload: ShareScopeInput | None = None,
 ) -> dict:
     trip = owned_trip(session, trip_id, subject)
-    surface = _get_or_create_surface(session, trip_id)
+    surface = session.get(PublicSurface, trip_id)
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else {})
     response.headers["Cache-Control"] = "no-store"
-    return render_projection(trip, surface.scope, "travel/public-trip@1")
+    return render_projection(trip, scope, "travel/public-trip@1")
 
 
 @router.get("/public-projection/preview/files/{local_id}")
@@ -160,6 +175,36 @@ def preview_public_file(
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
     return _file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS, request)
+
+
+@router.post("/public-projection/preview/files/{local_id}")
+def preview_public_candidate_file(
+    trip_id: Identifier,
+    local_id: SafeText,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
+    request: Request,
+    payload: ShareScopeInput | None = None,
+) -> Response:
+    trip = owned_trip(session, trip_id, subject)
+    surface = session.get(PublicSurface, trip_id)
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else {})
+    return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
+
+
+@router.post("/public-projection/preview/navigation/{local_id}")
+def preview_public_candidate_navigation(
+    trip_id: Identifier,
+    local_id: SafeText,
+    session: SessionDep,
+    subject: SubjectDep,
+    payload: ShareScopeInput | None = None,
+) -> JSONResponse:
+    trip = owned_trip(session, trip_id, subject)
+    surface = session.get(PublicSurface, trip_id)
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else {})
+    return _preview_navigation(trip, scope, local_id)
 
 
 @router.get("/public-projection/preview/navigation/{local_id}")
@@ -357,12 +402,18 @@ def update_share_link(
 
 @router.post("/share-links/{link_id}/preview", response_model=ProjectionDocument)
 def preview_share_link(
-    trip_id: Identifier, link_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response
+    trip_id: Identifier,
+    link_id: Identifier,
+    session: SessionDep,
+    subject: SubjectDep,
+    response: Response,
+    payload: ShareScopeInput | None = None,
 ) -> dict:
     trip = owned_trip(session, trip_id, subject)
     link = owned_link(session, trip_id, subject, link_id)
+    scope = _preview_scope(session, trip_id, subject, payload, link.scope)
     response.headers["Cache-Control"] = "no-store"
-    return render_projection(trip, link.scope, "travel/unlisted-trip@1")
+    return render_projection(trip, scope, "travel/unlisted-trip@1")
 
 
 @router.get("/share-links/{link_id}/preview/files/{local_id}")
@@ -378,6 +429,38 @@ def preview_share_file(
     trip = owned_trip(session, trip_id, subject)
     link = owned_link(session, trip_id, subject, link_id)
     return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
+
+
+@router.post("/share-links/{link_id}/preview/files/{local_id}")
+def preview_share_candidate_file(
+    trip_id: Identifier,
+    link_id: Identifier,
+    local_id: SafeText,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
+    request: Request,
+    payload: ShareScopeInput | None = None,
+) -> Response:
+    trip = owned_trip(session, trip_id, subject)
+    link = owned_link(session, trip_id, subject, link_id)
+    scope = _preview_scope(session, trip_id, subject, payload, link.scope)
+    return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
+
+
+@router.post("/share-links/{link_id}/preview/navigation/{local_id}")
+def preview_share_candidate_navigation(
+    trip_id: Identifier,
+    link_id: Identifier,
+    local_id: SafeText,
+    session: SessionDep,
+    subject: SubjectDep,
+    payload: ShareScopeInput | None = None,
+) -> JSONResponse:
+    trip = owned_trip(session, trip_id, subject)
+    link = owned_link(session, trip_id, subject, link_id)
+    scope = _preview_scope(session, trip_id, subject, payload, link.scope)
+    return _preview_navigation(trip, scope, local_id)
 
 
 @router.get("/share-links/{link_id}/preview/navigation/{local_id}")

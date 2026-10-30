@@ -11,7 +11,13 @@ import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { useOwner, useTripResource } from "../query/owner-queries";
 import type { Projection } from "../ProjectionView";
 import { RecordDialog } from "../RecordDialog";
-import type { ShareLink, PublicProjectionStatus, ShareScope, Trip } from "../tracker-model";
+import type {
+  ProjectionDocument,
+  ShareLink,
+  PublicProjectionStatus,
+  ShareScope,
+  Trip,
+} from "../tracker-model";
 import { cloneScope, emptyScope, publicUrl, shareUrl } from "./publication/catalog";
 import { LinkLifecycle } from "./publication/LinkLifecycle";
 import { LinkList, type LinkSeries } from "./publication/LinkList";
@@ -151,13 +157,13 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     setNotice(errorNotice(error, fallback));
 
   async function previewPublic() {
-    const values = publicRecord.form.state.values;
-    const saved = await savePublic.mutateAsync(values.scope);
-    publicRecord.load({ scope: cloneScope(saved.scope) });
-    const document = await previewPublicScope.mutateAsync();
+    // The unsaved selection is rendered as a candidate; nothing is saved and the live audience is untouched.
+    const candidate = cloneScope(publicRecord.form.state.values.scope);
+    const document = await previewPublicScope.mutateAsync(candidate);
     setPreview({
       name: m.assets_public_preview,
       audience: "public",
+      scope: candidate,
       document: document as Projection,
     });
   }
@@ -176,22 +182,36 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   }
 
   async function previewLink() {
+    const values = linkRecord.form.state.values;
+    const candidate = cloneScope(values.scope);
     let target = selectedLink;
-    if (!target || !lockedLink) {
-      const values = linkRecord.form.state.values;
+    let created = false;
+    if (!target) {
+      // A link that does not exist yet has nothing to preview against: save it as a draft, which delivers nothing.
       target = await saveLink.mutateAsync({
-        id: editingLinkId,
+        id: null,
         label: values.label.trim(),
         scope: values.scope,
       });
+      created = true;
       loadLink(target);
     }
-    const document = await previewLinkScope.mutateAsync(target);
-    setLinkEditor(null);
+    let document: ProjectionDocument;
+    try {
+      document = await previewLinkScope.mutateAsync({ link: target, scope: candidate });
+    } catch (error) {
+      if (created) {
+        setNotice(textNotice(() => m.sharing_draft_saved_but_preview_failed()));
+        return;
+      }
+      throw error;
+    }
+    const label = target.label;
     setPreview({
-      name: () => m.assets_preview_of({ p0: target.label }),
+      name: () => m.assets_preview_of({ p0: label }),
       audience: "share",
       linkId: target.id,
+      scope: candidate,
       document: document as Projection,
     });
   }
@@ -297,6 +317,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         record={publicRecord}
         catalog={catalog}
         toggling={togglePublic.isPending}
+        previewing={previewPublicScope.isPending}
         onScopeChange={() => setPreview(null)}
         onError={fail(m.owner_visibility_save_failed)}
         onCopyLink={() => void copyPublicLink().catch(fail(m.assets_copying_failed))}
@@ -330,7 +351,12 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 <Button
                   className="secondary"
                   type="button"
-                  disabled={lockedLink || !linkRecord.values.label.trim()}
+                  disabled={
+                    lockedLink ||
+                    !linkRecord.values.label.trim() ||
+                    saveLink.isPending ||
+                    previewLinkScope.isPending
+                  }
                   onClick={() =>
                     void previewLink().catch(fail(m.assets_the_preview_could_not_be_loaded_2))
                   }

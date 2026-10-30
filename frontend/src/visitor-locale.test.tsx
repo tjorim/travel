@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { changeLocale } from "./locale";
 import { ProjectionView, tripDates, type Projection } from "./ProjectionView";
 import { VisitorRoutes } from "./visitor-routes";
+import type { ShareScope } from "./tracker-model";
 import { RenderedPreview } from "./trips/RenderedPreview";
 import { m } from "./paraglide/messages.js";
 import { rememberSharedTrip } from "./saved-shared-trips";
@@ -49,6 +50,12 @@ function projection(): Projection {
     ],
   };
 }
+
+const previewScope: ShareScope = {
+  schema_version: "travel/share-scope@1",
+  trip: { title: true, summary: true, dates: null },
+  items: [],
+};
 
 afterEach(() => {
   cleanup();
@@ -187,6 +194,7 @@ it("uses the same translated projection in owner previews without visitor resour
       audience="share"
       tripId="private-trip"
       linkId="private-link"
+      scope={previewScope}
       session={{ accessToken: "owner", expiresAt: Date.now() + 60000 }}
     />,
   );

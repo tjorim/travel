@@ -195,13 +195,24 @@ export async function ownerFile(
   session: TrackerSession,
   url: string,
   fallback: ErrorFallback,
-  { signal, cache, credentials }: Pick<OwnerRequest, "signal" | "cache" | "credentials"> = {},
+  {
+    method,
+    body,
+    signal,
+    cache,
+    credentials,
+  }: Pick<OwnerRequest, "method" | "body" | "signal" | "cache" | "credentials"> = {},
 ): Promise<Blob> {
   const response = await authenticatedSend(
     session,
     url,
     {
-      headers: authorization(session),
+      ...(method ? { method } : {}),
+      headers:
+        body === undefined
+          ? authorization(session)
+          : { ...authorization(session), "Content-Type": "application/json" },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       ...(cache ? { cache } : {}),
       ...(credentials ? { credentials } : {}),
     },

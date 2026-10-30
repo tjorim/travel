@@ -1336,3 +1336,91 @@ def test_another_owner_cannot_choose_a_cover(tmp_path: Path) -> None:
         stranger.patch(f"/api/trips/{trip['id']}", json={"cover_derivative_id": photo["derivative"]["id"]}).status_code
         == 404
     )
+
+
+def test_preview_of_a_candidate_scope_persists_nothing_for_an_active_public_audience() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    hotel = add_update(owner, trip["id"], "Hotel")
+    factory = add_update(owner, trip["id"], "Factory visit")
+    base = f"/api/trips/{trip['id']}/public-projection"
+    saved = scope(item("travel_update", hotel["id"]), summary=False)
+    owner.put(base, json=saved)
+    slug = owner.post(f"{base}/publish").json()["slug"]
+    anonymous = TestClient(app)
+    before = anonymous.get(f"/api/public/trips/{slug}").json()
+    events_before = owner.get(f"/api/trips/{trip['id']}/audit-events").json()
+    saved = owner.get(base).json()["scope"]
+    assert before["summary"] is None
+
+    candidate = scope(item("travel_update", hotel["id"]), item("travel_update", factory["id"]), summary=True)
+    preview = owner.post(f"{base}/preview", json=candidate)
+    assert preview.status_code == 200, preview.text
+    assert preview.headers["cache-control"] == "no-store"
+    assert preview.json()["summary"] == "A private trip."
+    assert {u["title"] for u in preview.json()["updates"]} == {hotel["title"], factory["title"]}
+
+    assert anonymous.get(f"/api/public/trips/{slug}").json() == before
+    assert owner.get(base).json()["scope"] == saved
+    assert owner.get(f"/api/trips/{trip['id']}/audit-events").json() == events_before
+    # Without a body the saved scope is rendered, as before.
+    saved_preview = owner.post(f"{base}/preview").json()
+    assert saved_preview["summary"] is None
+    assert [u["title"] for u in saved_preview["updates"]] == [hotel["title"]]
+
+
+def test_preview_of_a_candidate_scope_persists_nothing_for_an_active_link() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    hotel = add_update(owner, trip["id"], "Hotel")
+    factory = add_update(owner, trip["id"], "Factory visit")
+    saved = scope(item("travel_update", hotel["id"]), summary=False)
+    link_id = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": saved}).json()["id"]
+    token = activate(owner, trip["id"], link_id)["token"]
+    anonymous = TestClient(app)
+    before = anonymous.get(f"/api/shared/{token}").json()
+    events_before = owner.get(f"/api/trips/{trip['id']}/audit-events").json()
+    path = f"/api/trips/{trip['id']}/share-links/{link_id}"
+    saved = owner.get(path).json()["scope"]
+
+    candidate = scope(item("travel_update", hotel["id"]), item("travel_update", factory["id"]), summary=True)
+    preview = owner.post(f"{path}/preview", json=candidate)
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["summary"] == "A private trip."
+    assert {u["title"] for u in preview.json()["updates"]} == {hotel["title"], factory["title"]}
+
+    assert anonymous.get(f"/api/shared/{token}").json() == before
+    assert owner.get(path).json()["scope"] == saved
+    assert owner.get(f"/api/trips/{trip['id']}/audit-events").json() == events_before
+    assert owner.post(f"{path}/preview").json()["summary"] is None
+
+
+def test_preview_rejects_an_invalid_candidate_scope_like_a_save() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    other = create_trip(owner, "Other")
+    foreign = add_update(owner, other["id"], "Not yours")
+    link_id = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": scope()}).json()[
+        "id"
+    ]
+    public = f"/api/trips/{trip['id']}/public-projection"
+    link = f"/api/trips/{trip['id']}/share-links/{link_id}"
+    saved_link_scope = owner.get(link).json()["scope"]
+
+    for path in (f"{public}/preview", f"{link}/preview"):
+        assert owner.post(path, json=scope(item("travel_update", foreign["id"]))).status_code == 422
+        assert owner.post(path, json=scope(item("stay_card", "x"))).status_code == 422
+        assert owner.post(path, json={"schema_version": "other"}).status_code == 422
+    assert owner.get(link).json()["scope"] == saved_link_scope
+    assert client_for("owner-2").post(f"{public}/preview", json=scope()).status_code == 404
+
+
+def test_candidate_preview_serves_a_navigation_target_only_for_the_candidate_scope() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}/public-projection"
+    missing = owner.post(f"{base}/preview/navigation/nothing", json=scope())
+    assert missing.status_code == 404
+    assert owner.post(f"{base}/preview/navigation/nothing", json=scope(item("stay_card", "x"))).status_code == 422
+    assert owner.post(f"{base}/preview/files/nothing", json=scope()).status_code == 404
+    assert owner.post(f"{base}/preview/files/nothing", json=scope(item("stay_card", "x"))).status_code == 422
