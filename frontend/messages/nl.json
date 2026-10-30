@@ -748,6 +748,8 @@
   "owner_reminder_2": " · Herinnering {p0}",
   "owner_reopen": "Heropenen",
   "owner_check_off": "Afvinken",
+  "owner_check_off_task": "Afvinken: {p0}",
+  "owner_reopen_task": "Heropenen: {p0}",
   "owner_a_deadline_sorts_tasks_choose_a_reminder_separately_notifications_appear": "Een deadline sorteert taken. Kies apart een herinnering; meldingen verschijnen hier en worden per e-mail verstuurd zodra de geplande verwerking draait.",
   "owner_new_task": "Nieuwe taak",
   "owner_notifications": "Meldingen",
