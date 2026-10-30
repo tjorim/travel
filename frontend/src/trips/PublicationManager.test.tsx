@@ -2,6 +2,9 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { http, HttpResponse } from "msw";
+import { server } from "../mocks/server";
+
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { ownerKeys } from "../query/keys";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
@@ -155,6 +158,7 @@ beforeEach(() => {
       },
     ])
     .collection("/api/trips/trip/documents", []);
+  server.use(http.get("/api/trips/trip/audit-events", () => HttpResponse.json([])));
   api.on("PUT", /\/visibility\/[^/]+\/[^/]+$/, (body) => body);
   api.on("GET", /^\/api\/trips\/trip\/public-projection$/, () => status);
   api.on("GET", /^\/api\/trips\/trip\/overview$/, () => overview);
@@ -435,17 +439,38 @@ it("keeps unsaved public scope edits when the server copy is refreshed", async (
 });
 
 it("publishes and withdraws the public page", async () => {
+  server.use(
+    http.get("/api/trips/trip/audit-events", () =>
+      HttpResponse.json(
+        status.surface_state === "published"
+          ? [
+              {
+                id: "published",
+                kind: "public_projection.publish",
+                target_type: "public_surface",
+                target_id: "trip",
+                occurred_at: "2026-10-30T10:00:00Z",
+                details: {},
+              },
+            ]
+          : [],
+      ),
+    ),
+  );
   renderWithOwner(<PublicationManager trip={trip} />);
   const publish = await screen.findByRole("button", { name: "Met iedereen delen" });
   await waitFor(() => expect((publish as HTMLButtonElement).disabled).toBe(false));
   expect(screen.queryByRole("link", { name: "Open publieke pagina" })).toBeNull();
+  await screen.findByText("Er zijn nog geen deelwijzigingen vastgelegd.");
   fireEvent.click(publish);
+  await screen.findByText("Openbare pagina gepubliceerd.");
   const open = await screen.findByRole("link", { name: "Open publieke pagina" });
   expect(open.getAttribute("href")).toBe(`${window.location.origin}/trips/exampleland`);
   expect(screen.getByText(`${window.location.origin}/trips/exampleland`)).toBeTruthy();
   expect(screen.getByRole("button", { name: "Kopieer link" })).toBeTruthy();
   fireEvent.click(await screen.findByRole("button", { name: "Niet meer met iedereen delen" }));
   await screen.findByText("Publieke pagina ingetrokken.");
+  await screen.findByText("Er zijn nog geen deelwijzigingen vastgelegd.");
   expect(screen.getByRole("button", { name: "Met iedereen delen" })).toBeTruthy();
   expect(screen.queryByRole("link", { name: "Open publieke pagina" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Kopieer link" })).toBeNull();

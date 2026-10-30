@@ -874,3 +874,34 @@ export type AreaMergeResult = {
   /** Locations in the merged area that only name the city, so likely duplicates of each other. */
   city_level_location_ids: string[];
 };
+
+/** Owner-only sharing audit response; details never contain authored content. */
+export type AuditEventKind =
+  | "public_projection.publish"
+  | "public_projection.unpublish"
+  | "share_link.create"
+  | "share_link.activate"
+  | "share_link.revoke"
+  | "share_link.rotate"
+  | "share_link.expire"
+  | "location.merge"
+  | "area.merge"
+  | "public_projection.scope_change"
+  | "share_link.scope_change"
+  | "record.visibility_change";
+export type AuditEvent = {
+  id: string;
+  kind: AuditEventKind;
+  target_type: "public_surface" | "share_link" | "location" | "area" | "record";
+  target_id: string;
+  occurred_at: string;
+  details: {
+    scope_version_before?: string;
+    scope_version_after?: string;
+    record_kind?: ShareScopeKind;
+    from?: Visibility;
+    to?: Visibility;
+    newly_reached?: string[];
+    no_longer_reached?: string[];
+  };
+};

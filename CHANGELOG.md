@@ -6,6 +6,8 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Show scope and record visibility changes in the owner sharing history in Dutch and English (#16).
+
 - Task completion and reopen buttons now include the task title in their accessible name (#7).
 - Keep keyboard focus in the record list after a deletion removes the opening control, moving it to the next or previous record or the section's first action
 - Record live scope edits to a published public page or active link and record
