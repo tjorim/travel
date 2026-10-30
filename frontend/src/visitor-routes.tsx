@@ -23,6 +23,7 @@ import {
   type ProjectionItem,
 } from "./ProjectionView";
 import {
+  forgetAllSharedTrips,
   forgetSharedTrip,
   readSavedSharedTrips,
   rememberSharedTrip,
@@ -91,6 +92,56 @@ function TripIndex() {
   const [state, setState] = useState<IndexState>({ kind: "loading" });
   const [storageFailed, setStorageFailed] = useState(false);
   const [savedTrips, setSavedTrips] = useState<SavedSharedTrip[]>(() => readSavedSharedTrips());
+
+  const [validatedTrips, setValidatedTrips] = useState<Map<string, SavedSharedTrip | null>>(
+    new Map(),
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function validate(trip: SavedSharedTrip) {
+      try {
+        const response = await fetch(`/api/shared/${encodeURIComponent(trip.token)}`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+          credentials: "omit",
+          redirect: "error",
+          referrerPolicy: "no-referrer",
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (response.status === 404 || response.status === 403) {
+          const forgotten = forgetSharedTrip(trip.token);
+          if (!forgotten) {
+            setStorageFailed(true);
+            setValidatedTrips((current) => new Map(current).set(trip.token, null));
+          } else setSavedTrips((current) => current.filter((entry) => entry.token !== trip.token));
+        } else if (response.ok) {
+          const data: unknown = await response.json();
+          if (!controller.signal.aborted && isProjection(data, "share")) {
+            // Only show the current owner-selected fields, never a stale stored summary.
+            setValidatedTrips((current) =>
+              new Map(current).set(trip.token, {
+                ...trip,
+                title: data.title,
+                summary: data.summary_text ?? data.summary,
+              }),
+            );
+          }
+        }
+      } catch {
+        // An offline or failed check keeps the shortcut stored but hides its content.
+      }
+    }
+    for (const trip of readSavedSharedTrips()) void validate(trip);
+    return () => controller.abort();
+  }, []);
+
+  function forgetAll() {
+    const forgotten = forgetAllSharedTrips();
+    setStorageFailed(!forgotten);
+    if (forgotten) setSavedTrips([]);
+  }
 
   function forget(token: string) {
     setStorageFailed(!forgetSharedTrip(token));
@@ -180,30 +231,57 @@ function TripIndex() {
       {savedTrips.length > 0 && (
         <section aria-label={m.saved_trips_label()}>
           <h2 className="text-travel-section tracking-tight">{m.saved_trips()}</h2>
+          <Button className="secondary compact" type="button" onClick={forgetAll}>
+            {m.forget_all_trips()}
+          </Button>
           <p>{m.saved_trip_count({ count: savedTrips.length })}</p>
           <p className="max-w-travel-reading leading-relaxed text-travel-muted">
             {m.saved_notice()}
           </p>
           <ul className="travel-trip-grid">
-            {savedTrips.map((trip) => (
-              <li key={trip.token} className="grid min-w-0 gap-2 [&>button]:justify-self-start">
-                <Link className="travel-trip-card" to={`/share/${encodeURIComponent(trip.token)}`}>
-                  <span className="travel-eyebrow">{m.unlisted_trip()}</span>
-                  <h2>{trip.title ?? m.shared_trip()}</h2>
-                  {trip.summary && <p className="line-clamp-4">{trip.summary}</p>}
-                  <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
-                    {m.view_trip()} <span aria-hidden="true">→</span>
-                  </span>
-                </Link>
-                <Button
-                  className="secondary compact"
-                  type="button"
-                  onClick={() => forget(trip.token)}
-                >
-                  {m.forget_trip()}
-                </Button>
-              </li>
-            ))}
+            {savedTrips.flatMap((entry) => {
+              const trip = validatedTrips.get(entry.token);
+              if (trip === null)
+                return [
+                  <li key={entry.token} className="grid min-w-0 gap-2">
+                    <p>{m.unavailable_trip()}</p>
+                    <Button
+                      className="secondary compact justify-self-start"
+                      type="button"
+                      onClick={() => forget(entry.token)}
+                    >
+                      {m.forget_trip()}
+                    </Button>
+                  </li>,
+                ];
+              return trip
+                ? [
+                    <li
+                      key={trip.token}
+                      className="grid min-w-0 gap-2 [&>button]:justify-self-start"
+                    >
+                      <Link
+                        className="travel-trip-card"
+                        to={`/share/${encodeURIComponent(trip.token)}`}
+                      >
+                        <span className="travel-eyebrow">{m.unlisted_trip()}</span>
+                        <h2>{trip.title ?? m.shared_trip()}</h2>
+                        {trip.summary && <p className="line-clamp-4">{trip.summary}</p>}
+                        <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
+                          {m.view_trip()} <span aria-hidden="true">→</span>
+                        </span>
+                      </Link>
+                      <Button
+                        className="secondary compact"
+                        type="button"
+                        onClick={() => forget(trip.token)}
+                      >
+                        {m.forget_trip()}
+                      </Button>
+                    </li>,
+                  ]
+                : [];
+            })}
           </ul>
         </section>
       )}

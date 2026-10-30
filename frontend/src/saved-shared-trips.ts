@@ -67,3 +67,13 @@ export function rememberSharedTrip(token: string, projection: Projection): boole
 export function forgetSharedTrip(token: string): boolean {
   return writeSavedSharedTrips(readSavedSharedTrips().filter((trip) => trip.token !== token));
 }
+
+/** Removes device-local capabilities without needing room for another storage write. */
+export function forgetAllSharedTrips(): boolean {
+  try {
+    localStorage.removeItem(storageKey);
+    return true;
+  } catch {
+    return false;
+  }
+}

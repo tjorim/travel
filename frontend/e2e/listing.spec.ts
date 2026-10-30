@@ -60,3 +60,70 @@ test("listing loading, empty and retry states", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.locator(".travel-trip-card")).toHaveCount(0);
 });
+
+for (const locale of ["nl", "en"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`saved trips ${locale} ${theme} on a narrow shared device`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: 360, height: 800 });
+      await mockApi(page);
+      await choosePreferences(page, locale, theme);
+      await page.addInitScript(() => {
+        localStorage.setItem(
+          "travel-saved-shared-trips@1",
+          JSON.stringify([
+            {
+              token: "synthetic-active-capability",
+              title: "Stale title",
+              summary: "Stale summary",
+              lastVisitedAt: "2054-01-01",
+            },
+            {
+              token: "synthetic-revoked-capability",
+              title: "Revoked title",
+              summary: "Revoked summary",
+              lastVisitedAt: "2054-01-01",
+            },
+          ]),
+        );
+      });
+      await page.route("**/api/shared/synthetic-revoked-capability", (route) =>
+        route.fulfill({ status: 404 }),
+      );
+      await page.route("**/api/shared/synthetic-active-capability", (route) =>
+        route.fulfill({
+          json: {
+            schema_version: "travel/unlisted-trip@1",
+            title: "Current shared title",
+            summary: "Current selected summary",
+            dates: null,
+            navigation: [],
+            visits: [],
+            places: [],
+            updates: [],
+            stays: [],
+            routes: [],
+            media: [],
+          },
+        }),
+      );
+      await page.goto("/trips/");
+      await expect(page.getByRole("link", { name: /Current shared title/ })).toBeVisible();
+      await expect(
+        page.getByText(/Revoked title|Revoked summary|Stale title|Stale summary/),
+      ).toHaveCount(0);
+      const forgetAll = page.getByRole("button", {
+        name: locale === "en" ? "Forget all" : "Alles vergeten",
+        exact: true,
+      });
+      await expect(forgetAll).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath("saved-trips.png"), fullPage: true });
+      await forgetAll.click();
+      await expect(page.getByRole("link", { name: /Current shared title/ })).toHaveCount(0);
+      expect(
+        await page.evaluate(() => localStorage.getItem("travel-saved-shared-trips@1")),
+      ).toBeNull();
+    });
+  }
+}
