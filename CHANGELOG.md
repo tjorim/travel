@@ -15,6 +15,9 @@ All notable changes to the travel hub are documented here.
   replacing saved copies; keep failed access checks from renewing leases (#26).
 
 - Saved-place search (`/areas?q=` and `/locations?q=`) now ignores accents and case and matches `%` and `_` literally.
+- Distinguish failed saved-place searches from empty results, with translated
+  status announcements and retry that preserves the editor and query (#10).
+
 - Localize the share-link "previous versions" label with a plural-aware message
   and make the locale audit flag string-literal ternaries in message arguments
   (#18).

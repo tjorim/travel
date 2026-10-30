@@ -1,5 +1,6 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
+import { Button } from "@/ui/button";
 import { Combobox } from "@base-ui/react/combobox";
 import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -73,6 +74,9 @@ function SearchCombobox({
   onQueryChange,
   onClose,
   remote = false,
+  searchState,
+  query,
+  onRetry,
   name,
 }: {
   ariaLabel?: string;
@@ -85,10 +89,14 @@ function SearchCombobox({
   onQueryChange?: (query: string) => void;
   onClose?: () => void;
   remote?: boolean;
+  query?: string | null;
+  searchState?: "initial" | "loading" | "success" | "error";
+  onRetry?: () => void;
   name?: string;
 }) {
   useLocale();
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selected =
     selectedOption ?? findOption(choices, value) ?? (value ? { value, label: value } : null);
   const visible = groupChoices(choices);
@@ -99,6 +107,7 @@ function SearchCombobox({
   return (
     <Combobox.Root
       open={open}
+      inputValue={query === undefined ? undefined : (query ?? labelText(selected?.label))}
       items={known}
       filteredItems={remote ? visible : undefined}
       filter={remote ? null : undefined}
@@ -125,6 +134,7 @@ function SearchCombobox({
     >
       <Combobox.InputGroup className="relative flex w-full items-stretch">
         <Combobox.Input
+          ref={inputRef}
           aria-label={ariaLabel}
           // An explicit accessible name wins over the surrounding Field label.
           render={(props) => (
@@ -142,7 +152,27 @@ function SearchCombobox({
         </Combobox.Trigger>
         {open && (
           <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border bg-travel-surface p-1 text-travel-ink shadow-lg">
-            <Combobox.Empty className="p-2 text-sm">{m.owner_no_results()}</Combobox.Empty>
+            <div role="status" className="px-2 text-sm">
+              {searchState === "loading" && m.owner_search_loading()}
+              {searchState === "error" && m.owner_search_failed()}
+              {searchState === "success" && choices.length > 0 && m.owner_search_complete()}
+            </div>
+            {searchState === "error" && (
+              <Button
+                type="button"
+                onClick={() => {
+                  inputRef.current?.focus();
+                  onRetry?.();
+                }}
+              >
+                {m.owner_search_retry()}
+              </Button>
+            )}
+            {(!searchState || searchState === "success") && (
+              <Combobox.Empty role="status" className="p-2 text-sm">
+                {m.owner_no_results()}
+              </Combobox.Empty>
+            )}
             <Combobox.List>
               {(group: DisplayGroup) => (
                 <Combobox.Group key={group.value} items={group.items}>
@@ -226,8 +256,11 @@ export function AsyncSearchSelect({
   isDisabled?: boolean;
 }) {
   useLocale();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState<string | null>(null);
   const [results, setResults] = useState<Choice[]>([]);
+  const [searchState, setSearchState] = useState<"initial" | "loading" | "success" | "error">(
+    "initial",
+  );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchId = useRef(0);
   useEffect(
@@ -237,19 +270,25 @@ export function AsyncSearchSelect({
     },
     [],
   );
-  function updateQuery(next: string) {
+  function updateQuery(next: string | null) {
     setQuery(next);
     searchId.current++;
     const current = searchId.current;
     if (timer.current) clearTimeout(timer.current);
+    setResults([]);
+    setSearchState(next ? "loading" : "initial");
     if (!next) return;
     timer.current = setTimeout(() => {
-      void loadOptions(next)
+      void Promise.resolve()
+        .then(() => loadOptions(next))
         .then((options) => {
-          if (current === searchId.current) setResults(options);
+          if (current === searchId.current) {
+            setResults(options);
+            setSearchState("success");
+          }
         })
         .catch(() => {
-          if (current === searchId.current) setResults([]);
+          if (current === searchId.current) setSearchState("error");
         });
     }, debounceMs);
   }
@@ -260,12 +299,15 @@ export function AsyncSearchSelect({
       selectedOption={selectedOption}
       choices={query ? results : defaultOptions}
       onChange={(next) => {
-        updateQuery("");
+        updateQuery(null);
         onChange(next);
       }}
       onQueryChange={updateQuery}
-      onClose={() => updateQuery("")}
+      onClose={() => updateQuery(null)}
       remote
+      query={query}
+      searchState={searchState}
+      onRetry={() => updateQuery(query)}
       isDisabled={isDisabled}
     />
   );
