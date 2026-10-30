@@ -284,13 +284,45 @@ def test_photo_thumbnail_is_a_smaller_owner_only_image(tmp_path: Path) -> None:
     thumbnail = owner.get(body["thumbnail_url"])
     assert thumbnail.status_code == 200
     assert thumbnail.headers["content-type"] == "image/webp"
-    assert thumbnail.headers["cache-control"] == "no-store"
+    assert thumbnail.headers["cache-control"] == "private, max-age=300"
     assert len(thumbnail.content) < len(data)
     with Image.open(io.BytesIO(thumbnail.content)) as image:
         assert max(image.size) <= 320
 
     other = client_for("owner-2", tmp_path)
     assert other.get(body["thumbnail_url"]).status_code == 404
+
+
+def test_thumbnail_cache_reuses_bytes_and_is_purged_with_original(tmp_path: Path, monkeypatch) -> None:
+    from app.media import service
+
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    media = owner.post(
+        f"/api/trips/{trip['id']}/media/uploads",
+        files={"file": ("photo.jpg", jpeg_bytes(), "image/jpeg")},
+    ).json()
+    first = owner.get(media["thumbnail_url"])
+    assert first.status_code == 200
+
+    def no_decode(*args, **kwargs):
+        raise AssertionError("cached thumbnail must not decode the original")
+
+    monkeypatch.setattr(service, "generate_thumbnail", no_decode)
+    assert owner.get(media["thumbnail_url"]).content == first.content
+    headers = {"If-None-Match": first.headers["etag"]}
+    validated = owner.get(media["thumbnail_url"], headers=headers)
+    assert validated.status_code == 304
+    assert validated.content == b""
+    assert client_for("owner-2", tmp_path).get(media["thumbnail_url"], headers=headers).status_code == 404
+    owner = client_for("owner-1", tmp_path)
+    assert owner.get(f"/api/trips/{trip['id']}/media/{media['id']}/derivatives").json() == []
+    assert owner.delete(f"/api/trips/{trip['id']}/media/{media['id']}").status_code == 204
+    assert owner.get(media["thumbnail_url"], headers=headers).status_code == 404
+    with TestingSessionLocal() as session:
+        storage = LocalObjectStorage(root=str(tmp_path))
+        assert service.purge_deleted_media(session, storage, older_than=timedelta(0)) == 2
+        assert list(storage.objects()) == []
 
 
 def test_video_asset_has_no_thumbnail(tmp_path: Path) -> None:
@@ -587,6 +619,7 @@ def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path
 
     deleted = owner.delete(f"/api/trips/{trip['id']}/media/{media['id']}/derivatives/{derivative['id']}")
     assert deleted.status_code == 204
+    owner = client_for("owner-1", tmp_path)
     assert owner.get(f"/api/trips/{trip['id']}/media/{media['id']}/derivatives").json() == []
     assert owner.get(derivative["file_url"]).status_code == 404
     assert owner.get(f"/api/trips/{trip['id']}/public-projection").json()["scope"]["items"] == []
@@ -1142,3 +1175,12 @@ def test_legacy_corrupt_photos_return_handled_errors(tmp_path: Path, operation: 
                 else:
                     create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
             assert error.value.code == "invalid_image"
+
+
+def test_thumbnail_jpeg_uses_decoder_reduction() -> None:
+    from app.media.service import _decoded_image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (4000, 3000)).save(buffer, format="JPEG")
+    with _decoded_image(buffer.getvalue(), preview_size=320) as image:
+        assert image.size == (500, 375)
