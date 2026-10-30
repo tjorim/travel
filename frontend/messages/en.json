@@ -748,6 +748,8 @@
   "owner_reminder_2": " · Reminder {p0}",
   "owner_reopen": "Reopen",
   "owner_check_off": "Check off",
+  "owner_check_off_task": "Check off: {p0}",
+  "owner_reopen_task": "Reopen: {p0}",
   "owner_a_deadline_sorts_tasks_choose_a_reminder_separately_notifications_appear": "A deadline sorts tasks. Choose a reminder separately; notifications appear here and are emailed once the scheduled processing runs.",
   "owner_new_task": "New task",
   "owner_notifications": "Notifications",

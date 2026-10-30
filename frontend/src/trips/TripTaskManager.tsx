@@ -271,7 +271,16 @@ export function TripTaskManager({
         </span>
       </Button>
       <div className="button-row">
-        <Button className="secondary compact" type="button" onClick={() => toggle(task)}>
+        <Button
+          className="secondary compact"
+          type="button"
+          onClick={() => toggle(task)}
+          aria-label={
+            task.completed_at
+              ? m.owner_reopen_task({ p0: task.title })
+              : m.owner_check_off_task({ p0: task.title })
+          }
+        >
           {task.completed_at ? m.owner_reopen() : m.owner_check_off()}
         </Button>
       </div>

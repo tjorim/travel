@@ -157,12 +157,24 @@ it("restores a task when completing it is refused", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
   await screen.findByRole("button", { name: "Taak Visum regelen bekijken" });
   api.failNext = { status: 500, body: { detail: "Opslaan mislukt op de server." } };
-  fireEvent.click(screen.getAllByRole("button", { name: "Afvinken" })[0]);
+  fireEvent.click(screen.getByRole("button", { name: "Afvinken: Visum regelen" }));
   await screen.findByText(
     "De taak kon niet worden bijgewerkt. De server reageert niet goed. Probeer het later opnieuw.",
   );
-  expect(screen.getAllByRole("button", { name: "Afvinken" })).toHaveLength(2);
-  expect(screen.queryByRole("button", { name: "Heropenen" })).toBeNull();
+  expect(screen.getAllByRole("button", { name: /^Afvinken: / })).toHaveLength(2);
+  expect(screen.queryByRole("button", { name: /^Heropenen: / })).toBeNull();
+});
+
+it("names each completion and reopen action after its task", async () => {
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  await screen.findByRole("button", { name: "Taak Visum regelen bekijken" });
+  const names = screen
+    .getAllByRole("button", { name: /^Afvinken: / })
+    .map((button) => button.getAttribute("aria-label"));
+  expect(new Set(names).size).toBe(names.length);
+  expect(screen.queryByRole("button", { name: "Afvinken" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Afvinken: Visum regelen" }));
+  await screen.findByRole("button", { name: "Heropenen: Visum regelen" });
 });
 
 it("refreshes the overview badge when a task is completed elsewhere on the screen", async () => {
@@ -173,7 +185,7 @@ it("refreshes the overview badge when a task is completed elsewhere on the scree
     </>,
   );
   await screen.findByText("2 open");
-  fireEvent.click(screen.getAllByRole("button", { name: "Afvinken" })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: /^Afvinken: / })[0]);
   await screen.findByText("1 open");
   // One shared read per resource: overview and manager never fetch the tasks twice.
   expect(
