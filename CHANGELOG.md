@@ -20,6 +20,8 @@ All notable changes to the travel hub are documented here.
   PATCH fields and zoned clock times; fuzz OpenAPI writes on SQLite and PostgreSQL (#33).
 - Return uncacheable 404 responses for malformed anonymous trip delivery paths
   before querying the database (#34).
+- Cache owner authentication signing keys, bound unknown-key refreshes and use a
+  short fetch timeout with 503 responses during identity-provider outages (#19).
 
 - Use a distinctive synthetic postal code in the public-location privacy test to
   prevent random public IDs from causing false disclosure failures.
