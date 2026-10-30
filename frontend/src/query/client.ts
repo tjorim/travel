@@ -19,7 +19,7 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
  * - Writes always attempt the network so an offline owner gets an immediate,
  *   explicit error instead of a save that silently waits (`"always"`), and are
  *   never retried: a write is not safe to repeat blindly.
- * - A 401 from any call reports once so the app can end the session.
+ * - A final 401 reports that sign-in is needed, without discarding open work.
  */
 export function createOwnerQueryClient({
   onUnauthorized,

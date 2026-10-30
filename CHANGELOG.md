@@ -11,6 +11,7 @@ All notable changes to the travel hub are documented here.
   (#18).
 - Keep share-link capability tokens out of MCP metadata responses; only activation
   and rotation return capabilities, preserving owner REST responses (#23).
+- Renew owner sessions before expiry and keep open editors on unauthorized requests (#36).
 
 - Use a distinctive synthetic postal code in the public-location privacy test to
   prevent random public IDs from causing false disclosure failures.

@@ -176,3 +176,54 @@ it("does not render remote fragments from a malformed successful JSON response",
   expect((failure as ApiError).message).not.toContain("secret-token");
   expect((failure as ApiError).diagnostic).toBe("Invalid API response");
 });
+
+it("replays an unauthorized save once with the renewed token and identical body", async () => {
+  const auth = await import("../auth");
+  vi.spyOn(auth, "freshSession").mockImplementation(async (current, force) =>
+    force ? { ...current, accessToken: "renewed" } : current,
+  );
+  const bodies: unknown[] = [];
+  server.use(
+    http.patch("/api/trips/draft", async ({ request }) => {
+      bodies.push(await request.json());
+      return request.headers.get("Authorization") === "Bearer renewed"
+        ? HttpResponse.json({ saved: true })
+        : new HttpResponse(null, { status: 401 });
+    }),
+  );
+  await expect(
+    ownerRequest(session, "/api/trips/draft", "fallback", {
+      method: "PATCH",
+      body: { title: "Synthetic draft" },
+    }),
+  ).resolves.toEqual({ saved: true });
+  expect(bodies).toEqual([{ title: "Synthetic draft" }, { title: "Synthetic draft" }]);
+});
+
+it("does not replay a second 401 or discard storage when renewal fails", async () => {
+  const auth = await import("../auth");
+  const fresh = vi.spyOn(auth, "freshSession").mockImplementation(async (current) => current);
+  let attempts = 0;
+  server.use(
+    http.get("/api/rejected", () => {
+      attempts++;
+      return new HttpResponse(null, { status: 401 });
+    }),
+  );
+  await expect(ownerRequest(session, "/api/rejected", "fallback")).rejects.toMatchObject({
+    status: 401,
+  });
+  expect(attempts).toBe(2);
+  fresh.mockImplementation(async (current, force) => {
+    if (force) throw new TypeError("Network unavailable");
+    return current;
+  });
+  sessionStorage.setItem("travel-tracker-session", "preserved");
+  attempts = 0;
+  await expect(ownerRequest(session, "/api/rejected", "fallback")).rejects.toMatchObject({
+    status: 401,
+  });
+  expect(attempts).toBe(1);
+  expect(sessionStorage.getItem("travel-tracker-session")).toBe("preserved");
+  sessionStorage.removeItem("travel-tracker-session");
+});

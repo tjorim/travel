@@ -54,11 +54,7 @@ export function readSession(): TrackerSession | null {
   if (!stored) return null;
   try {
     const session = JSON.parse(stored) as TrackerSession;
-    if (
-      typeof session.accessToken !== "string" ||
-      typeof session.expiresAt !== "number" ||
-      session.expiresAt <= Date.now()
-    ) {
+    if (typeof session.accessToken !== "string" || typeof session.expiresAt !== "number") {
       sessionStorage.removeItem(storageKey);
       return null;
     }
@@ -76,6 +72,7 @@ function storeSession(session: TrackerSession): void {
   // was discarded by a browser/PWA shell.
   localStorage.setItem(restoreMarkerKey, "1");
   sessionStorage.removeItem(silentRestoreKey);
+  window.dispatchEvent(new Event("travel-session-renewed"));
 }
 
 export function shouldRestoreSession(): boolean {
@@ -114,6 +111,15 @@ export async function beginSignIn(
 export async function completeSignIn(
   search: string,
 ): Promise<{ returnPath: string; session: TrackerSession }> {
+  // The parent validates origin, source and PKCE state and exchanges the code.
+  if (
+    window.name === "travel-session-renewal" ||
+    (window.name === "travel-sign-in" && window.opener)
+  ) {
+    const parent = window.opener ?? window.parent;
+    parent.postMessage({ type: "travel-auth-callback", search }, window.location.origin);
+    return new Promise(() => {});
+  }
   const parameters = new URLSearchParams(search);
   const error = parameters.get("error");
   const code = parameters.get("code");
@@ -134,9 +140,16 @@ export async function completeSignIn(
   if (error) {
     sessionStorage.removeItem(silentRestoreKey);
     if (transaction.silent) {
+      renewalRefused = [
+        "login_required",
+        "interaction_required",
+        "consent_required",
+        "account_selection_required",
+      ].includes(error);
+      if (renewalRefused) window.dispatchEvent(new Event("travel-session-expired"));
       // There is no longer a Keycloak SSO session to recover. Do not retry on
       // every rendered route; the owner can choose the normal sign-in action.
-      localStorage.removeItem(restoreMarkerKey);
+      sessionStorage.setItem(silentRestoreKey, "1");
       throw new FeedbackError(() =>
         m.owner_your_sign_in_session_has_expired_sign_in_again_to_continue(),
       );
@@ -145,6 +158,8 @@ export async function completeSignIn(
   }
   if (!code) throw new FeedbackError(() => m.owner_the_sign_in_code_is_missing_or_has_expired());
 
+  const generation = sessionGeneration;
+  const expectedSubject = renewalSubject;
   const response = await fetch(`${issuer}/protocol/openid-connect/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -174,11 +189,19 @@ export async function completeSignIn(
     expiresAt: Date.now() + token.expires_in * 1000,
     ...(typeof token.id_token === "string" ? { idToken: token.id_token } : {}),
   };
+  if (generation !== sessionGeneration) throw new Error("Signed out");
+  if (expectedSubject && decodeSubject(session.accessToken) !== expectedSubject)
+    throw new Error("Authentication subject changed");
+  renewalRefused = false;
   storeSession(session);
   return { returnPath: trackerPath(transaction.returnPath), session };
 }
 
 export function clearSession(): void {
+  sessionGeneration++;
+  renewalRefused = false;
+  sessionStorage.removeItem(transactionKey);
+  cancelRenewal?.();
   sessionStorage.removeItem(storageKey);
   sessionStorage.removeItem(silentRestoreKey);
   localStorage.removeItem(restoreMarkerKey);
@@ -223,4 +246,122 @@ export function beginSignOut(session: TrackerSession): void {
   });
   if (session.idToken) parameters.set("id_token_hint", session.idToken);
   window.location.assign(`${issuer}/protocol/openid-connect/logout?${parameters}`);
+}
+
+let renewalRefused = false;
+let renewal: Promise<TrackerSession> | undefined;
+let cancelRenewal: (() => void) | undefined;
+let renewalSubject: string | null = null;
+let sessionGeneration = 0;
+
+/** PKCE runs in a child browsing context so open editors never navigate away. */
+export function renewSession(interactive = false): Promise<TrackerSession> {
+  if (renewal) return renewal;
+  if (!interactive && renewalRefused) return Promise.reject(new Error("Sign-in required"));
+  if (interactive) renewalRefused = false;
+  renewalSubject = readSessionSubject();
+  const popup = interactive
+    ? window.open("about:blank", "travel-sign-in", "popup,width=520,height=720")
+    : null;
+  renewal = new Promise<TrackerSession>((resolve, reject) => {
+    const frame = interactive ? null : document.createElement("iframe");
+    if (frame) {
+      frame.hidden = true;
+      frame.name = "travel-session-renewal";
+      frame.title = m.owner_sign_in();
+      document.body.append(frame);
+    }
+    const child = popup ?? frame?.contentWindow;
+    let settled = false;
+    const finish = (error?: unknown, session?: TrackerSession) => {
+      if (settled) return;
+      settled = true;
+      if (error && completing) sessionGeneration++;
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", receive);
+      frame?.remove();
+      popup?.close();
+      if (session) resolve(session);
+      else reject(error);
+    };
+    cancelRenewal = () => finish(new Error("Signed out"));
+    let completing = false;
+    const receive = (event: MessageEvent) => {
+      if (
+        event.origin !== window.location.origin ||
+        event.source !== child ||
+        event.data?.type !== "travel-auth-callback" ||
+        typeof event.data.search !== "string"
+      )
+        return;
+      if (completing) return;
+      completing = true;
+      void completeSignIn(event.data.search).then(
+        ({ session }) => finish(undefined, session),
+        (error: unknown) => finish(error),
+      );
+    };
+    const timeout = window.setTimeout(() => finish(new Error("Authentication timed out")), 60_000);
+    window.addEventListener("message", receive);
+    void (async () => {
+      if (!child) throw new Error("Authentication window unavailable");
+      const codeVerifier = randomValue();
+      const state = randomValue();
+      sessionStorage.setItem(
+        transactionKey,
+        JSON.stringify({
+          codeVerifier,
+          state,
+          silent: !interactive,
+          returnPath:
+            window.location.pathname.replace(/^\/admin(?=\/|$)/, "") +
+            window.location.search +
+            window.location.hash,
+        }),
+      );
+      const parameters = new URLSearchParams({
+        client_id: clientId,
+        code_challenge: await challengeFor(codeVerifier),
+        code_challenge_method: "S256",
+        redirect_uri: callbackUrl(),
+        response_type: "code",
+        scope: "openid profile email",
+        state,
+      });
+      if (!interactive) parameters.set("prompt", "none");
+      if (settled) return;
+      child.location.replace(`${issuer}/protocol/openid-connect/auth?${parameters}`);
+    })().catch((error: unknown) => finish(error));
+  }).finally(() => {
+    renewal = undefined;
+    cancelRenewal = undefined;
+    renewalSubject = null;
+  });
+  return renewal;
+}
+
+/** Reuses a token already renewed by a concurrent request. */
+export async function freshSession(
+  session: TrackerSession,
+  force = false,
+): Promise<TrackerSession> {
+  const stored = readSession();
+  if (stored && stored.accessToken !== session.accessToken) {
+    if (decodeSubject(stored.accessToken) !== decodeSubject(session.accessToken))
+      throw new Error("Authentication subject changed");
+    return stored;
+  }
+  if (!force && session.expiresAt > Date.now() + 30_000) return session;
+  return renewSession();
+}
+
+function readSessionSubject(): string | null {
+  try {
+    const stored = JSON.parse(
+      sessionStorage.getItem(storageKey) ?? "null",
+    ) as TrackerSession | null;
+    return stored ? decodeSubject(stored.accessToken) : null;
+  } catch {
+    return null;
+  }
 }

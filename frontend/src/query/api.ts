@@ -1,5 +1,5 @@
 import { FeedbackError } from "./FeedbackError";
-import type { TrackerSession } from "../auth";
+import { freshSession, type TrackerSession } from "../auth";
 import { openBlobInNewTab } from "../tracker-model";
 
 import { m } from "../paraglide/messages.js";
@@ -122,6 +122,28 @@ async function send(
   }
 }
 
+async function authenticatedSend(
+  session: TrackerSession,
+  url: string,
+  init: RequestInit,
+  signal?: AbortSignal,
+) {
+  // Renewal transport failures preserve the session and let the request report its own error.
+  let current = await freshSession(session).catch(() => session);
+  const request = () =>
+    send(url, { ...init, headers: { ...init.headers, ...authorization(current) } }, signal);
+  let response = await request();
+  if (response.status === 401) {
+    try {
+      current = await freshSession(current, true);
+    } catch {
+      return response;
+    }
+    response = await request();
+  }
+  return response;
+}
+
 /**
  * The single authenticated owner fetcher. The bearer token is attached here
  * and nowhere else in the query layer, so it never reaches a query key, a
@@ -134,7 +156,8 @@ export async function ownerRequest<T>(
   { method = "GET", body, signal, cache, credentials }: OwnerRequest = {},
 ): Promise<T> {
   const multipart = typeof FormData !== "undefined" && body instanceof FormData;
-  const response = await send(
+  const response = await authenticatedSend(
+    session,
     path,
     {
       method,
@@ -174,7 +197,8 @@ export async function ownerFile(
   fallback: ErrorFallback,
   { signal, cache, credentials }: Pick<OwnerRequest, "signal" | "cache" | "credentials"> = {},
 ): Promise<Blob> {
-  const response = await send(
+  const response = await authenticatedSend(
+    session,
     url,
     {
       headers: authorization(session),

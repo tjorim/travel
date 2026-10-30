@@ -1,8 +1,12 @@
+import { createPortal } from "react-dom";
 import { RouterProvider } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { clearSession } from "./auth";
+import { renewSession } from "./auth";
 import { AuthProvider, useAuth } from "./auth-context";
+import { Button } from "@/ui/button";
+import { useLocale } from "./locale";
+import { m } from "./paraglide/messages.js";
 import { lazyNamed } from "./lazy-view";
 import { Callback } from "./pages/Callback";
 import { OwnerHome } from "./pages/OwnerHome";
@@ -31,11 +35,34 @@ const routeTree = buildTrackerRouteTree({
 });
 
 function AppShell() {
+  useLocale();
   const { setSession } = useAuth();
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    const expired = () => setExpired(true);
+    const renewed = () => setExpired(false);
+    window.addEventListener("travel-session-expired", expired);
+    window.addEventListener("travel-session-renewed", renewed);
+    return () => {
+      window.removeEventListener("travel-session-expired", expired);
+      window.removeEventListener("travel-session-renewed", renewed);
+    };
+  }, []);
+  // A modal makes the surrounding shell inert. Keep recovery reachable inside
+  // the active editor, and move it back when that editor closes.
+  const [bannerTarget, setBannerTarget] = useState<Element | null>(null);
+  useEffect(() => {
+    if (!expired) return;
+    const update = () =>
+      setBannerTarget([...document.querySelectorAll('[role="dialog"]')].at(-1) ?? null);
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [expired]);
   const endSession = useRef(() => {});
   endSession.current = () => {
-    clearSession();
-    setSession(null);
+    setExpired(true);
   };
   // Created once and shared with the router below, so a route's `loader` warms
   // the same QueryClient cache that the page's own `useQuery` reads from.
@@ -47,8 +74,27 @@ function AppShell() {
     };
   });
 
+  const banner = expired && (
+    <div role="alert" className="travel-card">
+      <p>{m.owner_session_expired_save()}</p>
+      <Button
+        onClick={() =>
+          void renewSession(true)
+            .then((session) => {
+              setSession(session);
+              setExpired(false);
+            })
+            .catch(() => {})
+        }
+      >
+        {m.owner_sign_in_again()}
+      </Button>
+    </div>
+  );
+
   return (
     <OwnerQueryProvider client={queryClient}>
+      {bannerTarget?.isConnected ? createPortal(banner, bannerTarget) : banner}
       <RouterProvider router={router} />
     </OwnerQueryProvider>
   );
