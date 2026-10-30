@@ -26,6 +26,7 @@ from ..schemas import (
     Identifier,
     MergeRequest,
 )
+from ..search_text import contains
 from .placement import is_city_level
 from .trips import owned_trip
 
@@ -117,7 +118,7 @@ def list_areas(
     if q or limit is not None or offset:
         statement = statement.order_by(Area.id)
     if q:
-        statement = statement.where(Area.label.ilike(f"%{q}%"))
+        statement = statement.where(contains(Area.label, q))
     if limit is not None:
         statement = statement.limit(limit)
     return list(session.scalars(statement.offset(offset)))

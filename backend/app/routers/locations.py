@@ -32,6 +32,7 @@ from ..schemas import (
     MergeRequest,
     NavigationResponse,
 )
+from ..search_text import contains
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 
@@ -63,7 +64,7 @@ def list_locations(
     if q or limit is not None or offset:
         statement = statement.order_by(Location.id)
     if q:
-        statement = statement.where(Location.label.ilike(f"%{q}%") | Location.display_name.ilike(f"%{q}%"))
+        statement = statement.where(contains(Location.label, q) | contains(Location.display_name, q))
     if limit is not None:
         statement = statement.limit(limit)
     return list(session.scalars(statement.offset(offset)))
