@@ -345,14 +345,12 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   return (
     <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
       <Preferences />
-      {audience === "public" && (
-        <Link
-          to="/trips"
-          className="mb-6 inline-block text-sm text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
-        >
-          {m.all_public_trips()}
-        </Link>
-      )}
+      <Link
+        to="/trips"
+        className="mb-6 inline-block text-sm text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+      >
+        {m.all_public_trips()}
+      </Link>
       {state.kind !== "ready" && (
         <header>
           <p className="travel-eyebrow">Travel</p>
