@@ -22,9 +22,10 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   and stays private until the owner gives it a public name and chooses who
   sees it. A new location goes into the area the owner picks, else into the
   area of its city (made when it does not exist yet), else into a private
-  "Unassigned" area.
+  unnamed area (stored without a label; the interface shows its own
+  translated fallback, and it cannot be shared until the owner names it).
   A new city-derived area starts at the location's generalized point when it
-  has coordinates; "Unassigned" never gets a point from a location. The owner
+  has coordinates; an unnamed area never gets a point from a location. The owner
   can request an area suggestion from coordinates: the closest saved area
   within 25 km, otherwise a new area candidate from reverse lookup with a
   proposed IANA time zone. The suggestion never saves or silently re-files a

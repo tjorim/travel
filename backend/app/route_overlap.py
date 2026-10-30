@@ -11,6 +11,7 @@ evidence and is left alone. Nothing here blocks or changes a record.
 import re
 from collections.abc import Iterable
 from datetime import date, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .models import Route, RouteMode, RouteStatus, Visit
@@ -55,8 +56,13 @@ def route_days(route: Route) -> set[date]:
     return days
 
 
+def area_name(area: Any) -> str:
+    """An area's label for server-worded notes; an unnamed area has none stored."""
+    return area.label or "unnamed area"
+
+
 def route_title(route: Route) -> str:
-    return route.label or f"{route.departure_area.label} → {route.arrival_area.label}"
+    return route.label or f"{area_name(route.departure_area)} → {area_name(route.arrival_area)}"
 
 
 def _about_the_journey(visit: Visit, route: Route) -> bool:

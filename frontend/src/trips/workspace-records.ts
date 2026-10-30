@@ -13,6 +13,7 @@ import {
   type TravelUpdate,
   type TripTask,
   type Visit,
+  areaName,
 } from "../tracker-model";
 import type { RecordKind } from "./record-focus";
 import { locateRecord } from "./workspace-sections";
@@ -43,7 +44,7 @@ function candidates(records: SearchableRecords): Candidate[] {
     title: (item: T) => string,
   ): Candidate[] => (items ?? []).map((item) => ({ kind, id: item.id, title: title(item) }));
   return [
-    ...list("area", records.areas, (area) => area.label),
+    ...list("area", records.areas, (area) => areaName(area)),
     ...list("location", records.locations, ownerLocationName),
     ...list("visit", records.visits, visitTitle),
     ...list("stay", records.stays, stayLabel),

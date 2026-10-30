@@ -82,13 +82,17 @@ export type PlaceSearchResponse = {
 export type Area = {
   id: string;
   visibility: Visibility;
-  label: string;
+  /** Null for an unnamed area: show `areaName(area)`, never a stored fallback. */
+  label: string | null;
   country_code: string | null;
   region: string | null;
   latitude: number | null;
   longitude: number | null;
   timezone: string | null;
 };
+
+/** An area's name, or the translated fallback when the owner left it unnamed. */
+export const areaName = (area: Pick<Area, "label">): string => area.label ?? m.owner_unnamed_area();
 
 export type AreaSuggestion = {
   existing_area_id: string | null;
@@ -240,7 +244,7 @@ export const timedRoutes = (routes: Route[]): TimedRoute[] =>
 /** What a route is called: its label, else where it goes. */
 export const routeTitle = (
   route: Pick<Route, "label" | "departure_area" | "arrival_area">,
-): string => route.label ?? `${route.departure_area.label} → ${route.arrival_area.label}`;
+): string => route.label ?? `${areaName(route.departure_area)} → ${areaName(route.arrival_area)}`;
 
 /** What kind of days a visit is: free days, or working ones. */
 export type VisitKind = "free" | "work";
@@ -277,7 +281,7 @@ export type Visit = {
 
 /** What a visit is called: its title, else its location, else its area. */
 export const visitTitle = (visit: Pick<Visit, "title" | "area" | "location">): string =>
-  visit.title ?? (visit.location ? locationName(visit.location) : visit.area.label);
+  visit.title ?? (visit.location ? locationName(visit.location) : areaName(visit.area));
 
 export type TripTask = {
   id: string;
@@ -566,7 +570,7 @@ export function formatDayRange(first: string, last: string | null): string {
 }
 
 export function stayLabel(stay: Stay): string {
-  return stay.property_name ?? m.owner_still_to_choose_in({ p0: stay.area.label });
+  return stay.property_name ?? m.owner_still_to_choose_in({ p0: areaName(stay.area) });
 }
 
 /** An instant as the app displays it everywhere: "16 nov 2026, 14:32". */
@@ -727,19 +731,19 @@ export function whereabouts(
     return {
       kind: "travel",
       zone: route.arrival_timezone,
-      label: m.owner_on_the_way_to({ p0: route.arrival_area.label }),
+      label: m.owner_on_the_way_to({ p0: areaName(route.arrival_area) }),
     };
   const current = zoned.find((stay) =>
     stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)),
   );
-  if (current) return { kind: "stay", zone: stayZone(current), label: current.area.label };
+  if (current) return { kind: "stay", zone: stayZone(current), label: areaName(current.area) };
   const last = [
     ...active
       .filter((candidate) => Date.parse(candidate.arrives_at) <= now)
       .map((candidate) => ({
         at: Date.parse(candidate.arrives_at),
         zone: candidate.arrival_timezone,
-        label: candidate.arrival_area.label,
+        label: areaName(candidate.arrival_area),
       })),
     // A stay that already began counts as recent up to its check-out.
     ...zoned
@@ -747,7 +751,7 @@ export function whereabouts(
       .map((stay) => ({
         at: Math.min(now, midday(stay.check_out_date)),
         zone: stayZone(stay),
-        label: stay.area.label,
+        label: areaName(stay.area),
       })),
   ].sort((left, right) => right.at - left.at)[0];
   return last

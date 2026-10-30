@@ -1,7 +1,7 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
-import { formatDayRange, stayLabel, type Stay, type Trip } from "../../tracker-model";
+import { formatDayRange, stayLabel, type Stay, type Trip, areaName } from "../../tracker-model";
 import { stayStateLabel } from "../labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
@@ -36,7 +36,7 @@ export function StaysBlock({ trip, stays }: { trip: Trip; stays: Stay[] }) {
               )}
               <p>
                 {placeLabel(stay.location)}
-                {` · ${stay.area.label}`}
+                {` · ${areaName(stay.area)}`}
               </p>
               {stay.website_url && (
                 <a href={stay.website_url} target="_blank" rel="noreferrer">

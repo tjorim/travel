@@ -24,6 +24,7 @@ import {
   type LocationInput,
   type PlaceSearchResult,
   type Visit,
+  areaName,
 } from "../tracker-model";
 import { PlaceSearchField } from "./PlaceSearchField";
 import { Field, FieldError, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
@@ -151,12 +152,12 @@ export function PlacePicker({
           },
         },
         ...[...grouped.values()].map(({ area, places }) => ({
-          label: `${area.label}${area.region ? ` · ${area.region}` : ""}`,
+          label: `${areaName(area)}${area.region ? ` · ${area.region}` : ""}`,
           options: [
             {
               value: `area:${area.id}`,
               get label() {
-                return m.owner_whole_area({ p0: area.label });
+                return m.owner_whole_area({ p0: areaName(area) });
               },
             },
             ...places.map((location) => ({
@@ -250,12 +251,12 @@ export function PlacePicker({
               },
             },
             ...areas.slice(0, 50).map((area) => ({
-              label: `${area.label}${area.region ? ` · ${area.region}` : ""}`,
+              label: `${areaName(area)}${area.region ? ` · ${area.region}` : ""}`,
               options: [
                 {
                   value: `area:${area.id}`,
                   get label() {
-                    return m.owner_whole_area({ p0: area.label });
+                    return m.owner_whole_area({ p0: areaName(area) });
                   },
                 },
                 ...locations
@@ -352,13 +353,13 @@ export function PlacePicker({
                 </option>
                 {value.newAreaCandidate && (
                   <option value="__new__">
-                    {m.owner_new_area()} {value.newAreaCandidate.label}
+                    {m.owner_new_area()} {areaName(value.newAreaCandidate)}
                     {value.newAreaCandidate.timezone ? ` · ${value.newAreaCandidate.timezone}` : ""}
                   </option>
                 )}
                 {areas.map((area) => (
                   <option key={area.id} value={area.id}>
-                    {area.label}
+                    {areaName(area)}
                   </option>
                 ))}
               </SearchSelect>
@@ -370,7 +371,7 @@ export function PlacePicker({
                 <FieldLabel>
                   {m.owner_new_area_name()}
                   <Input
-                    value={value.newAreaCandidate.label}
+                    value={areaName(value.newAreaCandidate)}
                     maxLength={120}
                     onChange={(event) =>
                       onChange({

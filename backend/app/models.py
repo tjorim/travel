@@ -228,7 +228,9 @@ class Area(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     visibility: Mapped[Visibility] = _visibility_column()
-    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    # ``None`` marks an unnamed area: the owner gave no name, so the interface
+    # shows its own translated fallback and nothing language-bound is stored.
+    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
     region: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)

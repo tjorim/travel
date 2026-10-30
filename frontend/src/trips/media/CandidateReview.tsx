@@ -18,6 +18,7 @@ import {
   type TravelUpdateCandidateIntent,
   type TravelUpdateCandidatesResponse,
   type Visit,
+  areaName,
 } from "../../tracker-model";
 import { Field, FieldLabel } from "@/ui/field";
 
@@ -291,9 +292,9 @@ export function CandidateReview({
             <p className="help">
               {m.assets_this_suggestion_has_not_been_saved_line({
                 p0: candidateAreas[candidate.id].existing_area_id
-                  ? m.assets_existing_area({ p0: candidateAreas[candidate.id].area.label })
+                  ? m.assets_existing_area({ p0: areaName(candidateAreas[candidate.id].area) })
                   : m.assets_new_area_possible({
-                      p0: candidateAreas[candidate.id].area.label,
+                      p0: areaName(candidateAreas[candidate.id].area),
                       p1: candidateAreas[candidate.id].area.timezone ?? m.assets_unknown_timezone(),
                     }),
                 p1:

@@ -13,6 +13,7 @@ import {
   visitTitle,
   wallClock,
   type Trip,
+  areaName,
 } from "../tracker-model";
 
 export type AgendaRecordKind = "stay" | "route" | "visit";
@@ -59,7 +60,7 @@ export function AgendaView({
           first: stay.check_in_date,
           last: addDays(stay.check_out_date, -1),
           time: stay.check_in_time?.slice(0, 5) ?? null,
-          where: stay.area.label,
+          where: areaName(stay.area),
         })),
         // A route is on its departure day, with a time only once it has one.
         ...(routesQuery.data ?? []).flatMap((route): AgendaItem[] =>
@@ -78,7 +79,7 @@ export function AgendaView({
                   time: route.departs_at
                     ? wallClock(route.departs_at, route.departure_timezone).slice(11, 16)
                     : null,
-                  where: route.departure_area.label,
+                  where: areaName(route.departure_area),
                 },
               ]
             : [],
@@ -95,7 +96,7 @@ export function AgendaView({
                   first: visit.starts_on,
                   last: visit.ends_on,
                   time: visit.start_time?.slice(0, 5) ?? null,
-                  where: visit.area.label,
+                  where: areaName(visit.area),
                 },
               ]
             : [],
@@ -128,7 +129,7 @@ export function AgendaView({
         first: "",
         last: null,
         time: null,
-        where: visit.area.label,
+        where: areaName(visit.area),
       })),
     ...(routesQuery.data ?? [])
       .filter((route) => !route.departs_on)
@@ -141,7 +142,7 @@ export function AgendaView({
         first: "",
         last: null,
         time: null,
-        where: route.departure_area.label,
+        where: areaName(route.departure_area),
       })),
   ];
 

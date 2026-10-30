@@ -1,3 +1,4 @@
+import { areaName } from "../tracker-model";
 import type { Area, Location } from "../tracker-model";
 
 export type DuplicateReason = "name" | "coordinates" | "address";
@@ -80,7 +81,7 @@ export function duplicateAreas(areas: readonly Area[]): DuplicateGroup[] {
     {
       reason: "name",
       key: (area) =>
-        normalize(area.label) ? `${normalize(area.label)}|${area.country_code ?? ""}` : "",
+        normalize(areaName(area)) ? `${normalize(areaName(area))}|${area.country_code ?? ""}` : "",
     },
     { reason: "coordinates", key: (area) => rounded(area.latitude, area.longitude, 2) },
   ]);

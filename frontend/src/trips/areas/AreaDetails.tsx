@@ -1,3 +1,4 @@
+import { areaName } from "../../tracker-model";
 import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
@@ -77,7 +78,7 @@ export function AreaDetails({
         kind="area"
         id={selected.id}
         value={selected.visibility}
-        name={selected.label}
+        name={areaName(selected)}
       />
       <RecordActions onEdit={() => onEdit(selected)} onDelete={() => onConfirmDelete(true)}>
         {areas.length > 1 && !refused && mergeButton}
@@ -93,7 +94,7 @@ export function AreaDetails({
         kind="area"
         records={areas.map((area) => ({
           id: area.id,
-          name: area.label,
+          name: areaName(area),
           detail: areaSummary(area),
         }))}
         suggestions={suggestions}
@@ -103,7 +104,7 @@ export function AreaDetails({
       />
       {confirmDelete && (
         <DeleteConfirmation
-          title={m.owner_delete_area({ p0: selected.label })}
+          title={m.owner_delete_area({ p0: areaName(selected) })}
           description={m.owner_this_is_only_possible_when_the_area_is_no_longer_used_by_a_visit_travel()}
           onCancel={() => onConfirmDelete(false)}
           onConfirm={() => onErase(selected)}

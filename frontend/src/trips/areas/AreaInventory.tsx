@@ -2,7 +2,7 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { ownerLocationName, type Area, type Location } from "../../tracker-model";
+import { ownerLocationName, type Area, type Location, areaName } from "../../tracker-model";
 import { visibilityLabel } from "../visibility";
 import { areaSummary } from "./model";
 
@@ -36,9 +36,9 @@ export function AreaInventory({
               className="document-select"
               type="button"
               onClick={() => onInspect(area.id)}
-              aria-label={m.owner_view_area({ p0: area.label })}
+              aria-label={m.owner_view_area({ p0: areaName(area) })}
             >
-              <strong>{area.label}</strong>
+              <strong>{areaName(area)}</strong>
               <span>
                 {areaSummary(area)} · {visibilityLabel(area.visibility)}
               </span>

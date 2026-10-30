@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from .access import COLLECTIONS
 from .models import DocumentAsset, LinkState, Location, MediaAsset, PublicSurface, ShareLink, SurfaceState, Trip
 from .projection import render_projection
-from .route_overlap import overlapping_routes, route_title
+from .route_overlap import area_name, overlapping_routes, route_title
 
 # Words that mark a record as still being planned. Harmless for the owner, but
 # once shared they tell every visitor the trip is not settled.
@@ -150,8 +150,8 @@ def _duplicate_visits(trip: Trip) -> list[dict[str, Any]]:
             "audience_id": None,
             "kind": "visit",
             "id": visit.id,
-            "text": visit.title or visit.area.label,
-            "message": f"Undated visit {visit.title or visit.area.label!r} is at {visit.area.label!r}, which already has "
+            "text": visit.title or area_name(visit.area),
+            "message": f"Undated visit {visit.title or area_name(visit.area)!r} is at {area_name(visit.area)!r}, which already has "
             "a dated visit. Date it, merge it, or delete it.",
         }
         for visit in trip.visits
@@ -164,7 +164,7 @@ def _visits_restating_routes(trip: Trip) -> list[dict[str, Any]]:
     found = []
     for visit in trip.visits:
         for route in overlapping_routes(visit, trip.routes):
-            name = visit.title or visit.area.label
+            name = visit.title or area_name(visit.area)
             found.append(
                 {
                     "code": "visit_restates_route",
@@ -232,7 +232,7 @@ def _locations_repeating_areas(trip: Trip) -> list[dict[str, Any]]:
                 "kind": "location",
                 "id": location.id,
                 "text": name,
-                "message": f"Location {name!r} sits at the same place as its area {area.label!r}, so both show as places. "
+                "message": f"Location {name!r} sits at the same place as its area {area_name(area)!r}, so both show as places. "
                 "Name the area after the city or region and keep the location for the exact place, "
                 "or delete or merge the location if the area says enough.",
             }

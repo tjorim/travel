@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from test_publication import activate, client_for, create_trip, engine, scope, share
@@ -146,7 +148,7 @@ def test_area_points_are_generalized_on_create_update_and_city_derivation() -> N
     ]
     no_city = owner.post(f"{base}/locations", json={"latitude": 21.12345, "longitude": 120.12345})
     assert no_city.status_code == 201
-    assert owner.get(f"{base}/areas").json()[-1]["label"] == "Unassigned"
+    assert owner.get(f"{base}/areas").json()[-1]["label"] is None
     assert owner.get(f"{base}/areas").json()[-1]["latitude"] is None
 
 
@@ -166,7 +168,7 @@ def test_owner_can_select_an_area_without_receiving_locations() -> None:
 
     listed = owner.get(f"/api/trips/{trip['id']}/areas")
     assert listed.status_code == 200
-    assert [area["label"] for area in listed.json()] == ["Unassigned", "Taipei"]
+    assert [area["label"] for area in listed.json()] == [None, "Taipei"]
     assert saved.json() in listed.json()
     assert exact["id"] not in str(listed.json())
 
@@ -361,7 +363,7 @@ def test_an_area_holds_its_locations_and_cannot_be_deleted_while_it_does() -> No
 
     assert first["area_id"] == second["area_id"] != elsewhere["area_id"] != nowhere["area_id"]
     areas = {area["label"]: area["id"] for area in owner.get(f"{trips_path}/areas").json()}
-    assert areas == {"Taipei": first["area_id"], "Alishan": elsewhere["area_id"], "Unassigned": nowhere["area_id"]}
+    assert areas == {"Taipei": first["area_id"], "Alishan": elsewhere["area_id"], None: nowhere["area_id"]}
 
     refused = owner.delete(f"{trips_path}/areas/{first['area_id']}")
     assert refused.status_code == 409 and "2 locaties" in refused.json()["detail"]
@@ -477,7 +479,7 @@ def test_duplicate_locations_merge_every_reference_into_the_kept_one() -> None:
     ).json()
     unassigned = owner.post(f"{base}/locations", json={"display_name": "TPE main station"}).json()
     areas = {area["label"]: area["id"] for area in owner.get(f"{base}/areas").json()}
-    assert unassigned["area_id"] == areas["Unassigned"] != keep["area_id"] == same_area["area_id"]
+    assert unassigned["area_id"] == areas[None] != keep["area_id"] == same_area["area_id"]
 
     at = {"existing_location_id": same_area["id"]}
     at_unassigned = {"existing_location_id": unassigned["id"]}
@@ -555,8 +557,8 @@ def test_duplicate_locations_merge_every_reference_into_the_kept_one() -> None:
         unassigned["id"]: 0,
     }
 
-    # The emptied "Unassigned" area can now go; the kept location cannot, an unused one can.
-    assert owner.delete(f"{base}/areas/{areas['Unassigned']}").status_code == 204
+    # The emptied unnamed area can now go; the kept location cannot, an unused one can.
+    assert owner.delete(f"{base}/areas/{areas[None]}").status_code == 204
     assert owner.delete(f"{base}/locations/{keep['id']}").status_code == 409
     spare = owner.post(f"{base}/locations", json={"display_name": "Spare", "locality": "Taipei"}).json()
     assert owner.delete(f"{base}/locations/{spare['id']}").status_code == 204
@@ -866,3 +868,35 @@ def test_another_owner_cannot_geocode_a_location() -> None:
     assert intruder.patch(f"{trips_path}/locations/{location['id']}", json=_geocoded()).status_code == 404
     owner = client_for("owner-1")
     assert owner.get(f"{trips_path}/locations").json()[0]["latitude"] is None
+
+
+def test_an_unnamed_area_stores_no_label_and_cannot_be_shared_until_named() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    nothing_found = SimpleNamespace(reverse=lambda latitude, longitude: SimpleNamespace(results=[]))
+    app.dependency_overrides[get_place_search_service] = lambda: nothing_found
+    suggested = owner.post(f"{base}/areas/suggest", json={"latitude": 25.033, "longitude": 121.565})
+    assert suggested.json()["area"]["label"] is None
+
+    # Neither the server's own fallback nor a suggestion carries a worded name in any language.
+    nowhere = owner.post(f"{base}/locations", json={"display_name": "Somewhere"}).json()
+    unnamed = owner.get(f"{base}/areas").json()[0]
+    assert unnamed["id"] == nowhere["area_id"] and unnamed["label"] is None
+    assert owner.post(f"{base}/areas", json={"country_code": "TW"}).json()["label"] is None
+
+    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Arrive", "area_id": unnamed["id"]})
+    assert visit.status_code == 201, visit.text
+    for kind, record_id in (("area", unnamed["id"]), ("visit", visit.json()["id"])):
+        blocked = owner.put(f"{base}/visibility/{kind}/{record_id}", json={"visibility": "everyone"})
+        assert blocked.status_code == 422, blocked.text
+        assert blocked.json()["errors"][0]["code"] in {
+            "name_this_area_before_sharing_it",
+            "name_the_area_of_this_record_before_sharing_it",
+        }
+
+    renamed = owner.patch(f"{base}/areas/{unnamed['id']}", json={"label": "Hualien"})
+    assert renamed.json()["label"] == "Hualien"
+    for kind, record_id in (("area", unnamed["id"]), ("visit", visit.json()["id"])):
+        shared = owner.put(f"{base}/visibility/{kind}/{record_id}", json={"visibility": "everyone"})
+        assert shared.status_code == 200, shared.text

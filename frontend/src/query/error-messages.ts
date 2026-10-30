@@ -243,6 +243,10 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_a_navigation_provider_place_id_needs_a_navigation_provider();
     case "give_this_location_a_public_name_before_sharing_it":
       return m.api_give_this_location_a_public_name_before_sharing_it();
+    case "name_this_area_before_sharing_it":
+      return m.api_name_this_area_before_sharing_it();
+    case "name_the_area_of_this_record_before_sharing_it":
+      return m.api_name_the_area_of_this_record_before_sharing_it();
     case "location_has_no_navigation_target":
       return m.api_location_has_no_navigation_target();
     case "every_location_needs_an_area":

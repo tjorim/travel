@@ -11,6 +11,7 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Store an area the owner left unnamed as no label instead of a language-bound "Unassigned" or "Nieuw gebied", show a translated fallback in the interface, and block sharing an unnamed area, or a record filed under one, until it is named (#29).
 - Protect record drafts during pending saves, browser navigation and reload recovery (#12).
 - Cache private photo thumbnails as stored owner previews with short-lived browser caching and checksum validators (#25).
 

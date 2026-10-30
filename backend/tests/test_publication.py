@@ -404,6 +404,7 @@ def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) ->
             "media_asset_ids": [asset_id],
             "location": {
                 "label": "Cafe",
+                "locality": "Taipei",
                 "display_name": "Secret cafe, 9 Hidden Lane",
                 "latitude": 25.0331,
                 "longitude": 121.5651,
@@ -428,7 +429,7 @@ def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) ->
         "body_html": "<p>We landed in Taipei.</p>\n",
         "date_precision": "day",
         "story_date": "2054-04-04",
-        "place": {"label": "Unassigned", "country_code": None, "region": None, "latitude": None, "longitude": None},
+        "place": {"label": "Taipei", "country_code": None, "region": None, "latitude": None, "longitude": None},
     }
     for private in (
         "Not for sharing",

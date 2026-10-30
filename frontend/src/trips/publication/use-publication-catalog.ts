@@ -10,6 +10,7 @@ import {
   stayLabel,
   visitTitle,
   type Trip,
+  areaName,
 } from "../../tracker-model";
 import type { CatalogItem } from "./catalog";
 
@@ -59,7 +60,7 @@ export function usePublicationCatalog(trip: Trip) {
       ...(placesQuery.data ?? []).map((item) => ({
         kind: "area" as const,
         id: item.id,
-        label: item.label,
+        label: areaName(item),
         detail: m.owner_area(),
         visibility: item.visibility,
       })),
@@ -85,7 +86,7 @@ export function usePublicationCatalog(trip: Trip) {
         id: item.id,
         label: stayLabel(item),
         detail: m.assets_visitors_see_only_and_the_nights({
-          p0: item.area?.label ?? m.assets_no_area_selected_yet(),
+          p0: item.area ? areaName(item.area) : m.assets_no_area_selected_yet(),
         }),
         visibility: item.visibility,
       })),

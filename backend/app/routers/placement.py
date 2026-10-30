@@ -25,20 +25,19 @@ def area_for_location(session: Session, trip_id: Identifier, location: Location)
 
     An existing area with the same name (and a compatible country) is reused, so
     every hotel and airport in Taipei ends up in one "Taipei". A location without
-    city data is still filed, temporarily, under one private "Unassigned"
-    area for its trip. This preserves the one non-negotiable relationship:
+    city data is still filed, temporarily, under one private unnamed area
+    (no label) for its trip. This preserves the one non-negotiable relationship:
     every location has an area, while making those incomplete records easy to find
     and rename in the owner UI."""
     name = (location.locality or location.admin_area or "").strip()
     fallback = not name
-    if fallback:
-        name = "Unassigned"
-    for area in session.scalars(select(Area).where(Area.trip_id == trip_id, func.lower(Area.label) == name.lower())):
+    named = Area.label.is_(None) if fallback else func.lower(Area.label) == name.lower()
+    for area in session.scalars(select(Area).where(Area.trip_id == trip_id, named)):
         if not area.country_code or not location.country_code or area.country_code == location.country_code:
             return area
     area = Area(
         trip_id=trip_id,
-        label=name[:120],
+        label=None if fallback else name[:120],
         country_code=location.country_code,
         region=location.admin_area if location.locality and not fallback else None,
         latitude=round(location.latitude, 2)
@@ -88,7 +87,7 @@ def area_location(session: Session, trip_id: Identifier, area: Area) -> Location
         .order_by(Location.created_at)
     )
     for location in session.scalars(candidates):
-        if location.locality is None or location.locality.lower() == area.label.lower():
+        if location.locality is None or location.locality.lower() == (area.label or "").lower():
             return location
     location = Location(trip_id=trip_id, area=area, locality=area.label, country_code=area.country_code)
     session.add(location)
