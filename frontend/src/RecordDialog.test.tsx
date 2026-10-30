@@ -119,3 +119,49 @@ it("routes an outside press through the dirty dismissal policy", async () => {
   );
   expect(dismiss).not.toHaveBeenCalled();
 });
+
+it("moves focus to a surviving record when deletion removes the trigger", async () => {
+  function DeleteFixture() {
+    const [rows, setRows] = useState(["a", "b"]);
+    const [open, setOpen] = useState<string | null>(null);
+    return (
+      <section>
+        <button type="button">Nieuw</button>
+        <div>
+          {rows.map((row) => (
+            <article key={row}>
+              <button type="button" onClick={() => setOpen(row)}>
+                Open {row}
+              </button>
+            </article>
+          ))}
+        </div>
+        <RecordDialog open={open !== null} title="Record" onDismiss={() => setOpen(null)}>
+          <button
+            type="button"
+            onClick={() => {
+              setRows((current) => current.filter((row) => row !== open));
+              setOpen(null);
+            }}
+          >
+            Verwijder
+          </button>
+        </RecordDialog>
+      </section>
+    );
+  }
+  render(<DeleteFixture />);
+  const first = screen.getByRole("button", { name: "Open a" });
+  first.focus();
+  fireEvent.click(first);
+  fireEvent.click(await screen.findByRole("button", { name: "Verwijder" }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Record" })).toBeNull());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Open b" })),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Open b" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Verwijder" }));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Nieuw" })),
+  );
+});

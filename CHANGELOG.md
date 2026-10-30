@@ -7,6 +7,7 @@ All notable changes to the travel hub are documented here.
 ### Changed
 
 - Task completion and reopen buttons now include the task title in their accessible name (#7).
+- Keep keyboard focus in the record list after a deletion removes the opening control, moving it to the next or previous record or the section's first action
 - Localize the share-link "previous versions" label with a plural-aware message
   and make the locale audit flag string-literal ternaries in message arguments
   (#18).

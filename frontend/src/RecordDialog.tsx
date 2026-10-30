@@ -30,6 +30,33 @@ const secondaryButton = "border border-travel-control-border bg-transparent text
 const dangerButton = "border-0 bg-travel-danger text-travel-on-action";
 const buttonRow = "flex flex-wrap gap-2";
 
+const ROW = "li, article, tr, [data-record-row]";
+const FOCUSABLE = "button:not([disabled]), a[href], input:not([disabled])";
+
+/** Remembers where a trigger sits in its list, to pick a surviving neighbour once a deletion removes it. */
+function rememberPosition(origin: HTMLElement | null) {
+  const row = origin?.closest<HTMLElement>(ROW) ?? null;
+  const list = row?.parentElement ?? null;
+  return {
+    list,
+    index: row && list ? Array.from(list.children).indexOf(row) : -1,
+    section: origin?.closest<HTMLElement>("section") ?? null,
+  };
+}
+
+/** The next record's control, else the previous one's, else the section's first control (New). */
+function survivingTarget(position: ReturnType<typeof rememberPosition>): HTMLElement | null {
+  const { list, index, section } = position;
+  if (list?.isConnected) {
+    const rows = Array.from(list.children);
+    for (const row of [rows[index], rows[index - 1]]) {
+      const target = row?.matches(ROW) ? row.querySelector<HTMLElement>(FOCUSABLE) : null;
+      if (target) return target;
+    }
+  }
+  return section?.isConnected ? section.querySelector<HTMLElement>(FOCUSABLE) : null;
+}
+
 /** Shared owner editor with guarded dismissal and focus return. */
 export function RecordDialog({
   open,
@@ -44,6 +71,7 @@ export function RecordDialog({
   useLocale();
   const origin = useRef<HTMLElement | null>(null);
   const scrollPosition = useRef({ x: 0, y: 0 });
+  const position = useRef<ReturnType<typeof rememberPosition> | null>(null);
   const wasOpen = useRef(false);
   const continueEditing = useRef<HTMLButtonElement>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -51,6 +79,7 @@ export function RecordDialog({
   // Controlled dialogs can open without a Base UI Trigger.
   if (open && !wasOpen.current && typeof document !== "undefined") {
     origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    position.current = rememberPosition(origin.current);
     scrollPosition.current = { x: window.scrollX, y: window.scrollY };
   }
   wasOpen.current = open;
@@ -87,7 +116,27 @@ export function RecordDialog({
         <Dialog.Viewport className={viewport}>
           <Dialog.Popup
             className={cn(popup, className)}
-            finalFocus={() => origin.current}
+            finalFocus={() => {
+              const trigger = origin.current;
+              const where = position.current;
+              if (!where) return trigger;
+              if (trigger?.isConnected) {
+                // A deletion may remove the trigger after the dialog closes; move focus to a neighbour then.
+                const parent = where.list ?? trigger.parentElement;
+                if (parent) {
+                  const observer = new MutationObserver(() => {
+                    if (trigger.isConnected) return;
+                    observer.disconnect();
+                    const active = document.activeElement;
+                    if (!active || active === document.body) survivingTarget(where)?.focus();
+                  });
+                  observer.observe(parent, { childList: true, subtree: true });
+                  window.setTimeout(() => observer.disconnect(), 5000);
+                }
+                return trigger;
+              }
+              return survivingTarget(where) ?? trigger;
+            }}
             aria-label={title}
           >
             <div className="mb-4.5 flex items-start justify-between gap-4">
