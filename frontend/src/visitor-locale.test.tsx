@@ -7,6 +7,8 @@ import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
 import { m } from "./paraglide/messages.js";
 import { rememberSharedTrip } from "./saved-shared-trips";
+import { http, HttpResponse } from "msw/http";
+import { server } from "./mocks/server";
 import { serveApi } from "./query/serve-api";
 
 const token = "fictional-capability-for-locale-tests";
@@ -267,7 +269,10 @@ it("keeps a saved shortcut visible when forgetting is denied and translates its 
       throw new Error("denied");
     },
   });
-  serveApi(vi.fn(async () => new Response("[]")));
+  server.use(
+    http.get("/api/public/trips", () => HttpResponse.json([])),
+    http.get(`/api/shared/${token}`, () => HttpResponse.json(projection())),
+  );
   render(<VisitorRoutes initialEntries={["/"]} />);
   await screen.findByRole("heading", { name: "Authored reis" });
   fireEvent.click(screen.getByRole("button", { name: m.forget_trip() }));
