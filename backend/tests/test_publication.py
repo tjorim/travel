@@ -1424,3 +1424,56 @@ def test_candidate_preview_serves_a_navigation_target_only_for_the_candidate_sco
     assert owner.post(f"{base}/preview/navigation/nothing", json=scope(item("stay_card", "x"))).status_code == 422
     assert owner.post(f"{base}/preview/files/nothing", json=scope()).status_code == 404
     assert owner.post(f"{base}/preview/files/nothing", json=scope(item("stay_card", "x"))).status_code == 422
+
+
+def test_scope_revisions_reject_stale_owner_writes() -> None:
+    client = client_for("owner-1")
+    trip = create_trip(client)
+    path = f"/api/trips/{trip['id']}/public-projection"
+    initial = client.get(path).json()
+    headers = {"If-Match": f'"{initial["revision"]}"'}
+    saved = client.put(path, json=scope(title=False), headers=headers)
+    assert saved.status_code == 200
+    conflict = client.put(path, json=scope(), headers=headers)
+    assert conflict.status_code == 412
+    assert conflict.json()["detail"]["code"] == "scope_revision_conflict"
+    assert conflict.json()["detail"]["current"] == saved.json()
+    # Legacy/MCP callers still advance the revision; previews never do.
+    assert client.post(f"{path}/preview", json=scope()).status_code == 200
+    legacy = client.put(path, json=scope()).json()
+    assert legacy["revision"] == saved.json()["revision"] + 1
+    link = client.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Family", "scope": scope()}).json()
+    link_path = f"/api/trips/{trip['id']}/share-links/{link['id']}"
+    headers = {"If-Match": f'"{link["revision"]}"'}
+    assert client.patch(link_path, json={"scope": scope(title=False)}, headers=headers).status_code == 200
+    rejected = client.patch(link_path, json={"scope": scope()}, headers=headers)
+    assert rejected.status_code == 412
+    assert rejected.json()["detail"]["current"]["scope"]["trip"]["title"] is False
+    # Non-sharing records intentionally retain last-write-wins.
+    trip_path = f"/api/trips/{trip['id']}"
+    assert client.patch(trip_path, json={"title": "First"}).status_code == 200
+    assert client.patch(trip_path, json={"title": "Second"}).json()["title"] == "Second"
+
+
+def test_concurrent_scope_claims_use_database_revision() -> None:
+    from fastapi import HTTPException
+
+    from app.models import PublicSurface
+    from app.routers.publication import _claim_revision
+
+    client = client_for("owner-1")
+    trip = create_trip(client)
+    client.get(f"/api/trips/{trip['id']}/public-projection")
+    with TestingSessionLocal() as first, TestingSessionLocal() as second:
+        first_record = first.get(PublicSurface, trip["id"])
+        second_record = second.get(PublicSurface, trip["id"])
+        assert first_record is not None and second_record is not None
+        expected = f'"{first_record.revision}"'
+        _claim_revision(first, first_record, expected)
+        first.commit()
+        # Both sessions loaded before either save: the stale identity-map value cannot win.
+        import pytest
+
+        with pytest.raises(HTTPException) as conflict:
+            _claim_revision(second, second_record, expected)
+        assert conflict.value.status_code == 412

@@ -489,6 +489,7 @@ export type TripOverview = {
 };
 
 export type PublicProjectionStatus = {
+  revision: number;
   trip_id: string;
   scope: ShareScope;
   surface_state: "unpublished" | "published";
@@ -496,6 +497,7 @@ export type PublicProjectionStatus = {
 };
 
 export type ShareLink = {
+  revision: number;
   id: string;
   series_id: string;
   label: string;

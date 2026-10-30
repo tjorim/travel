@@ -768,6 +768,7 @@ class PublicSurface(Base):
     state: Mapped[SurfaceState] = mapped_column(
         _enum_column(SurfaceState, "travel_surface_state"), default=SurfaceState.UNPUBLISHED
     )
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -793,6 +794,7 @@ class ShareLink(Base):
     # as history rather than unrelated records.
     series_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     state: Mapped[LinkState] = mapped_column(_enum_column(LinkState, "travel_link_state"), default=LinkState.DRAFT)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     token: Mapped[str | None] = mapped_column(String(128), nullable=True)
     token_verifier: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)

@@ -6,6 +6,7 @@ import type { ShareLink } from "../../tracker-model";
 import { LinkList } from "./LinkList";
 
 const link = (id: string): ShareLink => ({
+  revision: 1,
   id,
   series_id: "series",
   label: `Link ${id}`,

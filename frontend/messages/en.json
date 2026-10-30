@@ -1994,5 +1994,9 @@
   "packing_trip_metadata_unavailable": "Live trip information is unavailable. Saved packing lists can be viewed below; reconnect to edit.",
   "packing_no_valid_offline_copy": "No valid saved packing list is available for this trip. Copies whose offline validity has expired are removed. Reconnect to save a copy.",
   "sharing_preview_unsaved_note": "Only selected fields appear below. Private data, bookings and other unselected fields stay hidden. This preview shows your current selection, even if it is not saved. It changes nothing for visitors and creates no access code; save the selection to apply it.",
-  "sharing_draft_saved_but_preview_failed": "The draft link was saved, but its preview could not be loaded."
+  "sharing_draft_saved_but_preview_failed": "The draft link was saved, but its preview could not be loaded.",
+  "sharing_scope_conflict": "Another session changed this sharing selection. Review the current server selection below. Keep your draft to save it again, or use the server selection.",
+  "sharing_keep_mine": "Keep My Draft",
+  "sharing_use_theirs": "Use Server Selection",
+  "sharing_server_selection": "Current Server Selection"
 }
