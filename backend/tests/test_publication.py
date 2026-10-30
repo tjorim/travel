@@ -387,8 +387,10 @@ def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) ->
     owner = client_for("owner-1")
     app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
     trip = create_trip(owner)
+    image_data = io.BytesIO()
+    Image.new("RGB", (40, 30), (20, 30, 40)).save(image_data, format="JPEG")
     uploaded = owner.post(
-        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", b"not-a-real-jpeg", "image/jpeg")}
+        f"/api/trips/{trip['id']}/media/uploads", files={"file": ("private.jpg", image_data.getvalue(), "image/jpeg")}
     )
     assert uploaded.status_code == 201, uploaded.text
     asset_id = uploaded.json()["id"]

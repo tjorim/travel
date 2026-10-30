@@ -155,6 +155,7 @@
   "api_provider_failed": "De media-aanbieder reageert niet goed. Probeer later opnieuw.",
   "api_range_unsatisfiable": "Het gevraagde bestandsbereik is niet beschikbaar.",
   "api_rate_limited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
+  "api_invalid_image": "Kies een geldige JPEG-, PNG-, WebP- of AVIF-afbeelding. Zet HEIC/HEIF of SVG eerst om naar een van deze formaten.",
   "api_unsupported_media_type": "Kies een ondersteunde foto of video.",
   "api_direct_device_upload_does_not_use_an_import_session": "Een upload vanaf je apparaat gebruikt geen importsessie.",
   "api_this_import_session_has_expired": "Deze importsessie is verlopen.",

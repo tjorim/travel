@@ -14,7 +14,9 @@ for import provenance, so re-running an interrupted import is always safe.
 import io
 import subprocess
 import sys
-from collections.abc import Callable
+import warnings
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -77,6 +79,37 @@ def _media_kind_for(content_type: str) -> MediaKind:
     )
 
 
+# Keep unneeded Pillow plugins (including EPS/Ghostscript and TIFF) unreachable.
+IMAGE_FORMATS = ("JPEG", "PNG", "WEBP", "AVIF")
+IMAGE_CONTENT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp", "AVIF": "image/avif"}
+
+
+@contextmanager
+def _decoded_image(data: bytes) -> Generator[Image.Image]:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as header:
+                header.verify()
+            with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as image:
+                image.load()
+                yield image
+    except (OSError, ValueError, SyntaxError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise MediaImportError(
+            "Choose a valid JPEG, PNG, WebP or AVIF image; HEIC/HEIF and SVG are not supported.",
+            code="invalid_image",
+        ) from exc
+
+
+def _validated_content_type(data: bytes, content_type: str) -> tuple[MediaKind, str]:
+    kind = _media_kind_for(content_type)
+    if kind == MediaKind.PHOTO:
+        with _decoded_image(data) as image:
+            assert image.format is not None
+            return kind, IMAGE_CONTENT_TYPES[image.format]
+    return kind, content_type
+
+
 _EXIF_MAKE = 271
 _EXIF_MODEL = 272
 _EXIF_DATETIME_ORIGINAL = 36867
@@ -130,7 +163,7 @@ def extract_exif_metadata(data: bytes) -> dict:
     it, because that copy — not this one — is the one a public/unlisted
     viewer could ever reach."""
     try:
-        with Image.open(io.BytesIO(data)) as image:
+        with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as image:
             exif = image.getexif()
             if not exif:
                 return {}
@@ -278,7 +311,11 @@ def direct_upload(
     Returns `(asset, created)`; `created` is `False` when identical bytes
     were already imported for this trip (retry-safe, no duplicate record).
     """
-    media_kind = _media_kind_for(content_type)
+    if len(data) > settings.media_max_upload_bytes:
+        raise upload_too_large_error()
+    if not data:
+        raise MediaImportError("Het bestand is leeg.", code="file_empty")
+    media_kind, content_type = _validated_content_type(data, content_type)
 
     stored = store_uploaded_object(session, storage, trip_id=trip_id, data=data, content_type=content_type)
     existing_asset = _existing_media_asset_for_object(session, trip_id, stored.id)
@@ -412,7 +449,8 @@ def complete_import_session(
                 raise MediaImportError(
                     "Imported item exceeds the maximum size", code="imported_item_exceeds_the_maximum_size"
                 )
-            stored = _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=item.content_type)
+            media_kind, content_type = _validated_content_type(data, item.content_type)
+            stored = _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=content_type)
             existing_asset = _existing_media_asset_for_object(session, trip_id, stored.id)
             record = existing_record or ImportRecord(
                 trip_id=trip_id,
@@ -425,7 +463,6 @@ def complete_import_session(
             if existing_asset is not None:
                 asset = existing_asset
             else:
-                media_kind = _media_kind_for(item.content_type)
                 exif = extract_exif_metadata(data) if media_kind == MediaKind.PHOTO else {}
                 raw_metadata, exif_captured_at = _merge_exif(
                     {"original_filename": item.filename, "provider_item_id": item.provider_item_id}, exif
@@ -596,7 +633,7 @@ def generate_thumbnail(storage: ObjectStorage, *, media_asset: MediaAsset) -> tu
         raise MediaImportError("The original is not available", code="the_original_is_not_available")
 
     data = storage.get(original.object_key)
-    with Image.open(io.BytesIO(data)) as opened:
+    with _decoded_image(data) as opened:
         oriented = ImageOps.exif_transpose(opened)
         oriented.thumbnail((THUMBNAIL_DIMENSION, THUMBNAIL_DIMENSION))
         buffer = io.BytesIO()
@@ -628,7 +665,7 @@ def create_derivative(
         raise MediaImportError("Only photo derivatives are supported", code="only_photo_derivatives_are_supported")
 
     data = storage.get(original.object_key)
-    with Image.open(io.BytesIO(data)) as opened:
+    with _decoded_image(data) as opened:
         oriented = ImageOps.exif_transpose(opened)
         oriented.thumbnail((max_dimension, max_dimension))
         buffer = io.BytesIO()

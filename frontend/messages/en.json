@@ -155,6 +155,7 @@
   "api_provider_failed": "Media provider request failed",
   "api_range_unsatisfiable": "The requested file range is unavailable.",
   "api_rate_limited": "Too many requests. Wait a moment and try again.",
+  "api_invalid_image": "Choose a valid JPEG, PNG, WebP or AVIF image. Convert HEIC/HEIF or SVG to one of these formats first.",
   "api_unsupported_media_type": "Choose a supported photo or video.",
   "api_direct_device_upload_does_not_use_an_import_session": "Direct device upload does not use an import session",
   "api_this_import_session_has_expired": "This import session has expired",

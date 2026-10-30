@@ -1074,3 +1074,71 @@ def test_derivative_deletion_failure_leaves_retryable_object(tmp_path: Path) -> 
         assert storage.exists(key)
         assert purge_deleted_media(session, storage, older_than=timedelta(days=30)) == 1
         assert not storage.exists(key)
+
+
+@pytest.mark.parametrize("case", ["heic", "svg", "truncated", "dimensions", "warning", "eps", "tiff"])
+def test_invalid_images_are_rejected_before_storage(tmp_path: Path, case: str, monkeypatch) -> None:
+    import struct
+
+    owner = client_for("owner", tmp_path)
+    trip = create_trip(owner)
+    data = {
+        "heic": b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00heicmif1",
+        "svg": b'<svg xmlns="http://www.w3.org/2000/svg"/>',
+        "truncated": jpeg_bytes()[:-20],
+        "eps": b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 40 30\nshowpage\n",
+    }.get(case, b"")
+    if case == "tiff":
+        buffer = io.BytesIO()
+        Image.new("RGB", (2, 2)).save(buffer, format="TIFF")
+        data = buffer.getvalue()
+    if case == "dimensions":
+        data = jpeg_bytes(with_exif=False)
+        marker = data.index(b"\xff\xc0")
+        data = data[: marker + 5] + struct.pack(">HH", 65535, 65535) + data[marker + 9 :]
+    if case == "warning":
+        monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)
+        data = jpeg_bytes()
+    content_type = {"heic": "image/heic", "svg": "image/svg+xml"}.get(case, "image/jpeg")
+    response = owner.post(f"/api/trips/{trip['id']}/media/uploads", files={"file": ("test.jpg", data, content_type)})
+    assert response.status_code == 422, response.text
+    assert response.json()["errors"][0]["code"] == "invalid_image"
+    with TestingSessionLocal() as session:
+        assert session.scalars(select(StoredObject)).all() == []
+        assert session.scalars(select(MediaAsset)).all() == []
+    assert not list(tmp_path.rglob("*"))
+
+
+def test_photo_content_type_is_sniffed(tmp_path: Path) -> None:
+    owner = client_for("owner", tmp_path)
+    trip = create_trip(owner)
+    response = owner.post(
+        f"/api/trips/{trip['id']}/media/uploads",
+        files={"file": ("wrong.png", jpeg_bytes(), "image/png")},
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["content_type"] == "image/jpeg"
+
+
+@pytest.mark.parametrize("operation", ["thumbnail", "derivative"])
+def test_legacy_corrupt_photos_return_handled_errors(tmp_path: Path, operation: str) -> None:
+    from app.media.service import MediaImportError, create_derivative, generate_thumbnail
+    from app.models import DerivativePurpose
+
+    owner = client_for("owner", tmp_path)
+    trip = create_trip(owner)
+    storage = LocalObjectStorage(root=str(tmp_path))
+    with TestingSessionLocal() as session:
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip["id"], filename="test.jpg", content_type="image/jpeg", data=jpeg_bytes()
+        )
+        # Simulate a legacy original without rewriting a referenced storage key.
+        from unittest.mock import patch
+
+        with patch.object(LocalObjectStorage, "get", return_value=b"not an image"):
+            with pytest.raises(MediaImportError, match="Choose a valid") as error:
+                if operation == "thumbnail":
+                    generate_thumbnail(storage, media_asset=asset)
+                else:
+                    create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
+            assert error.value.code == "invalid_image"
