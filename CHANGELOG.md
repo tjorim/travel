@@ -5,6 +5,7 @@ All notable changes to the travel hub are documented here.
 ## Unreleased
 
 - Keep route map loading and unavailable states inside a named accessible region, with route-dialog axe coverage (#62).
+- Throttle owner geocoder calls, require a production contact, and submit place searches explicitly (#21).
 
 - Add a return link to all public trips on public trip pages, including unavailable states (#4).
 - Document recoverable share-link tokens and reject the default verifier secret outside development (#20).

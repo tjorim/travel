@@ -71,6 +71,7 @@ def test_owner_searches_and_saves_a_durable_osm_reference_without_persisting_que
 
     # Reverse lookup returns the exact same selectable shape but leaves the
     # trip untouched until the owner separately saves/attaches a result.
+    service._next_request_at = 0  # Advance past the outbound cooldown for this independent lookup.
     reversed_result = owner.post(
         f"/api/trips/{trip['id']}/places/reverse", json={"latitude": 25.033, "longitude": 121.565}
     )

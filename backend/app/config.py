@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 from cryptography.fernet import Fernet
@@ -119,6 +120,17 @@ class Settings(BaseSettings):
         if self.share_link_secret == "development-only-change-me" and self.environment != "development":
             raise ValueError(
                 "TRAVEL_SHARE_LINK_SECRET must override the default outside TRAVEL_ENVIRONMENT=development."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_place_search_contact_outside_development(self) -> Settings:
+        if self.environment != "development" and not re.search(
+            r"(?:https?://[^\s()]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})", self.osm_place_search_user_agent
+        ):
+            raise ValueError(
+                "TRAVEL_OSM_PLACE_SEARCH_USER_AGENT must identify Travel with a contact email or URL "
+                "outside TRAVEL_ENVIRONMENT=development."
             )
         return self
 
