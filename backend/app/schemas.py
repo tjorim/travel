@@ -1,11 +1,13 @@
 from datetime import UTC, date, datetime, time
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, ClassVar, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
+    AfterValidator,
     AwareDatetime,
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     HttpUrl,
@@ -17,6 +19,7 @@ from pydantic_core import PydanticCustomError
 
 from .markdown import markdown_text, render_contact, render_inline, render_markdown
 from .models import (
+    INTEGER_MAX,
     AuditEventKind,
     AuditTargetType,
     DatePrecision,
@@ -85,6 +88,29 @@ def require_ordered_dates(start: date | None, end: date | None, message: str) ->
         raise PydanticCustomError("dates_out_of_order", message)  # ty: ignore[invalid-argument-type]
 
 
+def require_safe_text(value):
+    """Reject characters PostgreSQL cannot store before any lookup or rendering."""
+    if isinstance(value, str) and ("\x00" in value or any(0xD800 <= ord(c) <= 0xDFFF for c in value)):
+        raise PydanticCustomError("unsafe_text", "Text must not contain NUL or surrogate characters")
+    if isinstance(value, list):
+        for item in value:
+            require_safe_text(item)
+    return value
+
+
+SafeText = Annotated[str, BeforeValidator(require_safe_text)]
+Identifier = Annotated[SafeText, Field(min_length=1, max_length=32)]
+
+
+def require_local_time(value: time) -> time:
+    if value.tzinfo is not None:
+        raise PydanticCustomError("local_time_required", "Use a local clock time without a UTC offset")
+    return value
+
+
+LocalTime = Annotated[time, AfterValidator(require_local_time)]
+
+
 class InputModel(BaseModel):
     """A payload a client sends: an unknown field is rejected, never silently dropped.
 
@@ -92,6 +118,16 @@ class InputModel(BaseModel):
     so the caller would believe the change was applied."""
 
     model_config = ConfigDict(extra="forbid")
+    # Omission keeps the stored value; explicit null cannot clear these fields.
+    non_nullable_fields: ClassVar[frozenset[str]] = frozenset()
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def safe_input(cls, value, info):
+        require_safe_text(value)
+        if value is None and info.field_name in cls.non_nullable_fields:
+            raise PydanticCustomError("field_may_not_be_null", "This field may not be null")
+        return value
 
 
 class LocationFields(InputModel):
@@ -122,7 +158,7 @@ class LocationFields(InputModel):
     # and required for that: the display name usually contains the address.
     label: str | None = Field(default=None, min_length=1, max_length=120)
     # The area the location belongs to. Left out, it is derived from the location's city.
-    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     # Show the address too when the location is shared. Off unless the owner chooses it.
     share_address: bool = False
 
@@ -144,7 +180,7 @@ class LocationInput(LocationFields):
     Reusing a location keeps one "Brussels Airport" for the outbound and the return
     route. It replaces creating a copy, so nothing else may be supplied with it."""
 
-    existing_location_id: str | None = Field(default=None, min_length=1, max_length=32)
+    existing_location_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     new_area: AreaInput | None = None
 
     @model_validator(mode="after")
@@ -186,8 +222,10 @@ class LocationUpdate(InputModel):
     stay, visit, route end and travel update.
     """
 
+    non_nullable_fields = frozenset(["share_address"])
+
     label: str | None = Field(default=None, min_length=1, max_length=120)
-    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     share_address: bool | None = None
     display_name: str | None = Field(default=None, max_length=500)
     address_line1: str | None = Field(default=None, max_length=160)
@@ -259,8 +297,8 @@ class LocationUpdate(InputModel):
 class MergeRequest(InputModel):
     """Fold duplicate locations or areas into ``keep_id``. Without ``confirm`` it only previews."""
 
-    keep_id: str = Field(min_length=1, max_length=32)
-    duplicate_ids: list[str] = Field(min_length=1, max_length=50)
+    keep_id: Identifier = Field(min_length=1, max_length=32)
+    duplicate_ids: list[Identifier] = Field(min_length=1, max_length=50)
     confirm: bool = False
 
 
@@ -424,6 +462,8 @@ class AreaInput(InputModel):
 
 
 class AreaUpdate(InputModel):
+    non_nullable_fields = frozenset(["label"])
+
     label: str | None = Field(default=None, min_length=1, max_length=120)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
@@ -467,11 +507,13 @@ class TripCreate(InputModel):
 
 
 class TripUpdate(InputModel):
+    non_nullable_fields = frozenset(["title"])
+
     title: str | None = Field(default=None, min_length=1, max_length=160)
     summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     starts_on: date | None = None
     ends_on: date | None = None
-    cover_derivative_id: str | None = Field(
+    cover_derivative_id: Identifier | None = Field(
         default=None,
         description="The share copy of a photo to use as the trip's cover; null removes the cover. "
         "Choosing a cover does not publish it: an audience shows it only if it already receives that photo.",
@@ -497,23 +539,25 @@ class TravelUpdateCreate(InputModel):
     title: str = Field(min_length=1, max_length=160)
     body: str = Field(default="", max_length=10000, description=MARKDOWN)
     private_notes: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
-    area_id: str | None = None
+    area_id: Identifier | None = None
     location: LocationInput | None = None
-    media_asset_ids: list[str] = Field(default_factory=list, max_length=12)
+    media_asset_ids: list[Identifier] = Field(default_factory=list, max_length=12)
     visibility: Visibility = Visibility.PRIVATE
 
     _unique_media = field_validator("media_asset_ids")(_require_unique_media_assets)
 
 
 class TravelUpdatePatch(InputModel):
+    non_nullable_fields = frozenset(["occurred_at", "title", "body", "visibility", "media_asset_ids"])
+
     occurred_at: datetime | None = None
     date_precision: DatePrecision | None = None
     title: str | None = Field(default=None, min_length=1, max_length=160)
     body: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
     private_notes: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
-    area_id: str | None = None
+    area_id: Identifier | None = None
     location: LocationInput | None = None
-    media_asset_ids: list[str] | None = Field(default=None, max_length=12)
+    media_asset_ids: list[Identifier] | None = Field(default=None, max_length=12)
     visibility: Visibility | None = None
 
     _unique_media = field_validator("media_asset_ids")(_require_unique_media_assets)
@@ -569,12 +613,12 @@ class StayCreate(InputModel):
     accommodation is still being chosen, give only ``area_id``: the stay then
     uses that area's shared city-level location instead of a new copy."""
 
-    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
     check_in_date: date
     check_out_date: date
-    check_in_time: time | None = None
-    check_out_time: time | None = None
+    check_in_time: LocalTime | None = None
+    check_out_time: LocalTime | None = None
     status: StayStatus = Field(default=StayStatus.PLANNED, description=STAY_STATUS)
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
@@ -606,12 +650,14 @@ class StayUpdate(InputModel):
     location is already there, to the area's city-level location; setting
     ``location`` to null keeps the area but forgets the accommodation."""
 
-    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    non_nullable_fields = frozenset(["check_in_date", "check_out_date", "status", "share_date_precision"])
+
+    area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
     check_in_date: date | None = None
     check_out_date: date | None = None
-    check_in_time: time | None = None
-    check_out_time: time | None = None
+    check_in_time: LocalTime | None = None
+    check_out_time: LocalTime | None = None
     status: StayStatus | None = Field(default=None, description=STAY_STATUS)
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
@@ -682,16 +728,16 @@ def require_visit_times(
 class VisitCreate(InputModel):
     """A stop: at an area, or at a location in one, and optionally when."""
 
-    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
-    position: int | None = Field(default=None, ge=0)
+    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
     status: VisitStatus = VisitStatus.PLANNED
     starts_on: date | None = None
     ends_on: date | None = None
-    start_time: time | None = None
-    end_time: time | None = None
+    start_time: LocalTime | None = None
+    end_time: LocalTime | None = None
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     share_time: bool = False
@@ -706,16 +752,18 @@ class VisitCreate(InputModel):
 
 
 class VisitUpdate(InputModel):
-    area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    non_nullable_fields = frozenset(["status", "share_time", "share_date_precision"])
+
+    area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
-    position: int | None = Field(default=None, ge=0)
+    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
     status: VisitStatus | None = None
     starts_on: date | None = None
     ends_on: date | None = None
-    start_time: time | None = None
-    end_time: time | None = None
+    start_time: LocalTime | None = None
+    end_time: LocalTime | None = None
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     share_time: bool | None = None
@@ -730,8 +778,8 @@ class RouteReference(BaseModel):
 class VisitRouteCheck(InputModel):
     """A visit as it is being typed, before it is saved: enough to tell whether it restates a route."""
 
-    area_id: str | None = Field(default=None, min_length=1, max_length=32)
-    location_id: str | None = Field(default=None, min_length=1, max_length=32)
+    area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
+    location_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     title: str | None = Field(default=None, max_length=160)
     summary: str | None = Field(default=None, max_length=2000)
     starts_on: date | None = None
@@ -786,8 +834,8 @@ class StoredTaskLink(TaskLink):
 
 class PackingListCreate(InputModel):
     name: str = Field(default="Packing list", min_length=1, max_length=160)
-    copy_from_list_id: str | None = None
-    template_ids: list[str] = Field(default_factory=list, max_length=10)
+    copy_from_list_id: Identifier | None = None
+    template_ids: list[Identifier] = Field(default_factory=list, max_length=10)
 
 
 class PackingListUpdate(InputModel):
@@ -816,15 +864,17 @@ class PackingTemplateResponse(BaseModel):
 class PackingBagCreate(InputModel):
     name: str = Field(min_length=1, max_length=160)
     type: str | None = Field(default=None, max_length=80)
-    position: int | None = Field(default=None, ge=0)
-    weight_limit_g: int | None = Field(default=None, gt=0)
+    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
+    weight_limit_g: int | None = Field(default=None, gt=0, le=INTEGER_MAX)
 
 
 class PackingBagUpdate(InputModel):
+    non_nullable_fields = frozenset(["name"])
+
     name: str | None = Field(default=None, min_length=1, max_length=160)
     type: str | None = Field(default=None, max_length=80)
-    position: int | None = Field(default=None, ge=0)
-    weight_limit_g: int | None = Field(default=None, gt=0)
+    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
+    weight_limit_g: int | None = Field(default=None, gt=0, le=INTEGER_MAX)
 
 
 class PackingBagResponse(BaseModel):
@@ -841,8 +891,8 @@ class PackingItemCreate(InputModel):
     label: str = Field(min_length=1, max_length=160)
     quantity: int = Field(default=1, ge=1, le=99)
     category: str | None = Field(default=None, max_length=80)
-    bag_id: str | None = None
-    position: int | None = Field(default=None, ge=0)
+    bag_id: Identifier | None = None
+    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     packed: bool = False
     essential: bool = False
     last_minute: bool = False
@@ -850,7 +900,7 @@ class PackingItemCreate(InputModel):
     cabin_only: bool = False
     checked_only: bool = False
     notes: str | None = Field(default=None, max_length=4000)
-    weight_g: int | None = Field(default=None, ge=0)
+    weight_g: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
 
     @model_validator(mode="after")
     def one_baggage_constraint(self):
@@ -863,11 +913,15 @@ class PackingItemCreate(InputModel):
 
 
 class PackingItemUpdate(InputModel):
+    non_nullable_fields = frozenset(
+        ["label", "quantity", "packed", "essential", "last_minute", "valuable", "cabin_only", "checked_only"]
+    )
+
     label: str | None = Field(default=None, min_length=1, max_length=160)
     quantity: int | None = Field(default=None, ge=1, le=99)
     category: str | None = Field(default=None, max_length=80)
-    bag_id: str | None = None
-    position: int | None = Field(default=None, ge=0)
+    bag_id: Identifier | None = None
+    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     packed: bool | None = None
     essential: bool | None = None
     last_minute: bool | None = None
@@ -875,7 +929,7 @@ class PackingItemUpdate(InputModel):
     cabin_only: bool | None = None
     checked_only: bool | None = None
     notes: str | None = Field(default=None, max_length=4000)
-    weight_g: int | None = Field(default=None, ge=0)
+    weight_g: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
 
 
 class PackingItemResponse(BaseModel):
@@ -906,6 +960,8 @@ class TripTaskCreate(InputModel):
 
 
 class TripTaskUpdate(InputModel):
+    non_nullable_fields = frozenset(["title", "links", "completed"])
+
     title: str | None = Field(default=None, min_length=1, max_length=160)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     due_date: date | None = None
@@ -997,8 +1053,8 @@ class RouteCreate(InputModel):
     mode: RouteMode
     status: RouteStatus = Field(default=RouteStatus.PLANNED, description=ROUTE_STATUS)
     label: str | None = Field(default=None, min_length=1, max_length=160)
-    departure_area_id: str | None = Field(default=None, min_length=1, max_length=32)
-    arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    departure_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
+    arrival_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     departure_location: LocationInput | None = None
     arrival_location: LocationInput | None = None
     departs_on: date | None = Field(default=None, description=_DEPARTS_ON)
@@ -1013,7 +1069,7 @@ class RouteCreate(InputModel):
     travel_class: str | None = Field(default=None, max_length=80)
     booking_reference: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
-    document_asset_ids: list[str] = Field(default_factory=list, max_length=12)
+    document_asset_ids: list[Identifier] = Field(default_factory=list, max_length=12)
     geometry: GeoJsonLineString | None = None
 
     _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
@@ -1038,11 +1094,13 @@ class RouteCreate(InputModel):
 
 
 class RouteUpdate(InputModel):
+    non_nullable_fields = frozenset(["mode", "status", "document_asset_ids"])
+
     mode: RouteMode | None = None
     status: RouteStatus | None = Field(default=None, description=ROUTE_STATUS)
     label: str | None = Field(default=None, min_length=1, max_length=160)
-    departure_area_id: str | None = Field(default=None, min_length=1, max_length=32)
-    arrival_area_id: str | None = Field(default=None, min_length=1, max_length=32)
+    departure_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
+    arrival_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     departure_location: LocationInput | None = None
     arrival_location: LocationInput | None = None
     departs_on: date | None = Field(default=None, description=_DEPARTS_ON)
@@ -1055,7 +1113,7 @@ class RouteUpdate(InputModel):
     travel_class: str | None = Field(default=None, max_length=80)
     booking_reference: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
-    document_asset_ids: list[str] | None = Field(default=None, max_length=12)
+    document_asset_ids: list[Identifier] | None = Field(default=None, max_length=12)
     geometry: GeoJsonLineString | None = None
 
     _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
@@ -1263,6 +1321,8 @@ class ShareLinkCreate(InputModel):
 
 
 class ShareLinkUpdate(InputModel):
+    non_nullable_fields = frozenset(["label", "scope"])
+
     label: str | None = Field(default=None, min_length=1, max_length=120)
     scope: ShareScopeInput | None = None
 
@@ -1397,7 +1457,7 @@ class MediaDerivativeCreate(InputModel):
 
 
 class MediaDerivativePresentationUpdate(InputModel):
-    travel_update_id: str | None = None
+    travel_update_id: Identifier | None = None
     caption: str | None = Field(default=None, max_length=500, description=INLINE_MARKDOWN)
     alt_text: str | None = Field(default=None, max_length=300)
     focal_x: int | None = Field(default=None, ge=0, le=100)
@@ -1407,7 +1467,7 @@ class MediaDerivativePresentationUpdate(InputModel):
 class MediaTravelUpdateCandidatesRequest(InputModel):
     """Only assets the owner explicitly selected are eligible for review."""
 
-    media_asset_ids: list[str] = Field(min_length=1, max_length=100)
+    media_asset_ids: list[Identifier] = Field(min_length=1, max_length=100)
 
     @field_validator("media_asset_ids")
     @classmethod
@@ -1468,9 +1528,11 @@ class DocumentAssetResponse(BaseModel):
 
 
 class OwnerDocumentUpdate(InputModel):
+    non_nullable_fields = frozenset(["title", "document_kind"])
+
     title: str | None = Field(default=None, min_length=1, max_length=160)
     document_kind: DocumentKind | None = None
-    linked_trip_id: str | None = Field(default=None)
+    linked_trip_id: Identifier | None = Field(default=None)
 
 
 class OwnerDocumentResponse(BaseModel):
@@ -1495,6 +1557,8 @@ class EmergencyInfoEntryCreate(InputModel):
 
 
 class EmergencyInfoEntryUpdate(InputModel):
+    non_nullable_fields = frozenset(["kind", "label", "value"])
+
     kind: EmergencyInfoKind | None = None
     label: str | None = Field(default=None, min_length=1, max_length=160)
     value: str | None = Field(default=None, min_length=1, max_length=255)

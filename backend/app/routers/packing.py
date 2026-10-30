@@ -11,6 +11,7 @@ from ..database import get_session
 from ..errors import ApiException
 from ..models import PackingBag, PackingItem, PackingList, PackingTemplate, Trip
 from ..schemas import (
+    Identifier,
     PackingBagCreate,
     PackingBagResponse,
     PackingBagUpdate,
@@ -32,7 +33,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 
 
-def owned_list(trip_id: str, list_id: str, session: Session, subject: str) -> PackingList:
+def owned_list(trip_id: Identifier, list_id: Identifier, session: Session, subject: str) -> PackingList:
     owned_trip(session, trip_id, subject)
     result = session.scalar(select(PackingList).where(PackingList.id == list_id, PackingList.trip_id == trip_id))
     if result is None:
@@ -40,7 +41,9 @@ def owned_list(trip_id: str, list_id: str, session: Session, subject: str) -> Pa
     return result
 
 
-def owned_bag(trip_id: str, list_id: str, bag_id: str, session: Session, subject: str) -> PackingBag:
+def owned_bag(
+    trip_id: Identifier, list_id: Identifier, bag_id: Identifier, session: Session, subject: str
+) -> PackingBag:
     owned_list(trip_id, list_id, session, subject)
     result = session.scalar(select(PackingBag).where(PackingBag.id == bag_id, PackingBag.list_id == list_id))
     if result is None:
@@ -48,7 +51,9 @@ def owned_bag(trip_id: str, list_id: str, bag_id: str, session: Session, subject
     return result
 
 
-def owned_item(trip_id: str, list_id: str, item_id: str, session: Session, subject: str) -> PackingItem:
+def owned_item(
+    trip_id: Identifier, list_id: Identifier, item_id: Identifier, session: Session, subject: str
+) -> PackingItem:
     owned_list(trip_id, list_id, session, subject)
     result = session.scalar(select(PackingItem).where(PackingItem.id == item_id, PackingItem.list_id == list_id))
     if result is None:
@@ -56,7 +61,7 @@ def owned_item(trip_id: str, list_id: str, item_id: str, session: Session, subje
     return result
 
 
-def _bags(session: Session, list_id: str) -> list[PackingBag]:
+def _bags(session: Session, list_id: Identifier) -> list[PackingBag]:
     return list(
         session.scalars(
             select(PackingBag).where(PackingBag.list_id == list_id).order_by(PackingBag.position, PackingBag.id)
@@ -64,7 +69,7 @@ def _bags(session: Session, list_id: str) -> list[PackingBag]:
     )
 
 
-def _items(session: Session, list_id: str, bag_id: str | None) -> list[PackingItem]:
+def _items(session: Session, list_id: Identifier, bag_id: Identifier | None) -> list[PackingItem]:
     return list(
         session.scalars(
             select(PackingItem)
@@ -86,7 +91,7 @@ def _renumber(rows: list) -> None:
         row.position = index
 
 
-def _snapshot(session: Session, list_id: str) -> dict:
+def _snapshot(session: Session, list_id: Identifier) -> dict:
     bags = _bags(session, list_id)
     items = list(session.scalars(select(PackingItem).where(PackingItem.list_id == list_id)))
     return {
@@ -123,7 +128,7 @@ def _snapshot(session: Session, list_id: str) -> dict:
     }
 
 
-def _apply_snapshot(session: Session, list_id: str, snapshot: dict, bag_offset: int) -> int:
+def _apply_snapshot(session: Session, list_id: Identifier, snapshot: dict, bag_offset: int) -> int:
     bag_ids = {}
     for bag in sorted(snapshot["bags"], key=lambda row: row["position"]):
         copy = PackingBag(
@@ -169,7 +174,7 @@ def _apply_snapshot(session: Session, list_id: str, snapshot: dict, bag_offset: 
 
 
 @router.get("", response_model=list[PackingListResponse])
-def list_packing_lists(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[PackingList]:
+def list_packing_lists(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[PackingList]:
     owned_trip(session, trip_id, subject)
     return list(
         session.scalars(
@@ -180,7 +185,7 @@ def list_packing_lists(trip_id: str, session: SessionDep, subject: SubjectDep) -
 
 @router.post("", response_model=PackingListResponse, status_code=201)
 def create_packing_list(
-    trip_id: str, payload: PackingListCreate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, payload: PackingListCreate, session: SessionDep, subject: SubjectDep
 ) -> PackingList:
     owned_trip(session, trip_id, subject)
     if payload.copy_from_list_id and payload.template_ids:
@@ -217,7 +222,7 @@ def create_packing_list(
 
 @router.post("/{list_id}/templates", response_model=PackingTemplateResponse, status_code=201)
 def save_packing_template(
-    trip_id: str, list_id: str, payload: PackingTemplateCreate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, list_id: Identifier, payload: PackingTemplateCreate, session: SessionDep, subject: SubjectDep
 ) -> PackingTemplate:
     owned_list(trip_id, list_id, session, subject)
     template = PackingTemplate(owner_subject=subject, name=payload.name, snapshot=_snapshot(session, list_id))
@@ -252,7 +257,9 @@ def list_packing_sources(session: SessionDep, subject: SubjectDep) -> list[dict[
 
 
 @router.get("/{list_id}/suggestions")
-def packing_suggestions(trip_id: str, list_id: str, session: SessionDep, subject: SubjectDep) -> list[dict]:
+def packing_suggestions(
+    trip_id: Identifier, list_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> list[dict]:
     owned_list(trip_id, list_id, session, subject)
     present = {
         item.label.strip().casefold()
@@ -292,7 +299,7 @@ def packing_suggestions(trip_id: str, list_id: str, session: SessionDep, subject
 
 
 @templates_router.delete("/{template_id}", status_code=204)
-def delete_packing_template(template_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_packing_template(template_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     template = session.scalar(
         select(PackingTemplate).where(PackingTemplate.id == template_id, PackingTemplate.owner_subject == subject)
     )
@@ -304,13 +311,13 @@ def delete_packing_template(template_id: str, session: SessionDep, subject: Subj
 
 
 @router.get("/{list_id}", response_model=PackingListResponse)
-def get_packing_list(trip_id: str, list_id: str, session: SessionDep, subject: SubjectDep) -> PackingList:
+def get_packing_list(trip_id: Identifier, list_id: Identifier, session: SessionDep, subject: SubjectDep) -> PackingList:
     return owned_list(trip_id, list_id, session, subject)
 
 
 @router.patch("/{list_id}", response_model=PackingListResponse)
 def update_packing_list(
-    trip_id: str, list_id: str, payload: PackingListUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, list_id: Identifier, payload: PackingListUpdate, session: SessionDep, subject: SubjectDep
 ) -> PackingList:
     result = owned_list(trip_id, list_id, session, subject)
     result.name = payload.name
@@ -319,7 +326,7 @@ def update_packing_list(
 
 
 @router.delete("/{list_id}", status_code=204)
-def delete_packing_list(trip_id: str, list_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_packing_list(trip_id: Identifier, list_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     result = owned_list(trip_id, list_id, session, subject)
     session.delete(result)
     session.commit()
@@ -327,14 +334,16 @@ def delete_packing_list(trip_id: str, list_id: str, session: SessionDep, subject
 
 
 @router.get("/{list_id}/bags", response_model=list[PackingBagResponse])
-def list_packing_bags(trip_id: str, list_id: str, session: SessionDep, subject: SubjectDep) -> list[PackingBag]:
+def list_packing_bags(
+    trip_id: Identifier, list_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> list[PackingBag]:
     owned_list(trip_id, list_id, session, subject)
     return _bags(session, list_id)
 
 
 @router.post("/{list_id}/bags", response_model=PackingBagResponse, status_code=201)
 def create_packing_bag(
-    trip_id: str, list_id: str, payload: PackingBagCreate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, list_id: Identifier, payload: PackingBagCreate, session: SessionDep, subject: SubjectDep
 ) -> PackingBag:
     owned_list(trip_id, list_id, session, subject)
     rows = _bags(session, list_id)
@@ -349,13 +358,20 @@ def create_packing_bag(
 
 
 @router.get("/{list_id}/bags/{bag_id}", response_model=PackingBagResponse)
-def get_packing_bag(trip_id: str, list_id: str, bag_id: str, session: SessionDep, subject: SubjectDep) -> PackingBag:
+def get_packing_bag(
+    trip_id: Identifier, list_id: Identifier, bag_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> PackingBag:
     return owned_bag(trip_id, list_id, bag_id, session, subject)
 
 
 @router.patch("/{list_id}/bags/{bag_id}", response_model=PackingBagResponse)
 def update_packing_bag(
-    trip_id: str, list_id: str, bag_id: str, payload: PackingBagUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier,
+    list_id: Identifier,
+    bag_id: Identifier,
+    payload: PackingBagUpdate,
+    session: SessionDep,
+    subject: SubjectDep,
 ) -> PackingBag:
     result = owned_bag(trip_id, list_id, bag_id, session, subject)
     values = payload.model_dump(exclude_unset=True, exclude={"position"})
@@ -370,7 +386,9 @@ def update_packing_bag(
 
 
 @router.delete("/{list_id}/bags/{bag_id}", status_code=204)
-def delete_packing_bag(trip_id: str, list_id: str, bag_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_packing_bag(
+    trip_id: Identifier, list_id: Identifier, bag_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> Response:
     result = owned_bag(trip_id, list_id, bag_id, session, subject)
     unassigned = _items(session, list_id, None)
     for item in _items(session, list_id, bag_id):
@@ -385,7 +403,9 @@ def delete_packing_bag(trip_id: str, list_id: str, bag_id: str, session: Session
 
 
 @router.get("/{list_id}/items", response_model=list[PackingItemResponse])
-def list_packing_items(trip_id: str, list_id: str, session: SessionDep, subject: SubjectDep) -> list[PackingItem]:
+def list_packing_items(
+    trip_id: Identifier, list_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> list[PackingItem]:
     owned_list(trip_id, list_id, session, subject)
     return list(
         session.scalars(
@@ -396,7 +416,7 @@ def list_packing_items(trip_id: str, list_id: str, session: SessionDep, subject:
     )
 
 
-def _new_item(list_id: str, payload: PackingItemCreate, session: Session) -> PackingItem:
+def _new_item(list_id: Identifier, payload: PackingItemCreate, session: Session) -> PackingItem:
     if (
         payload.bag_id is not None
         and session.scalar(select(PackingBag.id).where(PackingBag.id == payload.bag_id, PackingBag.list_id == list_id))
@@ -413,7 +433,7 @@ def _new_item(list_id: str, payload: PackingItemCreate, session: Session) -> Pac
 
 @router.post("/{list_id}/items", response_model=PackingItemResponse, status_code=201)
 def create_packing_item(
-    trip_id: str, list_id: str, payload: PackingItemCreate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, list_id: Identifier, payload: PackingItemCreate, session: SessionDep, subject: SubjectDep
 ) -> PackingItem:
     owned_list(trip_id, list_id, session, subject)
     result = _new_item(list_id, payload, session)
@@ -423,7 +443,7 @@ def create_packing_item(
 
 @router.post("/{list_id}/items/batch", response_model=list[PackingItemResponse], status_code=201)
 def batch_create_packing_items(
-    trip_id: str, list_id: str, payload: list[PackingItemCreate], session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, list_id: Identifier, payload: list[PackingItemCreate], session: SessionDep, subject: SubjectDep
 ) -> list[PackingItem]:
     owned_list(trip_id, list_id, session, subject)
     if not 1 <= len(payload) <= 100:
@@ -434,13 +454,20 @@ def batch_create_packing_items(
 
 
 @router.get("/{list_id}/items/{item_id}", response_model=PackingItemResponse)
-def get_packing_item(trip_id: str, list_id: str, item_id: str, session: SessionDep, subject: SubjectDep) -> PackingItem:
+def get_packing_item(
+    trip_id: Identifier, list_id: Identifier, item_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> PackingItem:
     return owned_item(trip_id, list_id, item_id, session, subject)
 
 
 @router.patch("/{list_id}/items/{item_id}", response_model=PackingItemResponse)
 def update_packing_item(
-    trip_id: str, list_id: str, item_id: str, payload: PackingItemUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier,
+    list_id: Identifier,
+    item_id: Identifier,
+    payload: PackingItemUpdate,
+    session: SessionDep,
+    subject: SubjectDep,
 ) -> PackingItem:
     result = owned_item(trip_id, list_id, item_id, session, subject)
     values = payload.model_dump(exclude_unset=True, exclude={"bag_id", "position"})
@@ -474,7 +501,9 @@ def update_packing_item(
 
 
 @router.delete("/{list_id}/items/{item_id}", status_code=204)
-def delete_packing_item(trip_id: str, list_id: str, item_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_packing_item(
+    trip_id: Identifier, list_id: Identifier, item_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> Response:
     result = owned_item(trip_id, list_id, item_id, session, subject)
     remaining = [row for row in _items(session, list_id, result.bag_id) if row.id != item_id]
     session.delete(result)

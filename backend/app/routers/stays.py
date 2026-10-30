@@ -11,7 +11,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
 from ..models import Location, Stay, StayStatus, Trip, Visibility
-from ..schemas import LocationInput, StayCreate, StayResponse, StayUpdate
+from ..schemas import Identifier, LocationInput, StayCreate, StayResponse, StayUpdate
 from .placement import area_location, location_from_input, selected_area
 from .trips import owned_trip
 
@@ -25,14 +25,16 @@ def _stay_query():
     return select(Stay).options(selectinload(Stay.location).selectinload(Location.area))
 
 
-def owned_stay(trip: Trip, stay_id: str) -> Stay:
+def owned_stay(trip: Trip, stay_id: Identifier) -> Stay:
     stay = next((item for item in trip.stays if item.id == stay_id), None)
     if stay is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found", code="not_found")
     return stay
 
 
-def stay_location(session: Session, trip_id: str, area_id: str | None, location: LocationInput | None) -> Location:
+def stay_location(
+    session: Session, trip_id: Identifier, area_id: Identifier | None, location: LocationInput | None
+) -> Location:
     """The location a stay points at: the one given, or its area's city-level location.
 
     A location that names nothing but its area is the same thing as the area,
@@ -59,12 +61,12 @@ def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
 
 
 @router.get("/stays", response_model=list[StayResponse])
-def list_stays(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[Stay]:
+def list_stays(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Stay]:
     return list(owned_trip(session, trip_id, subject).stays)
 
 
 @router.post("/stays", response_model=StayResponse, status_code=status.HTTP_201_CREATED)
-def create_stay(trip_id: str, payload: StayCreate, session: SessionDep, subject: SubjectDep) -> Stay:
+def create_stay(trip_id: Identifier, payload: StayCreate, session: SessionDep, subject: SubjectDep) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     validate_stay_nights(payload.check_in_date, payload.check_out_date)
     stay = Stay(
@@ -79,12 +81,14 @@ def create_stay(trip_id: str, payload: StayCreate, session: SessionDep, subject:
 
 
 @router.get("/stays/{stay_id}", response_model=StayResponse)
-def get_stay(trip_id: str, stay_id: str, session: SessionDep, subject: SubjectDep) -> Stay:
+def get_stay(trip_id: Identifier, stay_id: Identifier, session: SessionDep, subject: SubjectDep) -> Stay:
     return owned_stay(owned_trip(session, trip_id, subject), stay_id)
 
 
 @router.patch("/stays/{stay_id}", response_model=StayResponse)
-def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: SessionDep, subject: SubjectDep) -> Stay:
+def update_stay(
+    trip_id: Identifier, stay_id: Identifier, payload: StayUpdate, session: SessionDep, subject: SubjectDep
+) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     stay = owned_stay(trip, stay_id)
     fields = payload.model_fields_set
@@ -131,7 +135,7 @@ def update_stay(trip_id: str, stay_id: str, payload: StayUpdate, session: Sessio
 
 
 @router.delete("/stays/{stay_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_stay(trip_id: str, stay_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_stay(trip_id: Identifier, stay_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     session.delete(owned_stay(owned_trip(session, trip_id, subject), stay_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

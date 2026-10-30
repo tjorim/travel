@@ -21,6 +21,7 @@ from ..models import (
 )
 from ..overview import trip_overview
 from ..schemas import (
+    Identifier,
     TravelUpdateCreate,
     TravelUpdatePatch,
     TravelUpdateResponse,
@@ -55,7 +56,9 @@ def trip_query():
     )
 
 
-def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[str]) -> list[TravelUpdateMediaAsset]:
+def media_links_from_ids(
+    session: Session, trip_id: Identifier, media_asset_ids: list[str]
+) -> list[TravelUpdateMediaAsset]:
     """Resolve attachments inside the already-authorized trip boundary.
 
     The association intentionally stores no EXIF, file URL or share state.
@@ -82,7 +85,7 @@ def media_links_from_ids(session: Session, trip_id: str, media_asset_ids: list[s
     return [TravelUpdateMediaAsset(media_asset=by_id[asset_id]) for asset_id in media_asset_ids]
 
 
-def owned_trip(session: Session, trip_id: str, subject: str, *, load_relations: bool = True) -> Trip:
+def owned_trip(session: Session, trip_id: Identifier, subject: str, *, load_relations: bool = True) -> Trip:
     statement = trip_query() if load_relations else select(Trip)
     trip = session.scalar(statement.where(Trip.id == trip_id, Trip.owner_subject == subject))
     if trip is None:
@@ -117,18 +120,18 @@ def create_trip(payload: TripCreate, session: SessionDep, subject: SubjectDep) -
 
 
 @router.get("/{trip_id}", response_model=TripResponse)
-def get_trip(trip_id: str, session: SessionDep, subject: SubjectDep) -> Trip:
+def get_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> Trip:
     return owned_trip(session, trip_id, subject)
 
 
 @router.get("/{trip_id}/overview", response_model=TripOverviewResponse)
-def get_trip_overview(trip_id: str, session: SessionDep, subject: SubjectDep) -> dict:
+def get_trip_overview(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> dict:
     """Counts per kind, what each audience receives, and what to review before sharing."""
     return trip_overview(session, owned_trip(session, trip_id, subject))
 
 
 @router.patch("/{trip_id}", response_model=TripResponse)
-def update_trip(trip_id: str, payload: TripUpdate, session: SessionDep, subject: SubjectDep) -> Trip:
+def update_trip(trip_id: Identifier, payload: TripUpdate, session: SessionDep, subject: SubjectDep) -> Trip:
     trip = owned_trip(session, trip_id, subject)
     changes = payload.model_dump(exclude_unset=True)
     if "cover_derivative_id" in changes:
@@ -149,13 +152,13 @@ def update_trip(trip_id: str, payload: TripUpdate, session: SessionDep, subject:
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_trip(trip_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     session.delete(owned_trip(session, trip_id, subject))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def _loaded(session: Session, update_id: str) -> TravelUpdate:
+def _loaded(session: Session, update_id: Identifier) -> TravelUpdate:
     return session.execute(
         select(TravelUpdate)
         .options(
@@ -169,7 +172,7 @@ def _loaded(session: Session, update_id: str) -> TravelUpdate:
 
 @router.get("/{trip_id}/travel-updates", response_model=list[TravelUpdateResponse])
 def list_travel_updates(
-    trip_id: str,
+    trip_id: Identifier,
     session: SessionDep,
     subject: SubjectDep,
     q: str | None = None,
@@ -196,7 +199,7 @@ def list_travel_updates(
 
 @router.post("/{trip_id}/travel-updates", response_model=TravelUpdateResponse, status_code=status.HTTP_201_CREATED)
 def create_travel_update(
-    trip_id: str, payload: TravelUpdateCreate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, payload: TravelUpdateCreate, session: SessionDep, subject: SubjectDep
 ) -> TravelUpdate:
     trip = owned_trip(session, trip_id, subject)
     location = location_from_input(session, trip.id, payload.location) if payload.location else None
@@ -227,7 +230,7 @@ def create_travel_update(
     return _loaded(session, update.id)
 
 
-def owned_update(trip: Trip, update_id: str) -> TravelUpdate:
+def owned_update(trip: Trip, update_id: Identifier) -> TravelUpdate:
     update = next((item for item in trip.travel_updates if item.id == update_id), None)
     if update is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel update not found", code="not_found")
@@ -243,7 +246,7 @@ def _choose_visibility(trip: Trip, update: TravelUpdate, visibility: Visibility)
 
 @router.patch("/{trip_id}/travel-updates/{update_id}", response_model=TravelUpdateResponse)
 def update_travel_update(
-    trip_id: str, update_id: str, payload: TravelUpdatePatch, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, update_id: Identifier, payload: TravelUpdatePatch, session: SessionDep, subject: SubjectDep
 ) -> TravelUpdate:
     trip = owned_trip(session, trip_id, subject)
     update = owned_update(trip, update_id)
@@ -287,7 +290,9 @@ def update_travel_update(
 
 
 @router.delete("/{trip_id}/travel-updates/{update_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_travel_update(trip_id: str, update_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_travel_update(
+    trip_id: Identifier, update_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> Response:
     trip = owned_trip(session, trip_id, subject)
     session.delete(owned_update(trip, update_id))
     session.commit()
@@ -295,7 +300,7 @@ def delete_travel_update(trip_id: str, update_id: str, session: SessionDep, subj
 
 
 @router.get("/{trip_id}/offline-map", status_code=status.HTTP_204_NO_CONTENT)
-def revalidate_offline_map(trip_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def revalidate_offline_map(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     """Owner-only revalidation target for an explicitly pinned map snapshot.
 
     The snapshot itself is assembled in the client from the already owner-scoped

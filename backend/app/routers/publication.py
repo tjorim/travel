@@ -35,9 +35,11 @@ from ..ratelimit import delivery_limit, limiter, retry_after_seconds, shared_lin
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
+    Identifier,
     ProjectionDocument,
     PublicProjectionStatusResponse,
     PublicTripCard,
+    SafeText,
     ShareLinkActivateRequest,
     ShareLinkActivateResponse,
     ShareLinkCreate,
@@ -84,7 +86,7 @@ async def delivery_rate_limit_handler(request: Request, error: RateLimitExceeded
     )
 
 
-def _apply_scope(session: Session, trip_id: str, subject: str, scope: ShareScopeInput) -> dict:
+def _apply_scope(session: Session, trip_id: Identifier, subject: str, scope: ShareScopeInput) -> dict:
     trip = owned_trip(session, trip_id, subject)
     scope_dict = scope.model_dump()
     try:
@@ -94,7 +96,7 @@ def _apply_scope(session: Session, trip_id: str, subject: str, scope: ShareScope
     return scope_dict
 
 
-def _get_or_create_surface(session: Session, trip_id: str) -> PublicSurface:
+def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurface:
     surface = session.get(PublicSurface, trip_id)
     if surface is None:
         surface = PublicSurface(trip_id=trip_id, scope={})
@@ -114,7 +116,7 @@ def _get_or_create_surface(session: Session, trip_id: str) -> PublicSurface:
 
 @router.put("/public-projection", response_model=PublicProjectionStatusResponse)
 def set_public_projection_scope(
-    trip_id: str, payload: ShareScopeInput, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, payload: ShareScopeInput, session: SessionDep, subject: SubjectDep
 ) -> PublicProjectionStatusResponse:
     scope = _apply_scope(session, trip_id, subject, payload)
     surface = _get_or_create_surface(session, trip_id)
@@ -124,7 +126,9 @@ def set_public_projection_scope(
 
 
 @router.post("/public-projection/preview", response_model=ProjectionDocument)
-def preview_public_projection(trip_id: str, session: SessionDep, subject: SubjectDep, response: Response) -> dict:
+def preview_public_projection(
+    trip_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response
+) -> dict:
     trip = owned_trip(session, trip_id, subject)
     surface = _get_or_create_surface(session, trip_id)
     response.headers["Cache-Control"] = "no-store"
@@ -133,7 +137,12 @@ def preview_public_projection(trip_id: str, session: SessionDep, subject: Subjec
 
 @router.get("/public-projection/preview/files/{local_id}")
 def preview_public_file(
-    trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep, request: Request
+    trip_id: Identifier,
+    local_id: SafeText,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: StorageDep,
+    request: Request,
 ) -> Response:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
@@ -141,14 +150,18 @@ def preview_public_file(
 
 
 @router.get("/public-projection/preview/navigation/{local_id}")
-def preview_public_navigation(trip_id: str, local_id: str, session: SessionDep, subject: SubjectDep) -> JSONResponse:
+def preview_public_navigation(
+    trip_id: Identifier, local_id: SafeText, session: SessionDep, subject: SubjectDep
+) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
     return _preview_navigation(trip, surface.scope if surface else {}, local_id)
 
 
 @router.post("/public-projection/publish", response_model=PublicProjectionStatusResponse)
-def publish_public_projection(trip_id: str, session: SessionDep, subject: SubjectDep) -> PublicProjectionStatusResponse:
+def publish_public_projection(
+    trip_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
     surface = _get_or_create_surface(session, trip_id)
     surface.state = SurfaceState.PUBLISHED
@@ -167,7 +180,7 @@ def publish_public_projection(trip_id: str, session: SessionDep, subject: Subjec
 
 @router.post("/public-projection/unpublish", response_model=PublicProjectionStatusResponse)
 def unpublish_public_projection(
-    trip_id: str, session: SessionDep, subject: SubjectDep, payload: AuditReasonInput = AuditReasonInput()
+    trip_id: Identifier, session: SessionDep, subject: SubjectDep, payload: AuditReasonInput = AuditReasonInput()
 ) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
@@ -194,7 +207,7 @@ def unpublish_public_projection(
 
 @router.get("/public-projection", response_model=PublicProjectionStatusResponse)
 def get_public_projection_status(
-    trip_id: str, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
     return _public_status(_get_or_create_surface(session, trip_id))
@@ -217,7 +230,7 @@ def _public_status(surface: PublicSurface) -> PublicProjectionStatusResponse:
 EDITABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
 
 
-def owned_link(session: Session, trip_id: str, subject: str, link_id: str) -> ShareLink:
+def owned_link(session: Session, trip_id: Identifier, subject: str, link_id: Identifier) -> ShareLink:
     owned_trip(session, trip_id, subject)
     link = session.scalar(select(ShareLink).where(ShareLink.id == link_id, ShareLink.trip_id == trip_id))
     if link is None:
@@ -226,7 +239,9 @@ def owned_link(session: Session, trip_id: str, subject: str, link_id: str) -> Sh
 
 
 @router.post("/share-links", response_model=ShareLinkResponse, status_code=status.HTTP_201_CREATED)
-def create_share_link(trip_id: str, payload: ShareLinkCreate, session: SessionDep, subject: SubjectDep) -> ShareLink:
+def create_share_link(
+    trip_id: Identifier, payload: ShareLinkCreate, session: SessionDep, subject: SubjectDep
+) -> ShareLink:
     scope = _apply_scope(session, trip_id, subject, payload.scope)
     link = ShareLink(trip_id=trip_id, label=payload.label, series_id="", scope=scope, state=LinkState.DRAFT)
     session.add(link)
@@ -246,7 +261,7 @@ def create_share_link(trip_id: str, payload: ShareLinkCreate, session: SessionDe
 
 
 @router.get("/audit-events", response_model=list[AuditEventResponse])
-def list_audit_events(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[AuditEvent]:
+def list_audit_events(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[AuditEvent]:
     owned_trip(session, trip_id, subject)
     return list(
         session.scalars(select(AuditEvent).where(AuditEvent.trip_id == trip_id).order_by(AuditEvent.occurred_at.desc()))
@@ -254,7 +269,7 @@ def list_audit_events(trip_id: str, session: SessionDep, subject: SubjectDep) ->
 
 
 @router.get("/share-links", response_model=list[ShareLinkResponse])
-def list_share_links(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[ShareLink]:
+def list_share_links(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[ShareLink]:
     owned_trip(session, trip_id, subject)
     return list(
         session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id).order_by(ShareLink.created_at.desc()))
@@ -262,13 +277,13 @@ def list_share_links(trip_id: str, session: SessionDep, subject: SubjectDep) -> 
 
 
 @router.get("/share-links/{link_id}", response_model=ShareLinkResponse)
-def get_share_link(trip_id: str, link_id: str, session: SessionDep, subject: SubjectDep) -> ShareLink:
+def get_share_link(trip_id: Identifier, link_id: Identifier, session: SessionDep, subject: SubjectDep) -> ShareLink:
     return owned_link(session, trip_id, subject, link_id)
 
 
 @router.patch("/share-links/{link_id}", response_model=ShareLinkResponse)
 def update_share_link(
-    trip_id: str, link_id: str, payload: ShareLinkUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, link_id: Identifier, payload: ShareLinkUpdate, session: SessionDep, subject: SubjectDep
 ) -> ShareLink:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state not in EDITABLE_LINK_STATES:
@@ -287,7 +302,7 @@ def update_share_link(
 
 @router.post("/share-links/{link_id}/preview", response_model=ProjectionDocument)
 def preview_share_link(
-    trip_id: str, link_id: str, session: SessionDep, subject: SubjectDep, response: Response
+    trip_id: Identifier, link_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response
 ) -> dict:
     trip = owned_trip(session, trip_id, subject)
     link = owned_link(session, trip_id, subject, link_id)
@@ -297,9 +312,9 @@ def preview_share_link(
 
 @router.get("/share-links/{link_id}/preview/files/{local_id}")
 def preview_share_file(
-    trip_id: str,
-    link_id: str,
-    local_id: str,
+    trip_id: Identifier,
+    link_id: Identifier,
+    local_id: SafeText,
     session: SessionDep,
     subject: SubjectDep,
     storage: StorageDep,
@@ -312,14 +327,14 @@ def preview_share_file(
 
 @router.get("/share-links/{link_id}/preview/navigation/{local_id}")
 def preview_share_navigation(
-    trip_id: str, link_id: str, local_id: str, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, link_id: Identifier, local_id: SafeText, session: SessionDep, subject: SubjectDep
 ) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject)
     link = owned_link(session, trip_id, subject, link_id)
     return _preview_navigation(trip, link.scope, local_id)
 
 
-def _preview_navigation(trip: Trip, scope: dict, local_id: str) -> JSONResponse:
+def _preview_navigation(trip: Trip, scope: dict, local_id: SafeText) -> JSONResponse:
     target = scoped_navigation_url(trip, scope, local_id)
     if target is None:
         raise ApiException(
@@ -344,7 +359,11 @@ def _activate_link(link: ShareLink, expires_in_days: int | None) -> str:
 
 @router.post("/share-links/{link_id}/activate", response_model=ShareLinkActivateResponse)
 def activate_share_link(
-    trip_id: str, link_id: str, payload: ShareLinkActivateRequest, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier,
+    link_id: Identifier,
+    payload: ShareLinkActivateRequest,
+    session: SessionDep,
+    subject: SubjectDep,
 ) -> ShareLinkActivateResponse:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state != LinkState.DRAFT:
@@ -375,7 +394,11 @@ def activate_share_link(
 
 @router.post("/share-links/{link_id}/revoke", response_model=ShareLinkResponse)
 def revoke_share_link(
-    trip_id: str, link_id: str, session: SessionDep, subject: SubjectDep, payload: AuditReasonInput = AuditReasonInput()
+    trip_id: Identifier,
+    link_id: Identifier,
+    session: SessionDep,
+    subject: SubjectDep,
+    payload: AuditReasonInput = AuditReasonInput(),
 ) -> ShareLink:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state != LinkState.ACTIVE:
@@ -405,7 +428,11 @@ def revoke_share_link(
 
 @router.post("/share-links/{link_id}/rotate", response_model=ShareLinkActivateResponse)
 def rotate_share_link(
-    trip_id: str, link_id: str, payload: ShareLinkActivateRequest, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier,
+    link_id: Identifier,
+    payload: ShareLinkActivateRequest,
+    session: SessionDep,
+    subject: SubjectDep,
 ) -> ShareLinkActivateResponse:
     old_link = owned_link(session, trip_id, subject, link_id)
     if old_link.state != LinkState.ACTIVE:

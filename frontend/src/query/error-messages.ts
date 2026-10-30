@@ -297,6 +297,9 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "float_type":
     case "bool_parsing":
     case "bool_type":
+    case "unsafe_text":
+    case "local_time_required":
+    case "field_may_not_be_null":
     case "string_type":
     case "string_pattern_mismatch":
     case "date_parsing":

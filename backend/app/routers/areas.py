@@ -23,6 +23,7 @@ from ..schemas import (
     AreaSuggestion,
     AreaSuggestRequest,
     AreaUpdate,
+    Identifier,
     MergeRequest,
 )
 from .placement import is_city_level
@@ -45,7 +46,11 @@ def distance_km(latitude: float, longitude: float, other_latitude: float, other_
 
 
 def suggest_area(
-    trip_id: str, payload: AreaSuggestRequest, session: SessionDep, subject: SubjectDep, service: SearchServiceDep
+    trip_id: Identifier,
+    payload: AreaSuggestRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    service: SearchServiceDep,
 ) -> AreaSuggestion:
     """Suggest an area to the owner; never create or re-file anything."""
     trip = owned_trip(session, trip_id, subject)
@@ -82,12 +87,16 @@ def suggest_area(
 
 @router.post("/areas/suggest", response_model=AreaSuggestion)
 def suggest_area_endpoint(
-    trip_id: str, payload: AreaSuggestRequest, session: SessionDep, subject: SubjectDep, service: SearchServiceDep
+    trip_id: Identifier,
+    payload: AreaSuggestRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    service: SearchServiceDep,
 ) -> AreaSuggestion:
     return suggest_area(trip_id, payload, session, subject, service)
 
 
-def owned_area(session: Session, trip_id: str, area_id: str) -> Area:
+def owned_area(session: Session, trip_id: Identifier, area_id: Identifier) -> Area:
     area = session.scalar(select(Area).where(Area.id == area_id, Area.trip_id == trip_id))
     if area is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Area not found", code="not_found")
@@ -96,7 +105,7 @@ def owned_area(session: Session, trip_id: str, area_id: str) -> Area:
 
 @router.get("/areas", response_model=list[AreaResponse])
 def list_areas(
-    trip_id: str,
+    trip_id: Identifier,
     session: SessionDep,
     subject: SubjectDep,
     q: str | None = None,
@@ -115,7 +124,7 @@ def list_areas(
 
 
 @router.post("/areas", response_model=AreaResponse, status_code=status.HTTP_201_CREATED)
-def save_area(trip_id: str, payload: AreaInput, session: SessionDep, subject: SubjectDep) -> Area:
+def save_area(trip_id: Identifier, payload: AreaInput, session: SessionDep, subject: SubjectDep) -> Area:
     """Create an owner-selected area without treating it as a visit."""
     trip = owned_trip(session, trip_id, subject)
     if (payload.latitude is None) != (payload.longitude is None):
@@ -129,7 +138,9 @@ def save_area(trip_id: str, payload: AreaInput, session: SessionDep, subject: Su
 
 
 @router.patch("/areas/{area_id}", response_model=AreaResponse)
-def update_area(trip_id: str, area_id: str, payload: AreaUpdate, session: SessionDep, subject: SubjectDep) -> Area:
+def update_area(
+    trip_id: Identifier, area_id: Identifier, payload: AreaUpdate, session: SessionDep, subject: SubjectDep
+) -> Area:
     """Edit an owner's area, for example to add its time zone."""
     trip = owned_trip(session, trip_id, subject)
     area = owned_area(session, trip.id, area_id)
@@ -153,7 +164,7 @@ def update_area(trip_id: str, area_id: str, payload: AreaUpdate, session: Sessio
     return area
 
 
-def _area_references(session: Session, trip_id: str, area_id: str) -> tuple[list[str], dict[str, int]]:
+def _area_references(session: Session, trip_id: Identifier, area_id: Identifier) -> tuple[list[str], dict[str, int]]:
     """Return the owner-facing records that must be changed before deletion.
 
     An area is deliberately reusable. Deleting it must never silently remove a
@@ -176,7 +187,7 @@ def _area_references(session: Session, trip_id: str, area_id: str) -> tuple[list
 
 
 @router.delete("/areas/{area_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_area(trip_id: str, area_id: str, session: SessionDep, subject: SubjectDep) -> Response:
+def delete_area(trip_id: Identifier, area_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     """Delete an unused owner-authored area without harming its users."""
     trip = owned_trip(session, trip_id, subject)
     area = owned_area(session, trip.id, area_id)
@@ -193,7 +204,7 @@ def delete_area(trip_id: str, area_id: str, session: SessionDep, subject: Subjec
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def _area_referencing(session: Session, trip_id: str, area_id: str) -> dict[str, list]:
+def _area_referencing(session: Session, trip_id: Identifier, area_id: Identifier) -> dict[str, list]:
     """Every record filed under this area, by kind."""
 
     def rows(model, *conditions) -> list:
@@ -207,7 +218,7 @@ def _area_referencing(session: Session, trip_id: str, area_id: str) -> dict[str,
     }
 
 
-def merge_areas(trip_id: str, payload: MergeRequest, session: Session, subject: str) -> AreaMergeResult:
+def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, subject: str) -> AreaMergeResult:
     """Preview, or with ``confirm`` apply, folding duplicate areas into one kept area.
 
     Every location, visit, route end and reisupdate filed under a duplicate
@@ -299,7 +310,7 @@ def merge_areas(trip_id: str, payload: MergeRequest, session: Session, subject: 
 
 @router.post("/areas/merge", response_model=AreaMergeResult)
 def merge_areas_endpoint(
-    trip_id: str, payload: MergeRequest, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, payload: MergeRequest, session: SessionDep, subject: SubjectDep
 ) -> AreaMergeResult:
     result = merge_areas(trip_id, payload, session, subject)
     session.commit()

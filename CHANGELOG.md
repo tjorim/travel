@@ -16,6 +16,8 @@ All notable changes to the travel hub are documented here.
 - Update vulnerable backend and Router/seroval dependencies; audit both lockfiles
   in CI and weekly, blocking high/critical or unclassified advisories (#35).
 - Validate photo bytes before storage and restrict image decoders; reject unsupported, corrupt or oversized images with translated errors (#24).
+- Return owner input field errors for unsafe text, oversized integers, null required
+  PATCH fields and zoned clock times; fuzz OpenAPI writes on SQLite and PostgreSQL (#33).
 
 - Use a distinctive synthetic postal code in the public-location privacy test to
   prevent random public IDs from causing false disclosure failures.

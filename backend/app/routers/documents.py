@@ -14,7 +14,7 @@ from ..errors import ApiException, service_exception
 from ..media.ranges import private_original_headers
 from ..media.service import MediaImportError, read_bounded_upload
 from ..models import DocumentAsset, DocumentKind
-from ..schemas import DocumentAssetResponse
+from ..schemas import DocumentAssetResponse, Identifier, SafeText
 from ..storage import ObjectStorage, get_storage
 from .trips import owned_trip
 
@@ -25,7 +25,7 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 StorageDep = Annotated[ObjectStorage, Depends(get_storage)]
 
 
-def _asset_response(asset: DocumentAsset, trip_id: str) -> DocumentAssetResponse:
+def _asset_response(asset: DocumentAsset, trip_id: Identifier) -> DocumentAssetResponse:
     original = asset.original_object
     return DocumentAssetResponse(
         id=asset.id,
@@ -40,7 +40,7 @@ def _asset_response(asset: DocumentAsset, trip_id: str) -> DocumentAssetResponse
     )
 
 
-def owned_document_asset(session: Session, trip_id: str, subject: str, document_id: str) -> DocumentAsset:
+def owned_document_asset(session: Session, trip_id: Identifier, subject: str, document_id: Identifier) -> DocumentAsset:
     owned_trip(session, trip_id, subject)
     asset = session.scalar(
         select(DocumentAsset).where(
@@ -56,12 +56,12 @@ def owned_document_asset(session: Session, trip_id: str, subject: str, document_
 
 @router.post("/uploads", response_model=DocumentAssetResponse)
 def upload_document(
-    trip_id: str,
+    trip_id: Identifier,
     session: SessionDep,
     subject: SubjectDep,
     storage: StorageDep,
     response: Response,
-    title: Annotated[str, Form(min_length=1, max_length=160)],
+    title: Annotated[SafeText, Form(min_length=1, max_length=160)],
     document_kind: Annotated[DocumentKind, Form()],
     file: Annotated[UploadFile, File()],
 ) -> DocumentAssetResponse:
@@ -90,7 +90,7 @@ def upload_document(
 
 
 @router.get("", response_model=list[DocumentAssetResponse])
-def list_documents(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[DocumentAssetResponse]:
+def list_documents(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[DocumentAssetResponse]:
     owned_trip(session, trip_id, subject)
     assets = session.scalars(
         select(DocumentAsset)
@@ -101,13 +101,15 @@ def list_documents(trip_id: str, session: SessionDep, subject: SubjectDep) -> li
 
 
 @router.get("/{document_id}", response_model=DocumentAssetResponse)
-def get_document(trip_id: str, document_id: str, session: SessionDep, subject: SubjectDep) -> DocumentAssetResponse:
+def get_document(
+    trip_id: Identifier, document_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> DocumentAssetResponse:
     return _asset_response(owned_document_asset(session, trip_id, subject, document_id), trip_id)
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_document(
-    trip_id: str, document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+    trip_id: Identifier, document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
     delete_document_asset(session, storage, document_asset=owned_document_asset(session, trip_id, subject, document_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -115,7 +117,7 @@ def remove_document(
 
 @router.get("/{document_id}/original")
 def get_document_original(
-    trip_id: str, document_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
+    trip_id: Identifier, document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> StreamingResponse:
     original = owned_document_asset(session, trip_id, subject, document_id).original_object
     return StreamingResponse(
