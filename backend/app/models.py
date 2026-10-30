@@ -191,6 +191,10 @@ class AuditEventKind(StrEnum):
     # receives, so it is recorded with the other audience-affecting changes.
     LOCATION_MERGE = "location.merge"
     AREA_MERGE = "area.merge"
+    # Live scope and record-audience edits change what visitors receive at once.
+    PUBLIC_PROJECTION_SCOPE_CHANGE = "public_projection.scope_change"
+    SHARE_LINK_SCOPE_CHANGE = "share_link.scope_change"
+    VISIBILITY_CHANGE = "record.visibility_change"
 
 
 class AuditTargetType(StrEnum):
@@ -198,6 +202,7 @@ class AuditTargetType(StrEnum):
     SHARE_LINK = "share_link"
     LOCATION = "location"
     AREA = "area"
+    RECORD = "record"
 
 
 def _enum_column(enum_cls: type[StrEnum], name: str):

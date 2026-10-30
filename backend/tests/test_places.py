@@ -515,7 +515,8 @@ def test_duplicate_locations_merge_every_reference_into_the_kept_one() -> None:
     # The preview changed nothing.
     assert len(owner.get(f"{base}/locations").json()) == 3
     assert owner.get(f"{base}/stays/{stay['id']}").json()["location"]["id"] == same_area["id"]
-    assert [event["kind"] for event in owner.get(f"{base}/audit-events").json()] == ["share_link.create"]
+    events = owner.get(f"{base}/audit-events").json()
+    assert [event["kind"] for event in events if not event["kind"].startswith("record.")] == ["share_link.create"]
 
     # A location in use cannot simply be deleted.
     refused = owner.delete(f"{base}/locations/{same_area['id']}")

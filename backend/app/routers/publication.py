@@ -120,7 +120,20 @@ def set_public_projection_scope(
 ) -> PublicProjectionStatusResponse:
     scope = _apply_scope(session, trip_id, subject, payload)
     surface = _get_or_create_surface(session, trip_id)
+    before = scope_fingerprint(surface.scope)
     surface.scope = scope
+    after = scope_fingerprint(scope)
+    # An unpublished page delivers nothing, so only a live page's edit counts.
+    if surface.state == SurfaceState.PUBLISHED and before != after:
+        record_audit_event(
+            session,
+            trip_id=trip_id,
+            actor_subject=subject,
+            kind=AuditEventKind.PUBLIC_PROJECTION_SCOPE_CHANGE,
+            target_type=AuditTargetType.PUBLIC_SURFACE,
+            target_id=surface.trip_id,
+            details={"scope_version_before": before, "scope_version_after": after},
+        )
     session.commit()
     return _public_status(surface)
 
@@ -295,7 +308,20 @@ def update_share_link(
     if payload.label is not None:
         link.label = payload.label
     if payload.scope is not None:
+        before = scope_fingerprint(link.scope)
         link.scope = _apply_scope(session, trip_id, subject, payload.scope)
+        after = scope_fingerprint(link.scope)
+        # A draft link delivers nothing yet; its activation records the scope.
+        if link.state == LinkState.ACTIVE and before != after:
+            record_audit_event(
+                session,
+                trip_id=trip_id,
+                actor_subject=subject,
+                kind=AuditEventKind.SHARE_LINK_SCOPE_CHANGE,
+                target_type=AuditTargetType.SHARE_LINK,
+                target_id=link.id,
+                details={"scope_version_before": before, "scope_version_after": after},
+            )
     session.commit()
     return link
 

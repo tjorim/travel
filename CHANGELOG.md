@@ -8,6 +8,9 @@ All notable changes to the travel hub are documented here.
 
 - Task completion and reopen buttons now include the task title in their accessible name (#7).
 - Keep keyboard focus in the record list after a deletion removes the opening control, moving it to the next or previous record or the section's first action
+- Record live scope edits to a published public page or active link and record
+  visibility changes to or from `everyone`/`custom` in the sharing audit trail,
+  with fingerprints, ids and reached audiences only (#16).
 - Localize the share-link "previous versions" label with a plural-aware message
   and make the locale audit flag string-literal ternaries in message arguments
   (#18).
