@@ -1990,5 +1990,7 @@
   "audit_travel_update": "Travel update",
   "audit_media_derivative": "Media version",
   "owner_save_in_progress": "Save in progress",
-  "owner_wait_for_save": "Wait for the save to finish before leaving this page."
+  "owner_wait_for_save": "Wait for the save to finish before leaving this page.",
+  "packing_trip_metadata_unavailable": "Live trip information is unavailable. Saved packing lists can be viewed below; reconnect to edit.",
+  "packing_no_valid_offline_copy": "No valid saved packing list is available for this trip. Copies whose offline validity has expired are removed. Reconnect to save a copy."
 }
