@@ -8,6 +8,7 @@ All notable changes to the travel hub are documented here.
 - Throttle owner geocoder calls, require a production contact, and submit place searches explicitly (#21).
 - Protect owner sharing selections against stale multi-session saves while preserving drafts on conflict (#15).
 
+- Offer the public trip index link on unlisted trip pages in every load state (#4).
 - Add a return link to all public trips on public trip pages, including unavailable states (#4).
 - Document recoverable share-link tokens and reject the default verifier secret outside development (#20).
 - Reopen saved owner packing lists from trip deep links when live trip information is unavailable (#11).
