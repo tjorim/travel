@@ -259,7 +259,7 @@ def validate_output(
             raise InvalidOutput
     if abs(float(artifacts["video.mp4"]["duration_seconds"]) - duration) > 0.01:
         raise InvalidOutput
-    with Image.open(io.BytesIO(poster_bytes)) as poster:
+    with Image.open(io.BytesIO(poster_bytes), formats=("WEBP",)) as poster:
         if (
             poster.format != "WEBP"
             or poster.size != (width, height)
@@ -353,7 +353,7 @@ def reconcile(session: Session, storage: ObjectStorage, job: MediaWorkerJob, cli
             poster = client.download(job.worker_id, "poster.webp", artifacts["poster.webp"])
             try:
                 width, height, duration = validate_output(video, poster, artifacts, job.remove_audio)
-            except ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError:
+            except ValueError, KeyError, TypeError, OSError, Image.DecompressionBombError, subprocess.SubprocessError:
                 raise InvalidOutput from None
             # Locks on derivative + asset span validation and attachment, preventing deletion races.
             stored = service._store_bytes(

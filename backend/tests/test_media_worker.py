@@ -509,3 +509,13 @@ def test_real_worker_privacy_audio_rotation_parity(tmp_path, monkeypatch, remove
         pytest.fail("worker did not finish within parity test deadline")
     finally:
         client.close()
+
+
+def test_worker_rejects_tiff_disguised_as_webp(tmp_path):
+    data, evidence = outputs(tmp_path, True)
+    poster = tmp_path / "disguised.tiff"
+    Image.new("RGB", (640, 360)).save(poster, format="TIFF")
+    payload = poster.read_bytes()
+    evidence["poster.webp"].update(bytes=len(payload), sha256=sha256_hex(payload))
+    with pytest.raises(OSError):
+        worker.validate_output(data["video.mp4"], payload, evidence, True)
