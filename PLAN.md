@@ -82,6 +82,76 @@ The app also needs the archive's useful trip workflows and presentation before
 the v2 cutover. These are application features, independent of the optional
 archive-content import in #40.
 
+### Application review — Ordered follow-up
+
+The synthetic local baseline review is complete and tracked in
+[#9](https://github.com/tjorim/travel/issues/9); the definitive coverage and
+limitations matrix is in [#8](https://github.com/tjorim/travel/issues/8).
+All four final review packages are finished. This application work is independent
+of the VPS cutover below. No application code was changed during review.
+Preserve private-by-default data, server-filtered visitor responses, Capture/Story
+separation, reference protection, guarded dismissal, failed-save recovery,
+upload deduplication and the verified Library emergency-copy outage fallback.
+
+1. **Correctness first (P1):** [#6](https://github.com/tjorim/travel/issues/6)
+   resolves Sharing draft loss and preview/save/live behavior. Investigation
+   confirmed that previews change active public and unlisted scopes while
+   claiming to share nothing; failed preview can follow a committed scope save.
+2. **Quick wins (P2):** [#4](https://github.com/tjorim/travel/issues/4) adds
+   public-trip return navigation; [#7](https://github.com/tjorim/travel/issues/7)
+   gives task actions task-specific accessible names;
+   [#14](https://github.com/tjorim/travel/issues/14) keeps keyboard focus in
+   the record list after successful deletion. These can proceed independently
+   of layout discovery. Coordinate shared-dialog focus with #12.
+3. **Other correctness fixes (P2):**
+   [#12](https://github.com/tjorim/travel/issues/12) protects later edits during
+   pending saves and dirty record drafts during browser Back/Forward;
+   coordinate route protection with #6.
+   [#10](https://github.com/tjorim/travel/issues/10) distinguishes search
+   failures from empty results while retaining query/editor state.
+   [#11](https://github.com/tjorim/travel/issues/11) makes saved packing
+   snapshots reachable without live trip metadata.
+   [#13](https://github.com/tjorim/travel/issues/13) synchronizes offline-copy
+   state across mounted Library sections. Coordinate its shared offline layer
+   with #11 while preserving separate acceptance cases.
+4. **Larger change (P2):** [#5](https://github.com/tjorim/travel/issues/5)
+   compares compact headers with broader navigation restructuring before
+   implementation. Broader redesign is allowed, not predetermined. Include
+   laptop first-useful-content, desktop density and mobile translated labels.
+   Record the chosen direction and bounded implementation steps; link any
+   separate implementation issues from #9 and this plan before closing discovery.
+5. **Post-fix regression (P2):** [#8](https://github.com/tjorim/travel/issues/8)
+   stays open until the above fixes and selected layout implementation are
+   validated. The baseline matrix is complete; it does not claim a clean release.
+   Actual browser zoom remains unverified by available tools. PostgreSQL locking
+   and disposable external-worker checks were skipped where their isolated
+   environments were unavailable. Real Keycloak/passkeys/provider accounts/SMTP
+   remain outside the synthetic scope. Member/volunteer roles are not part of
+   the product. Record these limits explicitly at final sign-off.
+
+Delivery checklist (nine implementation/discovery issues and one regression issue;
+#9 tracks the group):
+
+- [ ] [#6](https://github.com/tjorim/travel/issues/6) Resolve Sharing draft,
+      preview and live-scope semantics (P1).
+- [ ] [#4](https://github.com/tjorim/travel/issues/4) Add public return navigation.
+- [ ] [#7](https://github.com/tjorim/travel/issues/7) Give task actions
+      task-specific accessible names.
+- [ ] [#14](https://github.com/tjorim/travel/issues/14) Restore useful focus
+      after deletion; preserve correct cancellation focus return.
+- [ ] [#10](https://github.com/tjorim/travel/issues/10) Distinguish failed
+      saved-place searches from empty results.
+- [ ] [#12](https://github.com/tjorim/travel/issues/12) Protect unsaved record
+      edits during saves and browser navigation.
+- [ ] [#11](https://github.com/tjorim/travel/issues/11) Reopen offline packing
+      copies without live trip metadata.
+- [ ] [#13](https://github.com/tjorim/travel/issues/13) Synchronize offline-copy
+      state after saving, removing and clearing.
+- [ ] [#5](https://github.com/tjorim/travel/issues/5) Compare navigation/layout
+      options and deliver the selected bounded implementation.
+- [ ] [#8](https://github.com/tjorim/travel/issues/8) Complete dependent post-fix
+      regression; baseline review is complete with explicit environment limits.
+
 ### v1 — Private travel journal application
 
 - [ ] [#148](https://github.com/tjorim/travel-private/issues/148) Add generic
