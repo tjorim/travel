@@ -1,3 +1,4 @@
+import { PendingEditContext, useEditGuard } from "./forms/navigation-guard";
 import { m } from "./paraglide/messages.js";
 import { LocaleControl, useLocale } from "./locale";
 import { Button } from "@/ui/button";
@@ -69,6 +70,8 @@ export function RecordDialog({
   onAfterClose,
 }: RecordDialogProps) {
   useLocale();
+  const [pending, setPending] = useState(false);
+  useEditGuard(open && dirty, open && pending, onDismiss);
   const origin = useRef<HTMLElement | null>(null);
   const scrollPosition = useRef({ x: 0, y: 0 });
   const position = useRef<ReturnType<typeof rememberPosition> | null>(null);
@@ -89,7 +92,7 @@ export function RecordDialog({
   }, [open]);
 
   function dismiss() {
-    if (confirmDiscard) return;
+    if (pending || confirmDiscard) return;
     if (dirty) {
       setConfirmDiscard(true);
       return;
@@ -98,110 +101,113 @@ export function RecordDialog({
   }
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) dismiss();
-      }}
-      onOpenChangeComplete={(nextOpen) => {
-        if (!nextOpen) {
-          if (scrollPosition.current.x || scrollPosition.current.y)
-            window.scrollTo(scrollPosition.current.x, scrollPosition.current.y);
-          onAfterClose?.();
-        }
-      }}
-    >
-      <Dialog.Portal>
-        <Dialog.Backdrop className={backdrop} />
-        <Dialog.Viewport className={viewport}>
-          <Dialog.Popup
-            className={cn(popup, className)}
-            finalFocus={() => {
-              const trigger = origin.current;
-              const where = position.current;
-              if (!where) return trigger;
-              if (trigger?.isConnected) {
-                // A deletion may remove the trigger after the dialog closes; move focus to a neighbour then.
-                const parent = where.list ?? trigger.parentElement;
-                if (parent) {
-                  const observer = new MutationObserver(() => {
-                    if (trigger.isConnected) return;
-                    observer.disconnect();
-                    const active = document.activeElement;
-                    if (!active || active === document.body) survivingTarget(where)?.focus();
-                  });
-                  observer.observe(parent, { childList: true, subtree: true });
-                  window.setTimeout(() => observer.disconnect(), 5000);
+    <PendingEditContext.Provider value={setPending}>
+      <Dialog.Root
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) dismiss();
+        }}
+        onOpenChangeComplete={(nextOpen) => {
+          if (!nextOpen) {
+            if (scrollPosition.current.x || scrollPosition.current.y)
+              window.scrollTo(scrollPosition.current.x, scrollPosition.current.y);
+            onAfterClose?.();
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop className={backdrop} />
+          <Dialog.Viewport className={viewport}>
+            <Dialog.Popup
+              className={cn(popup, className)}
+              finalFocus={() => {
+                const trigger = origin.current;
+                const where = position.current;
+                if (!where) return trigger;
+                if (trigger?.isConnected) {
+                  // A deletion may remove the trigger after the dialog closes; move focus to a neighbour then.
+                  const parent = where.list ?? trigger.parentElement;
+                  if (parent) {
+                    const observer = new MutationObserver(() => {
+                      if (trigger.isConnected) return;
+                      observer.disconnect();
+                      const active = document.activeElement;
+                      if (!active || active === document.body) survivingTarget(where)?.focus();
+                    });
+                    observer.observe(parent, { childList: true, subtree: true });
+                    window.setTimeout(() => observer.disconnect(), 5000);
+                  }
+                  return trigger;
                 }
-                return trigger;
-              }
-              return survivingTarget(where) ?? trigger;
-            }}
-            aria-label={title}
-          >
-            <div className="mb-4.5 flex items-start justify-between gap-4">
-              <Dialog.Title className="m-0">{title}</Dialog.Title>
-              <Dialog.Close
-                className={cn(compactButton, secondaryButton)}
-                aria-label={m.owner_close({ p0: title })}
-              >
-                {m.owner_close_2()}
-              </Dialog.Close>
-            </div>
-            <div className="mb-4">
-              <LocaleControl />
-            </div>
-            {error && (
-              <p className="form-error mb-4" role="alert">
-                {error}
-              </p>
-            )}
-            {children}
-            <AlertDialog.Root
-              open={confirmDiscard}
-              onOpenChange={(nextOpen) => {
-                if (!nextOpen) setConfirmDiscard(false);
+                return survivingTarget(where) ?? trigger;
               }}
+              aria-label={title}
             >
-              <AlertDialog.Portal>
-                <AlertDialog.Backdrop className={backdrop} />
-                <AlertDialog.Viewport className={viewport}>
-                  <AlertDialog.Popup
-                    className={cn(popup, confirmation, "max-w-md")}
-                    initialFocus={continueEditing}
-                  >
-                    <AlertDialog.Title className="m-0">
-                      {m.owner_discard_changes()}
-                    </AlertDialog.Title>
-                    <AlertDialog.Description className="m-0">
-                      {m.owner_your_unsaved_changes_will_be_lost()}
-                    </AlertDialog.Description>
-                    <div className={buttonRow}>
-                      <Button
-                        className={cn(compactButton, dangerButton)}
-                        type="button"
-                        onClick={() => {
-                          setConfirmDiscard(false);
-                          onDismiss();
-                        }}
-                      >
-                        {m.owner_discard_changes_2()}
-                      </Button>
-                      <AlertDialog.Close
-                        className={cn(compactButton, secondaryButton)}
-                        ref={continueEditing}
-                      >
-                        {m.owner_continue_editing()}
-                      </AlertDialog.Close>
-                    </div>
-                  </AlertDialog.Popup>
-                </AlertDialog.Viewport>
-              </AlertDialog.Portal>
-            </AlertDialog.Root>
-          </Dialog.Popup>
-        </Dialog.Viewport>
-      </Dialog.Portal>
-    </Dialog.Root>
+              <div className="mb-4.5 flex items-start justify-between gap-4">
+                <Dialog.Title className="m-0">{title}</Dialog.Title>
+                <Dialog.Close
+                  className={cn(compactButton, secondaryButton)}
+                  disabled={pending}
+                  aria-label={m.owner_close({ p0: title })}
+                >
+                  {m.owner_close_2()}
+                </Dialog.Close>
+              </div>
+              <div className="mb-4">
+                <LocaleControl />
+              </div>
+              {error && (
+                <p className="form-error mb-4" role="alert">
+                  {error}
+                </p>
+              )}
+              {children}
+              <AlertDialog.Root
+                open={confirmDiscard}
+                onOpenChange={(nextOpen) => {
+                  if (!nextOpen) setConfirmDiscard(false);
+                }}
+              >
+                <AlertDialog.Portal>
+                  <AlertDialog.Backdrop className={backdrop} />
+                  <AlertDialog.Viewport className={viewport}>
+                    <AlertDialog.Popup
+                      className={cn(popup, confirmation, "max-w-md")}
+                      initialFocus={continueEditing}
+                    >
+                      <AlertDialog.Title className="m-0">
+                        {m.owner_discard_changes()}
+                      </AlertDialog.Title>
+                      <AlertDialog.Description className="m-0">
+                        {m.owner_your_unsaved_changes_will_be_lost()}
+                      </AlertDialog.Description>
+                      <div className={buttonRow}>
+                        <Button
+                          className={cn(compactButton, dangerButton)}
+                          type="button"
+                          onClick={() => {
+                            setConfirmDiscard(false);
+                            onDismiss();
+                          }}
+                        >
+                          {m.owner_discard_changes_2()}
+                        </Button>
+                        <AlertDialog.Close
+                          className={cn(compactButton, secondaryButton)}
+                          ref={continueEditing}
+                        >
+                          {m.owner_continue_editing()}
+                        </AlertDialog.Close>
+                      </div>
+                    </AlertDialog.Popup>
+                  </AlertDialog.Viewport>
+                </AlertDialog.Portal>
+              </AlertDialog.Root>
+            </Dialog.Popup>
+          </Dialog.Viewport>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </PendingEditContext.Provider>
   );
 }
 
@@ -211,6 +217,8 @@ type DeleteConfirmationProps = {
   confirmLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
+  cancelLabel?: string;
+  confirmDisabled?: boolean;
 };
 
 export function DeleteConfirmation({
@@ -219,6 +227,8 @@ export function DeleteConfirmation({
   confirmLabel = m.owner_delete(),
   onCancel,
   onConfirm,
+  cancelLabel = m.cancel(),
+  confirmDisabled = false,
 }: DeleteConfirmationProps) {
   useLocale();
   const cancel = useRef<HTMLButtonElement>(null);
@@ -231,11 +241,16 @@ export function DeleteConfirmation({
             <AlertDialog.Title className="m-0">{title}</AlertDialog.Title>
             <AlertDialog.Description className="m-0">{description}</AlertDialog.Description>
             <div className={buttonRow}>
-              <Button className={cn(compactButton, dangerButton)} type="button" onClick={onConfirm}>
+              <Button
+                className={cn(compactButton, dangerButton)}
+                type="button"
+                disabled={confirmDisabled}
+                onClick={onConfirm}
+              >
                 {confirmLabel}
               </Button>
               <AlertDialog.Close className={cn(compactButton, secondaryButton)} ref={cancel}>
-                {m.cancel()}
+                {cancelLabel}
               </AlertDialog.Close>
             </div>
           </AlertDialog.Popup>

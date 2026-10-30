@@ -198,6 +198,9 @@ export async function completeSignIn(
 }
 
 export function clearSession(): void {
+  for (const key of Object.keys(sessionStorage)) {
+    if (key.startsWith("travel-record-draft:")) sessionStorage.removeItem(key);
+  }
   sessionGeneration++;
   renewalRefused = false;
   sessionStorage.removeItem(transactionKey);

@@ -10,6 +10,7 @@ import {
   type AnyRoute,
 } from "@tanstack/react-router";
 
+import { NavigationGuard } from "./forms/NavigationGuard";
 import { Boundary } from "./Boundary";
 import { currentStoredOwner, tripsQueryOptions } from "./query/owner-queries";
 import { parseFlagParam } from "./router/search-params";
@@ -38,7 +39,11 @@ declare module "@tanstack/react-router" {
 // that a route's `loader` prefetches into, so it warms the same cache the page's
 // own `useQuery` reads from.
 export const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  component: () => <Outlet />,
+  component: () => (
+    <NavigationGuard>
+      <Outlet />
+    </NavigationGuard>
+  ),
 });
 
 export const callbackRoute = createRoute({

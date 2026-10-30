@@ -1984,5 +1984,7 @@
   "audit_route": "Route",
   "audit_stay": "Verblijf",
   "audit_travel_update": "Reisupdate",
-  "audit_media_derivative": "Mediaversie"
+  "audit_media_derivative": "Mediaversie",
+  "owner_save_in_progress": "Opslaan bezig",
+  "owner_wait_for_save": "Wacht tot het opslaan klaar is voordat je deze pagina verlaat."
 }

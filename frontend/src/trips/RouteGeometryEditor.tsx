@@ -408,6 +408,7 @@ export function RouteGeometryEditor({
       >
         <div
           ref={canvas}
+          role="region"
           className="size-full"
           aria-label={preview ? m.owner_map_preview_of_route() : m.owner_map_editor_for_route()}
         />

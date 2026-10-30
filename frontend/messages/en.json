@@ -1984,5 +1984,7 @@
   "audit_route": "Route",
   "audit_stay": "Stay",
   "audit_travel_update": "Travel update",
-  "audit_media_derivative": "Media version"
+  "audit_media_derivative": "Media version",
+  "owner_save_in_progress": "Save in progress",
+  "owner_wait_for_save": "Wait for the save to finish before leaving this page."
 }
