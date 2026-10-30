@@ -5,6 +5,10 @@ export const excludedFiles = {};
 export const diagnosticCallees = [];
 // Exact source/value exclusions. Never approve a whole component or directory for visible copy.
 export const exclusions = {
+  "RecordDialog.tsx": {
+    "li, article, tr, [data-record-row]": "CSS selector for record rows",
+    "button:not([disabled]), a[href], input:not([disabled])": "CSS selector for focusable controls",
+  },
   "locale.tsx": {
     Nederlands: "language autonym",
     English: "language autonym",
