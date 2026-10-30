@@ -475,24 +475,38 @@ def rotate_share_link(
     return ShareLinkActivateResponse.model_validate(new_link)
 
 
-def _validate_delivery_path(request: Request) -> None:
-    # Validate before any lookup or token hashing. Do not include submitted values
-    # in diagnostics: these paths are anonymous and may contain capability tokens.
-    patterns = {
-        "slug": r"[A-Za-z0-9_-]{1,32}",
-        "token": r"[A-Za-z0-9_-]{43}",
-        "local_id": r"[A-Za-z0-9_-]{1,80}",
-    }
-    if any(re.fullmatch(patterns[name], value) is None for name, value in request.path_params.items()):
+_PATH_PATTERNS = {
+    "slug": re.compile(r"[A-Za-z0-9_-]{1,32}"),
+    "token": re.compile(r"[A-Za-z0-9_-]{43}"),
+    "local_id": re.compile(r"[A-Za-z0-9_-]{1,80}"),
+}
+
+
+def _malformed_path(request: Request, names: set[str]) -> bool:
+    return any(
+        _PATH_PATTERNS[name].fullmatch(value) is None for name, value in request.path_params.items() if name in names
+    )
+
+
+def _validate_public_path(request: Request) -> None:
+    # Validate before any lookup. Do not include submitted values in diagnostics:
+    # these paths are anonymous. Share-token routes validate inside the handler
+    # (see _reject_malformed_token) so the rate limiter still counts them.
+    if _malformed_path(request, {"slug", "local_id"}) and "token" not in request.path_params:
         raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",
-            headers=UNLISTED_HEADERS if "token" in request.path_params else {"Cache-Control": "no-store"},
+            headers={"Cache-Control": "no-store"},
             code="not_found",
         )
 
 
-delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(_validate_delivery_path)])
+def _reject_malformed_token(request: Request, not_found: ApiException) -> None:
+    if _malformed_path(request, {"token", "local_id"}):
+        raise not_found
+
+
+delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(_validate_public_path)])
 
 
 # --- Anonymous delivery -------------------------------------------------------------
@@ -607,6 +621,7 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
     )
+    _reject_malformed_token(request, not_found)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
@@ -637,6 +652,7 @@ def get_shared_navigation(request: Request, token: str, local_id: str, session: 
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
     )
+    _reject_malformed_token(request, not_found)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
@@ -671,6 +687,7 @@ def get_shared_file(token: str, local_id: str, session: SessionDep, storage: Sto
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS, code="not_found"
     )
+    _reject_malformed_token(request, not_found)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found

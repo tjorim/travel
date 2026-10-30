@@ -61,10 +61,10 @@ PATHS = [
 def test_malformed_delivery_paths(delivery_client, path, bad, caplog):
     response = delivery_client.get("/api" + path.format(bad=bad), follow_redirects=False)
     assert response.status_code == 404
-    assert response.json() == {
-        "detail": "Not found",
-        "errors": [{"code": "not_found", "params": {}, "path": []}],
-    }
+    assert response.json()["errors"] == [{"code": "not_found", "params": {}, "path": []}]
+    # Shared routes keep their existing indistinguishable not-found text.
+    allowed = {"Link not found", "File not found"} if path.startswith("/shared/") else {"Not found"}
+    assert response.json()["detail"] in allowed
     headers = UNLISTED_HEADERS if path.startswith("/shared/") else {"Cache-Control": "no-store"}
     for name, value in headers.items():
         assert response.headers[name] == value
