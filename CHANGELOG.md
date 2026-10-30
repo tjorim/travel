@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Owner share-link reads now show links past their expiry as expired and record the expiry audit event at the real expiry time, without waiting for a visit.
+
 ### Changed
 
 - Show scope and record visibility changes in the owner sharing history in Dutch and English (#16).
