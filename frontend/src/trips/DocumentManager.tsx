@@ -119,6 +119,7 @@ export function DocumentManager({
     );
     await offline.pin({
       resourceKind: "trip_document",
+      contentMetadata: document,
       resourceId: document.id,
       metadataUrl: `/api/trips/${trip.id}/documents/${document.id}`,
       title: document.title,

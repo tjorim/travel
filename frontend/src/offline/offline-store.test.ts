@@ -10,6 +10,7 @@ import {
   isStoragePersisted,
   listOfflineCopies,
   openOfflineCopy,
+  offlineContentValidator,
   pinOfflineCopy,
   removeOfflineCopy,
   requestPersistentStorage,
@@ -334,5 +335,49 @@ it("does not recreate a pinned copy after logout interrupts encryption", async (
     expect(await getKeyDisclosure(OWNER)).toBeNull();
   } finally {
     spy.mockRestore();
+  }
+});
+
+it("detects changed metadata without replacing the saved snapshot or its save date", async () => {
+  const copy = await pinOfflineCopy(
+    pinInput({ contentValidator: await offlineContentValidator({ updated_at: "old" }) }),
+  );
+  await revalidateOfflineCopies(OWNER, async () => Response.json({ updated_at: "new" }));
+  const [checked] = await listOfflineCopies(OWNER);
+  expect(checked.newerVersionAvailable).toBe(true);
+  expect(checked.pinnedAt).toBe(copy.pinnedAt);
+  expect(await (await openOfflineCopy(OWNER, copy.id)).text()).toBe("private pdf bytes");
+});
+
+it("keeps unchanged metadata current regardless of object key order", async () => {
+  await pinOfflineCopy(
+    pinInput({
+      contentValidator: await offlineContentValidator({ id: "doc-1", updated_at: "same" }),
+    }),
+  );
+  await revalidateOfflineCopies(OWNER, async () =>
+    Response.json({ updated_at: "same", id: "doc-1" }),
+  );
+  expect((await listOfflineCopies(OWNER))[0].newerVersionAvailable).toBe(false);
+});
+
+it("leaves the lease unchanged after an unknown probe failure", async () => {
+  const copy = await pinOfflineCopy(pinInput());
+  await revalidateOfflineCopies(OWNER, async () => {
+    throw new Error("unexpected failure");
+  });
+  expect((await listOfflineCopies(OWNER))[0]).toEqual(copy);
+});
+
+it("resets the content save date and stale flag when explicitly refreshed", async () => {
+  await pinOfflineCopy(pinInput());
+  const now = Date.now() + 1000;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+  try {
+    const refreshed = await pinOfflineCopy(pinInput({ bytes: bytesOf("updated") }));
+    expect(refreshed.pinnedAt).toBe(now);
+    expect(refreshed.newerVersionAvailable).toBe(false);
+  } finally {
+    clock.mockRestore();
   }
 });

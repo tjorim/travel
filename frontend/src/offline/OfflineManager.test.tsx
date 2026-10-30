@@ -3,11 +3,20 @@ import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
+import { changeLocale } from "../locale";
+import { formatInstant } from "../tracker-model";
+import * as api from "../query/api";
 import { AuthProvider } from "../auth-context";
 import { answerConfirmation } from "../test-confirm";
 import { OfflineManager } from "./OfflineManager";
-import { __resetOfflineStoreForTests, pinOfflineCopy } from "./offline-store";
-import { serveApi } from "../query/serve-api";
+import {
+  __resetOfflineStoreForTests,
+  pinOfflineCopy,
+  listOfflineCopies,
+  offlineContentValidator,
+} from "./offline-store";
+import { http, HttpResponse } from "msw";
+import { server } from "../mocks/server";
 
 function fakeAccessToken(subject: string): string {
   const payload = btoa(JSON.stringify({ sub: subject }))
@@ -21,6 +30,7 @@ const SUBJECT = "owner-1";
 
 afterEach(async () => {
   cleanup();
+  changeLocale("nl");
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   sessionStorage.clear();
@@ -37,14 +47,12 @@ afterEach(async () => {
 function withSession(): void {
   sessionStorage.setItem(
     "travel-tracker-session",
-    JSON.stringify({ accessToken: fakeAccessToken(SUBJECT), expiresAt: Date.now() + 60_000 }),
+    JSON.stringify({ accessToken: fakeAccessToken(SUBJECT), expiresAt: Date.now() + 3_600_000 }),
   );
 }
 
 function stubMetadataFetch(): void {
-  serveApi(
-    vi.fn(() => Promise.resolve(new Response(JSON.stringify({ id: "doc-1" }), { status: 200 }))),
-  );
+  server.use(http.get("/api/*", () => HttpResponse.json({ id: "doc-1" })));
 }
 
 it("shows an empty state without any pinned copies", async () => {
@@ -81,6 +89,7 @@ it("lists a pinned document, opens it, and removes it individually", async () =>
     </AuthProvider>,
   );
   await screen.findByText("Insurance policy");
+  expect(screen.getByText(/^Opgeslagen /)).toBeTruthy();
 
   screen.getByRole("button", { name: "Bekijken" }).click();
   await vi.waitFor(() => expect(openSpy).toHaveBeenCalled());
@@ -249,3 +258,73 @@ it("tells the owner their copies are pending revalidation while offline", async 
     "Je bent offline. Kopieën worden opnieuw gecontroleerd zodra je weer verbinding hebt.",
   );
 });
+
+it.each(["invalid JSON", "unknown error"])("does not renew access after %s", async (failure) => {
+  withSession();
+  const copy = await pinOfflineCopy({
+    subject: SUBJECT,
+    resourceKind: "library_document",
+    resourceId: "doc-1",
+    metadataUrl: "/api/library/documents/doc-1",
+    title: "Saved policy",
+    contentType: "application/pdf",
+    bytes: new TextEncoder().encode("private").buffer as ArrayBuffer,
+  });
+  let probed = false;
+  server.use(
+    http.get("/api/library/documents/doc-1", () => {
+      probed = true;
+      return new HttpResponse("invalid JSON", { headers: { "Content-Type": "application/json" } });
+    }),
+  );
+  if (failure === "unknown error") {
+    vi.spyOn(api, "ownerRequest").mockImplementation(async () => {
+      probed = true;
+      throw new Error("Unexpected probe failure");
+    });
+  }
+  render(
+    <AuthProvider>
+      <OfflineManager />
+    </AuthProvider>,
+  );
+  await screen.findByText("Saved policy");
+  await vi.waitFor(() => expect(probed).toBe(true));
+  await vi.waitFor(() => expect(screen.getByText(/^Opgeslagen /)).toBeTruthy());
+  expect((await listOfflineCopies(SUBJECT))[0].lastValidatedAt).toBe(copy.lastValidatedAt);
+  expect((await listOfflineCopies(SUBJECT))[0].leaseExpiresAt).toBe(copy.leaseExpiresAt);
+});
+
+it.each(["nl", "en"] as const)(
+  "shows saved content age and newer-version guidance in %s",
+  async (locale) => {
+    withSession();
+    changeLocale(locale);
+    const copy = await pinOfflineCopy({
+      subject: SUBJECT,
+      resourceKind: "library_document",
+      resourceId: "doc-1",
+      metadataUrl: "/api/library/documents/doc-1",
+      title: "Saved policy",
+      contentType: "application/pdf",
+      bytes: new TextEncoder().encode("private").buffer as ArrayBuffer,
+      contentValidator: await offlineContentValidator({ id: "doc-1", updated_at: "old" }),
+    });
+    stubMetadataFetch();
+    render(
+      <AuthProvider>
+        <OfflineManager />
+      </AuthProvider>,
+    );
+    await screen.findByText(
+      locale === "nl"
+        ? "Nieuwere versie beschikbaar. Vernieuw de offline kopie waar je deze hebt opgeslagen."
+        : "Newer version available. Refresh the offline copy where you saved it.",
+    );
+    expect(
+      screen.getByText(
+        `${locale === "nl" ? "Opgeslagen" : "Saved"} ${formatInstant(copy.pinnedAt)}`,
+      ),
+    ).toBeTruthy();
+  },
+);

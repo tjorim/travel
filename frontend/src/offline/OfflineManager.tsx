@@ -168,8 +168,11 @@ export function OfflineManager() {
         <div className="saved-records mt-0.5">
           {offline.copies.map((copy) => (
             <article className="excerpt-row" key={copy.id}>
-              <div>
+              <div className="grid gap-1">
                 <strong>{copy.title}</strong>
+                <span className="font-medium">
+                  {m.assets_offline_saved_line({ date: formatMoment(copy.pinnedAt) })}
+                </span>
                 <span>
                   {m.assets_last_checked_valid_until_line({
                     p0: KIND_LABELS[copy.resourceKind],
@@ -178,6 +181,9 @@ export function OfflineManager() {
                     p3: formatMoment(copy.leaseExpiresAt),
                   })}
                 </span>
+                {copy.newerVersionAvailable && (
+                  <span role="status">{m.assets_offline_newer_version_available()}</span>
+                )}
               </div>
               <div className="button-row">
                 <Button className="secondary compact" type="button" onClick={() => void view(copy)}>

@@ -126,6 +126,7 @@ export function DocumentLibraryManager() {
     );
     await offline.pin({
       resourceKind: "library_document",
+      contentMetadata: document,
       resourceId: document.id,
       metadataUrl: `${libraryPath("documents")}/${document.id}`,
       title: document.title,

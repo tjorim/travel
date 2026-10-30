@@ -1705,6 +1705,8 @@
   "assets_packed_line": "{p0} {p1} packed",
   "assets_try_again_line": "Try again: {p0}",
   "assets_offline_copy_saved_on_line": "Offline copy · saved on {p0}",
+  "assets_offline_saved_line": "Saved {date}",
+  "assets_offline_newer_version_available": "Newer version available. Refresh the offline copy where you saved it.",
   "assets_last_checked_valid_until_line": "{p0} · {p1} · last checked {p2} · valid until {p3}",
   "assets_invalid_snapshot": "The offline snapshot is invalid.",
   "assets_projection_summary": [

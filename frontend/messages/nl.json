@@ -1705,6 +1705,8 @@
   "assets_packed_line": "{p0} {p1} ingepakt",
   "assets_try_again_line": "Opnieuw proberen: {p0}",
   "assets_offline_copy_saved_on_line": "Offline kopie · bewaard op {p0}",
+  "assets_offline_saved_line": "Opgeslagen {date}",
+  "assets_offline_newer_version_available": "Nieuwere versie beschikbaar. Vernieuw de offline kopie waar je deze hebt opgeslagen.",
   "assets_last_checked_valid_until_line": "{p0} · {p1} · laatst gecontroleerd {p2} · geldig tot {p3}",
   "assets_invalid_snapshot": "De offline momentopname is ongeldig.",
   "assets_projection_summary": [

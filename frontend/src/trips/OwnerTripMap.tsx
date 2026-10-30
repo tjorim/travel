@@ -223,6 +223,12 @@ export function OwnerTripMap({
     }
     await offline.pin({
       resourceKind: "route_data",
+      contentMetadata: {
+        areas,
+        locations: placesQuery.data,
+        routes: routesQuery.data,
+        visits: visitsQuery.data,
+      },
       resourceId: trip.id,
       metadataUrl: `/api/trips/${trip.id}/offline-map`,
       title: m.owner_map_and_route({ p0: trip.title }),
