@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { sourceCandidates, frozenMessageCalls } from "./locale-audit.mjs";
+import { sourceCandidates, frozenMessageCalls, literalMessageArguments } from "./locale-audit.mjs";
 
 it("finds JSX copy, single-word labels, validators, enum prose and template fragments", () => {
   const source = `const labels = { wait: "Even wachten" }; const validate = () => "Geef een naam";
@@ -48,4 +48,12 @@ it("rejects module-level translations while allowing deferred functions and gett
       "const labels = { get title() { return m.settings(); } }; const notice = () => m.settings();",
     ),
   ).toEqual([]);
+});
+
+it("flags string-literal ternaries inside message arguments", () => {
+  expect(
+    literalMessageArguments(
+      'm.view({ p1: n === 1 ? "versie" : "versies" });\nm.ok({ p: n ? m.a() : "" });',
+    ),
+  ).toEqual([1]);
 });

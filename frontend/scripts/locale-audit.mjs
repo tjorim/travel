@@ -168,6 +168,28 @@ export function frozenMessageCalls(source, file = "source.tsx") {
   });
   return lines;
 }
+/** A ternary of string literals in a message argument bakes one language's wording into the call. */
+export function literalMessageArguments(source, file = "source.tsx") {
+  const lines = [];
+  walk(parse(source, file), (node, ancestors) => {
+    if (
+      node.type === "ConditionalExpression" &&
+      [node.consequent, node.alternate].every(
+        (branch) => branch.type === "Literal" && typeof branch.value === "string",
+      ) &&
+      /[A-Za-zÀ-ž]/.test(`${node.consequent.value}${node.alternate.value}`) &&
+      ancestors.some(
+        (ancestor) =>
+          ancestor.type === "CallExpression" &&
+          ancestor.callee.type === "MemberExpression" &&
+          ancestor.callee.object.type === "Identifier" &&
+          ancestor.callee.object.name === "m",
+      )
+    )
+      lines.push(lineAt(source, node.start));
+  });
+  return lines;
+}
 function files(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(directory, entry.name);
@@ -194,6 +216,10 @@ function main() {
     for (const line of frozenMessageCalls(fs.readFileSync(file, "utf8"), relative))
       errors.push(
         `${relative}:${line}: module-level translated snapshot; retain the message function`,
+      );
+    for (const line of literalMessageArguments(fs.readFileSync(file, "utf8"), relative))
+      errors.push(
+        `${relative}:${line}: string-literal ternary in a message argument; use a plural or select message`,
       );
     for (const candidate of sourceCandidates(fs.readFileSync(file, "utf8"), relative, all)) {
       const reason = exclusions[relative]?.[candidate.text];
