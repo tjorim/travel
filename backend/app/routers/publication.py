@@ -2,10 +2,11 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..audit import SYSTEM_ACTOR, record_audit_event, scope_fingerprint
@@ -109,10 +110,46 @@ def _preview_scope(
 def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurface:
     surface = session.get(PublicSurface, trip_id)
     if surface is None:
-        surface = PublicSurface(trip_id=trip_id, scope={})
-        session.add(surface)
-        session.flush()
+        try:
+            with session.begin_nested():
+                surface = PublicSurface(trip_id=trip_id, scope={})
+                session.add(surface)
+                session.flush()
+        except IntegrityError:
+            # Another owner session may have created the initial surface first.
+            surface = session.get(PublicSurface, trip_id)
+            if surface is None:
+                raise
     return surface
+
+
+def _claim_revision(session: Session, record: PublicSurface | ShareLink, expected: str | None) -> None:
+    """Atomically advance the revision, including for legacy unconditional clients."""
+    model = type(record)
+    key = PublicSurface.trip_id if isinstance(record, PublicSurface) else ShareLink.id
+    identity = record.trip_id if isinstance(record, PublicSurface) else record.id
+    statement = update(model).where(key == identity)
+    if expected is not None:
+        if not re.fullmatch(r'"[0-9]+"', expected):
+            raise ApiException(status_code=400, detail="Invalid revision", code="invalid_revision")
+        statement = statement.where(model.revision == int(expected[1:-1]))
+    result = session.execute(
+        statement.values(revision=model.revision + 1)
+        .returning(model.revision)
+        .execution_options(synchronize_session=False)
+    )
+    if result.scalar_one_or_none() is None:
+        session.rollback()
+        session.refresh(record)
+        current = (
+            _public_status(record) if isinstance(record, PublicSurface) else ShareLinkResponse.model_validate(record)
+        )
+        raise ApiException(
+            code="scope_revision_conflict",
+            status_code=412,
+            detail={"code": "scope_revision_conflict", "current": current.model_dump(mode="json")},
+        )
+    session.refresh(record)
 
 
 # --- Owner: public follower view -------------------------------------------------
@@ -126,10 +163,15 @@ def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurfa
 
 @router.put("/public-projection", response_model=PublicProjectionStatusResponse)
 def set_public_projection_scope(
-    trip_id: Identifier, payload: ShareScopeInput, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier,
+    payload: ShareScopeInput,
+    session: SessionDep,
+    subject: SubjectDep,
+    if_match: Annotated[str | None, Header()] = None,
 ) -> PublicProjectionStatusResponse:
     scope = _apply_scope(session, trip_id, subject, payload)
     surface = _get_or_create_surface(session, trip_id)
+    _claim_revision(session, surface, if_match)
     before = scope_fingerprint(surface.scope)
     surface.scope = scope
     after = scope_fingerprint(scope)
@@ -268,12 +310,18 @@ def get_public_projection_status(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
-    return _public_status(_get_or_create_surface(session, trip_id))
+    surface = _get_or_create_surface(session, trip_id)
+    session.commit()
+    return _public_status(surface)
 
 
 def _public_status(surface: PublicSurface) -> PublicProjectionStatusResponse:
     return PublicProjectionStatusResponse(
-        trip_id=surface.trip_id, scope=surface.scope, surface_state=surface.state, slug=surface.slug
+        revision=surface.revision,
+        trip_id=surface.trip_id,
+        scope=surface.scope,
+        surface_state=surface.state,
+        slug=surface.slug,
     )
 
 
@@ -370,7 +418,12 @@ def get_share_link(trip_id: Identifier, link_id: Identifier, session: SessionDep
 
 @router.patch("/share-links/{link_id}", response_model=ShareLinkResponse)
 def update_share_link(
-    trip_id: Identifier, link_id: Identifier, payload: ShareLinkUpdate, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier,
+    link_id: Identifier,
+    payload: ShareLinkUpdate,
+    session: SessionDep,
+    subject: SubjectDep,
+    if_match: Annotated[str | None, Header()] = None,
 ) -> ShareLink:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state not in EDITABLE_LINK_STATES:
@@ -379,6 +432,7 @@ def update_share_link(
             detail="A revoked or expired link cannot be edited",
             code="a_revoked_or_expired_link_cannot_be_edited",
         )
+    _claim_revision(session, link, if_match)
     if payload.label is not None:
         link.label = payload.label
     if payload.scope is not None:

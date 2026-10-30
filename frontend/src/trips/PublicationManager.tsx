@@ -6,7 +6,7 @@ import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { errorMessage, type ErrorFallback } from "../query/api";
+import { ApiError, errorMessage, type ErrorFallback } from "../query/api";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { useOwner, useTripResource } from "../query/owner-queries";
 import type { Projection } from "../ProjectionView";
@@ -78,11 +78,33 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const selectedLink = links.find((link) => link.id === editingLinkId) ?? null;
   const lockedLink = selectedLink?.state === "revoked" || selectedLink?.state === "expired";
 
+  const publicRevision = useRef(1);
+  const linkRevision = useRef(1);
+  const [publicConflict, setPublicConflict] = useState<PublicProjectionStatus | null>(null);
+  const [linkConflict, setLinkConflict] = useState<ShareLink | null>(null);
+  async function protect<T>(save: () => Promise<T>, conflict: (current: T) => void): Promise<T> {
+    try {
+      return await save();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 412) {
+        const detail = error.diagnostic as { code?: string; current?: T };
+        if (detail?.code === "scope_revision_conflict" && detail.current) conflict(detail.current);
+      }
+      throw error;
+    }
+  }
+
   const publicRecord = useRecordForm<PublicValues, PublicProjectionStatus>({
     defaultValues: { scope: emptyScope() },
     fallback: m.assets_the_public_scope_could_not_be_saved,
-    submit: (values) => savePublic.mutateAsync(values.scope),
+    submit: (values) =>
+      protect(
+        () => savePublic.mutateAsync({ scope: values.scope, revision: publicRevision.current }),
+        setPublicConflict,
+      ),
     onSuccess: (saved) => {
+      publicRevision.current = saved.revision;
+      setPublicConflict(null);
       publicRecord.load({ scope: cloneScope(saved.scope) });
       setNotice(textNotice(() => m.assets_selection_saved_unselected_content_stays_private()));
     },
@@ -93,7 +115,16 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     serverFields: { label: "label" },
     // Saving never activates: a new link is created as a draft the owner can preview, then activate explicitly.
     submit: (values) =>
-      saveLink.mutateAsync({ id: editingLinkId, label: values.label.trim(), scope: values.scope }),
+      protect(
+        () =>
+          saveLink.mutateAsync({
+            id: editingLinkId,
+            label: values.label.trim(),
+            scope: values.scope,
+            revision: linkRevision.current,
+          }),
+        setLinkConflict,
+      ),
     onSuccess: (saved) => {
       const wasNew = editingLinkId === null;
       loadLink(saved);
@@ -112,11 +143,16 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   publicDirty.current = publicRecord.dirty;
   const serverScope = publicStatus?.scope;
   useEffect(() => {
-    if (serverScope && !publicDirty.current) publicRecord.load({ scope: cloneScope(serverScope) });
+    if (serverScope && !publicDirty.current) {
+      publicRevision.current = publicStatus.revision;
+      publicRecord.load({ scope: cloneScope(serverScope) });
+    }
     // `load` is stable; only a new server scope should reload the editor.
   }, [serverScope]);
 
   function loadLink(link: ShareLink) {
+    linkRevision.current = link.revision;
+    setLinkConflict(null);
     setLinkEditor({ linkId: link.id });
     linkRecord.load({ label: link.label, scope: cloneScope(link.scope) });
     setPreview(null);
@@ -125,6 +161,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   }
 
   function loadNewLink() {
+    setLinkConflict(null);
     setLinkEditor({ linkId: null });
     linkRecord.load({ label: "", scope: emptyScope() });
     setPreview(null);
@@ -149,6 +186,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
 
   function closeLinkEditor() {
     if (linkEditor === null) return;
+    setLinkConflict(null);
     setLinkEditor(null);
     linkRecord.load({ label: "", scope: emptyScope() });
   }
@@ -311,6 +349,38 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         </div>
         <VisibilityOverview tripId={trip.id} catalog={catalog} />
       </div>
+      {publicConflict && (
+        <div role="alert" className="grid gap-2">
+          <p>{m.sharing_scope_conflict()}</p>
+          <ScopeEditor
+            name={m.sharing_server_selection()}
+            scope={publicConflict.scope}
+            setScope={() => undefined}
+            catalog={catalog}
+            hasDates={Boolean(trip.starts_on)}
+            tripId={trip.id}
+            onError={fail(m.owner_visibility_save_failed)}
+            disabled
+          />
+          <Button
+            onClick={() => {
+              publicRevision.current = publicConflict.revision;
+              setPublicConflict(null);
+            }}
+          >
+            {m.sharing_keep_mine()}
+          </Button>
+          <Button
+            onClick={() => {
+              publicRevision.current = publicConflict.revision;
+              publicRecord.load({ scope: cloneScope(publicConflict.scope) });
+              setPublicConflict(null);
+            }}
+          >
+            {m.sharing_use_theirs()}
+          </Button>
+        </div>
+      )}
       <PublicSection
         trip={trip}
         status={publicStatus}
@@ -342,6 +412,31 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       >
         {linkEditor !== null && (
           <div className="publication-panel">
+            {linkConflict && (
+              <div role="alert" className="grid gap-2">
+                <p>{m.sharing_scope_conflict()}</p>
+                <p>{linkConflict.label}</p>
+                <ScopeEditor
+                  name={m.sharing_server_selection()}
+                  scope={linkConflict.scope}
+                  setScope={() => undefined}
+                  catalog={catalog}
+                  hasDates={Boolean(trip.starts_on)}
+                  tripId={trip.id}
+                  onError={fail(m.owner_visibility_save_failed)}
+                  disabled
+                />
+                <Button
+                  onClick={() => {
+                    linkRevision.current = linkConflict.revision;
+                    setLinkConflict(null);
+                  }}
+                >
+                  {m.sharing_keep_mine()}
+                </Button>
+                <Button onClick={() => loadLink(linkConflict)}>{m.sharing_use_theirs()}</Button>
+              </div>
+            )}
             <RecordForm
               record={linkRecord}
               submitLabel={selectedLink ? m.assets_save_link() : m.assets_save_draft()}

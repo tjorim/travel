@@ -62,6 +62,7 @@ export async function mockApi(page: Page) {
     if (path === "/api/trips") return json(route, [ownerTrip]);
     if (path === `/api/trips/${ownerTrip.id}/public-projection`) {
       return json(route, {
+        revision: 1,
         trip_id: ownerTrip.id,
         scope: {
           schema_version: "travel/share-scope@1",

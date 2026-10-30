@@ -1994,5 +1994,9 @@
   "packing_trip_metadata_unavailable": "Live reisinformatie is niet beschikbaar. Hieronder kun je opgeslagen paklijsten bekijken; maak opnieuw verbinding om te bewerken.",
   "packing_no_valid_offline_copy": "Er is geen geldige opgeslagen paklijst voor deze reis. Kopieën waarvan de offline geldigheid is verlopen, worden verwijderd. Maak opnieuw verbinding om een kopie op te slaan.",
   "sharing_preview_unsaved_note": "Alleen geselecteerde velden verschijnen hieronder. Privégegevens, boekingen en andere niet-geselecteerde velden blijven verborgen. Dit voorbeeld toont je huidige selectie, ook als die nog niet is opgeslagen. Het wijzigt niets voor bezoekers en maakt geen toegangscode aan; sla de selectie op om haar toe te passen.",
-  "sharing_draft_saved_but_preview_failed": "Het concept van de link is opgeslagen, maar het voorbeeld kon niet worden geladen."
+  "sharing_draft_saved_but_preview_failed": "Het concept van de link is opgeslagen, maar het voorbeeld kon niet worden geladen.",
+  "sharing_scope_conflict": "Een andere sessie heeft deze selectie gewijzigd. Bekijk hieronder de huidige serverselectie. Behoud je concept om het opnieuw op te slaan, of gebruik de serverselectie.",
+  "sharing_keep_mine": "Mijn concept behouden",
+  "sharing_use_theirs": "Serverselectie gebruiken",
+  "sharing_server_selection": "Huidige serverselectie"
 }

@@ -30,9 +30,17 @@ export function usePublicationMutations(tripId: string) {
     ownerKeys.tripResource(subject, tripId, "overview"),
   ];
 
-  const savePublic = useOwnerMutation<ShareScope, PublicProjectionStatus>({
+  const savePublic = useOwnerMutation<
+    { scope: ShareScope; revision: number },
+    PublicProjectionStatus
+  >({
     fallback: m.assets_the_public_scope_could_not_be_saved,
-    request: (scope) => ({ path, method: "PUT", body: scope }),
+    request: ({ scope, revision }) => ({
+      path,
+      method: "PUT",
+      body: scope,
+      headers: { "If-Match": `"${revision}"` },
+    }),
     invalidate: refreshStatus,
   });
   const previewPublicScope = useOwnerMutation<ShareScope, ProjectionDocument>({
@@ -56,14 +64,15 @@ export function usePublicationMutations(tripId: string) {
     invalidate: (subject) => [...refreshStatus(subject), ownerKeys.trips(subject)],
   });
   const saveLink = useOwnerMutation<
-    { id: string | null; label: string; scope: ShareScope },
+    { id: string | null; label: string; scope: ShareScope; revision?: number },
     ShareLink
   >({
     fallback: m.assets_the_share_link_could_not_be_saved,
-    request: ({ id, label, scope }) => ({
+    request: ({ id, label, scope, revision }) => ({
       path: id ? `${linksPath}/${id}` : linksPath,
       method: id ? "PATCH" : "POST",
       body: { label, scope },
+      ...(id ? { headers: { "If-Match": `"${revision}"` } } : {}),
     }),
     invalidate: refreshLinks,
   });

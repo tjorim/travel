@@ -75,7 +75,16 @@ const trip: Trip = {
   ],
 };
 const link = (id: string, label: string, state: ShareLink["state"] = "draft"): ShareLink =>
-  ({ id, series_id: id, label, state, token: null, expires_at: null, scope: scope() }) as ShareLink;
+  ({
+    revision: 1,
+    id,
+    series_id: id,
+    label,
+    state,
+    token: null,
+    expires_at: null,
+    scope: scope(),
+  }) as ShareLink;
 
 let api: FakeApi;
 let status: PublicProjectionStatus;
@@ -100,6 +109,7 @@ const SECRET = "secret-token-123";
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   status = {
+    revision: 1,
     trip_id: "trip",
     slug: "exampleland",
     surface_state: "unpublished",
@@ -721,4 +731,41 @@ it("shows what each audience receives and words the review warnings in Dutch", a
   expect(
     review.getByText("De pagina voor iedereen toont de reisdatums (alleen maanden)."),
   ).toBeTruthy();
+});
+
+it("retains a draft across a deferred scope conflict and retries with the chosen revision", async () => {
+  let resolve!: () => void;
+  const pending = new Promise<void>((done) => {
+    resolve = done;
+  });
+  const headers: (string | null)[] = [];
+  server.use(
+    http.put("/api/trips/trip/public-projection", async ({ request }) => {
+      headers.push(request.headers.get("If-Match"));
+      const candidate = await request.json();
+      if (headers.length === 1) {
+        await pending;
+        return HttpResponse.json(
+          { detail: { code: "scope_revision_conflict", current: { ...status, revision: 2 } } },
+          { status: 412 },
+        );
+      }
+      return HttpResponse.json({ ...status, scope: candidate, revision: 3 });
+    }),
+  );
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const checkbox = (await openPublicGroup("Reisupdates")).getByRole("checkbox", {
+    name: /Stad ↔ natuur/,
+  });
+  fireEvent.click(checkbox);
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await waitFor(() => expect(headers).toEqual(['"1"']));
+  await act(async () => {
+    resolve();
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Mijn concept behouden" }));
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await waitFor(() => expect(headers).toEqual(['"1"', '"2"']));
+  await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
 });

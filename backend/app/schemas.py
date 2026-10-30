@@ -1303,6 +1303,7 @@ class PublicTripCard(BaseModel):
 
 
 class PublicProjectionStatusResponse(BaseModel):
+    revision: int
     trip_id: str
     scope: dict
     surface_state: SurfaceState
@@ -1335,6 +1336,7 @@ class ShareLinkActivateRequest(InputModel):
 
 
 class ShareLinkResponse(BaseModel):
+    revision: int
     id: str
     series_id: str
     label: str
