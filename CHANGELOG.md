@@ -10,6 +10,9 @@ All notable changes to the travel hub are documented here.
   and make the locale audit flag string-literal ternaries in message arguments
   (#18).
 
+- Update vulnerable backend and Router/seroval dependencies; audit both lockfiles
+  in CI and weekly, blocking high/critical or unclassified advisories (#35).
+
 - Use a distinctive synthetic postal code in the public-location privacy test to
   prevent random public IDs from causing false disclosure failures.
 - Remove the custom source privacy scripts, their tests and CI job. Retain
