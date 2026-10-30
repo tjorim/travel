@@ -85,13 +85,15 @@ IMAGE_CONTENT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/
 
 
 @contextmanager
-def _decoded_image(data: bytes) -> Generator[Image.Image]:
+def _decoded_image(data: bytes, *, preview_size: int | None = None) -> Generator[Image.Image]:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as header:
                 header.verify()
             with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as image:
+                if preview_size is not None:
+                    image.draft("RGB", (preview_size, preview_size))
                 image.load()
                 yield image
     except (OSError, ValueError, SyntaxError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
@@ -619,13 +621,7 @@ THUMBNAIL_DIMENSION = 320
 
 
 def generate_thumbnail(storage: ObjectStorage, *, media_asset: MediaAsset) -> tuple[bytes, str]:
-    """Render a small, private identification thumbnail for a photo.
-
-    Generated on the fly from the original on every request rather than
-    stored: it never outlives the media it identifies, and a soft-deleted
-    or purged original simply stops producing one. Only photos have a
-    thumbnail; a video keeps its filename-only listing until reviewed.
-    """
+    """Render a bounded, metadata-stripped private photo preview."""
     if media_asset.media_kind != MediaKind.PHOTO:
         raise MediaImportError("Only photos have thumbnails", code="only_photos_have_thumbnails")
     original = media_asset.original_object
@@ -633,12 +629,47 @@ def generate_thumbnail(storage: ObjectStorage, *, media_asset: MediaAsset) -> tu
         raise MediaImportError("The original is not available", code="the_original_is_not_available")
 
     data = storage.get(original.object_key)
-    with _decoded_image(data) as opened:
+    with _decoded_image(data, preview_size=THUMBNAIL_DIMENSION) as opened:
         oriented = ImageOps.exif_transpose(opened)
         oriented.thumbnail((THUMBNAIL_DIMENSION, THUMBNAIL_DIMENSION))
         buffer = io.BytesIO()
         oriented.convert("RGB").save(buffer, format=DERIVATIVE_FORMAT, quality=80, method=6)
     return buffer.getvalue(), DERIVATIVE_CONTENT_TYPE
+
+
+def cached_thumbnail(session: Session, storage: ObjectStorage, *, media_asset: MediaAsset) -> tuple[bytes, str]:
+    """Serialize lazy creation with other requests and soft deletion.
+
+    Cached previews use existing derivative/object inventory and therefore the
+    same recoverable-deletion window and locked purge as their original.
+    """
+    session.scalar(select(MediaAsset).where(MediaAsset.id == media_asset.id).with_for_update())
+    session.refresh(media_asset)
+    if media_asset.deleted_at is not None or media_asset.original_object.state != ObjectState.AVAILABLE:
+        raise MediaImportError("The original is not available", code="the_original_is_not_available")
+    cached = session.scalar(
+        select(MediaDerivative).where(
+            MediaDerivative.media_asset_id == media_asset.id,
+            MediaDerivative.purpose == DerivativePurpose.OWNER_PREVIEW,
+            MediaDerivative.processing_backend == "thumbnail",
+        )
+    )
+    if cached is not None and cached.object is not None and cached.object.state == ObjectState.AVAILABLE:
+        return storage.get(cached.object.object_key), cached.object.content_type
+    data, content_type = generate_thumbnail(storage, media_asset=media_asset)
+    stored = _store_bytes(session, storage, trip_id=media_asset.trip_id, data=data, content_type=content_type)
+    session.add(
+        MediaDerivative(
+            trip_id=media_asset.trip_id,
+            media_asset_id=media_asset.id,
+            object_id=stored.id,
+            purpose=DerivativePurpose.OWNER_PREVIEW,
+            processing_backend="thumbnail",
+            metadata_stripped_at=datetime.now(UTC),
+        )
+    )
+    session.commit()
+    return data, content_type
 
 
 def create_derivative(
@@ -695,6 +726,8 @@ def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
     """Soft-delete: gone from owner queries immediately. Physical bytes are
     purged later by `purge_deleted_media`, after the recoverable-deletion
     window, never synchronously here."""
+    session.scalar(select(MediaAsset).where(MediaAsset.id == media_asset.id).with_for_update())
+    session.refresh(media_asset)
     # A removed original is no longer an attachment. Keep no hidden link on a
     # reisupdate that might later be mistaken for a publishable reference.
     for link in list(media_asset.update_links):

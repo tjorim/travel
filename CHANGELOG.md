@@ -6,6 +6,8 @@ All notable changes to the travel hub are documented here.
 
 ### Changed
 
+- Cache private photo thumbnails as stored owner previews with short-lived browser caching and checksum validators (#25).
+
 - Show scope and record visibility changes in the owner sharing history in Dutch and English (#16).
 
 - Task completion and reopen buttons now include the task title in their accessible name (#7).
