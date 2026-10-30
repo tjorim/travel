@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { PackingTripOffline } from "../trips/packing/PackingTripOffline";
 import { useAuth } from "../auth-context";
 import { useCapture } from "../capture-context";
 import { useLocale } from "../locale";
@@ -115,6 +116,8 @@ export function TripWorkspaceView({
 
   if (!session) return <EmptyState title={m.trips()}>{message}</EmptyState>;
   if (!trip) {
+    if (section === "packing" && (tripsQuery.isError || tripsQuery.fetchStatus === "paused"))
+      return <PackingTripOffline tripId={tripId} onRetry={() => void tripsQuery.refetch()} />;
     if (tripsQuery.isPending) return <EmptyState title={m.loading_trip()}>{message}</EmptyState>;
     if (tripsQuery.isError) return <EmptyState title={m.unavailable_trip()}>{message}</EmptyState>;
     return <EmptyState title={m.trip_not_found()}>{m.owner_trip_unavailable()}</EmptyState>;

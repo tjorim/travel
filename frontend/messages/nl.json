@@ -1990,5 +1990,7 @@
   "audit_travel_update": "Reisupdate",
   "audit_media_derivative": "Mediaversie",
   "owner_save_in_progress": "Opslaan bezig",
-  "owner_wait_for_save": "Wacht tot het opslaan klaar is voordat je deze pagina verlaat."
+  "owner_wait_for_save": "Wacht tot het opslaan klaar is voordat je deze pagina verlaat.",
+  "packing_trip_metadata_unavailable": "Live reisinformatie is niet beschikbaar. Hieronder kun je opgeslagen paklijsten bekijken; maak opnieuw verbinding om te bewerken.",
+  "packing_no_valid_offline_copy": "Er is geen geldige opgeslagen paklijst voor deze reis. Kopieën waarvan de offline geldigheid is verlopen, worden verwijderd. Maak opnieuw verbinding om een kopie op te slaan."
 }

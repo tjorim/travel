@@ -9,3 +9,6 @@ node_modules
 .ui-maintenance-record.json.*.tmp
 ui-maintenance.json.*.tmp
 ui-upstream.json.*.tmp
+
+# Production service-worker regression artifacts
+test-results-offline/

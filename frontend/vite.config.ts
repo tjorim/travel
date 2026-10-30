@@ -75,7 +75,7 @@ export default defineConfig({
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   test: {
     // Playwright specs in e2e/ run with `pnpm e2e`, not under Vitest.
-    exclude: [...configDefaults.exclude, "e2e/**"],
+    exclude: [...configDefaults.exclude, "e2e/**", "e2e-production/**"],
     setupFiles: ["./src/test-setup.ts"],
     // The DOM suites render whole Base UI + TanStack form trees, and each file pays its own cold import of that
     // graph (isolation re-evaluates ~200 modules per file). Alone a test takes under 2 s, but on a busy host the same

@@ -6,6 +6,7 @@ All notable changes to the travel hub are documented here.
 
 - Add a return link to all public trips on public trip pages, including unavailable states (#4).
 - Document recoverable share-link tokens and reject the default verifier secret outside development (#20).
+- Reopen saved owner packing lists from trip deep links when live trip information is unavailable (#11).
 
 - Owner share-link reads now show links past their expiry as expired and record the expiry audit event at the real expiry time, without waiting for a visit.
 
