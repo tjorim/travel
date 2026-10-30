@@ -297,3 +297,32 @@ def test_travel_update_rejects_a_location_or_an_area_from_another_trip() -> None
         },
     )
     assert rejected_trip.status_code == 422
+
+
+def test_place_search_ignores_accents_and_treats_wildcards_literally() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    for label in ("Liège", "Zürich", "Unassigned", "100% Club", "Sint_Jan"):
+        owner.post(f"{base}/areas", json={"label": label})
+    area = owner.get(f"{base}/areas").json()[0]
+    owner.post(
+        f"{base}/locations", json={"area_id": area["id"], "label": "Gare des Guillemins", "display_name": "Café Liège"}
+    )
+
+    def labels(path: str, q: str) -> list[str]:
+        response = owner.get(f"{base}/{path}", params={"q": q})
+        assert response.status_code == 200
+        return [item["label"] for item in response.json()]
+
+    assert labels("areas", "liege") == ["Liège"]
+    assert labels("areas", "LIÈGE") == ["Liège"]
+    assert labels("areas", "zurich") == ["Zürich"]
+    assert labels("areas", "%") == ["100% Club"]
+    assert labels("areas", "_") == ["Sint_Jan"]
+    assert labels("areas", "\\") == []
+    assert labels("areas", "nowhere") == []
+    assert [item["label"] for item in owner.get(f"{base}/locations", params={"q": "cafe liege"}).json()] == [
+        "Gare des Guillemins"
+    ]
+    assert owner.get(f"{base}/locations", params={"q": "%"}).json() == []
