@@ -7,6 +7,7 @@ All notable changes to the travel hub are documented here.
 ### Changed
 
 - Protect record drafts during pending saves, browser navigation and reload recovery (#12).
+- Cache private photo thumbnails as stored owner previews with short-lived browser caching and checksum validators (#25).
 
 - Show scope and record visibility changes in the owner sharing history in Dutch and English (#16).
 

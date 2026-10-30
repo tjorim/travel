@@ -19,6 +19,7 @@ from ..media.service import (
     ImportSessionExpiredError,
     MediaImportError,
     ProviderResolver,
+    cached_thumbnail,
     complete_import_session,
     create_derivative,
     create_import_session,
@@ -26,7 +27,6 @@ from ..media.service import (
     delete_media_derivative,
     direct_upload,
     expire_stalled_video_derivatives,
-    generate_thumbnail,
     queue_video_derivative,
     read_bounded_upload,
 )
@@ -286,14 +286,19 @@ def get_media_original(
 
 @router.get("/{media_id}/thumbnail")
 def get_media_thumbnail(
-    trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
-) -> StreamingResponse:
+    trip_id: str, media_id: str, request: Request, session: SessionDep, subject: SubjectDep, storage: StorageDep
+) -> Response:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     try:
-        data, content_type = generate_thumbnail(storage, media_asset=asset)
+        data, content_type = cached_thumbnail(session, storage, media_asset=asset)
     except MediaImportError as error:
         raise service_exception(status.HTTP_404_NOT_FOUND, error) from error
-    return StreamingResponse(iter([data]), media_type=content_type, headers={"Cache-Control": "no-store"})
+    etag = f'"thumbnail-v1-{asset.original_object.sha256}"'
+    headers = {"Cache-Control": "private, max-age=300", "ETag": etag, "Vary": "Cookie, Authorization"}
+    validators = [value.strip().removeprefix("W/") for value in request.headers.get("if-none-match", "").split(",")]
+    if etag in validators or "*" in validators:
+        return Response(status_code=304, headers=headers)
+    return Response(data, media_type=content_type, headers=headers)
 
 
 # --- Share/preview derivatives: generated only for owner-selected media -----------
@@ -356,7 +361,11 @@ def list_derivatives(
 ) -> list[MediaDerivativeResponse]:
     asset = owned_media_asset(session, trip_id, subject, media_id)
     expire_stalled_video_derivatives(session, asset.derivatives)
-    return [_derivative_response(derivative, trip_id) for derivative in asset.derivatives]
+    return [
+        _derivative_response(derivative, trip_id)
+        for derivative in asset.derivatives
+        if derivative.processing_backend != "thumbnail"
+    ]
 
 
 @router.get("/{media_id}/derivatives/{derivative_id}", response_model=MediaDerivativeResponse)
