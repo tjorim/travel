@@ -18,6 +18,7 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
+      - "platform:backend"
     versioning-strategy: "increase"
     groups:
       # fastmcp pulls in mcp and mcp-types; keep them moving together
@@ -62,6 +63,7 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
+      - "platform:frontend"
     versioning-strategy: "increase"
     groups:
       react:
