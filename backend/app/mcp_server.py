@@ -905,6 +905,8 @@ class TravelMcpBackend:
             needs_confirmation=True,
         )
 
+    # MCP exposure rule: ordinary link responses use McpShareLinkResponse, never
+    # the owner REST ShareLinkResponse. Only activate/rotate return capabilities.
     def list_share_links(self, trip_id: str) -> list[dict[str, Any]]:
         """List named share links without returning any capability token."""
         return self._call(
@@ -913,7 +915,7 @@ class TravelMcpBackend:
             None,
             trip_id,
             lambda s, sub: publication.list_share_links(trip_id, s, sub),
-            lambda x: _models(x, schemas.ShareLinkResponse),
+            lambda x: _models(x, schemas.McpShareLinkResponse),
         )
 
     def create_share_link(
@@ -926,7 +928,7 @@ class TravelMcpBackend:
             None,
             trip_id,
             lambda s, sub: publication.create_share_link(trip_id, payload, s, sub),
-            lambda x: _model(x, schemas.ShareLinkResponse),
+            lambda x: _model(x, schemas.McpShareLinkResponse),
             confirm=confirm,
             needs_confirmation=True,
         )
@@ -939,7 +941,7 @@ class TravelMcpBackend:
             link_id,
             trip_id,
             lambda s, sub: publication.get_share_link(trip_id, link_id, s, sub),
-            lambda x: _model(x, schemas.ShareLinkResponse),
+            lambda x: _model(x, schemas.McpShareLinkResponse),
         )
 
     def update_share_link(
@@ -952,7 +954,7 @@ class TravelMcpBackend:
             link_id,
             trip_id,
             lambda s, sub: publication.update_share_link(trip_id, link_id, payload, s, sub),
-            lambda x: _model(x, schemas.ShareLinkResponse),
+            lambda x: _model(x, schemas.McpShareLinkResponse),
             confirm=confirm,
             needs_confirmation=True,
         )
@@ -995,7 +997,7 @@ class TravelMcpBackend:
             lambda s, sub: publication.revoke_share_link(
                 trip_id, link_id, s, sub, schemas.AuditReasonInput(reason=reason)
             ),
-            lambda x: _model(x, schemas.ShareLinkResponse),
+            lambda x: _model(x, schemas.McpShareLinkResponse),
             confirm=confirm,
             needs_confirmation=True,
         )

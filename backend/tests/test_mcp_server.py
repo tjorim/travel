@@ -214,6 +214,62 @@ def test_mcp_share_activation_and_rotation_return_complete_visitor_urls(
     assert rotated["share_url"] == f"https://travel.example.test/share/{rotated['token']}"
 
 
+@pytest.mark.parametrize("lifecycle", ["draft", "active", "revoked", "rotated"])
+def test_mcp_share_metadata_never_returns_capabilities(backend: TravelMcpBackend, lifecycle: str) -> None:
+    from app.routers import publication
+
+    trip_id = backend.create_trip(schemas.TripCreate(title="Share metadata"))["id"]
+    created = backend.create_share_link(trip_id, schemas.ShareLinkCreate(label="Family"), confirm=True)
+    link_id = created["id"]
+    responses = [created]
+    tokens = []
+    if lifecycle != "draft":
+        activated = backend.activate_share_link(trip_id, link_id, schemas.ShareLinkActivateRequest(), confirm=True)
+        tokens.append(activated["token"])
+    if lifecycle == "revoked":
+        responses.append(backend.revoke_share_link(trip_id, link_id, confirm=True))
+    if lifecycle == "rotated":
+        rotated = backend.rotate_share_link(trip_id, link_id, schemas.ShareLinkActivateRequest(), confirm=True)
+        assert rotated["token"] != tokens[0]
+        tokens.append(rotated["token"])
+        responses.append(backend.get_share_link(trip_id, link_id))
+        link_id = rotated["id"]
+
+    responses.extend(backend.list_share_links(trip_id))
+    responses.append(backend.get_share_link(trip_id, link_id))
+    if lifecycle != "revoked":
+        responses.append(
+            backend.update_share_link(trip_id, link_id, schemas.ShareLinkUpdate(label="Friends"), confirm=True)
+        )
+    assert all(response["id"] and response["scope"] is not None for response in responses)
+    responses.append(backend.get_trip_overview(trip_id))
+    responses.append(backend.preview_share_link(trip_id, link_id))
+
+    def assert_no_capabilities(value: object) -> None:
+        if isinstance(value, dict):
+            assert "token" not in value
+            assert "share_url" not in value
+            for nested in value.values():
+                assert_no_capabilities(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_no_capabilities(nested)
+
+    assert_no_capabilities(responses)
+    serialized = json.dumps(responses)
+    assert all(token not in serialized for token in tokens)
+
+    # The same owner REST handler/model still supplies the PWA's reusable URL secret.
+    with TestingSessionLocal() as session:
+        rest_links = [
+            schemas.ShareLinkResponse.model_validate(link).model_dump()
+            for link in publication.list_share_links(trip_id, session, "owner-1")
+        ]
+    assert all("token" in link for link in rest_links)
+    if lifecycle in {"active", "rotated"}:
+        assert next(link for link in rest_links if link["id"] == link_id)["token"] == tokens[-1]
+
+
 def test_mcp_revokes_an_active_share_link(backend: TravelMcpBackend) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Shareable"))
     link = backend.create_share_link(trip["id"], schemas.ShareLinkCreate(label="Family"), confirm=True)

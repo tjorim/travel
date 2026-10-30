@@ -1292,6 +1292,20 @@ class ShareLinkActivateResponse(ShareLinkResponse):
     pass
 
 
+# MCP share-link metadata is deliberately independent of the token-bearing REST model.
+class McpShareLinkResponse(BaseModel):
+    id: str
+    series_id: str
+    label: str
+    state: LinkState
+    scope: dict
+    expires_at: datetime | None
+    created_at: datetime
+    activated_at: datetime | None
+    revoked_at: datetime | None
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AuditReasonInput(InputModel):
     """An optional owner-entered reason attached to a lifecycle-transition
     audit event; never required, since most transitions are self-explanatory."""
