@@ -23,6 +23,8 @@ import { SharingReview, VisibilityOverview } from "./publication/SharingReview";
 import { usePublicationCatalog } from "./publication/use-publication-catalog";
 import { usePublicationMutations } from "./publication/use-publication-mutations";
 
+import { AuditList } from "./publication/AuditList";
+
 type LinkValues = { label: string; scope: ShareScope };
 
 export function PublicationManager({ trip }: { trip: Trip }) {
@@ -397,6 +399,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           onClose={() => setPreview(null)}
         />
       )}
+      <AuditList tripId={trip.id} />
       {confirmation.dialog}
     </section>
   );

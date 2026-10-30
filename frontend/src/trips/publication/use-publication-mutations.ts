@@ -20,10 +20,12 @@ export function usePublicationMutations(tripId: string) {
   const path = tripPath(tripId, "public-projection");
   const linksPath = tripPath(tripId, "share-links");
   const refreshStatus = (subject: string) => [
+    [...ownerKeys.trip(subject, tripId), "audit-events"],
     ownerKeys.tripResource(subject, tripId, "public-projection"),
     ownerKeys.tripResource(subject, tripId, "overview"),
   ];
   const refreshLinks = (subject: string) => [
+    [...ownerKeys.trip(subject, tripId), "audit-events"],
     ownerKeys.tripResource(subject, tripId, "share-links"),
     ownerKeys.tripResource(subject, tripId, "overview"),
   ];
