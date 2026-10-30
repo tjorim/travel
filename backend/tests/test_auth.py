@@ -146,7 +146,7 @@ def jwks_endpoint(monkeypatch: pytest.MonkeyPatch):
         "private_key": private_key,
     }
 
-    def urlopen(request, *, timeout, context):
+    def open_url(self, request, data=None, timeout=None):
         assert timeout == 3
         state["fetches"] += 1
         if state["offline"]:
@@ -154,7 +154,7 @@ def jwks_endpoint(monkeypatch: pytest.MonkeyPatch):
         return io.BytesIO(json.dumps({"keys": state["keys"]}).encode())
 
     _cached_signing_keys.cache_clear()
-    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("urllib.request.OpenerDirector.open", open_url)
     monkeypatch.setattr("app.auth.time.monotonic", lambda: state["now"])
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
