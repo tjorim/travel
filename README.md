@@ -26,7 +26,7 @@ See [Application backend](#application-backend) and
 below. `pnpm dev` proxies `/api` to `http://localhost:8000`, so run the API
 there. Locally neither a database container nor Keycloak is needed: the API
 defaults to a SQLite file, built from the models with
-`cd backend && uv run python -m app.dev_schema` (add `--reset` after a model
+`cd backend && TRAVEL_ENVIRONMENT=development uv run python -m app.dev_schema` (add `--reset` after a model
 change). The Alembic migrations target PostgreSQL and do not run on SQLite. export one
 `TRAVEL_DEV_AUTH_BYPASS_TOKEN` (any string) for both processes and start the API
 with `TRAVEL_ENVIRONMENT=development`. `pnpm dev` then authenticates `/api`
@@ -102,11 +102,17 @@ uv sync --all-groups
 uv run pytest
 ```
 
-The production service requires `TRAVEL_DATABASE_URL` and a Keycloak/OIDC
+The production service requires `TRAVEL_DATABASE_URL`, a non-default
+`TRAVEL_SHARE_LINK_SECRET`, and a Keycloak/OIDC
 validator configuration (`TRAVEL_OIDC_ISSUER_URL`, `TRAVEL_OIDC_JWKS_URL`, and
 `TRAVEL_OIDC_AUDIENCE`), provided in production by the `travel` Keycloak realm
-from apps#216. Local tests override the authenticated subject; CRUD fails
-closed when token validation is not configured. `TRAVEL_DEV_AUTH_BYPASS_TOKEN`
+from apps#216. The default share-link secret is accepted only with
+`TRAVEL_ENVIRONMENT=development`; the local Compose stack and test suite set
+that mode explicitly. Keep the production secret stable across API processes
+and restarts so existing link verifiers continue to match. Raw share tokens
+remain recoverable for owners; see [ADR 20](docs/decisions/20-share-link-token-storage.md)
+for the database and backup implications. Local tests override the authenticated
+subject; CRUD fails closed when token validation is not configured. `TRAVEL_DEV_AUTH_BYPASS_TOKEN`
 authenticates a request bearing exactly that token as a fixed development owner;
 startup refuses it outside `TRAVEL_ENVIRONMENT=development`. Apply schema changes with
 `uv run alembic upgrade head`. Central deployment, PostgreSQL credentials,

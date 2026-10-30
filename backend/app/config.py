@@ -42,8 +42,9 @@ class Settings(BaseSettings):
     task_alert_smtp_password: str | None = None
     task_alert_email_from: str | None = None
     # Keys the one-way verifier stored for each unlisted share-link capability.
-    # The raw token is never stored; only a party holding this secret can
-    # recognize a presented token as valid. Must be overridden in production.
+    # The raw token is also stored for owner recovery of the share URL. This
+    # verifier does not protect against database or backup readers. The default
+    # secret is allowed only in development; deployments must override it.
     share_link_secret: str = "development-only-change-me"
 
     # Filesystem root for the local object-storage adapter. Production points
@@ -111,6 +112,14 @@ class Settings(BaseSettings):
             raise ValueError("TRAVEL_DEV_AUTH_BYPASS_TOKEN must not be set outside TRAVEL_ENVIRONMENT=development.")
         if self.provider_secret_key:
             Fernet(self.provider_secret_key.encode())
+        return self
+
+    @model_validator(mode="after")
+    def validate_share_link_secret_outside_development(self) -> Settings:
+        if self.share_link_secret == "development-only-change-me" and self.environment != "development":
+            raise ValueError(
+                "TRAVEL_SHARE_LINK_SECRET must override the default outside TRAVEL_ENVIRONMENT=development."
+            )
         return self
 
     @property

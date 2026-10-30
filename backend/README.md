@@ -361,7 +361,7 @@ Production credential injection and key backup are tracked in
 | `TRAVEL_MCP_AUDIENCE` | Optional MCP audience when it must differ from the resource URL; never equal to `TRAVEL_OIDC_AUDIENCE`. |
 | `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |
 | `TRAVEL_PUBLIC_APP_URL` | Visitor-facing Travel PWA origin used by MCP to return a complete `/share/<capability>` URL; defaults to `http://localhost:5173` for local Vite development. Set this to the deployed Travel origin in production. |
-| `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. Required in production; the code default is development-only. |
+| `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. The public default is rejected unless `TRAVEL_ENVIRONMENT=development`; set a stable non-default secret in production. The raw token is also stored for owner recovery, so database and backup readers can recover it; see [ADR 20](../docs/decisions/20-share-link-token-storage.md). |
 | `TRAVEL_RATE_LIMIT_ENABLED` | Per-client limits on the anonymous `/public/*` and `/shared/*` routes (default `true`). See "Visitor rate limits". |
 | `TRAVEL_RATE_LIMIT_DEFAULT` | Limit shared by all `/public/*` routes of one client, in `limits` notation (default `300/minute`; `30/minute;300/hour` combines windows). |
 | `TRAVEL_RATE_LIMIT_SHARED` | Stricter limit shared by all `/shared/{token}*` routes of one client (default `120/minute`), which bounds probing of unlisted tokens. |
@@ -434,6 +434,8 @@ configuration and endpoint exposure remain `tjorim/apps#226` and
 uv sync --all-groups --frozen
 uv run ruff check .
 uv run pytest
+# Local migration checks use development mode, as CI does. Production supplies its secret.
+export TRAVEL_ENVIRONMENT=development
 # Requires a PostgreSQL database, as the CI migration check does.
 TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
   uv run alembic upgrade head
