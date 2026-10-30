@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add a return link to all public trips on public trip pages, including unavailable states (#4).
+
 - Owner share-link reads now show links past their expiry as expired and record the expiry audit event at the real expiry time, without waiting for a visit.
 
 ### Changed
