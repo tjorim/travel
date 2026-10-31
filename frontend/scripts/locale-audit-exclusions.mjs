@@ -18,6 +18,7 @@ export const exclusions = {
   "ProjectionView.tsx": {
     "absolute top-1/3 z-10 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-travel-control-border bg-travel-surface p-0 text-travel-forest shadow-travel-card disabled:hidden":
       "utility classes of the photo strip arrows",
+    "-30% 0px -60% 0px": "IntersectionObserver root margin, not copy",
   },
   "TripMap.tsx": {
     "© OpenFreeMap": "provider attribution",

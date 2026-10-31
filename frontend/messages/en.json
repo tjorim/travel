@@ -1772,6 +1772,7 @@
   "visitor_update": "Update",
   "visitor_previous_photo": "Previous photo",
   "visitor_next_photo": "Next photo",
+  "visitor_map_follows_story": "Move the map along with the story",
   "visitor_days_later": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],

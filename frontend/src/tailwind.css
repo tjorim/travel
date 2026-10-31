@@ -44,6 +44,7 @@
   --spacing-map-canvas: clamp(300px, 48vw, 480px);
   --spacing-map-owner-canvas: clamp(420px, 48vw, 620px);
   --spacing-map-wide-canvas: clamp(420px, 36vw, 640px);
+  --spacing-map-story: clamp(420px, 40vw, 640px);
   --spacing-route-canvas: clamp(240px, 38vw, 360px);
   --spacing-route-preview-canvas: clamp(200px, 30vw, 300px);
   --radius-travel-media: 10px;
@@ -362,6 +363,33 @@
   }
 }
 
+/*
+ * A photo of a shared update pinned on the visitor map. MapLibre positions the button with `transform`, and the
+ * `scale` property composes outside it (it would scale the offset too), so only the image inside is scaled.
+ */
+@utility travel-map-photo {
+  @apply size-11 cursor-pointer rounded-full border-0 bg-transparent p-0;
+  & img {
+    @apply block size-full rounded-full border-2 border-travel-surface bg-travel-tint object-cover shadow-travel-card;
+    transition: scale 150ms ease-out;
+  }
+  &:hover img {
+    scale: 1.1;
+  }
+  &[data-active] {
+    @apply z-10;
+  }
+  &[data-active] img {
+    @apply border-travel-map-yellow ring-4 ring-travel-map-yellow/40;
+    scale: 1.25;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    & img {
+      transition: none;
+    }
+  }
+}
+
 @utility help {
   @apply m-0 rounded-lg bg-travel-tint px-2.75 py-2.25 text-sm leading-normal text-travel-positive;
   /* A status line with nothing to say stays in the page for screen readers but takes no space. */
@@ -666,6 +694,23 @@
   @apply travel-aside-split;
   @media (min-width: 1100px) {
     grid-template-rows: auto auto 1fr;
+  }
+}
+
+/* The map beside the story, held in view while the reader moves down it. */
+@utility travel-story-map {
+  @apply grid min-w-0 gap-travel-grid-gap;
+  @media (min-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--spacing-map-story));
+    align-items: start;
+    & > * {
+      grid-column: 1;
+    }
+    & > [data-story-map] {
+      @apply sticky top-6;
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
   }
 }
 
