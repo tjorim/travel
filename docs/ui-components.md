@@ -295,5 +295,6 @@ space. There is still one `TripMap`; narrower screens keep the old order.
   the map already link to the same updates. Only the image inside a marker is
   scaled: the `scale` property composes outside MapLibre's `transform` and would
   scale the marker's offset too.
+- **Visitor control.** A checkbox under the map, "Move the map along with the story" (on by default), stops and resumes the follow, so a visitor who wants to look around alone is never fought by the camera.
 - Nothing new is delivered: markers and follow use the projection's photos and
   area points. The publication safety check has a line for the pin.

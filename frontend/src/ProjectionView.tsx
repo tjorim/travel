@@ -4,6 +4,8 @@ import { Collapsible } from "@/ui/collapsible";
 import { Dialog } from "@/ui/dialog";
 import { Button } from "@/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { Field, FieldLabel } from "@/ui/field";
+import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "cn";
 import { dayjs } from "./dayjs";
@@ -876,6 +878,8 @@ export function ProjectionView({
 }) {
   const locale = useLocale();
   const [activeUpdate, setActiveUpdate] = useState<string | null>(null);
+  // The map moves with the reader by default; a visitor who wants to look around on their own can turn that off.
+  const [followStory, setFollowStory] = useState(true);
   const mapLines = useMemo(
     () =>
       projectionMapLines(projection).map((line) => {
@@ -1113,9 +1117,15 @@ export function ProjectionView({
               wide
               points={mapPoints}
               lines={mapLines}
-              follow={followed}
+              follow={followStory ? followed : null}
               photos={mapPhotos}
             />
+            <Field className="mt-2.5">
+              <FieldLabel className="flex items-center gap-2 text-sm font-semibold">
+                <TravelCheckbox checked={followStory} onCheckedChange={setFollowStory} />
+                <span>{m.visitor_map_follows_story()}</span>
+              </FieldLabel>
+            </Field>
           </div>
           <Updates
             updates={projection.updates}

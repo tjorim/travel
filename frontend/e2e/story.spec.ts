@@ -344,6 +344,13 @@ test("the map sits beside the story, follows the update in view and pins its pho
   // Scrolling to the update marks its point as followed; the second update has no place and leaves it.
   await page.locator("#update-a").scrollIntoViewIfNeeded();
   await expect(marker).toHaveAttribute("data-active", "");
+  // A visitor who wants to look around alone can stop the map moving with the story, and resume it.
+  const follow = page.getByRole("checkbox", { name: "Move the map along with the story" });
+  await expect(follow).toBeChecked();
+  await follow.click();
+  await expect(marker).not.toHaveAttribute("data-active", "");
+  await follow.click();
+  await expect(marker).toHaveAttribute("data-active", "");
   // On a narrow screen the map sits above the story instead of beside it.
   await page.setViewportSize({ width: 820, height: 900 });
   await expect(map).toHaveCSS("position", "static");

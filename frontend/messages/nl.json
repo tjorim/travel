@@ -1772,6 +1772,7 @@
   "visitor_update": "Update",
   "visitor_previous_photo": "Vorige foto",
   "visitor_next_photo": "Volgende foto",
+  "visitor_map_follows_story": "Laat de kaart met het verhaal meebewegen",
   "visitor_days_later": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
