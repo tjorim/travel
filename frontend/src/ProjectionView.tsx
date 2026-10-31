@@ -493,7 +493,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger
-        className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+        className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 text-travel-ink focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
         aria-label={m.visitor_open_image({ title: alt })}
       >
         {image(false)}

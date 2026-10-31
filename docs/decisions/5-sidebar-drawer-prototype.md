@@ -304,3 +304,9 @@ and screenshots, English/light and Dutch/dark). The inherited preferences
 minimum-width overflow at 390px zoom remains assigned to concurrent slice 1;
 this slice deliberately does not edit Preferences or Boundary. It remains
 tracked in #5. These gains do not claim that articles fit above the fold.
+
+Additional shared cover/failure/empty scans cover all four locale/theme pairs.
+They exposed inherited dark-mode contrast on broken gallery-image alt text;
+the gallery trigger now explicitly uses `text-travel-ink`. This correction stays
+inside the visitor renderer. Keyboard + axe checks cover opening the disclosure,
+all 24 names, target focus, initial fragments and Back at 1099/1100 CSS px.

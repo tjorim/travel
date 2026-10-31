@@ -239,3 +239,42 @@ for (const audience of ["public", "share"] as const) {
     }
   }
 }
+
+for (const locale of ["en", "nl"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    for (const variant of ["cover", "failed cover", "empty"] as const) {
+      test(`shared disclosure ${variant} ${locale} ${theme}`, async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await mockApi(page);
+        await page.route("**/api/shared/synthetic", (route) =>
+          route.fulfill({
+            json: trip({
+              schema_version: "travel/unlisted-trip@1",
+              ...(variant === "empty" ? { updates: [], media: [], cover: null } : {}),
+            }),
+          }),
+        );
+        await page.route("**/api/shared/synthetic/files/*", (route) =>
+          variant === "failed cover"
+            ? route.abort()
+            : route.fulfill({ contentType: "image/svg+xml", body: coverSvg(0) }),
+        );
+        await choosePreferences(page, locale, theme);
+        await page.goto("/share/synthetic");
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        const chooser = page.getByRole("button", {
+          name: locale === "en" ? "Choose an update" : "Kies een update",
+        });
+        if (variant === "empty") await expect(chooser).toHaveCount(0);
+        else {
+          await expect(chooser).toHaveAttribute("aria-expanded", "false");
+          await chooser.click();
+          await expect(page.getByRole("link", { name: "Market day", exact: true })).toBeVisible();
+        }
+        if (variant === "cover") await expect(page.locator("header img")).toBeVisible();
+        else await expect(page.locator("header img")).toHaveCount(0);
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      });
+    }
+  }
+}
