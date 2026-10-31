@@ -453,8 +453,9 @@ function routeLocationPoint(
 /** Whole days between two updates dated to the day, else null: the story's "3 days later" connector. */
 function daysLater(previous: ProjectionItem | undefined, item: ProjectionItem): number | null {
   const [from, to] = [previous, item].map((entry) => {
-    const value = entry ? text(entry, "story_date") : null;
-    return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? dayjs.utc(value) : null;
+    // `storyDate` rejects an impossible date and a month or year date, so only a valid day gets a gap.
+    const value = entry && storyDate(entry) ? text(entry, "story_date") : null;
+    return value?.length === 10 ? dayjs.utc(value) : null;
   });
   if (!from?.isValid() || !to?.isValid()) return null;
   const days = to.diff(from, "day");
@@ -701,7 +702,7 @@ function Gallery({
 function useActiveUpdate(
   list: React.RefObject<HTMLOListElement | null>,
   enabled: boolean,
-  onActive: (id: string) => void,
+  onActive: (id: string | null) => void,
 ) {
   const report = useRef(onActive);
   report.current = onActive;
@@ -718,7 +719,12 @@ function useActiveUpdate(
   }, []);
   useEffect(() => {
     const items = list.current ? Array.from(list.current.children) : [];
-    if (!enabled || !wide || !items.length || typeof IntersectionObserver === "undefined") return;
+    // Narrower than the map-beside-story layout, or without it, nothing is followed: drop any update left over.
+    if (!enabled || !wide) {
+      report.current(null);
+      return;
+    }
+    if (!items.length || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
         const entering = entries.filter((entry) => entry.isIntersecting);
@@ -743,7 +749,7 @@ function Updates({
   fileUrl: (item: ProjectionItem) => string | null;
   /** The map sits beside this story on a wide screen, so the story is one column with its index folded away. */
   besideMap?: boolean;
-  onActive?: (id: string) => void;
+  onActive?: (id: string | null) => void;
 }) {
   useLocale();
   const timeline = useRef<HTMLOListElement>(null);
@@ -1120,7 +1126,7 @@ export function ProjectionView({
               follow={followStory ? followed : null}
               photos={mapPhotos}
             />
-            <Field className="mt-2.5">
+            <Field className="mt-2.5 hidden min-[1100px]:block">
               <FieldLabel className="flex items-center gap-2 text-sm font-semibold">
                 <TravelCheckbox checked={followStory} onCheckedChange={setFollowStory} />
                 <span>{m.visitor_map_follows_story()}</span>

@@ -641,9 +641,11 @@ export function TripMap({
         button.title = photo.label;
         button.dataset.pointId = photo.pointId;
         if (follow === photo.pointId) button.dataset.active = "";
-        button.addEventListener("click", () =>
-          photosRef.current?.find((candidate) => candidate.id === photo.id)?.onOpen(),
-        );
+        button.addEventListener("click", (event) => {
+          // The click belongs to the marker; the map under it must not also treat it as a tap on a point.
+          event.stopPropagation();
+          photosRef.current?.find((candidate) => candidate.id === photo.id)?.onOpen();
+        });
         const image = document.createElement("img");
         image.src = photo.url;
         image.alt = "";

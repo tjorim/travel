@@ -332,6 +332,9 @@ test("the map sits beside the story, follows the update in view and pins its pho
   const map = page.locator("[data-story-map]");
   await expect(map).toBeVisible();
   await expect(map).toHaveCSS("position", "sticky");
+  // A trip with many points is taller than the window; the column scrolls on its own instead of hiding controls.
+  await expect(map).toHaveCSS("overflow-y", "auto");
+  await expect(map).toHaveCSS("max-height", "852px");
   const story = page.getByRole("region", { name: "Updates" });
   const [mapBox, storyBox] = [await map.boundingBox(), await story.boundingBox()];
   expect(mapBox!.x).toBeGreaterThan(storyBox!.x + storyBox!.width - 1);
@@ -354,4 +357,6 @@ test("the map sits beside the story, follows the update in view and pins its pho
   // On a narrow screen the map sits above the story instead of beside it.
   await page.setViewportSize({ width: 820, height: 900 });
   await expect(map).toHaveCSS("position", "static");
+  // The follow control only means something while the map is beside the story.
+  await expect(follow).toBeHidden();
 });
