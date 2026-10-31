@@ -1,5 +1,11 @@
 # Trip header density and navigation alternatives (#5)
 
+## Follow-up
+
+The owner subsequently selected the sidebar/drawer direction. See the measured
+[second discovery](5-sidebar-drawer-prototype.md) for that prototype and proposed
+implementation slices. The recommendation below records the first discovery.
+
 ## Status and recommendation
 
 Discovery, 2026-10-31. **Awaiting the owner's choice; no layout is selected or

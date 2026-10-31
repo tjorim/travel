@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Measure the selected trip sidebar and mobile drawer direction, document interaction limits and propose implementation slices without shipping a layout (#5).
+
 - Compare trip header density and navigation alternatives with synthetic browser-zoom measurements; leave the layout decision to the owner (#5).
 - Make video dispatcher uploads release row locks while preserving durable
   retries and post-upload source checks; add content-free state/failure logs
