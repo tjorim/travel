@@ -99,17 +99,18 @@ def upload_library_document(
             code="a_content_type_is_required",
         )
     try:
-        document, created = direct_upload(
-            session,
-            storage,
-            owner_subject=subject,
-            filename=file.filename or "upload",
-            content_type=file.content_type,
-            data=read_bounded_upload(file.file, LibraryError),
-            document_kind=document_kind,
-            title=title,
-            linked_trip_id=linked_trip_id,
-        )
+        with read_bounded_upload(file.file, LibraryError) as data:
+            document, created = direct_upload(
+                session,
+                storage,
+                owner_subject=subject,
+                filename=file.filename or "upload",
+                content_type=file.content_type,
+                data=data,
+                document_kind=document_kind,
+                title=title,
+                linked_trip_id=linked_trip_id,
+            )
     except LibraryError as error:
         raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK

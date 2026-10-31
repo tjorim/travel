@@ -73,16 +73,17 @@ def upload_document(
             code="a_content_type_is_required",
         )
     try:
-        asset, created = direct_upload(
-            session,
-            storage,
-            trip_id=trip_id,
-            filename=file.filename or "upload",
-            content_type=file.content_type,
-            data=read_bounded_upload(file.file),
-            document_kind=document_kind,
-            title=title,
-        )
+        with read_bounded_upload(file.file) as data:
+            asset, created = direct_upload(
+                session,
+                storage,
+                trip_id=trip_id,
+                filename=file.filename or "upload",
+                content_type=file.content_type,
+                data=data,
+                document_kind=document_kind,
+                title=title,
+            )
     except MediaImportError as error:  # includes DocumentError
         raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK

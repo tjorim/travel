@@ -6,7 +6,7 @@ here is for provider-mediated imports, where the owner selects items in the
 provider's own UI (Google Photos Picker, and — only once GoPro grants beta
 access — GoPro Cloud) and the app copies only what was selected. A provider
 implementation never returns a durable delivery URL: `fetch_item` always
-returns bytes for the service layer to hash, store, and record, so a
+returns a disk-backed payload for the service layer to store and record, so a
 provider URL or token can never become the canonical file reference.
 """
 
@@ -21,6 +21,7 @@ import httpx
 from ..config import settings
 from ..errors import ServiceError
 from ..models import ImportProvider
+from ..storage import CHUNK_SIZE, StagedUpload
 
 
 class ProviderError(ServiceError, RuntimeError):
@@ -64,7 +65,7 @@ class MediaProvider(Protocol):
 
     def list_selected_items(self, *, access_token: str, provider_session_id: str) -> list[ProviderMediaItem]: ...
 
-    def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> bytes: ...
+    def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> bytes | StagedUpload: ...
 
 
 def _require_token(access_token: str | None) -> str:
@@ -75,23 +76,26 @@ def _require_token(access_token: str | None) -> str:
     return access_token
 
 
-def download_bounded(http: httpx.Client, url: str) -> bytes:
+def download_bounded(http: httpx.Client, url: str) -> StagedUpload:
     """Stream one provider download, stopping as soon as it passes the upload limit.
 
     Keeps a provider import under the same `media_max_upload_bytes` as a direct
     upload without buffering an oversized item first.
     """
-    limit = settings.media_max_upload_bytes
-    data = bytearray()
-    with http.stream("GET", url) as response:
-        response.raise_for_status()
-        for chunk in response.iter_bytes():
-            data += chunk
-            if len(data) > limit:
-                raise ProviderError(
-                    "Imported item exceeds the maximum size", code="imported_item_exceeds_the_maximum_size"
-                )
-    return bytes(data)
+    staged = StagedUpload()
+    try:
+        with http.stream("GET", url) as response:
+            response.raise_for_status()
+            for chunk in response.iter_bytes(chunk_size=min(CHUNK_SIZE, settings.media_max_upload_bytes + 1)):
+                if len(staged) + len(chunk) > settings.media_max_upload_bytes:
+                    raise ProviderError(
+                        "Imported item exceeds the maximum size", code="imported_item_exceeds_the_maximum_size"
+                    )
+                staged.write(chunk)
+        return staged
+    except BaseException:
+        staged.close()
+        raise
 
 
 def safe_provider_response[**P, R](call: Callable[P, R]) -> Callable[P, R]:
@@ -195,7 +199,7 @@ class GooglePhotosPickerProvider:
         return items
 
     @safe_provider_response
-    def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> bytes:
+    def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> StagedUpload:
         _require_token(access_token)
         # The Picker API media-file record used to build `item` carries a
         # short-lived `baseUrl`; the service layer passes that back to us
@@ -299,7 +303,7 @@ class GoProCloudProvider:
         return items
 
     @safe_provider_response
-    def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> bytes:
+    def fetch_item(self, *, access_token: str, item: ProviderMediaItem) -> StagedUpload:
         self._ensure_enabled()
         _require_token(access_token)
         try:

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..media.service import MediaImportError, upload_too_large_error
 from ..models import DocumentKind, ObjectState, OwnerDocument, OwnerStoredObject, opaque_id
-from ..storage import ObjectStorage, lock_object_deletion, sha256_hex
+from ..storage import ObjectStorage, StagedUpload, lock_object_deletion, sha256_hex, verify_object
 
 
 class LibraryError(MediaImportError):
@@ -21,7 +21,7 @@ class LibraryError(MediaImportError):
 
 
 def _store_owner_bytes(
-    session: Session, storage: ObjectStorage, *, owner_subject: str, data: bytes, content_type: str
+    session: Session, storage: ObjectStorage, *, owner_subject: str, data: bytes | StagedUpload, content_type: str
 ) -> OwnerStoredObject:
     if not data:
         raise LibraryError("Het bestand is leeg.", code="file_empty")
@@ -39,7 +39,7 @@ def _store_owner_bytes(
 
     key = existing.object_key if existing is not None else f"owner/{opaque_id()}"
     storage.put(key, data)
-    verified = sha256_hex(storage.get(key)) == digest
+    verified = verify_object(storage, key, digest)
 
     if existing is not None:
         existing.byte_size = len(data)
@@ -72,7 +72,7 @@ def direct_upload(
     owner_subject: str,
     filename: str,
     content_type: str,
-    data: bytes,
+    data: bytes | StagedUpload,
     document_kind: DocumentKind,
     title: str,
     linked_trip_id: str | None,

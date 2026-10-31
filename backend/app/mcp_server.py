@@ -17,9 +17,10 @@ import base64
 import binascii
 import json
 import logging
+import tempfile
 import time
 from collections.abc import Callable, Sequence
-from io import BytesIO
+from contextlib import contextmanager
 from typing import Any, Literal, TypeVar
 from urllib.parse import quote
 
@@ -80,14 +81,27 @@ class BinaryUpload(schemas.InputModel):
     content_type: str = Field(min_length=1, max_length=120)
     data_base64: str = Field(min_length=1, max_length=300_000_000)
 
-    def upload_file(self) -> UploadFile:
-        try:
-            data = base64.b64decode(self.data_base64, validate=True)
-        except (binascii.Error, ValueError) as error:
-            raise ValueError("data_base64 must be valid base64") from error
-        return UploadFile(
-            filename=self.filename, file=BytesIO(data), headers=Headers({"content-type": self.content_type})
-        )
+    @contextmanager
+    def upload_file(self):
+        # JSON parsing necessarily retains the encoded input. Decode only aligned
+        # chunks so there is no second full-sized binary allocation.
+        with tempfile.TemporaryFile("w+b") as payload:
+            try:
+                for offset in range(0, len(self.data_base64), 1024 * 1024):
+                    chunk = self.data_base64[offset : offset + 1024 * 1024]
+                    if "=" in chunk and offset + len(chunk) != len(self.data_base64):
+                        raise ValueError("Premature base64 padding")
+                    payload.write(base64.b64decode(chunk, validate=True))
+                    if payload.tell() > settings.media_max_upload_bytes:
+                        raise ValueError("Upload exceeds maximum size")
+            except (binascii.Error, ValueError) as error:
+                raise ValueError("data_base64 must be valid base64 within the upload limit") from error
+            payload.seek(0)
+            yield UploadFile(filename=self.filename, file=payload, headers=Headers({"content-type": self.content_type}))
+
+    def apply(self, operation):
+        with self.upload_file() as upload:
+            return operation(upload)
 
 
 def _without_html(value: Any) -> Any:
@@ -1070,7 +1084,9 @@ class TravelMcpBackend:
             "media_asset",
             None,
             trip_id,
-            lambda s, sub: media.upload_media(trip_id, s, sub, get_storage(), Response(), file.upload_file()),
+            lambda s, sub: file.apply(
+                lambda upload: media.upload_media(trip_id, s, sub, get_storage(), Response(), upload)
+            ),
             lambda x: _model(x, schemas.MediaAssetResponse),
         )
 
@@ -1163,8 +1179,10 @@ class TravelMcpBackend:
             "document_asset",
             None,
             trip_id,
-            lambda s, sub: documents.upload_document(
-                trip_id, s, sub, get_storage(), Response(), title, document_kind, file.upload_file()
+            lambda s, sub: file.apply(
+                lambda upload: documents.upload_document(
+                    trip_id, s, sub, get_storage(), Response(), title, document_kind, upload
+                )
             ),
             lambda x: _model(x, schemas.DocumentAssetResponse),
         )
@@ -1684,8 +1702,10 @@ class TravelMcpBackend:
             "library_document",
             None,
             linked_trip_id,
-            lambda s, sub: library.upload_library_document(
-                s, sub, get_storage(), Response(), title, document_kind, file.upload_file(), linked_trip_id
+            lambda s, sub: file.apply(
+                lambda upload: library.upload_library_document(
+                    s, sub, get_storage(), Response(), title, document_kind, upload, linked_trip_id
+                )
             ),
             lambda x: _model(x, schemas.OwnerDocumentResponse),
         )

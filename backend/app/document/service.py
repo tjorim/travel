@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..media.service import MediaImportError, _object_is_referenced, _purge_pending_objects, store_uploaded_object
 from ..models import DocumentAsset, DocumentKind, ObjectState, StoredObject
-from ..storage import ObjectStorage
+from ..storage import ObjectStorage, StagedUpload
 
 
 class DocumentError(MediaImportError):
@@ -19,7 +19,7 @@ def direct_upload(
     trip_id: str,
     filename: str,
     content_type: str,
-    data: bytes,
+    data: bytes | StagedUpload,
     document_kind: DocumentKind,
     title: str,
 ) -> tuple[DocumentAsset, bool]:
