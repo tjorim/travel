@@ -150,8 +150,12 @@ def test_reading_an_oversized_upload_never_holds_more_than_one_byte_past_the_lim
 def test_a_file_at_the_limit_is_returned_whole(monkeypatch) -> None:
     monkeypatch.setattr(settings, "media_max_upload_bytes", 4)
 
-    assert read_bounded_upload(io.BytesIO(b"abcd")) == b"abcd"
-    assert read_bounded_upload(io.BytesIO(b"")) == b""
+    with read_bounded_upload(io.BytesIO(b"abcd")) as data:
+        assert data.file.read() == b""
+        data.file.seek(0)
+        assert data.file.read() == b"abcd"
+    with read_bounded_upload(io.BytesIO(b"")) as data:
+        assert len(data) == 0
 
 
 def test_provider_downloads_stop_at_the_limit_without_reading_the_rest(monkeypatch) -> None:
@@ -194,4 +198,42 @@ def test_provider_download_at_the_limit_is_returned(monkeypatch) -> None:
     )
     item = ProviderMediaItem(provider_item_id="item-1", filename="a.jpg", content_type="image/jpeg", captured_at=None)
 
-    assert provider.fetch_item(access_token="token", item=item) == b"0123456789"
+    with provider.fetch_item(access_token="token", item=item) as data:
+        data.file.seek(0)
+        assert data.file.read() == b"0123456789"
+
+
+def test_saturation_releases_slots_on_failure(monkeypatch):
+    from fastapi import HTTPException
+
+    from app import storage
+
+    monkeypatch.setattr(storage, "_upload_slots", __import__("threading").BoundedSemaphore(1))
+    with read_bounded_upload(io.BytesIO(b"x")):
+        with pytest.raises(HTTPException) as error:
+            read_bounded_upload(io.BytesIO(b"x"))
+        assert error.value.status_code == 503
+        assert error.value.headers == {"Retry-After": "5"}
+    monkeypatch.setattr(settings, "media_max_upload_bytes", 1)
+    with pytest.raises(MediaImportError):
+        read_bounded_upload(io.BytesIO(b"xx"))
+    with read_bounded_upload(io.BytesIO(b"x")) as data:
+        assert len(data) == 1
+
+
+def test_provider_network_failure_releases_staging_slot(monkeypatch):
+    from threading import BoundedSemaphore
+
+    from app import storage
+    from app.media.providers import download_bounded
+
+    slots = BoundedSemaphore(1)
+    monkeypatch.setattr(storage, "_upload_slots", slots)
+
+    def fail(request):
+        raise httpx.ReadError("synthetic failure")
+
+    with httpx.Client(transport=httpx.MockTransport(fail)) as client, pytest.raises(httpx.ReadError):
+        download_bounded(client, "https://provider.example/file")
+    assert slots.acquire(blocking=False)
+    slots.release()

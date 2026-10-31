@@ -7,9 +7,12 @@ a filesystem adapter for local/test environments; production points
 """
 
 import hashlib
+import io
 import os
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
+from threading import BoundedSemaphore
 from typing import BinaryIO, Protocol
 
 from sqlalchemy import text
@@ -23,8 +26,69 @@ from .config import settings
 OBJECT_DELETION_LOCK = 245
 
 
-def sha256_hex(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+CHUNK_SIZE = 1024 * 1024
+_upload_slots = BoundedSemaphore(settings.media_max_concurrent_uploads)
+
+
+class StagedUpload:
+    """Own a disk-backed payload and its admission slot until explicitly closed."""
+
+    def __init__(self) -> None:
+        from fastapi import HTTPException
+
+        if not _upload_slots.acquire(blocking=False):
+            raise HTTPException(503, "Upload capacity exhausted", headers={"Retry-After": "5"})
+        try:
+            self.file = tempfile.TemporaryFile("w+b")  # noqa: SIM115 -- owned until close()
+        except BaseException:
+            _upload_slots.release()
+            raise
+        self.size = 0
+        self.hasher = hashlib.sha256()
+        self.closed = False
+
+    def write(self, chunk: bytes) -> None:
+        self.file.write(chunk)
+        self.hasher.update(chunk)
+        self.size += len(chunk)
+
+    def __len__(self) -> int:
+        return self.size
+
+    def close(self) -> None:
+        if not self.closed:
+            self.closed = True
+            self.file.close()
+            _upload_slots.release()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.close()
+
+
+def payload_file(data: bytes | StagedUpload) -> BinaryIO:
+    if isinstance(data, StagedUpload):
+        data.file.seek(0)
+        return data.file
+    return io.BytesIO(data)
+
+
+def stream_digest(source: BinaryIO) -> str:
+    digest = hashlib.sha256()
+    while chunk := source.read(CHUNK_SIZE):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def sha256_hex(data: bytes | StagedUpload) -> str:
+    return data.hasher.hexdigest() if isinstance(data, StagedUpload) else hashlib.sha256(data).hexdigest()
+
+
+def verify_object(storage: ObjectStorage, key: str, digest: str) -> bool:
+    with storage.open(key) as source:
+        return stream_digest(source) == digest
 
 
 def lock_object_deletion(session: Session) -> None:
@@ -38,7 +102,7 @@ def lock_object_deletion(session: Session) -> None:
 
 
 class ObjectStorage(Protocol):
-    def put(self, key: str, data: bytes) -> None: ...
+    def put(self, key: str, data: bytes | StagedUpload) -> None: ...
 
     def get(self, key: str) -> bytes: ...
 
@@ -64,19 +128,24 @@ class LocalObjectStorage:
 
     def _path_for(self, key: str) -> Path:
         segments = key.split("/") if key else []
-        if not segments or any(not segment or segment in {".", ".."} or "\\" in segment for segment in segments):
+        if not segments or any(not segment or segment.startswith(".") or "\\" in segment for segment in segments):
             raise ValueError("Invalid object key")
         return self.root.joinpath(*segments)
 
-    def put(self, key: str, data: bytes) -> None:
+    def put(self, key: str, data: bytes | StagedUpload) -> None:
         path = self._path_for(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = path.with_suffix(path.suffix + ".tmp")
-        with tmp_path.open("wb") as output:
-            output.write(data)
-            output.flush()
-            os.fsync(output.fileno())
-        os.replace(tmp_path, path)
+        try:
+            with tmp_path.open("wb") as output:
+                source = payload_file(data)
+                while chunk := source.read(CHUNK_SIZE):
+                    output.write(chunk)
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(tmp_path, path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
         # A database commit/remote ACK must not outlive an unflushed rename.
         # Sync each newly possible directory entry through the storage root.
         directory = path.parent

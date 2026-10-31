@@ -46,7 +46,15 @@ from ..models import (
     opaque_id,
 )
 from ..secrets import SecretStore
-from ..storage import ObjectStorage, lock_object_deletion, sha256_hex
+from ..storage import (
+    CHUNK_SIZE,
+    ObjectStorage,
+    StagedUpload,
+    lock_object_deletion,
+    payload_file,
+    sha256_hex,
+    verify_object,
+)
 from .oauth import access_token
 from .providers import MediaProvider, ProviderError
 
@@ -85,13 +93,13 @@ IMAGE_CONTENT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/
 
 
 @contextmanager
-def _decoded_image(data: bytes, *, preview_size: int | None = None) -> Generator[Image.Image]:
+def _decoded_image(data: bytes | StagedUpload, *, preview_size: int | None = None) -> Generator[Image.Image]:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
-            with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as header:
+            with Image.open(payload_file(data), formats=IMAGE_FORMATS) as header:
                 header.verify()
-            with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as image:
+            with Image.open(payload_file(data), formats=IMAGE_FORMATS) as image:
                 if preview_size is not None:
                     image.draft("RGB", (preview_size, preview_size))
                 image.load()
@@ -103,7 +111,7 @@ def _decoded_image(data: bytes, *, preview_size: int | None = None) -> Generator
         ) from exc
 
 
-def _validated_content_type(data: bytes, content_type: str) -> tuple[MediaKind, str]:
+def _validated_content_type(data: bytes | StagedUpload, content_type: str) -> tuple[MediaKind, str]:
     kind = _media_kind_for(content_type)
     if kind == MediaKind.PHOTO:
         with _decoded_image(data) as image:
@@ -156,7 +164,7 @@ def _exif_captured_at(exif) -> tuple[datetime, int | None] | None:
     return wall, None
 
 
-def extract_exif_metadata(data: bytes) -> dict:
+def extract_exif_metadata(data: bytes | StagedUpload) -> dict:
     """Best-effort capture time/camera/GPS extraction from a photo original,
     for the owner's own convenience — e.g. pre-filling a reisupdate's date or
     suggesting a place when they add media to a trip. This is the one place
@@ -165,7 +173,7 @@ def extract_exif_metadata(data: bytes) -> dict:
     it, because that copy — not this one — is the one a public/unlisted
     viewer could ever reach."""
     try:
-        with Image.open(io.BytesIO(data), formats=IMAGE_FORMATS) as image:
+        with Image.open(payload_file(data), formats=IMAGE_FORMATS) as image:
             exif = image.getexif()
             if not exif:
                 return {}
@@ -207,7 +215,7 @@ def _store_bytes(
     storage: ObjectStorage,
     *,
     trip_id: str,
-    data: bytes,
+    data: bytes | StagedUpload,
     content_type: str,
     object_key: str | None = None,
 ) -> StoredObject:
@@ -221,7 +229,7 @@ def _store_bytes(
 
     key = existing.object_key if existing is not None else (object_key or f"{trip_id}/{opaque_id()}")
     storage.put(key, data)
-    verified = sha256_hex(storage.get(key)) == digest
+    verified = verify_object(storage, key, digest)
 
     if existing is not None:
         existing.byte_size = len(data)
@@ -262,20 +270,22 @@ def upload_too_large_error[Error: MediaImportError](
 def read_bounded_upload[Error: MediaImportError](
     file: BinaryIO,
     error_type: type[Error] = MediaImportError,  # ty: ignore[invalid-parameter-default]
-) -> bytes:
-    """Read an uploaded file without ever buffering more than the limit plus one byte.
-
-    Reading one byte past `media_max_upload_bytes` is enough to know the file is
-    too large, so the rest is never pulled into memory.
-    """
-    data = file.read(settings.media_max_upload_bytes + 1)
-    if len(data) > settings.media_max_upload_bytes:
-        raise upload_too_large_error(error_type)
-    return data
+) -> StagedUpload:
+    """Copy to disk with a running limit and checksum; caller owns cleanup."""
+    staged = StagedUpload()
+    try:
+        while chunk := file.read(min(CHUNK_SIZE, settings.media_max_upload_bytes - len(staged) + 1)):
+            if len(staged) + len(chunk) > settings.media_max_upload_bytes:
+                raise upload_too_large_error(error_type)
+            staged.write(chunk)
+        return staged
+    except BaseException:
+        staged.close()
+        raise
 
 
 def store_uploaded_object(
-    session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes, content_type: str
+    session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes | StagedUpload, content_type: str
 ) -> StoredObject:
     """Store one bounded owner-uploaded object through the shared durable
     copy-and-verify path.
@@ -305,7 +315,7 @@ def direct_upload(
     trip_id: str,
     filename: str,
     content_type: str,
-    data: bytes,
+    data: bytes | StagedUpload,
     captured_at: datetime | None = None,
 ) -> tuple[MediaAsset, bool]:
     """Copy a directly uploaded file into storage and record it.
@@ -443,6 +453,7 @@ def complete_import_session(
                 imported.append(asset)
             continue
 
+        data = None
         try:
             data = media_provider.fetch_item(
                 access_token=access_token(subject, import_session.provider.value, secret_store), item=item
@@ -513,8 +524,13 @@ def complete_import_session(
             session.commit()
             failed.append((item.provider_item_id, failure_code))
 
+        finally:
+            if isinstance(data, StagedUpload):
+                data.close()
+
     import_session.state = ImportSessionState.COMPLETED
     session.commit()
+
     return ImportOutcome(ready=True, imported=imported, failed=failed)
 
 

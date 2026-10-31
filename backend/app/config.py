@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     media_storage_root: str = "./media-storage"
     # Refuses a direct upload or a single provider-imported item larger than
     # this many bytes, before any bytes are written to storage.
+    media_max_concurrent_uploads: int = Field(default=3, ge=1)
     media_max_upload_bytes: int = 200 * 1024 * 1024
     media_worker_url: str = ""
     media_worker_token_file: str = "/run/secrets/media_travel_token"
