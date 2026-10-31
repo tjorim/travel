@@ -64,8 +64,16 @@ const trip = (overrides: Record<string, unknown> = {}) => ({
 const coverSvg = (index: number) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="${index % 2 ? "#6a8f7d" : "#c9a95a"}"/><circle cx="800" cy="450" r="220" fill="#f6f1e7"/></svg>`;
 
-async function open(page: Page, data: unknown, locale: "nl" | "en", theme: "light" | "dark") {
+async function open(
+  page: Page,
+  data: unknown,
+  locale: "nl" | "en",
+  theme: "light" | "dark",
+  // Runs after the mocks, which abort every request that leaves localhost, so its routes take precedence.
+  setup?: () => Promise<void>,
+) {
   await mockApi(page);
+  await setup?.();
   await page.route("**/api/public/trips/exampleland-2054", (route) =>
     route.fulfill({ json: data }),
   );
@@ -143,7 +151,10 @@ test("wide screens put trip context beside the map and stack it on a phone", asy
   const [wideOverview, wideMap] = await Promise.all([overview.boundingBox(), map.boundingBox()]);
   expect(wideOverview!.x + wideOverview!.width).toBeLessThanOrEqual(wideMap!.x);
   expect(Math.abs(wideOverview!.y - wideMap!.y)).toBeLessThan(2);
-  expect(wideMap!.width).toBeGreaterThan(wideOverview!.width);
+  // The story shares the overview's column, so the map stays beside it as the reader goes down.
+  const story = await page.getByRole("region", { name: "Updates" }).boundingBox();
+  expect(Math.abs(story!.x - wideOverview!.x)).toBeLessThan(2);
+  expect(story!.x + story!.width).toBeLessThanOrEqual(wideMap!.x);
 
   await page.setViewportSize({ width: 360, height: 800 });
   const [narrowOverview, narrowMap] = await Promise.all([
@@ -169,6 +180,8 @@ test("a cover that cannot load falls back to the text-only header", async ({ pag
 test("story navigation keeps its anchors and opens the chosen update", async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1000 });
   await open(page, trip(), "en", "light");
+  // With the map beside the story the index is folded away at every width, as on a narrow screen.
+  await page.getByRole("button", { name: "Choose an update" }).click();
   await page
     .getByRole("navigation", { name: "Updates in this story" })
     .getByRole("link", { name: "Market day" })
@@ -279,3 +292,66 @@ for (const locale of ["en", "nl"] as const) {
     }
   }
 }
+
+test("a row of photos has arrows that page it, hidden at each end", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(page, trip(), "en", "light");
+  const strip = page.locator("ul.snap-x").first();
+  const next = page.getByRole("button", { name: "Next photo" });
+  const previous = page.getByRole("button", { name: "Previous photo" });
+  await expect(next).toBeVisible();
+  await expect(previous).toBeHidden();
+  await next.click();
+  await expect.poll(() => strip.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(previous).toBeVisible();
+});
+
+test("the map sits beside the story, follows the update in view and pins its photo", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await open(page, trip(), "en", "light", async () => {
+    // A one-layer style keeps the map off the network; it only has to load.
+    await page.route("https://tiles.openfreemap.org/styles/*", (route) =>
+      route.fulfill({
+        headers: { "access-control-allow-origin": "*" },
+        json: {
+          version: 8,
+          sources: {},
+          glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+          layers: [
+            { id: "background", type: "background", paint: { "background-color": "#dfe8e1" } },
+          ],
+        },
+      }),
+    );
+    await page.route("https://tiles.openfreemap.org/fonts/**", (route) =>
+      route.fulfill({ status: 404, headers: { "access-control-allow-origin": "*" }, body: "" }),
+    );
+  });
+  const map = page.locator("[data-story-map]");
+  await expect(map).toBeVisible();
+  await expect(map).toHaveCSS("position", "sticky");
+  const story = page.getByRole("region", { name: "Updates" });
+  const [mapBox, storyBox] = [await map.boundingBox(), await story.boundingBox()];
+  expect(mapBox!.x).toBeGreaterThan(storyBox!.x + storyBox!.width - 1);
+  // The update that has a place gets one photo marker, hidden from assistive technology (the point buttons serve it).
+  const marker = page.locator(".travel-map-photo");
+  await expect(marker).toHaveCount(1);
+  await expect(marker).toHaveAttribute("aria-hidden", "true");
+  await expect(marker).toHaveAttribute("title", "Arrival");
+  await expect(marker.locator("img")).toHaveAttribute("src", /\/files\/media-/);
+  // Scrolling to the update marks its point as followed; the second update has no place and leaves it.
+  await page.locator("#update-a").scrollIntoViewIfNeeded();
+  await expect(marker).toHaveAttribute("data-active", "");
+  // A visitor who wants to look around alone can stop the map moving with the story, and resume it.
+  const follow = page.getByRole("checkbox", { name: "Move the map along with the story" });
+  await expect(follow).toBeChecked();
+  await follow.click();
+  await expect(marker).not.toHaveAttribute("data-active", "");
+  await follow.click();
+  await expect(marker).toHaveAttribute("data-active", "");
+  // On a narrow screen the map sits above the story instead of beside it.
+  await page.setViewportSize({ width: 820, height: 900 });
+  await expect(map).toHaveCSS("position", "static");
+});

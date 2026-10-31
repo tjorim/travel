@@ -53,9 +53,9 @@ export function WorkspaceNavigation({
         {m.owner_trip_sections()}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-travel-backdrop/50" />
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-travel-backdrop/50 travel-backdrop-motion" />
         <Dialog.Popup
-          className="fixed inset-y-0 left-0 z-50 box-border w-travel-drawer max-w-full overflow-y-auto overscroll-contain border-r border-travel-border bg-travel-surface p-4 text-travel-ink shadow-2xl"
+          className="fixed inset-y-0 left-0 z-50 box-border w-travel-drawer max-w-full overflow-y-auto overscroll-contain border-r border-travel-border bg-travel-surface p-4 text-travel-ink shadow-2xl travel-drawer-motion"
           finalFocus={() => {
             if (headingFocus.current) {
               headingFocus.current = false;

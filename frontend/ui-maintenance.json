@@ -97,11 +97,11 @@
       "registry": "popover",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/popover.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
-      "reviewedAt": "2026-10-23T23:08:39.603Z",
-      "reviewNote": "Kept the previously reviewed implementation and app theme/localisation. Only cn now imports through the identical @/lib/utils re-export. Non-import AST is unchanged; 6 primitive/helper identity tests pass, full suite 494 passed with the 5 existing #508 failures.",
+      "reviewedAt": "2026-10-31T13:26:36.012Z",
+      "reviewNote": "Keep local tokens; added travel-menu-motion enter and exit transition; reviewed no upstream change; keyboard and browser checks passed.",
       "upstreamSha256": "3c89b7e34758a7f402641a1b0a504247998464c140f9962e28e4ef4e11c190d7",
-      "capturedAt": "2026-10-23T23:08:39.603Z",
-      "reviewedLocalSha256": "05a181d840aeda20eba407babf0b08d5828dc8a93b7fe00d7757e41fc34cc8f8"
+      "capturedAt": "2026-10-31T13:26:36.012Z",
+      "reviewedLocalSha256": "1ab46ad3a106db8cf2bd2a590022a0cf50647ab97bc8a94ff2a5d934d9ec25e6"
     },
     "skeleton": {
       "files": ["src/ui/skeleton.tsx"],
