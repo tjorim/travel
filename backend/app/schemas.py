@@ -308,6 +308,26 @@ class MergeRequest(InputModel):
     keep_id: Identifier = Field(min_length=1, max_length=32)
     duplicate_ids: list[Identifier] = Field(min_length=1, max_length=50)
     confirm: bool = False
+    confirm_widening: bool = Field(
+        default=False,
+        description=(
+            "Set to true, together with confirm, to accept that the merge shows visitors more: a live audience "
+            "that receives the kept record but not a duplicate starts to read the kept place (its name and point, "
+            "or an area's rounded point) through the stays, visits, routes and updates that move. Without it such "
+            "a confirmed merge is refused with 409 and nothing changes. Not stored."
+        ),
+    )
+
+
+class MergeWidening(BaseModel):
+    """A live audience that newly reads the kept record, and how many moved records show it to them."""
+
+    audience: str = Field(description="`public` or `link:<id>`.")
+    label: str | None = Field(description="The share link's label; none for the public page.")
+    stays: int = 0
+    visits: int = 0
+    routes: int = 0
+    travel_updates: int = 0
 
 
 class LocationMergeDuplicate(BaseModel):
@@ -324,6 +344,9 @@ class LocationMergeDuplicate(BaseModel):
     # Audiences ("public page" or a link's label) that receive this duplicate
     # but not the kept location, so the merge would narrow what they see.
     narrowed_audiences: list[str]
+    # Live audiences that receive the kept location but not this duplicate, so
+    # the moved records start to show them the kept place (see ``confirm_widening``).
+    widened: list[MergeWidening] = []
 
 
 class LocationMergeResult(BaseModel):
@@ -343,6 +366,9 @@ class AreaMergeDuplicate(BaseModel):
     routes: int
     travel_updates: int
     narrowed_audiences: list[str]
+    # Live audiences that receive the kept area but not this duplicate, so the
+    # moved records start to show them the kept area's rounded point.
+    widened: list[MergeWidening] = []
 
 
 class AreaMergeResult(BaseModel):

@@ -5,6 +5,7 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import httpx2
 import pytest
@@ -1122,6 +1123,80 @@ def test_duplicate_areas_merge_over_mcp(backend: TravelMcpBackend) -> None:
     assert [area["id"] for area in backend.list_areas(trip_id)] == [keep["id"]]
     assert backend.list_locations(trip_id)[0]["area_id"] == keep["id"]
     assert MCP_TOOL_CAPABILITIES["merge_areas"] == {"effect": "write", "requires_confirmation": True}
+
+
+def _published_trip_with_private_duplicates(backend: TravelMcpBackend) -> dict[str, Any]:
+    """A published trip whose stay sits at a private inn and at a private area, next to a shared hotel and area."""
+    trip_id = backend.create_trip(schemas.TripCreate(title="Widening"))["id"]
+    keep_area = backend.save_area(trip_id, schemas.AreaInput(label="Bay Town", latitude=52.2, longitude=4.2))
+    duplicate_area = backend.save_area(trip_id, schemas.AreaInput(label="Bay Town City", latitude=52.3, longitude=4.3))
+    hotel = backend.save_location(
+        trip_id,
+        schemas.LocationInput(
+            label="Public Hotel", display_name="Public Hotel", area_id=keep_area["id"], latitude=52.2, longitude=4.2
+        ),
+    )
+    inn = backend.save_location(
+        trip_id,
+        schemas.LocationInput(label="Private Inn", display_name="Private Inn", area_id=duplicate_area["id"]),
+    )
+    stay = backend.create_stay(
+        trip_id,
+        schemas.StayCreate(
+            location=schemas.LocationInput(existing_location_id=inn["id"]),
+            check_in_date="2054-11-01",
+            check_out_date="2054-11-03",
+        ),
+    )
+    for kind, record in (("location", hotel), ("area", keep_area), ("stay", stay)):
+        backend.set_visibility(trip_id, kind, record["id"], "everyone", confirm=True)
+    backend.publish_public_projection(trip_id, confirm=True)
+    return {"trip": trip_id, "hotel": hotel, "inn": inn, "keep_area": keep_area, "duplicate_area": duplicate_area}
+
+
+def test_merge_locations_over_mcp_refuses_unacknowledged_widening_with_the_structured_review(
+    backend: TravelMcpBackend,
+) -> None:
+    ids = _published_trip_with_private_duplicates(backend)
+    trip_id, hotel, inn = ids["trip"], ids["hotel"], ids["inn"]
+
+    preview = backend.merge_locations(trip_id, hotel["id"], [inn["id"]])
+    assert preview["duplicates"][0]["widened"] == [
+        {"audience": "public", "label": None, "stays": 1, "visits": 0, "routes": 0, "travel_updates": 0}
+    ]
+    with pytest.raises(ValueError, match="merge_widening_needs_acknowledgement") as refused:
+        backend.merge_locations(trip_id, hotel["id"], [inn["id"]], confirm=True)
+    review = json.loads(str(refused.value))
+    assert review["code"] == "merge_widening_needs_acknowledgement"
+    assert review["duplicates"][0]["id"] == inn["id"] and review["duplicates"][0]["widened"][0]["stays"] == 1
+    assert len(backend.list_locations(trip_id)) == 2
+
+    merged = backend.merge_locations(trip_id, hotel["id"], [inn["id"]], confirm=True, confirm_widening=True)
+    assert merged["applied"] is True and backend.list_stays(trip_id)[0]["location_id"] == hotel["id"]
+    with TestingSessionLocal() as session:
+        rejected = [
+            e for e in session.scalars(select(McpAuditEvent)) if e.action == "location.merge" and e.result == "rejected"
+        ]
+    # The tool's own rejection audit keeps the code, never the names the review quotes.
+    assert [event.details["error"] for event in rejected] == ["merge_widening_needs_acknowledgement"]
+
+
+def test_merge_areas_over_mcp_refuses_unacknowledged_widening_with_the_structured_review(
+    backend: TravelMcpBackend,
+) -> None:
+    ids = _published_trip_with_private_duplicates(backend)
+    trip_id, keep, duplicate = ids["trip"], ids["keep_area"], ids["duplicate_area"]
+
+    preview = backend.merge_areas(trip_id, keep["id"], [duplicate["id"]])
+    assert preview["duplicates"][0]["widened"][0]["audience"] == "public"
+    assert preview["duplicates"][0]["widened"][0]["stays"] == 1
+    with pytest.raises(ValueError, match="merge_widening_needs_acknowledgement") as refused:
+        backend.merge_areas(trip_id, keep["id"], [duplicate["id"]], confirm=True)
+    assert json.loads(str(refused.value))["duplicates"][0]["id"] == duplicate["id"]
+    assert len(backend.list_areas(trip_id)) == 2
+
+    assert backend.merge_areas(trip_id, keep["id"], [duplicate["id"]], confirm=True, confirm_widening=True)["applied"]
+    assert [area["id"] for area in backend.list_areas(trip_id)] == [keep["id"]]
 
 
 def test_mcp_reads_and_writes_markdown_source_without_rendered_html(backend: TravelMcpBackend) -> None:

@@ -4,13 +4,21 @@ import { useEffect, useState } from "react";
 import { SearchSelect } from "../forms/fields";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
+import { ApiError } from "../query/api";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import type { Area, AreaMergeResult, LocationMergeResult, Trip } from "../tracker-model";
+import type {
+  Area,
+  AreaMergeResult,
+  LocationMergeResult,
+  MergeWidening,
+  Trip,
+} from "../tracker-model";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { audienceName } from "./locations/model";
 import { parseAudience, type DuplicateGroup, type DuplicateReason } from "./merge-candidates";
 
 export type MergeKind = "location" | "area";
@@ -37,6 +45,25 @@ const audienceText = (names: string[]) =>
           ? m.owner_share_link({ p0: audience.label })
           : audience.name;
     })
+    .join(", ");
+
+const WIDENING_CODE = "merge_widening_needs_acknowledgement";
+/** The 409 a confirmed merge gets when it widens what visitors see and was not acknowledged. */
+const isWideningRefusal = (failure: unknown) =>
+  failure instanceof ApiError &&
+  failure.status === 409 &&
+  (failure.diagnostic as { code?: unknown } | null)?.code === WIDENING_CODE;
+
+/** What an audience newly reads, as the kinds of moved records that show it. */
+const wideningText = (entry: MergeWidening) =>
+  [
+    entry.stays > 0 && m.owner_merge_widening_stays({ count: entry.stays }),
+    entry.visits > 0 && m.owner_merge_widening_visits({ count: entry.visits }),
+    entry.routes > 0 && m.owner_merge_widening_routes({ count: entry.routes }),
+    entry.travel_updates > 0 &&
+      m.owner_merge_widening_travel_updates({ count: entry.travel_updates }),
+  ]
+    .filter(Boolean)
     .join(", ");
 
 type MergeProps = {
@@ -107,8 +134,16 @@ function MergeBody({
     records: MergeRecord[];
   } | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // Separate from the final confirmation: the owner accepts that visitors will see more.
+  const [widenAccepted, setWidenAccepted] = useState(false);
   const path = `${tripPath(trip.id, locations ? "locations" : "areas")}/merge`;
-  const body = (confirm: boolean) => ({ keep_id: keepId, duplicate_ids: picked, confirm });
+  const widens = previewed?.result.duplicates.some((duplicate) => duplicate.widened.length > 0);
+  const body = (confirm: boolean) => ({
+    keep_id: keepId,
+    duplicate_ids: picked,
+    confirm,
+    ...(confirm && widens && widenAccepted && { confirm_widening: true }),
+  });
   const previewFailure = locations
     ? m.owner_the_location_merge_could_not_be_previewed
     : m.owner_the_area_merge_could_not_be_previewed;
@@ -138,14 +173,28 @@ function MergeBody({
 
   async function run(confirm: boolean) {
     setError(null);
+    let refused: unknown = null;
     try {
       if (confirm) {
         const result = await apply.mutateAsync(undefined);
         onMerged(result.keep_id, result.duplicates.length);
       } else setPreviewed({ result: await check.mutateAsync(undefined), records });
+      return;
     } catch (failure) {
-      setError(errorNotice(failure, confirm ? mergeFailure : previewFailure));
+      refused = failure;
     }
+    if (confirm && isWideningRefusal(refused)) {
+      // Sharing changed since the preview: show what the merge now widens instead of a bare failure.
+      setWidenAccepted(false);
+      try {
+        setPreviewed({ result: await check.mutateAsync(undefined), records });
+        return;
+      } catch (failure) {
+        setError(errorNotice(failure, previewFailure));
+        return;
+      }
+    }
+    setError(errorNotice(refused, confirm ? mergeFailure : previewFailure));
   }
 
   if (previewed) {
@@ -174,6 +223,7 @@ function MergeBody({
     if ("city_level_location_ids" in preview && preview.city_level_location_ids.length)
       warnings.push(m.owner_merge_city_level({ count: preview.city_level_location_ids.length }));
     const pending = apply.isPending;
+    const widening = preview.duplicates.filter((duplicate) => duplicate.widened.length > 0);
     return (
       <div className="stack-form">
         <h3>{m.owner_what_the_merge_does()}</h3>
@@ -198,6 +248,42 @@ function MergeBody({
             </ul>
           </section>
         ))}
+        {widening.length > 0 && (
+          <section
+            className="grid gap-2 rounded-xl border border-travel-divider bg-travel-surface p-3"
+            aria-label={m.owner_merge_widening_title()}
+          >
+            <h4>{m.owner_merge_widening_title()}</h4>
+            <p>
+              {locations
+                ? m.owner_merge_widening_intro_location()
+                : m.owner_merge_widening_intro_area()}
+            </p>
+            <ul className="m-0 grid list-none gap-1.5 p-0">
+              {widening.map((duplicate) => (
+                <li key={duplicate.id} className="grid gap-0.5">
+                  <strong>{nameOf(duplicate.id)}</strong>
+                  <ul className="m-0 grid list-none gap-0.5 p-0">
+                    {duplicate.widened.map((entry) => (
+                      <li key={entry.audience}>
+                        {m.owner_merge_widening_audience({
+                          p0: audienceName({ id: entry.audience, label: entry.label }),
+                          p1: wideningText(entry),
+                        })}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+            <Field>
+              <FieldLabel className="flex items-center gap-2 font-semibold">
+                <TravelCheckbox checked={widenAccepted} onCheckedChange={setWidenAccepted} />
+                <span>{m.owner_merge_widening_acknowledge()}</span>
+              </FieldLabel>
+            </Field>
+          </section>
+        )}
         {warnings.length ? (
           <ul className="m-0 grid gap-1.5 pl-5" aria-label={m.owner_merge_warnings()}>
             {warnings.map((warning) => (
@@ -205,7 +291,7 @@ function MergeBody({
             ))}
           </ul>
         ) : (
-          <p className="help">{m.owner_merge_no_warnings()}</p>
+          widening.length === 0 && <p className="help">{m.owner_merge_no_warnings()}</p>
         )}
         <p>
           {locations
@@ -216,7 +302,7 @@ function MergeBody({
           <Button
             className="danger"
             type="button"
-            disabled={pending}
+            disabled={pending || (widening.length > 0 && !widenAccepted)}
             onClick={() => setConfirming(true)}
           >
             {pending ? m.owner_merging() : m.owner_merge()}
@@ -227,6 +313,7 @@ function MergeBody({
             disabled={pending}
             onClick={() => {
               setError(null);
+              setWidenAccepted(false);
               setPreviewed(null);
             }}
           >

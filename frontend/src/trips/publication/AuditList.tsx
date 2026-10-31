@@ -53,6 +53,15 @@ function eventMessage(event: AuditEvent) {
 const changedFields = (event: AuditEvent) =>
   (event.details.changes ?? []).map((change) => change.field);
 
+/** The audiences a merge newly showed the kept record to, each counted once. */
+const mergeWidened = (event: AuditEvent) => [
+  ...new Set(
+    (event.details.merged ?? []).flatMap((duplicate) =>
+      (duplicate.widened ?? []).map((entry) => entry.audience),
+    ),
+  ),
+];
+
 function audienceCounts(audiences: string[]) {
   return {
     publicCount: formatNumber(audiences.filter((audience) => audience === "public").length),
@@ -102,6 +111,10 @@ export function AuditList({ tripId }: { tripId: string }) {
                   )}
                 </p>
               )}
+              {(event.kind === "location.merge" || event.kind === "area.merge") &&
+                !!mergeWidened(event).length && (
+                  <p>{m.audit_merge_widened(audienceCounts(mergeWidened(event)))}</p>
+                )}
               {event.kind === "record.visibility_change" && (
                 <>
                   {!!event.details.newly_reached?.length && (

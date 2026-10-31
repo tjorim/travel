@@ -57,6 +57,7 @@ const preview = {
       routes: 1,
       travel_updates: 3,
       narrowed_audiences: ["public page", "link 'Familie'"],
+      widened: [],
     },
   ],
   // The server's English prose is never shown.
@@ -296,6 +297,7 @@ it("merges duplicate areas and points at the city-level locations that follow", 
         routes: 0,
         travel_updates: 0,
         narrowed_audiences: ["link 'Familie'"],
+        widened: [],
       },
     ],
     city_level_location_ids: ["air-1", "air-2"],
@@ -327,4 +329,137 @@ it("merges duplicate areas and points at the city-level locations that follow", 
     expect(api.lastBody("POST /api/trips/trip/areas/merge")).toMatchObject({ confirm: true }),
   );
   expect(await screen.findByText("1 gebied samengevoegd.")).toBeTruthy();
+});
+
+const widening = [
+  { audience: "public", label: null, stays: 1, visits: 2, routes: 0, travel_updates: 0 },
+  { audience: "link:abc", label: "Familie", stays: 0, visits: 0, routes: 1, travel_updates: 1 },
+];
+const withWidening = (duplicate: object) => ({
+  ...preview,
+  duplicates: [{ ...preview.duplicates[0], narrowed_audiences: [], ...duplicate }],
+});
+
+async function previewWidening() {
+  const dialog = await openSuggestion();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Voorbeeld bekijken" }));
+  await within(dialog).findByText("Dit gebeurt er bij het samenvoegen");
+  return dialog;
+}
+
+it("lists who sees more and keeps Merge disabled until that is acknowledged", async () => {
+  api.on("POST", /\/locations\/merge$/, (body) => ({
+    ...withWidening({ widened: widening }),
+    applied: (body as { confirm: boolean }).confirm,
+  }));
+  const dialog = await previewWidening();
+  const region = within(dialog).getByRole("region", { name: "Bezoekers die meer te zien krijgen" });
+  expect(within(region).getByText(/publieke naam en het exacte punt/)).toBeTruthy();
+  expect(within(region).getByText("publieke pagina: 1 verblijf, 2 bezoeken")).toBeTruthy();
+  expect(within(region).getByText("deellink “Familie”: 1 route, 1 reisupdate")).toBeTruthy();
+  expect(within(dialog).queryByText(/Geen waarschuwingen/)).toBeNull();
+
+  const merge = within(dialog).getByRole("button", { name: "Samenvoegen" });
+  expect(merge.hasAttribute("disabled")).toBe(true);
+  const accept = within(region).getByRole("checkbox", {
+    name: "Ik begrijp dat deze bezoekers na het samenvoegen meer zien",
+  });
+  fireEvent.click(accept);
+  await waitFor(() => expect(merge.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(merge);
+  await answerConfirmation("Definitief samenvoegen");
+  await waitFor(() => expect(api.count(MERGE)).toBe(2));
+  expect(api.lastBody(MERGE)).toEqual({
+    keep_id: "air-1",
+    duplicate_ids: ["air-2"],
+    confirm: true,
+    confirm_widening: true,
+  });
+  expect(await screen.findByText("1 locatie samengevoegd.")).toBeTruthy();
+});
+
+it("names the audiences in English and asks again after going back", async () => {
+  api.on("POST", /\/locations\/merge$/, () => withWidening({ widened: widening }));
+  act(() => changeLocale("en"));
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: /Review merge: Taoyuan Airport|Samenvoegen bekijken/,
+    }),
+  );
+  const dialog = await screen.findByRole("dialog", { name: "Merge locations" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Preview merge" }));
+  const region = await within(dialog).findByRole("region", { name: "Visitors who will see more" });
+  expect(within(region).getByText("public page: 1 stay, 2 visits")).toBeTruthy();
+  fireEvent.click(within(region).getByRole("checkbox"));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Back" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Preview merge" }));
+  const again = await within(dialog).findByRole("region", { name: "Visitors who will see more" });
+  expect(within(again).getByRole("checkbox").getAttribute("aria-checked")).toBe("false");
+});
+
+it("shows what a stale preview missed when the server refuses an unacknowledged merge", async () => {
+  let widens = false;
+  api.on("POST", /\/locations\/merge$/, () => withWidening({ widened: widens ? widening : [] }));
+  const dialog = await previewWidening();
+  widens = true;
+  api.failNext = {
+    status: 409,
+    body: {
+      detail: { code: "merge_widening_needs_acknowledgement", duplicates: [] },
+      errors: [{ code: "merge_widening_needs_acknowledgement", params: {}, path: [] }],
+    },
+  };
+  fireEvent.click(within(dialog).getByRole("button", { name: "Samenvoegen" }));
+  await answerConfirmation("Definitief samenvoegen");
+  // The refusal turns into a fresh preview that lists the audiences, rather than a bare failure.
+  const region = await within(dialog).findByRole("region", {
+    name: "Bezoekers die meer te zien krijgen",
+  });
+  expect(region).toBeTruthy();
+  expect(within(dialog).queryByRole("alert")).toBeNull();
+  expect(within(dialog).getByRole("button", { name: "Samenvoegen" }).hasAttribute("disabled")).toBe(
+    true,
+  );
+  expect(api.rows("/api/trips/trip/locations")).toHaveLength(2);
+});
+
+it("explains the area point an area merge newly shows", async () => {
+  api.on("POST", /\/areas\/merge$/, (body) => ({
+    keep_id: "taoyuan",
+    applied: (body as { confirm: boolean }).confirm,
+    duplicates: [
+      {
+        id: "taipei",
+        label: "Taipei",
+        locations: 0,
+        visits: 1,
+        routes: 0,
+        travel_updates: 0,
+        narrowed_audiences: [],
+        widened: [widening[0]],
+      },
+    ],
+    city_level_location_ids: [],
+    warnings: [],
+  }));
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Gebied Taoyuan bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Samenvoegen met andere gebieden" }));
+  const dialog = await screen.findByRole("dialog", { name: "Gebieden samenvoegen" });
+  fireEvent.click(within(dialog).getByRole("checkbox"));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Voorbeeld bekijken" }));
+  const region = await within(dialog).findByRole("region", {
+    name: "Bezoekers die meer te zien krijgen",
+  });
+  expect(within(region).getByText(/afgeronde kaartpunt van het bewaarde gebied/)).toBeTruthy();
+  fireEvent.click(within(region).getByRole("checkbox"));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Samenvoegen" }));
+  await answerConfirmation("Definitief samenvoegen");
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/areas/merge")).toMatchObject({
+      confirm: true,
+      confirm_widening: true,
+    }),
+  );
 });

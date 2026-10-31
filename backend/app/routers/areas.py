@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 from timezonefinder import TimezoneFinder
 
 from ..access import receivers, trip_audiences
-from ..audit import record_audit_event
+from ..audit import live_audiences, record_audit_event
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, service_exception
-from ..models import Area, AuditEventKind, AuditTargetType, Location, Route, TravelUpdate, Visit
+from ..models import Area, AuditEventKind, AuditTargetType, Location, Route, Stay, TravelUpdate, Visit
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
 from ..schemas import (
     AreaInput,
@@ -27,6 +27,7 @@ from ..schemas import (
     MergeRequest,
 )
 from ..search_text import contains
+from ..visitor_changes import MovedRecord, Placement, merge_widening, merge_widening_refusal
 from .placement import is_city_level
 from .trips import owned_trip
 
@@ -217,6 +218,30 @@ def _area_referencing(session: Session, trip_id: Identifier, area_id: Identifier
     }
 
 
+def _moved_records(
+    session: Session, trip_id: Identifier, duplicate: Area, keep: Area, found: dict[str, list]
+) -> list[MovedRecord]:
+    """Every record that reads its area from ``duplicate`` and so reads ``keep`` after the merge.
+
+    A stay follows its location, and an update follows its location too when it
+    has one; only a location-less update names its area directly."""
+    moved_ids = [location.id for location in found["locations"]]
+    to_keep = [Placement(area_before=duplicate, area_after=keep)]
+    stays = session.scalars(select(Stay).where(Stay.trip_id == trip_id, Stay.location_id.in_(moved_ids)))
+    updates = session.scalars(
+        select(TravelUpdate).where(
+            TravelUpdate.trip_id == trip_id,
+            TravelUpdate.location_id.in_(moved_ids)
+            | (TravelUpdate.location_id.is_(None) & (TravelUpdate.area_id == duplicate.id)),
+        )
+    )
+    moved = [MovedRecord("stays", stay, to_keep) for stay in stays]
+    moved += [MovedRecord("visits", visit, to_keep) for visit in found["visits"]]
+    moved += [MovedRecord("travel_updates", update, to_keep) for update in updates]
+    moved += [MovedRecord("routes", route, to_keep) for route in found["routes"]]
+    return moved
+
+
 def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, subject: str) -> AreaMergeResult:
     """Preview, or with ``confirm`` apply, folding duplicate areas into one kept area.
 
@@ -224,7 +249,12 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
     moves to the kept area in one transaction (stays follow their location),
     and then the duplicates are deleted. The kept area keeps its own label,
     point, time zone and visibility. Afterwards its locations sit together, so
-    duplicates among them can be folded with ``merge_locations``."""
+    duplicates among them can be folded with ``merge_locations``.
+
+    A live audience that receives the kept area but not a duplicate starts to
+    read the kept area's rounded point through the records that move. The
+    preview lists those audiences per duplicate, and a confirmed merge is
+    refused with 409 until ``confirm_widening`` accepts them."""
     trip = owned_trip(session, trip_id, subject)
     keep = owned_area(session, trip.id, payload.keep_id)
     duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
@@ -239,11 +269,19 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
     kept_by = receivers("area", keep, audiences)
     summaries: list[AreaMergeDuplicate] = []
     warnings: list[str] = []
+    live = live_audiences(session, trip.id)
     moves: list[tuple[Area, dict[str, list]]] = []
     for duplicate in duplicates:
         found = _area_referencing(session, trip.id, duplicate.id)
         moves.append((duplicate, found))
         narrowed = sorted(receivers("area", duplicate, audiences) - kept_by)
+        widened = merge_widening(live, _moved_records(session, trip.id, duplicate, keep, found))
+        if widened:
+            warnings.append(
+                f"{duplicate.label or 'An unnamed area'} is not shared with {', '.join(w.name for w in widened)} "
+                "but the kept area is; after the merge the records filed under it show them the kept area's point. "
+                "Confirming needs confirm_widening=true."
+            )
         if narrowed:
             warnings.append(
                 f"{duplicate.label or 'An unnamed area'} reaches {', '.join(narrowed)} but the kept area does not; "
@@ -254,6 +292,7 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
                 id=duplicate.id,
                 label=duplicate.label,
                 narrowed_audiences=narrowed,
+                widened=[w.as_detail() for w in widened],
                 **{kind: len(rows) for kind, rows in found.items()},
             )
         )
@@ -278,6 +317,14 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
     )
     if not payload.confirm:
         return result
+    if any(summary.widened for summary in summaries) and not payload.confirm_widening:
+        raise merge_widening_refusal(
+            [
+                {"id": summary.id, "label": summary.label, "widened": [w.model_dump() for w in summary.widened]}
+                for summary in summaries
+                if summary.widened
+            ]
+        )
     for duplicate, found in moves:
         for record in (*found["locations"], *found["visits"]):
             record.area = keep
@@ -299,7 +346,16 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
         target_id=keep.id,
         details={
             "merged": [
-                {"id": summary.id, **summary.model_dump(include={"locations", "visits", "routes", "travel_updates"})}
+                {
+                    "id": summary.id,
+                    **summary.model_dump(include={"locations", "visits", "routes", "travel_updates"}),
+                    # Audience ids and counts only: a link's label is the owner's own text.
+                    **(
+                        {"widened": [w.model_dump(exclude={"label"}) for w in summary.widened]}
+                        if summary.widened
+                        else {}
+                    ),
+                }
                 for summary in summaries
             ]
         },

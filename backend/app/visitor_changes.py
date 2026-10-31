@@ -10,9 +10,12 @@ visitor views use, so the location editor, the MCP tool and the merge preview
 from dataclasses import dataclass
 from typing import Any
 
+from fastapi import status
+
 from .access import receivers
-from .audit import LiveAudience
-from .models import Location
+from .audit import PUBLIC_AUDIENCE, LiveAudience
+from .errors import ApiException
+from .models import Area, Location
 
 # Location fields a visitor can read, in display order. The address parts are
 # published only while the owner shares the address; ``locality`` is the region
@@ -83,3 +86,97 @@ def reached_by(kind: str, record: Any, live: list[LiveAudience]) -> list[LiveAud
     """The live audiences that receive this record by the rule delivery applies."""
     reached = receivers(kind, record, [(audience.id, audience.scope) for audience in live])
     return [audience for audience in live if audience.id in reached]
+
+
+MERGE_WIDENING_CODE = "merge_widening_needs_acknowledgement"
+# What a merge re-points, by the plural the merge previews use, and the share kind each is delivered as.
+MOVED_KINDS = {"stays": "stay", "visits": "visit", "routes": "route", "travel_updates": "travel_update"}
+
+
+@dataclass(frozen=True)
+class Placement:
+    """Where a moved record reads its place from, before and after a merge.
+
+    A location shows its public name and exact point to an audience that
+    receives it; an area shows its rounded point to one that receives it.
+    ``None`` means the merge leaves that side of the place unchanged."""
+
+    location_before: Location | None = None
+    location_after: Location | None = None
+    area_before: Area | None = None
+    area_after: Area | None = None
+
+
+@dataclass(frozen=True)
+class MovedRecord:
+    """A record a merge re-points: its kind (a ``MOVED_KINDS`` key), the record and the places it changes."""
+
+    kind: str
+    record: Any
+    placements: list[Placement]
+
+
+@dataclass(frozen=True)
+class Widened:
+    """An audience that starts to read more of the kept record, and how many moved records show it."""
+
+    audience: LiveAudience
+    counts: dict[str, int]
+
+    @property
+    def name(self) -> str:
+        """The audience as the merge warnings name it, like ``narrowed_audiences``."""
+        return "public page" if self.audience.id == PUBLIC_AUDIENCE else f"link {self.audience.label!r}"
+
+    def as_detail(self) -> dict[str, Any]:
+        return {"audience": self.audience.id, "label": self.audience.label, **self.counts}
+
+    def as_audit(self) -> dict[str, Any]:
+        """Ids and counts only: a link's label is the owner's own text."""
+        return {"audience": self.audience.id, **self.counts}
+
+
+def merge_widening(live: list[LiveAudience], moved: list[MovedRecord]) -> list[Widened]:
+    """The live audiences that newly read a place through records a merge re-points.
+
+    A moved record already reaches an audience when it is delivered to it. The
+    merge widens that audience's view when it receives the kept place and did
+    not receive the duplicate's: the record then shows a location or an area
+    point it did not before. Audiences that receive neither, or both, read
+    nothing new."""
+    if not live:
+        return []
+    cache: dict[tuple[str, str], set[str]] = {}
+
+    def readers(kind: str, record: Any) -> set[str]:
+        key = (kind, record.id)
+        if key not in cache:
+            cache[key] = {audience.id for audience in reached_by(kind, record, live)}
+        return cache[key]
+
+    def points(area: Area | None) -> set[str]:
+        # An area is read as its rounded point only where it is delivered and has one.
+        has_point = area is not None and area.latitude is not None and area.longitude is not None
+        return readers("area", area) if area is not None and has_point else set()
+
+    def locations(location: Location | None) -> set[str]:
+        return readers("location", location) if location is not None else set()
+
+    counts: dict[str, dict[str, int]] = {audience.id: dict.fromkeys(MOVED_KINDS, 0) for audience in live}
+    for entry in moved:
+        gained: set[str] = set()
+        for place in entry.placements:
+            gained |= locations(place.location_after) - locations(place.location_before)
+            gained |= points(place.area_after) - points(place.area_before)
+        for audience_id in gained & readers(MOVED_KINDS[entry.kind], entry.record):
+            counts[audience_id][entry.kind] += 1
+    return [Widened(audience, counts[audience.id]) for audience in live if any(counts[audience.id].values())]
+
+
+def merge_widening_refusal(duplicates: list[dict[str, Any]]) -> ApiException:
+    """The 409 for a confirmed merge whose widening the owner has not acknowledged."""
+    return ApiException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={"code": MERGE_WIDENING_CODE, "duplicates": duplicates},
+        code=MERGE_WIDENING_CODE,
+    )

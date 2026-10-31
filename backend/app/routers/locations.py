@@ -34,7 +34,16 @@ from ..schemas import (
     NavigationResponse,
 )
 from ..search_text import contains
-from ..visitor_changes import FieldChange, location_visitor_view, reached_by, text_changes
+from ..visitor_changes import (
+    FieldChange,
+    MovedRecord,
+    Placement,
+    location_visitor_view,
+    merge_widening,
+    merge_widening_refusal,
+    reached_by,
+    text_changes,
+)
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 
@@ -347,13 +356,37 @@ def delete_location(trip_id: Identifier, location_id: Identifier, session: Sessi
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+def _moved_records(duplicate: Location, keep: Location, found: dict[str, list]) -> list[MovedRecord]:
+    """Every record that moves from ``duplicate`` to ``keep``, with the places it then reads."""
+
+    def placement(area: Area) -> Placement:
+        return Placement(duplicate, keep, area, keep.area)
+
+    moved = [MovedRecord("stays", stay, [placement(stay.area)]) for stay in found["stays"]]
+    moved += [MovedRecord("visits", visit, [placement(visit.area)]) for visit in found["visits"]]
+    moved += [MovedRecord("travel_updates", update, [placement(update.area)]) for update in found["travel_updates"]]
+    for route in found["routes"]:
+        ends = [
+            placement(getattr(route, f"{end}_area"))
+            for end in ("departure", "arrival")
+            if getattr(route, f"{end}_location_id") == duplicate.id
+        ]
+        moved.append(MovedRecord("routes", route, ends))
+    return moved
+
+
 def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session, subject: str) -> LocationMergeResult:
     """Preview, or with ``confirm`` apply, folding duplicates into one kept location.
 
     Every visit, stay, route end and reisupdate at a duplicate moves to the kept
     location in one transaction, and then the duplicates are deleted. The kept
     location keeps its own name, visibility and area; visits and route ends move
-    into that area with it."""
+    into that area with it.
+
+    A live audience that receives the kept location but not a duplicate starts
+    to read the kept name and point through the records that move. The preview
+    lists those audiences per duplicate, and a confirmed merge is refused with
+    409 until ``confirm_widening`` accepts them."""
     keep = owned_location(session, trip_id, subject, payload.keep_id)
     duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
     if keep.id in duplicate_ids:
@@ -365,6 +398,7 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
     duplicates = [owned_location(session, trip_id, subject, duplicate_id) for duplicate_id in duplicate_ids]
     audiences = trip_audiences(session, trip_id)
     kept_by = receivers("location", keep, audiences)
+    live = live_audiences(session, trip_id)
     summaries: list[LocationMergeDuplicate] = []
     warnings: list[str] = []
     moves: list[tuple[Location, dict[str, list]]] = []
@@ -373,6 +407,13 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
         moves.append((duplicate, found))
         narrowed = sorted(receivers("location", duplicate, audiences) - kept_by)
         name = duplicate.label or duplicate.display_name or duplicate.id
+        widened = merge_widening(live, _moved_records(duplicate, keep, found))
+        if widened:
+            warnings.append(
+                f"{name} is not shared with {', '.join(w.name for w in widened)} "
+                "but the kept location is; after the merge its stays, visits, routes and updates show them "
+                "the kept location. Confirming needs confirm_widening=true."
+            )
         if narrowed:
             warnings.append(
                 f"{name} reaches {', '.join(narrowed)} but the kept location does not; "
@@ -387,12 +428,21 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
                 display_name=duplicate.display_name,
                 area_id=duplicate.area_id,
                 narrowed_audiences=narrowed,
+                widened=[w.as_detail() for w in widened],
                 **{kind: len(rows) for kind, rows in found.items()},
             )
         )
     result = LocationMergeResult(keep_id=keep.id, applied=payload.confirm, duplicates=summaries, warnings=warnings)
     if not payload.confirm:
         return result
+    if any(summary.widened for summary in summaries) and not payload.confirm_widening:
+        raise merge_widening_refusal(
+            [
+                {"id": summary.id, "label": summary.label, "widened": [w.model_dump() for w in summary.widened]}
+                for summary in summaries
+                if summary.widened
+            ]
+        )
     for duplicate, found in moves:
         for visit in found["visits"]:
             visit.location = keep
@@ -417,7 +467,16 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
         target_id=keep.id,
         details={
             "merged": [
-                {"id": summary.id, **summary.model_dump(include={"visits", "stays", "routes", "travel_updates"})}
+                {
+                    "id": summary.id,
+                    **summary.model_dump(include={"visits", "stays", "routes", "travel_updates"}),
+                    # Audience ids and counts only: a link's label is the owner's own text.
+                    **(
+                        {"widened": [w.model_dump(exclude={"label"}) for w in summary.widened]}
+                        if summary.widened
+                        else {}
+                    ),
+                }
                 for summary in summaries
             ]
         },

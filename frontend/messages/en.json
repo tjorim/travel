@@ -2011,5 +2011,51 @@
   "owner_visitor_change_preview_item": "{p0} (read by {p1})",
   "owner_visitor_change_area_preview": "Moving this location to another area also moves its visits and route ends. If visitors receive those, you will be asked to confirm first.",
   "audit_location_update": "Place: details visitors read were changed ({fields}).",
-  "audit_location_update_audiences": "Read on the public page: {publicCount}; share links: {linkCount}."
+  "audit_location_update_audiences": "Read on the public page: {publicCount}; share links: {linkCount}.",
+  "owner_merge_widening_title": "Visitors who will see more",
+  "owner_merge_widening_intro_location": "The kept location is shared with audiences that do not receive the duplicates below. After the merge, the moved records show them the kept location’s public name and exact point. Cancel and make the kept location private first if that is not what you want.",
+  "owner_merge_widening_intro_area": "The kept area is shared with audiences that do not receive the duplicates below. After the merge, the moved records show them the kept area’s rounded map point. Cancel and make the kept area private first if that is not what you want.",
+  "owner_merge_widening_audience": "{p0}: {p1}",
+  "owner_merge_widening_stays": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} stay",
+        "countPlural=other": "{count} stays"
+      }
+    }
+  ],
+  "owner_merge_widening_visits": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} visit",
+        "countPlural=other": "{count} visits"
+      }
+    }
+  ],
+  "owner_merge_widening_routes": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} route",
+        "countPlural=other": "{count} routes"
+      }
+    }
+  ],
+  "owner_merge_widening_travel_updates": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} travel update",
+        "countPlural=other": "{count} travel updates"
+      }
+    }
+  ],
+  "owner_merge_widening_acknowledge": "I understand that these visitors will see more after the merge",
+  "audit_merge_widened": "Newly shown to visitors by the merge. Public page: {publicCount}; share links: {linkCount}."
 }

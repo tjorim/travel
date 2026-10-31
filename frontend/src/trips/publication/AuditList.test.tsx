@@ -37,6 +37,12 @@ const events = [
     no_longer_reached: ["link:secret-link-c"],
   }),
   event("share_link.revoke"),
+  event("location.merge", {
+    merged: [
+      { id: "secret-a", widened: [{ audience: "public" }, { audience: "link:secret-link-a" }] },
+      { id: "secret-b", widened: [{ audience: "link:secret-link-a" }] },
+    ],
+  }),
   event("location.update", {
     changes: [
       { field: "label", audiences: ["public", "link:secret-link-a"] },
@@ -95,6 +101,13 @@ it.each(["en", "nl"] as const)(
         locale === "en"
           ? "Read on the public page: 1; share links: 1."
           : "Gelezen op de openbare pagina: 1; deellinks: 1.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        locale === "en"
+          ? "Newly shown to visitors by the merge. Public page: 1; share links: 1."
+          : "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: 1; deellinks: 1.",
       ),
     ).toBeVisible();
     expect(container.textContent).not.toContain("secret-");
