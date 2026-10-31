@@ -249,3 +249,19 @@ Dismissal returns focus to the trigger; crossing to wide returns it to the
 current sidebar link. Successful same-tab selection focuses the stable localized
 section h2 after the router updates; selecting the current link does so directly.
 Modified clicks retain native new-tab behavior. Back/Forward remain router-owned.
+
+## Plan stepper and first steps (#94)
+
+Two small additions for planning on a laptop, both built from existing controls:
+
+- **Nights stepper.** A stay that is still an idea or planned shows "− N nights +"
+  in the Plan list. It moves only the check-out date by one night (never below
+  one night, disabled while a save is pending) and says so in the section's status
+  line ("Stay now runs 1 Mar → 4 Mar."). A confirmed or cancelled stay is edited in
+  its dialog, so a booking's dates never change from a quick tap. Both buttons are
+  44 px square with whole-sentence accessible names. Visits already had Move up and
+  Move down, so no drag-and-drop is added: it would not be keyboard operable.
+- **First steps.** A trip with no area, visit, stay or route shows "Start with where
+  you are going" on its overview with three links into the Plan blocks (places, a
+  stay, a route). It appears only after all three lists have loaded, so a loading
+  trip never flashes it, and it disappears with the first record.

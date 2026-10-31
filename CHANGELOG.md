@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add a nights stepper to planned and idea stays and a "Start with where you are going" card to an empty trip's overview (Refs #94).
+
 - Replace narrow owner section links with a localized Dialog drawer, preserving route history, editor drafts and section focus (Refs #5).
 
 - Add a sticky 224px owner trip sidebar at 1100px and wider, preserving horizontal links below it and search/editor drafts across resize (#5).

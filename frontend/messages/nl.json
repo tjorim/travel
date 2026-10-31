@@ -1003,6 +1003,15 @@
       }
     }
   ],
+  "owner_stay_nights_group": "Nachten bij {name}",
+  "owner_stay_one_night_less": "Eén nacht minder bij {name}",
+  "owner_stay_one_night_more": "Eén nacht meer bij {name}",
+  "owner_stay_dates_changed": "Het verblijf loopt nu {dates}.",
+  "owner_first_steps_title": "Begin met waar je naartoe gaat",
+  "owner_first_steps_text": "Voeg de plaatsen toe die je bezoekt, daarna de verblijven en routes ertussen. Er wordt niets gedeeld totdat jij dat kiest.",
+  "owner_first_steps_places": "Plaatsen toevoegen",
+  "owner_first_steps_stay": "Verblijf toevoegen",
+  "owner_first_steps_route": "Route toevoegen",
   "owner_night_count": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
