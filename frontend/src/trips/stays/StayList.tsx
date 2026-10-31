@@ -43,35 +43,38 @@ export function StayList({
                     .join(" · ")}
                 </span>
               </Button>
-              {onAdjustNights && (stay.status === "idea" || stay.status === "planned") && (
-                <div
-                  className="button-row items-center"
-                  role="group"
-                  aria-label={m.owner_stay_nights_group({ name: stayLabel(stay) })}
-                >
-                  <Button
-                    className="secondary compact min-h-11 min-w-11"
-                    type="button"
-                    disabled={saving || nights <= 1}
-                    aria-label={m.owner_stay_one_night_less({ name: stayLabel(stay) })}
-                    onClick={() => onAdjustNights(stay, -1)}
+              {/* A shared stay reaches visitors as it is saved, so it is changed in its dialog, where the owner sees the sharing. */}
+              {onAdjustNights &&
+                stay.visibility === "private" &&
+                (stay.status === "idea" || stay.status === "planned") && (
+                  <div
+                    className="button-row items-center"
+                    role="group"
+                    aria-label={m.owner_stay_nights_group({ name: stayLabel(stay) })}
                   >
-                    −
-                  </Button>
-                  <span aria-hidden="true" className="min-w-16 text-center text-sm font-bold">
-                    {m.owner_night_count({ count: nights })}
-                  </span>
-                  <Button
-                    className="secondary compact min-h-11 min-w-11"
-                    type="button"
-                    disabled={saving}
-                    aria-label={m.owner_stay_one_night_more({ name: stayLabel(stay) })}
-                    onClick={() => onAdjustNights(stay, 1)}
-                  >
-                    +
-                  </Button>
-                </div>
-              )}
+                    <Button
+                      className="secondary compact min-h-11 min-w-11"
+                      type="button"
+                      disabled={saving || nights <= 1}
+                      aria-label={m.owner_stay_one_night_less({ name: stayLabel(stay) })}
+                      onClick={() => onAdjustNights(stay, -1)}
+                    >
+                      −
+                    </Button>
+                    <span aria-hidden="true" className="min-w-16 text-center text-sm font-bold">
+                      {m.owner_night_count({ count: nights })}
+                    </span>
+                    <Button
+                      className="secondary compact min-h-11 min-w-11"
+                      type="button"
+                      disabled={saving}
+                      aria-label={m.owner_stay_one_night_more({ name: stayLabel(stay) })}
+                      onClick={() => onAdjustNights(stay, 1)}
+                    >
+                      +
+                    </Button>
+                  </div>
+                )}
             </article>
           );
         });

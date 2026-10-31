@@ -55,6 +55,17 @@ it("moves the check-out by a night for a stay still being planned, not for a boo
   ).toBe(true);
 });
 
+it("keeps a stay that visitors can see out of the quick stepper", () => {
+  render(
+    <StayList
+      stays={[stay("a", { visibility: "everyone" }), stay("b", { visibility: "custom" })]}
+      onInspect={() => {}}
+      onAdjustNights={() => {}}
+    />,
+  );
+  expect(screen.queryAllByRole("group")).toHaveLength(0);
+});
+
 it("offers no stepper without a handler and none while saving", () => {
   const { rerender } = render(<StayList stays={[stay("a")]} onInspect={() => {}} />);
   expect(screen.queryAllByRole("group")).toHaveLength(0);
