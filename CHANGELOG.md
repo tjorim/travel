@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Lead each visitor update with its photos in a wide strip that scrolls and snaps, put the text after them, and show "N days later" between updates dated to the day (Refs #94).
+
 - Replace narrow owner section links with a localized Dialog drawer, preserving route history, editor drafts and section focus (Refs #5).
 
 - Add a sticky 224px owner trip sidebar at 1100px and wider, preserving horizontal links below it and search/editor drafts across resize (#5).

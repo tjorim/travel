@@ -447,6 +447,17 @@ function routeLocationPoint(
   };
 }
 
+/** Whole days between two updates dated to the day, else null: the story's "3 days later" connector. */
+function daysLater(previous: ProjectionItem | undefined, item: ProjectionItem): number | null {
+  const [from, to] = [previous, item].map((entry) => {
+    const value = entry ? text(entry, "story_date") : null;
+    return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? dayjs.utc(value) : null;
+  });
+  if (!from?.isValid() || !to?.isValid()) return null;
+  const days = to.diff(from, "day");
+  return days > 0 ? days : null;
+}
+
 function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   useLocale();
   const [failed, setFailed] = useState(false);
@@ -458,7 +469,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
       className={
         expanded
           ? "max-h-travel-lightbox w-full object-contain"
-          : "block aspect-4/3 h-auto w-full rounded-travel-media bg-travel-tint object-cover"
+          : "block aspect-4/3 h-auto w-full rounded-travel-media bg-travel-tint object-cover shadow-travel-card"
       }
       src={url}
       alt={alt}
@@ -493,7 +504,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger
-        className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 text-travel-ink focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+        className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 text-travel-ink transition duration-150 hover:brightness-105 motion-reduce:transition-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
         aria-label={m.visitor_open_image({ title: alt })}
       >
         {image(false)}
@@ -539,6 +550,7 @@ function SharedVideo({
   return (
     <>
       <video
+        className="block w-full rounded-travel-media"
         controls
         preload="none"
         playsInline
@@ -560,21 +572,39 @@ function Gallery({
   fileUrl,
   title = m.visitor_gallery(),
   heading = true,
+  strip = false,
 }: {
   items: ProjectionItem[];
   fileUrl: (item: ProjectionItem) => string | null;
   title?: string;
   /** A gallery already under a heading of its own is named for assistive technology only. */
   heading?: boolean;
+  /** Lead with the photos: one wide frame, or a row that scrolls sideways and snaps to each photo. */
+  strip?: boolean;
 }) {
   useLocale();
   if (!items.length) return null;
   return (
     <section className={cn("min-w-0", heading && "mt-6")} aria-label={title}>
       {heading && <h4 className="mb-3 text-base">{title}</h4>}
-      <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 min-[560px]:grid-cols-2 min-[960px]:grid-cols-3 min-[1500px]:grid-cols-4">
+      <ul
+        className={
+          strip
+            ? "m-0 flex list-none snap-x snap-mandatory gap-3.5 overflow-x-auto overscroll-x-contain scroll-px-1 p-0 pb-2"
+            : "m-0 grid list-none grid-cols-1 gap-3.5 p-0 min-[560px]:grid-cols-2 min-[960px]:grid-cols-3 min-[1500px]:grid-cols-4"
+        }
+      >
         {items.map((item) => (
-          <li className="min-w-0" key={item.id}>
+          <li
+            className={cn(
+              "min-w-0",
+              strip &&
+                (items.length === 1
+                  ? "w-full max-w-170 shrink-0"
+                  : "shrink-0 basis-5/6 snap-start min-[680px]:basis-2/3"),
+            )}
+            key={item.id}
+          >
             <figure className="m-0">
               {hasFileMarker(item, "image") &&
                 (fileUrl(item) ? (
@@ -663,12 +693,17 @@ function Updates({
           aria-label={m.visitor_timeline()}
           className="m-0 grid min-w-0 list-none gap-10 border-l-2 border-travel-border py-0 pr-0 pl-6 min-[680px]:gap-12 min-[680px]:pl-8"
         >
-          {updates.map((item) => (
+          {updates.map((item, index) => (
             <li className="relative min-w-0 scroll-mt-6" key={item.id} id={item.id} tabIndex={-1}>
               <span
                 aria-hidden="true"
                 className="absolute top-2.5 -left-8.25 size-3 rounded-full bg-travel-forest min-[680px]:-left-10.25"
               />
+              {daysLater(updates[index - 1], item) !== null && (
+                <p className="mb-3 text-xs font-bold tracking-travel-eyebrow text-travel-muted uppercase">
+                  {m.visitor_days_later({ count: daysLater(updates[index - 1], item)! })}
+                </p>
+              )}
               <article className="grid gap-3">
                 <h3 className="m-0 text-travel-card-title leading-tight font-extrabold tracking-tight">
                   {text(item, "title") ?? m.visitor_update()}
@@ -681,16 +716,17 @@ function Updates({
                   ) : null}
                   {place(item.place) && <span>{place(item.place)}</span>}
                 </div>
-                <Markdown
-                  className="max-w-travel-reading leading-relaxed"
-                  html={text(item, "body_html")}
-                  text={text(item, "body")}
-                />
                 <Gallery
                   items={media.filter((image) => image.update === item.id)}
                   fileUrl={fileUrl}
                   title={m.visitor_update_media()}
                   heading={false}
+                  strip
+                />
+                <Markdown
+                  className="max-w-travel-reading leading-relaxed"
+                  html={text(item, "body_html")}
+                  text={text(item, "body")}
                 />
               </article>
             </li>

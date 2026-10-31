@@ -1770,6 +1770,16 @@
   "visitor_story_navigation": "Updates in dit verhaal",
   "visitor_timeline": "Reisupdates tijdlijn",
   "visitor_update": "Update",
+  "visitor_days_later": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} dag later",
+        "countPlural=other": "{count} dagen later"
+      }
+    }
+  ],
   "visitor_update_media": "Media bij deze update",
   "visitor_view_route": "Route bekijken",
   "visitor_view_location": "Locatie bekijken",
