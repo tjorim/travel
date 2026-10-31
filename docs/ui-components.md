@@ -263,6 +263,7 @@ a restyle of what the audience already receives, never new content.
   without arrows. Each photo is still the existing `SharedImage` button that opens
   the lightbox, so keyboard use, captions and alt text are unchanged. Videos fill
   the frame width. Loose gallery photos keep the grid.
+- A row of several photos has Previous photo and Next photo arrows (44 px, hidden at the ends of the row, scrolling by four fifths of its width) for mouse users, for whom a sideways scroll bar is easy to miss; touch, keyboard focus and the scroll bar still work.
 - A "3 days later" line sits above an update whose story date and the previous
   one's are both given to the day (`daysLater`, derived from dates the audience
   already has; shown for a gap of a day or more, never for month or year dates).

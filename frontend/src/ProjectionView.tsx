@@ -3,7 +3,8 @@ import { LocaleControl, selectedLocale, useLocale } from "./locale";
 import { Collapsible } from "@/ui/collapsible";
 import { Dialog } from "@/ui/dialog";
 import { Button } from "@/ui/button";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "cn";
 import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
@@ -583,55 +584,110 @@ function Gallery({
   strip?: boolean;
 }) {
   useLocale();
+  const list = useRef<HTMLUListElement>(null);
+  const [edges, setEdges] = useState({ start: true, end: false });
+  const scrolls = strip && items.length > 1;
+  // The arrows hide at either end of the row, which is read from the scroll position as it moves or resizes.
+  useEffect(() => {
+    const element = list.current;
+    if (!scrolls || !element) return;
+    const update = () =>
+      setEdges({
+        start: element.scrollLeft <= 1,
+        end: element.scrollLeft + element.clientWidth >= element.scrollWidth - 1,
+      });
+    update();
+    element.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(element);
+    return () => {
+      element.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [scrolls, items.length]);
+  function page(direction: -1 | 1) {
+    const element = list.current;
+    element?.scrollBy?.({
+      left: direction * element.clientWidth * 0.8,
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }
   if (!items.length) return null;
+  const arrow =
+    "absolute top-1/3 z-10 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-travel-control-border bg-travel-surface p-0 text-travel-forest shadow-travel-card disabled:hidden";
   return (
     <section className={cn("min-w-0", heading && "mt-6")} aria-label={title}>
       {heading && <h4 className="mb-3 text-base">{title}</h4>}
-      <ul
-        className={
-          strip
-            ? "m-0 flex list-none snap-x snap-mandatory gap-3.5 overflow-x-auto overscroll-x-contain scroll-px-1 p-0 pb-2"
-            : "m-0 grid list-none grid-cols-1 gap-3.5 p-0 min-[560px]:grid-cols-2 min-[960px]:grid-cols-3 min-[1500px]:grid-cols-4"
-        }
-      >
-        {items.map((item) => (
-          <li
-            className={cn(
-              "min-w-0",
-              strip &&
-                (items.length === 1
-                  ? "w-full max-w-170 shrink-0"
-                  : "shrink-0 basis-5/6 snap-start min-[680px]:basis-2/3"),
-            )}
-            key={item.id}
-          >
-            <figure className="m-0">
-              {hasFileMarker(item, "image") &&
-                (fileUrl(item) ? (
-                  <SharedImage item={item} url={fileUrl(item)!} />
-                ) : (
-                  <p role="status">{m.visitor_image_loading()}</p>
-                ))}
-              {hasFileMarker(item, "video") && fileUrl(item) && (
-                <SharedVideo
-                  item={item}
-                  url={fileUrl(item)!}
-                  poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined}
+      <div className="relative">
+        {scrolls && (
+          <>
+            <Button
+              type="button"
+              className={cn(arrow, "left-2")}
+              disabled={edges.start}
+              aria-label={m.visitor_previous_photo()}
+              onClick={() => page(-1)}
+            >
+              <ChevronLeftIcon aria-hidden="true" className="size-5" />
+            </Button>
+            <Button
+              type="button"
+              className={cn(arrow, "right-2")}
+              disabled={edges.end}
+              aria-label={m.visitor_next_photo()}
+              onClick={() => page(1)}
+            >
+              <ChevronRightIcon aria-hidden="true" className="size-5" />
+            </Button>
+          </>
+        )}
+        <ul
+          ref={list}
+          className={
+            strip
+              ? "m-0 flex list-none snap-x snap-mandatory gap-3.5 overflow-x-auto overscroll-x-contain scroll-px-1 p-0 pb-2"
+              : "m-0 grid list-none grid-cols-1 gap-3.5 p-0 min-[560px]:grid-cols-2 min-[960px]:grid-cols-3 min-[1500px]:grid-cols-4"
+          }
+        >
+          {items.map((item) => (
+            <li
+              className={cn(
+                "min-w-0",
+                strip &&
+                  (items.length === 1
+                    ? "w-full max-w-170 shrink-0"
+                    : "shrink-0 basis-5/6 snap-start min-[680px]:basis-2/3"),
+              )}
+              key={item.id}
+            >
+              <figure className="m-0">
+                {hasFileMarker(item, "image") &&
+                  (fileUrl(item) ? (
+                    <SharedImage item={item} url={fileUrl(item)!} />
+                  ) : (
+                    <p role="status">{m.visitor_image_loading()}</p>
+                  ))}
+                {hasFileMarker(item, "video") && fileUrl(item) && (
+                  <SharedVideo
+                    item={item}
+                    url={fileUrl(item)!}
+                    poster={fileUrl({ id: `${item.id}-poster` }) ?? undefined}
+                  />
+                )}
+                {hasFileMarker(item, "video") && !fileUrl(item) && (
+                  <p role="status">{m.visitor_video_loading()}</p>
+                )}
+                <Markdown
+                  as="figcaption"
+                  className="mt-1.75 wrap-anywhere leading-normal text-travel-muted"
+                  html={text(item, "caption_html")}
+                  text={text(item, "caption")}
                 />
-              )}
-              {hasFileMarker(item, "video") && !fileUrl(item) && (
-                <p role="status">{m.visitor_video_loading()}</p>
-              )}
-              <Markdown
-                as="figcaption"
-                className="mt-1.75 wrap-anywhere leading-normal text-travel-muted"
-                html={text(item, "caption_html")}
-                text={text(item, "caption")}
-              />
-            </figure>
-          </li>
-        ))}
-      </ul>
+              </figure>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

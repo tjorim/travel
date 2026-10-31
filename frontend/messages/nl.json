@@ -1770,6 +1770,8 @@
   "visitor_story_navigation": "Updates in dit verhaal",
   "visitor_timeline": "Reisupdates tijdlijn",
   "visitor_update": "Update",
+  "visitor_previous_photo": "Vorige foto",
+  "visitor_next_photo": "Volgende foto",
   "visitor_days_later": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
