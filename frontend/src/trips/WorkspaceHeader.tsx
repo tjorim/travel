@@ -32,41 +32,16 @@ function PublicationState({ tripId }: { tripId: string }) {
 }
 
 /** Where the owner is (Trips › current section), the trip's cover, title and dates, and its header action. */
-export function WorkspaceHeader({
-  trip,
-  section,
-  onEdit,
-}: {
-  trip: Trip;
-  section: TripWorkspaceSection;
-  onEdit: () => void;
-}) {
+export function WorkspaceHeader({ trip, onEdit }: { trip: Trip; onEdit: () => void }) {
   useLocale();
   const hasCover = Boolean(trip.cover_url);
   return (
     <>
-      <nav aria-label={m.breadcrumb()}>
-        <ol className="m-0 flex list-none items-center gap-1.5 p-0 text-sm font-bold text-travel-muted">
-          <li className="shrink-0">
-            <Link
-              className="inline-flex min-h-11 items-center text-travel-muted no-underline hover:underline focus-visible:underline"
-              to="/trips"
-              activeOptions={{ exact: true }}
-            >
-              {m.trips()}
-            </Link>
-          </li>
-          <li aria-hidden="true">›</li>
-          <li className="min-w-0 truncate" aria-current="page">
-            {sectionById(section).label()}
-          </li>
-        </ol>
-      </nav>
       <header className="grid min-w-0 gap-4">
         <TripCover trip={trip} wide />
         <div
           className={cn(
-            "flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch",
+            "flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch trip-sidebar:flex-col trip-sidebar:items-stretch",
             !hasCover &&
               "rounded-travel-card border-t-4 border-travel-warning-border bg-travel-surface p-travel-context-pad shadow-travel-card",
           )}
@@ -77,7 +52,7 @@ export function WorkspaceHeader({
               <PublicationState tripId={trip.id} />
             </div>
             <h1
-              className="m-0 max-w-travel-reading text-travel-context-title leading-tight tracking-tight"
+              className="m-0 max-w-travel-reading text-travel-context-title leading-tight trip-sidebar:text-travel-sidebar-title tracking-tight"
               id="trip-detail-title"
             >
               {trip.title}
@@ -99,5 +74,28 @@ export function WorkspaceHeader({
         </div>
       </header>
     </>
+  );
+}
+
+export function WorkspaceBreadcrumb({ section }: { section: TripWorkspaceSection }) {
+  useLocale();
+  return (
+    <nav aria-label={m.breadcrumb()}>
+      <ol className="m-0 flex list-none items-center gap-1.5 p-0 text-sm font-bold text-travel-muted">
+        <li className="shrink-0">
+          <Link
+            className="inline-flex min-h-11 items-center text-travel-muted no-underline hover:underline focus-visible:underline"
+            to="/trips"
+            activeOptions={{ exact: true }}
+          >
+            {m.trips()}
+          </Link>
+        </li>
+        <li aria-hidden="true">›</li>
+        <li className="min-w-0 truncate" aria-current="page">
+          {sectionById(section).label()}
+        </li>
+      </ol>
+    </nav>
   );
 }

@@ -168,6 +168,18 @@
       "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
       "reviewedAt": null,
       "reviewNote": null
+    },
+    "TripWorkspace": {
+      "files": [
+        "src/pages/TripWorkspace.tsx",
+        "src/trips/WorkspaceHeader.tsx",
+        "src/trips/WorkspaceTabs.tsx"
+      ],
+      "registry": null,
+      "origin": "local",
+      "reason": "CSS-only trip-local sidebar composition: one set of native router links, stable content/editors, no collapse cookies, shortcut, icon rail or global shell. Registry sidebar includes those unneeded behaviors; Base UI navigation-menu supplies flyouts rather than direct route links.",
+      "reviewedAt": null,
+      "reviewNote": null
     }
   },
   "importPolicy": {

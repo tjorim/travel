@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add a sticky 224px owner trip sidebar at 1100px and wider, preserving horizontal links below it and search/editor drafts across resize (#5).
+
 - Keep visitor update navigation in a closed disclosure below 1100px while preserving the wide sticky index and story anchors; keep failed gallery image text readable in dark mode (#5).
 - Compact owner trip context, expose the full trip title as an h1, shorten section breadcrumbs and wrap Preferences safely at zoomed phone widths; preserve loading-status contrast and complete workspace heading levels (#5).
 
