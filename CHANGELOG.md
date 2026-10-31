@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Include authenticated MCP tools alongside the PWA in the planned domain/data/storage review for admin trip editing, preserving shared ownership and validation rules (Refs #94).
+
 - Record domain model, held data and storage review as the second priority after public/unlisted viewing, ahead of owner UI and feature additions (Refs #94).
 
 - Record public and unlisted trip viewing as the owner’s top priority in the plan and both Polarsteps roadmaps, ahead of owner header, Capture and preparation improvements (Refs #94).
