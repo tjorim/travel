@@ -247,6 +247,11 @@ come first, superseding this analysis’s original laptop-first recommendation.
    [domain-model.md](../domain-model.md), [the publication model](37-canonical-content-and-publication-model.md)
    and [object-storage.md](../object-storage.md). Track in #94; this is a review
    priority, not approval to change the schema, storage or privacy boundaries.
+   Include both PWA and authenticated MCP editing (C7): admins can update
+   their trips through tools as well as forms. Both paths must share domain
+   validation, ownership, publication safeguards, audit and object lifecycle.
+   `backend/app/mcp_server.py` already adapts the owner handlers; production
+   routing remains apps#226 rather than a newly verified deployment here.
 3. **Owner layout and Capture** (mobile M0/M1/M2, existing #5): compact header
    with the owner Capture FAB retained, readable Sharing review and shorter
    Capture flow with a legible date.

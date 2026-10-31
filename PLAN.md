@@ -97,6 +97,11 @@ metadata versus stored files, and retention/deletion/export boundaries against
 and [object-storage.md](docs/object-storage.md). Establish the current model and
 proposed changes before implementing schema or storage changes; preserve the
 existing privacy and object-lifecycle contracts. Track this review in #94.
+Admin trip editing has two supported entry points: the PWA and authenticated
+MCP tools. Review both against the same domain handlers, validation, ownership,
+publication safeguards and file lifecycle; do not design the data model around
+forms alone. The existing MCP adapter is in `backend/app/mcp_server.py`;
+production MCP routing remains tracked separately in apps#226.
 Owner header, Capture, preparation and offline improvements follow these two
 priorities. The preferred compact owner header retains its Capture FAB; visitor
 routes do not acquire owner controls. Existing correctness/privacy fixes remain

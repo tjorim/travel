@@ -212,6 +212,12 @@ reported separately. Rows are **not equivalent end-to-end benchmarks**.
    [object storage](../object-storage.md). Track in #94; agree any proposed
    schema/storage changes separately. This priority is owner direction, not a
    newly verified Polarsteps gap.
+   **Admin editing includes authenticated MCP tools alongside the PWA**
+   (`backend/app/mcp_server.py`). Review equivalent mutations through both:
+   shared validation, trip ownership, publication effects, audit and file
+   lifecycle. Keep presentation separate from the canonical model. This is
+   the existing owner-authorized editing path (first-pass C7), not a new
+   permission for one admin to edit another subject’s trips.
 3. **Owner layout and Capture (M0/M1/M2, S–M).** Compact the header, retain the
    owner-only Capture FAB, repair Sharing readability and fit Capture's date.
    Coordinate with #5; preserve draft recovery and safe dismissal.
