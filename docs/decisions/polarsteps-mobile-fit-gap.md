@@ -87,18 +87,19 @@ production map defect or compare map-loading speed from this run.
 
 ## A. Gap we want — mobile additions
 
-Ranked for laptop preparation first (including checking that plan on a phone),
-then active trips, then visitors. S = one PR, M = a few PRs, L = several issues
+**Updated owner priority, 2026-10-31: public and unlisted trip viewing come
+first.** Owner preparation and active-trip tooling follow. S = one PR, M = a few PRs, L = several issues
 and a decision. These are proposed follow-ups tracked in #94; application fixes
-are outside this documentation-only change. Existing A1–A11 retain their order.
+are outside this documentation-only change. Row IDs stay stable; this priority update supersedes the first pass’s
+laptop-first ranking.
 
 | # | Feature | Polarsteps phone behaviour | Travel today | Recommendation |
 |---|---|---|---|---|
+| M4 | Phone visitor-preview density and photo traversal | Native trip uses a map above a draggable story sheet and a Plan/Track toggle (P2). Native multi-photo swiping was not tested. | Phone preview rendered the synthetic photo before its story, but dialog, preview wrapper and cards leave a narrow content column; the map precedes the story, rather than sitting beside it (T1, `RenderedPreview.tsx`, `ProjectionView.tsx`). A6b/A6c's wide-screen layout cannot be assumed to carry over to a phone. Only one photo per update was seeded. | **Top priority: public and unlisted viewing, S–M.** Prioritize readable header/content density, photo-led storytelling, map/story layout and navigation on both standalone public and unlisted views as well as preview. Reduce nested phone padding and recheck the actual visitor shells with local synthetic fixtures without publishing real content. Extend A11's lightbox navigation to touch as well as named buttons/keys; test multiple synthetic photos before proposing swipe behaviour. No privacy change. Track under #94; no claim that swipe is currently broken. |
 | M0 | Compact phone header, retain Capture FAB | The native trip puts its title and floating actions over the map, with Plan/Track at the bottom (P2). | The phone workspace stacks locale/theme preferences, Account, breadcrumb, trip status/title/dates, Trip details, section trigger and Jump to before the section content (T1; `frontend/src/trips/WorkspaceHeader.tsx`, `frontend/src/pages/TripWorkspace.tsx`). | **Owner direction, 2026-10-31: the header is too big; retain the Capture FAB.** Reduce persistent header height, move secondary preferences/actions behind an accessible menu or disclosure, and keep the full trip title and current section identifiable. Check FAB overlap with content, bottom navigation and the soft keyboard. S–M; coordinate with existing layout issue #5 and track here in #94. Exact composition still needs review; no application change in this analysis. |
-| M1 | Readable sharing review on a narrow phone | Trip privacy is a dedicated three-choice sheet: Only me, Followers, Everyone, with a sentence explaining the selected audience (P2). This is trip-level privacy, not evidence of equivalent per-record control. | In Dutch/dark on the phone, visibility-group headings such as Reisupdates and Gebieden wrapped one letter per line beside their counts (T1). Other scope groups lower down wrapped normally. See `frontend/src/trips/PublicationManager.tsx`, `frontend/src/trips/SectionAccordion.tsx` and Sharing compositions. The review remains functionally deeper than Polarsteps (C1/C3), but hard to scan. | **First mobile correction, S.** Give group titles adequate width or stack their summaries; verify 320–430 px, both locales/themes, while retaining audience checks. No privacy decision; child work under #94. Do not replace per-item scopes with a trip-wide switch. |
+| M1 | Readable sharing review on a narrow phone | Trip privacy is a dedicated three-choice sheet: Only me, Followers, Everyone, with a sentence explaining the selected audience (P2). This is trip-level privacy, not evidence of equivalent per-record control. | In Dutch/dark on the phone, visibility-group headings such as Reisupdates and Gebieden wrapped one letter per line beside their counts (T1). Other scope groups lower down wrapped normally. See `frontend/src/trips/PublicationManager.tsx`, `frontend/src/trips/SectionAccordion.tsx` and Sharing compositions. The review remains functionally deeper than Polarsteps (C1/C3), but hard to scan. | **Owner-side follow-up, S.** Give group titles adequate width or stack their summaries; verify 320–430 px, both locales/themes, while retaining audience checks. No privacy decision; child work under #94. Do not replace per-item scopes with a trip-wide switch. |
 | M2 | Short capture path and legible date | Empty trip says Add your first step; the flow chooses location/date/time, then text/media. Save is in the editor header and offers Publish step or Save as a draft (P2/P3). | Capture opens in one tap and defaults to private. On this phone its safety explanation, Markdown tools, photo links and optional location push Save several scrolls down; the date field visibly clipped the year (T1). `frontend/src/trips/CaptureDialog.tsx`. | **Active-trip priority, S–M.** Keep title/notes and the save state close together, reveal optional details progressively, preserve draft/focus and fit the full date. Keep the private/public explanation discoverable. No new media or GPS work; no privacy decision. Track under #94. |
 | M3 | Prove installed/offline behaviour on a secure phone origin | Already-installed native app; an offline draft can be written, saved and reopened (P3). No evidence here that it syncs automatically. | Local draft feedback was visible and an online Capture save succeeded (T1). Explicit offline copies exist in `frontend/src/offline/`; `frontend/public/service-worker.js` caches shell and fetched hashed assets, not arbitrary owner API responses (C). LAN HTTP prevented a fair installation/offline lifecycle test. | **Verification follow-up, S; authoring remains A4/L.** Test a locally served production build on a secure phone origin: install, reopen, pin/read/remove copies, offline draft/reconnect and sign-out cleanup. No new infrastructure requirement established. Keep D2 unanswered until this is distinguished from an outbox. |
-| M4 | Phone visitor-preview density and photo traversal | Native trip uses a map above a draggable story sheet and a Plan/Track toggle (P2). Native multi-photo swiping was not tested. | Phone preview rendered the synthetic photo before its story, but dialog, preview wrapper and cards leave a narrow content column; the map precedes the story, rather than sitting beside it (T1, `RenderedPreview.tsx`, `ProjectionView.tsx`). A6b/A6c's wide-screen layout cannot be assumed to carry over to a phone. Only one photo per update was seeded. | **Visitor priority, S–M.** Reduce nested phone padding and recheck the actual visitor shell without publishing. Extend A11's lightbox navigation to touch as well as named buttons/keys; test multiple synthetic photos before proposing swipe behaviour. No privacy change. Track under #94; no claim that swipe is currently broken. |
 
 No new recommendation for AI, booking ingestion, account export, trip numbers
 or offline maps is justified by this phone sample. Keep A1–A8 and their
@@ -197,21 +198,23 @@ reported separately. Rows are **not equivalent end-to-end benchmarks**.
 
 ## Recommended roadmap
 
-1. **M0/M1: compact the phone header, keep the Capture FAB, and repair narrow
-   Sharing review (S–M).** Coordinate header work with #5; audit small targets
-   and FAB overlap. Existing scopes stay intact. This supports laptop
-   preparation followed by phone review.
-2. **M2: compact Capture and fit its date (S–M).** Keep draft recovery, safe
-   dismissal and private notes; make the save state/action easy to reach.
-3. **M3: secure-origin phone acceptance pass (S).** Install/relaunch, actual
-   offline copies and reconnect, keyboard/TalkBack, all four locale/theme
-   combinations and multi-photo synthetic fixtures. Finish the unverified
-   Polarsteps flows with owner-controlled evidence where needed.
-4. **A10 plus existing A1/A2/A3.** First-steps direct creation remains a small
-   navigation improvement; this partial phone audit gives no reason to displace
-   the owner's laptop planning and portability priorities.
-5. **M4 with A11 (S–M): phone visitor preview and photo navigation.** Compare
-   standalone and preview layouts, not just desktop parity. A4 remains gated on D2.
+1. **Public and unlisted trip viewing first: M4 with A11 (S–M).** Review
+   standalone `/trips/<slug>` and `/share/<token>` as equal acceptance cases,
+   plus owner preview. Prioritize compact visitor headers, usable content width,
+   photo navigation and map/story layout on phone and desktop, both locales and
+   themes. Keep projection safety and unlisted capability handling intact.
+2. **M0/M1: compact owner header, retain Capture FAB, repair Sharing (S–M).**
+   Coordinate with #5. This supports preparing and reviewing visitor output;
+   Capture remains owner-only and is not added to visitor views.
+3. **M2: compact Capture and fit its date (S–M).** Preserve draft recovery,
+   safe dismissal and private notes. This follows visitor-view work.
+4. **M3: secure-origin owner phone acceptance (S).** Verify installed shell,
+   offline copies/reconnect and keyboard/TalkBack. Visitor keyboard, screen-reader
+   and multi-photo checks belong in item 1 rather than waiting for this pass.
+5. **A10 and A1/A2/A3, then decision-gated additions.** Laptop preparation,
+   booking intake and export follow the visitor experience. A4 remains gated on
+   D2; public feeds/numbers still need D3 and do not extend automatically to
+   unlisted links.
 
 ## Open decisions
 
