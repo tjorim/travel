@@ -1,12 +1,14 @@
 """Backend-only apps#273 v1 transport and durable, single-step reconciliation.
 
 Run ``uv run python -m app.media.worker`` as a supervised dispatcher. Rows,
-not a process-local task, own retries; PostgreSQL row locks serialize dispatchers.
+not a process-local task, own retries; PostgreSQL advisory locks serialize dispatchers.
 """
 
+import argparse
 import hashlib
 import io
 import json
+import logging
 import math
 import re
 import subprocess
@@ -17,7 +19,7 @@ from pathlib import Path
 
 import httpx
 from PIL import Image
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -26,6 +28,13 @@ from ..database import SessionLocal
 from ..models import DerivativeProcessingState, MediaAsset, MediaDerivative, MediaWorkerJob, ObjectState, StoredObject
 from ..storage import ObjectStorage, get_storage, sha256_hex
 from . import service
+
+logger = logging.getLogger(__name__)
+
+
+def log_job(job: MediaWorkerJob) -> None:
+    logger.info("reason=%s job_id=%s attempts=%d", job.error_code or job.state, job.id, job.attempts)
+
 
 PROFILE = "travel-video-v1"
 ID = re.compile(r"[a-f0-9]{32}\Z")
@@ -299,6 +308,8 @@ def discard_unrecorded_outputs(session: Session, storage: ObjectStorage, job: Me
 
 
 def reconcile(session: Session, storage: ObjectStorage, job: MediaWorkerJob, client: WorkerClient) -> None:
+    previous = (job.state, job.error_code)
+    outcome = None
     derivative = active_derivative(session, job)
     if job.state == "ack":
         assert job.worker_id is not None
@@ -312,6 +323,7 @@ def reconcile(session: Session, storage: ObjectStorage, job: MediaWorkerJob, cli
             job.state = "done"
             job.error_code = "submission_expired"
             session.commit()
+            log_job(job)
             return
         if derivative is None and job.state == "pending":
             job.state = "done"  # No request was ever attempted.
@@ -319,21 +331,30 @@ def reconcile(session: Session, storage: ObjectStorage, job: MediaWorkerJob, cli
             # Persist uncertainty BEFORE touching the network. The same key resolves a lost response.
             job.state = "submitting"
             session.commit()
-            locked = session.scalar(select(MediaWorkerJob).where(MediaWorkerJob.id == job.id).with_for_update())
-            assert locked is not None
-            job = locked
-            if job.state != "submitting":
-                return
+            if previous != (job.state, job.error_code):
+                log_job(job)
+            previous = (job.state, job.error_code)
+            # Refresh the source identity, then release ALL row locks (including the
+            # job lock used by deletion). A dispatcher-only advisory lock serializes
+            # this job across commits without participating in owner deletion.
             derivative = active_derivative(session, job)
+            has_source = derivative is not None
+            session.commit()
             with tempfile.TemporaryDirectory(prefix="travel-worker-upload-") as directory:
                 source = None
-                if derivative is not None:
+                if has_source:
                     source = Path(directory) / "input"
                     service._copy_bounded(storage, job.source_key, source)
                     with source.open("rb") as file:
                         if hashlib.file_digest(file, "sha256").hexdigest() != job.source_sha256:
                             raise InvalidOutput
                 result = client.submit(job, source)
+            session.expire_all()
+            locked = session.scalar(select(MediaWorkerJob).where(MediaWorkerJob.id == job.id).with_for_update())
+            assert locked is not None
+            job = locked
+            # Refresh even identity-map objects after an owner deleted/replaced the source.
+            derivative = active_derivative(session, job)
             job.worker_id = result["id"]
             job.state = result["state"]
             # Submission and import are separate durable steps, including immediate success.
@@ -378,14 +399,17 @@ def reconcile(session: Session, storage: ObjectStorage, job: MediaWorkerJob, cli
             derivative.processing_state = DerivativeProcessingState.READY
             job.state = "ack"  # ACK can only happen in a later transaction, after canonical commit.
         elif job.state in {"failed", "cancelled", "expired"}:
+            outcome = f"worker_{job.state}"
             derivative.processing_state = DerivativeProcessingState.FAILED
             job.state = "ack"
     if job.state == "done":
         discard_unrecorded_outputs(session, storage, job)
-    job.error_code = None
+    job.error_code = outcome
     job.attempts = 0
     job.next_attempt_at = datetime.now(UTC) + timedelta(seconds=5)
     session.commit()
+    if previous != (job.state, job.error_code):
+        log_job(job)
 
 
 def dispatch_one(session: Session, storage: ObjectStorage, client: WorkerClient) -> bool:
@@ -401,15 +425,32 @@ def dispatch_one(session: Session, storage: ObjectStorage, client: WorkerClient)
     )
     if job is None:
         return False
+    # Session advisory locks use a dedicated connection: commits below must not
+    # return a locked connection to the pool. Owner operations never take this lock.
+    if session.get_bind().dialect.name == "postgresql":
+        with session.get_bind().engine.connect() as connection:
+            key = int.from_bytes(hashlib.sha256(job.id.encode()).digest()[:8], "big", signed=True)
+            if not connection.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": key}):
+                session.rollback()
+                return False
+            try:
+                return _dispatch_claimed(session, storage, client, job)
+            finally:
+                connection.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": key})
+    return _dispatch_claimed(session, storage, client, job)
+
+
+def _dispatch_claimed(session: Session, storage: ObjectStorage, client: WorkerClient, job: MediaWorkerJob) -> bool:
     job_id = job.id
     try:
         reconcile(session, storage, job, client)
     except Exception as error:
         # Roll back failed storage writes/imports. Keep diagnostics content-free and persisted.
         session.rollback()
-        job = session.scalar(select(MediaWorkerJob).where(MediaWorkerJob.id == job_id).with_for_update())
-        if job is None:
+        locked = session.scalar(select(MediaWorkerJob).where(MediaWorkerJob.id == job_id).with_for_update())
+        if locked is None:
             return True
+        job = locked
         if isinstance(error, AbsentSubmission):
             job.state = "done"
             job.error_code = None
@@ -427,10 +468,33 @@ def dispatch_one(session: Session, storage: ObjectStorage, client: WorkerClient)
         job.attempts += 1
         job.next_attempt_at = datetime.now(UTC) + timedelta(seconds=min(300, 5 * 2 ** min(job.attempts, 6)))
         session.commit()
+        log_job(job)
     return True
 
 
+def job_counts(session: Session) -> dict[str, int]:
+    """Aggregate durable state and failures without exposing job or source data."""
+    counts = dict(session.execute(select(MediaWorkerJob.state, func.count()).group_by(MediaWorkerJob.state)).all())
+    counts["failed"] = (
+        session.scalar(select(func.count()).select_from(MediaWorkerJob).where(MediaWorkerJob.error_code.is_not(None)))
+        or 0
+    )
+    return counts
+
+
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--counts", action="store_true", help="print content-free maintenance job counts and exit")
+    args = parser.parse_args()
+    if args.counts:
+        with SessionLocal() as session:
+            print(json.dumps(job_counts(session), sort_keys=True))
+        return
+    run_loop()
+
+
+def run_loop() -> None:
     while True:
         try:
             client = WorkerClient()
@@ -439,7 +503,19 @@ def main() -> None:
                     worked = dispatch_one(session, get_storage(), client)
             finally:
                 client.close()
-        except WorkerUnavailable, httpx.HTTPError, OSError, ValueError, SQLAlchemyError:
+        except (WorkerUnavailable, httpx.HTTPError, OSError, ValueError, SQLAlchemyError) as error:
+            reason = (
+                "database_unavailable"
+                if isinstance(error, SQLAlchemyError)
+                else "transport_unavailable"
+                if isinstance(error, httpx.HTTPError)
+                else "storage_unavailable"
+                if isinstance(error, OSError)
+                else "configuration_invalid"
+                if isinstance(error, ValueError)
+                else "worker_unavailable"
+            )
+            logger.warning("reason=%s job_id=none attempts=0", reason)
             worked = False
         if not worked:
             time.sleep(5)

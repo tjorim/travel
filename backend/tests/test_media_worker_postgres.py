@@ -107,3 +107,45 @@ def test_delete_waiting_for_import_removes_both_committed_outputs(postgres, tmp_
         job = session.scalar(select(MediaWorkerJob))
         assert job.derivative_id is None and job.state == "ack"
     assert not list(storage.root.glob("worker-*/*"))
+
+
+def test_delete_completes_while_upload_is_paused(postgres):
+    sessions, storage, derivative_id = postgres
+    uploading, release = Event(), Event()
+    with sessions() as session:
+        job = session.scalar(select(MediaWorkerJob))
+        job.worker_id = None
+        job.state = "pending"
+        session.commit()
+
+    class Client:
+        def submit(self, job, source):
+            assert source is not None
+            uploading.set()
+            assert release.wait(10)
+            return {"id": "a" * 32, "state": "queued"}
+
+    def dispatch():
+        with sessions() as session:
+            return worker.dispatch_one(session, storage, Client())
+
+    def delete():
+        with sessions() as session:
+            derivative = session.get(MediaDerivative, derivative_id)
+            service.delete_media_derivative(session, storage, derivative=derivative)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        dispatched = pool.submit(dispatch)
+        assert uploading.wait(10)
+        try:
+            with sessions() as session:
+                assert not worker.dispatch_one(session, storage, Client())
+            pool.submit(delete).result(timeout=3)
+        finally:
+            release.set()
+        assert dispatched.result(timeout=10)
+    with sessions() as session:
+        assert session.get(MediaDerivative, derivative_id) is None
+        job = session.scalar(select(MediaWorkerJob))
+        assert job.derivative_id is None and job.worker_id == "a" * 32
+        assert len(list(session.scalars(select(StoredObject)))) == 1

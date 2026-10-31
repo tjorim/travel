@@ -519,3 +519,76 @@ def test_worker_rejects_tiff_disguised_as_webp(tmp_path):
     evidence["poster.webp"].update(bytes=len(payload), sha256=sha256_hex(payload))
     with pytest.raises(OSError):
         worker.validate_output(data["video.mp4"], payload, evidence, True)
+
+
+def test_content_free_state_and_failure_logs(queued, transport, caplog):
+    _, _, _, storage = queued
+    client, _, replies = transport
+    replies.append(httpx.ReadTimeout("SECRET path token server prose"))
+    with caplog.at_level("INFO", logger=worker.__name__):
+        tick(storage, client)
+    messages = [record.message for record in caplog.records if record.name == worker.__name__]
+    assert len(messages) == 2
+    assert messages[0].startswith("reason=submitting job_id=")
+    assert messages[1].startswith("reason=worker_unavailable job_id=")
+    assert messages[1].endswith("attempts=1")
+    assert "SECRET" not in caplog.text
+    with TestingSessionLocal() as session:
+        assert worker.job_counts(session) == {"submitting": 1, "failed": 1}
+
+
+@pytest.mark.parametrize(
+    "error,reason",
+    [
+        (OSError, "storage_unavailable"),
+        (ValueError, "configuration_invalid"),
+        (worker.WorkerUnavailable, "worker_unavailable"),
+    ],
+)
+def test_loop_failure_logs_and_retries(monkeypatch, caplog, error, reason):
+    calls = []
+
+    def unavailable():
+        calls.append(1)
+        raise error("SECRET")
+
+    def stop(delay):
+        assert delay == 5
+        if len(calls) == 2:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(worker, "WorkerClient", unavailable)
+    monkeypatch.setattr(worker.time, "sleep", stop)
+    with pytest.raises(KeyboardInterrupt), caplog.at_level("WARNING", logger=worker.__name__):
+        worker.run_loop()
+    assert [r.message for r in caplog.records] == [f"reason={reason} job_id=none attempts=0"] * 2
+
+
+def test_delete_during_upload_revalidates_before_next_step(queued, transport, monkeypatch):
+    owner, path, derivative_id, storage = queued
+    client, _, _ = transport
+
+    def submit(job, source):
+        assert source is not None
+        assert owner.delete(f"{path}/{derivative_id}").status_code == 204
+        return {"id": WORKER_ID, "state": "succeeded"}
+
+    monkeypatch.setattr(client, "submit", submit)
+    tick(storage, client)
+    with TestingSessionLocal() as session:
+        assert session.get(MediaDerivative, derivative_id) is None
+        assert session.scalar(select(MediaWorkerJob)).worker_id == WORKER_ID
+        assert len(list(session.scalars(select(StoredObject)))) == 1
+
+
+def test_counts_command_never_initializes_transport(queued, monkeypatch, capsys):
+    import sys
+
+    def forbidden():
+        pytest.fail("count-only maintenance must not initialize worker transport")
+
+    monkeypatch.setattr(sys, "argv", ["worker", "--counts"])
+    monkeypatch.setattr(worker, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(worker, "WorkerClient", forbidden)
+    worker.main()
+    assert json.loads(capsys.readouterr().out) == {"pending": 1, "failed": 0}
