@@ -22,6 +22,7 @@ and a blob report. Open traces with `pnpm exec playwright show-trace <trace.zip>
 use `pnpm exec playwright merge-reports --reporter=html <blob-directory>` for
 an HTML report. Artifacts expire after seven days.
 
-Measurements: the reported historical unsharded job range is 8–13 minutes.
+Measurements: PR #93 baseline run 41194924495 passed unsharded in 9m04s
+(job wall time, 2026-10-31); the reported historical range is 8–13 minutes.
 PR-specific baseline and sharded-run measurements are recorded in the PR once
 the runs finish; no speedup is claimed from pending CI.
