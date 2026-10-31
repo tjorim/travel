@@ -272,3 +272,28 @@ a restyle of what the audience already receives, never new content.
 
 Not copied from Polarsteps: likes, comments and names of viewers (there are no
 viewer identities, see the fit-gap analysis).
+
+## Map beside the story (#94)
+
+On a screen 1100 px or wider, a visitor's trip with an update that has a shared
+place puts the map in a sticky column beside the story instead of above it
+(`travel-story-map`, the map in `data-story-map`). The story's own index folds
+into its disclosure at every width, since the map and the timeline now share the
+space. There is still one `TripMap`; narrower screens keep the old order.
+
+- **Follows the reader.** `useActiveUpdate` watches the updates with an
+  `IntersectionObserver` and, only while the map is beside the story, reports the
+  one the reader has reached. `TripMap` takes it as `follow`: it rings that point
+  and eases the camera to it, without opening the point's card or changing the
+  selection. The ease is not marked essential, so a reduced-motion visitor gets a
+  jump.
+- **Photo markers.** `photos` pins the first approved photo of an update at the
+  point its shared area already has, one per place. Markers are buttons added with
+  `maplibregl.Marker`; a click or tap scrolls to the update. They are hidden from
+  assistive technology (`aria-hidden`, `tabindex=-1`) because the map is a single
+  image role and a control inside it cannot be reached; the point buttons under
+  the map already link to the same updates. Only the image inside a marker is
+  scaled: the `scale` property composes outside MapLibre's `transform` and would
+  scale the marker's offset too.
+- Nothing new is delivered: markers and follow use the projection's photos and
+  area points. The publication safety check has a line for the pin.

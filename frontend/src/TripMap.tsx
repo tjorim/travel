@@ -40,6 +40,16 @@ export type MapLine = {
   dates?: string;
   links?: MapLink[];
 };
+/** An approved photo of a shared update, pinned where that update's shared area sits. */
+export type MapPhoto = {
+  id: string;
+  /** The map point the photo belongs to; the marker lights up while the story is at that point. */
+  pointId: string;
+  coordinates: [number, number];
+  url: string;
+  label: string;
+  onOpen: () => void;
+};
 export type MapPerspective = {
   center: [number, number];
   zoom: number;
@@ -178,6 +188,8 @@ export function TripMap({
   perspective,
   styleUrl = configuredMapStyleUrl,
   focus,
+  follow,
+  photos,
   onUseDerived,
 }: {
   points: MapPoint[];
@@ -188,6 +200,10 @@ export function TripMap({
   perspective?: MapPerspective;
   styleUrl?: string;
   focus?: { id: string; request: number } | null;
+  /** The point the story is at: the map eases to it and rings it, without opening its details. */
+  follow?: string | null;
+  /** Photos from the story pinned on the map; a click or tap opens the update. They are for pointer users only. */
+  photos?: MapPhoto[];
   onUseDerived?: (point: MapPoint) => void;
 }) {
   useLocale();
@@ -443,6 +459,19 @@ export function TripMap({
               "circle-stroke-color": themeColor("map-yellow"),
             },
           });
+          instance.addLayer({
+            id: "followed-stop",
+            type: "circle",
+            source: "stops",
+            filter: ["==", ["get", "id"], ""],
+            paint: {
+              "circle-radius": 20,
+              "circle-color": themeColor("map-yellow"),
+              "circle-opacity": 0.18,
+              "circle-stroke-width": 3,
+              "circle-stroke-color": themeColor("map-yellow"),
+            },
+          });
           if (restore) {
             try {
               if (restore.satellite) applySatellite(instance, true);
@@ -577,6 +606,67 @@ export function TripMap({
     if (ready && map.current?.getLayer("selected-route"))
       map.current.setFilter("selected-route", ["==", ["get", "id"], selectedLine?.id ?? ""]);
   }, [ready, selectedPoint, selectedLine]);
+
+  // The story moves the map without selecting anything: ring the point and ease it into view. A visitor who asks for
+  // reduced motion gets a jump, because this move is not essential.
+  useEffect(() => {
+    const instance = map.current;
+    if (!ready || !instance?.getLayer("followed-stop")) return;
+    const point = follow ? points.find((candidate) => candidate.id === follow) : undefined;
+    instance.setFilter("followed-stop", ["==", ["get", "id"], point?.id ?? ""]);
+    if (point) instance.easeTo({ center: point.coordinates, duration: 700 });
+  }, [follow, ready]);
+
+  // Photo markers are pointer shortcuts laid over the map; the same updates stay reachable from the point buttons below it.
+  const photoKey = JSON.stringify(
+    (photos ?? []).map(({ id, url, coordinates }) => [id, url, coordinates]),
+  );
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
+  useEffect(() => {
+    const instance = map.current;
+    const shown = photosRef.current ?? [];
+    if (!ready || !instance || !shown.length) return;
+    let cancelled = false;
+    const markers: { remove: () => void }[] = [];
+    void import("maplibre-gl").then((maplibregl) => {
+      if (cancelled || map.current !== instance) return;
+      for (const photo of shown) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "travel-map-photo";
+        // The map is one image to assistive technology, so a control inside it cannot be reached. Keyboard and
+        // screen reader visitors use the point buttons under the map, whose cards link to the same update.
+        button.tabIndex = -1;
+        button.setAttribute("aria-hidden", "true");
+        button.title = photo.label;
+        button.dataset.pointId = photo.pointId;
+        if (follow === photo.pointId) button.dataset.active = "";
+        button.addEventListener("click", () =>
+          photosRef.current?.find((candidate) => candidate.id === photo.id)?.onOpen(),
+        );
+        const image = document.createElement("img");
+        image.src = photo.url;
+        image.alt = "";
+        image.loading = "lazy";
+        image.decoding = "async";
+        image.referrerPolicy = "no-referrer";
+        button.append(image);
+        markers.push(
+          new maplibregl.Marker({ element: button }).setLngLat(photo.coordinates).addTo(instance),
+        );
+      }
+    });
+    return () => {
+      cancelled = true;
+      for (const marker of markers) marker.remove();
+    };
+  }, [ready, photoKey]);
+  useEffect(() => {
+    for (const button of canvas.current?.querySelectorAll<HTMLElement>(".travel-map-photo") ?? [])
+      if (follow && button.dataset.pointId === follow) button.dataset.active = "";
+      else delete button.dataset.active;
+  }, [follow, ready, photoKey]);
 
   // An outside request (such as an agenda entry) selects a stop by id; the
   // request counter lets the same stop be chosen again.

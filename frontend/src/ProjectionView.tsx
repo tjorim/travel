@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "cn";
 import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
-import { TripMap, type MapLine, type MapPoint } from "./TripMap";
+import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "./TripMap";
 import { TripHeader, type TripCover } from "./TripHeader";
 import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
 
@@ -692,22 +692,66 @@ function Gallery({
   );
 }
 
+/**
+ * Reports the update the reader has reached: the last one whose top has passed a line a third of the way down the
+ * window. Nothing is observed when the map is not beside the story, so a phone does no extra work.
+ */
+function useActiveUpdate(
+  list: React.RefObject<HTMLOListElement | null>,
+  enabled: boolean,
+  onActive: (id: string) => void,
+) {
+  const report = useRef(onActive);
+  report.current = onActive;
+  const [wide, setWide] = useState(
+    () => window.matchMedia?.("(min-width: 1100px)").matches ?? false,
+  );
+  useEffect(() => {
+    const query = window.matchMedia?.("(min-width: 1100px)");
+    if (!query) return;
+    const update = () => setWide(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    const items = list.current ? Array.from(list.current.children) : [];
+    if (!enabled || !wide || !items.length || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entering = entries.filter((entry) => entry.isIntersecting);
+        if (entering.length) report.current(entering[entering.length - 1].target.id);
+      },
+      { rootMargin: "-30% 0px -60% 0px" },
+    );
+    for (const item of items) observer.observe(item);
+    return () => observer.disconnect();
+  }, [enabled, wide, list]);
+}
+
 function Updates({
   updates,
   media,
   fileUrl,
+  besideMap = false,
+  onActive,
 }: {
   updates: ProjectionItem[];
   media: ProjectionItem[];
   fileUrl: (item: ProjectionItem) => string | null;
+  /** The map sits beside this story on a wide screen, so the story is one column with its index folded away. */
+  besideMap?: boolean;
+  onActive?: (id: string) => void;
 }) {
   useLocale();
+  const timeline = useRef<HTMLOListElement>(null);
+  useActiveUpdate(timeline, besideMap && !!onActive, (id) => onActive?.(id));
   if (!updates.length) return null;
   return (
     <section className="travel-card" aria-label={m.visitor_updates()}>
       <h2 className="mb-6">{m.visitor_updates()}</h2>
-      <div className="travel-story-split">
-        <Collapsible.Root className="min-w-0 min-[1100px]:hidden">
+      <div className={besideMap ? "grid gap-8" : "travel-story-split"}>
+        <Collapsible.Root className={cn("min-w-0", !besideMap && "min-[1100px]:hidden")}>
           <Collapsible.Trigger className="min-h-11 rounded-travel-control bg-transparent px-3 py-2 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
             {m.visitor_choose_update()}
           </Collapsible.Trigger>
@@ -728,24 +772,27 @@ function Updates({
             </nav>
           </Collapsible.Panel>
         </Collapsible.Root>
-        <nav
-          aria-label={m.visitor_story_navigation()}
-          className="hidden min-w-0 self-start min-[1100px]:block min-[1100px]:sticky min-[1100px]:top-6 min-[1100px]:max-h-travel-lightbox min-[1100px]:overflow-y-auto"
-        >
-          <ol className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0 min-[1100px]:flex-col min-[1100px]:gap-y-3">
-            {updates.map((item) => (
-              <li key={item.id}>
-                <a
-                  className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
-                  href={`#${item.id}`}
-                >
-                  {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
+        {!besideMap && (
+          <nav
+            aria-label={m.visitor_story_navigation()}
+            className="hidden min-w-0 self-start min-[1100px]:block min-[1100px]:sticky min-[1100px]:top-6 min-[1100px]:max-h-travel-lightbox min-[1100px]:overflow-y-auto"
+          >
+            <ol className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0 min-[1100px]:flex-col min-[1100px]:gap-y-3">
+              {updates.map((item) => (
+                <li key={item.id}>
+                  <a
+                    className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+                    href={`#${item.id}`}
+                  >
+                    {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
         <ol
+          ref={timeline}
           aria-label={m.visitor_timeline()}
           className="m-0 grid min-w-0 list-none gap-10 border-l-2 border-travel-border py-0 pr-0 pl-6 min-[680px]:gap-12 min-[680px]:pl-8"
         >
@@ -828,6 +875,7 @@ export function ProjectionView({
   previewResources?: PreviewResources;
 }) {
   const locale = useLocale();
+  const [activeUpdate, setActiveUpdate] = useState<string | null>(null);
   const mapLines = useMemo(
     () =>
       projectionMapLines(projection).map((line) => {
@@ -957,6 +1005,47 @@ export function ProjectionView({
       }
     : null;
   const hasMap = mapLines.length > 0 || mapPoints.length > 0;
+  // An update sits where its shared area sits on the map, found by the coordinates both already carry.
+  const pointOf = (item: ProjectionItem) => {
+    const area = item.place;
+    if (!area || typeof area !== "object" || Array.isArray(area)) return undefined;
+    const { latitude, longitude } = area as Record<string, unknown>;
+    return mapPoints.find(
+      (point) => point.coordinates[0] === longitude && point.coordinates[1] === latitude,
+    );
+  };
+  // With the map and an update that has a place, the map sits beside the story and follows the reader down it.
+  const mapBesideStory = hasMap && projection.updates.some((item) => pointOf(item));
+  const followed = activeUpdate
+    ? pointOf(projection.updates.find((item) => item.id === activeUpdate) ?? { id: "" })?.id
+    : undefined;
+  // One photo per place, from the first update there: only photos this audience already receives, at a place it
+  // already sees.
+  const mapPhotos: MapPhoto[] = [];
+  for (const update of projection.updates) {
+    const point = pointOf(update);
+    if (!point || mapPhotos.some((photo) => photo.pointId === point.id)) continue;
+    const photo = projection.media.find(
+      (item) => item.update === update.id && hasFileMarker(item, "image") && fileUrl(item),
+    );
+    if (photo)
+      mapPhotos.push({
+        id: `${update.id}-${photo.id}`,
+        pointId: point.id,
+        coordinates: point.coordinates,
+        url: fileUrl(photo)!,
+        label: text(update, "title") ?? m.visitor_update(),
+        onOpen: () => openUpdate(update.id),
+      });
+  }
+  function openUpdate(id: string) {
+    const target = document.getElementById(id);
+    target?.scrollIntoView?.({
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+    target?.focus({ preventScroll: true });
+  }
   const detailSections = [
     projection.visits,
     projection.places,
@@ -985,26 +1074,28 @@ export function ProjectionView({
       </div>
     );
 
+  const overview = projection.summary ? (
+    <section className="travel-card" aria-label={m.visitor_overview()}>
+      <h2>{m.visitor_overview()}</h2>
+      <Markdown
+        className="max-w-travel-reading leading-relaxed"
+        html={projection.summary_html}
+        text={projection.summary}
+      />
+    </section>
+  ) : null;
+
   return (
     <div className={cn("grid gap-travel-grid-gap", previewResources ? "mt-5" : "mt-2")}>
       {header}
-      {(projection.summary || hasMap) && (
+      {(projection.summary || hasMap) && !mapBesideStory && (
         <div
           className={cn(
             "grid min-w-0 gap-travel-grid-gap",
             projection.summary && hasMap && "travel-aside-split",
           )}
         >
-          {projection.summary && (
-            <section className="travel-card" aria-label={m.visitor_overview()}>
-              <h2>{m.visitor_overview()}</h2>
-              <Markdown
-                className="max-w-travel-reading leading-relaxed"
-                html={projection.summary_html}
-                text={projection.summary}
-              />
-            </section>
-          )}
+          {overview}
           {hasMap && <TripMap wide points={mapPoints} lines={mapLines} />}
         </div>
       )}
@@ -1014,7 +1105,29 @@ export function ProjectionView({
           <p>{m.visitor_no_story_description()}</p>
         </section>
       )}
-      <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
+      {mapBesideStory ? (
+        <div className="travel-story-map">
+          {overview}
+          <div data-story-map="">
+            <TripMap
+              wide
+              points={mapPoints}
+              lines={mapLines}
+              follow={followed}
+              photos={mapPhotos}
+            />
+          </div>
+          <Updates
+            updates={projection.updates}
+            media={projection.media}
+            fileUrl={fileUrl}
+            besideMap
+            onActive={setActiveUpdate}
+          />
+        </div>
+      ) : (
+        <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
+      )}
       {looseMedia.length > 0 && (
         <section className="travel-card" aria-label={m.visitor_gallery()}>
           <h2 className="mb-4.5">{m.visitor_gallery()}</h2>

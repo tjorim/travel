@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Put the visitor map in a sticky column beside the story on wide screens, ring and ease to the place of the update being read, and pin each shared update's approved photo at its shared area (Refs #94).
+
 - Lead each visitor update with its photos in a wide strip that scrolls and snaps, put the text after them, and show "N days later" between updates dated to the day (Refs #94).
 
 - Replace narrow owner section links with a localized Dialog drawer, preserving route history, editor drafts and section focus (Refs #5).
