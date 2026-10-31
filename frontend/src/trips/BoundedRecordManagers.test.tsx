@@ -401,7 +401,7 @@ it("groups ideas for the same nights as alternatives and keeps them off the shar
   expect(within(group).getByRole("button", { name: /Hotel B.*Idee/ })).toBeTruthy();
   expect(within(group).queryByRole("button", { name: /Hotel C/ })).toBeNull();
 
-  fireEvent.click(within(group).getByRole("button", { name: /Hotel A/ }));
+  fireEvent.click(within(group).getByRole("button", { name: /^Hotel A/ }));
   expect(screen.getByText(/Een idee is een kandidaat/)).toBeTruthy();
   expect(screen.queryByText("Wie mag dit zien?")).toBeNull();
 });

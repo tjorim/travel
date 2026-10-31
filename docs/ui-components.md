@@ -322,3 +322,18 @@ space. There is still one `TripMap`; narrower screens keep the old order.
 - **Visitor control.** A checkbox under the map, "Move the map along with the story" (on by default), stops and resumes the follow, so a visitor who wants to look around alone is never fought by the camera.
 - Nothing new is delivered: markers and follow use the projection's photos and
   area points. The publication safety check has a line for the pin.
+## Plan stepper and first steps (#94)
+
+Two small additions for planning on a laptop, both built from existing controls:
+
+- **Nights stepper.** A stay that is still an idea or planned shows "− N nights +"
+  in the Plan list. It moves only the check-out date by one night (never below
+  one night, disabled while a save is pending) and says so in the section's status
+  line ("Stay now runs 1 Mar → 4 Mar."). A confirmed or cancelled stay is edited in
+  its dialog, so a booking's dates never change from a quick tap. A stay set to "everyone" or "custom" is edited there too: a change to it reaches visitors as it is saved, so it should not happen from a tap. Both buttons are
+  44 px square with whole-sentence accessible names. Visits already had Move up and
+  Move down, so no drag-and-drop is added: it would not be keyboard operable.
+- **First steps.** A trip with no area, visit, stay or route shows "Start with where
+  you are going" on its overview with three links into the Plan blocks (places, a
+  stay, a route). It appears only after all three lists have loaded, so a loading
+  trip never flashes it, and it disappears with the first record.
