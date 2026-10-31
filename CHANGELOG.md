@@ -5,6 +5,7 @@ All notable changes to the travel hub are documented here.
 ## Unreleased
 
 - Refuse a client with 429 and `Retry-After` after 20 failed bearer-token verifications in 60 seconds on the owner API and MCP route, without counting successes or identity-provider outages (#46).
+- Keep saved-offline state, counts, rows and the storage warning in step across every mounted Library, trip and Offline section, including after Clear all and revalidation (#13).
 - Keep route map loading and unavailable states inside a named accessible region, with route-dialog axe coverage (#62).
 - Throttle owner geocoder calls, require a production contact, and submit place searches explicitly (#21).
 - Protect owner sharing selections against stale multi-session saves while preserving drafts on conflict (#15).

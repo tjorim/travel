@@ -16,6 +16,8 @@ import {
   removeOfflineCopy,
   requestPersistentStorage,
   revalidateOfflineCopies,
+  subscribeOfflineChanges,
+  notifyOfflineChanged,
   OfflineUnsupportedError,
   type KeyDisclosure,
   type OfflineCopySummary,
@@ -74,6 +76,7 @@ export function useOfflineCopies(): UseOfflineCopies {
   const [disclosure, setDisclosure] = useState<KeyDisclosure | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const mounted = useRef(true);
+  const refreshSeq = useRef(0);
   const currentSubject = useRef(subject);
   currentSubject.current = subject;
 
@@ -93,15 +96,16 @@ export function useOfflineCopies(): UseOfflineCopies {
       }
       return;
     }
+    const seq = ++refreshSeq.current;
     try {
       const loadedCopies = await listOfflineCopies(subject);
       const disclosure = await getKeyDisclosure(subject);
       const storage = loadedCopies.length > 0 ? await isStoragePersisted() : null;
-      if (mounted.current && currentSubject.current === subject) {
+      if (mounted.current && currentSubject.current === subject && seq === refreshSeq.current) {
         setCopies(loadedCopies);
         setCopiesSubject(subject);
         setDisclosure(disclosure);
-        if (loadedCopies.length > 0) setPersisted(storage);
+        setPersisted(loadedCopies.length > 0 ? storage : null);
       }
     } catch (error) {
       if (
@@ -117,6 +121,8 @@ export function useOfflineCopies(): UseOfflineCopies {
 
   useEffect(() => {
     void refresh();
+    // Every consumer reloads when any consumer, revalidation or sign-out changes the store.
+    return subscribeOfflineChanges(() => void refresh());
   }, [refresh]);
 
   useEffect(() => {
@@ -146,11 +152,9 @@ export function useOfflineCopies(): UseOfflineCopies {
           return new Response(null, { status: error.status });
         },
       );
-    void revalidateOfflineCopies(subject, probe)
-      .then(() => refresh())
-      .catch((error: unknown) => {
-        if (mounted.current && error instanceof OfflineUnsupportedError) setUnsupported(true);
-      });
+    void revalidateOfflineCopies(subject, probe).catch((error: unknown) => {
+      if (mounted.current && error instanceof OfflineUnsupportedError) setUnsupported(true);
+    });
     // Intentionally re-runs only when connectivity flips back on or the signed-in subject changes.
   }, [subject, online]);
 
@@ -177,8 +181,9 @@ export function useOfflineCopies(): UseOfflineCopies {
         subject,
         contentValidator: await offlineContentValidator(metadata),
       });
-      setPersisted(await requestPersistentStorage());
-      await refresh();
+      await requestPersistentStorage();
+      // Persistence may have been granted after the pin: let every consumer re-read it.
+      notifyOfflineChanged();
     },
     async removeByResource(resourceKind, resourceId) {
       const match = visibleCopies.find(
@@ -186,16 +191,13 @@ export function useOfflineCopies(): UseOfflineCopies {
       );
       if (!match) return;
       await removeOfflineCopy(match.id);
-      await refresh();
     },
     async remove(id) {
       await removeOfflineCopy(id);
-      await refresh();
     },
     async clearAll() {
       if (!subject) return;
       await clearOfflineCopies(subject);
-      await refresh();
     },
     async open(id) {
       if (!subject) throw new FeedbackError(() => m.assets_sign_in_to_open_an_offline_copy());
