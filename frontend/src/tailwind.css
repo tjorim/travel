@@ -229,6 +229,8 @@
     @apply cursor-pointer rounded-travel-control border-0 bg-travel-forest px-3.75 py-2.75 font-bold text-travel-on-action;
     font: inherit;
     font-weight: 700;
+    /* Hover lifts a filled button and a press nudges it, so every control answers the pointer. */
+    @apply transition-[background-color,border-color,color,filter,translate] duration-150 ease-out motion-reduce:transition-none enabled:hover:brightness-110 enabled:active:translate-y-px enabled:active:brightness-95 motion-reduce:enabled:active:translate-y-0;
   }
   button:focus-visible,
   input:focus-visible,
@@ -279,7 +281,7 @@
 
 /* Reusable owner controls and form feedback. */
 @utility secondary {
-  @apply border border-travel-control-border bg-transparent text-travel-forest;
+  @apply border border-travel-control-border bg-transparent text-travel-forest enabled:hover:bg-travel-hover enabled:hover:brightness-100;
 }
 
 @utility compact {
@@ -288,13 +290,75 @@
 
 /* A destructive trigger is outlined so it never outweighs the main action; only its confirmation is solid. */
 @utility danger {
-  @apply border border-travel-danger bg-transparent text-travel-danger;
+  @apply border border-travel-danger bg-transparent text-travel-danger enabled:hover:bg-travel-error-surface enabled:hover:brightness-100;
 }
 
 @utility action-link {
-  @apply inline-block rounded-lg bg-travel-forest px-3.25 py-2.5 font-bold text-travel-on-action no-underline;
+  @apply inline-block rounded-lg bg-travel-forest px-3.25 py-2.5 font-bold text-travel-on-action no-underline transition-[background-color,filter,translate] duration-150 ease-out hover:brightness-110 active:translate-y-px active:brightness-95 motion-reduce:transition-none motion-reduce:active:translate-y-0;
   &.secondary {
-    @apply border border-travel-control-border bg-transparent text-travel-forest;
+    @apply border border-travel-control-border bg-transparent text-travel-forest hover:bg-travel-hover hover:brightness-100;
+  }
+}
+
+/*
+ * Motion. Base UI marks a layer that is entering or leaving with data-starting-style and
+ * data-ending-style and waits for these transitions before it unmounts. Each is switched off
+ * for visitors who ask for reduced motion.
+ */
+@utility travel-backdrop-motion {
+  transition: opacity 150ms ease-out;
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility travel-popup-motion {
+  transition:
+    opacity 160ms ease-out,
+    transform 200ms ease-out;
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+  /* A phone shows the dialog as a bottom sheet, so it rises from the edge. */
+  @media (max-width: 620px) {
+    &[data-starting-style],
+    &[data-ending-style] {
+      transform: translateY(1.5rem);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility travel-drawer-motion {
+  transition: transform 220ms ease-out;
+  &[data-starting-style],
+  &[data-ending-style] {
+    transform: translateX(-100%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility travel-menu-motion {
+  transition:
+    opacity 120ms ease-out,
+    transform 120ms ease-out;
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }
 
@@ -469,7 +533,7 @@
     @apply flex w-full items-center justify-between gap-3 rounded-none bg-transparent px-3.25 py-2.75 text-left text-travel-ink;
     &::before {
       content: "▸";
-      @apply mr-2 text-travel-muted transition-transform;
+      @apply mr-2 text-travel-muted transition-transform motion-reduce:transition-none;
     }
     & strong {
       @apply flex-1;
@@ -487,7 +551,7 @@
   @apply flex w-full items-center gap-2 bg-transparent p-0 text-left font-bold text-travel-forest;
   &::before {
     content: "▸";
-    @apply text-travel-muted transition-transform;
+    @apply text-travel-muted transition-transform motion-reduce:transition-none;
   }
   &[data-panel-open]::before {
     @apply rotate-90;
