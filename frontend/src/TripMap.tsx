@@ -124,11 +124,10 @@ function applyTerrain(
       instance.easeTo({
         pitch: Math.min(perspective?.pitch ?? 55, 60),
         duration: 700,
-        essential: true,
       });
   } else {
     instance.setTerrain(null);
-    if (animate) instance.easeTo({ pitch: 0, duration: 700, essential: true });
+    if (animate) instance.easeTo({ pitch: 0, duration: 700 });
   }
 }
 
@@ -746,7 +745,6 @@ export function TripMap({
       instance.flyTo({
         center: point.coordinates,
         zoom: Math.max(instance.getZoom(), satellite ? 15 : 9),
-        essential: true,
       });
     }
   }
