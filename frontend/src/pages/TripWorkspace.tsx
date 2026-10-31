@@ -127,8 +127,8 @@ export function TripWorkspaceView({
 
   // Every trip-bound manager remounts per trip, so no editor or dialog carries one trip's record into another.
   return (
-    <section className="grid grid-cols-1 gap-4.5" aria-labelledby="trip-detail-title" key={trip.id}>
-      <WorkspaceHeader trip={trip} onEdit={() => setEditing(true)} />
+    <section className="grid grid-cols-1 gap-1.5" aria-labelledby="trip-detail-title" key={trip.id}>
+      <WorkspaceHeader section={section} trip={trip} onEdit={() => setEditing(true)} />
       <TripEditor
         key={`edit-${trip.id}`}
         trip={trip}
@@ -145,6 +145,7 @@ export function TripWorkspaceView({
           {notice ?? arrivalNotice}
         </p>
       )}
+      <h2 className="sr-only">{sectionById(section).label()}</h2>
       <Section
         trip={trip}
         areas={areas}

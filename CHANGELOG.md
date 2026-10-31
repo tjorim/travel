@@ -5,6 +5,7 @@ All notable changes to the travel hub are documented here.
 ## Unreleased
 
 - Keep visitor update navigation in a closed disclosure below 1100px while preserving the wide sticky index and story anchors; keep failed gallery image text readable in dark mode (#5).
+- Compact owner trip context, expose the full trip title as an h1, shorten section breadcrumbs and wrap Preferences safely at zoomed phone widths; preserve loading-status contrast and complete workspace heading levels (#5).
 
 - Measure the selected trip sidebar and mobile drawer direction, document interaction limits and propose implementation slices without shipping a layout (#5).
 

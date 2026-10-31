@@ -24,18 +24,17 @@ async function load<P>(loader: Loader<P>) {
   }
 }
 
-/** Fades in after a moment, so a chunk that arrives at once never flashes a placeholder. */
+/** Decorative placeholders fade in; the loading announcement retains full text contrast. */
 function ViewLoading() {
   useLocale();
   return (
-    <section
-      className="travel-card grid min-h-48 content-start gap-3 animate-travel-delayed-in motion-reduce:animate-none"
-      role="status"
-    >
+    <section className="travel-card grid min-h-48 content-start gap-3" role="status">
       <p className="m-0 text-sm font-bold text-travel-muted">{m.owner_view_loading()}</p>
-      <Skeleton className="h-5 w-2/5" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-3/4" />
+      <div className="grid gap-3 animate-travel-delayed-in motion-reduce:animate-none">
+        <Skeleton className="h-5 w-2/5" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
     </section>
   );
 }

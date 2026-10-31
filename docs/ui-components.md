@@ -194,3 +194,16 @@ full authored names, fragment URLs and browser history. The wide sticky index
 remains at 1100 CSS pixels. CSS hides the inactive presentation; the closed
 Collapsible panel does not expose duplicate anchors. No new primitive or custom
 control is needed (Base UI Collapsible was reviewed in the #5 discovery).
+## Compact owner context (#5, slice 1)
+
+WorkspaceHeader keeps its existing custom page-header composition: the registry
+has no page-header primitive. Its full authored title is now an h1, with a named
+responsive typography token and compact context padding. The native router
+breadcrumb uses the existing localized current-section label instead of repeating
+the title. Horizontal route links and editor ownership stay unchanged. ChoiceGroup
+keeps Base UI RadioGroup keyboard behavior; its wrapper and group now constrain
+intrinsic width so the existing wrapping works at zoomed phone widths.
+
+SectionAccordion titles now wrap the existing Collapsible trigger in an h2,
+connecting the workspace h1 to manager h3 headings without changing the button
+or mounted-panel behavior.

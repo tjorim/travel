@@ -90,7 +90,7 @@ const screens = [
     name: "workspace",
     path: "/admin/trips/trip-active",
     heading: /A slow journey/,
-    level: 2,
+    level: 1,
   },
 ] as const;
 
@@ -166,3 +166,79 @@ test("the overview puts the map beside the trip context on a wide screen", async
   const map = await page.getByRole("heading", { name: "Map", exact: true }).boundingBox();
   expect(map!.x).toBeGreaterThan(updates!.x + 300);
 });
+
+// Effective widths include 390px at 125/150% zoom. The separate extension
+// measurement verifies actual browser zoom; these cases run in ordinary CI.
+for (const locale of ["en", "nl"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    for (const [width, height] of [
+      [1366, 768],
+      [1280, 800],
+      [1920, 1080],
+      [390, 844],
+      [312, 675],
+      [260, 563],
+    ]) {
+      for (const variant of ["empty", "dense", "cover", "failed-cover"] as const) {
+        test(`compact context ${locale} ${theme} ${width} ${variant}`, async ({ page }) => {
+          await page.setViewportSize({ width, height });
+          await open(page, "/admin/trips/trip-active/prepare", locale, theme);
+          const title =
+            locale === "en"
+              ? "A slow coastal railway journey through quiet harbours, forest villages and mountain markets in Exampleland"
+              : "Een rustige treinreis langs de kust door stille havens, bosdorpen en bergmarkten in Voorbeeldland";
+          await page.route("**/api/trips", (route) =>
+            route.fulfill({
+              json: [
+                {
+                  ...active,
+                  title,
+                  cover_url: variant.includes("cover") ? coverPath : null,
+                  travel_updates:
+                    variant === "empty"
+                      ? []
+                      : Array.from({ length: 24 }, (_, i) =>
+                          update(`u${i}`, `Synthetic update ${i}`, -i),
+                        ),
+                },
+              ],
+            }),
+          );
+          await page.route("**/api/trips/trip-active/trip-tasks", (route) =>
+            route.fulfill({
+              json:
+                variant === "empty"
+                  ? []
+                  : Array.from({ length: 32 }, (_, i) => ({
+                      id: `task-${i}`,
+                      title: `Synthetic preparation ${i}`,
+                      notes: null,
+                      due_date: null,
+                      remind_at: null,
+                      reminded_at: null,
+                      completed_at: null,
+                      links: [],
+                      created_at: "2054-10-01T12:00:00Z",
+                    })),
+            }),
+          );
+          if (variant === "failed-cover")
+            await page.route(`**${coverPath}`, (route) => route.fulfill({ status: 404 }));
+          await page.reload();
+          await expect(
+            page.getByRole("heading", { level: 1, name: title, exact: true }),
+          ).toBeVisible();
+          await expect(page.locator("#tasks")).toBeVisible();
+          await page.evaluate(() => document.fonts.ready);
+          const breadcrumb = page.getByRole("navigation", { name: /Breadcrumb|Kruimelpad/ });
+          await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(
+            locale === "en" ? "Prepare" : "Voorbereiden",
+          );
+          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+          const results = await new AxeBuilder({ page }).analyze();
+          expect(results.violations).toEqual([]);
+        });
+      }
+    }
+  }
+}
