@@ -134,6 +134,32 @@ Net: Polarsteps is more polished in feel (feedback on every control, linked
 map and timeline, a guided empty state) while Travel is more orderly,
 accessible and complete but static. The gap is cheap to close: see A9.
 
+**Ease of use (V2 and Travel in the browser).** Looks are half of it; this is
+what it takes to get things done, from one pass through each product's flows.
+
+| Task | Polarsteps | Travel | Verdict |
+|---|---|---|---|
+| Start a trip | One dialog: name, start date, optional end ("I don't know"), who can see it. Frictions: the date fields are read-only pickers with a year dropdown, so a far-future date takes several clicks; the add button stays disabled with no reason until the end date is answered; a trip whose dates overlap another is refused with a message at the field | A title, a Markdown summary and optional first and last travel days (`frontend/src/trips/TripEditor.tsx`), in a dialog with guarded dismissal; nothing is shared by default, so there is no privacy question at creation | Travel asks less up front; Polarsteps' disabled button with no reason is the thing to avoid. |
+| First destination on an empty trip | Two clear paths on the empty page ("Get a personalized itinerary", "Build your itinerary yourself"), then type a place and pick it: about three interactions, and it lands with a photo, a night and computed dates | Before: Plan, open Areas, New area, search, pick, save (about six, with the search submitted explicitly). Now: a first-steps card links into the block, which saves two | Polarsteps is still quicker: the card opens the block but not its new-record dialog (A10). |
+| Change how long a stay is | A "- 1 night +" stepper on each destination card | Now the same on planned and idea stays; before, open the dialog and edit two dates | Equal; Travel also refuses to change a confirmed booking this way. |
+| Reorder | Drag handle | Move up and Move down buttons on visits, which work with a keyboard | Keep Travel's: drag-and-drop alone would not be operable without a pointer. |
+| Share a private trip | Share explains it is private and offers the privacy choice in place | Sharing is a section with a check of what each audience receives and a rendered preview | Travel is more careful and slower; both explain rather than fail. |
+| Look at a trip as a visitor | Scroll a timeline beside a map that follows | Now the same on wide screens, with a checkbox to stop the map moving; a row of photos has arrows | Equal after the changes. |
+| Delete | Confirmation naming what goes with it (photos, map locations, stories, comments) | A confirmation dialog titled with the record's name that says the action cannot be undone, with Cancel focused first (`DeleteConfirmation`) | Polarsteps says more about what goes with the item; Travel's is safer by default. |
+
+What the changes in this branch family do for ease of use, and what is left:
+
+- **Done in PRs #96 to #99:** hover and press feedback and enter and exit
+  transitions (a control that answers the pointer is easier to trust), a
+  nights stepper, a guided empty trip, photos first on the visitor story, a map
+  that follows the story with an off switch, and arrows on photo rows. Every new
+  control has a whole-sentence accessible name, a 44 px target and a
+  reduced-motion guard.
+- **Not done, see A10 and A11:** open the new-record dialog straight from the
+  first-steps card, and previous and next inside the photo lightbox.
+- **Deliberately not copied:** drag-and-drop reorder, auto-generated itineraries
+  and a disabled button that hides its reason.
+
 **Size key.** S: one pull request. M: a few pull requests. L: several issues
 and a design decision. XL: a new platform or a changed trust model.
 
@@ -158,6 +184,8 @@ model, or fits it after a small decision. Order is by value for the owner.
 | A6b | Photo-led step cards | Several photos and inline video clips per step in a horizontal strip, a "Traveled for N days" connector, a temperature in the step header (V). | An update's approved photos render as a captioned gallery with a full-size view; loose photos follow their own visibility ([domain-model.md](../domain-model.md), `frontend/src/ProjectionView.tsx`). Presentation is a quiet thumbnail grid and there is no day connector. | **After A6.** A larger, photo-first presentation of that gallery and a connector derived from the dates, using only copies the audience already receives. Size S to M, no new data and no privacy decision. A temperature would need a weather service and a place point: skip. |
 | A6c | Photo markers on the visitor map | A round photo marker at each step on the route, which is the main visual hook (V). | Visitor maps are built from the selected area points and routes only; no photos on the map (`frontend/src/TripMap.tsx`). | **After A6b.** Show a shared update's already-approved copy as a marker at its shared area. Same data the audience already gets, but a new thing on the map, so confirm in the publication check. Size M. |
 | A9 | Motion and interaction polish | Colour and background transitions on most controls, a map that follows the timeline, skeletons while loading (V). | Almost no transitions; dialogs, drawer and popovers appear instantly; the map's camera moves ignore reduced motion, and the global `button` style has no transition; the map does not follow the timeline (see the polish table). | **Can ride along with any item above.** Add enter and exit transitions to the Base UI dialog, drawer and popover adapters with `data-starting-style` and `data-ending-style`, short hover and press transitions on shared buttons and cards, all behind `motion-reduce`; make the map's `essential: true` camera moves respect reduced motion; on the visitor timeline, recentre the map on the step in view. Size S for transitions and the map fix, M for the linked timeline. Record the adapter change in `docs/ui-components.md`. No privacy decision. |
+| A10 | One-click start from the first-steps card | Typing a place on the empty page creates the destination (V2). | The card opens the Plan block; the owner then clicks New area or New stay. | **Small follow-up to #99.** Let the card's links also open the block's new-record dialog, through a new "create" request handled like the existing record-focus one. Size S to M, touching the area, stay and route managers. |
+| A11 | Previous and next inside the photo lightbox | Photos in a step open and swipe in order (V). | The lightbox shows one photo; closing and opening the next is the only way on. | **Small follow-up to #97.** Arrow keys and buttons in the lightbox cycle the update's photos, with focus kept in the dialog. Size S. |
 | A7 | Printable trip book | Travel Book, a premium photo album generated from published steps, with route, statistics and stories; needs 5 photos or more; price shown only at checkout; 10% off two, 15% off three or more (H5). | None. The visitor view is web only. | **Defer, then PDF only.** An owner-generated PDF from the same projection a visitor sees (or from the owner's own data) needs A3's streaming and a layout engine. Size L. Ordering prints from a vendor sends photos to a third party, which needs its own privacy decision (D4). |
 | A8 | Trip replay or reel | Trip Reels: an auto-generated video, map flyovers added in 2026 (N2); at least 10 published photos; up to 60 seconds, or 3 min 15 s when edited (H5). Play mode is Plus (N1). | None. There is a server video derivative worker ([media-worker.md](../media-worker.md)) but no reel. | **Lowest priority.** A client-side route replay on the existing MapLibre map is the cheap version (size M). A rendered video is not worth the worker cost for one owner. |
 
