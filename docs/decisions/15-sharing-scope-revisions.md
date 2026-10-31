@@ -2,7 +2,8 @@
 
 Decision: 2026-10-30, issue #15. Only owner sharing selections have stale-write
 protection. Trips, tasks, updates, packing and all other owner records retain
-last-write-wins semantics. Shared-location editing (#32) is outside this change.
+last-write-wins semantics. Shared-location editing is covered by
+[32-shared-location-edits.md](32-shared-location-edits.md).
 
 Owner public-projection status and share-link responses expose an integer
 revision. PUT public-projection and PATCH share-links/{id} accept one quoted

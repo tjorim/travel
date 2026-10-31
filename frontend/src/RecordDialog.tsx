@@ -219,6 +219,8 @@ type DeleteConfirmationProps = {
   onConfirm: () => void;
   cancelLabel?: string;
   confirmDisabled?: boolean;
+  /** Detail to review between the description and the buttons, such as what a change will alter. */
+  children?: ReactNode;
 };
 
 export function DeleteConfirmation({
@@ -229,6 +231,7 @@ export function DeleteConfirmation({
   onConfirm,
   cancelLabel = m.cancel(),
   confirmDisabled = false,
+  children,
 }: DeleteConfirmationProps) {
   useLocale();
   const cancel = useRef<HTMLButtonElement>(null);
@@ -240,6 +243,7 @@ export function DeleteConfirmation({
           <AlertDialog.Popup className={cn(popup, confirmation, "max-w-md")} initialFocus={cancel}>
             <AlertDialog.Title className="m-0">{title}</AlertDialog.Title>
             <AlertDialog.Description className="m-0">{description}</AlertDialog.Description>
+            {children}
             <div className={buttonRow}>
               <Button
                 className={cn(compactButton, dangerButton)}

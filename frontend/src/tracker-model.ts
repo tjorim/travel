@@ -892,6 +892,7 @@ export type AuditEventKind =
   | "share_link.expire"
   | "location.merge"
   | "area.merge"
+  | "location.update"
   | "public_projection.scope_change"
   | "share_link.scope_change"
   | "record.visibility_change";
@@ -909,5 +910,7 @@ export type AuditEvent = {
     to?: Visibility;
     newly_reached?: string[];
     no_longer_reached?: string[];
+    /** A `location.update`: the visitor-facing fields changed and the audience ids that read each. */
+    changes?: { field: string; audiences: string[] }[];
   };
 };

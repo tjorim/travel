@@ -37,6 +37,12 @@ const events = [
     no_longer_reached: ["link:secret-link-c"],
   }),
   event("share_link.revoke"),
+  event("location.update", {
+    changes: [
+      { field: "label", audiences: ["public", "link:secret-link-a"] },
+      { field: "area_id", audiences: ["link:secret-link-a"] },
+    ],
+  }),
 ];
 it.each(["en", "nl"] as const)(
   "renders private audit details in %s and updates on locale changes",
@@ -75,6 +81,20 @@ it.each(["en", "nl"] as const)(
         locale === "en"
           ? "No longer visible on the public page: 0; share links no longer reached: 1."
           : "Niet meer zichtbaar op de openbare pagina: 0; niet meer bereikte deellinks: 1.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        locale === "en"
+          ? "Place: details visitors read were changed (Public name, Area)."
+          : "Plaats: gegevens die bezoekers lezen zijn gewijzigd (Publieke naam, Gebied).",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        locale === "en"
+          ? "Read on the public page: 1; share links: 1."
+          : "Gelezen op de openbare pagina: 1; deellinks: 1.",
       ),
     ).toBeVisible();
     expect(container.textContent).not.toContain("secret-");

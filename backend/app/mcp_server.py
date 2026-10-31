@@ -237,10 +237,17 @@ class ResponseValidationError(ToolError):
         super().__init__(f"Validation failed ({self.fields})")
 
 
+def _detail_text(detail: Any) -> str:
+    """A refusal's detail for the caller; a structured one (such as the visitor-change review) is sent as JSON."""
+    return json.dumps(detail, ensure_ascii=False, default=str) if isinstance(detail, dict) else str(detail)
+
+
 def _error_summary(error: BaseException) -> str:
     """A short, payload-free description that is safe to log and to persist in the audit trail."""
     if isinstance(error, HTTPException):
-        return str(error.detail)[:240]
+        # A structured detail quotes the owner's own address and names: keep only its code.
+        detail = error.detail
+        return str(detail.get("code", "rejected") if isinstance(detail, dict) else detail)[:240]
     # FastMCP wraps an invalid-argument error, whose message echoes the rejected values.
     cause = error if isinstance(error, ValidationError) else error.__cause__
     if isinstance(cause, ValidationError):
@@ -405,7 +412,7 @@ class TravelMcpBackend:
                 session.commit()
         except HTTPException as error:
             self._reject(error, subject, action, resource_type, resource_id, trip_id, request_id)
-            translated = ValueError(str(error.detail))
+            translated = ValueError(_detail_text(error.detail))
             setattr(translated, _AUDITED, True)
             raise translated from error
         except Exception as error:
@@ -812,7 +819,7 @@ class TravelMcpBackend:
         )
 
     def update_location(self, trip_id: str, location_id: str, payload: schemas.LocationUpdate) -> dict[str, Any]:
-        """Give a location its public name (a location cannot be shared without one), move it to another area (its routes and visits move along), or geocode it in place: after search_places, verify the match and send its latitude and longitude, viewport edges, osm_element_type and osm_element_id (the OSM link follows the element) and navigation provider fields. The id and every visit, stay, route end and reisupdate keep pointing at it; area, label and visibility never change. Omitted fields keep their value and null clears one; latitude/longitude, the four viewport edges and the OSM type/id are each set or cleared together. Moving an existing point needs the new place's OSM, viewport and provider fields too (null the ones that no longer apply), and a shared location must be made private first, because a shared location publishes its point."""
+        """Give a location its public name (a location cannot be shared without one), move it to another area (its routes and visits move along), or geocode it in place: after search_places, verify the match and send its latitude and longitude, viewport edges, osm_element_type and osm_element_id (the OSM link follows the element) and navigation provider fields. The id and every visit, stay, route end and reisupdate keep pointing at it; visibility never changes. Omitted fields keep their value and null clears one; latitude/longitude, the four viewport edges and the OSM type/id are each set or cleared together. Moving an existing point needs the new place's OSM, viewport and provider fields too (null the ones that no longer apply), and a shared location must be made private first, because a shared location publishes its point. Changing what visitors read (the public name, city, country, a shared address, or the area, which moves its visits and route ends) on a location with live receivers is refused with a JSON review (code visitor_visible_change_needs_acknowledgement: each field's before and after and the audiences that see it, as public or link:<id>). Show it to the owner; repeat the same update with acknowledge_visitor_changes=true only after they accept. An acknowledged change is recorded in the audit trail."""
         return self._call(
             "location.update",
             "location",

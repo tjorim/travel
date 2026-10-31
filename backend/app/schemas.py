@@ -222,7 +222,7 @@ class LocationUpdate(InputModel):
     stay, visit, route end and travel update.
     """
 
-    non_nullable_fields = frozenset(["share_address"])
+    non_nullable_fields = frozenset(["share_address", "acknowledge_visitor_changes"])
 
     label: str | None = Field(default=None, min_length=1, max_length=120)
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
@@ -235,6 +235,14 @@ class LocationUpdate(InputModel):
     postal_code: str | None = Field(default=None, max_length=20)
     country_code: str | None = COUNTRY_CODE_FIELD
     notes: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
+    acknowledge_visitor_changes: bool = Field(
+        default=False,
+        description=(
+            "Set to true to accept that this edit changes what the location's live audiences read: its public name, "
+            "city, country, shared address, or an area move that carries visits and route ends. Without it such an "
+            "edit is refused with 409, listing each field's before and after and the audiences. Not stored."
+        ),
+    )
     # The map target, applied from a place search result the owner has verified.
     # An omitted field keeps its value; an explicit null clears it. Each group
     # is set or cleared as a whole, and the owner-only OSM link follows the element.

@@ -1,5 +1,5 @@
 import { Button } from "@/ui/button";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -23,9 +23,12 @@ import {
   recipients,
   serverFields,
   shareableAddress,
+  visitorReview,
   type RecipientState,
   type Values,
+  type VisitorChange,
 } from "./locations/model";
+import { VisitorChangeDialog } from "./locations/VisitorChangeDialog";
 import { useLocationMutations } from "./locations/use-location-mutations";
 
 /** The only location detail and editor, shared by the area inventory and record-focus links. */
@@ -63,10 +66,18 @@ export function LocationManager({
   );
   const [notice, setNotice] = useFeedback<string>("");
   const { save, remove } = useLocationMutations(trip.id);
+  // The edit changes what visitors read: the server listed it and waits for the owner's say-so.
+  const [review, setReview] = useState<VisitorChange[] | null>(null);
+  const acknowledged = useRef(false);
   const record = useRecordForm<Values, Location>({
     defaultValues: blank(),
     fallback: m.owner_the_location_could_not_be_saved,
     serverFields,
+    intercept: (error) => {
+      const found = visitorReview(error);
+      if (found) setReview(found);
+      return found !== null;
+    },
     submit: (values) => {
       const fields = {
         display_name: optional(values.displayName),
@@ -79,11 +90,19 @@ export function LocationManager({
         country_code: optional(values.countryCode)?.toUpperCase(),
         notes: optional(values.notes),
       };
-      if (dialog.editingId)
+      if (dialog.editingId) {
+        const acknowledge = acknowledged.current;
+        acknowledged.current = false;
         return save.mutateAsync({
           id: dialog.editingId,
-          payload: { ...fields, area_id: values.areaId, share_address: values.shareAddress },
+          payload: {
+            ...fields,
+            area_id: values.areaId,
+            share_address: values.shareAddress,
+            ...(acknowledge ? { acknowledge_visitor_changes: true } : {}),
+          },
         });
+      }
       return save.mutateAsync({
         id: null,
         payload: {
@@ -120,6 +139,8 @@ export function LocationManager({
     setResume(false);
     setMerge(null);
     setInUse(false);
+    setReview(null);
+    acknowledged.current = false;
   }
   function create(areaId = "") {
     record.load(blank(areaId));
@@ -261,6 +282,18 @@ export function LocationManager({
             recipientState={recipientState}
             onAddArea={addArea}
             onChoose={choose}
+          />
+        )}
+        {editing && review && (
+          <VisitorChangeDialog
+            changes={review}
+            areas={areas}
+            onCancel={() => setReview(null)}
+            onConfirm={() => {
+              acknowledged.current = true;
+              setReview(null);
+              void record.form.handleSubmit();
+            }}
           />
         )}
       </RecordDialog>

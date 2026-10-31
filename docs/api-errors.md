@@ -22,6 +22,10 @@ Request validation uses Pydantic's type and complete location (including array
 indices), with only numeric length/range/precision constraints allowed in
 parameters. Responses omit `input`, error objects, URLs and arbitrary context;
 malformed JSON has a fixed diagnostic. Router-required fields have body paths.
+A structured `detail` object travels beside the descriptor when the client needs more than a
+code: the 412 `scope_revision_conflict` carries the current owner record, and the 409
+`visitor_visible_change_needs_acknowledgement` carries each changed field's before and after
+and its audiences (see `decisions/32-shared-location-edits.md`). Neither reaches a visitor.
 Resource dependency conflicts include per-kind counts and their total `count`.
 Upload size failures include the numeric MB limit as `max_length`.
 

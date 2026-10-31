@@ -12,10 +12,13 @@ import {
   blank,
   fromPlace,
   matchableLocationName,
+  pendingVisitorFields,
   projectionText,
   recipients,
   shareableAddress,
+  visitorReview,
 } from "./model";
+import { ApiError } from "../../query/api";
 
 const place = (fields: Partial<Location> = {}) =>
   ({
@@ -82,4 +85,58 @@ it("lists who a location currently reaches", () => {
       link({ scope: { items: [{ kind: "location", id: "other" }] } } as Partial<ShareLink>),
     ]),
   ).toHaveLength(1);
+});
+
+it("lists only the changed fields visitors read, and the address only while it is shared", () => {
+  const saved = place({ label: "Hotel", country_code: "TW", share_address: false });
+  const edited = {
+    ...fromPlace(saved),
+    label: "Hotel 2",
+    countryCode: "tw",
+    addressLine1: "Elders",
+  };
+  // The address is private, so changing it changes nothing visitors read.
+  expect(pendingVisitorFields(saved, edited)).toEqual(["label"]);
+  expect(pendingVisitorFields(saved, { ...edited, shareAddress: true })).toEqual([
+    "label",
+    "address_line1",
+  ]);
+  expect(
+    pendingVisitorFields(place({ share_address: true }), {
+      ...fromPlace(place()),
+      shareAddress: false,
+    }),
+  ).toEqual(["address_line1"]);
+  expect(pendingVisitorFields(saved, { ...edited, label: "Hotel", addressLine1: "" })).toEqual([]);
+});
+
+it("reads a visitor review only from the server's 409 with that code", () => {
+  const conflict = (diagnostic: unknown, status = 409) =>
+    new ApiError("fallback", status, [], diagnostic);
+  const change = {
+    field: "label",
+    before: "A",
+    after: "B",
+    audiences: [{ id: "public", label: null }],
+  };
+  expect(
+    visitorReview(
+      conflict({ code: "visitor_visible_change_needs_acknowledgement", changes: [change] }),
+    ),
+  ).toMatchObject([{ field: "label", before: "A", after: "B" }]);
+  expect(visitorReview(conflict({ code: "other", changes: [change] }))).toBeNull();
+  expect(
+    visitorReview(
+      conflict({ code: "visitor_visible_change_needs_acknowledgement", changes: [change] }, 422),
+    ),
+  ).toBeNull();
+  expect(
+    visitorReview(
+      conflict({
+        code: "visitor_visible_change_needs_acknowledgement",
+        changes: [{ ...change, field: "notes" }],
+      }),
+    ),
+  ).toBeNull();
+  expect(visitorReview(new Error("x"))).toBeNull();
 });

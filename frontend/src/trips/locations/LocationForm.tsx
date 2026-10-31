@@ -15,7 +15,13 @@ import { m } from "../../paraglide/messages.js";
 import type { Area, Location, PlaceSearchResult } from "../../tracker-model";
 import { PlaceSearchField } from "../PlaceSearchField";
 import { MapTarget } from "./MapTarget";
-import { projectionText, type RecipientState, type Values } from "./model";
+import {
+  pendingVisitorFields,
+  projectionText,
+  visitorFieldLabel,
+  type RecipientState,
+  type Values,
+} from "./model";
 import { RecipientsText } from "./RecipientsText";
 
 /** The location editor's fields; choosing a search result and adding an area are handled by the manager. */
@@ -47,6 +53,10 @@ export function LocationForm({
   onChoose: (result: PlaceSearchResult) => void;
 }) {
   useLocale();
+  // What this edit would change for the audiences that read the saved location today.
+  const pending =
+    editingId && selected && recipients.length ? pendingVisitorFields(selected, record.values) : [];
+  const movesArea = Boolean(editingId && selected && record.values.areaId !== selected.area_id);
   return (
     <RecordForm
       record={record}
@@ -198,6 +208,22 @@ export function LocationForm({
               }
             />
           </p>
+          {pending.length > 0 && (
+            <div className="help">
+              <p className="m-0">{m.owner_visitor_change_preview()}</p>
+              <ul className="m-0">
+                {pending.map((field) => (
+                  <li key={field}>
+                    {m.owner_visitor_change_preview_item({
+                      p0: visitorFieldLabel(field),
+                      p1: recipients.join(", "),
+                    })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {movesArea && <p className="help">{m.owner_visitor_change_area_preview()}</p>}
           <p className="help">
             {m.owner_changing_this_reusable_location_affects_all_linked_visits_stays_routes_a()}
           </p>
