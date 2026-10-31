@@ -7,6 +7,12 @@ review remains second. This is evidence and proposed decisions, not application
 changes or approval to widen any audience. Stable A/B/C/M identifiers refer to
 those documents. S = one PR; M = several PRs; L = a larger design effort.
 
+**Follow-up, 2026-11-01:** the [matched itinerary comparison](polarsteps-itinerary-fit-gap.md)
+covers managing **and displaying** hotels, transport modes, visits, locations and
+areas. It adds physical Travel browser evidence for a small text-only itinerary,
+corrects earlier Polarsteps planning/keyboard assumptions, and records a local
+route-time discrepancy. The richer photo matrix and limits below remain separate.
+
 ## Method, evidence and limits
 
 Every observation below is dated **2026-10-31** and carries one of these tags.

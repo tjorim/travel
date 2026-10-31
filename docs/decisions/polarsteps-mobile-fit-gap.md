@@ -6,6 +6,11 @@ stacked in [#100](https://github.com/tjorim/travel/pull/100). Written 2026-10-31
 A1–C11 and D1–D6 below refer to that document. This is documentation, not a
 product decision or an implementation plan approved by the owner.
 
+**Follow-up, 2026-11-01:** [matched itinerary management and display](polarsteps-itinerary-fit-gap.md)
+now verifies native future destination, booked-hotel and timed-spot cards, plus
+signed-in web creation/editing and transport selection. It narrows the planning
+unknowns below without establishing native flight search, forwarding or sync timing.
+
 ## Method and sources
 
 All observations below are dated **2026-10-31**. Tags identify the evidence;
