@@ -4,6 +4,11 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 @theme {
+  --breakpoint-trip-sidebar: 1100px;
+  --spacing-travel-sidebar: 224px;
+  --max-height-travel-sidebar: calc(100dvh - 2rem);
+  --text-travel-sidebar-title: 1.125rem;
+
   --max-height-travel-lightbox: 70dvh;
   --font-travel-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --text-travel-title: clamp(2.2rem, 9vw, 5.8rem);
@@ -614,4 +619,8 @@
   & p {
     @apply mb-5 leading-relaxed text-travel-muted;
   }
+}
+
+@utility grid-cols-travel-workspace {
+  grid-template-columns: var(--spacing-travel-sidebar) minmax(0, 1fr);
 }

@@ -362,3 +362,69 @@ The unfiltered axe sweep also exposed the existing fading loading-status text
 at insufficient intermediate contrast. Only decorative skeletons now fade; the
 loading announcement stays fully opaque. Scans wait for Tasks and fonts to settle
 and retain full violation details on failure.
+
+## Slice 2 result
+
+Implemented against origin/main 4b4a5f0 (slices 1 and 4 merged). At 1100+
+CSS pixels the single trip context and six ordinary router links occupy a
+224px sticky column. The top inset is 16px and maximum height is 100dvh minus
+32px; long titles/covers and links scroll internally. Padding keeps keyboard
+focus rings inside the scrollport. The adjacent content is minmax(0,1fr).
+Below 1100 the existing horizontal links and compact context remain, including
+their full names, current-page semantics and reading order. The short breadcrumb
+stays above the workspace, so keyboard order is breadcrumb → Trip details →
+six section links → Jump to → section actions. Global navigation/preferences
+and capture are unchanged.
+
+CSS alone switches presentation. There is one section-navigation landmark and
+one context subtree. WorkspaceSearch, Section and TripEditor stay in one content
+subtree; CaptureProvider stays in Boundary. No breakpoint hooks, keys or
+conditional editor branches were added. The focused Trip details input, dirty
+document input and typed Jump to query retain their DOM identity across resize.
+Record guards and router history retain their existing ownership. No cookie,
+collapse rail, shortcut, drawer or visitor change ships in this slice.
+
+Same synthetic long titles/dates, 24 updates and 32 tasks, with empty variants;
+same extension using chrome.tabs.setZoom and getZoom readback for every row.
+32 measurements cover English/light and Dutch/dark at four physical viewports
+and real 125/150% zoom. All readbacks match and all rows have no page-wide
+overflow. Values are rounded Tasks-trigger top × zoom at scroll zero; empty
+and dense agree and ranges span locales.
+
+| Size | Zoom | Slice 2 first working content y |
+| --- | --- | --- |
+| 1366×768 | 125% | 620 |
+| 1366×768 | 150% | 745–790 |
+| 1280×800 | 125% | 620 |
+| 1280×800 | 150% | 745–790 |
+| 1920×1080 | 125% | 380 |
+| 1920×1080 | 150% | 457 |
+| 390×844 | 125% | 1005 |
+| 390×844 | 150% | 1329–1356 |
+
+At 1920 the result is y=380/457, close to prototype S=367/441 and improved
+from slice 1's 632/745. The retained normal-flow breadcrumb accounts for the
+small difference from S. Zoomed laptops still fall below 1100 CSS pixels and
+match slice 1; the phone keeps its horizontal links pending slice 3. Its Tasks
+landmark still lies below the fold. This slice makes no phone density or drawer
+claim.
+
+Evidence (scripts, raw readbacks/geometry and synthetic PNGs) stays outside Git
+at /tmp/travel-slice-2/. Reviewed Dutch/dark desktop at 150% for full title,
+spacing, context/working-column separation and later-link reachability.
+The automated owner matrix also covers both locales × both themes, empty/dense,
+loaded/failed covers, all four widths and 312/260px effective phone widths.
+New sidebar tests cover 1099/1100, padded focus, Tab scrolling through all six
+links, the sticky offset, dirty Trip details resize at 1099/1100/390/1920 and
+discard focus return, Story → Prepare → document draft resize, typed search
+resize and Jump to record activation. Axe passes in all four locale/theme
+sidebar cases. These are desktop Chromium checks; real mobile keyboard and
+screen-reader route announcements remain the slice 3/5 work already tracked
+in #5.
+
+Component review: current base-nova sidebar and Base UI Navigation Menu were
+compared with the owned composition, using installed Base UI 1.9.0 and pinned
+shadcn 4.22.1. Keep native links and the existing owned controls; importing the
+registry sidebar would add unwanted collapse persistence, shortcut and shell
+dependencies. The composition/reasons are recorded in ui-components.md and
+ui-maintenance.json. No new messages were needed.

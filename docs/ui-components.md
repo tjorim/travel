@@ -207,3 +207,23 @@ intrinsic width so the existing wrapping works at zoomed phone widths.
 SectionAccordion titles now wrap the existing Collapsible trigger in an h2,
 connecting the workspace h1 to manager h3 headings without changing the button
 or mounted-panel behavior.
+
+## Desktop trip sidebar (#5, slice 2)
+
+Reviewed base-nova sidebar and Base UI Navigation Menu against shadcn 4.22.1
+and Base UI 1.9.0. Keep an owned CSS composition in TripWorkspace,
+WorkspaceHeader and WorkspaceTabs (inventoried as TripWorkspace).
+The registry sidebar brings collapse cookies, an icon rail, a global shortcut,
+Sheet and other unused dependencies. Navigation Menu supplies flyouts; these
+six destinations are ordinary router links, with full localized names and
+aria-current=page, rather than tabs or menu items.
+
+One context/navigation subtree becomes a 224px sticky column at 1100 CSS px,
+with a 16px top inset, viewport-bounded internal scrolling and padded focus
+rings. Below it, the existing horizontal section navigation stays unchanged.
+The sibling content uses minmax(0,1fr); search, Section and TripEditor keep
+their React ownership across resize. Capture and CaptureProvider remain in
+the existing app boundary. No matchMedia branch, second landmark, cookie,
+shortcut or global shell is introduced. The breadcrumb remains before the
+workspace in normal reading order. Sidebar title size and geometry use named
+Tailwind tokens; existing messages supply all labels.
