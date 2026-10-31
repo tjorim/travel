@@ -462,6 +462,7 @@ function daysLater(previous: ProjectionItem | undefined, item: ProjectionItem): 
   return days > 0 ? days : null;
 }
 
+/** One shared photo as a button that opens it large; a failed load offers a retry. */
 function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   useLocale();
   const [failed, setFailed] = useState(false);
@@ -540,6 +541,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   );
 }
 
+/** One shared video with controls and a poster, fetched only when played. */
 function SharedVideo({
   item,
   url,
@@ -571,6 +573,7 @@ function SharedVideo({
   );
 }
 
+/** The photos and videos of a story, as a grid, or as a snapping row with paging arrows when `strip` is set. */
 function Gallery({
   items,
   fileUrl,
@@ -608,6 +611,7 @@ function Gallery({
       observer?.disconnect();
     };
   }, [scrolls, items.length]);
+  /** Scrolls the row by most of its width, without animation for visitors who prefer reduced motion. */
   function page(direction: -1 | 1) {
     const element = list.current;
     element?.scrollBy?.({
@@ -737,6 +741,7 @@ function useActiveUpdate(
   }, [enabled, wide, list]);
 }
 
+/** The dated story: an index, then each update with its place, photos and text. */
 function Updates({
   updates,
   media,
@@ -1048,6 +1053,7 @@ export function ProjectionView({
         onOpen: () => openUpdate(update.id),
       });
   }
+  /** Brings an update into view and focuses it, as following its index link would. */
   function openUpdate(id: string) {
     const target = document.getElementById(id);
     target?.scrollIntoView?.({

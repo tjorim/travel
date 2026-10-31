@@ -67,7 +67,7 @@ export function StayManager({
       stayDialog.setError(errorNotice(error, m.owner_the_stay_could_not_be_saved));
     }
   }
-  // A quick change of length for a stay that is still a plan: the check-out moves, nothing else is touched.
+  /** A quick change of length for a private stay that is still a plan: only the check-out moves. */
   async function adjustNights(stay: Stay, delta: -1 | 1) {
     const checkOut = addDays(stay.check_out_date, delta);
     try {
