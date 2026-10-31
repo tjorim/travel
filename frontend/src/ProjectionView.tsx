@@ -453,14 +453,16 @@ function routeLocationPoint(
 /** Whole days between two updates dated to the day, else null: the story's "3 days later" connector. */
 function daysLater(previous: ProjectionItem | undefined, item: ProjectionItem): number | null {
   const [from, to] = [previous, item].map((entry) => {
-    const value = entry ? text(entry, "story_date") : null;
-    return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? dayjs.utc(value) : null;
+    // `storyDate` rejects an impossible date and a month or year date, so only a valid day gets a gap.
+    const value = entry && storyDate(entry) ? text(entry, "story_date") : null;
+    return value?.length === 10 ? dayjs.utc(value) : null;
   });
   if (!from?.isValid() || !to?.isValid()) return null;
   const days = to.diff(from, "day");
   return days > 0 ? days : null;
 }
 
+/** One shared photo as a button that opens it large; a failed load offers a retry. */
 function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   useLocale();
   const [failed, setFailed] = useState(false);
@@ -539,6 +541,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   );
 }
 
+/** One shared video with controls and a poster, fetched only when played. */
 function SharedVideo({
   item,
   url,
@@ -570,6 +573,7 @@ function SharedVideo({
   );
 }
 
+/** The photos and videos of a story, as a grid, or as a snapping row with paging arrows when `strip` is set. */
 function Gallery({
   items,
   fileUrl,
@@ -607,6 +611,7 @@ function Gallery({
       observer?.disconnect();
     };
   }, [scrolls, items.length]);
+  /** Scrolls the row by most of its width, without animation for visitors who prefer reduced motion. */
   function page(direction: -1 | 1) {
     const element = list.current;
     element?.scrollBy?.({
@@ -701,7 +706,7 @@ function Gallery({
 function useActiveUpdate(
   list: React.RefObject<HTMLOListElement | null>,
   enabled: boolean,
-  onActive: (id: string) => void,
+  onActive: (id: string | null) => void,
 ) {
   const report = useRef(onActive);
   report.current = onActive;
@@ -718,7 +723,12 @@ function useActiveUpdate(
   }, []);
   useEffect(() => {
     const items = list.current ? Array.from(list.current.children) : [];
-    if (!enabled || !wide || !items.length || typeof IntersectionObserver === "undefined") return;
+    // Narrower than the map-beside-story layout, or without it, nothing is followed: drop any update left over.
+    if (!enabled || !wide) {
+      report.current(null);
+      return;
+    }
+    if (!items.length || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
         const entering = entries.filter((entry) => entry.isIntersecting);
@@ -731,6 +741,7 @@ function useActiveUpdate(
   }, [enabled, wide, list]);
 }
 
+/** The dated story: an index, then each update with its place, photos and text. */
 function Updates({
   updates,
   media,
@@ -743,7 +754,7 @@ function Updates({
   fileUrl: (item: ProjectionItem) => string | null;
   /** The map sits beside this story on a wide screen, so the story is one column with its index folded away. */
   besideMap?: boolean;
-  onActive?: (id: string) => void;
+  onActive?: (id: string | null) => void;
 }) {
   useLocale();
   const timeline = useRef<HTMLOListElement>(null);
@@ -1042,6 +1053,7 @@ export function ProjectionView({
         onOpen: () => openUpdate(update.id),
       });
   }
+  /** Brings an update into view and focuses it, as following its index link would. */
   function openUpdate(id: string) {
     const target = document.getElementById(id);
     target?.scrollIntoView?.({
@@ -1120,7 +1132,7 @@ export function ProjectionView({
               follow={followStory ? followed : null}
               photos={mapPhotos}
             />
-            <Field className="mt-2.5">
+            <Field className="mt-2.5 hidden min-[1100px]:block">
               <FieldLabel className="flex items-center gap-2 text-sm font-semibold">
                 <TravelCheckbox checked={followStory} onCheckedChange={setFollowStory} />
                 <span>{m.visitor_map_follows_story()}</span>

@@ -708,6 +708,9 @@
     }
     & > [data-story-map] {
       @apply sticky top-6;
+      /* A trip with many points makes this taller than the window; it scrolls on its own so every control stays reachable. */
+      max-height: calc(100dvh - 3rem);
+      overflow-y: auto;
       grid-column: 2;
       grid-row: 1 / span 2;
     }

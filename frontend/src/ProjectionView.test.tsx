@@ -628,6 +628,11 @@ it("says how many days passed between updates dated to the day, and nothing othe
     { id: "u3", title: "Same day", story_date: "2054-04-03", date_precision: "day" },
     { id: "u4", title: "Month only", story_date: "2054-05", date_precision: "month" },
     { id: "u5", title: "After a month", story_date: "2054-05-09", date_precision: "day" },
+    // An impossible date shows no date, so it must not produce a gap either (dayjs would roll it into March).
+    { id: "u6", title: "End of January", story_date: "2054-01-31", date_precision: "day" },
+    { id: "u7", title: "Impossible", story_date: "2054-02-31", date_precision: "day" },
+    // A ten-character date that claims month precision is not a day either.
+    { id: "u8", title: "Wrong precision", story_date: "2054-03-10", date_precision: "month" },
   ];
   render(<ProjectionView projection={data} audience="share" identifier="token" />);
   // Dutch is the default test locale: one day takes the singular, and neither a same-day pair nor a month does a count.
