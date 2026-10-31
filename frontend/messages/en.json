@@ -1998,5 +1998,18 @@
   "sharing_scope_conflict": "Another session changed this sharing selection. Review the current server selection below. Keep your draft to save it again, or use the server selection.",
   "sharing_keep_mine": "Keep My Draft",
   "sharing_use_theirs": "Use Server Selection",
-  "sharing_server_selection": "Current Server Selection"
+  "sharing_server_selection": "Current Server Selection",
+  "owner_visitor_change_title": "Confirm what visitors will read",
+  "owner_visitor_change_description": "Saving changes what the audiences below read straight away. Check the changes first.",
+  "owner_visitor_change_confirm": "Save for visitors",
+  "owner_visitor_change_before": "Before: {p0}",
+  "owner_visitor_change_after": "After: {p0}",
+  "owner_visitor_change_empty": "(empty)",
+  "owner_visitor_change_seen_by": "Read by: {p0}",
+  "owner_visitor_change_carried": "Moves along with the location: {p0} visits, {p1} routes.",
+  "owner_visitor_change_preview": "Visitors who receive this location will read these changes after you confirm saving:",
+  "owner_visitor_change_preview_item": "{p0} (read by {p1})",
+  "owner_visitor_change_area_preview": "Moving this location to another area also moves its visits and route ends. If visitors receive those, you will be asked to confirm first.",
+  "audit_location_update": "Place: details visitors read were changed ({fields}).",
+  "audit_location_update_audiences": "Read on the public page: {publicCount}; share links: {linkCount}."
 }

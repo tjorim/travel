@@ -5,6 +5,7 @@ import { ownerRequest } from "../../query/api";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwner } from "../../query/owner-queries";
 import type { AuditEvent } from "../../tracker-model";
+import { isVisitorField, visitorFieldLabel } from "../locations/model";
 
 function eventMessage(event: AuditEvent) {
   const messages = {
@@ -20,6 +21,10 @@ function eventMessage(event: AuditEvent) {
     "location.merge": m.audit_location_merge,
     "area.merge": m.audit_area_merge,
   };
+  if (event.kind === "location.update")
+    return m.audit_location_update({
+      fields: changedFields(event).filter(isVisitorField).map(visitorFieldLabel).join(", "),
+    });
   if (event.kind !== "record.visibility_change")
     return messages[event.kind]?.() ?? m.audit_unknown();
   const { record_kind, from, to } = event.details;
@@ -44,6 +49,9 @@ function eventMessage(event: AuditEvent) {
     after: visibility[to](),
   });
 }
+
+const changedFields = (event: AuditEvent) =>
+  (event.details.changes ?? []).map((change) => change.field);
 
 function audienceCounts(audiences: string[]) {
   return {
@@ -83,6 +91,17 @@ export function AuditList({ tripId }: { tripId: string }) {
                 })}
               </time>
               <p>{eventMessage(event)}</p>
+              {event.kind === "location.update" && (
+                <p>
+                  {m.audit_location_update_audiences(
+                    audienceCounts([
+                      ...new Set(
+                        (event.details.changes ?? []).flatMap((change) => change.audiences),
+                      ),
+                    ]),
+                  )}
+                </p>
+              )}
               {event.kind === "record.visibility_change" && (
                 <>
                   {!!event.details.newly_reached?.length && (

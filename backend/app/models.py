@@ -191,6 +191,8 @@ class AuditEventKind(StrEnum):
     # receives, so it is recorded with the other audience-affecting changes.
     LOCATION_MERGE = "location.merge"
     AREA_MERGE = "area.merge"
+    # Editing the visitor-facing text or area of a shared location reaches its live audiences at once.
+    LOCATION_UPDATE = "location.update"
     # Live scope and record-audience edits change what visitors receive at once.
     PUBLIC_PROJECTION_SCOPE_CHANGE = "public_projection.scope_change"
     SHARE_LINK_SCOPE_CHANGE = "share_link.scope_change"

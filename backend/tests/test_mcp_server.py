@@ -1335,6 +1335,42 @@ def test_a_full_owner_session_works_through_search_and_call_tool(backend: Travel
     assert {"location.merge_preview", "location.merge", "visit.update", "share_link.preview"} <= set(actions)
 
 
+def test_update_location_refuses_an_unacknowledged_visitor_change_with_a_json_review(
+    backend: TravelMcpBackend,
+) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Sharing"))
+    location = backend.save_location(
+        trip["id"], schemas.LocationInput(label="Longshan", display_name="Longshan", locality="Taipei")
+    )
+    backend.set_visibility(trip["id"], "location", location["id"], "everyone", confirm=True)
+    backend.publish_public_projection(trip["id"], confirm=True)
+
+    with pytest.raises(ValueError) as refused:
+        backend.update_location(trip["id"], location["id"], schemas.LocationUpdate(locality="Elsewhere"))
+    review = json.loads(str(refused.value))
+    assert review["code"] == "visitor_visible_change_needs_acknowledgement"
+    assert review["changes"] == [
+        {
+            "field": "locality",
+            "before": "Taipei",
+            "after": "Elsewhere",
+            "audiences": [{"id": "public", "label": None}],
+        }
+    ]
+    # The rejection audit keeps the code, never the owner's text.
+    with TestingSessionLocal() as session:
+        rejected = session.scalars(
+            select(McpAuditEvent).where(McpAuditEvent.action == "location.update", McpAuditEvent.result == "rejected")
+        ).one()
+        assert rejected.details == {"error": "visitor_visible_change_needs_acknowledgement"}
+
+    updated = backend.update_location(
+        trip["id"], location["id"], schemas.LocationUpdate(locality="Elsewhere", acknowledge_visitor_changes=True)
+    )
+    assert updated["locality"] == "Elsewhere"
+    assert any(event["kind"] == "location.update" for event in backend.list_trip_audit_events(trip["id"]))
+
+
 def test_update_location_geocodes_in_place_through_the_mcp_tool(backend: TravelMcpBackend) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Geocoding"))
     location = backend.save_location(trip["id"], schemas.LocationInput(label="Longshan", display_name="Longshan"))

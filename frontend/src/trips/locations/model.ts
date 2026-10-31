@@ -1,4 +1,5 @@
 import { m } from "../../paraglide/messages.js";
+import { ApiError } from "../../query/api";
 import {
   ownerLocationName,
   type Location,
@@ -132,3 +133,111 @@ export const serverFields = {
 
 /** Whether the recipients behind a location are still loading, could not be read, or are known. */
 export type RecipientState = "loading" | "failed" | "ready";
+
+/** A field visitors read, as the API names it: what the location editor and the server's review both list. */
+export type VisitorField =
+  | "label"
+  | "locality"
+  | "country_code"
+  | "address_line1"
+  | "address_line2"
+  | "postal_code"
+  | "admin_area"
+  | "area_id";
+export type Audience = { id: string; label: string | null };
+/** One visitor-facing change the server asks the owner to acknowledge, with who reads it. */
+export type VisitorChange = {
+  field: VisitorField;
+  before: string | null;
+  after: string | null;
+  audiences: Audience[];
+  /** Only an area move: the area names, and how many visits and route ends travel with the location. */
+  before_label?: string | null;
+  after_label?: string | null;
+  visits?: number;
+  routes?: number;
+};
+const VISITOR_FIELDS: VisitorField[] = [
+  "label",
+  "locality",
+  "country_code",
+  "address_line1",
+  "address_line2",
+  "postal_code",
+  "admin_area",
+  "area_id",
+];
+export const VISITOR_CHANGE_CODE = "visitor_visible_change_needs_acknowledgement";
+
+/** The review a 409 carries, or null for any other failure; anything malformed is not a review. */
+export function visitorReview(error: unknown): VisitorChange[] | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const detail = error.diagnostic as { code?: unknown; changes?: unknown } | null;
+  if (detail?.code !== VISITOR_CHANGE_CODE || !Array.isArray(detail.changes)) return null;
+  const text = (value: unknown) => (typeof value === "string" ? value : null);
+  const changes: VisitorChange[] = [];
+  for (const change of detail.changes as Record<string, unknown>[]) {
+    if (!VISITOR_FIELDS.includes(change?.field as VisitorField) || !Array.isArray(change.audiences))
+      return null;
+    changes.push({
+      field: change.field as VisitorField,
+      before: text(change.before),
+      after: text(change.after),
+      audiences: (change.audiences as Audience[]).map((audience) => ({
+        id: String(audience.id),
+        label: text(audience.label),
+      })),
+      before_label: text(change.before_label),
+      after_label: text(change.after_label),
+      visits: typeof change.visits === "number" ? change.visits : undefined,
+      routes: typeof change.routes === "number" ? change.routes : undefined,
+    });
+  }
+  return changes.length ? changes : null;
+}
+
+const FIELD_LABELS: Record<VisitorField, () => string> = {
+  label: m.owner_public_name_2,
+  locality: m.owner_city,
+  country_code: m.owner_country_code,
+  address_line1: m.owner_address_line_1,
+  address_line2: m.owner_address_line_2,
+  postal_code: m.owner_postal_code,
+  admin_area: m.owner_region,
+  area_id: m.owner_area,
+};
+export const isVisitorField = (field: string): field is VisitorField =>
+  VISITOR_FIELDS.includes(field as VisitorField);
+export const visitorFieldLabel = (field: VisitorField) => FIELD_LABELS[field]();
+/** An audience by the owner's words: the public page, or the share link's own label. */
+export const audienceName = (audience: Audience) =>
+  audience.id === "public"
+    ? m.owner_public_page()
+    : m.owner_share_link({ p0: audience.label ?? "" });
+
+const ADDRESS_VALUES: [VisitorField, keyof Values][] = [
+  ["address_line1", "addressLine1"],
+  ["address_line2", "addressLine2"],
+  ["postal_code", "postalCode"],
+  ["admin_area", "adminArea"],
+];
+/** The text fields of a location as visitors read them: the address parts only while it is shared. */
+function visitorText(values: Values): Partial<Record<VisitorField, string | null>> {
+  const shown: Partial<Record<VisitorField, string | null>> = {
+    label: optional(values.label),
+    locality: optional(values.locality),
+    country_code: optional(values.countryCode)?.toUpperCase() ?? null,
+  };
+  if (values.shareAddress)
+    for (const [field, key] of ADDRESS_VALUES) shown[field] = optional(String(values[key]));
+  return shown;
+}
+
+/** Which visitor-facing text fields the editor's values change on a saved location (the server decides who must confirm). */
+export function pendingVisitorFields(place: Location, values: Values): VisitorField[] {
+  const before = visitorText(fromPlace(place));
+  const after = visitorText(values);
+  return VISITOR_FIELDS.filter(
+    (field) => field !== "area_id" && (before[field] ?? null) !== (after[field] ?? null),
+  );
+}

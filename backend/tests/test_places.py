@@ -409,8 +409,12 @@ def test_a_location_shows_its_address_only_when_the_owner_also_chooses_that() ->
     assert "address" not in location and location["label"] == "Hotel Riverside"
     assert "12 Guangming" not in without.text
 
+    # Publishing the address is a visitor-facing change: it is refused until acknowledged.
+    assert owner.patch(f"{trips_path}/locations/{hotel['id']}", json={"share_address": True}).status_code == 409
     assert (
-        owner.patch(f"{trips_path}/locations/{hotel['id']}", json={"share_address": True}).json()["share_address"]
+        owner.patch(
+            f"{trips_path}/locations/{hotel['id']}", json={"share_address": True, "acknowledge_visitor_changes": True}
+        ).json()["share_address"]
         is True
     )
     with_address = anonymous.get(f"/api/public/trips/{slug}")
@@ -421,7 +425,9 @@ def test_a_location_shows_its_address_only_when_the_owner_also_chooses_that() ->
         assert private not in with_address.text
 
     # Turning it off again hides it at once.
-    owner.patch(f"{trips_path}/locations/{hotel['id']}", json={"share_address": False})
+    owner.patch(
+        f"{trips_path}/locations/{hotel['id']}", json={"share_address": False, "acknowledge_visitor_changes": True}
+    )
     assert "address" not in anonymous.get(f"/api/public/trips/{slug}").json()["places"][0]
 
 
@@ -701,8 +707,11 @@ def test_address_correction_updates_only_the_selected_link_and_cannot_share_an_e
     listed_token, other_token = (activate(owner, trip["id"], link["id"])["token"] for link in (listed, other))
     visitor = TestClient(app)
 
-    assert owner.patch(url, json={"share_address": True}).status_code == 200
-    corrected = owner.patch(url, json={"address_line1": None, "address_line2": "Floor 4", "locality": "Taipei"})
+    acknowledged = {"acknowledge_visitor_changes": True}
+    assert owner.patch(url, json={"share_address": True, **acknowledged}).status_code == 200
+    corrected = owner.patch(
+        url, json={"address_line1": None, "address_line2": "Floor 4", "locality": "Taipei", **acknowledged}
+    )
     assert corrected.status_code == 200, corrected.text
     assert corrected.json()["country_code"] == "TW"  # Omitted fields remain unchanged.
     (place,) = visitor.get(f"/api/shared/{listed_token}").json()["places"]
@@ -713,7 +722,12 @@ def test_address_correction_updates_only_the_selected_link_and_cannot_share_an_e
 
     assert owner.patch(url, json={"address_line2": None, "locality": None}).status_code == 422
     assert owner.get(f"{base}/locations").json()[0]["address_line2"] == "Floor 4"
-    assert owner.patch(url, json={"share_address": False, "address_line2": None, "locality": None}).status_code == 200
+    assert (
+        owner.patch(
+            url, json={"share_address": False, "address_line2": None, "locality": None, **acknowledged}
+        ).status_code
+        == 200
+    )
     assert "address" not in visitor.get(f"/api/shared/{listed_token}").json()["places"][0]
     assert owner.patch(url, json={"share_address": True}).status_code == 422
 

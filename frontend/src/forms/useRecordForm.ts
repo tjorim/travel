@@ -14,6 +14,11 @@ type RecordFormOptions<TValues, TResult> = {
   submit: (values: TValues) => Promise<TResult>;
   /** Runs after a successful submit, once the form has reset to the saved values. */
   onSuccess?: (result: TResult, values: TValues) => void;
+  /**
+   * Handles a failure that is not an error but a question for the owner, such as a change to confirm.
+   * Return true to stop it from being reported; the form stays dirty so the owner can submit it again.
+   */
+  intercept?: (error: unknown, values: TValues) => boolean;
   /** Message for a failure that carries none of its own. */
   fallback: ErrorFallback;
   /** Maps the server's field names to form field names for `ApiError.fieldErrors`. */
@@ -31,6 +36,7 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
   submit,
   onSuccess,
   fallback,
+  intercept,
   serverFields = {},
 }: RecordFormOptions<TValues, TResult>) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -61,7 +67,10 @@ export function useRecordForm<TValues extends Record<string, unknown>, TResult =
       try {
         result = await submit(value);
       } catch (error) {
-        setFailure(error);
+        if (intercept?.(error, value)) {
+          // A question dialog is opening: it, not the submit button, takes the focus and gives it back.
+          requestFocus.current = null;
+        } else setFailure(error);
         setPending(false);
         return;
       }

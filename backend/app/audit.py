@@ -7,6 +7,7 @@ event and the state transition it records land together or not at all.
 
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
@@ -81,19 +82,35 @@ def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETE
 PUBLIC_AUDIENCE = "public"
 
 
-def delivering_audiences(session: Session, trip_id: str) -> list[tuple[str, dict]]:
-    """Audiences that deliver today, by id only (never a link label): the
-    published public page and active links. Drafts and an unpublished page
-    deliver nothing, so changes to them are not recorded."""
-    audiences: list[tuple[str, dict]] = []
+@dataclass(frozen=True)
+class LiveAudience:
+    """An audience that delivers today: its id, the owner's link label (none for the public page) and live scope."""
+
+    id: str
+    label: str | None
+    scope: dict
+
+
+def live_audiences(session: Session, trip_id: str) -> list[LiveAudience]:
+    """Audiences that deliver today: the published public page and active links.
+    Drafts and an unpublished page deliver nothing, so changes to them are not
+    recorded and need no acknowledgement."""
+    audiences: list[LiveAudience] = []
     surface = session.get(PublicSurface, trip_id)
     if surface is not None and surface.state == SurfaceState.PUBLISHED:
-        audiences.append((PUBLIC_AUDIENCE, surface.scope))
+        audiences.append(LiveAudience(PUBLIC_AUDIENCE, None, surface.scope))
     for link in session.scalars(
-        select(ShareLink).where(ShareLink.trip_id == trip_id, ShareLink.state == LinkState.ACTIVE)
+        select(ShareLink)
+        .where(ShareLink.trip_id == trip_id, ShareLink.state == LinkState.ACTIVE)
+        .order_by(ShareLink.created_at)
     ):
-        audiences.append((f"link:{link.id}", link.scope))
+        audiences.append(LiveAudience(f"link:{link.id}", link.label, link.scope))
     return audiences
+
+
+def delivering_audiences(session: Session, trip_id: str) -> list[tuple[str, dict]]:
+    """Live audiences by id only (never a link label), the shape ``receivers`` takes."""
+    return [(audience.id, audience.scope) for audience in live_audiences(session, trip_id)]
 
 
 def record_visibility_change(

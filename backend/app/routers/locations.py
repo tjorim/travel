@@ -7,11 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..access import receivers, trip_audiences
-from ..audit import record_audit_event
+from ..audit import LiveAudience, live_audiences, record_audit_event
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
 from ..models import (
+    Area,
     AuditEventKind,
     AuditTargetType,
     Location,
@@ -33,6 +34,7 @@ from ..schemas import (
     NavigationResponse,
 )
 from ..search_text import contains
+from ..visitor_changes import FieldChange, location_visitor_view, reached_by, text_changes
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 
@@ -148,7 +150,42 @@ def _apply_map_target(location: Location, payload: LocationUpdate) -> None:
         )
 
 
-@router.patch("/locations/{location_id}", response_model=LocationResponse)
+def _area_change(
+    session: Session,
+    location: Location,
+    before_area: Area,
+    visits: list[Visit],
+    routes: list[Route],
+    live: list[LiveAudience],
+) -> FieldChange | None:
+    """The visitor-facing effect of moving a location to another area: its visits and route ends move with it.
+
+    Visitors read a visit's place and a route's ends from their areas, so the
+    audiences are those that receive any of the records carried along."""
+    reached: dict[str, LiveAudience] = {}
+    for kind, records in (("visit", visits), ("route", routes)):
+        for record in records:
+            for audience in reached_by(kind, record, live):
+                reached[audience.id] = audience
+    if not reached:
+        return None
+    return FieldChange(
+        "area_id",
+        before_area.id,
+        location.area.id,
+        list(reached.values()),
+        before_label=before_area.label,
+        after_label=location.area.label,
+        visits=len(visits),
+        routes=len(routes),
+    )
+
+
+@router.patch(
+    "/locations/{location_id}",
+    response_model=LocationResponse,
+    responses={409: {"description": "A visitor-facing change needs acknowledge_visitor_changes"}},
+)
 def update_location(
     trip_id: Identifier, location_id: Identifier, payload: LocationUpdate, session: SessionDep, subject: SubjectDep
 ) -> Location:
@@ -157,9 +194,28 @@ def update_location(
     The location is reusable: every linked stay, visit, route end and update
     reads the corrected address and map target from this same record. Its id,
     area, visibility and sharing choices are never changed by a map-target update.
+
+    Editing what visitors read (public name, city, country, a shared address,
+    or the area its visits and route ends are filed under) on a location with
+    live receivers is refused with 409 until the request sets
+    ``acknowledge_visitor_changes``; the refusal lists each field's before and
+    after and the audiences. An acknowledged change is recorded in the audit trail.
     """
     location = owned_location(session, trip_id, subject, location_id)
     changes = payload.model_fields_set
+    live = live_audiences(session, trip_id)
+    before_view = location_visitor_view(location)
+    before_area = location.area
+    visits, routes = [], []
+    if live and "area_id" in changes and payload.area_id not in (None, location.area_id):
+        visits = list(session.scalars(select(Visit).where(Visit.location_id == location.id)))
+        routes = list(
+            session.scalars(
+                select(Route).where(
+                    (Route.departure_location_id == location.id) | (Route.arrival_location_id == location.id)
+                )
+            )
+        )
     if "label" in changes:
         location.label = payload.label
     if "area_id" in changes:
@@ -200,6 +256,27 @@ def update_location(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Give this location a public name before sharing it",
             code="give_this_location_a_public_name_before_sharing_it",
+        )
+    visitor_changes = text_changes(before_view, location_visitor_view(location), reached_by("location", location, live))
+    if (visits or routes) and (area_change := _area_change(session, location, before_area, visits, routes, live)):
+        visitor_changes.append(area_change)
+    if visitor_changes and not payload.acknowledge_visitor_changes:
+        details = [change.as_detail() for change in visitor_changes]
+        session.rollback()
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "visitor_visible_change_needs_acknowledgement", "changes": details},
+            code="visitor_visible_change_needs_acknowledgement",
+        )
+    if visitor_changes:
+        record_audit_event(
+            session,
+            trip_id=trip_id,
+            actor_subject=subject,
+            kind=AuditEventKind.LOCATION_UPDATE,
+            target_type=AuditTargetType.LOCATION,
+            target_id=location.id,
+            details={"changes": [change.as_audit() for change in visitor_changes]},
         )
     session.commit()
     return location

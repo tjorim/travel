@@ -1998,5 +1998,18 @@
   "sharing_scope_conflict": "Een andere sessie heeft deze selectie gewijzigd. Bekijk hieronder de huidige serverselectie. Behoud je concept om het opnieuw op te slaan, of gebruik de serverselectie.",
   "sharing_keep_mine": "Mijn concept behouden",
   "sharing_use_theirs": "Serverselectie gebruiken",
-  "sharing_server_selection": "Huidige serverselectie"
+  "sharing_server_selection": "Huidige serverselectie",
+  "owner_visitor_change_title": "Bevestig wat bezoekers gaan lezen",
+  "owner_visitor_change_description": "Opslaan past meteen aan wat de onderstaande doelgroepen lezen. Controleer eerst de wijzigingen.",
+  "owner_visitor_change_confirm": "Opslaan voor bezoekers",
+  "owner_visitor_change_before": "Voor: {p0}",
+  "owner_visitor_change_after": "Na: {p0}",
+  "owner_visitor_change_empty": "(leeg)",
+  "owner_visitor_change_seen_by": "Gelezen door: {p0}",
+  "owner_visitor_change_carried": "Gaat mee met de locatie: {p0} bezoeken, {p1} routes.",
+  "owner_visitor_change_preview": "Bezoekers die deze locatie ontvangen lezen deze wijzigingen nadat je het opslaan bevestigt:",
+  "owner_visitor_change_preview_item": "{p0} (gelezen door {p1})",
+  "owner_visitor_change_area_preview": "Als je deze locatie naar een ander gebied verplaatst, gaan ook de bezoeken en routeuiteinden mee. Als bezoekers die ontvangen, wordt eerst om bevestiging gevraagd.",
+  "audit_location_update": "Plaats: gegevens die bezoekers lezen zijn gewijzigd ({fields}).",
+  "audit_location_update_audiences": "Gelezen op de openbare pagina: {publicCount}; deellinks: {linkCount}."
 }
