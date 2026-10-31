@@ -5,6 +5,7 @@ All notable changes to the travel hub are documented here.
 ## Unreleased
 
 - Add enter and exit transitions to dialogs, the section drawer, popovers and suggestion lists, hover and press feedback on buttons, and stop forcing map camera moves when the visitor asks for reduced motion, with end-to-end checks for both motion settings (Refs #94).
+- Add a sourced fit-gap analysis of Travel against Polarsteps (gaps we want, gaps by design, where Travel is ahead), a short roadmap and open product/privacy questions in `docs/decisions/polarsteps-fit-gap.md`; no behaviour changes (Refs #94).
 
 - Replace narrow owner section links with a localized Dialog drawer, preserving route history, editor drafts and section focus (Refs #5).
 
