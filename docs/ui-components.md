@@ -249,3 +249,91 @@ Dismissal returns focus to the trigger; crossing to wide returns it to the
 current sidebar link. Successful same-tab selection focuses the stable localized
 section h2 after the router updates; selecting the current link does so directly.
 Modified clicks retain native new-tab behavior. Back/Forward remain router-owned.
+
+## Motion and feedback (#94)
+
+Layers and controls answered nothing: dialogs, the section drawer, popovers and
+suggestion lists appeared and vanished at once, buttons had no hover or press
+state and the map camera ignored a reduced-motion request. Base UI marks a layer
+that is entering or leaving with `data-starting-style` and `data-ending-style`
+and waits for its transition before unmounting, so the motion lives in four
+named utilities in `src/tailwind.css`:
+
+| Utility | Used by | Motion |
+| --- | --- | --- |
+| `travel-backdrop-motion` | Record, alert and lightbox dialog backdrops, the drawer backdrop | 150 ms opacity |
+| `travel-popup-motion` | Record, alert and lightbox dialog popups | 160 ms opacity and 200 ms rise; a bottom sheet below 620 px rises further |
+| `travel-drawer-motion` | The narrow trip section drawer | 220 ms slide from the left |
+| `travel-menu-motion` | The generated `Popover` (customised locally) and `SuggestInput` lists | 120 ms opacity and a 4 px drop |
+
+Buttons and `action-link` lift on hover (`brightness-110`), nudge 1 px on press
+and ease their colours over 150 ms; `secondary` and `danger` controls tint
+instead. Every transition has a `prefers-reduced-motion` guard, and the map's
+`easeTo` and `flyTo` calls no longer set `essential: true`, so MapLibre skips
+them for visitors who ask for reduced motion. `e2e/motion.spec.ts` checks both
+settings; the other end-to-end checks run with reduced motion so axe never
+samples a half-transparent dialog. Nothing here changes which controls exist,
+their names, focus return or the dirty-edit guards.
+## Photo-led story updates (#94)
+
+A visitor's update used to read heading, meta, text and then a grid of small
+thumbnails. It now reads like a story first seen as pictures: the date and place
+line and the heading, then the update's photos as a strip, then the text. This is
+a restyle of what the audience already receives, never new content.
+
+- `Gallery` takes `strip`. One photo fills a frame up to 42.5rem wide; several
+  are a row that scrolls sideways, snaps to each photo and shows the next one
+  peeking (`basis-5/6`, two thirds from 680 px), so the row reads as scrollable
+  without arrows. Each photo is still the existing `SharedImage` button that opens
+  the lightbox, so keyboard use, captions and alt text are unchanged. Videos fill
+  the frame width. Loose gallery photos keep the grid.
+- A row of several photos has Previous photo and Next photo arrows (44 px, hidden at the ends of the row, scrolling by four fifths of its width) for mouse users, for whom a sideways scroll bar is easy to miss; touch, keyboard focus and the scroll bar still work.
+- A "3 days later" line sits above an update whose story date and the previous
+  one's are both given to the day (`daysLater`, derived from dates the audience
+  already has; shown for a gap of a day or more, never for month or year dates).
+- Photo triggers brighten slightly on hover, with no motion for visitors who
+  prefer reduced motion.
+
+Not copied from Polarsteps: likes, comments and names of viewers (there are no
+viewer identities, see the fit-gap analysis).
+
+## Map beside the story (#94)
+
+On a screen 1100 px or wider, a visitor's trip with an update that has a shared
+place puts the map in a sticky column beside the story instead of above it
+(`travel-story-map`, the map in `data-story-map`). The story's own index folds
+into its disclosure at every width, since the map and the timeline now share the
+space. There is still one `TripMap`; narrower screens keep the old order.
+
+- **Follows the reader.** `useActiveUpdate` watches the updates with an
+  `IntersectionObserver` and, only while the map is beside the story, reports the
+  one the reader has reached. `TripMap` takes it as `follow`: it rings that point
+  and eases the camera to it, without opening the point's card or changing the
+  selection. The ease is not marked essential, so a reduced-motion visitor gets a
+  jump.
+- **Photo markers.** `photos` pins the first approved photo of an update at the
+  point its shared area already has, one per place. Markers are buttons added with
+  `maplibregl.Marker`; a click or tap scrolls to the update. They are hidden from
+  assistive technology (`aria-hidden`, `tabindex=-1`) because the map is a single
+  image role and a control inside it cannot be reached; the point buttons under
+  the map already link to the same updates. Only the image inside a marker is
+  scaled: the `scale` property composes outside MapLibre's `transform` and would
+  scale the marker's offset too.
+- **Visitor control.** A checkbox under the map, "Move the map along with the story" (on by default), stops and resumes the follow, so a visitor who wants to look around alone is never fought by the camera.
+- Nothing new is delivered: markers and follow use the projection's photos and
+  area points. The publication safety check has a line for the pin.
+## Plan stepper and first steps (#94)
+
+Two small additions for planning on a laptop, both built from existing controls:
+
+- **Nights stepper.** A stay that is still an idea or planned shows "− N nights +"
+  in the Plan list. It moves only the check-out date by one night (never below
+  one night, disabled while a save is pending) and says so in the section's status
+  line ("Stay now runs 1 Mar → 4 Mar."). A confirmed or cancelled stay is edited in
+  its dialog, so a booking's dates never change from a quick tap. A stay set to "everyone" or "custom" is edited there too: a change to it reaches visitors as it is saved, so it should not happen from a tap. Both buttons are
+  44 px square with whole-sentence accessible names. Visits already had Move up and
+  Move down, so no drag-and-drop is added: it would not be keyboard operable.
+- **First steps.** A trip with no area, visit, stay or route shows "Start with where
+  you are going" on its overview with three links into the Plan blocks (places, a
+  stay, a route). It appears only after all three lists have loaded, so a loading
+  trip never flashes it, and it disappears with the first record.

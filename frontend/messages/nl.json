@@ -1003,6 +1003,15 @@
       }
     }
   ],
+  "owner_stay_nights_group": "Nachten bij {name}",
+  "owner_stay_one_night_less": "Eén nacht minder bij {name}",
+  "owner_stay_one_night_more": "Eén nacht meer bij {name}",
+  "owner_stay_dates_changed": "Het verblijf loopt nu {dates}.",
+  "owner_first_steps_title": "Begin met waar je naartoe gaat",
+  "owner_first_steps_text": "Voeg de plaatsen toe die je bezoekt, daarna de verblijven en routes ertussen. Er wordt niets gedeeld totdat jij dat kiest.",
+  "owner_first_steps_places": "Plaatsen toevoegen",
+  "owner_first_steps_stay": "Verblijf toevoegen",
+  "owner_first_steps_route": "Route toevoegen",
   "owner_night_count": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -1770,6 +1779,19 @@
   "visitor_story_navigation": "Updates in dit verhaal",
   "visitor_timeline": "Reisupdates tijdlijn",
   "visitor_update": "Update",
+  "visitor_previous_photo": "Vorige foto",
+  "visitor_next_photo": "Volgende foto",
+  "visitor_map_follows_story": "Laat de kaart met het verhaal meebewegen",
+  "visitor_days_later": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} dag later",
+        "countPlural=other": "{count} dagen later"
+      }
+    }
+  ],
   "visitor_update_media": "Media bij deze update",
   "visitor_view_route": "Route bekijken",
   "visitor_view_location": "Locatie bekijken",

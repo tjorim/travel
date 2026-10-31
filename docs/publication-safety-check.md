@@ -37,6 +37,11 @@ enforces the scope; this check is about choosing it deliberately.
       close to a home or meeting point.
 - [ ] For every selected image, check the visible content and caption; only
       approved, metadata-stripped photo or video derivatives can be selected.
+- [ ] A photo of an update is also pinned on the map, as a round marker at the
+      area that update shares, and the map eases to that area while the reader
+      is at the update. The marker shows only a photo the audience already
+      receives, at a place it already sees; check that the area is not too
+      specific for the photo, because the pin ties the two together.
 - [ ] If the trip has a cover, check that photo like any other shared image:
       choosing it publishes nothing, so it is shown only to audiences that already
       receive it. The sharing check lists an audience that receives no cover.

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { formatInstant } from "../tracker-model";
+import { FirstSteps } from "./FirstSteps";
 import { OwnerTripMap } from "./OwnerTripMap";
 import { TripOverview } from "./TripOverview";
 import { OverviewTasks } from "./OverviewTasks";
@@ -26,6 +27,7 @@ export function WorkspaceOverview({ trip, areas, mapFocus, onOpenMapRecord }: Se
       </div>
       <div className="travel-overview-split">
         <div className="min-w-0 empty:hidden min-[1100px]:col-start-1 min-[1100px]:row-start-1">
+          <FirstSteps trip={trip} areas={areas} />
           <TripOverview trip={trip} />
         </div>
         <div

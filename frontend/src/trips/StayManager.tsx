@@ -9,7 +9,15 @@ import { errorMessage } from "../query/api";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { stayInPlan, stayLabel, type Area, type Stay, type Trip } from "../tracker-model";
+import {
+  addDays,
+  formatDay,
+  stayInPlan,
+  stayLabel,
+  type Area,
+  type Stay,
+  type Trip,
+} from "../tracker-model";
 import {
   blankStay,
   fromStay,
@@ -57,6 +65,22 @@ export function StayManager({
       setMessage(textNotice(() => m.owner_stay_alternatives_cancelled()));
     } catch (error) {
       stayDialog.setError(errorNotice(error, m.owner_the_stay_could_not_be_saved));
+    }
+  }
+  /** A quick change of length for a private stay that is still a plan: only the check-out moves. */
+  async function adjustNights(stay: Stay, delta: -1 | 1) {
+    const checkOut = addDays(stay.check_out_date, delta);
+    try {
+      await saveStay.mutateAsync({ id: stay.id, payload: { check_out_date: checkOut } });
+      setMessage(
+        textNotice(() =>
+          m.owner_stay_dates_changed({
+            dates: `${formatDay(stay.check_in_date)} → ${formatDay(checkOut)}`,
+          }),
+        ),
+      );
+    } catch (error) {
+      setMessage(errorNotice(error, m.owner_the_stay_could_not_be_saved));
     }
   }
   const stayRecord = useRecordForm<StayValues>({
@@ -176,7 +200,14 @@ export function StayManager({
             ? m.owner_loading_your_private_stays()
             : message}
       </p>
-      {stays.length > 0 && <StayList stays={stays} onInspect={stayDialog.inspect} />}
+      {stays.length > 0 && (
+        <StayList
+          stays={stays}
+          onInspect={stayDialog.inspect}
+          onAdjustNights={adjustNights}
+          saving={saveStay.isPending}
+        />
+      )}
       <RecordDialog
         open={editingStay || selectedStay !== null}
         title={
