@@ -45,6 +45,37 @@ or `submission_expired` diagnostics. Check its process plus due-job age and
 sanitized DB state; restart it if it exits. Supervision/monitoring and VPS
 activation are tracked in [apps#275](https://github.com/tjorim/apps/issues/275).
 
+## Dispatcher diagnostics
+
+The supervised dispatcher prints one content-free line for each committed state
+change or failed attempt: `reason=<code> job_id=<opaque app job ID> attempts=<n>`.
+Loop failures use `job_id=none attempts=0` and stable configuration, storage,
+transport, database or worker reason codes. Exception text and tracebacks are
+never logged. Normal unchanged polls and idle loops do not print lines.
+
+For a one-shot maintenance snapshot using the same database configuration:
+
+```bash
+uv run python -m app.media.worker --counts
+```
+
+Output is JSON counts grouped by durable job state; `failed` counts rows with a
+persisted error code (including retryable failures), rather than a cumulative
+failure metric. No IDs, source keys or content are included. This command does
+not need worker credentials or contact the worker. It can be run through the
+existing container maintenance channel; no new metrics server, collector or
+scheduled alert is introduced.
+
+Submission holds a dispatcher-only PostgreSQL session advisory lock on a
+separate connection. It releases all row locks before copying, hashing and
+uploading the original, allowing owner deletion to complete during upload.
+Other dispatchers skip the claimed job. After upload, a fresh locked read checks
+the derivative, asset, source key and checksum. Deleted/replaced work retains
+only its durable remote identity for cancellation on the next step, never a
+late attachment. A process exit releases the advisory lock; the committed
+`submitting` state still resolves retries using the original idempotency key.
+Output import retains its existing row locks and storage/ACK ordering.
+
 ## Durable lifecycle and retry
 
 Creating a remote derivative commits its `processing_backend=remote` and

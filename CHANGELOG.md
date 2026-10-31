@@ -5,6 +5,9 @@ All notable changes to the travel hub are documented here.
 ## Unreleased
 
 - Compare trip header density and navigation alternatives with synthetic browser-zoom measurements; leave the layout decision to the owner (#5).
+- Make video dispatcher uploads release row locks while preserving durable
+  retries and post-upload source checks; add content-free state/failure logs
+  and a count-only worker maintenance command (#31).
 
 - Let the owner choose per stay, visit, route and update that a location or area merge would newly show to an audience whether it follows the merge or is made private first, in the merge dialog and as `make_private` on the API and the MCP `merge_locations`/`merge_areas` tools, validated against the preview, applied through the visibility code path, said plainly in the confirmation when it hides records from every audience or drops custom picks, and recorded by id in the merge audit event (#27).
 - Warn when merging locations or areas would show visitors more, listing per duplicate the audiences and moved stays, visits, routes and updates, and refuse the confirmed merge until `confirm_widening` (the PWA's separate acknowledgement) accepts it, in the API, the MCP tools and the merge dialog, and record it in the merge audit event (#27).
