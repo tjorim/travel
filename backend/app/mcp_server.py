@@ -30,6 +30,7 @@ from fastapi.encoders import jsonable_encoder
 from fastmcp import FastMCP
 from fastmcp.exceptions import DisabledError, FastMCPError, NotFoundError, ToolError
 from fastmcp.exceptions import ValidationError as ArgumentValidationError
+from fastmcp.server.auth.providers.jwt import JWTVerifier
 from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
 from fastmcp.server.dependencies import get_access_token, get_context
 from fastmcp.server.http import StarletteWithLifespan
@@ -41,9 +42,11 @@ from pydantic import AnyHttpUrl, BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.middleware import Middleware as StarletteMiddleware
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from . import schemas
+from .authlimit import THROTTLED_DETAIL, failed_authentication, throttled_headers
 from .config import settings
 from .database import SessionLocal
 from .models import DocumentKind, ImportProvider, McpAuditEvent, Visibility
@@ -2035,6 +2038,40 @@ MCP_INSTRUCTIONS = (
 )
 
 
+class OutageAwareJWTVerifier(JWTVerifier):
+    """FastMCP's verifier, which reports signing keys it could not fetch.
+
+    ``verify_token`` returns None both for a refused token and for an unreachable JWKS endpoint, so the failed
+    attempt limit (#46) could not tell them apart. This notes a failed fetch, and the refresh cool-down that
+    follows it, so those requests are not counted against the client. ``outage_events`` only ever grows; a request
+    was affected when it changed while the request ran.
+    """
+
+    _last_fetch_failed = False
+    outage_events = 0
+
+    async def _fetch_jwks(self) -> dict[str, Any]:
+        try:
+            keys = await super()._fetch_jwks()
+        except Exception:
+            self._last_fetch_failed = True
+            self._note_outage()
+            raise
+        self._last_fetch_failed = False
+        return keys
+
+    async def _get_jwks_key(self, kid: str | None) -> str:
+        try:
+            return await super()._get_jwks_key(kid)
+        except ValueError:
+            if self._last_fetch_failed:
+                self._note_outage()
+            raise
+
+    def _note_outage(self) -> None:
+        self.outage_events += 1
+
+
 class TravelMcpAuthProvider(KeycloakAuthProvider):
     """Keycloak resource-server auth bound to Travel's canonical MCP URL.
 
@@ -2054,10 +2091,18 @@ def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
     """Create Travel's MCP server with OIDC verification when configured."""
     auth = None
     if settings.oidc_issuer_url and settings.mcp_resource_url:
+        realm_url = settings.oidc_issuer_url.rstrip("/")
         auth = TravelMcpAuthProvider(
-            realm_url=settings.oidc_issuer_url,
+            realm_url=realm_url,
             base_url=settings.mcp_resource_url,
             audience=settings.mcp_token_audience,
+            token_verifier=OutageAwareJWTVerifier(
+                jwks_uri=f"{realm_url}/protocol/openid-connect/certs",
+                issuer=realm_url,
+                algorithm="RS256",
+                required_scopes=["openid"],
+                audience=settings.mcp_token_audience,
+            ),
         )
     server = FastMCP(
         "travel",
@@ -2150,6 +2195,52 @@ class UnauthorizedRequestLogger:
         await self.app(scope, receive, send_logging_401)
 
 
+def _bearer_token_present(headers: Sequence[tuple[bytes, bytes]]) -> bool:
+    for key, value in headers:
+        if key.lower() == b"authorization":
+            scheme, _, token = value.decode("latin-1").partition(" ")
+            return scheme.lower() == "bearer" and bool(token.strip())
+    return False
+
+
+class AuthenticationFailureLimiter:
+    """Refuse a client with too many failed bearer tokens with 429, and count a 401 that refused a token (#46).
+
+    A request without a bearer token is neither refused nor counted (it costs no verification, and a client's first
+    request legitimately has none), and neither is a 401 caused by an identity-provider outage.
+    """
+
+    def __init__(self, app: ASGIApp, verifier: OutageAwareJWTVerifier | None = None) -> None:
+        self.app = app
+        self.verifier = verifier
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not _bearer_token_present(scope["headers"]):
+            await self.app(scope, receive, send)
+            return
+        request = Request(scope)
+        retry_after = failed_authentication.retry_after(request)
+        if retry_after is not None:
+            response = JSONResponse(
+                {"detail": THROTTLED_DETAIL, "errors": [{"code": "rate_limited", "params": {}, "path": []}]},
+                status_code=429,
+                headers=throttled_headers(retry_after),
+            )
+            await response(scope, receive, send)
+            return
+
+        outages_before = self.verifier.outage_events if self.verifier is not None else 0
+
+        async def send_counting_401(message: Message) -> None:
+            if message["type"] == "http.response.start" and message["status"] == 401:
+                outage = self.verifier is not None and self.verifier.outage_events != outages_before
+                if not outage:
+                    failed_authentication.record_failure(request)
+            await send(message)
+
+        await self.app(scope, receive, send_counting_401)
+
+
 def create_mcp_http_app(
     factory: sessionmaker[Session] = SessionLocal, **http_app_kwargs: Any
 ) -> tuple[FastMCP, StarletteWithLifespan]:
@@ -2163,7 +2254,11 @@ def create_mcp_http_app(
         raise RuntimeError("MCP HTTP requires TRAVEL_MCP_BASE_URL and TRAVEL_OIDC_ISSUER_URL")
     server = create_mcp_server(factory)
     middleware = [StarletteMiddleware(UnauthorizedRequestLogger), *(http_app_kwargs.pop("middleware", None) or [])]
-    return server, server.http_app(path="/", stateless_http=True, middleware=middleware, **http_app_kwargs)
+    mcp_app = server.http_app(path="/", stateless_http=True, middleware=middleware, **http_app_kwargs)
+    # FastMCP runs its own authentication ahead of every middleware passed above, so the failed-attempt limit must be
+    # added to the app to sit outside it and refuse a throttled client before its token is verified (#46).
+    mcp_app.add_middleware(AuthenticationFailureLimiter, verifier=getattr(server.auth, "token_verifier", None))
+    return server, mcp_app
 
 
 def mount_mcp(app: FastAPI, server: FastMCP, mcp_app: StarletteWithLifespan) -> None:

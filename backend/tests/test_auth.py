@@ -7,9 +7,12 @@ from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from jwt.algorithms import RSAAlgorithm
 from pydantic import ValidationError
+from starlette.requests import Request
 
 from app.auth import DEV_BYPASS_SUBJECT, current_subject
 from app.config import Settings, settings
+
+ANONYMOUS = Request({"type": "http", "client": ("203.0.113.9", 1), "headers": []})
 
 
 class StaticSigningKey:
@@ -51,7 +54,7 @@ def test_current_subject_accepts_a_valid_travel_audience_token(monkeypatch: pyte
         settings, "oidc_jwks_url", "https://auth.example.test/realms/travel/protocol/openid-connect/certs"
     )
 
-    subject = current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
+    subject = current_subject(ANONYMOUS, HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
 
     assert subject == "travel-account-id"
 
@@ -68,7 +71,7 @@ def test_current_subject_rejects_a_wrong_audience(monkeypatch: pytest.MonkeyPatc
     )
 
     with pytest.raises(HTTPException, match="Invalid bearer token") as error:
-        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
+        current_subject(ANONYMOUS, HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
 
     assert error.value.status_code == 401
 
@@ -86,7 +89,7 @@ def test_current_subject_rejects_a_token_for_the_mcp_resource(monkeypatch: pytes
     )
 
     with pytest.raises(HTTPException, match="Invalid bearer token") as error:
-        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
+        current_subject(ANONYMOUS, HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
 
     assert error.value.status_code == 401
 
@@ -94,7 +97,7 @@ def test_current_subject_rejects_a_token_for_the_mcp_resource(monkeypatch: pytes
 def test_dev_bypass_token_authenticates_the_fixed_development_owner(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "dev_auth_bypass_token", "local-dev-token")
 
-    subject = current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials="local-dev-token"))
+    subject = current_subject(ANONYMOUS, HTTPAuthorizationCredentials(scheme="Bearer", credentials="local-dev-token"))
 
     assert subject == DEV_BYPASS_SUBJECT
 
@@ -105,7 +108,7 @@ def test_a_different_token_does_not_trigger_the_dev_bypass(monkeypatch: pytest.M
     monkeypatch.setattr(settings, "oidc_jwks_url", None)
 
     with pytest.raises(HTTPException) as error:
-        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials="another-token"))
+        current_subject(ANONYMOUS, HTTPAuthorizationCredentials(scheme="Bearer", credentials="another-token"))
 
     assert error.value.status_code == 503
 
@@ -116,7 +119,7 @@ def test_dev_bypass_is_off_unless_configured(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(settings, "oidc_jwks_url", None)
 
     with pytest.raises(HTTPException) as error:
-        current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=""))
+        current_subject(ANONYMOUS, HTTPAuthorizationCredentials(scheme="Bearer", credentials=""))
 
     assert error.value.status_code == 503
 
@@ -164,7 +167,7 @@ def jwks_endpoint(monkeypatch: pytest.MonkeyPatch):
         claims = jwt.decode(token_for(private_key, "travel-api"), options={"verify_signature": False})
         claims.update(overrides)
         token = jwt.encode(claims, state["private_key"], algorithm="RS256", headers={"kid": kid})
-        return current_subject(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
+        return current_subject(ANONYMOUS, HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
 
     yield state, authenticate
     _cached_signing_keys.cache_clear()
