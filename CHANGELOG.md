@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Replace narrow owner section links with a localized Dialog drawer, preserving route history, editor drafts and section focus (Refs #5).
+
 - Add a sticky 224px owner trip sidebar at 1100px and wider, preserving horizontal links below it and search/editor drafts across resize (#5).
 
 - Keep visitor update navigation in a closed disclosure below 1100px while preserving the wide sticky index and story anchors; keep failed gallery image text readable in dark mode (#5).

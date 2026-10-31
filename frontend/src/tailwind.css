@@ -6,6 +6,7 @@
 @theme {
   --breakpoint-trip-sidebar: 1100px;
   --spacing-travel-sidebar: 224px;
+  --spacing-travel-drawer: 20rem;
   --max-height-travel-sidebar: calc(100dvh - 2rem);
   --text-travel-sidebar-title: 1.125rem;
 

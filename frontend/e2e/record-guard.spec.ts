@@ -9,6 +9,9 @@ for (const locale of ["nl", "en"] as const) {
     await choosePreferences(page, locale, "dark");
     await page.setViewportSize({ width: 360, height: 740 });
     await page.goto(`/admin/trips/${ownerTrip.id}/story`);
+    await page
+      .getByRole("button", { name: message(locale, "owner_trip_sections"), exact: true })
+      .click();
     await page.getByRole("link", { name: message(locale, "owner_prepare"), exact: true }).click();
     await page
       .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
@@ -62,13 +65,20 @@ for (const fail of [false, true]) {
         body: JSON.stringify(fail ? {} : { ...ownerTrip, title: "Synthetic submitted A" }),
       });
     });
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/admin/trips/${ownerTrip.id}/story`);
+    await page.getByRole("button", { name: "Trip sections", exact: true }).click();
     await page.getByRole("link", { name: "Prepare", exact: true }).click();
     await page.getByRole("button", { name: "Trip details", exact: true }).click();
     const input = page.getByRole("textbox", { name: "Title", exact: true });
     await input.fill("Synthetic submitted A");
     await input.press("Enter");
     await expect(input).toBeDisabled();
+    for (const width of [1100, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(input).toHaveValue("Synthetic submitted A");
+      await expect(input).toBeDisabled();
+    }
     await expect.poll(() => submitted).toMatchObject({ title: "Synthetic submitted A" });
     await page.goBack();
     const prompt = page.getByRole("alertdialog");

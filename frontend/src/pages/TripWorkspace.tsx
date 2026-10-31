@@ -16,7 +16,7 @@ import { tripsStatusMessage } from "../trips/trips-status";
 import { TripEditor } from "../trips/TripEditor";
 import { WorkspaceBreadcrumb, WorkspaceHeader } from "../trips/WorkspaceHeader";
 import { WorkspaceSearch } from "../trips/WorkspaceSearch";
-import { WorkspaceTabs } from "../trips/WorkspaceTabs";
+import { WorkspaceNavigation } from "../trips/WorkspaceNavigation";
 import {
   DEFAULT_SECTION,
   resolveSection,
@@ -129,14 +129,14 @@ export function TripWorkspaceView({
   return (
     <section className="grid grid-cols-1 gap-1.5" aria-labelledby="trip-detail-title" key={trip.id}>
       <WorkspaceBreadcrumb section={section} />
-      {/* CSS changes presentation only: one navigation and a stable content/editor subtree. */}
+      {/* Only navigation changes presentation; content and editors keep their ownership. */}
       <div className="grid min-w-0 grid-cols-1 gap-1.5 trip-sidebar:grid-cols-travel-workspace trip-sidebar:items-start trip-sidebar:gap-6">
         <div
           data-trip-sidebar
           className="grid min-w-0 gap-1.5 trip-sidebar:sticky trip-sidebar:top-4 trip-sidebar:max-h-travel-sidebar trip-sidebar:overflow-y-auto trip-sidebar:overscroll-contain trip-sidebar:p-1"
         >
           <WorkspaceHeader trip={trip} onEdit={() => setEditing(true)} />
-          <WorkspaceTabs tripId={trip.id} current={section} />
+          <WorkspaceNavigation tripId={trip.id} current={section} />
         </div>
         <div data-trip-content className="grid min-w-0 gap-1.5">
           <TripEditor
@@ -154,7 +154,9 @@ export function TripWorkspaceView({
               {notice ?? arrivalNotice}
             </p>
           )}
-          <h2 className="sr-only">{sectionById(section).label()}</h2>
+          <h2 id="workspace-section-heading" tabIndex={-1} className="sr-only">
+            {sectionById(section).label()}
+          </h2>
           <Section
             trip={trip}
             areas={areas}
