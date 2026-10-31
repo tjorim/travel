@@ -275,3 +275,32 @@ scans with the results above. No passing claim for untested mobile hardware or
 screen readers. The restored application smoke/record-guard suite passed all 48 tests;
 document formatting and `git diff --check` passed. Prototype source and evidence are excluded from
 Git; only decision documentation and CHANGELOG.md belong in this change.
+
+## Slice 4 result
+
+Implemented the visitor Collapsible independently on `/trips/:slug` and
+`/share/:token`. Below 1100 CSS px the index starts closed inside Updates,
+after the complete summary. At 1100+ the original sticky index remains.
+No projection fields, owner workspace files or authored text changed.
+
+Synthetic 24-update fixture, same titles/summaries as discovery; values are
+rounded first-article top × real browser zoom at scroll zero (English–Dutch
+ranges). Old layout was restored with a temporary stylesheet showing the original
+index and hiding the disclosure; no source was swapped. Chromium extension
+uses `chrome.tabs.setZoom`, with CSS width/DPR recorded. First overview-card
+positions are unchanged in all rows.
+
+| Size | Zoom | Public old → new | Share old → new |
+| --- | --- | --- | --- |
+| 390×844 | 100% | 1780–1809 → 1112–1141 | 1848–1877 → 1180–1209 |
+| 390×844 | 125% | 2817–3093 → 1589–1622 | 2901–3204 → 1673–1733 |
+| 390×844 | 150% | 3403–3739 → 1906–1945 | 3505–3874 → 2008–2080 |
+| 1366×768 | 100% | 870 → 870 | 916 → 916 |
+| 1366×768 | 125% | 1385 → 1154 | 1442 → 1211 |
+| 1366×768 | 150% | 1650–1732 → 1368–1450 | 1719–1801 → 1437–1519 |
+
+Evidence stays outside Git at `/tmp/travel-slice4/` (48 old/new measurements
+and screenshots, English/light and Dutch/dark). The inherited preferences
+minimum-width overflow at 390px zoom remains assigned to concurrent slice 1;
+this slice deliberately does not edit Preferences or Boundary. It remains
+tracked in #5. These gains do not claim that articles fit above the fold.

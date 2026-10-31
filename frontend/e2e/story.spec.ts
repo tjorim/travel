@@ -104,6 +104,13 @@ for (const [name, data] of Object.entries(cases)) {
         test(`story ${name} ${locale} ${theme} ${width}`, async ({ page }, testInfo) => {
           await page.setViewportSize({ width, height: 1000 });
           await open(page, data, locale, theme);
+          if (!data.updates.length) {
+            await expect(
+              page.getByRole("button", {
+                name: locale === "en" ? "Choose an update" : "Kies een update",
+              }),
+            ).toHaveCount(0);
+          }
           if (data.cover) {
             const image = page.locator("header img");
             await expect(image).toBeVisible();
@@ -169,3 +176,66 @@ test("story navigation keeps its anchors and opens the chosen update", async ({ 
   await expect(page).toHaveURL(/#update-b$/);
   await expect(page.locator("#update-b")).toBeInViewport();
 });
+
+for (const audience of ["public", "share"] as const) {
+  for (const locale of ["en", "nl"] as const) {
+    for (const theme of ["light", "dark"] as const) {
+      test(`responsive update chooser ${audience} ${locale} ${theme}`, async ({ page }) => {
+        const path = audience === "public" ? "/trips/exampleland-2054" : "/share/synthetic";
+        const api =
+          audience === "public" ? "/api/public/trips/exampleland-2054" : "/api/shared/synthetic";
+        const updates = Array.from({ length: 24 }, (_, i) => ({
+          id: `update-${i}`,
+          title: `Synthetic authored update ${i + 1}`,
+          body: "Synthetic story.",
+        }));
+        await mockApi(page);
+        await page.route(`**${api}`, (route) =>
+          route.fulfill({
+            json: trip({
+              schema_version:
+                audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1",
+              updates,
+              cover: null,
+              media: [],
+            }),
+          }),
+        );
+        await choosePreferences(page, locale, theme);
+        await page.setViewportSize({ width: 1099, height: 800 });
+        await page.goto(`${path}#update-23`);
+        const target = page.locator("#update-23");
+        await expect(target).toBeFocused();
+        await expect(target).toBeInViewport();
+        const chooser = page.getByRole("button", {
+          name: locale === "en" ? "Choose an update" : "Kies een update",
+        });
+        await expect(chooser).toHaveAttribute("aria-expanded", "false");
+        await page.goto(path);
+        const history = await page.evaluate(() => window.history.length);
+        await chooser.focus();
+        await page.keyboard.press("Enter");
+        expect(await page.evaluate(() => window.history.length)).toBe(history);
+        const nav = page.getByRole("navigation", {
+          name: locale === "en" ? "Updates in this story" : "Updates in dit verhaal",
+        });
+        await expect(nav.getByRole("link")).toHaveCount(24);
+        for (let i = 0; i < 24; i++) await page.keyboard.press("Tab");
+        await expect(
+          nav.getByRole("link", { name: "Synthetic authored update 24", exact: true }),
+        ).toBeFocused();
+        await expect(page.locator("a:focus")).toHaveAttribute("href", "#update-23");
+        await page.keyboard.press("Enter");
+        await expect(target).toBeFocused();
+        await expect(target).toBeInViewport();
+        await page.goBack();
+        await expect(page).toHaveURL(new RegExp(`${path}$`));
+        await page.setViewportSize({ width: 1100, height: 800 });
+        await expect(chooser).toBeHidden();
+        await expect(nav.getByRole("link")).toHaveCount(24);
+        await page.setViewportSize({ width: 390, height: 844 });
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      });
+    }
+  }
+}

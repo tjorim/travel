@@ -185,3 +185,12 @@ Recovery never submits automatically. Intentional in-app departure, reset,
 successful save and sign-out clear the snapshot. File selections cannot be
 serialised and must be selected again after reload; authored non-JSON values are
 never stored. Drafts are not retained after the browser closes the tab.
+
+## Responsive visitor update index (#5, slice 4)
+
+The existing Collapsible adapter supplies the narrow update chooser. It is a
+non-modal disclosure inside Updates after the summary; native anchors retain
+full authored names, fragment URLs and browser history. The wide sticky index
+remains at 1100 CSS pixels. CSS hides the inactive presentation; the closed
+Collapsible panel does not expose duplicate anchors. No new primitive or custom
+control is needed (Base UI Collapsible was reviewed in the #5 discovery).
