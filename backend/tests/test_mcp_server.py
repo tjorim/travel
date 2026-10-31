@@ -37,7 +37,7 @@ from app.mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
-from app.models import McpAuditEvent, Trip
+from app.models import AuditEvent, AuditEventKind, McpAuditEvent, Trip
 from app.routers import trips as trips_router
 from app.task_alerts import process_due_task_alerts
 
@@ -1460,3 +1460,107 @@ def test_update_location_geocodes_in_place_through_the_mcp_tool(backend: TravelM
     assert updated["osm_url"] == "https://www.openstreetmap.org/node/3639530981"
     with pytest.raises(ValueError, match="latitude"):
         backend.update_location(trip["id"], location["id"], schemas.LocationUpdate(longitude=1.0))
+
+
+def _second_stay_at(backend: TravelMcpBackend, trip_id: str, location_id: str) -> dict[str, Any]:
+    stay = backend.create_stay(
+        trip_id,
+        schemas.StayCreate(
+            location=schemas.LocationInput(existing_location_id=location_id),
+            check_in_date="2054-11-05",
+            check_out_date="2054-11-06",
+        ),
+    )
+    backend.set_visibility(trip_id, "stay", stay["id"], "everyone", confirm=True)
+    return stay
+
+
+def test_merge_locations_over_mcp_makes_chosen_records_private_and_asks_about_the_rest(
+    backend: TravelMcpBackend,
+) -> None:
+    ids = _published_trip_with_private_duplicates(backend)
+    trip_id, hotel, inn = ids["trip"], ids["hotel"], ids["inn"]
+    first, second = backend.list_stays(trip_id)[0], _second_stay_at(backend, trip_id, inn["id"])
+    choose_first = [schemas.MergeRecordRef(kind="stay", id=first["id"])]
+
+    preview = backend.merge_locations(trip_id, hotel["id"], [inn["id"]])
+    assert {(r["kind"], r["id"]) for r in preview["duplicates"][0]["widened_records"]} == {
+        ("stay", first["id"]),
+        ("stay", second["id"]),
+    }
+    chosen = backend.merge_locations(trip_id, hotel["id"], [inn["id"]], make_private=choose_first)["duplicates"][0]
+    assert chosen["widened"][0]["stays"] == 1
+    assert [r["make_private"] for r in chosen["widened_records"] if r["id"] == first["id"]] == [True]
+
+    # Hiding one stay still leaves the other widened: it needs the acknowledgement.
+    with pytest.raises(ValueError, match="merge_widening_needs_acknowledgement") as refused:
+        backend.merge_locations(trip_id, hotel["id"], [inn["id"]], confirm=True, make_private=choose_first)
+    assert json.loads(str(refused.value))["duplicates"][0]["widened"][0]["stays"] == 1
+    assert {s["id"]: s["visibility"] for s in backend.list_stays(trip_id)} == {
+        first["id"]: "everyone",
+        second["id"]: "everyone",
+    }
+
+    merged = backend.merge_locations(
+        trip_id, hotel["id"], [inn["id"]], confirm=True, confirm_widening=True, make_private=choose_first
+    )
+    assert merged["applied"] is True
+    assert {s["id"]: s["visibility"] for s in backend.list_stays(trip_id)} == {
+        first["id"]: "private",
+        second["id"]: "everyone",
+    }
+    with TestingSessionLocal() as session:
+        (event,) = session.scalars(select(AuditEvent).where(AuditEvent.kind == AuditEventKind.LOCATION_MERGE))
+    assert event.details["made_private"] == [{"kind": "stay", "id": first["id"]}]
+    assert "label" not in str(event.details)
+
+
+def test_merge_locations_over_mcp_needs_no_acknowledgement_when_every_record_is_chosen(
+    backend: TravelMcpBackend,
+) -> None:
+    ids = _published_trip_with_private_duplicates(backend)
+    trip_id, hotel, inn = ids["trip"], ids["hotel"], ids["inn"]
+    (stay,) = backend.list_stays(trip_id)
+    merged = backend.merge_locations(
+        trip_id,
+        hotel["id"],
+        [inn["id"]],
+        confirm=True,
+        make_private=[schemas.MergeRecordRef(kind="stay", id=stay["id"])],
+    )
+    assert merged["applied"] is True and merged["duplicates"][0]["widened"] == []
+    assert backend.list_stays(trip_id)[0]["visibility"] == "private"
+
+
+def test_merge_locations_over_mcp_refuses_a_choice_the_preview_does_not_list(backend: TravelMcpBackend) -> None:
+    ids = _published_trip_with_private_duplicates(backend)
+    trip_id, hotel, inn = ids["trip"], ids["hotel"], ids["inn"]
+    (stay,) = backend.list_stays(trip_id)
+    stale = [schemas.MergeRecordRef(kind="visit", id=stay["id"])]
+    for confirm in (False, True):
+        with pytest.raises(ValueError, match="merge_private_choice_is_stale") as refused:
+            backend.merge_locations(trip_id, hotel["id"], [inn["id"]], confirm=confirm, make_private=stale)
+        assert json.loads(str(refused.value))["records"] == [{"kind": "visit", "id": stay["id"]}]
+    assert len(backend.list_locations(trip_id)) == 2 and backend.list_stays(trip_id)[0]["visibility"] == "everyone"
+
+
+def test_merge_areas_over_mcp_makes_chosen_records_private(backend: TravelMcpBackend) -> None:
+    ids = _published_trip_with_private_duplicates(backend)
+    trip_id, keep, duplicate = ids["trip"], ids["keep_area"], ids["duplicate_area"]
+    (stay,) = backend.list_stays(trip_id)
+    choice = [schemas.MergeRecordRef(kind="stay", id=stay["id"])]
+
+    preview = backend.merge_areas(trip_id, keep["id"], [duplicate["id"]], make_private=choice)
+    assert preview["duplicates"][0]["widened"] == []
+    assert preview["duplicates"][0]["widened_records"][0]["make_private"] is True
+    with pytest.raises(ValueError, match="merge_private_choice_is_stale"):
+        backend.merge_areas(
+            trip_id, keep["id"], [duplicate["id"]], make_private=[schemas.MergeRecordRef(kind="stay", id="nope")]
+        )
+    assert backend.list_stays(trip_id)[0]["visibility"] == "everyone"
+
+    assert backend.merge_areas(trip_id, keep["id"], [duplicate["id"]], confirm=True, make_private=choice)["applied"]
+    assert backend.list_stays(trip_id)[0]["visibility"] == "private"
+    with TestingSessionLocal() as session:
+        (event,) = session.scalars(select(AuditEvent).where(AuditEvent.kind == AuditEventKind.AREA_MERGE))
+    assert event.details["made_private"] == [{"kind": "stay", "id": stay["id"]}]

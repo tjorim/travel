@@ -463,3 +463,228 @@ it("explains the area point an area merge newly shows", async () => {
     }),
   );
 });
+
+const record = (kind: string, id: string, extra: object = {}) => ({
+  kind,
+  id,
+  label: null,
+  starts_on: "2054-11-01",
+  visibility: "everyone",
+  widened_for: [{ audience: "public", label: null }],
+  hides_from: [],
+  custom_picks: 0,
+  make_private: false,
+  ...extra,
+});
+const records = [
+  record("stay", "stay-1", {
+    label: "Hotel Zuid",
+    hides_from: [{ audience: "link:abc", label: "Familie" }],
+  }),
+  record("stay", "stay-2", { starts_on: "2054-11-05", visibility: "custom", custom_picks: 2 }),
+  record("visit", "visit-1", { label: "Wandeling", starts_on: null }),
+];
+const choiceWidened = [
+  { audience: "public", label: null, stays: 2, visits: 1, routes: 0, travel_updates: 0 },
+];
+const withRecords = (list: object[], widened: object[] = choiceWidened) =>
+  withWidening({ widened, widened_records: list });
+
+function previewRecords(list: object[] = records) {
+  api.on("POST", /\/locations\/merge$/, (body) => ({
+    ...withRecords(list),
+    applied: (body as { confirm: boolean }).confirm,
+  }));
+  return previewWidening();
+}
+
+it("lists each newly shown record by kind and sends nothing hidden unless it is ticked", async () => {
+  const dialog = await previewRecords();
+  const region = within(dialog).getByRole("region", { name: "Bezoekers die meer te zien krijgen" });
+  const stays = within(region).getByRole("group", { name: "Eerst privé maken: 2 verblijven" });
+  const visits = within(region).getByRole("group", { name: "Eerst privé maken: 1 bezoek" });
+  expect(within(stays).getAllByRole("checkbox")).toHaveLength(2);
+  expect(within(visits).getAllByRole("checkbox")).toHaveLength(1);
+  // Hiding is never preselected, and each row says what it would also cost.
+  for (const box of within(region).getAllByRole("checkbox").slice(0, 3)) {
+    expect(box.getAttribute("aria-checked")).toBe("false");
+  }
+  expect(within(stays).getAllByText(/Nieuw zichtbaar voor publieke pagina\./)).toHaveLength(2);
+  expect(within(stays).getByText(/verbergt het ook voor deellink “Familie”/)).toBeTruthy();
+  expect(within(stays).getByText(/voorgoed uit 2 aangepaste deelselecties/)).toBeTruthy();
+  expect(
+    within(stays).getByRole("checkbox", { name: "Maak Hotel Zuid · 1 nov 2054 eerst privé" }),
+  ).toBeTruthy();
+  expect(
+    within(stays).getByRole("checkbox", { name: "Maak Verblijf · 5 nov 2054 eerst privé" }),
+  ).toBeTruthy();
+  expect(within(visits).getByRole("checkbox", { name: "Maak Wandeling eerst privé" })).toBeTruthy();
+
+  fireEvent.click(within(region).getByRole("checkbox", { name: /Ik begrijp/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Samenvoegen" }));
+  await answerConfirmation("Definitief samenvoegen");
+  await waitFor(() => expect(api.count(MERGE)).toBe(2));
+  expect(api.lastBody(MERGE)).toEqual({
+    keep_id: "air-1",
+    duplicate_ids: ["air-2"],
+    confirm: true,
+    confirm_widening: true,
+  });
+});
+
+it("makes only the ticked records private and still asks about the rest", async () => {
+  const dialog = await previewRecords();
+  const region = within(dialog).getByRole("region", { name: "Bezoekers die meer te zien krijgen" });
+  expect(within(region).getByText("publieke pagina: 2 verblijven, 1 bezoek")).toBeTruthy();
+  fireEvent.click(within(region).getByRole("checkbox", { name: /Ik begrijp/ }));
+  fireEvent.click(within(region).getByRole("checkbox", { name: "Maak Wandeling eerst privé" }));
+  // The choice changes what is left, so the earlier acknowledgement no longer counts.
+  expect(within(region).getByText("publieke pagina: 2 verblijven")).toBeTruthy();
+  const merge = within(dialog).getByRole("button", { name: "Samenvoegen" });
+  expect(merge.hasAttribute("disabled")).toBe(true);
+  fireEvent.click(within(region).getByRole("checkbox", { name: /Ik begrijp/ }));
+  await waitFor(() => expect(merge.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(merge);
+
+  const prompt = await screen.findByRole("alertdialog");
+  expect(within(prompt).getByText(/1 record wordt eerst privé gemaakt/)).toBeTruthy();
+  expect(prompt.textContent).not.toContain("deelselectie");
+  fireEvent.click(within(prompt).getByRole("button", { name: "Definitief samenvoegen" }));
+  await waitFor(() => expect(api.count(MERGE)).toBe(2));
+  expect(api.lastBody(MERGE)).toEqual({
+    keep_id: "air-1",
+    duplicate_ids: ["air-2"],
+    confirm: true,
+    make_private: [{ kind: "visit", id: "visit-1" }],
+    confirm_widening: true,
+  });
+});
+
+it("needs no acknowledgement once every newly shown record is made private, and says what that costs", async () => {
+  const dialog = await previewRecords();
+  const region = within(dialog).getByRole("region", { name: "Bezoekers die meer te zien krijgen" });
+  for (const box of within(region).getAllByRole("checkbox").slice(0, 3)) fireEvent.click(box);
+  expect(within(region).queryByRole("checkbox", { name: /Ik begrijp/ })).toBeNull();
+  expect(
+    within(region).getByText(/Elk record dat meer zou tonen, wordt eerst privé gemaakt/),
+  ).toBeTruthy();
+  const merge = within(dialog).getByRole("button", { name: "Samenvoegen" });
+  expect(merge.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(merge);
+
+  const prompt = await screen.findByRole("alertdialog");
+  expect(within(prompt).getByText(/3 records worden eerst privé gemaakt/)).toBeTruthy();
+  expect(
+    within(prompt).getByText(/2 aangepaste deelselecties worden voorgoed verwijderd/),
+  ).toBeTruthy();
+  fireEvent.click(within(prompt).getByRole("button", { name: "Definitief samenvoegen" }));
+  await waitFor(() => expect(api.count(MERGE)).toBe(2));
+  expect(api.lastBody(MERGE)).toEqual({
+    keep_id: "air-1",
+    duplicate_ids: ["air-2"],
+    confirm: true,
+    make_private: [
+      { kind: "stay", id: "stay-1" },
+      { kind: "stay", id: "stay-2" },
+      { kind: "visit", id: "visit-1" },
+    ],
+  });
+});
+
+it("refreshes the preview and drops a choice the server no longer offers", async () => {
+  let list = records;
+  api.on("POST", /\/locations\/merge$/, () => withRecords(list));
+  const dialog = await previewWidening();
+  fireEvent.click(within(dialog).getByRole("checkbox", { name: "Maak Wandeling eerst privé" }));
+  list = records.slice(0, 2);
+  fireEvent.click(within(dialog).getByRole("checkbox", { name: /Ik begrijp/ }));
+  api.failNext = {
+    status: 409,
+    body: {
+      detail: {
+        code: "merge_private_choice_is_stale",
+        records: [{ kind: "visit", id: "visit-1" }],
+      },
+      errors: [{ code: "merge_private_choice_is_stale", params: {}, path: [] }],
+    },
+  };
+  fireEvent.click(within(dialog).getByRole("button", { name: "Samenvoegen" }));
+  await answerConfirmation("Definitief samenvoegen");
+
+  expect(
+    await within(dialog).findByText(/Het delen is veranderd sinds het voorbeeld/),
+  ).toBeTruthy();
+  expect(within(dialog).queryByRole("checkbox", { name: "Maak Wandeling eerst privé" })).toBeNull();
+  expect(within(dialog).getByRole("button", { name: "Samenvoegen" }).hasAttribute("disabled")).toBe(
+    true,
+  );
+  expect(api.rows("/api/trips/trip/locations")).toHaveLength(2);
+});
+
+it("keeps a long list usable: grouped, every row reachable by keyboard, in English", async () => {
+  const many = Array.from({ length: 60 }, (_, index) => record("stay", `stay-${index}`));
+  act(() => changeLocale("en"));
+  api.on("POST", /\/locations\/merge$/, () =>
+    withRecords(many, [{ ...choiceWidened[0], stays: 60, visits: 0 }]),
+  );
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Review merge: Taoyuan Airport/ }));
+  const dialog = await screen.findByRole("dialog", { name: "Merge locations" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Preview merge" }));
+  const group = await within(dialog).findByRole("group", { name: "Make private first: 60 stays" });
+  const boxes = within(group).getAllByRole("checkbox");
+  expect(boxes).toHaveLength(60);
+  expect(boxes.every((box) => box.getAttribute("tabindex") !== "-1")).toBe(true);
+  expect(
+    within(group).getAllByRole("checkbox", { name: "Make Stay · 1 Nov 2054 private first" }),
+  ).toBeTruthy();
+  expect(within(dialog).getAllByRole("group")).toHaveLength(1);
+});
+
+it("offers the same per-record choice when merging areas", async () => {
+  api.on("POST", /\/areas\/merge$/, (body) => ({
+    keep_id: "taoyuan",
+    applied: (body as { confirm: boolean }).confirm,
+    duplicates: [
+      {
+        id: "taipei",
+        label: "Taipei",
+        locations: 0,
+        visits: 1,
+        routes: 1,
+        travel_updates: 0,
+        narrowed_audiences: [],
+        widened: [{ ...choiceWidened[0], stays: 0, visits: 1, routes: 1 }],
+        widened_records: [
+          record("visit", "visit-1", { label: "Wandeling" }),
+          record("route", "route-1", { label: "Trein" }),
+        ],
+      },
+    ],
+    city_level_location_ids: [],
+    warnings: [],
+  }));
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Gebied Taoyuan bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Samenvoegen met andere gebieden" }));
+  const dialog = await screen.findByRole("dialog", { name: "Gebieden samenvoegen" });
+  fireEvent.click(within(dialog).getByRole("checkbox"));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Voorbeeld bekijken" }));
+  const region = await within(dialog).findByRole("region", {
+    name: "Bezoekers die meer te zien krijgen",
+  });
+  fireEvent.click(
+    within(region).getByRole("checkbox", { name: "Maak Trein · 1 nov 2054 eerst privé" }),
+  );
+  expect(within(region).getByText("publieke pagina: 1 bezoek")).toBeTruthy();
+  fireEvent.click(within(region).getByRole("checkbox", { name: /Ik begrijp/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Samenvoegen" }));
+  await answerConfirmation("Definitief samenvoegen");
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/areas/merge")).toMatchObject({
+      confirm: true,
+      confirm_widening: true,
+      make_private: [{ kind: "route", id: "route-1" }],
+    }),
+  );
+});

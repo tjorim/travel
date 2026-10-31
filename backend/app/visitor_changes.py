@@ -7,7 +7,9 @@ visitor views use, so the location editor, the MCP tool and the merge preview
 (#27) agree on what is visitor-facing and who reaches it.
 """
 
+from collections import Counter
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from fastapi import status
@@ -16,6 +18,7 @@ from .access import receivers
 from .audit import PUBLIC_AUDIENCE, LiveAudience
 from .errors import ApiException
 from .models import Area, Location
+from .schemas import MergeAudience, MergeRecordRef, MergeWidenedRecord
 
 # Location fields a visitor can read, in display order. The address parts are
 # published only while the owner shares the address; ``locality`` is the region
@@ -89,8 +92,10 @@ def reached_by(kind: str, record: Any, live: list[LiveAudience]) -> list[LiveAud
 
 
 MERGE_WIDENING_CODE = "merge_widening_needs_acknowledgement"
+MERGE_CHOICE_STALE_CODE = "merge_private_choice_is_stale"
 # What a merge re-points, by the plural the merge previews use, and the share kind each is delivered as.
 MOVED_KINDS = {"stays": "stay", "visits": "visit", "routes": "route", "travel_updates": "travel_update"}
+PLURAL_KINDS = {kind: plural for plural, kind in MOVED_KINDS.items()}
 
 
 @dataclass(frozen=True)
@@ -136,8 +141,22 @@ class Widened:
         return {"audience": self.audience.id, **self.counts}
 
 
-def merge_widening(live: list[LiveAudience], moved: list[MovedRecord]) -> list[Widened]:
-    """The live audiences that newly read a place through records a merge re-points.
+@dataclass(frozen=True)
+class WidenedRecord:
+    """A moved record that starts to show some audiences a place: who gains it, and who reads it today."""
+
+    kind: str  # the share kind: ``stay``, ``visit``, ``route`` or ``travel_update``
+    record: Any
+    gained: list[LiveAudience]
+    readers: list[LiveAudience]
+
+    @property
+    def ref(self) -> tuple[str, str]:
+        return self.kind, self.record.id
+
+
+def widened_records(live: list[LiveAudience], moved: list[MovedRecord]) -> list[WidenedRecord]:
+    """The moved records that newly show a place to a live audience that already receives them.
 
     A moved record already reaches an audience when it is delivered to it. The
     merge widens that audience's view when it receives the kept place and did
@@ -162,19 +181,113 @@ def merge_widening(live: list[LiveAudience], moved: list[MovedRecord]) -> list[W
     def locations(location: Location | None) -> set[str]:
         return readers("location", location) if location is not None else set()
 
-    counts: dict[str, dict[str, int]] = {audience.id: dict.fromkeys(MOVED_KINDS, 0) for audience in live}
+    found: list[WidenedRecord] = []
     for entry in moved:
         gained: set[str] = set()
         for place in entry.placements:
             gained |= locations(place.location_after) - locations(place.location_before)
             gained |= points(place.area_after) - points(place.area_before)
-        for audience_id in gained & readers(MOVED_KINDS[entry.kind], entry.record):
-            counts[audience_id][entry.kind] += 1
+        reading = readers(MOVED_KINDS[entry.kind], entry.record)
+        gained &= reading
+        if gained:
+            found.append(
+                WidenedRecord(
+                    MOVED_KINDS[entry.kind],
+                    entry.record,
+                    [audience for audience in live if audience.id in gained],
+                    [audience for audience in live if audience.id in reading],
+                )
+            )
+    return found
+
+
+def merge_widening(
+    live: list[LiveAudience], found: list[WidenedRecord], private: set[tuple[str, str]]
+) -> list[Widened]:
+    """The live audiences that newly read a place, with the records that show it, per kind.
+
+    Records the owner chose to make private first read nothing, so they are left out."""
+    counts: dict[str, dict[str, int]] = {audience.id: dict.fromkeys(MOVED_KINDS, 0) for audience in live}
+    for entry in found:
+        if entry.ref not in private:
+            for audience in entry.gained:
+                counts[audience.id][PLURAL_KINDS[entry.kind]] += 1
     return [Widened(audience, counts[audience.id]) for audience in live if any(counts[audience.id].values())]
 
 
-def merge_widening_refusal(duplicates: list[dict[str, Any]]) -> ApiException:
-    """The 409 for a confirmed merge whose widening the owner has not acknowledged."""
+def _summary(kind: str, record: Any) -> tuple[str | None, date | None]:
+    """A moved record's own name and start date, so the owner can tell records of one kind apart."""
+    match kind:
+        case "stay":
+            return record.property_name, record.check_in_date
+        case "visit":
+            return record.title, record.starts_on
+        case "route":
+            return record.label, record.departs_on
+        case _:
+            return record.title, record.occurred_at.date()
+
+
+def chosen_private(refs: list[MergeRecordRef], found: list[WidenedRecord]) -> set[tuple[str, str]]:
+    """The records the owner chose to make private, each of which the merge must newly show to someone.
+
+    A choice the current preview does not list is stale (the record, its sharing or the audiences changed
+    since the owner looked), so the merge is refused rather than hiding something unreviewed."""
+    chosen: set[tuple[str, str]] = {(ref.kind, ref.id) for ref in refs}
+    offered = {entry.ref for entry in found}
+    if stale := [ref for ref in sorted(chosen) if ref not in offered]:
+        raise merge_choice_refusal(stale)
+    return chosen
+
+
+def audience_detail(audience: LiveAudience) -> MergeAudience:
+    return MergeAudience(audience=audience.id, label=audience.label)
+
+
+def widened_record_details(
+    found: list[WidenedRecord], private: set[tuple[str, str]], picks: Counter[tuple[str, str]]
+) -> list[MergeWidenedRecord]:
+    """What the preview shows per record: who gains the place, who would lose the record if it were hidden."""
+    details = []
+    for entry in found:
+        label, starts_on = _summary(entry.kind, entry.record)
+        details.append(
+            MergeWidenedRecord(
+                kind=entry.kind,  # ty: ignore[invalid-argument-type]
+                id=entry.record.id,
+                label=label,
+                starts_on=starts_on,
+                visibility=entry.record.visibility.value,
+                widened_for=[audience_detail(audience) for audience in entry.gained],
+                hides_from=[audience_detail(audience) for audience in entry.readers if audience not in entry.gained],
+                custom_picks=picks[entry.ref],
+                make_private=entry.ref in private,
+            )
+        )
+    return details
+
+
+def merge_choice_refusal(stale: list[tuple[str, str]]) -> ApiException:
+    """The 409 for a record to make private that the merge would not newly show to anyone."""
+    return ApiException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": MERGE_CHOICE_STALE_CODE,
+            "records": [{"kind": kind, "id": record_id} for kind, record_id in stale],
+        },
+        code=MERGE_CHOICE_STALE_CODE,
+    )
+
+
+def merge_widening_refusal(summaries: list[Any]) -> ApiException:
+    """The 409 for a confirmed merge whose remaining widening the owner has not acknowledged.
+
+    ``summaries`` are the merge's duplicates; only those that still widen someone are listed."""
+    duplicates = [
+        {"id": summary.id, "label": summary.label, "widened": [w.model_dump() for w in summary.widened]}
+        for summary in summaries
+        if summary.widened
+    ]
     return ApiException(
         status_code=status.HTTP_409_CONFLICT,
         detail={"code": MERGE_WIDENING_CODE, "duplicates": duplicates},

@@ -2057,5 +2057,46 @@
     }
   ],
   "owner_merge_widening_acknowledge": "I understand that these visitors will see more after the merge",
+  "owner_merge_widening_choose": "Choose per record. Tick a stay, visit, route or travel update to make it private before the merge: it is then hidden from every audience that reads it today, not only the ones listed, and it is removed from custom share picks for good. A record you leave unticked follows the merge and shows the kept place.",
+  "owner_merge_make_private_group": "Make private first: {p0}",
+  "owner_merge_make_private_record": "Make {p0} private first",
+  "owner_merge_record_stay": "Stay",
+  "owner_merge_record_visit": "Visit",
+  "owner_merge_record_route": "Route",
+  "owner_merge_record_travel_update": "Travel update",
+  "owner_merge_record_newly_shown": "Newly shown to {p0}.",
+  "owner_merge_record_hides_from": "Making it private also hides it from {p0}.",
+  "owner_merge_record_custom_picks": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Making it private also removes it from {count} custom share pick for good.",
+        "countPlural=other": "Making it private also removes it from {count} custom share picks for good."
+      }
+    }
+  ],
+  "owner_merge_widening_none_left": "Every record that would show more is made private first, so nobody sees more through this merge.",
+  "owner_merge_choice_stale": "Sharing changed since the preview. Review the records again before merging.",
+  "owner_merge_confirmation_private": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} record is made private first. It is hidden from every audience that reads it today.",
+        "countPlural=other": "{count} records are made private first. They are hidden from every audience that reads them today."
+      }
+    }
+  ],
+  "owner_merge_confirmation_picks": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} custom share pick is removed for good.",
+        "countPlural=other": "{count} custom share picks are removed for good."
+      }
+    }
+  ],
   "audit_merge_widened": "Newly shown to visitors by the merge. Public page: {publicCount}; share links: {linkCount}."
 }

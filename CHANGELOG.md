@@ -4,6 +4,7 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Let the owner choose per stay, visit, route and update that a location or area merge would newly show to an audience whether it follows the merge or is made private first, in the merge dialog and as `make_private` on the API and the MCP `merge_locations`/`merge_areas` tools, validated against the preview, applied through the visibility code path, said plainly in the confirmation when it hides records from every audience or drops custom picks, and recorded by id in the merge audit event (#27).
 - Warn when merging locations or areas would show visitors more, listing per duplicate the audiences and moved stays, visits, routes and updates, and refuse the confirmed merge until `confirm_widening` (the PWA's separate acknowledgement) accepts it, in the API, the MCP tools and the merge dialog, and record it in the merge audit event (#27).
 - Refuse a client with 429 and `Retry-After` after 20 failed bearer-token verifications in 60 seconds on the owner API and MCP route, without counting successes or identity-provider outages (#46).
 - Keep saved-offline state, counts, rows and the storage warning in step across every mounted Library, trip and Offline section, including after Clear all and revalidation (#13).

@@ -11,6 +11,7 @@ from ..audit import LiveAudience, live_audiences, record_audit_event
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
+from ..live_scopes import scope_picks
 from ..models import (
     Area,
     AuditEventKind,
@@ -38,14 +39,18 @@ from ..visitor_changes import (
     FieldChange,
     MovedRecord,
     Placement,
+    chosen_private,
     location_visitor_view,
     merge_widening,
     merge_widening_refusal,
     reached_by,
     text_changes,
+    widened_record_details,
+    widened_records,
 )
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
+from .visibility import make_private
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["locations"])
 
@@ -386,7 +391,8 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
     A live audience that receives the kept location but not a duplicate starts
     to read the kept name and point through the records that move. The preview
     lists those audiences per duplicate, and a confirmed merge is refused with
-    409 until ``confirm_widening`` accepts them."""
+    409 until ``confirm_widening`` accepts them. Records listed in ``make_private``
+    are made private first (through the sharing history) and so no longer widen."""
     keep = owned_location(session, trip_id, subject, payload.keep_id)
     duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
     if keep.id in duplicate_ids:
@@ -401,13 +407,14 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
     live = live_audiences(session, trip_id)
     summaries: list[LocationMergeDuplicate] = []
     warnings: list[str] = []
-    moves: list[tuple[Location, dict[str, list]]] = []
-    for duplicate in duplicates:
-        found = _referencing(session, trip_id, duplicate.id)
-        moves.append((duplicate, found))
+    moves = [(duplicate, _referencing(session, trip_id, duplicate.id)) for duplicate in duplicates]
+    shown = [widened_records(live, _moved_records(duplicate, keep, found)) for duplicate, found in moves]
+    private = chosen_private(payload.make_private, [entry for entries in shown for entry in entries])
+    picks = scope_picks(session, trip_id)
+    for (duplicate, found), entries in zip(moves, shown, strict=True):
         narrowed = sorted(receivers("location", duplicate, audiences) - kept_by)
         name = duplicate.label or duplicate.display_name or duplicate.id
-        widened = merge_widening(live, _moved_records(duplicate, keep, found))
+        widened = merge_widening(live, entries, private)
         if widened:
             warnings.append(
                 f"{name} is not shared with {', '.join(w.name for w in widened)} "
@@ -429,6 +436,7 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
                 area_id=duplicate.area_id,
                 narrowed_audiences=narrowed,
                 widened=[w.as_detail() for w in widened],
+                widened_records=widened_record_details(entries, private, picks),
                 **{kind: len(rows) for kind, rows in found.items()},
             )
         )
@@ -436,13 +444,8 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
     if not payload.confirm:
         return result
     if any(summary.widened for summary in summaries) and not payload.confirm_widening:
-        raise merge_widening_refusal(
-            [
-                {"id": summary.id, "label": summary.label, "widened": [w.model_dump() for w in summary.widened]}
-                for summary in summaries
-                if summary.widened
-            ]
-        )
+        raise merge_widening_refusal(summaries)
+    make_private(session, owned_trip(session, trip_id, subject), subject, sorted(private))
     for duplicate, found in moves:
         for visit in found["visits"]:
             visit.location = keep
@@ -478,7 +481,8 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
                     ),
                 }
                 for summary in summaries
-            ]
+            ],
+            **({"made_private": [{"kind": kind, "id": item} for kind, item in sorted(private)]} if private else {}),
         },
     )
     return result

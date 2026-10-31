@@ -5,7 +5,13 @@ import { SearchSelect } from "../forms/fields";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { ApiError } from "../query/api";
-import { errorNotice, textNotice, useFeedback } from "../query/feedback";
+import {
+  errorNotice,
+  textNotice,
+  useFeedback,
+  type ErrorNotice,
+  type MessageNotice,
+} from "../query/feedback";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwnerMutation } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
@@ -13,12 +19,14 @@ import type {
   Area,
   AreaMergeResult,
   LocationMergeResult,
+  MergeWidenedRecord,
   MergeWidening,
   Trip,
 } from "../tracker-model";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { audienceName } from "./locations/model";
+import { MergeRecordChoices, recordKey } from "./MergeRecordChoices";
 import { parseAudience, type DuplicateGroup, type DuplicateReason } from "./merge-candidates";
 
 export type MergeKind = "location" | "area";
@@ -53,6 +61,38 @@ const isWideningRefusal = (failure: unknown) =>
   failure instanceof ApiError &&
   failure.status === 409 &&
   (failure.diagnostic as { code?: unknown } | null)?.code === WIDENING_CODE;
+
+const STALE_CODE = "merge_private_choice_is_stale";
+/** The 409 for a record chosen to be made private that the merge no longer newly shows to anyone. */
+const isStaleChoice = (failure: unknown) =>
+  failure instanceof ApiError &&
+  failure.status === 409 &&
+  (failure.diagnostic as { code?: unknown } | null)?.code === STALE_CODE;
+
+type Duplicate = (LocationMergeResult | AreaMergeResult)["duplicates"][number];
+/** The audiences a duplicate still widens once the chosen records are made private first. */
+function remainingWidening(duplicate: Duplicate, chosen: ReadonlySet<string>): MergeWidening[] {
+  const records = duplicate.widened_records ?? [];
+  if (!records.some((record) => chosen.has(recordKey(record)))) return duplicate.widened;
+  return duplicate.widened
+    .map((entry) => {
+      const shown = records.filter(
+        (record) =>
+          !chosen.has(recordKey(record)) &&
+          record.widened_for.some((audience) => audience.audience === entry.audience),
+      );
+      const count = (kind: MergeWidenedRecord["kind"]) =>
+        shown.filter((record) => record.kind === kind).length;
+      return {
+        ...entry,
+        stays: count("stay"),
+        visits: count("visit"),
+        routes: count("route"),
+        travel_updates: count("travel_update"),
+      };
+    })
+    .filter((entry) => entry.stays + entry.visits + entry.routes + entry.travel_updates > 0);
+}
 
 /** What an audience newly reads, as the kinds of moved records that show it. */
 const wideningText = (entry: MergeWidening) =>
@@ -122,7 +162,7 @@ function MergeBody({
   setError,
 }: Omit<MergeProps, "request"> & {
   request: MergeRequest;
-  setError: (notice: ReturnType<typeof errorNotice> | null) => void;
+  setError: (notice: ErrorNotice | MessageNotice | null) => void;
 }) {
   useLocale();
   const locations = kind === "location";
@@ -136,12 +176,27 @@ function MergeBody({
   const [confirming, setConfirming] = useState(false);
   // Separate from the final confirmation: the owner accepts that visitors will see more.
   const [widenAccepted, setWidenAccepted] = useState(false);
+  // Moved records the owner chose to make private first, by kind and id; everything else follows the merge as it is.
+  const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
   const path = `${tripPath(trip.id, locations ? "locations" : "areas")}/merge`;
-  const widens = previewed?.result.duplicates.some((duplicate) => duplicate.widened.length > 0);
+  // Records are listed under each duplicate they move from; one route can sit under two.
+  const offered = new Map(
+    (previewed?.result.duplicates ?? [])
+      .flatMap((duplicate) => duplicate.widened_records ?? [])
+      .map((record) => [recordKey(record), record]),
+  );
+  const makePrivate = [...offered].filter(([key]) => chosen.has(key)).map(([, record]) => record);
+  const widens = previewed?.result.duplicates.some(
+    (duplicate) => remainingWidening(duplicate, chosen).length > 0,
+  );
   const body = (confirm: boolean) => ({
     keep_id: keepId,
     duplicate_ids: picked,
     confirm,
+    ...(confirm &&
+      makePrivate.length > 0 && {
+        make_private: makePrivate.map(({ kind, id }) => ({ kind, id })),
+      }),
     ...(confirm && widens && widenAccepted && { confirm_widening: true }),
   });
   const previewFailure = locations
@@ -183,11 +238,18 @@ function MergeBody({
     } catch (failure) {
       refused = failure;
     }
-    if (confirm && isWideningRefusal(refused)) {
+    if (confirm && (isWideningRefusal(refused) || isStaleChoice(refused))) {
       // Sharing changed since the preview: show what the merge now widens instead of a bare failure.
       setWidenAccepted(false);
       try {
-        setPreviewed({ result: await check.mutateAsync(undefined), records });
+        const fresh = await check.mutateAsync(undefined);
+        // A choice stays only where the merge still newly shows that record to someone.
+        const still = new Set(
+          fresh.duplicates.flatMap((duplicate) => (duplicate.widened_records ?? []).map(recordKey)),
+        );
+        setChosen((current) => new Set([...current].filter((key) => still.has(key))));
+        setPreviewed({ result: fresh, records });
+        if (isStaleChoice(refused)) setError(textNotice(m.owner_merge_choice_stale));
         return;
       } catch (failure) {
         setError(errorNotice(failure, previewFailure));
@@ -224,6 +286,15 @@ function MergeBody({
       warnings.push(m.owner_merge_city_level({ count: preview.city_level_location_ids.length }));
     const pending = apply.isPending;
     const widening = preview.duplicates.filter((duplicate) => duplicate.widened.length > 0);
+    const stillWidens = widens === true;
+    const hiddenPicks = makePrivate.reduce((total, record) => total + record.custom_picks, 0);
+    const confirmation = [
+      m.owner_merge_confirmation({ p0: keptName }),
+      makePrivate.length > 0 && m.owner_merge_confirmation_private({ count: makePrivate.length }),
+      hiddenPicks > 0 && m.owner_merge_confirmation_picks({ count: hiddenPicks }),
+    ]
+      .filter(Boolean)
+      .join(" ");
     return (
       <div className="stack-form">
         <h3>{m.owner_what_the_merge_does()}</h3>
@@ -259,12 +330,13 @@ function MergeBody({
                 ? m.owner_merge_widening_intro_location()
                 : m.owner_merge_widening_intro_area()}
             </p>
-            <ul className="m-0 grid list-none gap-1.5 p-0">
+            <p>{m.owner_merge_widening_choose()}</p>
+            <ul className="m-0 grid list-none gap-3 p-0">
               {widening.map((duplicate) => (
-                <li key={duplicate.id} className="grid gap-0.5">
+                <li key={duplicate.id} className="grid gap-1.5">
                   <strong>{nameOf(duplicate.id)}</strong>
                   <ul className="m-0 grid list-none gap-0.5 p-0">
-                    {duplicate.widened.map((entry) => (
+                    {remainingWidening(duplicate, chosen).map((entry) => (
                       <li key={entry.audience}>
                         {m.owner_merge_widening_audience({
                           p0: audienceName({ id: entry.audience, label: entry.label }),
@@ -273,15 +345,33 @@ function MergeBody({
                       </li>
                     ))}
                   </ul>
+                  <MergeRecordChoices
+                    records={duplicate.widened_records ?? []}
+                    chosen={chosen}
+                    disabled={pending}
+                    onChoose={(record, checked) => {
+                      setWidenAccepted(false);
+                      setChosen((current) => {
+                        const next = new Set(current);
+                        if (checked) next.add(recordKey(record));
+                        else next.delete(recordKey(record));
+                        return next;
+                      });
+                    }}
+                  />
                 </li>
               ))}
             </ul>
-            <Field>
-              <FieldLabel className="flex items-center gap-2 font-semibold">
-                <TravelCheckbox checked={widenAccepted} onCheckedChange={setWidenAccepted} />
-                <span>{m.owner_merge_widening_acknowledge()}</span>
-              </FieldLabel>
-            </Field>
+            {stillWidens ? (
+              <Field>
+                <FieldLabel className="flex items-center gap-2 font-semibold">
+                  <TravelCheckbox checked={widenAccepted} onCheckedChange={setWidenAccepted} />
+                  <span>{m.owner_merge_widening_acknowledge()}</span>
+                </FieldLabel>
+              </Field>
+            ) : (
+              <p className="help">{m.owner_merge_widening_none_left()}</p>
+            )}
           </section>
         )}
         {warnings.length ? (
@@ -302,7 +392,7 @@ function MergeBody({
           <Button
             className="danger"
             type="button"
-            disabled={pending || (widening.length > 0 && !widenAccepted)}
+            disabled={pending || (stillWidens && !widenAccepted)}
             onClick={() => setConfirming(true)}
           >
             {pending ? m.owner_merging() : m.owner_merge()}
@@ -314,6 +404,7 @@ function MergeBody({
             onClick={() => {
               setError(null);
               setWidenAccepted(false);
+              setChosen(new Set());
               setPreviewed(null);
             }}
           >
@@ -326,7 +417,7 @@ function MergeBody({
         {confirming && (
           <DeleteConfirmation
             title={locations ? m.owner_merge_locations_question() : m.owner_merge_areas_question()}
-            description={m.owner_merge_confirmation({ p0: keptName })}
+            description={confirmation}
             confirmLabel={m.owner_merge_for_good()}
             onCancel={() => setConfirming(false)}
             onConfirm={() => {

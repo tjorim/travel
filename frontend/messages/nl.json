@@ -2057,5 +2057,46 @@
     }
   ],
   "owner_merge_widening_acknowledge": "Ik begrijp dat deze bezoekers na het samenvoegen meer zien",
+  "owner_merge_widening_choose": "Kies per record. Vink een verblijf, bezoek, route of reisupdate aan om het vóór het samenvoegen privé te maken: het is dan verborgen voor elke doelgroep die het nu leest, niet alleen voor de genoemde, en het verdwijnt voorgoed uit aangepaste deelselecties. Een record dat je niet aanvinkt volgt het samenvoegen en toont de bewaarde plek.",
+  "owner_merge_make_private_group": "Eerst privé maken: {p0}",
+  "owner_merge_make_private_record": "Maak {p0} eerst privé",
+  "owner_merge_record_stay": "Verblijf",
+  "owner_merge_record_visit": "Bezoek",
+  "owner_merge_record_route": "Route",
+  "owner_merge_record_travel_update": "Reisupdate",
+  "owner_merge_record_newly_shown": "Nieuw zichtbaar voor {p0}.",
+  "owner_merge_record_hides_from": "Privé maken verbergt het ook voor {p0}.",
+  "owner_merge_record_custom_picks": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Privé maken haalt het ook voorgoed uit {count} aangepaste deelselectie.",
+        "countPlural=other": "Privé maken haalt het ook voorgoed uit {count} aangepaste deelselecties."
+      }
+    }
+  ],
+  "owner_merge_widening_none_left": "Elk record dat meer zou tonen, wordt eerst privé gemaakt, dus niemand ziet door dit samenvoegen meer.",
+  "owner_merge_choice_stale": "Het delen is veranderd sinds het voorbeeld. Bekijk de records opnieuw voordat je samenvoegt.",
+  "owner_merge_confirmation_private": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} record wordt eerst privé gemaakt. Het is verborgen voor elke doelgroep die het nu leest.",
+        "countPlural=other": "{count} records worden eerst privé gemaakt. Ze zijn verborgen voor elke doelgroep die ze nu leest."
+      }
+    }
+  ],
+  "owner_merge_confirmation_picks": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} aangepaste deelselectie wordt voorgoed verwijderd.",
+        "countPlural=other": "{count} aangepaste deelselecties worden voorgoed verwijderd."
+      }
+    }
+  ],
   "audit_merge_widened": "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}."
 }

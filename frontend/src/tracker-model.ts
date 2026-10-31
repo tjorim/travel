@@ -858,6 +858,25 @@ export type MergeWidening = {
   travel_updates: number;
 };
 
+/** The kinds of moved record an owner can make private before a merge. */
+export type MergeRecordKind = "stay" | "visit" | "route" | "travel_update";
+export type MergeRecordRef = { kind: MergeRecordKind; id: string };
+
+/** A moved record that newly reaches an audience, and what making it private first would also cost. */
+export type MergeWidenedRecord = MergeRecordRef & {
+  label: string | null;
+  /** ISO date, to tell records of one kind apart. */
+  starts_on: string | null;
+  visibility: "everyone" | "custom";
+  /** The audiences that newly read the kept place through this record. */
+  widened_for: Pick<MergeWidening, "audience" | "label">[];
+  /** Audiences that read it today and lose it entirely when it is made private. */
+  hides_from: Pick<MergeWidening, "audience" | "label">[];
+  /** Custom scopes that list it; making it private removes it from them for good. */
+  custom_picks: number;
+  make_private: boolean;
+};
+
 /** What `POST …/locations/merge` returns: a preview without `confirm`, the applied merge with it. */
 export type LocationMergeResult = {
   keep_id: string;
@@ -875,6 +894,8 @@ export type LocationMergeResult = {
     narrowed_audiences: string[];
     /** Audiences that receive the kept location but not this duplicate, so the moved records show them more. */
     widened: MergeWidening[];
+    /** Each moved record that newly reaches an audience, for the owner to keep or make private. */
+    widened_records: MergeWidenedRecord[];
   }[];
 };
 
@@ -891,6 +912,8 @@ export type AreaMergeResult = {
     travel_updates: number;
     narrowed_audiences: string[];
     widened: MergeWidening[];
+    /** Each moved record that newly reaches an audience, for the owner to keep or make private. */
+    widened_records: MergeWidenedRecord[];
   }[];
   /** Locations in the merged area that only name the city, so likely duplicates of each other. */
   city_level_location_ids: string[];

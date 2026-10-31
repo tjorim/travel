@@ -13,6 +13,7 @@ from ..audit import live_audiences, record_audit_event
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, service_exception
+from ..live_scopes import scope_picks
 from ..models import Area, AuditEventKind, AuditTargetType, Location, Route, Stay, TravelUpdate, Visit
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
 from ..schemas import (
@@ -27,9 +28,18 @@ from ..schemas import (
     MergeRequest,
 )
 from ..search_text import contains
-from ..visitor_changes import MovedRecord, Placement, merge_widening, merge_widening_refusal
+from ..visitor_changes import (
+    MovedRecord,
+    Placement,
+    chosen_private,
+    merge_widening,
+    merge_widening_refusal,
+    widened_record_details,
+    widened_records,
+)
 from .placement import is_city_level
 from .trips import owned_trip
+from .visibility import make_private
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["areas"])
 
@@ -254,7 +264,9 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
     A live audience that receives the kept area but not a duplicate starts to
     read the kept area's rounded point through the records that move. The
     preview lists those audiences per duplicate, and a confirmed merge is
-    refused with 409 until ``confirm_widening`` accepts them."""
+    refused with 409 until ``confirm_widening`` accepts them. Records listed in
+    ``make_private`` are made private first (through the sharing history) and so
+    no longer widen."""
     trip = owned_trip(session, trip_id, subject)
     keep = owned_area(session, trip.id, payload.keep_id)
     duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
@@ -270,12 +282,15 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
     summaries: list[AreaMergeDuplicate] = []
     warnings: list[str] = []
     live = live_audiences(session, trip.id)
-    moves: list[tuple[Area, dict[str, list]]] = []
-    for duplicate in duplicates:
-        found = _area_referencing(session, trip.id, duplicate.id)
-        moves.append((duplicate, found))
+    moves = [(duplicate, _area_referencing(session, trip.id, duplicate.id)) for duplicate in duplicates]
+    shown = [
+        widened_records(live, _moved_records(session, trip.id, duplicate, keep, found)) for duplicate, found in moves
+    ]
+    private = chosen_private(payload.make_private, [entry for entries in shown for entry in entries])
+    picks = scope_picks(session, trip.id)
+    for (duplicate, found), entries in zip(moves, shown, strict=True):
         narrowed = sorted(receivers("area", duplicate, audiences) - kept_by)
-        widened = merge_widening(live, _moved_records(session, trip.id, duplicate, keep, found))
+        widened = merge_widening(live, entries, private)
         if widened:
             warnings.append(
                 f"{duplicate.label or 'An unnamed area'} is not shared with {', '.join(w.name for w in widened)} "
@@ -293,6 +308,7 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
                 label=duplicate.label,
                 narrowed_audiences=narrowed,
                 widened=[w.as_detail() for w in widened],
+                widened_records=widened_record_details(entries, private, picks),
                 **{kind: len(rows) for kind, rows in found.items()},
             )
         )
@@ -318,13 +334,8 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
     if not payload.confirm:
         return result
     if any(summary.widened for summary in summaries) and not payload.confirm_widening:
-        raise merge_widening_refusal(
-            [
-                {"id": summary.id, "label": summary.label, "widened": [w.model_dump() for w in summary.widened]}
-                for summary in summaries
-                if summary.widened
-            ]
-        )
+        raise merge_widening_refusal(summaries)
+    make_private(session, trip, subject, sorted(private))
     for duplicate, found in moves:
         for record in (*found["locations"], *found["visits"]):
             record.area = keep
@@ -357,7 +368,8 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
                     ),
                 }
                 for summary in summaries
-            ]
+            ],
+            **({"made_private": [{"kind": kind, "id": item} for kind, item in sorted(private)]} if private else {}),
         },
     )
     return result
