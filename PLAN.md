@@ -82,6 +82,19 @@ The app also needs the archive's useful trip workflows and presentation before
 the v2 cutover. These are application features, independent of the optional
 archive-content import in #40.
 
+### Current experience priority — 2026-10-31
+
+The owner’s top priority is **public and unlisted trip viewing**: compact
+visitor headers, photo/story presentation, map/story layout and navigation on
+phone and desktop. Treat `/trips/<slug>` and `/share/<token>` as separate,
+equally important acceptance cases, preserving server-filtered projections and
+unlisted capability safety. [#94](https://github.com/tjorim/travel/issues/94)
+tracks the fit-gap follow-ups; see the [mobile analysis](docs/decisions/polarsteps-mobile-fit-gap.md).
+Owner header, Capture, preparation and offline improvements follow this viewer
+work. The preferred compact owner header retains its Capture FAB; visitor
+routes do not acquire owner controls. Existing correctness/privacy fixes remain
+requirements, not optional polish.
+
 ### Application review — Ordered follow-up
 
 The synthetic local baseline review is complete and tracked in

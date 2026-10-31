@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Record public and unlisted trip viewing as the owner’s top priority in the plan and both Polarsteps roadmaps, ahead of owner header, Capture and preparation improvements (Refs #94).
+
 - Add a partial physical-Android Polarsteps comparison with synthetic Travel phone checks, mobile header/sharing/capture findings, the owner’s preference for a compact header with the Capture FAB retained, explicit verification limits and owner decisions in `docs/decisions/polarsteps-mobile-fit-gap.md` (Refs #94).
 
 - Add a sourced fit-gap analysis of Travel against Polarsteps (gaps we want, gaps by design, where Travel is ahead), a short roadmap and open product/privacy questions in `docs/decisions/polarsteps-fit-gap.md`; no behaviour changes (Refs #94).
