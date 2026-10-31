@@ -25,7 +25,10 @@ malformed JSON has a fixed diagnostic. Router-required fields have body paths.
 A structured `detail` object travels beside the descriptor when the client needs more than a
 code: the 412 `scope_revision_conflict` carries the current owner record, and the 409
 `visitor_visible_change_needs_acknowledgement` carries each changed field's before and after
-and its audiences (see `decisions/32-shared-location-edits.md`). Neither reaches a visitor.
+and its audiences (see `decisions/32-shared-location-edits.md`), and the 409
+`merge_widening_needs_acknowledgement` lists, per duplicate, the audiences that newly read the
+kept record and the moved stays, visits, routes and updates that show it (see
+`decisions/27-merge-widening.md`). Neither reaches a visitor.
 Resource dependency conflicts include per-kind counts and their total `count`.
 Upload size failures include the numeric MB limit as `max_length`.
 

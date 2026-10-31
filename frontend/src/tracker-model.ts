@@ -846,6 +846,18 @@ export function openBlobInNewTab(blob: Blob): void {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
+/** A live audience that newly reads the kept record, and how many moved records show it to them. */
+export type MergeWidening = {
+  /** `public` or `link:<id>`. */
+  audience: string;
+  /** The share link's label; null for the public page. */
+  label: string | null;
+  stays: number;
+  visits: number;
+  routes: number;
+  travel_updates: number;
+};
+
 /** What `POST …/locations/merge` returns: a preview without `confirm`, the applied merge with it. */
 export type LocationMergeResult = {
   keep_id: string;
@@ -861,6 +873,8 @@ export type LocationMergeResult = {
     travel_updates: number;
     /** The server's audience names: "public page" or `link '<label>'`. */
     narrowed_audiences: string[];
+    /** Audiences that receive the kept location but not this duplicate, so the moved records show them more. */
+    widened: MergeWidening[];
   }[];
 };
 
@@ -876,6 +890,7 @@ export type AreaMergeResult = {
     routes: number;
     travel_updates: number;
     narrowed_audiences: string[];
+    widened: MergeWidening[];
   }[];
   /** Locations in the merged area that only name the city, so likely duplicates of each other. */
   city_level_location_ids: string[];
@@ -912,5 +927,7 @@ export type AuditEvent = {
     no_longer_reached?: string[];
     /** A `location.update`: the visitor-facing fields changed and the audience ids that read each. */
     changes?: { field: string; audiences: string[] }[];
+    /** A `location.merge` or `area.merge`: per duplicate, the audiences that newly read the kept record. */
+    merged?: { id: string; widened?: { audience: string }[] }[];
   };
 };

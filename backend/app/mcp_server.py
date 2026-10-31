@@ -780,10 +780,17 @@ class TravelMcpBackend:
         )
 
     def merge_areas(
-        self, trip_id: str, keep_id: str, duplicate_ids: list[str], confirm: bool = False
+        self,
+        trip_id: str,
+        keep_id: str,
+        duplicate_ids: list[str],
+        confirm: bool = False,
+        confirm_widening: bool = False,
     ) -> dict[str, Any]:
-        """Fold duplicate areas into keep_id: every location, visit, route end and reisupdate filed under a duplicate moves to keep_id (stays follow their location), then the duplicates are deleted, in one transaction. keep_id keeps its label, point, time zone and visibility. Without confirm=true it only previews the counts per duplicate, warns when a duplicate reaches an audience the kept area does not, and lists city_level_location_ids: locations that only name the city and would then be duplicates, to fold with merge_locations afterwards. Review that preview, then repeat with confirm=true."""
-        payload = schemas.MergeRequest(keep_id=keep_id, duplicate_ids=duplicate_ids, confirm=confirm)
+        """Fold duplicate areas into keep_id: every location, visit, route end and reisupdate filed under a duplicate moves to keep_id (stays follow their location), then the duplicates are deleted, in one transaction. keep_id keeps its label, point, time zone and visibility. Without confirm=true it only previews the counts per duplicate, warns when a duplicate reaches an audience the kept area does not, and lists city_level_location_ids: locations that only name the city and would then be duplicates, to fold with merge_locations afterwards. Review that preview, then repeat with confirm=true. When a live audience receives the kept area but not a duplicate, the moved records start to show them the kept area's rounded point: the preview lists those audiences per duplicate (widened: audience as public or link:<id>, with counts of stays, visits, routes and travel_updates), and confirm=true alone is then refused with a JSON review (code merge_widening_needs_acknowledgement). Show it to the owner; repeat with confirm=true and confirm_widening=true only after they accept. To avoid the widening, make the kept area private first (set_visibility). The accepted widening is recorded in the audit trail."""
+        payload = schemas.MergeRequest(
+            keep_id=keep_id, duplicate_ids=duplicate_ids, confirm=confirm, confirm_widening=confirm_widening
+        )
         return self._call(
             "area.merge" if confirm else "area.merge_preview",
             "area",
@@ -806,10 +813,17 @@ class TravelMcpBackend:
         )
 
     def merge_locations(
-        self, trip_id: str, keep_id: str, duplicate_ids: list[str], confirm: bool = False
+        self,
+        trip_id: str,
+        keep_id: str,
+        duplicate_ids: list[str],
+        confirm: bool = False,
+        confirm_widening: bool = False,
     ) -> dict[str, Any]:
-        """Merge duplicate locations (locaties samenvoegen) into keep_id: every visit, stay, route end and reisupdate at a duplicate moves to keep_id, then the duplicates are deleted, in one transaction. Without confirm=true it only previews the counts per duplicate and warns when a duplicate reaches an audience the kept location does not (the merge keeps keep_id's name, visibility and area). Review that preview, then repeat with confirm=true."""
-        payload = schemas.MergeRequest(keep_id=keep_id, duplicate_ids=duplicate_ids, confirm=confirm)
+        """Merge duplicate locations (locaties samenvoegen) into keep_id: every visit, stay, route end and reisupdate at a duplicate moves to keep_id, then the duplicates are deleted, in one transaction. Without confirm=true it only previews the counts per duplicate and warns when a duplicate reaches an audience the kept location does not (the merge keeps keep_id's name, visibility and area). Review that preview, then repeat with confirm=true. When a live audience receives the kept location but not a duplicate, the moved records start to show them the kept location's name and point: the preview lists those audiences per duplicate (widened: audience as public or link:<id>, with counts of stays, visits, routes and travel_updates), and confirm=true alone is then refused with a JSON review (code merge_widening_needs_acknowledgement). Show it to the owner; repeat with confirm=true and confirm_widening=true only after they accept. To avoid the widening, make the kept location private first (set_visibility). The accepted widening is recorded in the audit trail."""
+        payload = schemas.MergeRequest(
+            keep_id=keep_id, duplicate_ids=duplicate_ids, confirm=confirm, confirm_widening=confirm_widening
+        )
         return self._call(
             "location.merge" if confirm else "location.merge_preview",
             "location",

@@ -2011,5 +2011,51 @@
   "owner_visitor_change_preview_item": "{p0} (gelezen door {p1})",
   "owner_visitor_change_area_preview": "Als je deze locatie naar een ander gebied verplaatst, gaan ook de bezoeken en routeuiteinden mee. Als bezoekers die ontvangen, wordt eerst om bevestiging gevraagd.",
   "audit_location_update": "Plaats: gegevens die bezoekers lezen zijn gewijzigd ({fields}).",
-  "audit_location_update_audiences": "Gelezen op de openbare pagina: {publicCount}; deellinks: {linkCount}."
+  "audit_location_update_audiences": "Gelezen op de openbare pagina: {publicCount}; deellinks: {linkCount}.",
+  "owner_merge_widening_title": "Bezoekers die meer te zien krijgen",
+  "owner_merge_widening_intro_location": "De bewaarde locatie is gedeeld met doelgroepen die de onderstaande dubbele locaties niet ontvangen. Na het samenvoegen tonen de verhuisde records hun de publieke naam en het exacte punt van de bewaarde locatie. Annuleer en maak de bewaarde locatie eerst privé als je dat niet wilt.",
+  "owner_merge_widening_intro_area": "Het bewaarde gebied is gedeeld met doelgroepen die de onderstaande dubbele gebieden niet ontvangen. Na het samenvoegen tonen de verhuisde records hun het afgeronde kaartpunt van het bewaarde gebied. Annuleer en maak het bewaarde gebied eerst privé als je dat niet wilt.",
+  "owner_merge_widening_audience": "{p0}: {p1}",
+  "owner_merge_widening_stays": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} verblijf",
+        "countPlural=other": "{count} verblijven"
+      }
+    }
+  ],
+  "owner_merge_widening_visits": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} bezoek",
+        "countPlural=other": "{count} bezoeken"
+      }
+    }
+  ],
+  "owner_merge_widening_routes": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} route",
+        "countPlural=other": "{count} routes"
+      }
+    }
+  ],
+  "owner_merge_widening_travel_updates": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} reisupdate",
+        "countPlural=other": "{count} reisupdates"
+      }
+    }
+  ],
+  "owner_merge_widening_acknowledge": "Ik begrijp dat deze bezoekers na het samenvoegen meer zien",
+  "audit_merge_widened": "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}."
 }
