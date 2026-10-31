@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add a standalone public/unlisted Polarsteps visitor comparison with synthetic route/lifecycle checks, measured phone/laptop layouts, native public-trip photo evidence, safe-preview decisions and explicit coverage limits (Refs #94).
+
 - Include authenticated MCP tools alongside the PWA in the planned domain/data/storage review for admin trip editing, preserving shared ownership and validation rules (Refs #94).
 
 - Record domain model, held data and storage review as the second priority after public/unlisted viewing, ahead of owner UI and feature additions (Refs #94).
