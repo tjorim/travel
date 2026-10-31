@@ -249,3 +249,28 @@ Dismissal returns focus to the trigger; crossing to wide returns it to the
 current sidebar link. Successful same-tab selection focuses the stable localized
 section h2 after the router updates; selecting the current link does so directly.
 Modified clicks retain native new-tab behavior. Back/Forward remain router-owned.
+
+## Motion and feedback (#94)
+
+Layers and controls answered nothing: dialogs, the section drawer, popovers and
+suggestion lists appeared and vanished at once, buttons had no hover or press
+state and the map camera ignored a reduced-motion request. Base UI marks a layer
+that is entering or leaving with `data-starting-style` and `data-ending-style`
+and waits for its transition before unmounting, so the motion lives in four
+named utilities in `src/tailwind.css`:
+
+| Utility | Used by | Motion |
+| --- | --- | --- |
+| `travel-backdrop-motion` | Record, alert and lightbox dialog backdrops, the drawer backdrop | 150 ms opacity |
+| `travel-popup-motion` | Record, alert and lightbox dialog popups | 160 ms opacity and 200 ms rise; a bottom sheet below 620 px rises further |
+| `travel-drawer-motion` | The narrow trip section drawer | 220 ms slide from the left |
+| `travel-menu-motion` | The generated `Popover` (customised locally) and `SuggestInput` lists | 120 ms opacity and a 4 px drop |
+
+Buttons and `action-link` lift on hover (`brightness-110`), nudge 1 px on press
+and ease their colours over 150 ms; `secondary` and `danger` controls tint
+instead. Every transition has a `prefers-reduced-motion` guard, and the map's
+`easeTo` and `flyTo` calls no longer set `essential: true`, so MapLibre skips
+them for visitors who ask for reduced motion. `e2e/motion.spec.ts` checks both
+settings; the other end-to-end checks run with reduced motion so axe never
+samples a half-transparent dialog. Nothing here changes which controls exist,
+their names, focus return or the dirty-edit guards.
