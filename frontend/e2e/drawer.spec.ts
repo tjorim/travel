@@ -45,16 +45,17 @@ for (const locale of ["en", "nl"] as const)
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
         if (dismiss === "Escape")
           await page.screenshot({ path: `/tmp/travel-slice-3/drawer-${locale}-${theme}.png` });
-        // Rapid and paced walks must stay trapped, in both directions.
-        for (const delay of [0, 100])
-          for (const key of ["Tab", "Shift+Tab"])
-            for (let i = 0; i < 16; i++) {
-              await page.keyboard.press(key);
-              if (delay) await page.waitForTimeout(delay);
-              await expect
-                .poll(() => dialog.evaluate((e) => e.contains(document.activeElement)))
-                .toBe(true);
-            }
+        // Walk every focusable control and wrap once in each direction.
+        const controls = dialog.getByRole("link").or(dialog.getByRole("button"));
+        const count = await controls.count();
+        for (const key of ["Tab", "Shift+Tab"]) {
+          await controls.first().focus();
+          for (let i = 1; i <= count + 1; i++) {
+            await page.keyboard.press(key);
+            const index = key === "Tab" ? i % count : (count - (i % count)) % count;
+            await expect(controls.nth(index)).toBeFocused();
+          }
+        }
         if (dismiss === "Escape") await page.keyboard.press("Escape");
         else if (dismiss === "Close")
           await dialog

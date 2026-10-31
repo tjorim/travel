@@ -34,6 +34,9 @@ All notable changes to the travel hub are documented here.
 - Owner share-link reads now show links past their expiry as expired and record the expiry audit event at the real expiry time, without waiting for a visit.
 
 ### Changed
+
+- Split frontend end-to-end CI across three shards, cache Playwright browsers,
+  retain failure artifacts, and replace timed drawer focus walks with retrying assertions.
 - Store an area the owner left unnamed as no label instead of a language-bound "Unassigned" or "Nieuw gebied", show a translated fallback in the interface, and block sharing an unnamed area, or a record filed under one, until it is named (#29).
 - Preview the unsaved public or link selection as a candidate scope without saving it, so a preview never changes what a live audience receives (#6).
 - Protect record drafts during pending saves, browser navigation and reload recovery (#12).
