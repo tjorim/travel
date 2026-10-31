@@ -29,16 +29,18 @@ export function SectionAccordion({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <Collapsible.Trigger className="group flex min-h-11 w-full items-center gap-2 rounded-xl border border-travel-card-border bg-travel-surface px-3.5 text-left font-bold text-travel-ink">
-        <ChevronDownIcon
-          className="size-4 shrink-0 text-travel-muted transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
-          aria-hidden="true"
-        />
-        <span>{title}</span>
-        {count !== undefined && (
-          <span className="ml-auto text-sm font-medium text-travel-muted">{count}</span>
-        )}
-      </Collapsible.Trigger>
+      <h2 className="m-0 text-base leading-normal">
+        <Collapsible.Trigger className="group flex min-h-11 w-full items-center gap-2 rounded-xl border border-travel-card-border bg-travel-surface px-3.5 text-left font-bold text-travel-ink">
+          <ChevronDownIcon
+            className="size-4 shrink-0 text-travel-muted transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
+            aria-hidden="true"
+          />
+          <span>{title}</span>
+          {count !== undefined && (
+            <span className="ml-auto text-sm font-medium text-travel-muted">{count}</span>
+          )}
+        </Collapsible.Trigger>
+      </h2>
       <Collapsible.Panel keepMounted className="grid gap-2">
         {children}
       </Collapsible.Panel>

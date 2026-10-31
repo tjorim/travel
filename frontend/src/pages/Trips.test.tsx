@@ -175,10 +175,10 @@ it("lists trips only, and opens a trip's workspace from its row", async () => {
   expect(screen.queryByLabelText("Titel")).toBeNull();
   fireEvent.click(screen.getByRole("link", { name: /IJsland/ }));
   await screen.findByRole("heading", { name: "IJsland" });
-  // The trip header says where the owner is: Trips › the trip.
+  // The trip header says where the owner is: Trips › the current section.
   const here = within(screen.getByRole("navigation", { name: "Kruimelpad" }));
   expect(here.getByRole("link", { name: "Reizen" }).getAttribute("href")).toBe("/trips");
-  expect(here.getByText("IJsland").getAttribute("aria-current")).toBe("page");
+  expect(here.getByText("Overzicht").getAttribute("aria-current")).toBe("page");
 });
 
 it("keeps the editor closed in the workspace until asked, then opens the trip with its saved values", async () => {

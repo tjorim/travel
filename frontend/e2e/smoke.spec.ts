@@ -71,7 +71,7 @@ const screens = (locale: Locale) => [
     name: "owner trip workspace",
     path: `/admin/trips/${ownerTrip.id}`,
     owner: true,
-    ready: (page: Page) => page.getByRole("heading", { name: ownerTrip.title, level: 2 }),
+    ready: (page: Page) => page.getByRole("heading", { name: ownerTrip.title, level: 1 }),
   },
 ];
 
@@ -126,7 +126,10 @@ test.describe("owner navigation", () => {
     // The trip header says where you are.
     const here = page.getByRole("navigation", { name: message("en", "breadcrumb") });
     await expect(here.getByRole("link", { name: "Trips" })).toBeVisible();
-    await expect(here.getByText(ownerTrip.title)).toHaveAttribute("aria-current", "page");
+    await expect(here.getByText(message("en", "owner_overview"))).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
 
     await page.getByRole("button", { name: message("en", "owner_capture_in_trip") }).click();
     await expect(
@@ -154,7 +157,7 @@ test.describe("owner navigation", () => {
         "aria-current",
         "page",
       );
-      await expect(page.getByRole("heading", { name: ownerTrip.title, level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: ownerTrip.title, level: 1 })).toBeVisible();
     }
   });
 });

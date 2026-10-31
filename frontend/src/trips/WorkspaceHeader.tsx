@@ -7,6 +7,7 @@ import { m } from "../paraglide/messages.js";
 import { useTripResource } from "../query/owner-queries";
 import type { Trip } from "../tracker-model";
 import { today, tripDateRange, tripState } from "./trip-state";
+import { sectionById, type TripWorkspaceSection } from "./workspace-sections";
 import { TripCover } from "./TripCover";
 import { TripStatePill } from "./TripStatePill";
 
@@ -30,8 +31,16 @@ function PublicationState({ tripId }: { tripId: string }) {
   );
 }
 
-/** Where the owner is (Trips › this trip), the trip's cover, title and dates, and its header action. */
-export function WorkspaceHeader({ trip, onEdit }: { trip: Trip; onEdit: () => void }) {
+/** Where the owner is (Trips › current section), the trip's cover, title and dates, and its header action. */
+export function WorkspaceHeader({
+  trip,
+  section,
+  onEdit,
+}: {
+  trip: Trip;
+  section: TripWorkspaceSection;
+  onEdit: () => void;
+}) {
   useLocale();
   const hasCover = Boolean(trip.cover_url);
   return (
@@ -42,13 +51,14 @@ export function WorkspaceHeader({ trip, onEdit }: { trip: Trip; onEdit: () => vo
             <Link
               className="inline-flex min-h-11 items-center text-travel-muted no-underline hover:underline focus-visible:underline"
               to="/trips"
+              activeOptions={{ exact: true }}
             >
               {m.trips()}
             </Link>
           </li>
           <li aria-hidden="true">›</li>
           <li className="min-w-0 truncate" aria-current="page">
-            {trip.title}
+            {sectionById(section).label()}
           </li>
         </ol>
       </nav>
@@ -58,20 +68,20 @@ export function WorkspaceHeader({ trip, onEdit }: { trip: Trip; onEdit: () => vo
           className={cn(
             "flex items-start justify-between gap-4 max-[620px]:flex-col max-[620px]:items-stretch",
             !hasCover &&
-              "rounded-travel-card border-t-4 border-travel-warning-border bg-travel-surface p-travel-card-pad shadow-travel-card",
+              "rounded-travel-card border-t-4 border-travel-warning-border bg-travel-surface p-travel-context-pad shadow-travel-card",
           )}
         >
-          <div className="grid min-w-0 gap-2">
+          <div className="grid min-w-0 gap-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <TripStatePill state={tripState(trip, today())} />
               <PublicationState tripId={trip.id} />
             </div>
-            <h2
-              className="m-0 max-w-travel-reading text-travel-section leading-tight tracking-tight"
+            <h1
+              className="m-0 max-w-travel-reading text-travel-context-title leading-tight tracking-tight"
               id="trip-detail-title"
             >
               {trip.title}
-            </h2>
+            </h1>
             <p className="m-0 leading-normal font-medium text-travel-muted">
               {[
                 tripDateRange(trip),

@@ -310,3 +310,55 @@ They exposed inherited dark-mode contrast on broken gallery-image alt text;
 the gallery trigger now explicitly uses `text-travel-ink`. This correction stays
 inside the visitor renderer. Keyboard + axe checks cover opening the disclosure,
 all 24 names, target focus, initial fragments and Back at 1099/1100 CSS px.
+## Slice 1 result
+
+Implemented against `origin/main` 2684712. Preferences now constrain their radio
+wrappers and wrap within the available width; the inherited 320px document
+minimum is removed so 390px at 150% really fits 260 CSS pixels. The workspace
+has a semantic h1 with the full authored title and h2 accordion titles (fixing
+the pre-existing skip to record-manager h3 headings), plus a screen-reader h2
+for the current section so overview cards also have a complete heading sequence, a short localized current-section
+breadcrumb (the Trips ancestor uses exact active matching), 8px context padding,
+6px workspace gaps and 4px title/context gaps. The responsive title is 24–28px;
+its existing 24px mobile size is preserved. No truncation, sidebar, drawer,
+visitor-page change or gate scale/copy change is included. Existing translated
+section labels are reused, with no new message copy.
+
+Same synthetic fixtures and Manifest V3 `chrome.tabs.setZoom` method as above:
+32 owner measurements, empty/dense × English/light and Dutch/dark × four physical
+sizes × 125/150%. All report no page-wide overflow, including effective 312/260px
+phone widths. Values remain rounded Tasks-trigger top × zoom at scroll zero.
+Empty and dense results agree; ranges span the two locales. Historical current
+and A are retained for comparison; S is a different navigation prototype and is
+not the slice 1 target.
+
+| Size | Zoom | Historical current y | Historical A y | Slice 1 y (empty and dense) |
+| --- | --- | --- | --- | --- |
+| 1366×768 | 125% | 725 | 668 | 620 |
+| 1366×768 | 150% | 910 | 802–847 | 745–790 |
+| 1280×800 | 125% | 721 | 668 | 620 |
+| 1280×800 | 150% | 910 | 802–847 | 745–790 |
+| 1920×1080 | 125% | 768 | 668 | 632 |
+| 1920×1080 | 150% | 887 | 802 | 745 |
+| 390×844 | 125% | 1133–1143 | 1055 | 1005 |
+| 390×844 | 150% | 1359–1371 | 1266 | 1329–1356 |
+
+The phone improves over current, although the corrected 260px layout is later
+than A's overflowing mobile measurement at 150%. Tasks still starts below the
+phone fold. An initial 12px-padding/18px-gap implementation regressed to
+1425–1452 at 150% after correcting the width floor; reducing spacing, rather than
+shrinking the mobile title, recovered the improvement above.
+
+Evidence stays outside Git at `/tmp/travel-slice-1/` (scripts, raw JSON and PNGs).
+The automated owner matrix covers both locales × both themes, all four sizes,
+312/260px effective widths, empty/dense (24 updates/32 tasks), loaded/failed cover,
+full h1 names, current breadcrumb, no page overflow and axe including the
+`page-has-heading-one` rule. Effective-width CI tests complement the separate
+actual-zoom measurements; they are not claimed as browser zoom. Existing record
+guard, capture and history journeys remain in the complete Playwright suite.
+Real mobile keyboard and later navigation slices remain tracked in #5.
+
+The unfiltered axe sweep also exposed the existing fading loading-status text
+at insufficient intermediate contrast. Only decorative skeletons now fade; the
+loading announcement stays fully opaque. Scans wait for Tasks and fonts to settle
+and retain full violation details on failure.

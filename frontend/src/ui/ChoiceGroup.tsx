@@ -19,7 +19,7 @@ export function ChoiceGroup<T extends string>({
 }) {
   const labelId = useId();
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 max-w-full space-y-1">
       <span id={labelId} className="block text-sm font-medium">
         {label}
       </span>
@@ -27,7 +27,7 @@ export function ChoiceGroup<T extends string>({
         value={value}
         aria-labelledby={labelId}
         onValueChange={(next) => onChange(next as T)}
-        className="inline-flex flex-wrap gap-1 rounded-xl border p-1"
+        className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border p-1"
       >
         {choices.map((choice) => (
           <Radio.Root

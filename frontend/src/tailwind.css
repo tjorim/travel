@@ -21,6 +21,8 @@
   --spacing-travel-reading: 65ch;
   --spacing-travel-listing: 100rem;
   --spacing-travel-grid-gap: clamp(1rem, 2vw, 2rem);
+  --spacing-travel-context-pad: 0.5rem;
+  --text-travel-context-title: clamp(1.5rem, 1.8vw, 1.75rem);
   --spacing-travel-card-pad: clamp(1.25rem, 2vw, 2rem);
   --spacing-travel-section: clamp(2.5rem, 5vw, 4rem);
   --aspect-travel-cover: 3 / 2;
@@ -210,7 +212,7 @@
     display: none !important;
   }
   body {
-    @apply m-0 min-w-80;
+    @apply m-0 min-w-0;
     /* An unbroken word in an authored title or name wraps instead of widening the page. */
     overflow-wrap: anywhere;
   }
