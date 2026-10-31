@@ -501,9 +501,9 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
       </Dialog.Trigger>
       {failure}
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-travel-backdrop/50" />
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-travel-backdrop/50 travel-backdrop-motion" />
         <Dialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <Dialog.Popup className="max-h-dvh w-full max-w-250 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-4 text-travel-ink shadow-2xl">
+          <Dialog.Popup className="max-h-dvh w-full max-w-250 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-4 text-travel-ink shadow-2xl travel-popup-motion">
             <div className="mb-4 flex items-center justify-between gap-4">
               <Dialog.Title>{alt}</Dialog.Title>
               <Dialog.Close>{m.visitor_close_image()}</Dialog.Close>
