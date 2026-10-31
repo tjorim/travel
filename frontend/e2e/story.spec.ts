@@ -279,3 +279,16 @@ for (const locale of ["en", "nl"] as const) {
     }
   }
 }
+
+test("a row of photos has arrows that page it, hidden at each end", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(page, trip(), "en", "light");
+  const strip = page.locator("ul.snap-x").first();
+  const next = page.getByRole("button", { name: "Next photo" });
+  const previous = page.getByRole("button", { name: "Previous photo" });
+  await expect(next).toBeVisible();
+  await expect(previous).toBeHidden();
+  await next.click();
+  await expect.poll(() => strip.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(previous).toBeVisible();
+});

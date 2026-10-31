@@ -250,6 +250,28 @@ current sidebar link. Successful same-tab selection focuses the stable localized
 section h2 after the router updates; selecting the current link does so directly.
 Modified clicks retain native new-tab behavior. Back/Forward remain router-owned.
 
+## Photo-led story updates (#94)
+
+A visitor's update used to read heading, meta, text and then a grid of small
+thumbnails. It now reads like a story first seen as pictures: the date and place
+line and the heading, then the update's photos as a strip, then the text. This is
+a restyle of what the audience already receives, never new content.
+
+- `Gallery` takes `strip`. One photo fills a frame up to 42.5rem wide; several
+  are a row that scrolls sideways, snaps to each photo and shows the next one
+  peeking (`basis-5/6`, two thirds from 680 px), so the row reads as scrollable
+  without arrows. Each photo is still the existing `SharedImage` button that opens
+  the lightbox, so keyboard use, captions and alt text are unchanged. Videos fill
+  the frame width. Loose gallery photos keep the grid.
+- A row of several photos has Previous photo and Next photo arrows (44 px, hidden at the ends of the row, scrolling by four fifths of its width) for mouse users, for whom a sideways scroll bar is easy to miss; touch, keyboard focus and the scroll bar still work.
+- A "3 days later" line sits above an update whose story date and the previous
+  one's are both given to the day (`daysLater`, derived from dates the audience
+  already has; shown for a gap of a day or more, never for month or year dates).
+- Photo triggers brighten slightly on hover, with no motion for visitors who
+  prefer reduced motion.
+
+Not copied from Polarsteps: likes, comments and names of viewers (there are no
+viewer identities, see the fit-gap analysis).
 ## Motion and feedback (#94)
 
 Layers and controls answered nothing: dialogs, the section drawer, popovers and

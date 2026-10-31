@@ -1770,6 +1770,18 @@
   "visitor_story_navigation": "Updates in this story",
   "visitor_timeline": "Travel updates timeline",
   "visitor_update": "Update",
+  "visitor_previous_photo": "Previous photo",
+  "visitor_next_photo": "Next photo",
+  "visitor_days_later": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} day later",
+        "countPlural=other": "{count} days later"
+      }
+    }
+  ],
   "visitor_update_media": "Media for this update",
   "visitor_view_route": "View route",
   "visitor_view_location": "View location",
