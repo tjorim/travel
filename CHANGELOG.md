@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Keep visitor update navigation in a closed disclosure below 1100px while preserving the wide sticky index and story anchors; keep failed gallery image text readable in dark mode (#5).
+
 - Measure the selected trip sidebar and mobile drawer direction, document interaction limits and propose implementation slices without shipping a layout (#5).
 
 - Compare trip header density and navigation alternatives with synthetic browser-zoom measurements; leave the layout decision to the owner (#5).

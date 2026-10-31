@@ -963,3 +963,24 @@ it("accepts a projection with or without a cover id and rejects a malformed one"
   expect(isProjection({ ...projection(), cover: null }, "public")).toBe(true);
   expect(isProjection({ ...projection(), cover: { id: "media-1" } }, "public")).toBe(false);
 });
+
+it("discloses all authored update anchors without changing history", async () => {
+  const data = projection();
+  data.updates = Array.from({ length: 24 }, (_, i) => ({
+    id: `update-${i}`,
+    title: `Authored ${i + 1}`,
+  }));
+  render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  const trigger = screen.getByRole("button", { name: "Kies een update" });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  const before = window.history.length;
+  fireEvent.click(trigger);
+  await waitFor(() => expect(trigger.getAttribute("aria-expanded")).toBe("true"));
+  expect(window.history.length).toBe(before);
+  expect(
+    screen
+      .getAllByRole("link", { name: "Authored 24" })
+      .every((link) => link.getAttribute("href") === "#update-23"),
+  ).toBe(true);
+  expect(document.getElementById("update-23")?.tabIndex).toBe(-1);
+});

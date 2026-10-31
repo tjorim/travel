@@ -2098,5 +2098,6 @@
       }
     }
   ],
-  "audit_merge_widened": "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}."
+  "audit_merge_widened": "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}.",
+  "visitor_choose_update": "Kies een update"
 }

@@ -2098,5 +2098,6 @@
       }
     }
   ],
-  "audit_merge_widened": "Newly shown to visitors by the merge. Public page: {publicCount}; share links: {linkCount}."
+  "audit_merge_widened": "Newly shown to visitors by the merge. Public page: {publicCount}; share links: {linkCount}.",
+  "visitor_choose_update": "Choose an update"
 }

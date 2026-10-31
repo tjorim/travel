@@ -1,5 +1,6 @@
 import { m } from "./paraglide/messages.js";
 import { LocaleControl, selectedLocale, useLocale } from "./locale";
+import { Collapsible } from "@/ui/collapsible";
 import { Dialog } from "@/ui/dialog";
 import { Button } from "@/ui/button";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -492,7 +493,7 @@ function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger
-        className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+        className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 text-travel-ink focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
         aria-label={m.visitor_open_image({ title: alt })}
       >
         {image(false)}
@@ -620,9 +621,30 @@ function Updates({
     <section className="travel-card" aria-label={m.visitor_updates()}>
       <h2 className="mb-6">{m.visitor_updates()}</h2>
       <div className="travel-story-split">
+        <Collapsible.Root className="min-w-0 min-[1100px]:hidden">
+          <Collapsible.Trigger className="min-h-11 rounded-travel-control bg-transparent px-3 py-2 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
+            {m.visitor_choose_update()}
+          </Collapsible.Trigger>
+          <Collapsible.Panel>
+            <nav aria-label={m.visitor_story_navigation()} className="pt-4">
+              <ol className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0 min-[1100px]:flex-col min-[1100px]:gap-y-3">
+                {updates.map((item) => (
+                  <li key={item.id}>
+                    <a
+                      className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+                      href={`#${item.id}`}
+                    >
+                      {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </Collapsible.Panel>
+        </Collapsible.Root>
         <nav
           aria-label={m.visitor_story_navigation()}
-          className="min-w-0 self-start min-[1100px]:sticky min-[1100px]:top-6 min-[1100px]:max-h-travel-lightbox min-[1100px]:overflow-y-auto"
+          className="hidden min-w-0 self-start min-[1100px]:block min-[1100px]:sticky min-[1100px]:top-6 min-[1100px]:max-h-travel-lightbox min-[1100px]:overflow-y-auto"
         >
           <ol className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0 min-[1100px]:flex-col min-[1100px]:gap-y-3">
             {updates.map((item) => (
