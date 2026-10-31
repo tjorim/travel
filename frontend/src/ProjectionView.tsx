@@ -622,7 +622,7 @@ function Updates({
       <h2 className="mb-6">{m.visitor_updates()}</h2>
       <div className="travel-story-split">
         <Collapsible.Root className="min-w-0 min-[1100px]:hidden">
-          <Collapsible.Trigger className="min-h-11 rounded-travel-control px-3 py-2 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
+          <Collapsible.Trigger className="min-h-11 rounded-travel-control bg-transparent px-3 py-2 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
             {m.visitor_choose_update()}
           </Collapsible.Trigger>
           <Collapsible.Panel>

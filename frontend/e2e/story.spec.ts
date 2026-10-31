@@ -211,6 +211,7 @@ for (const audience of ["public", "share"] as const) {
           name: locale === "en" ? "Choose an update" : "Kies een update",
         });
         await expect(chooser).toHaveAttribute("aria-expanded", "false");
+        await expect(chooser).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
         await page.goto(path);
         const history = await page.evaluate(() => window.history.length);
         await chooser.focus();
