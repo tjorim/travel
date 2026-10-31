@@ -228,11 +228,14 @@ At most five items, retaining the existing visitor-first order:
 5. A1b/ID3: only after deciding edit semantics, propose reviewed date shifts
    with booking conflicts; retain independent edits until then.
 
-No implementation or infrastructure is selected by this analysis. Multiple
-choice, recommended option first; record answers in #94:
+The owner delegated the ID1 presentation choice on 2026-11-01; the selected
+direction and safeguards are recorded below. ID2 and ID3 remain open. This is
+still documentation only; no application implementation, infrastructure or wider
+sharing is approved by this analysis. Alternatives remain listed for context:
 
 - **ID1 Visitor itinerary display:** (a) group existing approved context by
-  area/day, retaining all current omissions and date precision (recommended);
+  area/day, retaining all current omissions and date precision (**selected**,
+  with the fallback below);
   (b) compact separate blocks with cross-links; (c) leave the current order.
   None authorizes hotel names, booking data or wider location/time disclosure.
 - **ID2 Owner planning read view:** (a) destination/visit detail derived from
@@ -243,6 +246,55 @@ choice, recommended option first; record answers in #94:
   conflicts/scope first (recommended); (b) design an explicit proposed date
   cascade with per-record review; (c) automatically cascade unconfirmed records
   (not recommended without resolving booking/destination conflict semantics).
+
+## Selected visitor direction — 2026-11-01
+
+**ID1(a): group approved context by area/day, with ID1(b) as the fallback when
+the projection cannot support a reliable grouping.** The owner delegated this
+choice to the assistant. An independent agent read the analyses and domain
+contract and recommended the same qualified direction. This selects a reading
+experience, not a new record model or publication field.
+
+Related information should help a visitor understand the story without making
+them reconstruct it from four distant record lists. Preserve story chronology
+and photo prominence. On a phone, use short area/date headings and compact
+approved context near the relevant story, with a labelled map jump; avoid
+inserting a full planning dashboard before the story. On a laptop, retain a
+readable story beside the map and compact context/index access. The existing
+M4/#98 recommendations keep the follow control discoverable and avoid another
+independently scrolling navigation system. Exact first-screen composition and
+the other VD decisions remain separate.
+
+The implementation proposal must apply these rules to **public and unlisted
+projections independently**:
+
+- Use only delivered fields and relationships. Private city visits, canonical
+  order, precise hotel locations and omitted times cannot supply grouping,
+  chronology, counts or map context.
+- Preserve date precision. “Taipei · June 2035” belongs in area/month context,
+  not under 2 June or a particular overnight. The same applies to year-only
+  records. Never infer exact nights or “booked” from other shared records.
+- Preserve repeat visits when the projection distinguishes them; do not merge
+  Taipei → Hualien → Taipei into one continuous visit. Broader or ambiguous
+  information stays general rather than being attached to a guessed episode.
+- Keep undated records explicitly undated or in general context. Do not assign
+  them an invented day or chronological position.
+- Display a route once as a connection, with its approved mode, endpoints and
+  dates, linking relevant context where reliable. Do not duplicate it into two
+  journeys or infer a connection to a visit from date overlap alone.
+- Fall back to compact separate blocks and cross-links when identity, dates or
+  relationships are ambiguous. Current embedded area objects carry safe labels,
+  region/country and optional rounded points, without an area identifier
+  (`projection.py`, C); equal labels or coordinates alone do not establish
+  canonical identity. Any future association identifier requires an explicit
+  projection-contract/privacy review rather than an owner-data request from
+  the visitor renderer.
+
+Accept the eventual presentation only after synthetic cases cover day/month/year
+precision, repeat areas, undated records, ambiguous labels, routes between areas
+and differently scoped public/unlisted content, on phone and laptop. Keep the
+existing M4/A11 acceptance work open. ID2's owner read view, ID3's edit semantics,
+privacy decisions and unresolved evidence are unchanged.
 
 Unverified follow-ups remain: positive Polarsteps visitor itinerary exposure,
 completed flight-service record, native transport editor and forwarding,
