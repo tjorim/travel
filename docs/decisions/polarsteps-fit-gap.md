@@ -166,7 +166,8 @@ and a design decision. XL: a new platform or a changed trust model.
 **Ranking update, 2026-10-31.** Public and unlisted trip viewing are now the
 owner’s top priority. Row IDs retain their original numbering; use the revised
 roadmap below and [mobile supplement](polarsteps-mobile-fit-gap.md) for current
-order. Owner preparation and active-trip tooling follow.
+order. Domain model, held data and storage come second; owner preparation
+and active-trip tooling follow.
 
 ## A. Gap we want
 
@@ -240,15 +241,22 @@ come first, superseding this analysis’s original laptop-first recommendation.
    Build on #100: check compact headers, photo-led story, map/story layout and
    navigation in both public and unlisted standalone shells and owner preview,
    on phone and desktop. No new privacy decision for presentation fixes.
-2. **Owner layout supporting publication** (mobile M0/M1, existing #5): compact
-   header with the owner Capture FAB retained, and readable Sharing review.
-3. **Trip statistics, booking recipe and owner export** (A1/A2 step one/A3).
-   Preparation and portability follow the visitor experience; inbound mail
-   remains D1-gated.
-4. **Capture and offline work** (mobile M2/M3, A4/A4b). Verify today’s local
-   drafts/copies first; an outbox or offline basemap still requires D2.
-5. **Decision-gated visitor extras** (A5/A6, D3). A public feed is not an unlisted
-   subscription mechanism. Book/replay work (A7/A8) remains later.
+2. **Domain model, held data and storage review.** The owner's next priority:
+   review record kinds/relationships, canonical versus derived/projected data,
+   database/file storage, retention, deletion and export. Start with
+   [domain-model.md](../domain-model.md), [the publication model](37-canonical-content-and-publication-model.md)
+   and [object-storage.md](../object-storage.md). Track in #94; this is a review
+   priority, not approval to change the schema, storage or privacy boundaries.
+3. **Owner layout and Capture** (mobile M0/M1/M2, existing #5): compact header
+   with the owner Capture FAB retained, readable Sharing review and shorter
+   Capture flow with a legible date.
+4. **Trip statistics, booking recipe and owner export** (A1/A2 step one/A3),
+   plus first-steps navigation A10. Use the reviewed domain/storage contracts;
+   inbound mail remains D1-gated.
+5. **Offline and optional visitor additions** (mobile M3, A4/A4b, A5/A6).
+   Verify current drafts/copies first; outbox/maps require D2, feed/numbers D3.
+   A public feed is not an unlisted subscription mechanism. Book/replay work
+   (A7/A8) remains later.
 
 ## Open decisions
 

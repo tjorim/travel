@@ -90,8 +90,15 @@ phone and desktop. Treat `/trips/<slug>` and `/share/<token>` as separate,
 equally important acceptance cases, preserving server-filtered projections and
 unlisted capability safety. [#94](https://github.com/tjorim/travel/issues/94)
 tracks the fit-gap follow-ups; see the [mobile analysis](docs/decisions/polarsteps-mobile-fit-gap.md).
-Owner header, Capture, preparation and offline improvements follow this viewer
-work. The preferred compact owner header retains its Capture FAB; visitor
+**Second is the domain model, the data we hold and how we store it.** Review
+record kinds and relationships, canonical versus derived/published data, database
+metadata versus stored files, and retention/deletion/export boundaries against
+[domain-model.md](docs/domain-model.md), [the publication model](docs/decisions/37-canonical-content-and-publication-model.md)
+and [object-storage.md](docs/object-storage.md). Establish the current model and
+proposed changes before implementing schema or storage changes; preserve the
+existing privacy and object-lifecycle contracts. Track this review in #94.
+Owner header, Capture, preparation and offline improvements follow these two
+priorities. The preferred compact owner header retains its Capture FAB; visitor
 routes do not acquire owner controls. Existing correctness/privacy fixes remain
 requirements, not optional polish.
 

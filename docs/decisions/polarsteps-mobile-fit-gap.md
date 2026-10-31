@@ -88,7 +88,8 @@ production map defect or compare map-loading speed from this run.
 ## A. Gap we want — mobile additions
 
 **Updated owner priority, 2026-10-31: public and unlisted trip viewing come
-first.** Owner preparation and active-trip tooling follow. S = one PR, M = a few PRs, L = several issues
+first. Second is the domain model, the data we hold and how we store it.**
+Owner UI, preparation and active-trip tooling follow. S = one PR, M = a few PRs, L = several issues
 and a decision. These are proposed follow-ups tracked in #94; application fixes
 are outside this documentation-only change. Row IDs stay stable; this priority update supersedes the first pass’s
 laptop-first ranking.
@@ -203,18 +204,25 @@ reported separately. Rows are **not equivalent end-to-end benchmarks**.
    plus owner preview. Prioritize compact visitor headers, usable content width,
    photo navigation and map/story layout on phone and desktop, both locales and
    themes. Keep projection safety and unlisted capability handling intact.
-2. **M0/M1: compact owner header, retain Capture FAB, repair Sharing (S–M).**
-   Coordinate with #5. This supports preparing and reviewing visitor output;
-   Capture remains owner-only and is not added to visitor views.
-3. **M2: compact Capture and fit its date (S–M).** Preserve draft recovery,
-   safe dismissal and private notes. This follows visitor-view work.
-4. **M3: secure-origin owner phone acceptance (S).** Verify installed shell,
-   offline copies/reconnect and keyboard/TalkBack. Visitor keyboard, screen-reader
-   and multi-photo checks belong in item 1 rather than waiting for this pass.
-5. **A10 and A1/A2/A3, then decision-gated additions.** Laptop preparation,
-   booking intake and export follow the visitor experience. A4 remains gated on
-   D2; public feeds/numbers still need D3 and do not extend automatically to
-   unlisted links.
+2. **Domain model, data and storage review.** Establish what records and
+   relationships exist, which data are canonical/derived/projected, and how
+   database metadata and file objects are stored. Review retention, deletion
+   and portability against [the domain model](../domain-model.md),
+   [publication model](37-canonical-content-and-publication-model.md) and
+   [object storage](../object-storage.md). Track in #94; agree any proposed
+   schema/storage changes separately. This priority is owner direction, not a
+   newly verified Polarsteps gap.
+3. **Owner layout and Capture (M0/M1/M2, S–M).** Compact the header, retain the
+   owner-only Capture FAB, repair Sharing readability and fit Capture's date.
+   Coordinate with #5; preserve draft recovery and safe dismissal.
+4. **Preparation and portability (A10, A1/A2/A3).** First-steps navigation,
+   trip statistics, booking recipe and owner export follow the first two
+   priorities and should use the reviewed domain/storage contracts.
+5. **Offline acceptance and decision-gated additions (M3, A4/A4b, A5/A6).**
+   Verify current installed-shell/copy/draft behaviour before extending it.
+   Outbox/maps still need D2; public feeds/numbers need D3 and do not extend
+   automatically to unlisted links. Visitor accessibility and multi-photo
+   checks belong in item 1 rather than waiting for this pass.
 
 ## Open decisions
 
