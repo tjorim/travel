@@ -227,3 +227,25 @@ the existing app boundary. No matchMedia branch, second landmark, cookie,
 shortcut or global shell is introduced. The breadcrumb remains before the
 workspace in normal reading order. Sidebar title size and geometry use named
 Tailwind tokens; existing messages supply all labels.
+
+## Narrow owner section drawer (#5, slice 3)
+
+`WorkspaceNavigation` owns a Base UI Dialog left sheet below 1100 CSS px,
+using the existing `@/ui/dialog` API. Reviewed base-nova Sheet source
+(https://ui.shadcn.com/r/styles/base-nova/sheet.json) against installed Base UI
+1.9.0 / pinned shadcn 4.22.1: it already uses Dialog, but its generated icon-only
+Close, palette, animation and extra styled Button are unnecessary here.
+Keep the owned composition with Travel tokens, localized visible Close/title
+and native WorkspaceTabs route links (44px targets, current-page semantics).
+Base UI Dialog explicitly supports positioned sheets without gestures.
+The existing section/Close messages supply whole localized names.
+
+Only navigation switches subtrees. The desktop sidebar links/styles stay
+unchanged. One section nav is exposed when wide or when the drawer is open;
+closed narrow navigation exposes only its named trigger. Editors, managers,
+search and capture remain outside the responsive branches. Modal editors make
+the background trigger inert. Open state is local and never written to history.
+Dismissal returns focus to the trigger; crossing to wide returns it to the
+current sidebar link. Successful same-tab selection focuses the stable localized
+section h2 after the router updates; selecting the current link does so directly.
+Modified clicks retain native new-tab behavior. Back/Forward remain router-owned.

@@ -70,7 +70,7 @@ for (const locale of ["en", "nl"] as const)
         await expect(title).toHaveValue("Synthetic resize draft");
         await expect(title).toHaveAttribute("data-lifetime", "original");
         await expect(title).toBeFocused();
-        await expect(nav).toHaveCount(1);
+        await expect(nav).toHaveCount(width >= 1100 ? 1 : 0);
       }
       await title.press("Escape");
       await page
@@ -80,7 +80,10 @@ for (const locale of ["en", "nl"] as const)
       await expect(details).toBeFocused();
       await page.setViewportSize({ width: 1099, height: 800 });
       await expect(side).toHaveCSS("position", "static");
-      await expect(nav).toHaveCSS("flex-direction", "row");
+      await expect(nav).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: message(locale, "owner_trip_sections"), exact: true }),
+      ).toBeVisible();
       await page.setViewportSize({ width: 1100, height: 800 });
       await expect(nav).toHaveCSS("flex-direction", "column");
       await page.evaluate(() => document.fonts.ready);

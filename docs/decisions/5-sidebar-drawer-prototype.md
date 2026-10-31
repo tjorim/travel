@@ -428,3 +428,68 @@ shadcn 4.22.1. Keep native links and the existing owned controls; importing the
 registry sidebar would add unwanted collapse persistence, shortcut and shell
 dependencies. The composition/reasons are recorded in ui-components.md and
 ui-maintenance.json. No new messages were needed.
+
+## Slice 3 result
+
+Implemented against origin/main 3bca958 (slices 1, 2 and 4 merged). Below
+1100 CSS px one localized “Trip sections” / “Reisonderdelen” trigger opens a
+Base UI Dialog left sheet. A localized Title, visible unbroken Close and six
+native route links replace the horizontal bar. Targets are at least 44px;
+the selected link retains aria-current=page. There is no swipe-only action.
+The desktop sidebar retains slice 2's styles and 224px geometry.
+
+Focus policy: initial focus uses Base UI's first focusable control (Close).
+Escape, outside press and Close return to the trigger. A successful same-tab
+section selection closes after the router updates, then focuses the stable,
+localized section h2 (tabIndex=-1), including selecting the current section.
+This announces the destination without changing scroll/history for unrelated
+Back/Forward navigation. Modified clicks retain normal browser behavior.
+Crossing 1100 closes without navigation and returns focus to the now-visible
+current sidebar link; the section heading is its fallback. No drawer history
+entries, fragment state, cookie state or keyboard shortcuts are introduced.
+
+Only the navigation subtree changes presentation. TripEditor, Section/managers,
+WorkspaceSearch and CaptureProvider retain their prior ownership. Modal editors
+block the trigger; dirty inputs retain DOM identity and values during resizing
+and locale changes. Record guard / deferred-save behavior remains owned by
+RecordDialog. Search and capture remain outside the drawer; the open modal
+intentionally blocks background capture.
+
+Same synthetic fixtures (24 updates / 32 tasks and empty variants), English/light
+and Dutch/dark, four physical sizes and real Chromium 125%/150% zoom using the
+existing extension's chrome.tabs.setZoom plus getZoom readback for every row.
+All 32 readbacks match; no page-wide overflow. Rounded Tasks top × zoom at scroll
+zero; empty/dense agree and ranges span locales:
+
+| Size | Zoom | Slice 2 y | Slice 3 y |
+| --- | --- | --- | --- |
+| 1366×768 | 125% | 620 | 629 |
+| 1366×768 | 150% | 745–790 | 756–801 |
+| 1280×800 | 125% | 620 | 629 |
+| 1280×800 | 150% | 745–790 | 756–801 |
+| 1920×1080 | 125% | 380 | 380 |
+| 1920×1080 | 150% | 457 | 457 |
+| 390×844 | 125% | 1005 | 1014 |
+| 390×844 | 150% | 1329–1356 | 1340–1367 |
+
+The named trigger adds roughly 9–11 rendered pixels versus horizontal links;
+phone content still begins below the fold. The navigation gain is eliminating
+horizontal section scrolling, not a claim of first-screen phone content.
+Evidence, scripts, raw geometry/readbacks and PNGs remain outside Git at
+/tmp/travel-slice-3/. Reviewed narrow Dutch/dark at real 150%: full title reflows
+at 260 CSS pixels; capture remains above the app bar.
+
+Manual checks still required on real mobile hardware: virtual keyboard with
+capture/editor open, touch scrolling, safe-area insets and landscape. Screen
+reader checks still required: modal announcement/trap, rapid navigation with
+assistive technology and section-heading announcement after route selection.
+These remain tracked by #5's slice 5; desktop Chromium/axe does not prove them.
+
+Additional phone real-zoom probes cover all eight empty/dense × locale/theme-pair
+× zoom combinations: open drawer geometry fits effective 312/260px widths with no
+page overflow; rapid Tab/Shift+Tab remains inside and Escape returns to the
+trigger. Close remains one unbroken word. At 150% the capture target is 44px high,
+bottom 482.67 against a 562.67px CSS viewport, matching the prototype's 80px
+clearance. Chromium screenshots of fixed elements after scroll at real zoom
+can offset their raster position; geometry was checked directly and open-sheet
+captures additionally reset document scroll to zero.

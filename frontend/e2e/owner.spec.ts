@@ -148,11 +148,13 @@ test("the workspace header states publication and keeps the tabs reachable on a 
   await page.setViewportSize({ width: 360, height: 740 });
   await open(page, "/admin/trips/trip-active", "en", "light");
   await expect(page.getByText("Public page live")).toBeVisible();
+  await page.getByRole("button", { name: "Trip sections", exact: true }).click();
   const tabs = page.getByRole("navigation", { name: "Trip sections" });
   await expect(tabs.getByRole("link", { name: "Overview" })).toHaveAttribute(
     "aria-current",
     "page",
   );
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   // The bottom bar and the capture button are both in view and do not overlap.
   const bar = await page.getByRole("navigation", { name: "App navigation" }).boundingBox();
   const capture = await page.getByRole("button", { name: /Capture/ }).boundingBox();

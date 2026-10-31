@@ -177,7 +177,15 @@
       ],
       "registry": null,
       "origin": "local",
-      "reason": "CSS-only trip-local sidebar composition: one set of native router links, stable content/editors, no collapse cookies, shortcut, icon rail or global shell. Registry sidebar includes those unneeded behaviors; Base UI navigation-menu supplies flyouts rather than direct route links.",
+      "reason": "Trip-local sticky desktop sidebar with native route links and stable content/editors. Narrow presentation is owned separately by WorkspaceNavigation; no collapse cookies, shortcut, icon rail or global shell.",
+      "reviewedAt": null,
+      "reviewNote": null
+    },
+    "WorkspaceNavigation": {
+      "files": ["src/trips/WorkspaceNavigation.tsx"],
+      "registry": null,
+      "origin": "local",
+      "reason": "Trip-local Dialog left sheet via owned adapter; native route links and no gesture, cookie, shortcut or editor ownership. Registry Sheet styling is replaced by Travel tokens; Base UI Dialog owns modal focus and dismissal.",
       "reviewedAt": null,
       "reviewNote": null
     }
