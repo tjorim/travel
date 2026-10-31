@@ -1,6 +1,7 @@
 """One endpoint sets who receives any shareable record."""
 
-from typing import Annotated
+from collections.abc import Iterable
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -10,7 +11,7 @@ from ..audit import delivering_audiences, record_visibility_change
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, service_exception
-from ..models import Visibility
+from ..models import Trip, Visibility
 from ..schemas import Identifier, ShareScopeKind, VisibilityUpdate
 from .trips import owned_trip
 
@@ -35,25 +36,44 @@ def put_visibility(
     from every scope that listed it.
     """
     trip = owned_trip(session, trip_id, subject)
-    existing = find_record(trip, kind.value, record_id)
-    before = existing.visibility if existing is not None else Visibility.PRIVATE
-    before_receivers = (
-        receivers(kind.value, existing, delivering_audiences(session, trip.id)) if existing is not None else set()
-    )
-    try:
-        record = set_visibility(trip, kind.value, record_id, payload.visibility)
-    except ValueError as error:
-        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+    record = choose_visibility(session, trip, subject, kind.value, record_id, payload.visibility)
     if record is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found", code="not_found")
-    record_visibility_change(
-        session,
-        trip_id=trip.id,
-        actor_subject=subject,
-        kind=kind.value,
-        record=record,
-        before=before,
-        before_receivers=before_receivers,
-    )
     session.commit()
     return VisibilityUpdate(visibility=record.visibility)
+
+
+def choose_visibility(
+    session: Session, trip: Trip, subject: str, kind: str, record_id: str, visibility: Visibility
+) -> Any | None:
+    """Apply the choice and record the change in the sharing history, or return ``None`` for an unknown record.
+
+    The caller commits. Merging locations or areas uses it to make a moved record
+    private first, so that choice is audited and withdraws the record from every
+    scope exactly like choosing it here."""
+    existing = find_record(trip, kind, record_id)
+    before = existing.visibility if existing is not None else Visibility.PRIVATE
+    before_receivers = (
+        receivers(kind, existing, delivering_audiences(session, trip.id)) if existing is not None else set()
+    )
+    try:
+        record = set_visibility(trip, kind, record_id, visibility)
+    except ValueError as error:
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+    if record is not None:
+        record_visibility_change(
+            session,
+            trip_id=trip.id,
+            actor_subject=subject,
+            kind=kind,
+            record=record,
+            before=before,
+            before_receivers=before_receivers,
+        )
+    return record
+
+
+def make_private(session: Session, trip: Trip, subject: str, chosen: Iterable[tuple[str, str]]) -> None:
+    """Make each ``(kind, id)`` record private through ``choose_visibility``; the caller commits."""
+    for kind, record_id in chosen:
+        choose_visibility(session, trip, subject, kind, record_id, Visibility.PRIVATE)

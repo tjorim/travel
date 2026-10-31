@@ -302,6 +302,13 @@ class LocationUpdate(InputModel):
         return self
 
 
+class MergeRecordRef(InputModel):
+    """One stay, visit, route or update a merge would show to more visitors, named by kind and id."""
+
+    kind: Literal["stay", "visit", "route", "travel_update"]
+    id: Identifier = Field(min_length=1, max_length=32)
+
+
 class MergeRequest(InputModel):
     """Fold duplicate locations or areas into ``keep_id``. Without ``confirm`` it only previews."""
 
@@ -317,17 +324,48 @@ class MergeRequest(InputModel):
             "a confirmed merge is refused with 409 and nothing changes. Not stored."
         ),
     )
+    make_private: list[MergeRecordRef] = Field(
+        default_factory=list,
+        max_length=500,
+        description=(
+            "Stays, visits, routes and updates the preview lists as newly shown (`widened_records`) that the merge "
+            "makes private first, so they follow the merge hidden from every audience instead of showing more. "
+            "Each is an explicit choice: a record the preview does not list is refused with 409 and nothing changes. "
+            "A chosen record no longer needs confirm_widening. Making it private also removes it from custom scopes."
+        ),
+    )
 
 
-class MergeWidening(BaseModel):
-    """A live audience that newly reads the kept record, and how many moved records show it to them."""
+class MergeAudience(BaseModel):
+    """A live audience of the trip: the public page or one active share link."""
 
     audience: str = Field(description="`public` or `link:<id>`.")
     label: str | None = Field(description="The share link's label; none for the public page.")
+
+
+class MergeWidening(MergeAudience):
+    """A live audience that newly reads the kept record, and how many moved records show it to them."""
+
     stays: int = 0
     visits: int = 0
     routes: int = 0
     travel_updates: int = 0
+
+
+class MergeWidenedRecord(BaseModel):
+    """A moved record that newly reaches an audience, and what making it private would do instead."""
+
+    kind: Literal["stay", "visit", "route", "travel_update"]
+    id: str
+    label: str | None = Field(description="The record's own title, name or property, when it has one.")
+    starts_on: date | None = Field(description="Its start date, to tell records of one kind apart.")
+    visibility: Literal["everyone", "custom"]
+    widened_for: list[MergeAudience] = Field(description="The audiences that newly read the kept place through it.")
+    hides_from: list[MergeAudience] = Field(
+        description="Audiences that read it today and lose it entirely when it is made private."
+    )
+    custom_picks: int = Field(description="Custom scopes listing it; making it private removes it from them for good.")
+    make_private: bool = Field(description="Whether this request chose to make it private first.")
 
 
 class LocationMergeDuplicate(BaseModel):
@@ -347,6 +385,7 @@ class LocationMergeDuplicate(BaseModel):
     # Live audiences that receive the kept location but not this duplicate, so
     # the moved records start to show them the kept place (see ``confirm_widening``).
     widened: list[MergeWidening] = []
+    widened_records: list[MergeWidenedRecord] = []
 
 
 class LocationMergeResult(BaseModel):
@@ -369,6 +408,7 @@ class AreaMergeDuplicate(BaseModel):
     # Live audiences that receive the kept area but not this duplicate, so the
     # moved records start to show them the kept area's rounded point.
     widened: list[MergeWidening] = []
+    widened_records: list[MergeWidenedRecord] = []
 
 
 class AreaMergeResult(BaseModel):
