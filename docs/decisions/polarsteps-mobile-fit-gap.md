@@ -94,6 +94,7 @@ are outside this documentation-only change. Existing A1–A11 retain their order
 
 | # | Feature | Polarsteps phone behaviour | Travel today | Recommendation |
 |---|---|---|---|---|
+| M0 | Compact phone header, retain Capture FAB | The native trip puts its title and floating actions over the map, with Plan/Track at the bottom (P2). | The phone workspace stacks locale/theme preferences, Account, breadcrumb, trip status/title/dates, Trip details, section trigger and Jump to before the section content (T1; `frontend/src/trips/WorkspaceHeader.tsx`, `frontend/src/pages/TripWorkspace.tsx`). | **Owner direction, 2026-10-31: the header is too big; retain the Capture FAB.** Reduce persistent header height, move secondary preferences/actions behind an accessible menu or disclosure, and keep the full trip title and current section identifiable. Check FAB overlap with content, bottom navigation and the soft keyboard. S–M; coordinate with existing layout issue #5 and track here in #94. Exact composition still needs review; no application change in this analysis. |
 | M1 | Readable sharing review on a narrow phone | Trip privacy is a dedicated three-choice sheet: Only me, Followers, Everyone, with a sentence explaining the selected audience (P2). This is trip-level privacy, not evidence of equivalent per-record control. | In Dutch/dark on the phone, visibility-group headings such as Reisupdates and Gebieden wrapped one letter per line beside their counts (T1). Other scope groups lower down wrapped normally. See `frontend/src/trips/PublicationManager.tsx`, `frontend/src/trips/SectionAccordion.tsx` and Sharing compositions. The review remains functionally deeper than Polarsteps (C1/C3), but hard to scan. | **First mobile correction, S.** Give group titles adequate width or stack their summaries; verify 320–430 px, both locales/themes, while retaining audience checks. No privacy decision; child work under #94. Do not replace per-item scopes with a trip-wide switch. |
 | M2 | Short capture path and legible date | Empty trip says Add your first step; the flow chooses location/date/time, then text/media. Save is in the editor header and offers Publish step or Save as a draft (P2/P3). | Capture opens in one tap and defaults to private. On this phone its safety explanation, Markdown tools, photo links and optional location push Save several scrolls down; the date field visibly clipped the year (T1). `frontend/src/trips/CaptureDialog.tsx`. | **Active-trip priority, S–M.** Keep title/notes and the save state close together, reveal optional details progressively, preserve draft/focus and fit the full date. Keep the private/public explanation discoverable. No new media or GPS work; no privacy decision. Track under #94. |
 | M3 | Prove installed/offline behaviour on a secure phone origin | Already-installed native app; an offline draft can be written, saved and reopened (P3). No evidence here that it syncs automatically. | Local draft feedback was visible and an online Capture save succeeded (T1). Explicit offline copies exist in `frontend/src/offline/`; `frontend/public/service-worker.js` caches shell and fetched hashed assets, not arbitrary owner API responses (C). LAN HTTP prevented a fair installation/offline lifecycle test. | **Verification follow-up, S; authoring remains A4/L.** Test a locally served production build on a secure phone origin: install, reopen, pin/read/remove copies, offline draft/reconnect and sign-out cleanup. No new infrastructure requirement established. Keep D2 unanswered until this is distinguished from an outbox. |
@@ -131,6 +132,14 @@ a white draggable sheet and a large bottom Plan/Track toggle (P2). Its empty
 story has one Add action. Travel uses paper/green cards, persistent bottom app
 navigation, a floating Capture button and a six-section drawer (T1). It feels
 like a private workspace rather than a social profile. Retain that distinction.
+
+**Owner feedback, 2026-10-31:** the phone header is too big, while the Capture
+floating action button (FAB) is a good direction. Treat a compact header with
+the FAB retained as the preferred direction (M0), not as a reason to remove
+quick capture. The inspected header spends much of the first screen on
+preferences and trip context before reaching useful section content. Move
+secondary controls out of the persistent stack; preserve accessible access to
+them, the full title and the current section. No exact layout has been approved.
 
 The first pass's wide-screen “map beside story” equivalence does **not** apply
 at phone width: the inspected Travel preview stacks the map before the story.
@@ -188,8 +197,10 @@ reported separately. Rows are **not equivalent end-to-end benchmarks**.
 
 ## Recommended roadmap
 
-1. **M1: repair narrow Sharing review and audit small targets (S).** Existing
-   scopes stay intact. It supports laptop preparation followed by phone review.
+1. **M0/M1: compact the phone header, keep the Capture FAB, and repair narrow
+   Sharing review (S–M).** Coordinate header work with #5; audit small targets
+   and FAB overlap. Existing scopes stay intact. This supports laptop
+   preparation followed by phone review.
 2. **M2: compact Capture and fit its date (S–M).** Keep draft recovery, safe
    dismissal and private notes; make the save state/action easy to reach.
 3. **M3: secure-origin phone acceptance pass (S).** Install/relaunch, actual
