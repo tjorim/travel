@@ -5,9 +5,10 @@ from threading import Lock
 from typing import Annotated
 
 import jwt
-from fastapi import Security, status
+from fastapi import Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from .authlimit import failed_authentication, refuse_throttled_client
 from .config import settings
 from .errors import ApiException
 
@@ -78,11 +79,15 @@ def signing_keys(url: str) -> CachedSigningKeys:
         return _cached_signing_keys(url)
 
 
-def current_subject(credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)]) -> str:
+def current_subject(
+    request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)]
+) -> str:
     if credentials is None:
         raise ApiException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="A bearer token is required", code="unauthorized"
         )
+    # Refuse a client over the failed-attempt threshold before any token is parsed or verified (#46).
+    refuse_throttled_client(request)
     if settings.dev_auth_bypass_token and hmac.compare_digest(credentials.credentials, settings.dev_auth_bypass_token):
         return DEV_BYPASS_SUBJECT
     if not settings.oidc_issuer_url or not settings.oidc_jwks_url:
@@ -111,6 +116,8 @@ def current_subject(credentials: Annotated[HTTPAuthorizationCredentials | None, 
             code="oidc_validation_is_not_configured",
         ) from error
     except jwt.PyJWTError as error:
+        # Only a refused token counts; the outage above and the unconfigured 503 never do.
+        failed_authentication.record_failure(request)
         raise ApiException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token", code="unauthorized"
         ) from error

@@ -99,6 +99,11 @@ class Settings(BaseSettings):
     rate_limit_default: str = "300/minute"
     rate_limit_shared: str = "120/minute"
 
+    # Failed bearer-token verifications one client may make on the owner API and the MCP route before it is refused
+    # with 429 until the window ends (#46). Counters are in-process (see app.authlimit).
+    auth_failure_limit: int = Field(default=20, ge=1)
+    auth_failure_window_seconds: int = Field(default=60, ge=1)
+
     model_config = SettingsConfigDict(env_prefix="TRAVEL_", case_sensitive=False)
 
     @field_validator("rate_limit_default", "rate_limit_shared")

@@ -6,6 +6,7 @@ import pytest
 # deliberately refuses the public development share-link secret.
 os.environ["TRAVEL_ENVIRONMENT"] = "development"
 
+from app.authlimit import failed_authentication  # noqa: E402
 from app.ratelimit import limiter  # noqa: E402
 
 
@@ -18,3 +19,13 @@ def _delivery_rate_limit_off():
     yield
     limiter.enabled = False
     limiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def _failed_authentication_limit_off():
+    # Tests that forge many tokens from one address would otherwise trip the limit; tests/test_auth_limit.py enables it.
+    failed_authentication.enabled = False
+    failed_authentication.reset()
+    yield
+    failed_authentication.enabled = False
+    failed_authentication.reset()

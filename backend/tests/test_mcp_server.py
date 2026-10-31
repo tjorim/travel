@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx2
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -21,10 +22,12 @@ from sqlalchemy.pool import StaticPool
 
 from app import main as app_main
 from app import schemas
+from app.authlimit import failed_authentication
 from app.config import Settings, settings
 from app.database import Base
 from app.mcp_server import (
     MCP_TOOL_CAPABILITIES,
+    OutageAwareJWTVerifier,
     ToolFailureMiddleware,
     TravelMcpBackend,
     _unauthorized_reason,
@@ -342,6 +345,7 @@ def mcp_resource(monkeypatch: pytest.MonkeyPatch) -> tuple[FastAPI, RSAKeyPair]:
     # Only the key lookup is replaced; issuer, audience, expiry and scope checks are the production verifier's.
     server.auth.token_verifier.public_key = pair.public_key
     application = FastAPI(lifespan=http_app.lifespan)
+    application.state.mcp_server = server
     mount_mcp(application, server, http_app)
     return application, pair
 
@@ -412,6 +416,119 @@ def test_mcp_rejects_a_token_signed_by_another_key(mcp_resource: tuple[FastAPI, 
         refused = client.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate()))
 
     assert refused.status_code == 401
+
+
+MCP_LIMIT = 3
+
+
+@pytest.fixture
+def mcp_limited(
+    mcp_resource: tuple[FastAPI, RSAKeyPair], monkeypatch: pytest.MonkeyPatch
+) -> tuple[FastAPI, RSAKeyPair]:
+    failed_authentication.enabled = True
+    monkeypatch.setattr(settings, "auth_failure_limit", MCP_LIMIT)
+    monkeypatch.setattr(settings, "auth_failure_window_seconds", 60)
+    return mcp_resource
+
+
+def _mcp_client(application: FastAPI, host: str = "8.8.8.8", **headers: str) -> TestClient:
+    return TestClient(application, base_url="https://travel.example.test", client=(host, 50000), headers=headers)
+
+
+def _forge_until_limited(visitor: TestClient) -> None:
+    for _ in range(MCP_LIMIT):
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate())).status_code == 401
+
+
+def test_mcp_refuses_a_client_after_repeated_forged_tokens_without_echoing_a_token(
+    mcp_limited: tuple[FastAPI, RSAKeyPair],
+) -> None:
+    application, pair = mcp_limited
+    with _mcp_client(application) as visitor:
+        _forge_until_limited(visitor)
+        headers = _bearer(pair)
+        limited = visitor.post("/mcp/", json=WHOAMI_CALL, headers=headers)
+
+    assert limited.status_code == 429
+    assert 1 <= int(limited.headers["retry-after"]) <= 60
+    assert limited.headers["cache-control"] == "no-store"
+    assert limited.json()["errors"] == [{"code": "rate_limited", "params": {}, "path": []}]
+    assert headers["Authorization"].removeprefix("Bearer ") not in limited.text
+
+
+def test_mcp_counts_expired_and_wrong_audience_tokens_but_not_successes_or_missing_headers(
+    mcp_limited: tuple[FastAPI, RSAKeyPair],
+) -> None:
+    application, pair = mcp_limited
+    with _mcp_client(application) as visitor:
+        for _ in range(MCP_LIMIT * 3):
+            assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair)).status_code == 200
+            assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=MCP_HEADERS).status_code == 401
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair, expires_in_seconds=-60)).status_code == 401
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair, audience="travel-api")).status_code == 401
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate())).status_code == 401
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair)).status_code == 429
+
+
+def test_mcp_identity_provider_outage_is_never_counted(
+    mcp_limited: tuple[FastAPI, RSAKeyPair],
+) -> None:
+    application, pair = mcp_limited
+    verifier = _mcp_verifier(application)
+    verifier.public_key = None
+    verifier.jwks_uri = f"{ISSUER}/protocol/openid-connect/certs"
+    verifier._http_client = httpx2.AsyncClient(transport=httpx2.MockTransport(_unreachable))
+    with _mcp_client(application) as visitor:
+        for _ in range(MCP_LIMIT * 3):
+            # The first request reaches the dead endpoint; the rest hit the refresh cool-down that follows it.
+            assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair)).status_code == 401
+        verifier.public_key = pair.public_key
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair)).status_code == 200
+
+
+def _unreachable(request: httpx2.Request) -> httpx2.Response:
+    raise httpx2.ConnectError("synthetic outage", request=request)
+
+
+def _mcp_verifier(application: FastAPI) -> OutageAwareJWTVerifier:
+    verifier = application.state.mcp_server.auth.token_verifier
+    assert isinstance(verifier, OutageAwareJWTVerifier)
+    return verifier
+
+
+def test_mcp_clients_are_counted_by_trusted_proxy_address_and_ipv6_prefix(
+    mcp_limited: tuple[FastAPI, RSAKeyPair],
+) -> None:
+    application, _ = mcp_limited
+    with _mcp_client(application, "10.0.0.2", **{"X-Real-IP": "198.51.100.7"}) as proxied:
+        _forge_until_limited(proxied)
+        assert proxied.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate())).status_code == 429
+    with _mcp_client(application, "10.0.0.2", **{"X-Real-IP": "198.51.100.8"}) as other:
+        assert other.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate())).status_code == 401
+    # A public peer's X-Real-IP is ignored, so it cannot name another bucket.
+    with _mcp_client(application, "8.8.4.4", **{"X-Real-IP": "198.51.100.8"}) as public:
+        _forge_until_limited(public)
+    with _mcp_client(application, "8.8.4.4", **{"X-Real-IP": "198.51.100.9"}) as spoofing:
+        assert spoofing.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate())).status_code == 429
+    with _mcp_client(application, "2001:db8:1:2::1") as subscriber:
+        _forge_until_limited(subscriber)
+    with _mcp_client(application, "2001:db8:1:2:ffff::9") as same_prefix:
+        assert same_prefix.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate())).status_code == 429
+    with _mcp_client(application, "2001:db8:1:3::1") as other_prefix:
+        assert other_prefix.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate())).status_code == 401
+
+
+def test_mcp_client_recovers_when_its_window_ends(
+    mcp_limited: tuple[FastAPI, RSAKeyPair], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = [1000.0]
+    monkeypatch.setattr("app.authlimit.time.monotonic", lambda: now[0])
+    application, pair = mcp_limited
+    with _mcp_client(application) as visitor:
+        _forge_until_limited(visitor)
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair)).status_code == 429
+        now[0] += 61
+        assert visitor.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(pair)).status_code == 200
 
 
 def test_a_rejected_mcp_token_leaves_no_audit_row(mcp_resource: tuple[FastAPI, RSAKeyPair]) -> None:

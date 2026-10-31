@@ -179,6 +179,16 @@ indexing behavior.
 Public projection responses also use `Cache-Control: no-store` so the next
 browser load checks the current publication state and scope.
 
+### Failed authentication limit
+
+A client that sends 20 bearer tokens that fail verification within 60 seconds
+(`TRAVEL_AUTH_FAILURE_LIMIT`, `TRAVEL_AUTH_FAILURE_WINDOW_SECONDS`) is refused
+with `429`, `rate_limited` and `Retry-After` on the owner API and the MCP route
+until its window ends, before its token is parsed. Successful requests, missing
+tokens and identity-provider outages never count. The client key, worker-local
+counters and bounded memory are described in
+[ADR 46](../docs/decisions/46-failed-authentication-limit.md) (#46).
+
 ### Visitor rate limits
 
 The anonymous delivery routes are rate limited per client with `slowapi`
@@ -362,9 +372,11 @@ Production credential injection and key backup are tracked in
 | `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |
 | `TRAVEL_PUBLIC_APP_URL` | Visitor-facing Travel PWA origin used by MCP to return a complete `/share/<capability>` URL; defaults to `http://localhost:5173` for local Vite development. Set this to the deployed Travel origin in production. |
 | `TRAVEL_SHARE_LINK_SECRET` | Keys the one-way verifier stored for each unlisted share-link token. The public default is rejected unless `TRAVEL_ENVIRONMENT=development`; set a stable non-default secret in production. The raw token is also stored for owner recovery, so database and backup readers can recover it; see [ADR 20](../docs/decisions/20-share-link-token-storage.md). |
-| `TRAVEL_RATE_LIMIT_ENABLED` | Per-client limits on the anonymous `/public/*` and `/shared/*` routes (default `true`). See "Visitor rate limits". |
+| `TRAVEL_RATE_LIMIT_ENABLED` | Per-client limits on the anonymous `/public/*` and `/shared/*` routes and on failed owner/MCP authentication (default `true`). See "Visitor rate limits". |
 | `TRAVEL_RATE_LIMIT_DEFAULT` | Limit shared by all `/public/*` routes of one client, in `limits` notation (default `300/minute`; `30/minute;300/hour` combines windows). |
 | `TRAVEL_RATE_LIMIT_SHARED` | Stricter limit shared by all `/shared/{token}*` routes of one client (default `120/minute`), which bounds probing of unlisted tokens. |
+| `TRAVEL_AUTH_FAILURE_LIMIT` | Failed bearer-token verifications one client may make per window on the owner API and MCP route before a `429` (default `20`). Also disabled by `TRAVEL_RATE_LIMIT_ENABLED=false`. See "Failed authentication limit". |
+| `TRAVEL_AUTH_FAILURE_WINDOW_SECONDS` | Length of that window, and the longest a throttled client waits (default `60`). |
 | `TRAVEL_MEDIA_STORAGE_ROOT` | Filesystem root for the local object-storage adapter; production points this at the backed-up VPS media volume, never Git. |
 | `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` | Refuses a direct upload or a single imported item larger than this (default 200 MiB). |
 | `TRAVEL_GOOGLE_OAUTH_CLIENT_ID`, `TRAVEL_GOOGLE_OAUTH_CLIENT_SECRET` | Google web OAuth credentials for Photos Picker. Both required for availability. |
