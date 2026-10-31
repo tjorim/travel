@@ -7,7 +7,6 @@ All notable changes to the travel hub are documented here.
 - Add a sourced fit-gap analysis of Travel against Polarsteps (gaps we want, gaps by design, where Travel is ahead), a short roadmap and open product/privacy questions in `docs/decisions/polarsteps-fit-gap.md`; no behaviour changes (Refs #94).
 - Add enter and exit transitions to dialogs, the section drawer, popovers and suggestion lists, hover and press feedback on buttons, and stop forcing map camera moves when the visitor asks for reduced motion, with end-to-end checks for both motion settings (Refs #94).
 - Put the visitor map in a sticky column beside the story on wide screens, ring and ease to the place of the update being read, and pin each shared update's approved photo at its shared area (Refs #94).
-
 - Lead each visitor update with its photos in a wide strip that scrolls and snaps, put the text after them, and show "N days later" between updates dated to the day (Refs #94).
 - Add a nights stepper to planned and idea stays and a "Start with where you are going" card to an empty trip's overview (Refs #94).
 
