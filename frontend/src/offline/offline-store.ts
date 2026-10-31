@@ -299,6 +299,18 @@ export async function findPinnedCopy(
   return match ? toSummary(match) : null;
 }
 
+const changeListeners = new Set<() => void>();
+
+/** Subscribes to any change of the stored offline copies, from this or another mounted consumer. */
+export function subscribeOfflineChanges(listener: () => void): () => void {
+  changeListeners.add(listener);
+  return () => changeListeners.delete(listener);
+}
+
+export function notifyOfflineChanged(): void {
+  for (const listener of changeListeners) listener();
+}
+
 export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummary> {
   const db = await openDb();
   const generation = await getGeneration(db, input.subject);
@@ -329,7 +341,11 @@ export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummar
     leaseExpiresAt: now + OFFLINE_LEASE_MS,
     schemaVersion: OFFLINE_SCHEMA_VERSION,
   };
-  await guardedPut(db, COPIES_STORE, input.subject, generation, record);
+  try {
+    await guardedPut(db, COPIES_STORE, input.subject, generation, record);
+  } finally {
+    notifyOfflineChanged();
+  }
   return toSummary(record);
 }
 
@@ -350,13 +366,21 @@ export async function listOfflineCopies(subject: string): Promise<OfflineCopySum
 
 export async function removeOfflineCopy(id: string): Promise<void> {
   const db = await openDb();
-  await deleteCopy(db, id);
+  try {
+    await deleteCopy(db, id);
+  } finally {
+    notifyOfflineChanged();
+  }
 }
 
 export async function clearOfflineCopies(subject: string): Promise<void> {
   const db = await openDb();
   const records = await getCopiesForSubject(db, subject);
-  for (const record of records) await deleteCopy(db, record.id);
+  try {
+    for (const record of records) await deleteCopy(db, record.id);
+  } finally {
+    notifyOfflineChanged();
+  }
 }
 
 export async function wipeOfflineData(subject: string): Promise<void> {
@@ -375,7 +399,11 @@ export async function wipeOfflineData(subject: string): Promise<void> {
       current.continue();
     }
   };
-  await done;
+  try {
+    await done;
+  } finally {
+    notifyOfflineChanged();
+  }
 }
 
 export async function openOfflineCopy(subject: string, id: string): Promise<Blob> {
@@ -470,5 +498,6 @@ export async function revalidateOfflineCopies(
       // Offline or a transient network failure: leave the copy as-is until the next reconnect.
     }
   }
+  if (records.length > 0) notifyOfflineChanged();
   return { checked: records.length, removed };
 }
