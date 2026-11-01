@@ -115,6 +115,7 @@
   --color-travel-map-cyan: #3aa6b9;
   --color-travel-map-olive: #7a8f3a;
   --color-travel-map-grey: #9aa5b1;
+  --color-travel-map-building: #d9d3c5;
   --color-travel-map-mint: #6ee7c7;
   --color-travel-map-yellow: #ffd166;
   --shadow-travel-card: 0 3px 12px #19342d08;
@@ -173,6 +174,7 @@
   --color-travel-map-cyan: #3aa6b9;
   --color-travel-map-olive: #7a8f3a;
   --color-travel-map-grey: #9aa5b1;
+  --color-travel-map-building: #d9d3c5;
   --color-travel-map-mint: #6ee7c7;
   --color-travel-map-yellow: #ffd166;
   color-scheme: dark;
