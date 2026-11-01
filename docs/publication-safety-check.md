@@ -1,7 +1,8 @@
 # Publication safety check
 
 Run this short review before publishing a trip's public view, activating or
-rotating a named share link, or widening an already-live scope. The server
+rotating a named share link or collection link, adding a trip to a live
+collection, or widening an already-live scope. The server
 enforces the scope; this check is about choosing it deliberately.
 
 ## Before publishing or activating
@@ -55,12 +56,38 @@ enforces the scope; this check is about choosing it deliberately.
 - [ ] For a named link, choose the shortest sensible lifetime and send the
       capability only through a private channel.
 
+## Before activating or changing a collection link
+
+A collection link opens several trips with one URL, so a mistake reaches every
+member. Complete the list above for **each member trip at its own member
+scope**, and also:
+
+- [ ] Preview every member as a visitor would see it. A member scope is
+      separate from the trip's own links, so do not assume a member shows what
+      that trip's "Family" link shows.
+- [ ] Read the collection title (if you set one) and each member's title,
+      summary and dates in the index as a stranger would. The index shows them
+      only where the member scope allows; hide what the audience does not need.
+- [ ] Remember that `everyone` records reach every member and cannot be
+      narrowed per member. If a record must not reach the collection, make it
+      "Privé" or "Aangepast" instead.
+- [ ] Add only the trips this audience should know exist. The index names every
+      member, so adding a trip tells the audience that the trip exists.
+- [ ] A collection link is one capability: anyone who has it sees every member.
+      Choose the shortest sensible lifetime and send it only through a private
+      channel, as for a named link. Never paste a per-trip link into a
+      collection or reuse one as the other.
+- [ ] After removing a trip or revoking, expect the member pages to stop
+      immediately, but not copies a recipient already holds.
+
 ## If something was shared by mistake
 
 1. Set the record back to "Privé" (or remove it from the scope), or unpublish the public view or
    revoke the link. Views are rendered live, so the next request no longer
    receives it; public and unlisted responses are sent `no-store`.
-2. Rotate a named link if its capability itself reached the wrong people.
+2. Rotate a named link or collection link if its capability itself reached the
+   wrong people. To stop one trip only, remove it from the collection; to stop
+   everything, revoke the collection.
 3. If a public page was indexed, request removal of its URL in the relevant
    search-engine webmaster tools.
 4. Treat any exposed booking code, ticket or document as compromised and

@@ -25,6 +25,7 @@ The service evaluates every request as one of these audiences:
 | Owner | A valid owner session whose subject owns the trip/resource. | The canonical record and its private files, metadata, exact geometry and navigation. |
 | Public | None. | Only an active, deliberately published public projection. |
 | Unlisted link | A valid, unexpired, non-revoked capability. | Only that link's active, deliberately selected projection and field scope. |
+| Collection link | A valid, unexpired, non-revoked collection capability. | Only the member trips the owner added, each at its own member scope, plus an index of those members. |
 
 An unlisted link is a forwardable capability, not proof of who opened it. Its
 holder can forward it or save what it sees. The product calls it a **named
@@ -74,6 +75,87 @@ Publishing or withdrawing the public surface never changes canonical content,
 silently selects new items, or affects named links. Links are revoked or rotated
 individually. Saving a changed scope is a live update for the relevant active
 surface or link, so the owner must preview and review it carefully.
+
+## Collection links
+
+**Amended 2026-11-01 (#136).** A *collection link* is one owner-named capability
+that grants several trips at once. It exists because an owner sometimes wants
+to send one URL (for example to family) that opens a short index of trips
+instead of one URL per trip. It is a fourth way to reach a projection, not a
+new kind of data: everything a collection delivers is a trip projection that an
+unlisted link with the same scope would deliver.
+
+- **A collection is owner-wide.** It belongs to the authenticated subject, not
+  to a trip, and has an owner-only label, an optional visitor-facing title, a
+  lifecycle state (`draft`, `active`, `revoked` or `expired`), an optional
+  expiry, and members. The label is like a link label: it helps the owner tell
+  collections apart and is never delivered. The title is shared text, written
+  for visitors; without one the visitor page shows a generic translated heading.
+  It is checked like every other shared text in the safety check.
+- **Its capability is its own.** A collection has its own token, generated and
+  verified exactly as for a named link (at least 256 bits, keyed verifier,
+  stored so the owner can copy it again). It never reuses, derives from,
+  contains or reveals the token of any per-trip link, and no per-trip link
+  token opens a collection. Rotation, revocation, expiry (30 days by default,
+  90 at most, or an explicit no-expiry choice with the same warning) and "no
+  reactivation" follow the named-link rules above, and rotation keeps the
+  members and their scopes.
+- **A member is a `(trip, scope)` pair.** A trip is a member at most once per
+  collection, and the owner can add only trips they own. The *member* owns the
+  scope: it is a scope of the same shape and validated by the same rules as a
+  named link's scope, independent of that trip's own links and public page.
+  Saving a member scope is live for an active collection, like a link scope,
+  and the owner previews the member as a visitor would see it.
+- **How a scope maps per member.** The member scope selects the trip's title,
+  summary and date precision and lists the `custom` records the member
+  delivers. The record rules do not change: a record `private` reaches nobody;
+  `everyone` reaches every audience, including every collection member, and
+  cannot be narrowed for one member; `custom` reaches a member only if that
+  member's scope lists it. A collection therefore can show *less* than a trip's
+  own links by listing fewer records or hiding the title, summary or dates, but
+  it can never show more than the trip's records allow, and a scope still lists
+  only records on that trip. Withdrawing a record from a trip (leaving `custom`,
+  deletion) removes it from every member scope, like from every other scope.
+- **The index.** The collection response lists its active members and, for each,
+  only what the member scope allows: the trip title, summary, the dates at the
+  chosen precision, and the cover only where that member would deliver it. A
+  member whose scope hides all three still appears as a generic untitled entry
+  so the owner's choice to include it is honoured; the index carries no totals,
+  counts, names or hints about trips that are not members or about fields
+  not shared. Each entry's visitor path segment is a collection-local opaque
+  member ID, never the trip's own identifier, so a visitor cannot learn or
+  correlate a trip ID across collections.
+- **Trip pages.** Opening a member goes through the normal projection of that
+  trip at the member scope, with the same response protections as an unlisted
+  link: `Cache-Control: no-store, private`, `Referrer-Policy: no-referrer`,
+  `X-Robots-Tag: noindex, noarchive`, generic previews, and file and navigation
+  routes that re-check the collection state, the membership and the member scope
+  on every request. A member ID not in an active collection, or in another
+  collection, is indistinguishable from an unknown one.
+- **Stopping access.** Revoking or expiring the collection ends the index and
+  every member page at once. Removing a member ends only that trip's page and
+  leaves no residue in the index. Deleting a trip removes its memberships in
+  the same transaction. A collection holds no snapshot, so no copy needs
+  purging. Unpublishing a trip's public page does not affect a collection
+  (as it does not affect its named links): a member is reachable through the
+  collection's own state and membership alone, and the owner overview flags a
+  member that currently delivers nothing beyond the trip title so a forgotten
+  member can be removed.
+- **Not a new audience for owner data.** A collection grants no access to
+  documents, the owner's other trips, or any field outside the existing
+  allowlist. It does not authenticate its holder, create accounts, list
+  followers, or accept comments, and it cannot call owner API or MCP
+  operations or create another link.
+- **Audit.** Create, member add, member remove, member scope change, activate,
+  revoke, rotate and expiry are each recorded with the collection ID, the member
+  trip ID where one applies, the scope fingerprint (never the raw scope or
+  token), and an optional reason. These owner-only events follow the 24-month
+  retention below.
+- **Saved on this browser.** Opening a collection saves it in the same
+  device-local list as a named link, with the same four values: the token, the
+  delivered title (the collection title, or none), no summary, and the time of the
+  last visit. The notice and Forget controls are the same, and a `404` removes
+  it. Decision [103](103-live-browser-route-contract.md) lists the routes.
 
 ## Default resource policy
 
@@ -238,7 +320,7 @@ cannot withdraw a file, screenshot, screen
 recording, copied text, or browser cache already possessed by a recipient.
 The UI must say this plainly before activation and revocation.
 
-The audit log records link/projection IDs (not raw tokens), the scope in
+The audit log records link/projection/collection IDs (not raw tokens), the scope in
 effect at the time of the action, owner action, creation/activation/revocation/
 rotation/expiry timestamps, and an optional owner-entered reason. The owner-only link label and active URL are available in the
 owner-authenticated link-management view but are not copied into recipient-facing responses or
@@ -318,6 +400,12 @@ Issues implementing this policy must test at least these boundaries:
   objects, IDs, map/viewports, metadata, signed URLs, errors, counts or cache.
 - A link containing one selected hotel/city item cannot read any other stay,
   location, factory location, document, media original or navigation link.
+- A collection link returns only its own active members, each at its own scope.
+  Another owner's trip, a trip that is not a member, a removed member, the
+  private values of a member's unshared fields, and a per-trip link token never
+  appear in an index, trip page, file, navigation target, count or error.
+  Revoked, expired and rotated collections, removed members and deleted trips
+  are all denied like an unknown capability.
 - Revocation invalidates application sessions, signed URLs and application
   cache entries, while the UI honestly describes downloaded-copy limits.
 - Offline copies are opt-in, device/account scoped, encrypted where supported,
