@@ -737,12 +737,12 @@ it("renders the same scoped gallery in preview without requesting a visitor file
   );
   expect(
     visitor.container.querySelector(
-      'ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]',
+      'ol[aria-label="Reisupdates tijdlijn"] section[aria-label^="Media bij update"]',
     )?.textContent,
   ).toContain("Station");
   expect(
     preview.container.querySelector(
-      'ol[aria-label="Reisupdates tijdlijn"] section[aria-label="Media bij deze update"]',
+      'ol[aria-label="Reisupdates tijdlijn"] section[aria-label^="Media bij update"]',
     )?.textContent,
   ).toContain("Station");
   expect(preview.container.querySelector("img")?.getAttribute("src")).toBe("blob:owner-preview");

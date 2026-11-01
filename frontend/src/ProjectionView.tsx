@@ -836,7 +836,10 @@ function Updates({
                 <Gallery
                   items={media.filter((image) => image.update === item.id)}
                   fileUrl={fileUrl}
-                  title={m.visitor_update_media()}
+                  title={m.visitor_update_media_named({
+                    number: index + 1,
+                    title: text(item, "title") ?? m.visitor_update(),
+                  })}
                   heading={false}
                   strip
                 />
@@ -1129,7 +1132,7 @@ export function ProjectionView({
           choices={[
             { value: "story", label: m.visitor_story() },
             ...(hasMap ? [{ value: "map" as const, label: m.visitor_map() }] : []),
-            { value: "plan", label: m.visitor_plan() },
+            ...(detailSections > 0 ? [{ value: "plan" as const, label: m.visitor_plan() }] : []),
           ]}
         />
       </div>
@@ -1151,6 +1154,17 @@ export function ProjectionView({
             </section>
           )}
           {overview}
+          {looseMedia.length > 0 && (
+            <section className="travel-card" aria-label={m.visitor_gallery()}>
+              <h2 className="mb-4.5">{m.visitor_gallery()}</h2>
+              <Gallery
+                items={looseMedia}
+                fileUrl={fileUrl}
+                title={m.visitor_shared_photos()}
+                heading={false}
+              />
+            </section>
+          )}
         </div>
         {hasMap && (
           <div data-story-map="" className={cn(view !== "map" && "hidden min-[1100px]:block")}>
@@ -1175,17 +1189,6 @@ export function ProjectionView({
       <div
         className={cn("grid gap-travel-grid-gap", view !== "plan" && "hidden min-[1100px]:grid")}
       >
-        {looseMedia.length > 0 && (
-          <section className="travel-card" aria-label={m.visitor_gallery()}>
-            <h2 className="mb-4.5">{m.visitor_gallery()}</h2>
-            <Gallery
-              items={looseMedia}
-              fileUrl={fileUrl}
-              title={m.visitor_shared_photos()}
-              heading={false}
-            />
-          </section>
-        )}
         <div
           className={cn(
             "grid min-w-0 items-start gap-travel-grid-gap",

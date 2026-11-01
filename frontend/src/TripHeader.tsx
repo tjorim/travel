@@ -23,8 +23,8 @@ export type TripCover = {
 
 /**
  * The opening of a trip: its title, the dates and destinations the audience is authorized to see, and the
- * cover when it receives one. Without a cover, or when the image cannot load, the same text sits on a
- * quiet panel instead, so no audience ever sees an empty frame.
+ * cover when it receives one. Without a cover, or when the image cannot load, the text remains in place
+ * without an empty image frame.
  */
 export function TripHeader({
   title,

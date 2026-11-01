@@ -2126,5 +2126,6 @@
   "visitor_view": "View",
   "visitor_story": "Story",
   "visitor_map": "Map",
-  "visitor_plan": "Plan"
+  "visitor_plan": "Plan",
+  "visitor_update_media_named": "Media for update {number}: {title}"
 }
