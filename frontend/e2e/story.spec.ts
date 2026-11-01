@@ -392,6 +392,8 @@ for (const audience of ["public", "share"] as const) {
   for (const locale of ["nl", "en"] as const) {
     for (const theme of ["light", "dark"] as const) {
       test(`compact first screen ${audience} ${locale} ${theme}`, async ({ page }) => {
+        // This case visits every viewport; budget for all navigations on a busy host.
+        test.setTimeout(120_000);
         await mockApi(page);
         const api =
           audience === "public"

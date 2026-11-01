@@ -58,7 +58,7 @@ On 2026-11-01, interactions.json records both real-API detail shells:
 ArrowRight, Escape and focus return to the last viewed photo; 390 × 844
 Story/Map/Plan switching, touch tap and CDP touch swipe; deliberate blocking of
 tiles.openfreemap.org/styles/* with readable route-in-words fallback.
-These are browser-emulated touch events, not physical touch evidence.
+A separate 100-Tab traversal per shell at 1280 × 720 recorded visible focused targets with nonzero outlines, entering and leaving map controls without a trap (focus.json). These are browser-emulated touch events, not physical touch evidence.
 
 The initial A4 PDF exposed print controls and omitted inactive-tab content.
 Fixed with visitor-detail-scoped print styles: hide navigation, controls,

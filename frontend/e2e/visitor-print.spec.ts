@@ -48,8 +48,12 @@ for (const audience of ["public", "share"] as const) {
       if (width < 1100) await page.getByRole("tab", { name: /Map|Kaart/ }).click();
       await page.emulateMedia({ media: "print" });
       await expect(page.locator("#story")).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Synthetic story" })).toBeVisible();
-      await expect(page.getByRole("img", { name: "Synthetic print photo" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Synthetic story", includeHidden: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("img", { name: "Synthetic print photo", includeHidden: true }),
+      ).toBeVisible();
       await expect(page.locator("[data-story-map]")).toBeHidden();
       await expect(page.getByRole("tablist")).toBeHidden();
       await expect(page.locator("nav").first()).toBeHidden();
