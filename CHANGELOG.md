@@ -6,6 +6,8 @@ All notable changes to the travel hub are documented here.
 
 - Adopt the owned registry Badge for publication state and overview booking counts (#137).
 
+- Adopt the owned registry Toggle Group for the map's 3D terrain, Satellite and Globe switches; "Show whole trip" stays a plain button.
+
 - Adopt the owned registry Alert for shared form errors and owner/visitor state notices.
 
 - Share a slim visitor top bar across entry, detail, error and callback pages, and reuse its preferences panel in the owner Account menu.

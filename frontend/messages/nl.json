@@ -883,6 +883,7 @@
   "owner_3d_terrain_could_not_be_loaded_the_route_map_remains_available": "3D-terrein kon niet worden geladen. De routekaart blijft beschikbaar.",
   "owner_satellite_imagery_could_not_be_loaded_the_route_map_remains_available": "Satellietbeelden konden niet worden geladen. De routekaart blijft beschikbaar.",
   "owner_map": "Kaart",
+  "owner_map_view": "Kaartweergave",
   "owner_no_map_coordinates_are_available_for_this_trip_yet": "Voor deze reis zijn nog geen kaartcoördinaten beschikbaar.",
   "owner_trip_map": "Reiskaart",
   "owner_map_with_points_and_routes": "Kaart met punten en routes",

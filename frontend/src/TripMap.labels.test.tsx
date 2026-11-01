@@ -207,6 +207,10 @@ it("keeps the camera, selection and layer toggles when the theme changes", async
   expect(screen.getByRole("button", { name: "Base Camp" }).getAttribute("aria-pressed")).toBe(
     "true",
   );
+  const group = screen.getByRole("group", { name: "Kaartweergave" });
+  expect(group.getAttribute("data-slot")).toBe("toggle-group");
+  expect(group.contains(screen.getByRole("button", { name: /^Satelliet/ }))).toBe(true);
+  expect(group.contains(screen.getByRole("button", { name: "Hele reis tonen" }))).toBe(false);
 });
 
 it("starts over from the whole trip when the trip geometry changes", async () => {

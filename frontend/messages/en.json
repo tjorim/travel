@@ -883,6 +883,7 @@
   "owner_3d_terrain_could_not_be_loaded_the_route_map_remains_available": "3D terrain could not be loaded. The route map remains available.",
   "owner_satellite_imagery_could_not_be_loaded_the_route_map_remains_available": "Satellite imagery could not be loaded. The route map remains available.",
   "owner_map": "Map",
+  "owner_map_view": "Map view",
   "owner_no_map_coordinates_are_available_for_this_trip_yet": "No map coordinates are available for this trip yet.",
   "owner_trip_map": "Trip map",
   "owner_map_with_points_and_routes": "Map with points and routes",

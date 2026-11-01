@@ -4,6 +4,7 @@ import { useLocale } from "./locale";
 import { m } from "./paraglide/messages.js";
 import { themeColor, useTheme } from "./appearance";
 import { Button } from "@/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/ui/toggle-group";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import type { FeatureCollection, LineString, Point } from "geojson";
@@ -912,48 +913,26 @@ export function TripMap({
         <Button className="secondary compact" type="button" onClick={resetFocus}>
           {m.owner_show_whole_trip()}
         </Button>
-        <Button
-          className={cn(
-            "secondary compact",
-            terrain &&
-              "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
+        <ToggleGroup
+          multiple
+          aria-label={m.owner_map_view()}
+          value={[terrain && "terrain", satellite && "satellite", globe && "globe"].filter(
+            (name) => typeof name === "string",
           )}
-          type="button"
-          aria-pressed={terrain}
-          disabled={!ready}
-          onClick={toggleTerrain}
         >
-          {perspective?.label ?? m.owner_3d_terrain()}
-          {terrain && m.owner_on()}
-        </Button>
-        <Button
-          className={cn(
-            "secondary compact",
-            satellite &&
-              "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
-          )}
-          type="button"
-          aria-pressed={satellite}
-          disabled={!ready}
-          onClick={toggleSatellite}
-        >
-          {m.owner_satellite()}
-          {satellite && m.owner_on()}
-        </Button>
-        <Button
-          className={cn(
-            "secondary compact",
-            globe &&
-              "border-travel-forest! bg-travel-forest! text-travel-on-action! inset-shadow-sm",
-          )}
-          type="button"
-          aria-pressed={globe}
-          disabled={!ready}
-          onClick={toggleGlobe}
-        >
-          {m.owner_globe()}
-          {globe && m.owner_on()}
-        </Button>
+          <ToggleGroupItem value="terrain" disabled={!ready} onClick={toggleTerrain}>
+            {perspective?.label ?? m.owner_3d_terrain()}
+            {terrain && m.owner_on()}
+          </ToggleGroupItem>
+          <ToggleGroupItem value="satellite" disabled={!ready} onClick={toggleSatellite}>
+            {m.owner_satellite()}
+            {satellite && m.owner_on()}
+          </ToggleGroupItem>
+          <ToggleGroupItem value="globe" disabled={!ready} onClick={toggleGlobe}>
+            {m.owner_globe()}
+            {globe && m.owner_on()}
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
       {satellite && (
         <p className="help">
