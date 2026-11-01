@@ -11,6 +11,9 @@ All notable changes to the travel hub are documented here.
 - Add owner-wide collection links: one capability with its own token opens an index of several trips, each at its own member scope, with owner CRUD, audit events, MCP tools and visitor endpoints under `/api/shared/{token}` (Refs #136).
 
 - Adopt the owned registry Spinner beside the pending label of form submit buttons and the text-only loading lines (owner views, Markdown preview, visitor photo and video, library, emergency information, owner home); it is decorative, the text keeps the announcement, and it stays still under reduced motion. The Separator stays not adopted (#137).
+- Move the frontend toolchain to Node 26 LTS (`.node-version` 26.13.0, `@types/node` 26.6.6); the `engines` floor stays `>=24` because the VPS build host still provisions Node 24. Supersedes Dependabot #49.
+
+- Document why the registry Spinner and Separator were not adopted: no hand-built spinner or standalone divider exists to replace (#137).
 
 - Use the owned registry Switch for the visitor "Move the map along with the story" control; other checkboxes stay checkboxes (#137).
 
