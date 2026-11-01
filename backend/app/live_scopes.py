@@ -5,7 +5,7 @@ from collections import Counter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import PublicSurface, ShareLink
+from .models import CollectionMember, PublicSurface, ShareLink
 
 
 def scope_picks(session: Session, trip_id: str) -> Counter[tuple[str, str]]:
@@ -17,6 +17,7 @@ def scope_picks(session: Session, trip_id: str) -> Counter[tuple[str, str]]:
     for holder in (
         session.get(PublicSurface, trip_id),
         *session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id)),
+        *session.scalars(select(CollectionMember).where(CollectionMember.trip_id == trip_id)),
     ):
         if holder is not None:
             picks.update((item.get("kind"), item.get("id")) for item in holder.scope.get("items", []))
@@ -24,7 +25,7 @@ def scope_picks(session: Session, trip_id: str) -> Counter[tuple[str, str]]:
 
 
 def remove_from_live_scopes(session: Session, *, trip_id: str, kind: str, item_id: str) -> None:
-    """Withdraw one item from the public scope and every named link's scope.
+    """Withdraw one item from the public scope and every named link's and collection member's scope.
 
     Called when the item is deleted or can no longer be chosen, so no live
     scope keeps pointing at something that is gone or has become private.
@@ -32,6 +33,7 @@ def remove_from_live_scopes(session: Session, *, trip_id: str, kind: str, item_i
     holders = [
         session.get(PublicSurface, trip_id),
         *session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id)),
+        *session.scalars(select(CollectionMember).where(CollectionMember.trip_id == trip_id)),
     ]
     for holder in holders:
         if holder is None:

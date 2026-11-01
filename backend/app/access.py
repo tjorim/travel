@@ -17,6 +17,8 @@ from .errors import ServiceError
 from .live_scopes import remove_from_live_scopes
 from .models import (
     Area,
+    Collection,
+    CollectionMember,
     DerivativeProcessingState,
     DerivativePurpose,
     DerivativeReviewState,
@@ -185,6 +187,13 @@ def trip_audiences(session: Session, trip_id: str) -> list[tuple[str, dict]]:
         .order_by(ShareLink.created_at)
     ):
         audiences.append((f"link {link.label!r}", link.scope))
+    for member, collection in session.execute(
+        select(CollectionMember, Collection)
+        .join(Collection, Collection.id == CollectionMember.collection_id)
+        .where(CollectionMember.trip_id == trip_id, Collection.state.in_((LinkState.DRAFT, LinkState.ACTIVE)))
+        .order_by(CollectionMember.created_at)
+    ):
+        audiences.append((f"collection {collection.label!r}", member.scope))
     return audiences
 
 

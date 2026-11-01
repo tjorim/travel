@@ -19,6 +19,9 @@ from .models import (
     AuditEvent,
     AuditEventKind,
     AuditTargetType,
+    Collection,
+    CollectionAuditEvent,
+    CollectionMember,
     LinkState,
     McpAuditEvent,
     PublicSurface,
@@ -68,6 +71,33 @@ def record_audit_event(
     return event
 
 
+def record_collection_event(
+    session: Session,
+    *,
+    owner_subject: str,
+    actor_subject: str,
+    collection_id: str,
+    kind: str,
+    trip_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    occurred_at: datetime | None = None,
+) -> CollectionAuditEvent:
+    """Append a collection audit event in the caller's transaction (ids and fingerprints only)."""
+    event = CollectionAuditEvent(
+        owner_subject=owner_subject,
+        actor_subject=actor_subject,
+        collection_id=collection_id,
+        trip_id=trip_id,
+        kind=kind,
+        details=details or {},
+    )
+    if occurred_at is not None:
+        event.occurred_at = occurred_at
+    session.add(event)
+    session.flush()
+    return event
+
+
 def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETENTION_WINDOW) -> int:
     """Purge both private audit histories using one cutoff and transaction.
 
@@ -77,7 +107,7 @@ def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETE
     """
     cutoff = datetime.now(UTC) - older_than
     purged = 0
-    for model in (AuditEvent, McpAuditEvent):
+    for model in (AuditEvent, McpAuditEvent, CollectionAuditEvent):
         result = cast(CursorResult, session.execute(delete(model).where(model.occurred_at < cutoff)))
         purged += result.rowcount
     session.commit()
@@ -97,7 +127,7 @@ class LiveAudience:
 
 
 def live_audiences(session: Session, trip_id: str) -> list[LiveAudience]:
-    """Audiences that deliver today: the published public page and active links.
+    """Audiences that deliver today: the published public page, active links and active collections.
     Drafts and an unpublished page deliver nothing, so changes to them are not
     recorded and need no acknowledgement."""
     audiences: list[LiveAudience] = []
@@ -110,6 +140,13 @@ def live_audiences(session: Session, trip_id: str) -> list[LiveAudience]:
         .order_by(ShareLink.created_at)
     ):
         audiences.append(LiveAudience(f"link:{link.id}", link.label, link.scope))
+    for member, collection in session.execute(
+        select(CollectionMember, Collection)
+        .join(Collection, Collection.id == CollectionMember.collection_id)
+        .where(CollectionMember.trip_id == trip_id, Collection.state == LinkState.ACTIVE)
+        .order_by(CollectionMember.created_at)
+    ):
+        audiences.append(LiveAudience(f"collection:{member.id}", collection.label, member.scope))
     return audiences
 
 

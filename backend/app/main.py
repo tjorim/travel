@@ -20,6 +20,8 @@ from .mcp_server import (
 )
 from .request_timing import RequestTimingMiddleware
 from .routers.areas import router as areas_router
+from .routers.collections import membership_router as collection_membership_router
+from .routers.collections import router as collections_router
 from .routers.documents import router as documents_router
 from .routers.library import router as library_router
 from .routers.locations import router as locations_router
@@ -74,6 +76,8 @@ app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")
 app.include_router(visits_router, prefix="/api")
 app.include_router(publication_router, prefix="/api")
+app.include_router(collections_router, prefix="/api")
+app.include_router(collection_membership_router, prefix="/api")
 app.include_router(publication_delivery_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
 app.include_router(routes_router, prefix="/api")
