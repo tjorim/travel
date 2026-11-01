@@ -131,6 +131,34 @@ function applyTerrain(
   }
 }
 
+/** The theme style's own building paint, kept so turning satellite off restores it. */
+const styleBuildingPaint = new WeakMap<MapLibreMap, Map<string, [unknown, unknown]>>();
+
+/**
+ * The dark style paints 3D buildings near black, which looks heavy over imagery. While satellite is
+ * on, tint them a light stone with some transparency; turning it off restores the style's paint.
+ */
+export function paintBuildings(instance: MapLibreMap, onSatellite: boolean) {
+  const saved = styleBuildingPaint.get(instance) ?? new Map<string, [unknown, unknown]>();
+  styleBuildingPaint.set(instance, saved);
+  const tint = themeColor("map-building");
+  for (const layer of instance.getStyle().layers) {
+    if (layer.type !== "fill-extrusion" || layer["source-layer"] !== "building") continue;
+    if (onSatellite) {
+      const color = instance.getPaintProperty(layer.id, "fill-extrusion-color");
+      if (color !== tint)
+        saved.set(layer.id, [color, instance.getPaintProperty(layer.id, "fill-extrusion-opacity")]);
+      instance.setPaintProperty(layer.id, "fill-extrusion-color", tint);
+      instance.setPaintProperty(layer.id, "fill-extrusion-opacity", 0.85);
+    } else if (saved.has(layer.id)) {
+      const [color, opacity] = saved.get(layer.id) ?? [];
+      instance.setPaintProperty(layer.id, "fill-extrusion-color", color as never);
+      instance.setPaintProperty(layer.id, "fill-extrusion-opacity", opacity as never);
+      saved.delete(layer.id);
+    }
+  }
+}
+
 function applySatellite(instance: MapLibreMap, on: boolean) {
   if (!instance.getSource("satellite"))
     instance.addSource("satellite", {
@@ -158,6 +186,7 @@ function applySatellite(instance: MapLibreMap, on: boolean) {
     );
   }
   instance.setLayoutProperty("satellite", "visibility", on ? "visible" : "none");
+  paintBuildings(instance, on);
 }
 
 function fitToData(

@@ -4,6 +4,7 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Tint 3D buildings a light stone while satellite imagery is on, so the dark map theme no longer paints them near black over the imagery; the style's own paint returns when satellite is turned off.
 - Reject invalid document titles in shared trip/library upload services before object writes across HTTP, MCP and direct calls (Closes #115).
 - Purge MCP and sharing audits together after 730 days; document and verify best-effort MCP recording during audit outages (Closes #116).
 - Queue trip objects as detached, retryable purge inventory in the trip-deletion transaction; retain remote worker cancellation work and linked owner-library documents, and reclaim bytes only through the committed, locked maintenance purge (Closes #117).
