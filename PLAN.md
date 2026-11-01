@@ -96,7 +96,8 @@ metadata versus stored files, and retention/deletion/export boundaries against
 [domain-model.md](docs/domain-model.md), [the publication model](docs/decisions/37-canonical-content-and-publication-model.md)
 and [object-storage.md](docs/object-storage.md). Establish the current model and
 proposed changes before implementing schema or storage changes; preserve the
-existing privacy and object-lifecycle contracts. Track this review in #94.
+existing privacy and object-lifecycle contracts. See the completed [domain/storage/MCP review](docs/decisions/domain-storage-mcp-review.md)
+for #113, with implementation follow-ups #115–#119; #94 remains the epic.
 Admin trip editing has two supported entry points: the PWA and authenticated
 MCP tools. Review both against the same domain handlers, validation, ownership,
 publication safeguards and file lifecycle; do not design the data model around
