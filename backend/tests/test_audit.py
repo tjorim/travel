@@ -271,3 +271,73 @@ def test_travel_update_visibility_through_create_and_patch_is_audited() -> None:
     patch = f"/api/trips/{trip['id']}/travel-updates/{update['id']}"
     assert owner.patch(patch, json={"visibility": "private"}).status_code == 200
     assert kinds(owner, trip["id"]).count("record.visibility_change") == 2
+
+
+def test_purge_bounds_both_audit_tables_at_the_same_exact_cutoff(monkeypatch) -> None:
+    from app import audit
+    from app.models import McpAuditEvent
+
+    now = datetime(2054, 6, 1, tzinfo=UTC)
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now
+
+    monkeypatch.setattr(audit, "datetime", FrozenDatetime)
+    cutoff = now - audit.RETENTION_WINDOW
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
+    with TestingSessionLocal() as session:
+        session.scalar(select(AuditEvent)).occurred_at = cutoff - timedelta(microseconds=1)
+        for subject in ("owner-1", "owner-2"):
+            for offset in (-1, 0, 1):
+                session.add(
+                    McpAuditEvent(
+                        owner_subject=subject,
+                        action="trip.read",
+                        resource_type="trip",
+                        trip_id="deleted-synthetic-trip",
+                        result="succeeded",
+                        occurred_at=cutoff + timedelta(microseconds=offset),
+                        details={},
+                    )
+                )
+        session.commit()
+        assert purge_expired_audit_events(session) == 3
+        assert session.scalar(select(AuditEvent)) is None
+        retained = list(session.scalars(select(McpAuditEvent)))
+        assert len(retained) == 4
+        assert {row.owner_subject for row in retained} == {"owner-1", "owner-2"}
+        assert all(row.occurred_at.replace(tzinfo=UTC) >= cutoff for row in retained)
+        assert all(row.details == {} for row in retained)
+
+
+def test_audit_purge_failure_can_roll_back_both_histories(monkeypatch) -> None:
+    import pytest
+    from sqlalchemy import event
+
+    from app.models import McpAuditEvent
+
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
+    with TestingSessionLocal() as session:
+        session.add(
+            McpAuditEvent(
+                owner_subject="owner-1", action="trip.read", resource_type="trip", result="succeeded", details={}
+            )
+        )
+        session.commit()
+
+        def reject_mcp_delete(state):
+            if state.is_delete and state.statement.table.name == "mcp_audit_events":
+                raise RuntimeError("synthetic database outage")
+
+        event.listen(session, "do_orm_execute", reject_mcp_delete)
+        with pytest.raises(RuntimeError, match="synthetic database outage"):
+            purge_expired_audit_events(session, older_than=timedelta(seconds=-1))
+        session.rollback()
+        assert len(list(session.scalars(select(AuditEvent)))) == 1
+        assert len(list(session.scalars(select(McpAuditEvent)))) == 1

@@ -1564,3 +1564,21 @@ def test_merge_areas_over_mcp_makes_chosen_records_private(backend: TravelMcpBac
     with TestingSessionLocal() as session:
         (event,) = session.scalars(select(AuditEvent).where(AuditEvent.kind == AuditEventKind.AREA_MERGE))
     assert event.details["made_private"] == [{"kind": "stay", "id": stay["id"]}]
+
+
+def test_committed_create_survives_audit_outage_without_logging_payload(
+    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def fail_audit(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("synthetic-secret-payload")
+
+    monkeypatch.setattr(backend, "_audit", fail_audit)
+    with caplog.at_level(logging.ERROR):
+        trip = backend.create_trip(schemas.TripCreate(title="Synthetic private title"))
+    with TestingSessionLocal() as session:
+        assert session.get(Trip, trip["id"]).title == "Synthetic private title"
+        assert list(session.scalars(select(McpAuditEvent))) == []
+    assert "MCP audit write failed for trip.create" in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "synthetic-secret-payload" not in caplog.text
+    assert "Synthetic private title" not in caplog.text

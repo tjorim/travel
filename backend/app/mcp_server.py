@@ -338,6 +338,11 @@ class TravelMcpBackend:
         detail: str | None = None,
         request_id: str | None = None,
     ) -> None:
+        """Best effort in a separate transaction; never undo a committed operation.
+
+        Failures log only action, request ID and exception class. No durable
+        retry or atomic mutation-plus-invocation-audit guarantee is provided.
+        """
         try:
             with self.factory() as session:
                 self._audit(

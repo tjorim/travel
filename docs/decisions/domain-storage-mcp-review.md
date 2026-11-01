@@ -19,6 +19,23 @@ original trip-only ownership rule.
 ## Implementation Status
 
 - #115 resolved: trip and library upload services validate the shared `DocumentTitle` constraint before storing objects. Synthetic HTTP/MCP/service regression tests cover empty, oversized and unsafe titles; surrogate strings are tested at MCP/service boundaries because HTTP UTF-8 cannot encode them. Historical source evidence below describes the reviewed baseline.
+- #116 resolved with owner approval on 2026-11-01: MCP audit retention is 730
+  days, matching sharing audits. `purge-expired-audit-events` now purges both
+  tables in one transaction with the same strict cutoff; rows exactly at the
+  cutoff remain. Deleted-trip MCP records follow the same window. The command
+  returns a combined count and rolls back on failure; rerunning is safe.
+- MCP invocation recording remains **best effort**, in a separate transaction
+  after an operation (or rejection). An audit outage logs the action, request
+  ID and exception class, without payload or exception text. A committed
+  mutation still returns success and remains committed. There is no durable
+  retry or atomic mutation-plus-MCP-audit guarantee. Publication transition
+  auditing still shares the domain transaction. Owner isolation and payload-free
+  audit details are unchanged.
+- Synthetic cutoff, purge rollback and successful-create/audit-outage tests
+  verify these guarantees. The existing maintenance command is covered by
+  apps#222's scheduling work; no new VPS command or schedule is required.
+  Production execution was not verified here. Historical evidence below
+  describes the baseline reviewed before these fixes.
 
 ## Records, Relationships And Representation Boundaries
 

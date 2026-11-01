@@ -20,7 +20,7 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     purge = commands.add_parser("purge-deleted-media", help="permanently remove expired soft-deleted media")
     purge.add_argument("--retention-days", type=int, required=True, help="soft-delete retention window in days")
     commands.add_parser(
-        "purge-expired-audit-events", help="permanently remove audit events past their retention window"
+        "purge-expired-audit-events", help="permanently remove sharing and MCP audit events past their retention window"
     )
     reconcile = commands.add_parser(
         "reconcile-objects", help="count, and with --delete remove, stored files no database row references"
@@ -50,7 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             completed = f"Travel media purge completed: objects_purged={purged}"
         elif arguments.command == "purge-expired-audit-events":
-            # The application-owned default is the sharing policy's fixed
+            # Both audit tables use the application policy's fixed
             # 24-month retention window; the scheduler must not duplicate it.
             purged = purge_expired_audit_events(session)
             completed = f"Travel audit purge completed: events_purged={purged}"
