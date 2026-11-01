@@ -103,7 +103,7 @@ afterEach(() => {
 });
 
 const openTask = async (title: string) =>
-  fireEvent.click(await screen.findByRole("button", { name: `Taak ${title} bekijken` }));
+  fireEvent.click(await screen.findByRole("button", { name: new RegExp(`^${title}`) }));
 
 it("shows the edited title straight after saving, without a reload", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
@@ -113,8 +113,8 @@ it("shows the edited title straight after saving, without a reload", async () =>
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Visum aanvragen" } });
   fireEvent.click(screen.getByRole("button", { name: "Taak opslaan" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(screen.getByRole("button", { name: "Taak Visum aanvragen bekijken" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Taak Visum regelen bekijken" })).toBeNull();
+  expect(screen.getByRole("button", { name: /^Visum aanvragen/ })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /^Visum regelen/ })).toBeNull();
   expect(screen.getByText("Taak opgeslagen.")).toBeTruthy();
 });
 
@@ -147,7 +147,7 @@ it("removes a deleted task at once and after the refetch", async () => {
     within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
   );
   await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Taak Reisverzekering bekijken" })).toBeNull(),
+    expect(screen.queryByRole("button", { name: /^Reisverzekering/ })).toBeNull(),
   );
   expect(screen.getByText("Taak verwijderd.")).toBeTruthy();
   expect(api.tasks.map((item) => item.id)).toEqual(["a"]);
@@ -155,7 +155,7 @@ it("removes a deleted task at once and after the refetch", async () => {
 
 it("restores a task when completing it is refused", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
-  await screen.findByRole("button", { name: "Taak Visum regelen bekijken" });
+  await screen.findByRole("button", { name: /^Visum regelen/ });
   api.failNext = { status: 500, body: { detail: "Opslaan mislukt op de server." } };
   fireEvent.click(screen.getByRole("button", { name: "Afvinken: Visum regelen" }));
   await screen.findByText(
@@ -167,7 +167,7 @@ it("restores a task when completing it is refused", async () => {
 
 it("names each completion and reopen action after its task", async () => {
   renderWithOwner(<TripTaskManager trip={trip} />);
-  await screen.findByRole("button", { name: "Taak Visum regelen bekijken" });
+  await screen.findByRole("button", { name: /^Visum regelen/ });
   const names = screen
     .getAllByRole("button", { name: /^Afvinken: / })
     .map((button) => button.getAttribute("aria-label"));
@@ -232,7 +232,7 @@ it("validates the form, keeps the editor open on a server error, and resets afte
   );
   fireEvent.click(save);
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(screen.getByRole("button", { name: "Taak Vliegtickets boeken bekijken" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /^Vliegtickets boeken/ })).toBeTruthy();
 
   // A new editor opens blank, not with the previous values.
   fireEvent.click(screen.getByRole("button", { name: "Nieuwe taak" }));

@@ -82,7 +82,7 @@ for (const locale of ["en", "nl"] as const)
       await expect(side).toHaveCSS("position", "static");
       await expect(nav).toHaveCount(0);
       await expect(
-        page.getByRole("button", { name: message(locale, "owner_trip_sections"), exact: true }),
+        page.getByRole("button", { name: message(locale, "owner_trip_sections") }),
       ).toBeVisible();
       await page.setViewportSize({ width: 1100, height: 800 });
       await expect(nav).toHaveCSS("flex-direction", "column");

@@ -255,12 +255,7 @@ export function TripTaskManager({
       className="excerpt-row"
       data-completed={task.completed_at ? "" : undefined}
     >
-      <Button
-        className="document-select"
-        type="button"
-        onClick={() => inspect(task)}
-        aria-label={m.owner_view_task({ p0: task.title })}
-      >
+      <Button className="document-select" type="button" onClick={() => inspect(task)}>
         <strong>{task.title}</strong>
         <span>
           {task.completed_at

@@ -543,7 +543,11 @@ function SharedImage({
         ref={triggerRef}
         type="button"
         className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 text-travel-ink transition duration-150 hover:brightness-105 motion-reduce:transition-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
-        aria-label={m.visitor_open_image({ title: alt })}
+        aria-label={
+          failed
+            ? `${m.visitor_image_failed()} ${m.visitor_open_image({ title: alt })}`
+            : m.visitor_open_image({ title: alt })
+        }
         onClick={onOpen}
       >
         <img

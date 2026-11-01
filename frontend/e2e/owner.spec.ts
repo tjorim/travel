@@ -153,7 +153,7 @@ test("the workspace header states publication and keeps the tabs reachable on a 
     page.getByRole("dialog", { name: "Account" }).getByText("Public page live"),
   ).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Trip sections", exact: true }).click();
+  await page.getByRole("button", { name: "Trip sections" }).click();
   const tabs = page.getByRole("navigation", { name: "Trip sections" });
   await expect(tabs.getByRole("link", { name: "Overview" })).toHaveAttribute(
     "aria-current",
@@ -241,7 +241,6 @@ for (const locale of ["en", "nl"] as const) {
             await expect(
               page.getByRole("button", {
                 name: locale === "en" ? "Trip sections" : "Reisonderdelen",
-                exact: true,
               }),
             ).toContainText(locale === "en" ? "Prepare" : "Voorbereiden");
           } else {

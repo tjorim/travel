@@ -46,7 +46,7 @@ snippets, not from reading the release notes in this session.
 | Vitest | 5.0.4 | 5.0.5 | Low | In the frontend bump PR. |
 | oxlint / oxfmt | 1.90.0 / 0.75.0 | 1.90.0 / 0.75.0 | None | Current. |
 | `@inlang/paraglide-js` | 2.29.2 | 2.29.3 | Low | In the frontend bump PR. |
-| `@axe-core/playwright` | 4.13.0 | 4.14.0 | **Blocked** | New rule `label-content-name-mismatch` fails 124 e2e tests on three real labels. Held at `~4.13.0`; fix tracked in #154. |
+| `@axe-core/playwright` | 4.13.0 | 4.14.0 | **Blocked** | New rule `label-content-name-mismatch` fails 124 e2e tests on three real labels. Held at `~4.13.0` in the bump PR; fixed and moved to `^4.14.0` in #154 (the sweep also found the sharing overview's open, copy-link and choose-scope buttons). |
 | TanStack Query / Router / Form | 5.104.5 / 1.170.46 / 1.33.5 | 5.105.1 / same / same | Low | Query in the bump PR. |
 | lucide-react | 1.62.0 | 1.66.0 | Low | In the bump PR; type check and tests pass. |
 | msw, happy-dom, dayjs, react-day-picker, testing-library | | current or patch | Low | happy-dom patch in the bump PR. |
