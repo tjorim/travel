@@ -31,6 +31,12 @@ enforces the scope; this check is about choosing it deliberately.
       point. Do not share a place that is a home, a hotel or a meeting point.
 - [ ] A shared stay shows only its area and its nights at the precision you
       chose, never the property. Check that the area is not too specific.
+- [ ] The visitor page groups a shared visit, stay or route under the one update
+      of the same area and day (both shared at day precision), and keeps the rest
+      in separate blocks. This adds no field: it only places records you already
+      share beside each other, so check that a stay or visit shown under an update
+      does not reveal more together than apart (for example a stay that places
+      you in an area on a day the update date alone would not).
 - [ ] A route appears on the map with your drawn line, or as a straight line
       between its two areas. Its stations or airports show only when you share
       those locations under their public names; check the line does not pass

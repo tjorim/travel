@@ -1486,3 +1486,94 @@ def test_projection_route_instants_keep_their_utc_offset() -> None:
     assert _utc_instant(naive).isoformat() == "2035-06-04T02:00:00+00:00"
     aware = datetime(2035, 6, 4, 10, 0, tzinfo=UTC)
     assert _utc_instant(aware) is aware
+
+
+def test_grouped_area_and_day_context_leaves_private_values_out_of_public_and_unlisted_responses() -> None:
+    """The frontend groups an update with a visit, stay and route of the same area and day.
+
+    It can only group what these responses carry, so no private visit, property, booking or note value may ride along
+    with any of them, for either audience.
+    """
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    taipei = owner.post(f"{base}/areas", json={"label": "Taipei", "country_code": "TW"}).json()["id"]
+    tainan = owner.post(f"{base}/areas", json={"label": "Tainan", "country_code": "TW"}).json()["id"]
+    private = (
+        "CANARY-VISIT-NOTE",
+        "CANARY-PROPERTY",
+        "CANARY-BOOKING",
+        "CANARY-CONTACT",
+        "CANARY-ADDRESS",
+        "CANARY-ROUTE-NOTE",
+    )
+    update = owner.post(
+        f"{base}/travel-updates",
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z",
+            "date_precision": "day",
+            "title": "Arrival",
+            "body": "A safe story.",
+            "area_id": taipei,
+            "private_notes": "CANARY-UPDATE-NOTE",
+        },
+    ).json()
+    visit = owner.post(
+        f"{base}/visits",
+        json={
+            "area_id": taipei,
+            "title": "Harbour walk",
+            "starts_on": "2054-04-04",
+            "share_date_precision": "day",
+            "notes": private[0],
+        },
+    ).json()
+    stay = owner.post(
+        f"{base}/stays",
+        json={
+            "location": {
+                "display_name": private[4],
+                "address_line1": private[4],
+                "locality": "Taipei",
+                "country_code": "TW",
+            },
+            "check_in_date": "2054-04-03",
+            "check_out_date": "2054-04-06",
+            "share_date_precision": "day",
+            "property_name": private[1],
+            "booking_reference": private[2],
+            "contact_details": private[3],
+            "notes": private[0],
+        },
+    ).json()
+    route = owner.post(
+        f"{base}/routes",
+        json={
+            "mode": "train",
+            "departure_area_id": taipei,
+            "arrival_area_id": tainan,
+            "departs_on": "2054-04-04",
+            "booking_reference": private[2],
+            "notes": private[5],
+        },
+    ).json()
+    chosen = [
+        share(owner, trip["id"], kind, record["id"])
+        for kind, record in (("travel_update", update), ("visit", visit), ("stay", stay), ("route", route))
+    ]
+    link = owner.post(f"{base}/share-links", json={"label": "Family", "scope": scope(*chosen)}).json()
+    token = activate(owner, trip["id"], link["id"])["token"]
+    owner.put(f"{base}/public-projection", json=scope(*chosen))
+    slug = owner.post(f"{base}/public-projection/publish").json()["slug"]
+
+    anonymous = TestClient(app)
+    for response in (anonymous.get(f"/api/public/trips/{slug}"), anonymous.get(f"/api/shared/{token}")):
+        assert response.status_code == 200, response.text
+        document = response.json()
+        # The associations the page groups by are present: the same area label and day, at the shared precision.
+        assert document["updates"][0]["place"]["label"] == document["visits"][0]["place"]["label"] == "Taipei"
+        assert document["updates"][0]["story_date"] == document["visits"][0]["starts_on"] == "2054-04-04"
+        assert document["stays"][0]["place"]["label"] == "Taipei"
+        assert document["routes"][0]["departs_on"] == "2054-04-04"
+        for value in (*private, "CANARY-UPDATE-NOTE", "property_name", "booking_reference", "contact_details"):
+            assert value not in response.text

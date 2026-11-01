@@ -361,3 +361,13 @@ inside its existing bundle budget; the initial trigger remains keyboard accessib
 ## Visitor keyboard path
 
 On `/trips/<slug>` and `/share/<token>`, in DOM order: the "Skip to the story" link (visible only when focused; present when the trip has updates), the navigation bar's language and theme controls, the header, the Story / Map / Plan choice on narrow screens, the story (update index, photo buttons, strip arrows), the map follow checkbox, the map canvas (arrow keys pan it, Tab leaves it), zoom and attribution, then the map's view buttons and the point and route buttons, which remain the keyboard and screen-reader route to each place. The skip link moves focus to the story region (`#story`). Every control shows a 3 px `travel-focus` ring (map controls and canvas included, inset where the map clips). Headings inside authored Markdown are fitted below the heading they sit under (`fitHeadings`), and the map's heading is an h2 on visitor pages.
+
+## Visitor update context (#109)
+
+`UpdateContextBlock` in `ProjectionView.tsx` is a compact, labelled `<section>` of
+plain text rows (a tinted card with a list), placed under an update's text for the
+approved stays, visits and routes that `groupStoryContext` (`src/visitor-context.ts`)
+ties to that one update by shared area and day. It is read-only text with an existing
+Directions link, so no Base UI or shadcn primitive applies; it adds no dependency.
+Records the projection cannot tie to exactly one update keep their existing sections.
+
