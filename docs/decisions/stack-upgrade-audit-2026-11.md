@@ -10,7 +10,7 @@ snippets, not from reading the release notes in this session.
 | PR | Scope | State at writing |
 |---|---|---|
 | [#150](https://github.com/tjorim/travel/pull/150) | Node 26.13.0 LTS toolchain, `@types/node` 26.6.6 (supersedes Dependabot #49) | open |
-| frontend minor bumps | maplibre-gl, shadcn CLI, Playwright, Vitest, TanStack Query, lucide-react, Paraglide, fake-indexeddb, happy-dom, cn | see PR list |
+| [#158](https://github.com/tjorim/travel/pull/158) | maplibre-gl, shadcn CLI, Playwright, Vitest, TanStack Query, lucide-react, Paraglide, fake-indexeddb, happy-dom, cn | open |
 | [#153](https://github.com/tjorim/travel/pull/153) | Backend lock refresh incl. FastAPI 0.162, Starlette 1.10, SQLAlchemy 2.1.6 | open |
 
 ## Version table
