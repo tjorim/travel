@@ -23,8 +23,8 @@ export type TripCover = {
 
 /**
  * The opening of a trip: its title, the dates and destinations the audience is authorized to see, and the
- * cover when it receives one. Without a cover, or when the image cannot load, the same text sits on a
- * quiet panel instead, so no audience ever sees an empty frame.
+ * cover when it receives one. Without a cover, or when the image cannot load, the text remains in place
+ * without an empty image frame.
  */
 export function TripHeader({
   title,
@@ -47,50 +47,15 @@ export function TripHeader({
   const Heading: ElementType = level;
   const facts = [dates, destinations.length > 0 ? destinations : null].some(Boolean);
   return (
-    <header className="grid min-w-0 gap-5">
-      {shown && (
-        <figure className="m-0 min-w-0">
-          {shown.url ? (
-            <img
-              className="block aspect-travel-cover max-h-travel-lightbox w-full rounded-travel-card bg-travel-tint object-cover min-[960px]:aspect-travel-hero"
-              src={shown.url}
-              alt={shown.alt}
-              width={shown.width}
-              height={shown.height}
-              style={{ objectPosition: `${shown.focalX}% ${shown.focalY}%` }}
-              decoding="async"
-              fetchPriority="high"
-              referrerPolicy="no-referrer"
-              onError={() => setFailedUrl(shown.url)}
-            />
-          ) : (
-            <div
-              className="aspect-travel-cover w-full rounded-travel-card bg-travel-tint min-[960px]:aspect-travel-hero"
-              aria-hidden="true"
-            />
-          )}
-          <Markdown
-            as="figcaption"
-            className="mt-2 max-w-travel-reading text-sm leading-normal text-travel-muted"
-            html={shown.caption.html}
-            text={shown.caption.text}
-          />
-        </figure>
-      )}
-      <div
-        className={cn(
-          "grid min-w-0 gap-3",
-          !shown &&
-            "rounded-travel-card border-t-4 border-travel-warning-border bg-travel-surface p-travel-card-pad shadow-travel-card",
-        )}
-      >
-        <p className="travel-eyebrow mb-0">{eyebrow}</p>
+    <header className="grid min-w-0 items-start gap-3 min-[960px]:grid-cols-travel-visitor-header">
+      <div className={cn("grid min-w-0 gap-3", !shown && "min-[960px]:col-span-2")}>
+        <p className="sr-only">{eyebrow}</p>
         <Heading
           className={cn(
             level === "h1"
               ? title.length > LONG_TITLE_LENGTH && LONG_TITLE_CLASS
               : "m-0 text-3xl leading-none tracking-tight",
-            "wrap-anywhere",
+            "m-0! max-w-none! text-2xl! leading-tight! min-[960px]:text-3xl! wrap-anywhere",
           )}
         >
           {title}
@@ -107,6 +72,35 @@ export function TripHeader({
           </p>
         )}
       </div>
+      {shown && (
+        <figure className="m-0 min-w-0">
+          {shown.url ? (
+            <img
+              className="block h-travel-visitor-cover w-full rounded-travel-card bg-travel-tint object-cover min-[960px]:h-travel-visitor-cover-wide"
+              src={shown.url}
+              alt={shown.alt}
+              width={shown.width}
+              height={shown.height}
+              style={{ objectPosition: `${shown.focalX}% ${shown.focalY}%` }}
+              decoding="async"
+              fetchPriority="high"
+              referrerPolicy="no-referrer"
+              onError={() => setFailedUrl(shown.url)}
+            />
+          ) : (
+            <div
+              className="h-travel-visitor-cover w-full rounded-travel-card bg-travel-tint min-[960px]:h-travel-visitor-cover-wide"
+              aria-hidden="true"
+            />
+          )}
+          <Markdown
+            as="figcaption"
+            className="mt-2 max-w-travel-reading text-sm leading-normal text-travel-muted"
+            html={shown.caption.html}
+            text={shown.caption.text}
+          />
+        </figure>
+      )}
     </header>
   );
 }

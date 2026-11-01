@@ -1,3 +1,4 @@
+import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { m } from "./paraglide/messages.js";
 import { LocaleControl, selectedLocale, useLocale } from "./locale";
 import { Collapsible } from "@/ui/collapsible";
@@ -762,8 +763,8 @@ function Updates({
   if (!updates.length) return null;
   return (
     <section className="travel-card" aria-label={m.visitor_updates()}>
-      <h2 className="mb-6">{m.visitor_updates()}</h2>
-      <div className={besideMap ? "grid gap-8" : "travel-story-split"}>
+      <h2 className="sr-only">{m.visitor_updates()}</h2>
+      <div className={besideMap ? "grid gap-3" : "travel-story-split"}>
         <Collapsible.Root className={cn("min-w-0", !besideMap && "min-[1100px]:hidden")}>
           <Collapsible.Trigger className="min-h-11 rounded-travel-control bg-transparent px-3 py-2 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
             {m.visitor_choose_update()}
@@ -835,7 +836,10 @@ function Updates({
                 <Gallery
                   items={media.filter((image) => image.update === item.id)}
                   fileUrl={fileUrl}
-                  title={m.visitor_update_media()}
+                  title={m.visitor_update_media_named({
+                    number: index + 1,
+                    title: text(item, "title") ?? m.visitor_update(),
+                  })}
                   heading={false}
                   strip
                 />
@@ -888,6 +892,7 @@ export function ProjectionView({
   previewResources?: PreviewResources;
 }) {
   const locale = useLocale();
+  const [view, setView] = useState<"story" | "map" | "plan">("story");
   const [activeUpdate, setActiveUpdate] = useState<string | null>(null);
   // The map moves with the reader by default; a visitor who wants to look around on their own can turn that off.
   const [followStory, setFollowStory] = useState(true);
@@ -958,11 +963,21 @@ export function ProjectionView({
   );
   useEffect(() => {
     if (previewResources) return;
-    const fragment = window.location.hash.slice(1);
-    if (!projection.updates.some((item) => fragment === item.id)) return;
-    const target = document.getElementById(fragment);
-    target?.scrollIntoView?.();
-    target?.focus({ preventScroll: true });
+    const revealFragment = () => {
+      const fragment = window.location.hash.slice(1);
+      if (!fragment) return;
+      const story = projection.updates.some((item) => fragment === item.id);
+      const target = document.getElementById(fragment);
+      if (!target) return;
+      setView(story ? "story" : "plan");
+      requestAnimationFrame(() => {
+        target.scrollIntoView?.();
+        target.focus({ preventScroll: true });
+      });
+    };
+    revealFragment();
+    window.addEventListener("hashchange", revealFragment);
+    return () => window.removeEventListener("hashchange", revealFragment);
   }, [projection, previewResources]);
   const navigation = new Set(projection.navigation.map((item) => item.id));
   const displayed = new Set(
@@ -1055,12 +1070,17 @@ export function ProjectionView({
   }
   /** Brings an update into view and focuses it, as following its index link would. */
   function openUpdate(id: string) {
-    const target = document.getElementById(id);
-    target?.scrollIntoView?.({
-      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-      block: "start",
+    setView("story");
+    requestAnimationFrame(() => {
+      const target = document.getElementById(id);
+      target?.scrollIntoView?.({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+      target?.focus({ preventScroll: true });
     });
-    target?.focus({ preventScroll: true });
   }
   const detailSections = [
     projection.visits,
@@ -1104,41 +1124,22 @@ export function ProjectionView({
   return (
     <div className={cn("grid gap-travel-grid-gap", previewResources ? "mt-5" : "mt-2")}>
       {header}
-      {(projection.summary || hasMap) && !mapBesideStory && (
+      <div className="min-[1100px]:hidden [&>div>span]:sr-only">
+        <ChoiceGroup
+          label={m.visitor_view()}
+          value={view}
+          onChange={setView}
+          choices={[
+            { value: "story", label: m.visitor_story() },
+            ...(hasMap ? [{ value: "map" as const, label: m.visitor_map() }] : []),
+            ...(detailSections > 0 ? [{ value: "plan" as const, label: m.visitor_plan() }] : []),
+          ]}
+        />
+      </div>
+      <div className={hasMap ? "travel-story-map" : "grid min-w-0"}>
         <div
-          className={cn(
-            "grid min-w-0 gap-travel-grid-gap",
-            projection.summary && hasMap && "travel-aside-split",
-          )}
+          className={cn("grid gap-travel-grid-gap", view !== "story" && "hidden min-[1100px]:grid")}
         >
-          {overview}
-          {hasMap && <TripMap wide points={mapPoints} lines={mapLines} />}
-        </div>
-      )}
-      {empty && (
-        <section className="travel-card" role="status">
-          <h2>{m.visitor_no_story()}</h2>
-          <p>{m.visitor_no_story_description()}</p>
-        </section>
-      )}
-      {mapBesideStory ? (
-        <div className="travel-story-map">
-          {overview}
-          <div data-story-map="">
-            <TripMap
-              wide
-              points={mapPoints}
-              lines={mapLines}
-              follow={followStory ? followed : null}
-              photos={mapPhotos}
-            />
-            <Field className="mt-2.5 hidden min-[1100px]:block">
-              <FieldLabel className="flex items-center gap-2 text-sm font-semibold">
-                <TravelCheckbox checked={followStory} onCheckedChange={setFollowStory} />
-                <span>{m.visitor_map_follows_story()}</span>
-              </FieldLabel>
-            </Field>
-          </div>
           <Updates
             updates={projection.updates}
             media={projection.media}
@@ -1146,93 +1147,121 @@ export function ProjectionView({
             besideMap
             onActive={setActiveUpdate}
           />
+          {projection.updates.length === 0 && (
+            <section className="travel-card">
+              <h2>{m.visitor_no_story()}</h2>
+              <p>{m.visitor_no_story_description()}</p>
+            </section>
+          )}
+          {overview}
+          {looseMedia.length > 0 && (
+            <section className="travel-card" aria-label={m.visitor_gallery()}>
+              <h2 className="mb-4.5">{m.visitor_gallery()}</h2>
+              <Gallery
+                items={looseMedia}
+                fileUrl={fileUrl}
+                title={m.visitor_shared_photos()}
+                heading={false}
+              />
+            </section>
+          )}
         </div>
-      ) : (
-        <Updates updates={projection.updates} media={projection.media} fileUrl={fileUrl} />
-      )}
-      {looseMedia.length > 0 && (
-        <section className="travel-card" aria-label={m.visitor_gallery()}>
-          <h2 className="mb-4.5">{m.visitor_gallery()}</h2>
-          <Gallery
-            items={looseMedia}
-            fileUrl={fileUrl}
-            title={m.visitor_shared_photos()}
-            heading={false}
-          />
-        </section>
-      )}
-      <div
-        className={cn(
-          "grid min-w-0 items-start gap-travel-grid-gap",
-          detailSections > 1 && "min-[1100px]:grid-cols-2",
+        {hasMap && (
+          <div data-story-map="" className={cn(view !== "map" && "hidden min-[1100px]:block")}>
+            {mapBesideStory && (
+              <Field className="mb-2.5 hidden min-[1100px]:block">
+                <FieldLabel className="flex items-center gap-2 text-sm font-semibold">
+                  <TravelCheckbox checked={followStory} onCheckedChange={setFollowStory} />
+                  <span>{m.visitor_map_follows_story()}</span>
+                </FieldLabel>
+              </Field>
+            )}
+            <TripMap
+              wide
+              points={mapPoints}
+              lines={mapLines}
+              follow={followStory ? followed : null}
+              photos={mapPhotos}
+            />
+          </div>
         )}
+      </div>
+      <div
+        className={cn("grid gap-travel-grid-gap", view !== "plan" && "hidden min-[1100px]:grid")}
       >
-        <ResourceSection
-          title={m.visitor_visits()}
-          anchor="visit"
-          items={projection.visits}
-          render={(item) => (
-            <article>
-              <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
-              {tripDates(item) && <p>{tripDates(item)}</p>}
-              {visitTimes(item) && <p>{visitTimes(item)}</p>}
-              <Markdown html={text(item, "summary_html")} text={text(item, "summary")} />
-              {place(item.place) && <p>{place(item.place)}</p>}
-            </article>
+        <div
+          className={cn(
+            "grid min-w-0 items-start gap-travel-grid-gap",
+            detailSections > 1 && "min-[1100px]:grid-cols-2",
           )}
-        />
-        <ResourceSection
-          title={m.visitor_places()}
-          anchor="place"
-          items={projection.places}
-          render={(item) => (
-            <article>
-              <h3>{text(item, "label") ?? m.visitor_location()}</h3>
-              {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
-                <p>
-                  {[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}
-                </p>
-              )}
-              {navigationLink(item)}
-            </article>
-          )}
-        />
-        <ResourceSection
-          title={m.visitor_stays()}
-          anchor="stay"
-          items={projection.stays}
-          render={(item) => (
-            <article>
-              <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
-              {tripDates(item) ? (
-                <p>{tripDates(item)}</p>
-              ) : (
-                precision(item) && <p>{precision(item)}</p>
-              )}
-              {place(item.place) && <p>{place(item.place)}</p>}
-              {navigationLink(item)}
-            </article>
-          )}
-        />
-        <ResourceSection
-          title={m.visitor_routes()}
-          anchor="route"
-          items={projection.routes}
-          render={(item) => <RouteSummary item={item} />}
-        />
-        {projection.navigation.some((item) => !displayed.has(item.id)) && (
+        >
           <ResourceSection
-            title={m.visitor_navigation()}
-            anchor="navigation"
-            items={projection.navigation.filter((item) => !displayed.has(item.id))}
+            title={m.visitor_visits()}
+            anchor="visit"
+            items={projection.visits}
             render={(item) => (
               <article>
-                <h3>{m.visitor_destination()}</h3>
+                <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
+                {tripDates(item) && <p>{tripDates(item)}</p>}
+                {visitTimes(item) && <p>{visitTimes(item)}</p>}
+                <Markdown html={text(item, "summary_html")} text={text(item, "summary")} />
+                {place(item.place) && <p>{place(item.place)}</p>}
+              </article>
+            )}
+          />
+          <ResourceSection
+            title={m.visitor_places()}
+            anchor="place"
+            items={projection.places}
+            render={(item) => (
+              <article>
+                <h3>{text(item, "label") ?? m.visitor_location()}</h3>
+                {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
+                  <p>
+                    {[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 {navigationLink(item)}
               </article>
             )}
           />
-        )}
+          <ResourceSection
+            title={m.visitor_stays()}
+            anchor="stay"
+            items={projection.stays}
+            render={(item) => (
+              <article>
+                <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
+                {tripDates(item) ? (
+                  <p>{tripDates(item)}</p>
+                ) : (
+                  precision(item) && <p>{precision(item)}</p>
+                )}
+                {place(item.place) && <p>{place(item.place)}</p>}
+                {navigationLink(item)}
+              </article>
+            )}
+          />
+          <ResourceSection
+            title={m.visitor_routes()}
+            anchor="route"
+            items={projection.routes}
+            render={(item) => <RouteSummary item={item} />}
+          />
+          {projection.navigation.some((item) => !displayed.has(item.id)) && (
+            <ResourceSection
+              title={m.visitor_navigation()}
+              anchor="navigation"
+              items={projection.navigation.filter((item) => !displayed.has(item.id))}
+              render={(item) => (
+                <article>
+                  <h3>{m.visitor_destination()}</h3>
+                  {navigationLink(item)}
+                </article>
+              )}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

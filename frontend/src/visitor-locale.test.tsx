@@ -78,6 +78,7 @@ it("switches projection chrome, dates and map alternatives while keeping authore
   expect(screen.getByText("April 2054 – May 2054")).toBeTruthy();
   expect(screen.getByText("2 April 2054")).toBeTruthy();
   expect(screen.getByText(/3 Apr 2054, 07:30/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Choose an update" }));
   expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Visit: Mijn bezoek" }).getAttribute("href")).toBe(
     "#visit-visit",
@@ -198,6 +199,7 @@ it("uses the same translated projection in owner previews without visitor resour
       session={{ accessToken: "owner", expiresAt: Date.now() + 60000 }}
     />,
   );
+  fireEvent.click(screen.getByRole("button", { name: "Choose an update" }));
   expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
   expect(screen.getByText("April 2054 – May 2054")).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();

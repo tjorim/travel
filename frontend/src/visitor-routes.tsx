@@ -344,13 +344,20 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   const title = m.shared_trip();
   return (
     <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
-      <Preferences />
-      <Link
-        to="/trips"
-        className="mb-6 inline-block text-sm text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
+      <nav
+        aria-label={m.visitor_navigation()}
+        className="mb-3 flex flex-wrap items-center gap-3 text-sm"
       >
-        {m.all_public_trips()}
-      </Link>
+        <span className="font-bold text-travel-forest">Travel</span>
+        {audience === "public" && (
+          <Link to="/trips" className="text-travel-forest underline underline-offset-3">
+            {m.all_public_trips()}
+          </Link>
+        )}
+        <div className="ml-auto">
+          <Preferences compact />
+        </div>
+      </nav>
       {state.kind !== "ready" && (
         <header>
           <p className="travel-eyebrow">Travel</p>
