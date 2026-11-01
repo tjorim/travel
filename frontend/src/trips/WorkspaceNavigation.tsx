@@ -4,13 +4,15 @@ import { Dialog } from "@/ui/dialog";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { WorkspaceTabs } from "./WorkspaceTabs";
-import type { TripWorkspaceSection } from "./workspace-sections";
+import { sectionById, type TripWorkspaceSection } from "./workspace-sections";
 
 /** Only navigation changes at the CSS breakpoint. Editors/search/capture never live here. */
 export function WorkspaceNavigation({
   tripId,
   current,
+  title,
 }: {
+  title?: string;
   tripId: string;
   current: TripWorkspaceSection;
 }) {
@@ -48,9 +50,19 @@ export function WorkspaceNavigation({
         setOpen(next);
       }}
     >
-      <div ref={desktop}>{wide && <WorkspaceTabs tripId={tripId} current={current} />}</div>
-      <Dialog.Trigger ref={trigger} className="secondary min-h-11 trip-sidebar:hidden">
-        {m.owner_trip_sections()}
+      <div ref={desktop} className="max-[679px]:hidden">
+        {wide && <WorkspaceTabs tripId={tripId} current={current} />}
+      </div>
+      <Dialog.Trigger
+        ref={trigger}
+        aria-label={m.owner_trip_sections()}
+        className="secondary min-h-11 trip-sidebar:hidden max-[679px]:h-14 max-[679px]:w-full max-[679px]:pr-14 max-[679px]:min-w-0 max-[679px]:border-0 max-[679px]:bg-transparent max-[679px]:p-0 max-[679px]:text-left"
+      >
+        <span className="max-[679px]:hidden">{m.owner_trip_sections()}</span>
+        <span className="hidden min-w-0 max-[679px]:grid">
+          <span className="truncate text-sm font-bold">{title}</span>
+          <span className="text-xs text-travel-muted">{sectionById(current).label()} ▾</span>
+        </span>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-travel-backdrop/50 travel-backdrop-motion" />

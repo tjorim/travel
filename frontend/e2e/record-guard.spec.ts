@@ -13,6 +13,7 @@ for (const locale of ["nl", "en"] as const) {
       .getByRole("button", { name: message(locale, "owner_trip_sections"), exact: true })
       .click();
     await page.getByRole("link", { name: message(locale, "owner_prepare"), exact: true }).click();
+    await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
       .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
       .click();
@@ -31,6 +32,7 @@ for (const locale of ["nl", "en"] as const) {
     await expect(page).toHaveURL(/\/story$/);
     await page.goForward();
     await expect(page).toHaveURL(/\/prepare$/);
+    await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
       .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
       .click();
@@ -38,6 +40,7 @@ for (const locale of ["nl", "en"] as const) {
     await input.fill("Synthetic recovered after reload");
     page.once("dialog", (dialog) => dialog.accept());
     await page.reload();
+    await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
       .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
       .click();

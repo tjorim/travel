@@ -50,6 +50,7 @@ for (const locale of locales) {
       });
     });
     await page.goto(`/admin/trips/${ownerTrip.id}`);
+    await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
       .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
       .click();
