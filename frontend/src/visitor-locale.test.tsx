@@ -125,6 +125,47 @@ it("keeps an open lightbox and its focus through switching and returns focus on 
   await waitFor(() => expect(document.activeElement).toBe(trigger));
 });
 
+it("moves through a gallery's photos from one lightbox, ends included, and preloads only neighbours", async () => {
+  const data = projection();
+  data.places = [];
+  data.routes = [];
+  data.media = ["a", "b", "c"].map((id) => ({
+    id,
+    image: { id },
+    alt_text: `Foto ${id}`,
+    caption: `Onderschrift ${id}`,
+  }));
+  const loaded: string[] = [];
+  vi.stubGlobal(
+    "Image",
+    class {
+      referrerPolicy = "";
+      set src(value: string) {
+        loaded.push(value);
+      }
+    },
+  );
+  render(<ProjectionView projection={data} audience="share" identifier={token} />);
+  fireEvent.click(screen.getAllByRole("button", { name: "Afbeelding openen: Foto a" })[0]!);
+  const dialog = await screen.findByRole("dialog", { name: "Foto a" });
+  expect(within(dialog).getByText("Foto 1 van 3")).toBeTruthy();
+  expect(
+    within(dialog)
+      .getByRole("button", { name: m.visitor_previous_photo() })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(loaded).toEqual([`/api/shared/${token}/files/b`]);
+  fireEvent.keyDown(dialog, { key: "ArrowRight" });
+  expect(await screen.findByRole("dialog", { name: "Foto b" })).toBeTruthy();
+  expect(within(screen.getByRole("dialog")).getByText("Onderschrift b")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: m.visitor_next_photo() }));
+  expect(await screen.findByRole("dialog", { name: "Foto c" })).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
+  expect(within(screen.getByRole("dialog")).getByText("Foto 3 van 3")).toBeTruthy();
+  expect(loaded).not.toContain(`/api/shared/${token}/files/zzz`);
+  vi.unstubAllGlobals();
+});
+
 it("retranslates retained image/video failures and retries only the selected image", () => {
   const data = projection();
   data.places = [];
