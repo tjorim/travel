@@ -1,3 +1,4 @@
+import { Spinner } from "@/ui/spinner";
 import type { ErrorFallback } from "../query/api";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
@@ -148,6 +149,8 @@ export function DocumentLibraryManager() {
   const summary = (document: OwnerDocument) =>
     `${document.original_filename ?? m.owner_unnamed_file()} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
 
+  const loading = notice == null && documentsQuery.isPending && !readError;
+
   return (
     <section className="travel-card manager" aria-labelledby="library-documents-title">
       <div className="capture-heading">
@@ -161,7 +164,8 @@ export function DocumentLibraryManager() {
           {m.assets_new_document()}
         </Button>
       </div>
-      <p className="help" role="status">
+      <p className="help flex items-center gap-2" role="status">
+        {loading && <Spinner />}
         {message}
       </p>
       {documents.length > 0 && (

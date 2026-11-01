@@ -56,7 +56,7 @@ custom control stays when the registry version would drop a requirement.
 | ChoiceGroup | Keep | Registry `toggle-group` renders `aria-pressed` toggle buttons that can be deselected. The choices here (language, appearance, packing group and filter) are required single selections, so Base UI `RadioGroup` semantics and arrow-key navigation are correct. Not turned into optional toggles to match a component name. |
 | WorkspaceTabs, app navigation, overview section chips | Keep | Registry `tabs` is a panel switcher (`role="tab"` plus `tabpanel`) driven by component state. These are router links where the URL decides what is open and `aria-current="page"` marks it; `role="tab"` would misreport them and break opening a section in a new tab. `navigation-menu` is for flyout menus, which there are none of. |
 | Pagination | Not applicable | No screen pages records; lists render whole or by section. Add the registry `pagination` if one ever does. |
-| Spinner | Not applicable | Loading is announced as text in `role="status"` regions; a spinner would add no information. Progress is already Base UI (`PackingProgress`). |
+| Spinner | Adopt (`src/ui/spinner.tsx`) | Registry `spinner` (Lucide `Loader2Icon`) restyled to Travel tokens: always `aria-hidden`, `motion-safe:animate-spin` so it stays still under reduced motion. It sits beside text that keeps the announcement. See "Spinner" below. Progress is already Base UI (`PackingProgress`). |
 | RecordDialog, field.tsx, SearchCombobox, SuggestInput, TravelTextarea | Keep (unchanged) | The #279 reasons still hold: no registry component covers dirty dismissal, Base UI Field validity wiring, grouped option adaptation or free-text Autocomplete. |
 | Map and media rendering | Keep specialised | MapLibre and media or lightbox rendering have no registry equivalent. |
 | Visitor `PhotoLightbox` | Keep custom composition | One Base UI Dialog per gallery with named Previous/Next Buttons (`focusableWhenDisabled`, so focus is never dropped at an end), ←/→ keys, a pointer-event swipe on touch and pen only (48 px, mostly horizontal, `touch-pan-y` so vertical scrolling is untouched), a "Photo n of m" status and `finalFocus` returned to the last photo's trigger. No registry carousel fits a modal with approved-derivative preloading; the strip arrows in `Gallery` stay plain Buttons for the same reason. |
@@ -487,14 +487,20 @@ Bundle: the visitor entries went from 589.3 to 587.0 kB raw (196.9 to 195.9 kB
 gzip), because the visitor entry no longer needs the checkbox; the admin entry is
 unchanged.
 
-## Spinner and separator (#137, item 8): not adopted
+## Spinner (adopted) and separator (#137, item 8): separator not adopted
 
-Evaluated against the current source; neither has a clean spot, so neither was added.
-
-- **Spinner**: there is no hand-built loading indicator. Pending states are text
-  ("Loading…", "Saving…") with `aria-busy` on the form, and lazy views use the owned
-  `Skeleton`. A spinner would be new decoration beside text that already says the same
-  thing, not a replacement, and would add an icon animation to the motion audit.
+- **Spinner**: adopted from the registry (`pnpm exec shadcn add spinner --yes`, base-nova).
+  Local changes: the registry's `role="status"` and `aria-label="Loading"` are dropped
+  (the glyph is `aria-hidden`; the translated text next to it, inside the existing
+  `role="status"` region or the pending button, is the announcement), and the rotation is
+  `motion-safe:animate-spin`, so with `prefers-reduced-motion: reduce` the glyph is a
+  static ring. It is used beside the text, never instead of it, in: the pending label of
+  every `RecordForm` submit button (`forms/fields.tsx`), the owner view loading line in
+  `lazy-view.tsx` (the delayed Skeleton below it stays), the Markdown preview loading line,
+  the visitor photo and video loading lines in `ProjectionView.tsx`, the library and
+  emergency information loading lines, and the owner home loading card. Skeletons stay
+  where a layout placeholder is the better fit. `e2e/spinner.spec.ts` checks the pending
+  button and a loading status in both locales and themes, with and without reduced motion.
 - **Separator**: the dividers are `border-t`/`border-b`/`divide-y` utilities on the
   items they separate (list rows, the sticky capture bar, the header rule, the
   collapsible route section). They are styling of the item, not standalone
@@ -502,6 +508,5 @@ Evaluated against the current source; neither has a clean spot, so neither was a
   that screen readers announce in lists, for no behaviour gain, and `divide-y` rows
   cannot take one without changing list semantics.
 
-Revisit the spinner if a control gets an in-progress state without a text label, and
-the separator if a standalone divider between sibling regions (such as a toolbar
+Revisit the separator if a standalone divider between sibling regions (such as a toolbar
 group) appears.

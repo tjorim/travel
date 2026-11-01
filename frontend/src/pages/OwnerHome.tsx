@@ -1,3 +1,4 @@
+import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { errorNotice, useFeedback } from "../query/feedback";
 import { m } from "../paraglide/messages.js";
@@ -164,7 +165,10 @@ export function OwnerHome() {
         <h1 className="max-w-none text-2xl tracking-normal min-[680px]:max-w-none">
           {m.your_trips()}
         </h1>
-        <p>{message}</p>
+        <p className="flex items-center gap-2">
+          <Spinner />
+          {message}
+        </p>
       </Alert>
     );
   if (state === "error")

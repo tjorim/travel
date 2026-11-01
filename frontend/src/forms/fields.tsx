@@ -6,6 +6,7 @@ import { Field, FieldError, FieldLabel, FieldSet } from "@/ui/field";
 import { TravelTextarea } from "@/ui/TravelTextarea";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
+import { Spinner } from "@/ui/spinner";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   createContext,
@@ -87,6 +88,7 @@ export function RecordForm({
           )}
           <div className="button-row">
             <Button type="submit" disabled={pending || disabled}>
+              {pending && <Spinner className="mr-2 inline align-text-bottom" />}
               {pending ? pendingLabel : submitLabel}
             </Button>
             {actions}
