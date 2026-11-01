@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Review canonical records, storage, authenticated MCP/form parity and retention/export boundaries; track implementation follow-ups #115–#119 without behavior changes (Closes #113).
+
 - Record delegated visitor layout choice ID1(a): group approved area/date context near the story, preserving precision and repeated visits, with separate blocks when projected relationships are ambiguous (Refs #94).
 
 - Compare matched synthetic hotel, transport, visit and area workflows and their owner/visitor displays on laptop and Android; correct Polarsteps planning/keyboard assumptions, record local route-time/copy discrepancies and propose presentation decisions without application changes (Refs #94).
