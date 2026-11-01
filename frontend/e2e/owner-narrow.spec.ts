@@ -44,10 +44,10 @@ for (const locale of ["nl", "en"] as const) {
         expect(box!.height).toBeLessThan(55);
         await group.locator("button").first().click();
         await expect(group).toContainText("Synthetic moment");
-        const breadcrumb = page
-          .getByRole("navigation", { name: message(locale, "breadcrumb") })
-          .getByRole("link");
-        const target = await breadcrumb.boundingBox();
+        const tripsLink = page
+          .getByRole("navigation", { name: message(locale, "navigation") })
+          .getByRole("link", { name: message(locale, "trips"), exact: true });
+        const target = await tripsLink.boundingBox();
         expect(target!.width).toBeGreaterThanOrEqual(44);
         expect(target!.height).toBeGreaterThanOrEqual(44);
         await page
