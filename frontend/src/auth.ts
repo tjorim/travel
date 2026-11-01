@@ -66,6 +66,7 @@ export function readSession(): TrackerSession | null {
 }
 
 function storeSession(session: TrackerSession): void {
+  if (readSessionSubject() !== decodeSubject(session.accessToken)) sessionGeneration++;
   sessionStorage.setItem(storageKey, JSON.stringify(session));
   // This contains no credential. It permits a reload to ask Keycloak for a
   // fresh short-lived token through its existing SSO cookie if sessionStorage
@@ -197,7 +198,22 @@ export async function completeSignIn(
   return { returnPath: trackerPath(transaction.returnPath), session };
 }
 
+export function captureSessionGeneration(): number {
+  return sessionGeneration;
+}
+
 export function clearSession(): void {
+  const owner = readSessionSubject();
+  if (owner) {
+    try {
+      localStorage.setItem(
+        `travel-capture-logout:${encodeURIComponent(owner)}`,
+        crypto.randomUUID(),
+      );
+    } catch {
+      /* The local generation still fences this tab when storage is denied. */
+    }
+  }
   for (const key of Object.keys(sessionStorage)) {
     if (key.startsWith("travel-record-draft:")) sessionStorage.removeItem(key);
   }

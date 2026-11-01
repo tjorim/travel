@@ -2,6 +2,7 @@ import { Button } from "@/ui/button";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { decodeSubject } from "../auth";
 import { useAuth } from "../auth-context";
 import { requiredText, TextField } from "../forms/fields";
 import { DateTimeField } from "../forms/DateTimeFields";
@@ -16,9 +17,11 @@ import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/fe
 import { useTripSearch, useTripsQuery } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import {
+  DRAFT_FENCE,
   captureInputValue,
   clearDraft,
   emptyDraft,
+  draftIsCurrent,
   localDateTime,
   readDraft,
   saveDraft,
@@ -49,7 +52,13 @@ export type CaptureDialogProps = {
 /** The shared capture form (date/time, title, private notes, media, optional location) as an
  * accessible dialog over the current workspace. Drafts are kept per trip, so opening this for
  * one trip never reads or silently overwrites another trip's unsaved draft. */
-export function CaptureDialog({
+export function CaptureDialog(props: CaptureDialogProps) {
+  const { session } = useAuth();
+  const owner = session ? decodeSubject(session.accessToken) : null;
+  return <OwnerCaptureDialog key={owner ?? "signed-out"} {...props} />;
+}
+
+function OwnerCaptureDialog({
   open,
   lockedTripId = null,
   candidate = null,
@@ -68,6 +77,8 @@ export function CaptureDialog({
   );
   const [saveState, setSaveState] = useFeedback<string>("");
   const initialized = useRef(false);
+  const [loadedTrip, setLoadedTrip] = useState<string | null>(null);
+  const submittedDraft = useRef<UpdateDraft | null>(null);
 
   const { saveUpdate, deleteUpdate } = useCaptureMutations();
 
@@ -75,12 +86,16 @@ export function CaptureDialog({
     defaultValues: emptyDraft(lockedTripId ?? candidate?.tripId ?? ""),
     fallback: SAVE_FALLBACK,
     submit: async (values) => {
-      if (!session || !values.tripId)
+      if (!session || !values.tripId || !draftIsCurrent(values))
         throw new FeedbackError(() => m.owner_choose_a_trip_and_sign_in_first_to_save());
       if (!connection)
         throw new FeedbackError(() =>
           m.owner_you_are_offline_this_draft_stays_on_this_device_and_is_not_sent_automati(),
         );
+      submittedDraft.current = {
+        ...values,
+        [DRAFT_FENCE]: values[DRAFT_FENCE] ? { ...values[DRAFT_FENCE] } : undefined,
+      };
       setSaveState(textNotice(() => m.owner_saving()));
       // A place that already exists on the server is left as it is: sending it again would make a new one and lose its public name.
       const keepsLocation = Boolean((values.location as { id?: string } | null)?.id);
@@ -96,8 +111,20 @@ export function CaptureDialog({
         },
       });
     },
-    onSuccess: (_saved, values) => {
-      clearDraft(values.tripId);
+    onSuccess: async (_saved, values) => {
+      const result = await clearDraft(submittedDraft.current ?? values);
+      if (!draftIsCurrent(values)) return;
+      if (result !== "saved") {
+        setSaveState(textNotice(() => m.owner_trip_saved_draft_kept()));
+        setDraftState(
+          textNotice(() =>
+            result === "conflict"
+              ? m.owner_draft_changed_in_another_tab()
+              : m.owner_draft_not_saved_locally(),
+          ),
+        );
+        return;
+      }
       setDraftState(textNotice(() => m.owner_saved_to_your_private_trip()));
       setSaveState(textNotice(() => m.owner_travel_update_saved()));
       record.load(emptyDraft(values.tripId));
@@ -141,6 +168,7 @@ export function CaptureDialog({
     const tripId = lockedTripId ?? candidate?.tripId ?? trips[0].id;
     if (!trips.some((trip) => trip.id === tripId)) return;
     initialized.current = true;
+    setLoadedTrip(tripId);
     if (candidate && candidate.tripId === tripId) {
       record.load({
         ...emptyDraft(tripId),
@@ -167,22 +195,39 @@ export function CaptureDialog({
   }, [lockedTripId, candidate, trips, onCandidateConsumed]);
 
   useEffect(() => {
-    if (!initialized.current || !draft.tripId) return;
-    if (!draft.updateId && !draft.title && !draft.notes) {
-      clearDraft(draft.tripId);
-      return;
-    }
-    saveDraft(draft);
-    setDraftState(textNotice(() => m.owner_draft_saved_locally_not_sent_to_your_trip_yet()));
-  }, [draft]);
+    if (!initialized.current || !draft.tripId || loadedTrip !== draft.tripId) return;
+    let current = true;
+    const empty =
+      !draft.updateId &&
+      !draft.title &&
+      !draft.notes &&
+      !draft.location &&
+      !draft.mediaAssetIds.length;
+    void (empty ? clearDraft(draft) : saveDraft(draft)).then((result) => {
+      if (!current || (empty && result === "saved")) return;
+      setDraftState(
+        textNotice(() =>
+          result === "saved"
+            ? m.owner_draft_saved_locally_not_sent_to_your_trip_yet()
+            : result === "conflict"
+              ? m.owner_draft_changed_in_another_tab()
+              : m.owner_draft_not_saved_locally(),
+        ),
+      );
+    });
+    return () => {
+      current = false;
+    };
+  }, [draft, loadedTrip]);
 
   function updateDraft(values: Partial<UpdateDraft>) {
     for (const [name, value] of Object.entries(values))
-      form.setFieldValue(name as keyof UpdateDraft, value as never);
+      form.setFieldValue(name as Extract<keyof UpdateDraft, string>, value as never);
     setSaveState("");
   }
 
   function selectTrip(tripId: string) {
+    setLoadedTrip(tripId);
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
     setDraftState(
@@ -200,6 +245,7 @@ export function CaptureDialog({
 
   function editUpdate(update: TravelUpdate) {
     record.load({
+      ...emptyDraft(selectedTrip?.id ?? ""),
       tripId: selectedTrip?.id ?? "",
       updateId: update.id,
       occurredAt: localDateTime(new Date(update.occurred_at)),
@@ -243,10 +289,26 @@ export function CaptureDialog({
   }
 
   function performRemoveUpdate(tripId: string, updateId: string) {
+    const deletingDraft = {
+      ...draft,
+      [DRAFT_FENCE]: draft[DRAFT_FENCE] ? { ...draft[DRAFT_FENCE] } : undefined,
+    };
     setSaveState(textNotice(() => m.owner_deleting_travel_update()));
     deleteUpdate.mutateAsync({ tripId, updateId }).then(
-      () => {
-        clearDraft(tripId);
+      async () => {
+        const result = await clearDraft(deletingDraft);
+        if (!draftIsCurrent(draft)) return;
+        if (result !== "saved") {
+          setSaveState("");
+          setDraftState(
+            textNotice(() =>
+              result === "conflict"
+                ? m.owner_draft_changed_in_another_tab()
+                : m.owner_draft_not_saved_locally(),
+            ),
+          );
+          return;
+        }
         startNew();
         setDraftState(textNotice(() => m.owner_travel_update_deleted()));
       },

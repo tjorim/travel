@@ -16,6 +16,7 @@ All notable changes to the travel hub are documented here.
 - Review canonical records, storage, authenticated MCP/form parity and retention/export boundaries; track implementation follow-ups #115–#119 without behavior changes (Closes #113).
 - Add generic Open Graph and Twitter previews with a static Travel brand image to the landing, public and unlisted shells, preserving data-free HTML and visitor privacy policies (Closes #107).
 - Keep owner Sharing group headings readable on phones, fit Capture dates and keep explicit Save within reach while preserving private notes and local drafts (Closes #112).
+- Isolate capture drafts by authenticated owner and trip, preserve unknown-owner legacy drafts outside restore, fence stale tab writes and logout callbacks, and show local storage failures without automatic replay (Closes #118).
 
 - Record delegated visitor layout choice ID1(a): group approved area/date context near the story, preserving precision and repeated visits, with separate blocks when projected relationships are ambiguous (Refs #94).
 

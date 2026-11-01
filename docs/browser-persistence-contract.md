@@ -63,3 +63,35 @@ manual reconciliation. New records use individual versioned keys to avoid a
 drain overwriting concurrently queued actions. Browsers without Web Locks keep
 saved actions but do not automatically replay them. Broader offline operation
 support must extend the allowlist, retry-safety inventory and tests together.
+
+## Travel capture drafts (#118)
+
+Capture on `/admin/capture` and the owner trip dialog keeps unsent edits in
+unencrypted localStorage, separately from encrypted offline pins. Version 3 uses
+one `travel-capture-draft-v3:<encoded subject>:<encoded trip>` key per owner/trip.
+Only the current authenticated subject may restore or explicitly submit a draft;
+restored fields and the schema/owner/trip envelope are validated. No token or
+upload bytes are persisted, and nothing is automatically sent to the API.
+
+Logout preserves pending capture drafts for their original owner without a TTL.
+They become available again only when that owner signs in. Existing pin/key wipes
+and tab recovery wipes still apply. A per-tab auth generation and durable,
+content-free `travel-capture-logout:<encoded subject>` marker invalidate late
+writes/clears, including other tabs after logout. An account change remounts the
+capture editor so another owner's in-memory fields cannot remain visible.
+
+Web Locks serialize writes per owner/trip; each editor compares its last observed
+record under the lock before writing. A stale editor keeps its local form edits
+and shows a conflict notice, without replacing the saved draft. Clears write a
+revisioned tombstone so an old empty baseline cannot recreate a cleared draft.
+The original editor's queued writes remain ordered. Denied/quota storage and
+browsers without Web Locks keep the form usable in memory and display that the
+draft was not saved; explicit online Save remains available. Reloading the capture
+page restores the saved version; it does not merge stale tab edits.
+
+Legacy `travel-tracker-update-draft-v2` (and earlier) keys have unknown ownership.
+They remain verbatim in place as quarantined pending data, never read into a form,
+assigned to a signed-in owner, replayed or deleted by this migration. Incompatible
+version 3 records also remain untouched and block replacement. Manual recovery
+requires independent ownership review outside automatic restore; do not import an
+unknown-owner draft into the current account merely because a trip ID matches.

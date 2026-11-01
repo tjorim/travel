@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { mockCaptureLocks } from "../capture-draft-test-utils";
 import { createRootRoute } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -6,19 +7,14 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import {
-  clearDraft,
-  emptyDraft,
-  readDraft,
-  saveDraft,
-  type TravelUpdate,
-  type Trip,
-} from "../tracker-model";
+import { emptyDraft, readDraft, saveDraft, type TravelUpdate, type Trip } from "../tracker-model";
 import { Capture } from "./Capture";
 
 const routeTree = createRootRoute({ component: Capture });
 
-const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
+const auth = vi.hoisted(() => ({
+  session: null as { accessToken: string; expiresAt: number } | null,
+}));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const update = (id: string, title: string): TravelUpdate => ({
@@ -37,9 +33,14 @@ let state: { trip: Trip };
 let api: FakeApi;
 
 beforeEach(() => {
-  auth.session = { accessToken: testToken() };
+  mockCaptureLocks();
+  auth.session = { accessToken: testToken(), expiresAt: Date.now() + 3600000 };
+  localStorage.clear();
+  sessionStorage.setItem(
+    "travel-tracker-session",
+    JSON.stringify({ ...auth.session, expiresAt: Date.now() + 3600000 }),
+  );
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
-  clearDraft("trip");
   state = {
     trip: {
       id: "trip",
@@ -84,7 +85,6 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-  clearDraft("trip");
   expect(api.unexpected).toEqual([]);
 });
 
@@ -93,7 +93,7 @@ const savedUpdates = () =>
   within(screen.getByRole("heading", { name: "Opgeslagen reisupdates" }).closest("section")!);
 
 it("restores a local draft and keeps it up to date while typing", async () => {
-  saveDraft({ ...emptyDraft("trip"), title: "Terug van gisteren", notes: "Regen" });
+  await saveDraft({ ...emptyDraft("trip"), title: "Terug van gisteren", notes: "Regen" });
   renderCapture();
   const title = (await screen.findByLabelText("Titel")) as HTMLInputElement;
   expect(title.value).toBe("Terug van gisteren");
