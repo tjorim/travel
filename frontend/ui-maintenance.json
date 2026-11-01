@@ -243,6 +243,17 @@
       "upstreamSha256": "f6fc78f38c183a0ef5458d424f97cef31a10735847dbb2bac08f30524faa95f3",
       "capturedAt": "2026-11-01T09:48:11.318Z",
       "reviewedLocalSha256": "0235adf3fb7fad17af55cdd42f8bcbdb327e08b55044b4519ad3fb8d456cd1a1"
+    },
+    "switch": {
+      "files": ["src/ui/switch.tsx"],
+      "registry": "switch",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/switch.json",
+      "reason": "Owned registry Switch for real on/off preferences, starting with the visitor map-follow control.",
+      "upstreamSha256": "7d1ab8fc5f50acfff6dabefd90df30820c144279b42e16379a1cf124a9542ae3",
+      "capturedAt": "2026-11-01T11:19:13.712Z",
+      "reviewedAt": "2026-11-01T11:19:13.712Z",
+      "reviewNote": "Reviewed generated base-nova Switch; dropped the size variant, reused the Travel focus outline and tokens. Visitor map-follow control verified with switch role and label wiring, both locales and themes.",
+      "reviewedLocalSha256": "5db0db6681307f6e7dd6b698c0e66d383ee1f6db6098f29ff33452ceeb05a4c4"
     }
   },
   "importPolicy": {

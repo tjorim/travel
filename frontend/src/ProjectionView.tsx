@@ -7,7 +7,7 @@ import { Dialog } from "@/ui/dialog";
 import { Button } from "@/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Switch } from "@/ui/switch";
 import {
   useEffect,
   useMemo,
@@ -1510,7 +1510,7 @@ export function ProjectionView({
             {mapBesideStory && (
               <Field className="mb-2.5 hidden min-[1100px]:block">
                 <FieldLabel className="flex items-center gap-2 text-sm font-semibold">
-                  <TravelCheckbox checked={followStory} onCheckedChange={setFollowStory} />
+                  <Switch checked={followStory} onCheckedChange={setFollowStory} />
                   <span>{m.visitor_map_follows_story()}</span>
                 </FieldLabel>
               </Field>
