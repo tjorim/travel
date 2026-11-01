@@ -1,6 +1,6 @@
 import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { useLocale } from "../locale";
-import { Preferences } from "../Preferences";
+import { VisitorTopBar } from "../VisitorTopBar";
 import { m } from "../paraglide/messages.js";
 import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
@@ -30,7 +30,7 @@ export function Callback() {
 
   return (
     <main className="travel-shell pt-6!">
-      <Preferences />
+      <VisitorTopBar />
       <section className="travel-card">
         <h1>{m.owner_sign_in()}</h1>
         <p>{message}</p>

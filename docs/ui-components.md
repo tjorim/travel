@@ -360,7 +360,7 @@ inside its existing bundle budget; the initial trigger remains keyboard accessib
 
 ## Visitor keyboard path
 
-On `/trips/<slug>` and `/share/<token>`, in DOM order: the "Skip to the story" link (visible only when focused; present when the trip has updates), the navigation bar's language and theme controls, the header, the Story / Map / Plan choice on narrow screens, the story (update index, photo buttons, strip arrows), the map follow checkbox, the map canvas (arrow keys pan it, Tab leaves it), zoom and attribution, then the map's view buttons and the point and route buttons, which remain the keyboard and screen-reader route to each place. The skip link moves focus to the story region (`#story`). Every control shows a 3 px `travel-focus` ring (map controls and canvas included, inset where the map clips). Headings inside authored Markdown are fitted below the heading they sit under (`fitHeadings`), and the map's heading is an h2 on visitor pages.
+On `/trips/<slug>` and `/share/<token>`, in DOM order: the "Skip to the story" link (visible only when focused; present when the trip has updates), the navigation bar's brand link, back link and Preferences disclosure, the header, the Story / Map / Plan choice on narrow screens, the story (update index, photo buttons, strip arrows), the map follow checkbox, the map canvas (arrow keys pan it, Tab leaves it), zoom and attribution, then the map's view buttons and the point and route buttons, which remain the keyboard and screen-reader route to each place. The skip link moves focus to the story region (`#story`). Every control shows a 3 px `travel-focus` ring (map controls and canvas included, inset where the map clips). Headings inside authored Markdown are fitted below the heading they sit under (`fitHeadings`), and the map's heading is an h2 on visitor pages.
 
 ## Visitor update context (#109)
 
@@ -380,7 +380,7 @@ for embedded radio groups; a command Menu would require custom keyboard handling
 for these form controls. Reuse WorkspaceNavigation's Base UI Dialog for sections.
 The phone trigger composes the trip title and current section into one 56 px bar;
 full title remains available as a heading and in Trip details. Desktop keeps
-its existing sticky sidebar and controls. Capture stays above the bottom nav;
+its existing sticky sidebar; preferences now live in Account at every width (#133). Capture stays above the bottom nav;
 extra bottom padding lets the final content scroll clear of the floating action.
 
 Composition decision: compared a wrapped preferences/context stack with a
@@ -388,3 +388,19 @@ two-line title/section trigger plus one secondary menu. Selected the latter
 for M0: it preserves the existing drawer and Capture without adding another
 navigation model. Concept: `[Trip title / Current section ▾] [Account ⚙]`,
 with Capture floating above the existing app navigation.
+
+
+## Shared top bar (#133)
+
+VisitorTopBar composes brand and optional detail back links with the lazy
+Preferences disclosure on landing, index, public/unlisted details, unavailable
+and error states, the signed-out owner entry and callback. Plain anchors work
+across the visitor/owner router boundary and in error fallbacks. The saved-link
+notice remains outside the navigation. No visitor data projection changes.
+
+PreferencesPanel owns the Base UI Popover surface and the existing LocaleControl
+and AppearanceControl for both CompactPreferences and the owner Account menu,
+on desktop and phone. The existing registry Popover supports this composition;
+no new primitive or dependency is needed. Full-width preference rows are removed.
+Keyboard order is brand, optional back link, Preferences; Escape returns focus
+to its trigger. Detail skip links precede the bar.

@@ -1,7 +1,7 @@
 import { ApiError, apiFailure, errorMessage } from "./query/api";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
-import { Preferences } from "./Preferences";
+import { VisitorTopBar } from "./VisitorTopBar";
 import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -175,7 +175,7 @@ function TripIndex() {
   }, [attempt]);
   return (
     <main className="travel-shell w-travel-visitor-shell! max-w-travel-listing pt-6! min-[960px]:w-travel-owner-shell! [&_section]:mt-travel-section">
-      <Preferences />
+      <VisitorTopBar />
       <header className="border-b border-travel-divider pb-8 min-[680px]:pb-12">
         <p className="travel-eyebrow">Travel</p>
         <h1 className="max-w-travel-home-title!">{m.on_the_road()}</h1>
@@ -365,51 +365,38 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           {m.visitor_skip_to_story()}
         </a>
       )}
-      <nav
-        aria-label={m.visitor_navigation()}
-        className="mb-3 flex flex-wrap items-center gap-3 text-sm"
-      >
-        <span className="font-bold text-travel-forest">Travel</span>
-        {audience === "public" && (
-          <Link to="/trips" className="text-travel-forest underline underline-offset-3">
-            {m.all_public_trips()}
-          </Link>
-        )}
-        {state.kind === "ready" && saved === "saved" && (
-          <section
-            aria-label={m.share_saved_title()}
-            className="min-w-0 basis-full rounded-travel-control border border-travel-border px-3 py-0.5 min-[720px]:basis-auto"
-          >
-            <Collapsible.Root>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h2 className="m-0 text-sm">{m.share_saved_title()}</h2>
-                <Collapsible.Trigger className="rounded-travel-control bg-transparent py-1 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
-                  {m.share_saved_details()}
-                </Collapsible.Trigger>
-                <Button
-                  className="secondary compact ml-auto"
-                  type="button"
-                  onClick={() => {
-                    const forgotten = forgetSharedTrip(identifier);
-                    setStorageFailed(!forgotten);
-                    if (forgotten) setSaved("forgotten");
-                  }}
-                >
-                  {m.share_forget_link()}
-                </Button>
-              </div>
-              <Collapsible.Panel>
-                <p className="m-0 max-w-travel-reading pb-2 leading-relaxed text-travel-muted">
-                  {m.share_saved_notice()}
-                </p>
-              </Collapsible.Panel>
-            </Collapsible.Root>
-          </section>
-        )}
-        <div className="ml-auto">
-          <Preferences compact />
-        </div>
-      </nav>
+      <VisitorTopBar detail />
+      {state.kind === "ready" && saved === "saved" && (
+        <section
+          aria-label={m.share_saved_title()}
+          className="mb-3 min-w-0 rounded-travel-control border border-travel-border px-3 py-0.5"
+        >
+          <Collapsible.Root>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="m-0 text-sm">{m.share_saved_title()}</h2>
+              <Collapsible.Trigger className="rounded-travel-control bg-transparent py-1 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
+                {m.share_saved_details()}
+              </Collapsible.Trigger>
+              <Button
+                className="secondary compact ml-auto"
+                type="button"
+                onClick={() => {
+                  const forgotten = forgetSharedTrip(identifier);
+                  setStorageFailed(!forgotten);
+                  if (forgotten) setSaved("forgotten");
+                }}
+              >
+                {m.share_forget_link()}
+              </Button>
+            </div>
+            <Collapsible.Panel>
+              <p className="m-0 max-w-travel-reading pb-2 leading-relaxed text-travel-muted">
+                {m.share_saved_notice()}
+              </p>
+            </Collapsible.Panel>
+          </Collapsible.Root>
+        </section>
+      )}
       {state.kind !== "ready" && (
         <header>
           <p className="travel-eyebrow">Travel</p>
@@ -465,7 +452,7 @@ function VisitorRoute({ audience }: { audience: Audience }) {
     <VisitorPage key={`${audience}:${identifier}`} audience={audience} identifier={identifier} />
   ) : (
     <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
-      <Preferences />
+      <VisitorTopBar />
       <section className="travel-card" role="status">
         <h1>{m.unavailable_trip()}</h1>
       </section>
@@ -501,7 +488,7 @@ const visitorNotFoundRoute = createRoute({
     useLocale();
     return (
       <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
-        <Preferences />
+        <VisitorTopBar />
         <section className="travel-card" role="status">
           <h1>{m.page_unavailable()}</h1>
         </section>
