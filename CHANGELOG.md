@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Use the owned registry Switch for the visitor "Move the map along with the story" control; other checkboxes stay checkboxes (#137).
+
 - Verify built visitor releases and print public/unlisted stories with their itinerary, without navigation or the sticky map (#114).
 
 - Use the owned registry Tabs for the visitor Story / Map / Plan switch, giving it tablist, tab and tabpanel semantics with arrow-key navigation; the side-by-side layout from 1100 px is unchanged.

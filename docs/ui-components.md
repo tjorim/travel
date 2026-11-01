@@ -468,3 +468,21 @@ Bundle: Base UI Tabs and its composite runtime add about 7.7 kB raw (2.7 kB gzip
 the visitor entries (579.4 to 587.1 kB raw, 193.2 to 195.9 kB gzip, measured on
 `main` and this branch with the same dependencies), so their raw budget in
 `bundle-budget.json` rises from 585 to 590 kB; gzip limits are unchanged.
+
+## Switch (#137, item 7)
+
+Generated base-nova Switch (Base UI), restyled to the Travel tokens: one size, the
+checkbox's focus outline and invalid border, `bg-input` track and an action-colour
+checked track. It replaces the checkbox on the visitor "Move the map along with the
+story" control, the only real immediate on/off preference. The label, `Field`/
+`FieldLabel` wiring and translation are unchanged; the control now reports
+`role="switch"` instead of `checkbox`.
+
+The remaining checkboxes stay checkboxes: they are form values saved with a record
+(sharing address or time, packing flags, linked documents), selections from a list
+(merge, reuse, media, scope fields) or confirmations (merge acceptance, no expiry
+date), where "checked" means "included" rather than "this setting is on".
+
+Bundle: the visitor entries went from 589.3 to 587.0 kB raw (196.9 to 195.9 kB
+gzip), because the visitor entry no longer needs the checkbox; the admin entry is
+unchanged.
