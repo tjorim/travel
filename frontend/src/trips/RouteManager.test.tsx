@@ -532,3 +532,19 @@ it("links documents to a route and forgets a deleted one after the in-app confir
   expect(await screen.findByRole("button", { name: /Amsterdam → Taoyuan/ })).toBeTruthy();
   expect(api.count("DELETE /api/trips/trip/routes/r-line")).toBe(1);
 });
+
+it("says which schedule fields a shared route reveals, in both languages", async () => {
+  seed();
+  renderWithOwner(<RouteManager trip={trip} />);
+  for (const [locale, shared, never] of [
+    ["nl", /vervoerder, dienstnummer en planning/, /Boekingen, reisklasse, notities en documenten/],
+    ["en", /carrier, service number, schedule/, /Bookings, travel class, notes and documents/],
+  ] as const) {
+    act(() => changeLocale(locale));
+    const text = (await screen.findAllByText(shared))[0]!.textContent ?? "";
+    expect(text).toMatch(never);
+    expect(text).not.toMatch(
+      /times (stay|and bookings are optional and stay) private|tijden en boekingen zijn optioneel en blijven privé/,
+    );
+  }
+});
