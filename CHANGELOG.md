@@ -7,6 +7,7 @@ All notable changes to the travel hub are documented here.
 - Configure the build entries through Vite 8's `build.rolldownOptions` instead of the deprecated `rollupOptions` alias; the four entries and bundle budgets are unchanged (Closes #159).
 - Amend the sharing policy, route contract and publication safety check for collection links that grant several trips at once, each at its own member scope (Refs #136).
 - Record the November 2026 stack upgrade audit: current/latest versions, risks, recommended order and a new-features shortlist (#94).
+- Verify the audit's feature shortlist and the frontend bump release notes against upstream notes and local measurements: React Compiler, Temporal, lazy imports and `uuidv7()` are not worthwhile; only the deprecated `build.rollupOptions` remains, tracked in #159 (Refs #94).
 
 - Add a private per-trip JSON export: `GET /api/trips/{trip_id}/export` streams the owner's canonical records and relationships (no files, storage keys, capabilities or other owners' data), records each export in the audit table, and is offered as "Export trip data (JSON)" in the trip details dialog. Schema in `docs/export-format.md` (Closes #119).
 - Add owner-wide collection links: one capability with its own token opens an index of several trips, each at its own member scope, with owner CRUD, audit events, MCP tools and visitor endpoints under `/api/shared/{token}` (Refs #136).
