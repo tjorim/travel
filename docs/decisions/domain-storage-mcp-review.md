@@ -263,23 +263,23 @@ JSON validation remain authoritative in `models.py` and `schemas.py`.
 
 - **ProviderSecret** ([models.py:80](../../backend/app/models.py#L80)): `subject`, `provider`, `kind`, `ciphertext`.
 
-- **Area** ([models.py:219](../../backend/app/models.py#L219)): `id`, `trip_id` → trips.id, `label`, `region`, `country_code`, `latitude`, `longitude`, `timezone`, `created_at`, `updated_at`.
+- **Area** ([models.py:219](../../backend/app/models.py#L219)): `visibility`, `id`, `trip_id` → trips.id, `label`, `region`, `country_code`, `latitude`, `longitude`, `timezone`, `created_at`, `updated_at`.
 
-- **Location** ([models.py:247](../../backend/app/models.py#L247)): `id`, `trip_id` → trips.id, `area_id` → areas.id, `label`, `share_address`, `osm_element_type`, `osm_element_id`, `osm_url`, `display_name`, `address_line1`, `address_line2`, `locality`, `admin_area`, `postal_code`, `country_code`, `latitude`, `longitude`, `viewport_north`, `viewport_south`, `viewport_east`, `viewport_west`, `navigation_provider`, `navigation_provider_place_id`, `notes`, `created_at`, `updated_at`.
+- **Location** ([models.py:247](../../backend/app/models.py#L247)): `visibility`, `id`, `trip_id` → trips.id, `area_id` → areas.id, `label`, `share_address`, `osm_element_type`, `osm_element_id`, `osm_url`, `display_name`, `address_line1`, `address_line2`, `locality`, `admin_area`, `postal_code`, `country_code`, `latitude`, `longitude`, `viewport_north`, `viewport_south`, `viewport_east`, `viewport_west`, `navigation_provider`, `navigation_provider_place_id`, `notes`, `created_at`, `updated_at`.
 
 - **Trip** ([models.py:309](../../backend/app/models.py#L309)): `id`, `owner_subject`, `title`, `summary`, `starts_on`, `ends_on`, `created_at`, `updated_at`.
 
 - **TravelUpdateMediaAsset** ([models.py:374](../../backend/app/models.py#L374)): `travel_update_id` → travel_updates.id, `media_asset_id` → media_assets.id, `created_at`.
 
-- **TravelUpdate** ([models.py:394](../../backend/app/models.py#L394)): `id`, `share_id`, `trip_id` → trips.id, `area_id` → areas.id, `location_id` → locations.id, `occurred_at`, `date_precision`, `title`, `body`, `private_notes`, `created_at`, `updated_at`.
+- **TravelUpdate** ([models.py:394](../../backend/app/models.py#L394)): `visibility`, `id`, `share_id`, `trip_id` → trips.id, `area_id` → areas.id, `location_id` → locations.id, `occurred_at`, `date_precision`, `title`, `body`, `private_notes`, `created_at`, `updated_at`.
 
-- **Stay** ([models.py:443](../../backend/app/models.py#L443)): `id`, `trip_id` → trips.id, `location_id` → locations.id, `check_in_date`, `check_out_date`, `check_in_time`, `check_out_time`, `status`, `property_name`, `website_url`, `booking_reference`, `contact_details`, `notes`, `share_date_precision`, `created_at`, `updated_at`.
+- **Stay** ([models.py:443](../../backend/app/models.py#L443)): `visibility`, `id`, `trip_id` → trips.id, `location_id` → locations.id, `check_in_date`, `check_out_date`, `check_in_time`, `check_out_time`, `status`, `property_name`, `website_url`, `booking_reference`, `contact_details`, `notes`, `share_date_precision`, `created_at`, `updated_at`.
 
-- **Route** ([models.py:493](../../backend/app/models.py#L493)): `id`, `trip_id` → trips.id, `mode`, `status`, `label`, `departure_area_id` → areas.id, `arrival_area_id` → areas.id, `departure_location_id` → locations.id, `arrival_location_id` → locations.id, `departs_on`, `departs_at`, `arrives_at`, `departure_timezone`, `arrival_timezone`, `carrier`, `service_reference`, `travel_class`, `booking_reference`, `notes`, `geometry`, `created_at`, `updated_at`.
+- **Route** ([models.py:493](../../backend/app/models.py#L493)): `visibility`, `id`, `trip_id` → trips.id, `mode`, `status`, `label`, `departure_area_id` → areas.id, `arrival_area_id` → areas.id, `departure_location_id` → locations.id, `arrival_location_id` → locations.id, `departs_on`, `departs_at`, `arrives_at`, `departure_timezone`, `arrival_timezone`, `carrier`, `service_reference`, `travel_class`, `booking_reference`, `notes`, `geometry`, `created_at`, `updated_at`.
 
 - **RouteDocumentAsset** ([models.py:566](../../backend/app/models.py#L566)): `route_id` → routes.id, `document_asset_id` → document_assets.id, `created_at`.
 
-- **Visit** ([models.py:587](../../backend/app/models.py#L587)): `id`, `trip_id` → trips.id, `position`, `area_id` → areas.id, `location_id` → locations.id, `title`, `kind`, `status`, `starts_on`, `ends_on`, `start_time`, `end_time`, `notes`, `summary`, `share_time`, `share_date_precision`, `created_at`, `updated_at`.
+- **Visit** ([models.py:587](../../backend/app/models.py#L587)): `visibility`, `id`, `trip_id` → trips.id, `position`, `area_id` → areas.id, `location_id` → locations.id, `title`, `kind`, `status`, `starts_on`, `ends_on`, `start_time`, `end_time`, `notes`, `summary`, `share_time`, `share_date_precision`, `created_at`, `updated_at`.
 
 - **PackingList** ([models.py:645](../../backend/app/models.py#L645)): `id`, `trip_id` → trips.id, `name`, `created_at`.
 
@@ -309,7 +309,7 @@ JSON validation remain authoritative in `models.py` and `schemas.py`.
 
 - **MediaAsset** ([models.py:942](../../backend/app/models.py#L942)): `id`, `trip_id` → trips.id, `original_object_id` → stored_objects.id, `media_kind`, `captured_at`, `captured_local`, `import_id` → import_records.id, `raw_metadata`, `created_at`, `updated_at`, `deleted_at`.
 
-- **MediaDerivative** ([models.py:973](../../backend/app/models.py#L973)): `id`, `trip_id` → trips.id, `media_asset_id` → media_assets.id, `object_id` → stored_objects.id, `poster_object_id` → stored_objects.id, `processing_state`, `processing_backend`, `processing_started_at`, `remove_audio`, `duration_seconds`, `purpose`, `metadata_stripped_at`, `review_state`, `width`, `height`, `travel_update_id` → travel_updates.id, `caption`, `alt_text`, `focal_x`, `focal_y`, `is_cover`, `created_at`.
+- **MediaDerivative** ([models.py:973](../../backend/app/models.py#L973)): `visibility`, `id`, `trip_id` → trips.id, `media_asset_id` → media_assets.id, `object_id` → stored_objects.id, `poster_object_id` → stored_objects.id, `processing_state`, `processing_backend`, `processing_started_at`, `remove_audio`, `duration_seconds`, `purpose`, `metadata_stripped_at`, `review_state`, `width`, `height`, `travel_update_id` → travel_updates.id, `caption`, `alt_text`, `focal_x`, `focal_y`, `is_cover`, `created_at`.
 
 - **DocumentAsset** ([models.py:1037](../../backend/app/models.py#L1037)): `id`, `trip_id` → trips.id, `original_object_id` → stored_objects.id, `document_kind`, `title`, `owner_metadata`, `created_at`, `updated_at`, `deleted_at`.
 
