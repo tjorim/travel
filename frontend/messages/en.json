@@ -2145,5 +2145,12 @@
   "owner_exporting_trip_data": "Exporting trip data…",
   "owner_trip_export_help": "Downloads this trip's records as one JSON file. It is private: it includes your notes and booking details but no files, photos or sharing links.",
   "owner_trip_export_failed": "The trip data could not be exported.",
-  "owner_trip_export_downloaded": "Trip data exported."
+  "owner_trip_export_downloaded": "Trip data exported.",
+  "shared_trips": "Shared trips",
+  "unlisted_collection": "Unlisted trips",
+  "collection_intro": "These trips were shared with you through one link. Open one to read it.",
+  "collection_trips_label": "Trips in this link",
+  "collection_empty": "No trips here yet",
+  "collection_empty_description": "The owner has not added any trips to this link yet. Check again later.",
+  "visitor_back_to_collection": "All trips in this link"
 }

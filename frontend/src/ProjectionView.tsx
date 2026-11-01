@@ -1225,14 +1225,20 @@ export function ProjectionView({
   projection,
   audience,
   identifier,
+  apiBase,
   previewResources,
 }: {
   projection: Projection;
   audience: Audience;
   identifier: string;
+  /** Where this document's files and navigation live when that is not `/api/{public/trips|shared}/{identifier}`. */
+  apiBase?: string;
   previewResources?: PreviewResources;
 }) {
   const locale = useLocale();
+  const deliveryBase =
+    apiBase ??
+    `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}`;
   const sideBySide = useSideBySide();
   const [view, setView] = useState<View>("story");
   const [activeUpdate, setActiveUpdate] = useState<string | null>(null);
@@ -1341,10 +1347,9 @@ export function ProjectionView({
           {m.visitor_directions()}
         </Button>
       );
-    const base = audience === "public" ? "/api/public/trips" : "/api/shared";
     return (
       <a
-        href={`${base}/${encodeURIComponent(identifier)}/navigation/${encodeURIComponent(item.id)}`}
+        href={`${deliveryBase}/navigation/${encodeURIComponent(item.id)}`}
         referrerPolicy="no-referrer"
         rel="noreferrer"
       >
@@ -1355,7 +1360,7 @@ export function ProjectionView({
   const fileUrl = (item: ProjectionItem) =>
     previewResources
       ? (previewResources.images[item.id] ?? null)
-      : `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}/files/${encodeURIComponent(item.id)}`;
+      : `${deliveryBase}/files/${encodeURIComponent(item.id)}`;
   const updateIds = new Set(projection.updates.map((item) => item.id));
   const looseMedia = projection.media.filter(
     (item) => typeof item.update !== "string" || !updateIds.has(item.update),
