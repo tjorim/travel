@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
-// @vitest-environment-options {"happyDOM":{"handleDisabledFileLoadingAsSuccess":true}}
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Window } from "happy-dom";
 
+const parserWindow = new Window({ settings: { handleDisabledFileLoadingAsSuccess: true } });
 const output = mkdtempSync(join(tmpdir(), "travel-visitor-metadata-"));
 const root = process.cwd();
 const image = "https://travel.tjor.im/admin/link-preview.png";
@@ -41,7 +42,10 @@ beforeAll(() => {
     env: { ...process.env, TRAVEL_DEV_AUTH_BYPASS_TOKEN: "" },
   });
 }, 120_000);
-afterAll(() => rmSync(output, { recursive: true, force: true }));
+afterAll(() => {
+  parserWindow.close();
+  rmSync(output, { recursive: true, force: true });
+});
 
 describe("built visitor link previews", () => {
   for (const [shell, title] of [
@@ -51,7 +55,7 @@ describe("built visitor link previews", () => {
   ]) {
     it(`${shell} contains only generic metadata and a data-free root`, () => {
       const html = readFileSync(join(output, `${shell}.html`), "utf8");
-      const page = new DOMParser().parseFromString(html, "text/html");
+      const page = new parserWindow.DOMParser().parseFromString(html, "text/html");
       expect(page.documentElement.lang).toBe("nl");
       expect(page.title).toBe(title);
       const tags = [...page.querySelectorAll("meta[name], meta[property]")];
