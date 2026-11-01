@@ -163,17 +163,21 @@ What the changes in this branch family do for ease of use, and what is left:
 **Size key.** S: one pull request. M: a few pull requests. L: several issues
 and a design decision. XL: a new platform or a changed trust model.
 
-**Ranking.** The owner's priorities decide the order inside table A: laptop
-trip preparation first, then active trips, then visitors.
+**Ranking update, 2026-10-31.** Public and unlisted trip viewing are now the
+owner’s top priority. Row IDs retain their original numbering; use the revised
+roadmap below and [mobile supplement](polarsteps-mobile-fit-gap.md) for current
+order. Domain model, held data and storage come second; owner preparation
+and active-trip tooling follow.
 
 ## A. Gap we want
 
 Travel has no equivalent today and the feature fits the existing privacy
-model, or fits it after a small decision. Order is by value for the owner.
+model, or fits it after a small decision. IDs preserve the original order;
+the revised roadmap below takes precedence.
 
 | # | Feature | Polarsteps behaviour | Travel today | Recommendation |
 |---|---|---|---|---|
-| A1 | Trip statistics and planning-gap hints (laptop prep) | Countries, distance, days; a furthest-point figure; distance is an estimate and can be corrected by adding or deleting steps. Countries count only once a step is placed there; a scratch map adds others by hand (H5). Elevation and transport-mode stats are Plus (N1). | The owner overview already shows booking badges: transport confirmed, nights confirmed with "n without a stay", and open tasks (`tripBadges` in `frontend/src/trips/TripOverview.tsx`), plus record counts per kind and visibility warnings (`backend/app/overview.py`). Missing: areas and countries the plan touches, days with nothing planned, approximate distance per travel mode, and any figure across trips. | **Do first, narrowed.** Extend the existing badges and overview with the missing numbers. Owner-only and derived from existing stays, routes and areas, so no privacy decision. Distance uses the drawn line, else the straight line between areas, and is labelled approximate. Size S. No elevation (see B3). Track as a child of #94 once chosen. |
+| A1 | Trip statistics and planning-gap hints (laptop prep) | Countries, distance, days; a furthest-point figure; distance is an estimate and can be corrected by adding or deleting steps. Countries count only once a step is placed there; a scratch map adds others by hand (H5). Elevation and transport-mode stats are Plus (N1). | The owner overview already shows booking badges: transport confirmed, nights confirmed with "n without a stay", and open tasks (`tripBadges` in `frontend/src/trips/TripOverview.tsx`), plus record counts per kind and visibility warnings (`backend/app/overview.py`). Missing: areas and countries the plan touches, days with nothing planned, approximate distance per travel mode, and any figure across trips. | **After visitor viewing, narrowed.** Extend the existing badges and overview with the missing numbers. Owner-only and derived from existing stays, routes and areas, so no privacy decision. Distance uses the drawn line, else the straight line between areas, and is labelled approximate. Size S. No elevation (see B3). Track as a child of #94 once chosen. |
 | A1b | Nights stepper in the planner | A "- 1 night +" stepper on each destination card, with an insert point between cards (V2). | Visits, stays and routes are edited in dialogs; visits carry a `position` and have Move up and Move down, stays follow their dates, and the agenda is read-only (`frontend/src/trips/AgendaView.tsx`, `PlanSection.tsx`). | **Implemented in #100** (private idea and planned stays only; a stay visitors can see is edited in its dialog). Drag-and-drop reorder is deliberately not copied: Move up and Move down already work from a keyboard. |
 | A2 | Booking intake: confirmation to draft record | Forward a hostel, hotel or Airbnb confirmation to a Polarsteps address and it appears in the plan (N3, date unverified). In-app flight search adds flights to the itinerary (N2). | Stays, routes and documents are entered by hand. The owner's own assistant can already create them through the MCP `batch_create` and document tools (`backend/app/mcp_server.py`), but this is not a documented workflow and MCP is not yet routed in production ([apps#226](https://github.com/tjorim/apps/issues/226)). | **Do second, in two steps.** (1) Document an MCP recipe: paste or attach the confirmation, review the drafted stay or route, keep the original as a trip document. Size S, no new decision. (2) An inbound email address or an in-app paste box is a separate decision (D1): mail content is booking data, which stays owner-only, and an address needs VPS mail handling, which would be an issue in `tjorim/apps` once chosen. Size L. Flight search stays out (B6). |
 | A3 | Owner data export | "Download my data" on the website: an emailed archive with steps, photos, routes (`locations.json`) and profile; no PDF export (H4). | No export of any kind. Backups exist on the VPS ([apps#220](https://github.com/tjorim/apps/issues/220)) but the owner cannot take one trip with them. | **Do third.** A per-trip owner download: JSON of records plus originals, derivatives and documents, streamed per #30 and read-only against the object-storage rules in [object-storage.md](../object-storage.md). The owner receives their own private data, so no visitor-boundary change. Size M. Also the base for A7. |
@@ -230,20 +234,34 @@ upload) with EXIF time suggested, not applied.
 
 ## Recommended roadmap
 
-At most five items, in order. Items 1 and 3 need no new decision; the rest
-wait for the answers below.
+Updated after owner feedback on 2026-10-31: public and unlisted trip viewing
+come first, superseding this analysis’s original laptop-first recommendation.
 
-1. **Trip statistics and planning-gap hints** (A1, S to M). Owner-only, from
-   existing records.
-2. **Booking intake, step one: a documented MCP recipe** (A2, S). Decide the
-   inbound-mail step later (D1).
-3. **Per-trip owner export** (A3, M). Portability and the base for any book.
-4. **Offline authoring that syncs** (A4, L), and the offline base map (A4b),
-   only after D2.
-5. **Public Atom feed and scope-selected visitor numbers** (A5 + A6, S + M),
-   only after D3.
-
-A printable book (A7) and a replay (A8) come after these.
+1. **Visitor viewing and photo navigation** (A6b/A6c, A11; mobile M4).
+   Build on #100: check compact headers, photo-led story, map/story layout and
+   navigation in both public and unlisted standalone shells and owner preview,
+   on phone and desktop. No new privacy decision for presentation fixes.
+2. **Domain model, held data and storage review.** The owner's next priority:
+   review record kinds/relationships, canonical versus derived/projected data,
+   database/file storage, retention, deletion and export. Start with
+   [domain-model.md](../domain-model.md), [the publication model](37-canonical-content-and-publication-model.md)
+   and [object-storage.md](../object-storage.md). Track in #94; this is a review
+   priority, not approval to change the schema, storage or privacy boundaries.
+   Include both PWA and authenticated MCP editing (C7): admins can update
+   their trips through tools as well as forms. Both paths must share domain
+   validation, ownership, publication safeguards, audit and object lifecycle.
+   `backend/app/mcp_server.py` already adapts the owner handlers; production
+   routing remains apps#226 rather than a newly verified deployment here.
+3. **Owner layout and Capture** (mobile M0/M1/M2, existing #5): compact header
+   with the owner Capture FAB retained, readable Sharing review and shorter
+   Capture flow with a legible date.
+4. **Trip statistics, booking recipe and owner export** (A1/A2 step one/A3),
+   plus first-steps navigation A10. Use the reviewed domain/storage contracts;
+   inbound mail remains D1-gated.
+5. **Offline and optional visitor additions** (mobile M3, A4/A4b, A5/A6).
+   Verify current drafts/copies first; outbox/maps require D2, feed/numbers D3.
+   A public feed is not an unlisted subscription mechanism. Book/replay work
+   (A7/A8) remains later.
 
 ## Open decisions
 
