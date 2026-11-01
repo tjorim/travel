@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add a private per-trip JSON export: `GET /api/trips/{trip_id}/export` streams the owner's canonical records and relationships (no files, storage keys, capabilities or other owners' data), records each export in the audit table, and is offered as "Export trip data (JSON)" in the trip details dialog. Schema in `docs/export-format.md` (Closes #119).
+
 - Adopt the owned registry Spinner beside the pending label of form submit buttons and the text-only loading lines (owner views, Markdown preview, visitor photo and video, library, emergency information, owner home); it is decorative, the text keeps the announcement, and it stays still under reduced motion. The Separator stays not adopted (#137).
 
 - Use the owned registry Switch for the visitor "Move the map along with the story" control; other checkboxes stay checkboxes (#137).
