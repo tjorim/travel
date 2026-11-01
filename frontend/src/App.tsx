@@ -21,6 +21,7 @@ const TripWorkspace = lazyNamed(() => import("./pages/TripWorkspace"), "TripWork
 const TripDetail = lazyNamed(() => import("./pages/TripDetail"), "TripDetail");
 const Capture = lazyNamed(() => import("./pages/Capture"), "Capture");
 const Library = lazyNamed(() => import("./pages/Library"), "Library");
+const Sharing = lazyNamed(() => import("./pages/Sharing"), "Sharing");
 const Settings = lazyNamed(() => import("./pages/Settings"), "Settings");
 
 const routeTree = buildTrackerRouteTree({
@@ -31,6 +32,7 @@ const routeTree = buildTrackerRouteTree({
   TripDetail,
   Capture,
   Library,
+  Sharing,
   Settings,
 });
 

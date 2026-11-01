@@ -7,7 +7,14 @@ import { Button } from "@/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { HouseIcon, LibraryIcon, MapPinIcon, PlusIcon, SettingsIcon } from "lucide-react";
+import {
+  HouseIcon,
+  LibraryIcon,
+  MapPinIcon,
+  PlusIcon,
+  SettingsIcon,
+  Share2Icon,
+} from "lucide-react";
 
 import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
 import { useAuth } from "./auth-context";
@@ -69,6 +76,7 @@ export function Boundary({ children }: { children: ReactNode }) {
     ["/", m.overview(), HouseIcon],
     ["/trips", m.trips(), MapPinIcon],
     ["/library", m.library(), LibraryIcon],
+    ["/sharing", m.owner_sharing(), Share2Icon],
     ["/settings", m.settings(), SettingsIcon],
   ] as const;
 

@@ -15,6 +15,7 @@ export function RenderedPreview({
   linkId,
   scope,
   session,
+  previewBase,
 }: {
   projection: Projection;
   audience: Audience;
@@ -23,11 +24,15 @@ export function RenderedPreview({
   /** The unsaved candidate scope being previewed; resolves files and directions without saving it. */
   scope: ShareScope;
   session: TrackerSession;
+  /** Where this preview's files and directions are resolved, for a preview that is not a trip's own audience. */
+  previewBase?: string;
 }) {
   useLocale();
   const [images, setImages] = useState<Record<string, string>>({});
   const [error, setError] = useFeedback<string>("");
-  const base = `/api/trips/${encodeURIComponent(tripId)}/${audience === "public" ? "public-projection" : `share-links/${encodeURIComponent(linkId ?? "")}`}/preview`;
+  const base =
+    previewBase ??
+    `/api/trips/${encodeURIComponent(tripId)}/${audience === "public" ? "public-projection" : `share-links/${encodeURIComponent(linkId ?? "")}`}/preview`;
 
   useEffect(() => {
     const controller = new AbortController();

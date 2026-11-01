@@ -51,13 +51,14 @@ function render(path: string) {
   );
 }
 
-it("has the site-wide places only: Start, Trips, Library and Settings", async () => {
+it("has the site-wide places only: Start, Trips, Library, Sharing and Settings", async () => {
   render("/trips");
   const nav = within(await screen.findByRole("navigation", { name: "App navigatie" }));
   expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual([
     "Start",
     "Reizen",
     "Bibliotheek",
+    "Delen",
     "Instellingen",
   ]);
 });
