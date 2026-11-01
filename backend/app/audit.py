@@ -20,6 +20,7 @@ from .models import (
     AuditEventKind,
     AuditTargetType,
     LinkState,
+    McpAuditEvent,
     PublicSurface,
     ShareLink,
     SurfaceState,
@@ -30,7 +31,7 @@ from .models import (
 # request) has no authenticated owner subject to attribute it to.
 SYSTEM_ACTOR = "system"
 
-# The sharing policy's audit retention window (#36).
+# Shared publication and best-effort MCP audit retention window (#36, #116).
 RETENTION_WINDOW = timedelta(days=730)
 
 
@@ -68,15 +69,19 @@ def record_audit_event(
 
 
 def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETENTION_WINDOW) -> int:
-    """Hard-delete audit events past the retention window. Pure application
-    code with no scheduler wiring: v1 runs it manually or from a one-off
-    script, per the issue's documented-manual-process allowance; recurring
-    VPS scheduling is out of scope here (see tjorim/apps for that job, as
-    with `purge_deleted_media`'s own schedule)."""
+    """Purge both private audit histories using one cutoff and transaction.
+
+    MCP invocation recording remains best effort; retention does not make
+    recording atomic with domain mutations. The maintenance command uses this
+    policy default, including records whose trip has already been deleted.
+    """
     cutoff = datetime.now(UTC) - older_than
-    result = cast(CursorResult, session.execute(delete(AuditEvent).where(AuditEvent.occurred_at < cutoff)))
+    purged = 0
+    for model in (AuditEvent, McpAuditEvent):
+        result = cast(CursorResult, session.execute(delete(model).where(model.occurred_at < cutoff)))
+        purged += result.rowcount
     session.commit()
-    return result.rowcount
+    return purged
 
 
 PUBLIC_AUDIENCE = "public"
