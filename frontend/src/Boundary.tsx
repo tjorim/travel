@@ -4,7 +4,7 @@ import { useLocale } from "./locale";
 import { Preferences } from "./Preferences";
 import { Button } from "@/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { HouseIcon, LibraryIcon, MapPinIcon, PlusIcon, SettingsIcon } from "lucide-react";
 
@@ -14,7 +14,7 @@ import { CaptureProvider, useCapture } from "./capture-context";
 import { wipeOfflineData } from "./offline/offline-store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 
-import { PublicationState } from "./trips/WorkspaceHeader";
+const PublicationState = lazy(() => import("./trips/PublicationState"));
 import { OwnerHeaderContext } from "./owner-header-context";
 
 /**
@@ -155,7 +155,11 @@ export function Boundary({ children }: { children: ReactNode }) {
                 >
                   <div className="min-[680px]:hidden">
                     <Preferences />
-                    {tripId && <PublicationState tripId={tripId} />}
+                    {tripId && (
+                      <Suspense fallback={null}>
+                        <PublicationState tripId={tripId} />
+                      </Suspense>
+                    )}
                     {action && (
                       <Button
                         className="secondary w-full"
