@@ -865,14 +865,15 @@ class StoredObject(Base):
     against the just-written bytes; only an `available` object may back a
     `MediaAsset` or `MediaDerivative`. Two uploads of identical bytes for the
     same trip reuse one row (`uq_stored_object_trip_sha256`): deduplication
-    never crosses trips/owners.
+    never crosses trips/owners. Detached purge inventory has no trip link and
+    survives trip deletion until the locked maintenance purge succeeds.
     """
 
     __tablename__ = "stored_objects"
     __table_args__ = (UniqueConstraint("trip_id", "sha256", name="uq_stored_object_trip_sha256"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    trip_id: Mapped[str | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True)
     bucket: Mapped[str] = mapped_column(String(64), nullable=False, default="media")
     object_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -209,14 +209,17 @@ Trip documents (`document/service.py:50–60`), library documents
 are hard deleted with committed pending-object cleanup and locked physical purge.
 Shared/deduplicated objects must survive while any live reference remains.
 
-Trip deletion (`routers/trips.py:155–158`) currently commits row deletion without
-queuing object cleanup. `StoredObject.trip_id` cascades (`models.py:875`), so
-normal pending-row purge loses inventory and old files need orphan reconciliation.
-Track the cleanup/retry and remote-job boundary in #117; reproduce using a local
-PostgreSQL trip with synthetic media/documents, delete over each entry point,
-then compare inventory, worker state and storage before/after maintenance.
-This was source-reviewed, not executed against PostgreSQL. Owner documents use
-`SET NULL` on their trip link and must not be deleted with that trip.
+Trip deletion now marks every trip object `purge_pending` and detaches its trip
+link in the same transaction that removes the trip. Inventory survives via a
+nullable `SET NULL` foreign key (migration 017). No bytes are deleted by the
+HTTP or MCP request: `purge-deleted-media` retries the existing locked purge.
+Worker jobs survive with a null derivative link for dispatcher cancellation/ACK;
+linked owner-library documents survive with their trip link cleared. #117 is
+implemented with synthetic SQLite/PostgreSQL HTTP/MCP, rollback and failed-purge
+retry coverage, plus worker cancellation tests. PostgreSQL migration upgrade,
+downgrade and re-upgrade and the backup deletion-lock regression are validated
+locally. Downgrade refuses detached inventory until maintenance purges it.
+Production scheduling remains the existing apps#245 infrastructure boundary.
 
 Sharing audit expires at 730 days (`audit.py:34,70–80`); MCP audit has no equivalent
 purge (#116). Maintenance accepts any positive media retention duration
@@ -254,7 +257,7 @@ Implementation is deliberately outside this documentation-only PR.
 | Order | Change / tracking | Size | Owner decision |
 | --- | --- | --- | --- |
 | 1 | [#115](https://github.com/tjorim/travel/issues/115): share document-upload metadata validation before file writes | S | No; existing HTTP constraints are the contract |
-| 2 | [#117](https://github.com/tjorim/travel/issues/117): preserve retryable trip-object cleanup and cancel worker work | M | No for cleanup correctness; confirm any new recovery promise separately |
+| 2 (implemented) | [#117](https://github.com/tjorim/travel/issues/117): preserve retryable trip-object cleanup and cancel worker work | M | No for cleanup correctness; confirm any new recovery promise separately |
 | 3 | [#118](https://github.com/tjorim/travel/issues/118): owner-isolate capture drafts, quarantine legacy drafts and handle storage failure | M | Decide logout/recovery UX; do not silently assign legacy data |
 | 4 | [#116](https://github.com/tjorim/travel/issues/116): bound MCP audit retention and state the durability guarantee | M | Yes: retention period and whether best effort is acceptable |
 | 5 | [#119](https://github.com/tjorim/travel/issues/119): approve owner-export boundary, reconcile decision 37 with current schema, then implement export | L | Yes: originals/deleted rows/library/audit scope and artifact retention; choose any missing MCP capabilities explicitly |
