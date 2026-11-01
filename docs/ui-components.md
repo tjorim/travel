@@ -420,3 +420,18 @@ media loading/progress, connection banners, counters and interactive translation
 status rows bespoke: these have field associations, changing media state or inline
 controls rather than standalone notices. Other manager notices remain for a later
 consumer audit rather than mechanically changing every live region.
+
+## Badge (#137)
+
+Owned base-nova Badge retains Base UI useRender/mergeProps and span default,
+including render composition for overview list items. Travel outline/live/offline
+variants preserve booking-count and publication-state colours, sizing and text.
+Unused registry link/destructive variants and cva are omitted. No live region
+or interactive semantics are added.
+
+PublicationState and TripOverview booking counts use Badge. TripStatePill stays
+a quiet uppercase text label with a dot, without a capsule background. Stay and
+route idea/planned/status and record visibility stay in their existing inline
+metadata sentences: separate capsules would fragment those compact summaries.
+Navigation links, provider connection notices and progress indicators retain
+their existing link, status and progress semantics.
