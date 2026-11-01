@@ -9,6 +9,7 @@ All notable changes to the travel hub are documented here.
 
 - Add a private per-trip JSON export: `GET /api/trips/{trip_id}/export` streams the owner's canonical records and relationships (no files, storage keys, capabilities or other owners' data), records each export in the audit table, and is offered as "Export trip data (JSON)" in the trip details dialog. Schema in `docs/export-format.md` (Closes #119).
 - Add owner-wide collection links: one capability with its own token opens an index of several trips, each at its own member scope, with owner CRUD, audit events, MCP tools and visitor endpoints under `/api/shared/{token}` (Refs #136).
+- Update backend dependencies to their current releases (FastAPI 0.162.0, Starlette 1.10.0, SQLAlchemy 2.1.6, Pydantic 2.14.2, Alembic 1.20.1, FastMCP 4.1.4, timezonefinder 9.2.0, Ruff 0.17.3, ty 0.0.95, pytest 9.2.0); `h3` is no longer a transitive dependency.
 
 - Adopt the owned registry Spinner beside the pending label of form submit buttons and the text-only loading lines (owner views, Markdown preview, visitor photo and video, library, emergency information, owner home); it is decorative, the text keeps the announcement, and it stays still under reduced motion. The Separator stays not adopted (#137).
 
