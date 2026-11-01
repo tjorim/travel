@@ -94,3 +94,7 @@ shape/status and sampled a loading screen too early. Corrected harness runs
 are the reported evidence; these did not establish application defects.
 Repeated probe attempts left additional synthetic trips in the disposable
 fixture database; no real data was involved.
+- Built sharing-overview matrix: **24 loads passed**, 720 Tab positions.
+- PostgreSQL-enabled backend suite: **688 passed, 5 skipped**, 11 warnings;
+  `ruff check .` and `ty check .` passed. Skips remain unverified coverage,
+  including external media-worker integration; this pass supplies no worker host.
