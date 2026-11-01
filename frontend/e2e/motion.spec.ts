@@ -8,9 +8,7 @@ async function openDrawer(page: Page) {
   await choosePreferences(page, "en", "light");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/admin/trips/trip-1/prepare");
-  await page
-    .getByRole("button", { name: message("en", "owner_trip_sections"), exact: true })
-    .click();
+  await page.getByRole("button", { name: message("en", "owner_trip_sections") }).click();
   return page.getByRole("dialog", { name: message("en", "owner_trip_sections") });
 }
 
@@ -30,7 +28,6 @@ test.describe("motion allowed", () => {
 
     const button = page.getByRole("button", {
       name: message("en", "owner_trip_sections"),
-      exact: true,
     });
     expect(await button.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe(
       "0.15s",
@@ -49,7 +46,6 @@ test.describe("reduced motion", () => {
     await expect(dialog).toBeHidden();
     const button = page.getByRole("button", {
       name: message("en", "owner_trip_sections"),
-      exact: true,
     });
     expect(await button.evaluate((element) => getComputedStyle(element).transitionProperty)).toBe(
       "none",

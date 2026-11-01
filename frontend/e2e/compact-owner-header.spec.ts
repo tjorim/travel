@@ -14,7 +14,6 @@ for (const width of [320, 360, 390, 430])
         await page.goto("/admin/trips/trip-1/prepare");
         const sections = page.getByRole("button", {
           name: message(locale, "owner_trip_sections"),
-          exact: true,
         });
         await expect(sections).toContainText("Exampleland 2054");
         await expect(sections).toContainText(message(locale, "owner_prepare"));

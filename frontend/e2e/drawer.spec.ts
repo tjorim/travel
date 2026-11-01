@@ -18,7 +18,6 @@ for (const locale of ["en", "nl"] as const)
       await expect(page.locator("#tasks")).toBeVisible();
       const trigger = page.getByRole("button", {
         name: message(locale, "owner_trip_sections"),
-        exact: true,
       });
       const dialog = page.getByRole("dialog", { name: message(locale, "owner_trip_sections") });
       const nav = page.getByRole("navigation", { name: message(locale, "owner_trip_sections") });
@@ -126,7 +125,6 @@ for (const locale of ["en", "nl"] as const)
       await page
         .getByRole("button", {
           name: message(locale === "en" ? "nl" : "en", "owner_trip_sections"),
-          exact: true,
           includeHidden: true,
         })
         .click({ force: true });
