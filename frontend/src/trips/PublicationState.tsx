@@ -1,4 +1,4 @@
-import { cn } from "cn";
+import { Badge } from "@/ui/badge";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useTripResource } from "../query/owner-queries";
@@ -10,15 +10,8 @@ export default function PublicationState({ tripId }: { tripId: string }) {
   if (!status) return null;
   const live = status.surface_state === "published";
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold",
-        live
-          ? "bg-travel-online-surface text-travel-online-ink"
-          : "bg-travel-disconnected-surface text-travel-disconnected-ink",
-      )}
-    >
+    <Badge variant={live ? "live" : "offline"}>
       {live ? m.owner_public_page_live() : m.owner_not_published()}
-    </span>
+    </Badge>
   );
 }

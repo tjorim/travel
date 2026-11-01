@@ -1,3 +1,4 @@
+import { Badge as StatusBadge } from "@/ui/badge";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useEffect, useMemo, useState } from "react";
@@ -205,10 +206,7 @@ export function TripOverview({ trip }: { trip: Trip }) {
       {badges.length > 0 && (
         <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
           {badges.map((badge) => (
-            <li
-              key={badge.label}
-              className="inline-flex items-center gap-1.5 rounded-full border border-travel-card-border bg-travel-surface px-3 py-1.5 text-sm text-travel-muted"
-            >
+            <StatusBadge key={badge.label} render={<li />}>
               <span
                 aria-hidden="true"
                 className={
@@ -219,7 +217,7 @@ export function TripOverview({ trip }: { trip: Trip }) {
               />
               <span className="shrink-0">{badge.label}</span>{" "}
               <strong className="text-travel-ink">{badge.value}</strong>
-            </li>
+            </StatusBadge>
           ))}
         </ul>
       )}

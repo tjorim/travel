@@ -199,6 +199,17 @@
       "upstreamSha256": "c66957c5b3a51860a650c4cf8717917895493aa2c7a03df76b983b68405b6734",
       "capturedAt": "2026-11-01T09:12:37.090Z",
       "reviewedLocalSha256": "b138454a03ccbf328d8a04f8efa5a877fe3cd672c724addb798d565c46c1bf5b"
+    },
+    "badge": {
+      "files": ["src/ui/badge.tsx"],
+      "registry": "badge",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/badge.json",
+      "reason": "Owned registry badge retains Base UI render composition; Travel publication and booking tokens replace registry variants.",
+      "reviewedAt": "2026-11-01T09:28:58.489Z",
+      "reviewNote": "Reviewed base-nova render composition; preserve Travel publication and booking-count appearance and semantics. Validation results recorded in PR.",
+      "upstreamSha256": "1c083a2b0fef00084c7c4c68212552e14d1afe9cdf8326a03378041d323a9d95",
+      "capturedAt": "2026-11-01T09:28:58.488Z",
+      "reviewedLocalSha256": "0f230967db7b5140a1c5012166acde9b4a033be8ae3d001227e6a21f428e52d0"
     }
   },
   "importPolicy": {
