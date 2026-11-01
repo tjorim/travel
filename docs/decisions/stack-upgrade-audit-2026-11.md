@@ -96,6 +96,12 @@ language features, and the Playwright suite exercises the built behaviour on
 [tjorim/apps#301](https://github.com/tjorim/apps/issues/301); `Caddyfile.example`
 is unaffected.
 
+**Update:** the VPS moved to NodeSource `node_26.x`
+([apps#301](https://github.com/tjorim/apps/issues/301)), after every app moved
+its `.node-version` to 26.13.0, so the `engines` floor is now `>=26.0.0`
+([#155](https://github.com/tjorim/travel/issues/155)). The text above records the
+state when the audit was written.
+
 ## Release notes of the frontend bump PR (#158)
 
 Read on 2026-11-01 from the upstream release pages. Nothing here touches code
