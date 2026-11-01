@@ -4,7 +4,7 @@ FROM ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d
 
 FROM python:3.15-slim AS builder
 
-# h3 and PyYAML publish no CPython 3.15 wheels yet, so the builder compiles them. The runtime stage stays toolchain-free.
+# PyYAML publishes no CPython 3.15 wheel yet, so the builder compiles it. The runtime stage stays toolchain-free.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
