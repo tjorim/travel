@@ -354,3 +354,5 @@ The registry Popover and Base UI radio controls support these interactions;
 no new primitive or dependency is needed. Keep the existing preferences
 persistence and closed update Collapsible. The map follow checkbox sits before
 the map so it remains reachable in the sticky column.
+The Preferences Popover module loads on first use, keeping the visitor entry
+inside its existing bundle budget; the initial trigger remains keyboard accessible.
