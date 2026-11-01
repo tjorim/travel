@@ -1,3 +1,4 @@
+import { Alert } from "@/ui/alert";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { m } from "./paraglide/messages.js";
 import { LocaleControl, selectedLocale, useLocale } from "./locale";
@@ -1390,10 +1391,10 @@ export function ProjectionView({
     return (
       <div className={cn("grid gap-travel-grid-gap", previewResources ? "mt-5" : "mt-2")}>
         {header}
-        <section className="travel-card" role="status">
+        <Alert className="travel-card" role="status">
           <h2>{m.visitor_no_content()}</h2>
           <p>{m.visitor_no_content_description()}</p>
-        </section>
+        </Alert>
       </div>
     );
 

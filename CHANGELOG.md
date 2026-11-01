@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Adopt the owned registry Alert for shared form errors and owner/visitor state notices.
+
 - Share a slim visitor top bar across entry, detail, error and callback pages, and reuse its preferences panel in the owner Account menu.
 
 - Tint 3D buildings a light stone while satellite imagery is on, so the dark map theme no longer paints them near black over the imagery; the style's own paint returns when satellite is turned off.

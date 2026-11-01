@@ -1,3 +1,4 @@
+import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
@@ -142,9 +143,9 @@ function TranslationRun({
   if (state.kind === "error")
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <p className="form-error" role="alert">
+        <Alert variant="error" role="alert">
           {noticeMessage(state.notice)}
-        </p>
+        </Alert>
         <Button type="button" className="compact secondary" onClick={retry}>
           {m.owner_try_again()}
         </Button>

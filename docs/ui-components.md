@@ -404,3 +404,19 @@ on desktop and phone. The existing registry Popover supports this composition;
 no new primitive or dependency is needed. Full-width preference rows are removed.
 Keyboard order is brand, optional back link, Preferences; Escape returns focus
 to its trigger. Detail skip links precede the bar.
+
+## Alert (#137, item 1)
+
+Generated base-nova Alert, then replaced registry palette/variant machinery with
+Travel help/form-error tokens and cn. Info and success share the existing positive
+notice treatment; error uses the existing error surface. Role defaults to status;
+callers explicitly preserve alert for assertive errors. No aria-live override,
+automatic dismissal, icons or new copy. Empty status regions retain help's empty
+layout rule.
+
+Converted form errors in fields, MarkdownField and TranslationDraft, owner home
+loading/error cards and the visitor empty projection. Kept field-level validation,
+media loading/progress, connection banners, counters and interactive translation
+status rows bespoke: these have field associations, changing media state or inline
+controls rather than standalone notices. Other manager notices remain for a later
+consumer audit rather than mechanically changing every live region.

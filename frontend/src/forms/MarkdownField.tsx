@@ -1,3 +1,4 @@
+import { Alert } from "@/ui/alert";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { textNotice, errorNotice, noticeMessage, type ErrorNotice } from "../query/feedback";
@@ -159,9 +160,9 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
     );
   if (state.kind === "error")
     return (
-      <p className="form-error" role="alert">
+      <Alert variant="error" role="alert">
         {noticeMessage(state.message)}
-      </p>
+      </Alert>
     );
   if (!state.result.html) return <p className="help">{m.owner_nothing_to_show_yet()}</p>;
   return <Markdown html={state.result.html} text={source} />;
