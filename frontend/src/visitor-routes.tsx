@@ -36,9 +36,45 @@ const LONG_TITLE_LENGTH = 40;
 const LONG_TITLE_CLASS =
   "text-travel-title-long leading-travel-title-long tracking-travel-title-long min-[680px]:max-w-none";
 
+/** One member of a collection link, only as far as its member scope allows. `id` is a collection-local path id. */
+type CollectionEntry = {
+  id: string;
+  title: string | null;
+  summary_text: string | null;
+  dates: ProjectionItem | null;
+  cover: string | null;
+};
+type CollectionIndex = {
+  schema_version: "travel/collection@1";
+  title: string | null;
+  trips: CollectionEntry[];
+};
+
+function isCollectionIndex(value: unknown): value is CollectionIndex {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const document = value as Record<string, unknown>;
+  return (
+    document.schema_version === "travel/collection@1" &&
+    (document.title === null || typeof document.title === "string") &&
+    Array.isArray(document.trips) &&
+    document.trips.every(
+      (entry) =>
+        entry !== null &&
+        typeof entry === "object" &&
+        typeof entry.id === "string" &&
+        entry.id.length > 0 &&
+        (entry.title == null || typeof entry.title === "string") &&
+        (entry.summary_text == null || typeof entry.summary_text === "string") &&
+        (entry.cover == null || typeof entry.cover === "string") &&
+        (entry.dates == null || (typeof entry.dates === "object" && !Array.isArray(entry.dates))),
+    )
+  );
+}
+
 type LoadState =
   | { kind: "loading" }
   | { kind: "ready"; projection: Projection }
+  | { kind: "collection"; index: CollectionIndex }
   | { kind: "unavailable" }
   | { kind: "error"; failure?: ApiError };
 
@@ -94,9 +130,9 @@ function TripIndex() {
   const [storageFailed, setStorageFailed] = useState(false);
   const [savedTrips, setSavedTrips] = useState<SavedSharedTrip[]>(() => readSavedSharedTrips());
 
-  const [validatedTrips, setValidatedTrips] = useState<Map<string, SavedSharedTrip | null>>(
-    new Map(),
-  );
+  const [validatedTrips, setValidatedTrips] = useState<
+    Map<string, { trip: SavedSharedTrip; collection: boolean } | null>
+  >(new Map());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -123,9 +159,15 @@ function TripIndex() {
             // Only show the current owner-selected fields, never a stale stored summary.
             setValidatedTrips((current) =>
               new Map(current).set(trip.token, {
-                ...trip,
-                title: data.title,
-                summary: data.summary_text ?? data.summary,
+                trip: { ...trip, title: data.title, summary: data.summary_text ?? data.summary },
+                collection: false,
+              }),
+            );
+          } else if (!controller.signal.aborted && isCollectionIndex(data)) {
+            setValidatedTrips((current) =>
+              new Map(current).set(trip.token, {
+                trip: { ...trip, title: data.title, summary: null },
+                collection: true,
               }),
             );
           }
@@ -241,8 +283,9 @@ function TripIndex() {
           </p>
           <ul className="travel-trip-grid">
             {savedTrips.flatMap((entry) => {
-              const trip = validatedTrips.get(entry.token);
-              if (trip === null)
+              const validated = validatedTrips.get(entry.token);
+              const trip = validated?.trip;
+              if (validated === null)
                 return [
                   <li key={entry.token} className="grid min-w-0 gap-2">
                     <p>{m.unavailable_trip()}</p>
@@ -265,8 +308,13 @@ function TripIndex() {
                         className="travel-trip-card"
                         to={`/share/${encodeURIComponent(trip.token)}`}
                       >
-                        <span className="travel-eyebrow">{m.unlisted_trip()}</span>
-                        <h2>{trip.title ?? m.shared_trip()}</h2>
+                        <span className="travel-eyebrow">
+                          {validated?.collection ? m.unlisted_collection() : m.unlisted_trip()}
+                        </span>
+                        <h2>
+                          {trip.title ??
+                            (validated?.collection ? m.shared_trips() : m.shared_trip())}
+                        </h2>
                         {trip.summary && <p className="line-clamp-4">{trip.summary}</p>}
                         <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
                           {m.view_trip()} <span aria-hidden="true">→</span>
@@ -291,7 +339,76 @@ function TripIndex() {
   );
 }
 
-function VisitorPage({ audience, identifier }: { audience: Audience; identifier: string }) {
+function CollectionIndexView({ index, token }: { index: CollectionIndex; token: string }) {
+  useLocale();
+  return (
+    <>
+      <header className="border-b border-travel-divider pb-8 min-[680px]:pb-12">
+        <p className="travel-eyebrow">Travel</p>
+        <h1
+          className={
+            (index.title?.length ?? 0) > LONG_TITLE_LENGTH
+              ? LONG_TITLE_CLASS
+              : "max-w-travel-home-title!"
+          }
+        >
+          {index.title ?? m.shared_trips()}
+        </h1>
+        <p className="max-w-travel-reading leading-relaxed text-travel-muted">
+          {m.collection_intro()}
+        </p>
+      </header>
+      <section aria-label={m.collection_trips_label()} className="mt-travel-section">
+        {index.trips.length === 0 ? (
+          <div className="travel-listing-state" role="status">
+            <h2>{m.collection_empty()}</h2>
+            <p>{m.collection_empty_description()}</p>
+          </div>
+        ) : (
+          <ul className="travel-trip-grid">
+            {index.trips.map((entry) => (
+              <li key={entry.id} className="min-w-0">
+                <Link
+                  className="travel-trip-card"
+                  to={`/share/${encodeURIComponent(token)}/trips/${encodeURIComponent(entry.id)}`}
+                >
+                  {entry.cover && (
+                    <img
+                      className="mb-4 aspect-video w-full rounded-travel-control object-cover"
+                      src={`/api/shared/${encodeURIComponent(token)}/trips/${encodeURIComponent(entry.id)}/files/${encodeURIComponent(entry.cover)}`}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <span className="mb-4 text-sm font-medium text-travel-muted">
+                    {tripDates(entry.dates) ?? m.unlisted_trip()}
+                  </span>
+                  <h2>{entry.title ?? m.shared_trip()}</h2>
+                  {entry.summary_text && <p className="line-clamp-4">{entry.summary_text}</p>}
+                  <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
+                    {m.view_trip()} <span aria-hidden="true">→</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
+  );
+}
+
+function VisitorPage({
+  audience,
+  identifier,
+  memberId,
+}: {
+  audience: Audience;
+  identifier: string;
+  /** A trip inside a collection link; `identifier` is then the collection's token. */
+  memberId?: string;
+}) {
   useLocale();
   const [attempt, setAttempt] = useState(0);
   const [storageFailed, setStorageFailed] = useState(false);
@@ -311,7 +428,9 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
     const path =
       audience === "public"
         ? `/api/public/trips/${encodeURIComponent(identifier)}`
-        : `/api/shared/${encodeURIComponent(identifier)}`;
+        : memberId
+          ? `/api/shared/${encodeURIComponent(identifier)}/trips/${encodeURIComponent(memberId)}`
+          : `/api/shared/${encodeURIComponent(identifier)}`;
     async function load() {
       try {
         const response = await fetch(path, {
@@ -324,7 +443,8 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           signal: controller.signal,
         });
         if (response.status === 404 || response.status === 403) {
-          if (audience === "share") setStorageFailed(!forgetSharedTrip(identifier));
+          // A missing member says nothing about the collection, which may still be valid.
+          if (audience === "share" && !memberId) setStorageFailed(!forgetSharedTrip(identifier));
           setSaved(null);
           setState({ kind: "unavailable" });
         } else if (!response.ok) {
@@ -332,8 +452,13 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
         } else {
           const data: unknown = await response.json();
           if (!controller.signal.aborted) {
-            if (isProjection(data, audience)) {
-              if (audience === "share") {
+            if (audience === "share" && !memberId && isCollectionIndex(data)) {
+              const remembered = rememberSharedTrip(identifier, { title: data.title });
+              setStorageFailed(!remembered);
+              setSaved(remembered ? "saved" : null);
+              setState({ kind: "collection", index: data });
+            } else if (isProjection(data, audience)) {
+              if (audience === "share" && !memberId) {
                 const remembered = rememberSharedTrip(identifier, data);
                 setStorageFailed(!remembered);
                 setSaved(remembered ? "saved" : null);
@@ -351,7 +476,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
     }
     void load();
     return () => controller.abort();
-  }, [audience, identifier, attempt]);
+  }, [audience, identifier, memberId, attempt]);
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
   const title = m.shared_trip();
@@ -368,8 +493,18 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           {m.visitor_skip_to_story()}
         </a>
       )}
-      <VisitorTopBar detail />
-      {state.kind === "ready" && saved === "saved" && (
+      <VisitorTopBar
+        detail
+        back={
+          memberId
+            ? {
+                href: `/share/${encodeURIComponent(identifier)}`,
+                label: m.visitor_back_to_collection(),
+              }
+            : undefined
+        }
+      />
+      {(state.kind === "ready" || state.kind === "collection") && saved === "saved" && (
         <section
           aria-label={m.share_saved_title()}
           className="mb-3 min-w-0 rounded-travel-control border border-travel-border px-3 py-0.5 print:hidden"
@@ -400,7 +535,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           </Collapsible.Root>
         </section>
       )}
-      {state.kind !== "ready" && (
+      {state.kind !== "ready" && state.kind !== "collection" && (
         <header>
           <p className="travel-eyebrow">Travel</p>
           <h1 className={title.length > LONG_TITLE_LENGTH ? LONG_TITLE_CLASS : undefined}>
@@ -434,13 +569,25 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
         </section>
       )}
       {storageFailed && <p role="status">{m.visitor_storage_failed()}</p>}
-      {state.kind === "ready" && saved === "forgotten" && (
+      {(state.kind === "ready" || state.kind === "collection") && saved === "forgotten" && (
         <p role="status" tabIndex={-1} ref={forgottenNotice}>
           {m.share_forgotten()}
         </p>
       )}
+      {state.kind === "collection" && (
+        <CollectionIndexView index={state.index} token={identifier} />
+      )}
       {state.kind === "ready" && (
-        <ProjectionView projection={state.projection} audience={audience} identifier={identifier} />
+        <ProjectionView
+          projection={state.projection}
+          audience={audience}
+          identifier={identifier}
+          apiBase={
+            memberId
+              ? `/api/shared/${encodeURIComponent(identifier)}/trips/${encodeURIComponent(memberId)}`
+              : undefined
+          }
+        />
       )}
       <OwnerLink />
     </main>
@@ -449,10 +596,15 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
 
 function VisitorRoute({ audience }: { audience: Audience }) {
   useLocale();
-  const { slug, token } = useParams({ strict: false });
+  const { slug, token, memberId } = useParams({ strict: false });
   const identifier = audience === "public" ? slug : token;
   return identifier ? (
-    <VisitorPage key={`${audience}:${identifier}`} audience={audience} identifier={identifier} />
+    <VisitorPage
+      key={`${audience}:${identifier}:${memberId ?? ""}`}
+      audience={audience}
+      identifier={identifier}
+      memberId={audience === "share" ? memberId : undefined}
+    />
   ) : (
     <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
       <VisitorTopBar />
@@ -484,6 +636,11 @@ const visitorShareRoute = createRoute({
   path: "share/$token",
   component: () => <VisitorRoute audience="share" />,
 });
+const visitorShareTripRoute = createRoute({
+  getParentRoute: () => visitorRootRoute,
+  path: "share/$token/trips/$memberId",
+  component: () => <VisitorRoute audience="share" />,
+});
 const visitorNotFoundRoute = createRoute({
   getParentRoute: () => visitorRootRoute,
   path: "$",
@@ -505,6 +662,7 @@ export const visitorRouteTree = visitorRootRoute.addChildren([
   visitorTripsRoute,
   visitorTripRoute,
   visitorShareRoute,
+  visitorShareTripRoute,
   visitorNotFoundRoute,
 ]);
 

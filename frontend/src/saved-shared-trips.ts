@@ -1,5 +1,3 @@
-import type { Projection } from "./ProjectionView";
-
 const storageKey = "travel-saved-shared-trips@1";
 const maximumSavedTrips = 30;
 
@@ -49,13 +47,16 @@ function writeSavedSharedTrips(trips: SavedSharedTrip[]): boolean {
 }
 
 /** Saves a valid unlisted capability only in this browser's local storage. */
-export function rememberSharedTrip(token: string, projection: Projection): boolean {
+export function rememberSharedTrip(
+  token: string,
+  delivered: { title: string | null; summary?: string | null; summary_text?: string | null },
+): boolean {
   if (token.length < 20 || token.length > 512) return false;
   const current: SavedSharedTrip = {
     token,
-    title: projection.title,
+    title: delivered.title,
     // A card shows a one-line preview, not the rendered Markdown.
-    summary: projection.summary_text ?? projection.summary,
+    summary: delivered.summary_text ?? delivered.summary ?? null,
     lastVisitedAt: new Date().toISOString(),
   };
   return writeSavedSharedTrips([
