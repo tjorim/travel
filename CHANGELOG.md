@@ -5,6 +5,7 @@ All notable changes to the travel hub are documented here.
 ## Unreleased
 
 - Amend the sharing policy, route contract and publication safety check for collection links that grant several trips at once, each at its own member scope (Refs #136).
+- Record the November 2026 stack upgrade audit: current/latest versions, risks, recommended order and a new-features shortlist (#94).
 
 - Add a private per-trip JSON export: `GET /api/trips/{trip_id}/export` streams the owner's canonical records and relationships (no files, storage keys, capabilities or other owners' data), records each export in the audit table, and is offered as "Export trip data (JSON)" in the trip details dialog. Schema in `docs/export-format.md` (Closes #119).
 
