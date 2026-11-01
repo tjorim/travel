@@ -12,6 +12,7 @@ import { ownerKeys } from "../query/keys";
 
 import { useOwnerMutation, useRefreshTrip } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { TripExport } from "./TripExport";
 import type { Trip } from "../tracker-model";
 
 type Values = { title: string; summary: string; startsOn: string; endsOn: string };
@@ -181,6 +182,7 @@ export function TripEditor({
           </div>
         </RecordForm>
       )}
+      {open && trip && <TripExport tripId={trip.id} onNotice={onNotice} />}
       {open && confirmDelete && trip && (
         <DeleteConfirmation
           title={m.owner_delete_2({ p0: trip.title })}

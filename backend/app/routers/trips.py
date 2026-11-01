@@ -1,6 +1,8 @@
+from collections.abc import Iterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, object_session, selectinload
 
@@ -9,6 +11,7 @@ from ..audit import delivering_audiences, record_visibility_change
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, ServiceError, service_exception
+from ..export import EXPORT_SCHEMA_VERSION, record_export, stream_trip_export
 from ..models import (
     Location,
     MediaAsset,
@@ -125,6 +128,35 @@ def create_trip(payload: TripCreate, session: SessionDep, subject: SubjectDep) -
 @router.get("/{trip_id}", response_model=TripResponse)
 def get_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> Trip:
     return owned_trip(session, trip_id, subject)
+
+
+def _export_chunks(bind: object, trip_id: str, subject: str) -> Iterator[str]:
+    """Stream from one consistent snapshot, re-checking ownership inside it."""
+    with Session(bind=bind) as snapshot:  # ty: ignore[invalid-argument-type]
+        if snapshot.get_bind().dialect.name == "postgresql":
+            snapshot.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+        trip = owned_trip(snapshot, trip_id, subject, load_relations=False)
+        yield from stream_trip_export(snapshot, trip)
+
+
+@router.get(
+    "/{trip_id}/export",
+    response_class=StreamingResponse,
+    responses={200: {"content": {"application/json": {}}, "description": f"Schema {EXPORT_SCHEMA_VERSION}"}},
+)
+def export_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> StreamingResponse:
+    """Private, read-only JSON of this trip's canonical records (no files, keys or capabilities)."""
+    owned_trip(session, trip_id, subject, load_relations=False)
+    record_export(session, subject=subject, trip_id=trip_id)
+    return StreamingResponse(
+        _export_chunks(session.get_bind(), trip_id, subject),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="trip-{trip_id}-export.json"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.get("/{trip_id}/overview", response_model=TripOverviewResponse)

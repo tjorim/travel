@@ -2140,5 +2140,10 @@
   "visitor_story": "Story",
   "visitor_map": "Map",
   "visitor_plan": "Plan",
-  "visitor_update_media_named": "Media for update {number}: {title}"
+  "visitor_update_media_named": "Media for update {number}: {title}",
+  "owner_export_trip_data": "Export trip data (JSON)",
+  "owner_exporting_trip_data": "Exporting trip data…",
+  "owner_trip_export_help": "Downloads this trip's records as one JSON file. It is private: it includes your notes and booking details but no files, photos or sharing links.",
+  "owner_trip_export_failed": "The trip data could not be exported.",
+  "owner_trip_export_downloaded": "Trip data exported."
 }
