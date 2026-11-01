@@ -1,7 +1,8 @@
 import { cn } from "cn";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
-import { Preferences } from "./Preferences";
+import { PreferencesPanel } from "./PreferencesPanel";
+import { VisitorTopBar } from "./VisitorTopBar";
 import { Button } from "@/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
@@ -12,7 +13,7 @@ import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
 import { useAuth } from "./auth-context";
 import { CaptureProvider, useCapture } from "./capture-context";
 import { wipeOfflineData } from "./offline/offline-store";
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
+import { Popover, PopoverTrigger } from "@/ui/popover";
 
 const PublicationState = lazy(() => import("./trips/PublicationState"));
 import { OwnerHeaderContext } from "./owner-header-context";
@@ -94,7 +95,7 @@ export function Boundary({ children }: { children: ReactNode }) {
   if (!session) {
     return (
       <main className="travel-shell pt-6! min-[960px]:w-travel-owner-shell [&>header]:max-w-180">
-        <Preferences />
+        <VisitorTopBar />
         <header>
           <p className="travel-eyebrow">{m.private_default()}</p>
           <h1>{m.welcome()}</h1>
@@ -117,9 +118,6 @@ export function Boundary({ children }: { children: ReactNode }) {
             tripId ? "pt-0!" : "pt-14!",
           )}
         >
-          <div className="max-[679px]:hidden">
-            <Preferences />
-          </div>
           <header className="max-[679px]:absolute max-[679px]:right-4 max-[679px]:top-1.5 max-[679px]:z-40 mb-6 flex items-center justify-between gap-4">
             <nav
               className="fixed inset-x-0 bottom-0 z-20 flex justify-between border-t border-travel-card-border bg-travel-surface/95 px-1 backdrop-blur-md min-[680px]:static min-[680px]:z-auto min-[680px]:mt-7 min-[680px]:justify-start min-[680px]:gap-10 min-[680px]:border-0 min-[680px]:bg-transparent min-[680px]:p-0 min-[680px]:backdrop-blur-none"
@@ -147,14 +145,8 @@ export function Boundary({ children }: { children: ReactNode }) {
                   <SettingsIcon className="size-5 min-[680px]:hidden" aria-hidden="true" />
                   <span className="max-[679px]:sr-only">{m.account()}</span>
                 </PopoverTrigger>
-                <PopoverContent
-                  aria-label={m.account()}
-                  align="end"
-                  sideOffset={8}
-                  className="grid w-72 max-w-full gap-1 rounded-xl border-travel-card-border bg-travel-surface p-3.5 text-travel-muted"
-                >
+                <PreferencesPanel label={m.account()}>
                   <div className="min-[680px]:hidden">
-                    <Preferences />
                     {tripId && (
                       <Suspense fallback={null}>
                         <PublicationState tripId={tripId} />
@@ -183,7 +175,7 @@ export function Boundary({ children }: { children: ReactNode }) {
                   >
                     {m.sign_out()}
                   </Button>
-                </PopoverContent>
+                </PreferencesPanel>
               </Popover>
             </div>
           </header>

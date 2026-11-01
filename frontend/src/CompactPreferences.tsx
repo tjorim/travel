@@ -1,6 +1,6 @@
-import { Popover, PopoverTrigger, PopoverContent } from "@/ui/popover";
+import { Popover, PopoverTrigger } from "@/ui/popover";
 import { Button } from "@/ui/button";
-import { Preferences } from "./Preferences";
+import { PreferencesPanel } from "./PreferencesPanel";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
 
@@ -12,13 +12,7 @@ export default function CompactPreferences() {
       <PopoverTrigger render={<Button className="secondary compact" />}>
         {m.visitor_preferences()}
       </PopoverTrigger>
-      <PopoverContent
-        aria-label={m.visitor_preferences()}
-        align="end"
-        className="w-travel-preferences-popup"
-      >
-        <Preferences />
-      </PopoverContent>
+      <PreferencesPanel label={m.visitor_preferences()} />
     </Popover>
   );
 }

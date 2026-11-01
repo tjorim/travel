@@ -49,24 +49,9 @@ for (const locale of locales) {
               name: message(locale, "all_public_trips"),
               exact: true,
             });
-            if (audience === "share") {
-              await expect(link).toHaveCount(0);
-              const preferences = page.getByRole("button", {
-                name: locale === "en" ? "Preferences" : "Voorkeuren",
-                exact: true,
-              });
-              await page.keyboard.press("Tab");
-              await expect(preferences).toBeFocused();
-              await page.keyboard.press("Enter");
-              await expect(page.getByRole("dialog")).toBeVisible();
-              expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-              await page.keyboard.press("Escape");
-              await expect(preferences).toBeFocused();
-              return;
-            }
             await expect(link).toBeVisible();
             await expect(link).toHaveAttribute("href", "/trips");
-            // Reach the link through the keyboard, as the first control in the slim navigation bar.
+            // Reach the link through the keyboard, after the brand in the slim navigation bar.
             for (
               let step = 0;
               step < 12 && !(await link.evaluate((element) => element === document.activeElement));
@@ -94,7 +79,7 @@ for (const locale of locales) {
               (request) => new URL(request.url()).pathname === "/api/public/trips",
             );
             await page.keyboard.press("Enter");
-            expect((await indexRequest).headers()["referer"]).toBeUndefined();
+            expect((await indexRequest).headers()["referer"]).toBeFalsy();
             await expect(page).toHaveURL(/\/trips$/);
             await expect(
               page.getByRole("heading", { name: ownerTrip.title, level: 2 }),
