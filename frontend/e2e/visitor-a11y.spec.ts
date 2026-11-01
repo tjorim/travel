@@ -122,7 +122,7 @@ for (const audience of ["public", "share"] as const) {
           await open(page, audience, locale, theme);
           await expect(page.locator("[data-story-map]")).toBeAttached();
           if (width < 1100) {
-            await page.getByRole("radio", { name: locale === "en" ? "Map" : "Kaart" }).click();
+            await page.getByRole("tab", { name: locale === "en" ? "Map" : "Kaart" }).click();
             await expect(page.locator("[data-story-map]")).toBeVisible();
           }
           // Let the map settle, then check both the story and the opened disclosure.

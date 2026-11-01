@@ -447,3 +447,24 @@ map is ready and its existing "on" suffix. The map's own handlers still apply
 terrain, satellite (and the building tint) and globe, and keep their translated
 error notices. "Show whole trip" is an action, so it stays a plain Button beside
 the group. No new copy beyond the group label.
+
+## Tabs (#137, item 4)
+
+Generated base-nova Tabs (Base UI), then replaced the cva list variants with the
+segmented Travel look the visitor view switch already had (bordered pill, paper
+tabs, action-colour active tab through `data-active`). Replaces the Story / Map /
+Plan `ChoiceGroup` in `ProjectionView`: the list is a labelled `tablist` with
+automatic activation on arrow focus, Home and End, and each view is a `tabpanel`
+associated with its tab. ChoiceGroup stays for the other single-choice controls,
+and the owner section navigation stays link-based.
+
+Below 1100 px inactive panels use Base UI's hidden/inert state and stay mounted
+(`keepMounted`), so the map and story keep their state. From 1100 px the story and
+map sit side by side and the tab list is hidden, so `ViewPanel` removes the panel
+semantics (role, hidden, inert, tab stop, label) rather than expose a tabpanel
+without a tablist; a `matchMedia` subscription follows window resizes. No new copy.
+
+Bundle: Base UI Tabs and its composite runtime add about 7.7 kB raw (2.7 kB gzip) to
+the visitor entries (579.4 to 587.1 kB raw, 193.2 to 195.9 kB gzip, measured on
+`main` and this branch with the same dependencies), so their raw budget in
+`bundle-budget.json` rises from 585 to 590 kB; gzip limits are unchanged.

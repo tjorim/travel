@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Use the owned registry Tabs for the visitor Story / Map / Plan switch, giving it tablist, tab and tabpanel semantics with arrow-key navigation; the side-by-side layout from 1100 px is unchanged.
+
 - Adopt the owned registry Badge for publication state and overview booking counts (#137).
 
 - Adopt the owned registry Toggle Group for the map's 3D terrain, Satellite and Globe switches; "Show whole trip" stays a plain button.

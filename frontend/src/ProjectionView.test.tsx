@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { stubViewport } from "./mocks/viewport";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import {
   isProjection,
   projectionMapLines,
@@ -19,6 +20,9 @@ const previewScope: ShareScope = {
   trip: { title: true, summary: true, dates: null },
   items: [],
 };
+
+// Tab panels are only hidden below the side-by-side width; these tests read the whole page.
+beforeEach(() => stubViewport(true));
 
 afterEach(() => {
   cleanup();
@@ -1009,4 +1013,39 @@ it("discloses all authored update anchors without changing history", async () =>
       .every((link) => link.getAttribute("href") === "#update-23"),
   ).toBe(true);
   expect(document.getElementById("update-23")?.tabIndex).toBe(-1);
+});
+
+it("shows one view at a time below the side-by-side width with tab semantics", async () => {
+  stubViewport(false);
+  const data = projection();
+  data.places = [{ id: "lisbon", label: "Lisbon", latitude: 38, longitude: -9 }];
+  data.updates = [
+    { id: "update", title: "First day", story_date: "2054-09", date_precision: "month" },
+  ];
+  render(<ProjectionView projection={data} audience="public" identifier="trip" />);
+  const tablist = screen.getByRole("tablist", { name: "Weergave" });
+  const tabs = within(tablist).getAllByRole("tab");
+  expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false", "false"]);
+  const panels = document.querySelectorAll('[role="tabpanel"]');
+  expect(panels).toHaveLength(3);
+  expect(Array.from(panels).map((panel) => (panel as HTMLElement).hidden)).toEqual([
+    false,
+    true,
+    true,
+  ]);
+  expect(panels[0].getAttribute("aria-labelledby")).toBe(tabs[0].id);
+  expect(tabs[1].getAttribute("aria-controls")).toBe(panels[1].id);
+  fireEvent.click(tabs[1]);
+  expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+  await waitFor(() => expect((panels[0] as HTMLElement).hidden).toBe(true));
+  expect((panels[1] as HTMLElement).hidden).toBe(false);
+  expect(panels[1].hasAttribute("data-story-map")).toBe(true);
+});
+
+it("drops the tab semantics when story and map sit side by side", () => {
+  const data = projection();
+  data.places = [{ id: "lisbon", label: "Lisbon", latitude: 38, longitude: -9 }];
+  render(<ProjectionView projection={data} audience="public" identifier="trip" />);
+  expect(document.querySelectorAll('[role="tabpanel"]')).toHaveLength(0);
+  expect(document.querySelectorAll("[data-slot=tabs-content][hidden]")).toHaveLength(0);
 });
