@@ -121,7 +121,13 @@ test.describe("owner navigation", () => {
   }) => {
     await open(page, `/admin/trips/${ownerTrip.id}`, "en", "light", true);
     const nav = page.getByRole("navigation", { name: message("en", "navigation") });
-    await expect(nav.getByRole("link")).toHaveText(["Home", "Trips", "Library", "Settings"]);
+    await expect(nav.getByRole("link")).toHaveText([
+      "Home",
+      "Trips",
+      "Library",
+      "Sharing",
+      "Settings",
+    ]);
     await expect(nav.getByRole("link", { name: "Trips" })).toHaveAttribute("aria-current", "page");
     // The trip header says where you are.
     const here = page.getByRole("navigation", { name: message("en", "breadcrumb") });
