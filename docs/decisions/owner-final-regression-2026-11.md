@@ -98,3 +98,18 @@ fixture database; no real data was involved.
 - PostgreSQL-enabled backend suite: **688 passed, 5 skipped**, 11 warnings;
   `ruff check .` and `ty check .` passed. Skips remain unverified coverage,
   including external media-worker integration; this pass supplies no worker host.
+
+The broad mocked-Vite browser selection was interrupted to keep this handoff
+bounded: **44 passed, 4 failed, 2 interrupted, 112 did not run**. Failures
+include record history/deferred-save control timeouts and public return
+navigation request waits. They are **not passes** and have not been established
+as product defects. Raw traces/error contexts were copied to the temporary
+evidence directory. A serial focused retry uses a 60-second timeout; even a
+passing retry cannot erase this initial result. The complete affected browser
+selection still needs a clean run. No application fix is claimed.
+
+Focused serial retry: **14 passed** (`record-guard`, `session-renewal`,
+`sharing-overview`, 60-second timeout, `retry.log`). All four record-guard cases
+passed on retry. Return-navigation failures were not retried; no cause is
+asserted. Local fixture API/static processes and PostgreSQL container were
+stopped after evidence collection. The working tree contains no runtime edits.
