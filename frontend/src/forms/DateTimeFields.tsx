@@ -286,7 +286,14 @@ export function TimeField({ field, label, optional, required, disabled }: Picker
  * A date and a 24-hour time entered side by side. The form value stays `YYYY-MM-DDTHH:mm` and is empty until both
  * parts are filled in; a half-filled entry says so instead of silently saving nothing.
  */
-export function DateTimeField({ field, label, optional, required, disabled }: PickerProps) {
+export function DateTimeField({
+  field,
+  label,
+  optional,
+  required,
+  disabled,
+  stacked = false,
+}: PickerProps & { stacked?: boolean }) {
   const locale = useLocale();
   const value = entryValue(field);
   const { date, time } = splitDateTime(value);
@@ -337,9 +344,9 @@ export function DateTimeField({ field, label, optional, required, disabled }: Pi
       <FieldLegend className="p-0">
         <FieldTitle label={label} optional={optional} />
       </FieldLegend>
-      <div className="grid grid-cols-5 gap-2">
+      <div className={stacked ? "grid gap-2 sm:grid-cols-5" : "grid grid-cols-5 gap-2"}>
         <Field
-          className="col-span-3"
+          className={stacked ? "sm:col-span-3" : "col-span-3"}
           name={`${field.name}-date`}
           invalid={invalid || Boolean(error)}
         >
@@ -355,7 +362,7 @@ export function DateTimeField({ field, label, optional, required, disabled }: Pi
           />
         </Field>
         <Field
-          className="col-span-2"
+          className={stacked ? "sm:col-span-2" : "col-span-2"}
           name={`${field.name}-time`}
           invalid={invalid || Boolean(error)}
         >
