@@ -1,3 +1,4 @@
+import { Alert } from "@/ui/alert";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
@@ -80,9 +81,9 @@ export function RecordForm({
             {children}
           </div>
           {serverError && (
-            <p className="form-error" role="alert">
+            <Alert variant="error" role="alert">
               {serverError}
-            </p>
+            </Alert>
           )}
           <div className="button-row">
             <Button type="submit" disabled={pending || disabled}>

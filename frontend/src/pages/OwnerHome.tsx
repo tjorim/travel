@@ -1,3 +1,4 @@
+import { Alert } from "@/ui/alert";
 import { errorNotice, useFeedback } from "../query/feedback";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
@@ -159,20 +160,24 @@ export function OwnerHome() {
   if (!session) return <EmptyState title={m.your_trips()}>{m.sign_in_workspace()}</EmptyState>;
   if (state === "loading")
     return (
-      <section className="travel-card" role="status">
-        <h2>{m.your_trips()}</h2>
+      <Alert className="travel-card" role="status">
+        <h1 className="max-w-none text-2xl tracking-normal min-[680px]:max-w-none">
+          {m.your_trips()}
+        </h1>
         <p>{message}</p>
-      </section>
+      </Alert>
     );
   if (state === "error")
     return (
-      <section className="travel-card" role="alert">
-        <h2>{m.owner_your_travel_workspace_is_unavailable()}</h2>
+      <Alert className="travel-card" variant="error" role="alert">
+        <h1 className="max-w-none text-2xl tracking-normal min-[680px]:max-w-none">
+          {m.owner_your_travel_workspace_is_unavailable()}
+        </h1>
         <p>{message}</p>
         <Button type="button" onClick={() => window.location.reload()}>
           {m.owner_try_again()}
         </Button>
-      </section>
+      </Alert>
     );
 
   const [featured, ...others] = visibleTrips;

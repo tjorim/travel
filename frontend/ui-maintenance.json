@@ -188,6 +188,17 @@
       "reason": "Trip-local Dialog left sheet via owned adapter; native route links and no gesture, cookie, shortcut or editor ownership. Registry Sheet styling is replaced by Travel tokens; Base UI Dialog owns modal focus and dismissal.",
       "reviewedAt": null,
       "reviewNote": null
+    },
+    "alert": {
+      "files": ["src/ui/alert.tsx"],
+      "registry": "alert",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/alert.json",
+      "reason": "Owned registry Alert using Travel notice tokens and explicit caller live-region roles.",
+      "reviewedAt": "2026-11-01T09:12:37.100Z",
+      "reviewNote": "Reviewed generated base-nova source; retain Travel notice tokens and explicit existing status/alert roles. Validation recorded in PR.",
+      "upstreamSha256": "c66957c5b3a51860a650c4cf8717917895493aa2c7a03df76b983b68405b6734",
+      "capturedAt": "2026-11-01T09:12:37.090Z",
+      "reviewedLocalSha256": "b138454a03ccbf328d8a04f8efa5a877fe3cd672c724addb798d565c46c1bf5b"
     }
   },
   "importPolicy": {
