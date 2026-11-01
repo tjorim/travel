@@ -13,6 +13,7 @@ All notable changes to the travel hub are documented here.
 - Add the owner Sharing overview (`/admin/sharing`) listing public trips, hidden links and collection links across all trips with copy, revoke, rotate, open and expiry/empty-member warnings, and a collection editor to create collections, add or remove trips, choose and preview each member's scope and activate, revoke or rotate the link (Closes #136).
 
 - Show a collection link at `/share/<token>` as an index of its trips and open each at `/share/<token>/trips/<id>` through the normal visitor view, with the same privacy headers, saved-on-this-browser notice and a link back to the index (Refs #136).
+- Update frontend dependencies within their ranges and exact pins: maplibre-gl 6.16.0, shadcn CLI 4.23.0 (no upstream component definition changed), Playwright 1.64.1, Vitest 5.0.5, TanStack Query 5.105.1, lucide-react 1.66.0, Paraglide 2.29.3 and smaller patches (axe-core stays on 4.13 until its new label-in-name findings are fixed).
 
 - Adopt the owned registry Spinner beside the pending label of form submit buttons and the text-only loading lines (owner views, Markdown preview, visitor photo and video, library, emergency information, owner home); it is decorative, the text keeps the announcement, and it stays still under reduced motion. The Separator stays not adopted (#137).
 - Move the frontend toolchain to Node 26 LTS (`.node-version` 26.13.0, `@types/node` 26.6.6); the `engines` floor stays `>=24` because the VPS build host still provisions Node 24. Supersedes Dependabot #49.
