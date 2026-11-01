@@ -378,6 +378,15 @@ Recommended choice first; these do not replace D1–D6 or MD1–MD3.
 bounded cover, story first with an optional narrow-screen map (recommended).
 (b) Map first with a compact story-jump action. (c) Keep the present stack.
 
+Mockups for VD1 (a), synthetic and static, with their HTML sources in
+[`docs/mockups`](../mockups): laptop
+[before](../mockups/visitor-first-screen-laptop-before.png) and
+[after](../mockups/visitor-first-screen-laptop-after.png), phone
+[before](../mockups/visitor-first-screen-phone-before.png) and
+[after](../mockups/visitor-first-screen-phone-after.png). The "before" frames
+restate measurements from this document; the "after" frames are proposals, not
+implemented design.
+
 **VD2 — Preview scope.** (a) Generic brand metadata for both audiences now;
 consider live-checked public-specific metadata separately (recommended).
 (b) Design public-specific server delivery now, keeping unlisted generic.
