@@ -435,3 +435,15 @@ route idea/planned/status and record visibility stay in their existing inline
 metadata sentences: separate capsules would fragment those compact summaries.
 Navigation links, provider connection notices and progress indicators retain
 their existing link, status and progress semantics.
+
+## Toggle and Toggle Group (#137, item 3)
+
+Generated base-nova Toggle and Toggle Group (Base UI), then replaced the cva
+variants, size scale and spacing context with the existing Travel secondary
+compact button look; a pressed item fills with the action colour through
+`data-pressed`. The group is a labelled `role="group"` ("Map view") of three
+independent items (`multiple`), so each keeps `aria-pressed`, disabling until the
+map is ready and its existing "on" suffix. The map's own handlers still apply
+terrain, satellite (and the building tint) and globe, and keep their translated
+error notices. "Show whole trip" is an action, so it stays a plain Button beside
+the group. No new copy beyond the group label.

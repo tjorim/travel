@@ -210,6 +210,28 @@
       "upstreamSha256": "1c083a2b0fef00084c7c4c68212552e14d1afe9cdf8326a03378041d323a9d95",
       "capturedAt": "2026-11-01T09:28:58.488Z",
       "reviewedLocalSha256": "0f230967db7b5140a1c5012166acde9b4a033be8ae3d001227e6a21f428e52d0"
+    },
+    "toggle": {
+      "files": ["src/ui/toggle.tsx"],
+      "registry": "toggle",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/toggle.json",
+      "reason": "Owned registry Toggle in the Travel secondary-button look with a filled pressed state.",
+      "reviewedAt": "2026-11-01T09:54:19.999Z",
+      "reviewNote": "Reviewed generated base-nova Toggle; replaced cva variants with Travel secondary/compact look and data-pressed fill. Map group browser, keyboard and unit checks passed.",
+      "upstreamSha256": "a98444301997970cf65f6bdd05d17c520daee7b6099077008257c92bb8fe2032",
+      "capturedAt": "2026-11-01T09:54:19.999Z",
+      "reviewedLocalSha256": "d548b7b4ad4261411cf8787d05e043a05d4d0c8bc283701ee8f012998c5f1fc8"
+    },
+    "toggle-group": {
+      "files": ["src/ui/toggle-group.tsx"],
+      "registry": "toggle-group",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/toggle-group.json",
+      "reason": "Owned registry Toggle Group for the map's independent view toggles; items reuse the owned Toggle.",
+      "reviewedAt": "2026-11-01T09:54:21.192Z",
+      "reviewNote": "Reviewed generated base-nova ToggleGroup; dropped spacing/orientation context, kept Base UI group semantics, Travel gap. Map toggles verified in both locales and themes.",
+      "upstreamSha256": "1ec416475c67019d52fa69ce4a817f703148370f119badc319ae63c9be3e602e",
+      "capturedAt": "2026-11-01T09:54:21.192Z",
+      "reviewedLocalSha256": "bd265a34bddadc6d38b89dc3175926d90e9517be665c8780fefc1861eeaff71c"
     }
   },
   "importPolicy": {
