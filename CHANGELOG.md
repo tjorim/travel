@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Record the shipped trip header/navigation real-zoom verification: 192 browser-zoom measurements, both locales/themes, six owner sections, drawer/sidebar boundaries and keyboard disclosure/capture/search checks (Refs #5).
+
 - Record the bounded November owner regression pass, live synthetic authorization/projection checks, PostgreSQL verification and explicit remaining acceptance gaps (Refs #8).
 
 - Configure the build entries through Vite 8's `build.rolldownOptions` instead of the deprecated `rollupOptions` alias; the four entries and bundle budgets are unchanged (Closes #159).
