@@ -7,6 +7,7 @@ for (const width of [1280, 390])
   for (const locale of ["nl", "en"] as const)
     for (const theme of ["light", "dark"] as const)
       test(`shared visitor bar ${width} ${locale} ${theme}`, async ({ page }) => {
+        test.setTimeout(120_000);
         await mockApi(page);
         await page.route("**/api/public/trips/error", (route) =>
           route.fulfill({ status: 503, body: "{}" }),
@@ -22,6 +23,7 @@ for (const width of [1280, 390])
           "/trips/error",
           "/share/missing",
           "/trips/missing/extra",
+          "/admin/",
           "/admin/auth/callback",
         ]) {
           await page.goto(path);
