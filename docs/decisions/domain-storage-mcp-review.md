@@ -16,6 +16,10 @@ In particular, tables do not universally carry schema versions, soft-delete
 fields or creator/updater subjects, and owner-wide records are exceptions to its
 original trip-only ownership rule.
 
+## Implementation Status
+
+- #115 resolved: trip and library upload services validate the shared `DocumentTitle` constraint before storing objects. Synthetic HTTP/MCP/service regression tests cover empty, oversized and unsafe titles; surrogate strings are tested at MCP/service boundaries because HTTP UTF-8 cannot encode them. Historical source evidence below describes the reviewed baseline.
+
 ## Records, Relationships And Representation Boundaries
 
 The exhaustive mapped-column inventory at the end supplies field names and

@@ -14,7 +14,7 @@ from ..errors import ApiException, service_exception
 from ..media.ranges import private_original_headers
 from ..media.service import MediaImportError, read_bounded_upload
 from ..models import DocumentAsset, DocumentKind
-from ..schemas import DocumentAssetResponse, Identifier, SafeText
+from ..schemas import DocumentAssetResponse, DocumentTitle, Identifier
 from ..storage import ObjectStorage, get_storage
 from .trips import owned_trip
 
@@ -61,7 +61,7 @@ def upload_document(
     subject: SubjectDep,
     storage: StorageDep,
     response: Response,
-    title: Annotated[SafeText, Form(min_length=1, max_length=160)],
+    title: Annotated[DocumentTitle, Form()],
     document_kind: Annotated[DocumentKind, Form()],
     file: Annotated[UploadFile, File()],
 ) -> DocumentAssetResponse:
