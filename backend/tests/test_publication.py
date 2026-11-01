@@ -1477,3 +1477,12 @@ def test_concurrent_scope_claims_use_database_revision() -> None:
         with pytest.raises(HTTPException) as conflict:
             _claim_revision(second, second_record, expected)
         assert conflict.value.status_code == 412
+
+
+def test_projection_route_instants_keep_their_utc_offset() -> None:
+    from app.projection import _utc_instant
+
+    naive = datetime(2035, 6, 4, 2, 0)
+    assert _utc_instant(naive).isoformat() == "2035-06-04T02:00:00+00:00"
+    aware = datetime(2035, 6, 4, 10, 0, tzinfo=UTC)
+    assert _utc_instant(aware) is aware
