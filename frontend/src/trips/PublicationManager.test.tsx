@@ -300,7 +300,7 @@ it("offers a redacted route summary, without the owner-only booking fields", asy
   const transport = await openPublicGroup("Routes");
   expect(transport.getByText("Vlucht: Zaventem → Taoyuan")).toBeTruthy();
   expect(
-    transport.getByText(/nooit boekingscode, reisklasse, notities of documenten/i),
+    transport.getByText(/de planning.*nooit boekingscode, reisklasse, notities of documenten/i),
   ).toBeTruthy();
   fireEvent.click(transport.getByRole("button", { name: "Alles kiezen" }));
   fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));

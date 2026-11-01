@@ -4,6 +4,7 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Align the English and Dutch route copy and the owner scope preview with the schedule allowlist: carrier, service number and schedule may be shared; bookings, travel class, notes and documents never are (Closes #110).
 - Review canonical records, storage, authenticated MCP/form parity and retention/export boundaries; track implementation follow-ups #115–#119 without behavior changes (Closes #113).
 - Add generic Open Graph and Twitter previews with a static Travel brand image to the landing, public and unlisted shells, preserving data-free HTML and visitor privacy policies (Closes #107).
 - Keep owner Sharing group headings readable on phones, fit Capture dates and keep explicit Save within reach while preserving private notes and local drafts (Closes #112).
