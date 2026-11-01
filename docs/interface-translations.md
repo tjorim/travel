@@ -24,7 +24,7 @@ share privacy unchanged. Use the existing Travel tokens and Base UI controls.
 
 ## Repeatable audit
 
-From `frontend/`, using `.node-version` and pnpm 10.28.2:
+From `frontend/`, using `.node-version` and the pnpm version in `package.json`:
 
 ```sh
 pnpm install --frozen-lockfile

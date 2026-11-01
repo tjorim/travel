@@ -300,3 +300,42 @@ and `Locator.within()` exist, but nothing blocks us without them.
 - [#156](https://github.com/tjorim/travel/issues/156) evaluate the pnpm major
 - [#159](https://github.com/tjorim/travel/issues/159) use `rolldownOptions` instead of the deprecated `rollupOptions`
 - [tjorim/apps#301](https://github.com/tjorim/apps/issues/301) VPS Node decision
+
+## pnpm 10 → 11/12 evaluation (#156)
+
+Read on 2026-11-01 from the npm registry (`latest` 12.16.1, `latest-11`
+11.28.9, `latest-10` 10.34.9) and the release notes
+[v11.0.0](https://github.com/pnpm/pnpm/releases/tag/v11.0.0) (which links the
+[v10 to v11 migration guide](https://pnpm.io/11.x/migration); the guide itself
+was not fetched) and [v12.0.0](https://github.com/pnpm/pnpm/releases/tag/v12.0.0).
+
+### Tried
+
+`packageManager` set to `pnpm@12.16.1` on a scratch branch, with
+`pnpm_config_minimum_release_age=0` (see below): `pnpm install --frozen-lockfile`,
+lint, format:check, check, test, locale:audit, ui:check, ui:test, build,
+bundle:check and `pnpm dlx shadcn@4.21.0` pass; one Playwright spec passes.
+
+### What changes for this repository
+
+| Area | Finding |
+|---|---|
+| Lockfile | Stays `lockfileVersion: '9.0'`, but pnpm 12 prepends a second YAML document pinning pnpm itself (`packageManagerDependencies`, 158 lines of `@pnpm/exe.*` platform entries). pnpm 10.34.9 reads that file when it does not try to switch versions. |
+| `packageManager` | pnpm 10 auto-switches to the pinned version. Switching from 10.34.9 to 12.16.1 failed here (`Failed to switch pnpm to v12.16.1 ... CLI is missing`), so any pnpm 10 host or developer machine would need pnpm 12 installed first or `manage-package-manager-versions=false`. |
+| Release-age gate | pnpm 11 defaults `minimumReleaseAge` to 1 day, and it also verifies the lockfile: `pnpm install --frozen-lockfile` failed (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) on TanStack Query 5.105.1, published a day earlier. Any lockfile bump of a package under 24 h old would fail CI, Dependabot PRs included, until it ages. Choosing a policy (keep the delay, or set `minimumReleaseAge` in a new `pnpm-workspace.yaml`) is a product-of-the-repo decision. |
+| `pnpm audit` | Same `advisories` map and `module_name`, `github_advisory_id` and `severity`, but `cves` is `null` (pnpm 10 gave a list) and `actions`/`muted` are gone. `dependency-audit.py` crashed on `*None`; it now uses `advisory.get("cves") or []`, which works on both. v11 also moves ignores from `ignoreCves` to `ignoreGhsas`; the repository keeps ignores in `.github/dependency-audit-ignores.json`, not in pnpm config. |
+| Build scripts | No `onlyBuiltDependencies` or `.npmrc` is configured, so the v11 `allowBuilds` migration does not apply. pnpm 12 only prints "Agent skills awaiting approval: @tanstack/react-router" (exit 0). |
+| `.npmrc` | None exists, so the v11 rule that `.npmrc` carries only auth and registry settings does not apply. |
+| `pnpm dlx shadcn@x` | Works unchanged on 12 (checked with 4.21.0). |
+| `pnpm/action-setup` | v6.1.0 reads `packageManager` from `frontend/package.json`; not run against pnpm 12 in CI here. |
+| Node | pnpm 11 needs Node 22+; the repository is on 26 and `engines` is `>=24`. |
+
+### Decision: stay on 10.x for now
+
+The toolchain works on 12, but the move is not free: the VPS build host runs
+`pnpm install --frozen-lockfile` from `tjorim/apps` and its pnpm is not pinned
+or provisioned there, so a `packageManager` of 12 would fail the build there
+until the host provides pnpm 12; and the 1-day release-age gate needs a
+deliberate policy. Both are outside this repository. The tracking issue is in
+`tjorim/apps` (linked from the PR). Revisit after the host pins pnpm. No
+`packageManager` change; `pnpm@10.33.0` stays (10.34.9 is a cosmetic patch).

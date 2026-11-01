@@ -109,7 +109,7 @@ def main():
             findings.append(
                 {
                     "package": advisory["module_name"],
-                    "ids": [advisory["github_advisory_id"], *advisory.get("cves", [])],
+                    "ids": [advisory["github_advisory_id"], *(advisory.get("cves") or [])],
                     "severity": advisory["severity"],
                 }
             )
