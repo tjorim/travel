@@ -371,3 +371,20 @@ ties to that one update by shared area and day. It is read-only text with an exi
 Directions link, so no Base UI or shadcn primitive applies; it adds no dependency.
 Records the projection cannot tie to exactly one update keep their existing sections.
 
+
+## Owner phone header (#111)
+
+Use the existing Base UI Popover adapter for the single secondary-controls menu
+(language, appearance, trip details and account). A dialog menu is appropriate
+for embedded radio groups; a command Menu would require custom keyboard handling
+for these form controls. Reuse WorkspaceNavigation's Base UI Dialog for sections.
+The phone trigger composes the trip title and current section into one 56 px bar;
+full title remains available as a heading and in Trip details. Desktop keeps
+its existing sticky sidebar and controls. Capture stays above the bottom nav;
+extra bottom padding lets the final content scroll clear of the floating action.
+
+Composition decision: compared a wrapped preferences/context stack with a
+two-line title/section trigger plus one secondary menu. Selected the latter
+for M0: it preserves the existing drawer and Capture without adding another
+navigation model. Concept: `[Trip title / Current section ▾] [Account ⚙]`,
+with Capture floating above the existing app navigation.

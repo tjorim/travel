@@ -96,6 +96,7 @@ for (const locale of ["en", "nl"] as const)
       ).toBeFocused();
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(nav).toHaveCount(0);
+      await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
       await page
         .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
         .click();

@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useNavigate, useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useContext, useCallback, useEffect, useMemo, useState } from "react";
 
+import { OwnerHeaderContext } from "../owner-header-context";
 import { PackingTripOffline } from "../trips/packing/PackingTripOffline";
 import { useAuth } from "../auth-context";
 import { useCapture } from "../capture-context";
@@ -51,7 +52,19 @@ export function TripWorkspaceView({
   const location = useLocation();
   const tripsQuery = useTripsQuery();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
+  const [phone, setPhone] = useState(() => matchMedia("(max-width: 679px)").matches);
+  useEffect(() => {
+    const media = matchMedia("(max-width: 679px)");
+    const update = () => setPhone(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const [editing, setEditing] = useState(false);
+  const { setAction } = useContext(OwnerHeaderContext);
+  useEffect(() => {
+    setAction(() => () => setEditing(true));
+    return () => setAction(null);
+  }, [setAction]);
   const openCapture = useCapture();
   const [notice, setNotice] = useFeedback<string | null>(null);
   // An Agenda row, or the private overview arriving from elsewhere, asks the matching manager below to open that record's dialog.
@@ -127,16 +140,21 @@ export function TripWorkspaceView({
 
   // Every trip-bound manager remounts per trip, so no editor or dialog carries one trip's record into another.
   return (
-    <section className="grid grid-cols-1 gap-1.5" aria-labelledby="trip-detail-title" key={trip.id}>
-      <WorkspaceBreadcrumb section={section} />
+    <section className="grid grid-cols-1 gap-1.5" aria-label={trip.title} key={trip.id}>
+      {phone && <h1 className="sr-only">{trip.title}</h1>}
+      <div className="max-[679px]:hidden">
+        <WorkspaceBreadcrumb section={section} />
+      </div>
       {/* Only navigation changes presentation; content and editors keep their ownership. */}
       <div className="grid min-w-0 grid-cols-1 gap-1.5 trip-sidebar:grid-cols-travel-workspace trip-sidebar:items-start trip-sidebar:gap-6">
         <div
           data-trip-sidebar
           className="grid min-w-0 gap-1.5 trip-sidebar:sticky trip-sidebar:top-4 trip-sidebar:max-h-travel-sidebar trip-sidebar:overflow-y-auto trip-sidebar:overscroll-contain trip-sidebar:p-1"
         >
-          <WorkspaceHeader trip={trip} onEdit={() => setEditing(true)} />
-          <WorkspaceNavigation tripId={trip.id} current={section} />
+          <div className="max-[679px]:hidden">
+            <WorkspaceHeader trip={trip} onEdit={() => setEditing(true)} />
+          </div>
+          <WorkspaceNavigation tripId={trip.id} current={section} title={trip.title} />
         </div>
         <div data-trip-content className="grid min-w-0 gap-1.5">
           <TripEditor
