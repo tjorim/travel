@@ -1582,3 +1582,33 @@ def test_committed_create_survives_audit_outage_without_logging_payload(
     assert "RuntimeError" in caplog.text
     assert "synthetic-secret-payload" not in caplog.text
     assert "Synthetic private title" not in caplog.text
+
+
+def test_mcp_collection_tools_mirror_the_link_tools_and_hide_the_token(
+    backend: TravelMcpBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "public_app_url", "https://travel.example.test/")
+    trip = backend.create_trip(schemas.TripCreate(title="Collected"))
+    created = backend.create_collection(schemas.CollectionCreate(label="Family"), confirm=True)
+    assert "token" not in created
+    added = backend.add_collection_member(
+        created["id"], schemas.CollectionMemberCreate(trip_id=trip["id"]), confirm=True
+    )
+    member_id = added["members"][0]["id"]
+    assert backend.preview_collection_member(created["id"], member_id)["title"] == "Collected"
+    changed = backend.update_collection_member(
+        created["id"], member_id, schemas.ShareScopeInput(trip=schemas.ShareScopeTripInput(title=False)), confirm=True
+    )
+    assert changed["members"][0]["scope"]["trip"]["title"] is False
+
+    activated = backend.activate_collection(created["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+    assert activated["share_url"].startswith("https://travel.example.test/share/")
+    token = activated["share_url"].rsplit("/", 1)[1]
+    rotated = backend.rotate_collection(created["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+    assert rotated["share_url"] != activated["share_url"]
+    for response in (backend.get_collection(created["id"]), *backend.list_collections()):
+        assert "token" not in response and token not in json.dumps(response)
+    with pytest.raises(ValueError):
+        backend.revoke_collection(created["id"])  # needs confirmation
+    assert backend.revoke_collection(created["id"], reason="Done", confirm=True)["state"] == "revoked"
+    assert backend.remove_collection_member.__name__ == "remove_collection_member"

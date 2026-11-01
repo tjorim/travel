@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -37,6 +38,7 @@ from ..ratelimit import delivery_limit, limiter, retry_after_seconds, shared_lin
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
+    CollectionIndexDocument,
     Identifier,
     ProjectionDocument,
     PublicProjectionStatusResponse,
@@ -63,6 +65,9 @@ def _aware_utc(value: datetime) -> datetime:
     # SQLite (used in tests) drops tzinfo on round-trip even for a
     # DateTime(timezone=True) column; Postgres (production) preserves it.
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+aware_utc = _aware_utc
 
 
 UNLISTED_HEADERS = {
@@ -670,6 +675,7 @@ def rotate_share_link(
 _PATH_PATTERNS = {
     "slug": re.compile(r"[A-Za-z0-9_-]{1,32}"),
     "token": re.compile(r"[A-Za-z0-9_-]{43}"),
+    "member_id": re.compile(r"[A-Za-z0-9_-]{1,32}"),
     "local_id": re.compile(r"[A-Za-z0-9_-]{1,80}"),
 }
 
@@ -694,7 +700,7 @@ def _validate_public_path(request: Request) -> None:
 
 
 def _reject_malformed_token(request: Request, not_found: ApiException) -> None:
-    if _malformed_path(request, {"token", "local_id"}):
+    if _malformed_path(request, {"token", "local_id", "member_id"}):
         raise not_found
 
 
@@ -803,9 +809,9 @@ def get_public_file(slug: str, local_id: str, session: SessionDep, storage: Stor
     return _file_response(trip, surface.scope, local_id, storage, headers, request)
 
 
-@delivery_router.get("/shared/{token}", response_model=ProjectionDocument)
+@delivery_router.get("/shared/{token}", response_model=ProjectionDocument | CollectionIndexDocument)
 @limiter.shared_limit(shared_link_limit, scope="shared-link")
-def get_shared_trip(request: Request, token: str, session: SessionDep, response: Response) -> dict:
+def get_shared_trip(request: Request, token: str, session: SessionDep, response: Response) -> dict | BaseModel:
     # Headers are also attached to each HTTPException below: FastAPI's error
     # path builds its own response and does not carry over `response.headers`
     # mutations, and a not-found/expired/revoked link must be just as
@@ -815,7 +821,17 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     )
     _reject_malformed_token(request, not_found)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
-    if link is None or link.state != LinkState.ACTIVE:
+    if link is None:
+        # Not a per-trip link: a collection capability opens an index of its members instead.
+        from .collections import active_collection, collection_index
+
+        collection = active_collection(session, token)
+        if collection is None:
+            raise not_found
+        for header, value in UNLISTED_HEADERS.items():
+            response.headers[header] = value
+        return collection_index(session, collection)
+    if link.state != LinkState.ACTIVE:
         raise not_found
     if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
         _expire_link(session, link)

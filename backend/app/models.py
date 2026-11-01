@@ -357,6 +357,9 @@ class Trip(Base):
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
     )
 
+    # A deleted trip leaves every collection in the same transaction.
+    collection_memberships: Mapped[list[CollectionMember]] = relationship(cascade="all, delete-orphan")
+
     @property
     def cover_derivative_id(self) -> str | None:
         """The photo copy the owner nominated as cover; ``None`` when there is none or it was deleted."""
@@ -807,6 +810,83 @@ class ShareLink(Base):
     )
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Collection(Base):
+    """An owner-wide, named, revocable capability that opens several trips at once.
+
+    It has its own token and keyed verifier and never reuses a per-trip link's.
+    `state` gates the whole collection; each member owns the scope its trip is
+    delivered at, so a collection can show less than the trip's own links.
+    Everything renders live from canonical data -- there is no snapshot. The
+    label is owner-only; `title` is optional text written for visitors."""
+
+    __tablename__ = "collections"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    state: Mapped[LinkState] = mapped_column(_enum_column(LinkState, "travel_link_state"), default=LinkState.DRAFT)
+    token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    token_verifier: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Counts completed rotations, so the owner sees the capability was replaced.
+    rotations: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    members: Mapped[list[CollectionMember]] = relationship(
+        back_populates="collection", cascade="all, delete-orphan", order_by="CollectionMember.created_at"
+    )
+
+
+class CollectionMember(Base):
+    """One trip in a collection, with the scope the collection delivers it at.
+
+    `id` is the opaque identifier visitors see in the path instead of the trip's
+    own id. A member disappears with its trip or its collection."""
+
+    __tablename__ = "collection_members"
+    __table_args__ = (UniqueConstraint("collection_id", "trip_id", name="uq_collection_members_trip"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    collection_id: Mapped[str] = mapped_column(
+        ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    collection: Mapped[Collection] = relationship(back_populates="members")
+
+
+class CollectionAuditEvent(Base):
+    """Owner-only audit trail for collection lifecycle and membership changes.
+
+    Collections belong to the owner, not a trip, so these events are kept apart
+    from `AuditEvent`. Ids are kept after a collection or trip is deleted. Like
+    `AuditEvent`, `details` never holds a raw token or recipient identity.
+    Retained and purged with the other sharing audits."""
+
+    __tablename__ = "collection_audit_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    actor_subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    collection_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    trip_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    kind: Mapped[str] = mapped_column(String(60), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
 
 class AuditEvent(Base):

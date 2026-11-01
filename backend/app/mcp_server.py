@@ -53,6 +53,7 @@ from .database import SessionLocal
 from .models import DocumentKind, ImportProvider, McpAuditEvent, Visibility
 from .routers import (
     areas,
+    collections,
     documents,
     library,
     locations,
@@ -118,6 +119,15 @@ def _model(value: Any, model_type: type[BaseModel] | None = None) -> Any:
     if model_type is None:
         return jsonable_encoder(value)
     return _without_html(model_type.model_validate(value).model_dump(mode="json"))
+
+
+def _mcp_collection(value: Any) -> dict[str, Any]:
+    """A collection without its capability token, from the REST representation."""
+    return schemas.McpCollectionResponse.model_validate(value.model_dump()).model_dump(mode="json")
+
+
+def _collection_with_url(value: Any) -> dict[str, Any]:
+    return {**_mcp_collection(value), "share_url": _share_url(value.token)}
 
 
 def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, Any]]:
@@ -1070,6 +1080,157 @@ class TravelMcpBackend:
             needs_confirmation=True,
         )
 
+    # Collection links: one capability that opens several trips. Ordinary responses
+    # never carry the token; only activate/rotate return the full visitor URL.
+    def list_collections(self) -> list[dict[str, Any]]:
+        """List the owner's collection links and their members without any capability token."""
+        return self._call(
+            "collection.list",
+            "collection",
+            None,
+            None,
+            lambda s, sub: collections.list_collections(s, sub),
+            lambda x: [_mcp_collection(item) for item in x],
+        )
+
+    def create_collection(self, payload: schemas.CollectionCreate, confirm: bool = False) -> dict[str, Any]:
+        """Create a draft collection link; add member trips with their own scopes before activating it."""
+        return self._call(
+            "collection.create",
+            "collection",
+            None,
+            None,
+            lambda s, sub: collections.create_collection(payload, s, sub),
+            _mcp_collection,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def get_collection(self, collection_id: str) -> dict[str, Any]:
+        """Read one collection's state and members without a capability token."""
+        return self._call(
+            "collection.get",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.get_collection(collection_id, s, sub),
+            _mcp_collection,
+        )
+
+    def update_collection(
+        self, collection_id: str, payload: schemas.CollectionUpdate, confirm: bool = False
+    ) -> dict[str, Any]:
+        """Rename a collection or change the title visitors see, after explicit owner confirmation."""
+        return self._call(
+            "collection.update",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.update_collection(collection_id, payload, s, sub),
+            _mcp_collection,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def add_collection_member(
+        self, collection_id: str, payload: schemas.CollectionMemberCreate, confirm: bool = False
+    ) -> dict[str, Any]:
+        """Add an owned trip to a collection at its own scope, after explicit owner confirmation."""
+        return self._call(
+            "collection.member_add",
+            "collection",
+            collection_id,
+            payload.trip_id,
+            lambda s, sub: collections.add_collection_member(collection_id, payload, s, sub),
+            _mcp_collection,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def update_collection_member(
+        self, collection_id: str, member_id: str, scope: schemas.ShareScopeInput, confirm: bool = False
+    ) -> dict[str, Any]:
+        """Change what one member trip delivers; takes effect immediately on an active collection."""
+        return self._call(
+            "collection.member_scope",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.set_collection_member_scope(collection_id, member_id, scope, s, sub),
+            _mcp_collection,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def remove_collection_member(self, collection_id: str, member_id: str, confirm: bool = False) -> dict[str, Any]:
+        """Remove a trip from a collection; its page there stops working at once."""
+        return self._call(
+            "collection.member_remove",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.remove_collection_member(collection_id, member_id, s, sub),
+            _mcp_collection,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def preview_collection_member(self, collection_id: str, member_id: str) -> dict[str, Any]:
+        """Render one member trip as the collection's visitors would see it; no token is minted."""
+        return self._call(
+            "collection.preview",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.preview_collection_member(collection_id, member_id, s, sub, Response()),
+            lambda x: _model(x, schemas.ProjectionDocument),
+        )
+
+    def activate_collection(
+        self, collection_id: str, payload: schemas.ShareLinkActivateRequest, confirm: bool = False
+    ) -> dict[str, Any]:
+        """Activate a draft collection and return its full visitor URL."""
+        return self._call(
+            "collection.activate",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.activate_collection(collection_id, payload, s, sub),
+            _collection_with_url,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def revoke_collection(self, collection_id: str, reason: str | None = None, confirm: bool = False) -> dict[str, Any]:
+        """Immediately revoke a collection capability after explicit confirmation."""
+        return self._call(
+            "collection.revoke",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.revoke_collection(
+                collection_id, s, sub, schemas.AuditReasonInput(reason=reason)
+            ),
+            _mcp_collection,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def rotate_collection(
+        self, collection_id: str, payload: schemas.ShareLinkActivateRequest, confirm: bool = False
+    ) -> dict[str, Any]:
+        """Replace a collection's capability and return the new full visitor URL after confirmation."""
+        return self._call(
+            "collection.rotate",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collections.rotate_collection(collection_id, payload, s, sub),
+            _collection_with_url,
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
     def list_trip_audit_events(self, trip_id: str) -> list[dict[str, Any]]:
         """Read audience/publication lifecycle history for an owned trip."""
         return self._call(
@@ -2008,6 +2169,13 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
             "update_share_link",
             "activate_share_link",
             "rotate_share_link",
+            "create_collection",
+            "update_collection",
+            "add_collection_member",
+            "update_collection_member",
+            "remove_collection_member",
+            "activate_collection",
+            "rotate_collection",
             "approve_media_derivative",
             "complete_media_import_session",
             "merge_locations",
@@ -2035,6 +2203,8 @@ _ADDITIVE_WRITE_TOOLS = frozenset(
         "upload_library_document",
         "approve_media_derivative",
         "activate_share_link",
+        "activate_collection",
+        "add_collection_member",
         "publish_public_projection",
         "start_media_import_session",
         "complete_media_import_session",
