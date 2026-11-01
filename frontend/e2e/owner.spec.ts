@@ -105,7 +105,8 @@ for (const locale of ["nl", "en"] as const) {
             page.getByRole("heading", { name: screen.heading, level: screen.level }).first(),
           ).toBeVisible();
           // The cover and every card have settled before measuring.
-          if (screen.name !== "trips") await expect(page.locator("main img").first()).toBeVisible();
+          if (screen.name === "home" || (screen.name === "workspace" && width >= 680))
+            await expect(page.locator("main img").first()).toBeVisible();
           expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
           const results = await new AxeBuilder({ page })
             .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -147,7 +148,11 @@ test("the workspace header states publication and keeps the tabs reachable on a 
 }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await open(page, "/admin/trips/trip-active", "en", "light");
-  await expect(page.getByText("Public page live")).toBeVisible();
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Account" }).getByText("Public page live"),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Trip sections", exact: true }).click();
   const tabs = page.getByRole("navigation", { name: "Trip sections" });
   await expect(tabs.getByRole("link", { name: "Overview" })).toHaveAttribute(
@@ -232,10 +237,19 @@ for (const locale of ["en", "nl"] as const) {
           ).toBeVisible();
           await expect(page.locator("#tasks")).toBeVisible();
           await page.evaluate(() => document.fonts.ready);
-          const breadcrumb = page.getByRole("navigation", { name: /Breadcrumb|Kruimelpad/ });
-          await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(
-            locale === "en" ? "Prepare" : "Voorbereiden",
-          );
+          if (width < 680) {
+            await expect(
+              page.getByRole("button", {
+                name: locale === "en" ? "Trip sections" : "Reisonderdelen",
+                exact: true,
+              }),
+            ).toContainText(locale === "en" ? "Prepare" : "Voorbereiden");
+          } else {
+            const breadcrumb = page.getByRole("navigation", { name: /Breadcrumb|Kruimelpad/ });
+            await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(
+              locale === "en" ? "Prepare" : "Voorbereiden",
+            );
+          }
           expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
           const results = await new AxeBuilder({ page }).analyze();
           expect(results.violations).toEqual([]);

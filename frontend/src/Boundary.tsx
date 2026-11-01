@@ -14,6 +14,7 @@ import { CaptureProvider, useCapture } from "./capture-context";
 import { wipeOfflineData } from "./offline/offline-store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 
+import { PublicationState } from "./trips/WorkspaceHeader";
 import { OwnerHeaderContext } from "./owner-header-context";
 
 /**
@@ -154,6 +155,7 @@ export function Boundary({ children }: { children: ReactNode }) {
                 >
                   <div className="min-[680px]:hidden">
                     <Preferences />
+                    {tripId && <PublicationState tripId={tripId} />}
                     {action && (
                       <Button
                         className="secondary w-full"

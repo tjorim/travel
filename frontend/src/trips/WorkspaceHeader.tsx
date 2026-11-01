@@ -12,7 +12,7 @@ import { TripCover } from "./TripCover";
 import { TripStatePill } from "./TripStatePill";
 
 /** Whether the public page is live. Unlisted links are not summarised here: the Sharing section lists them. */
-function PublicationState({ tripId }: { tripId: string }) {
+export function PublicationState({ tripId }: { tripId: string }) {
   useLocale();
   const status = useTripResource(tripId, "public-projection").data;
   if (!status) return null;
