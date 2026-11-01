@@ -6,12 +6,14 @@ but keyed by ``owner_subject`` instead of ``trip_id`` so this pipeline never
 touches the trip-scoped media/document pipeline in ``app.media.service``.
 """
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..media.service import MediaImportError, upload_too_large_error
 from ..models import DocumentKind, ObjectState, OwnerDocument, OwnerStoredObject, opaque_id
+from ..schemas import DocumentTitle
 from ..storage import ObjectStorage, StagedUpload, lock_object_deletion, sha256_hex, verify_object
 
 
@@ -78,6 +80,10 @@ def direct_upload(
     linked_trip_id: str | None,
 ) -> tuple[OwnerDocument, bool]:
     """Store an owner-wide document original and create one retry-safe record."""
+    try:
+        title = TypeAdapter(DocumentTitle).validate_python(title)
+    except ValidationError as error:
+        raise LibraryError("Invalid document title", code="invalid_document_title") from error
     stored = _store_owner_bytes(session, storage, owner_subject=owner_subject, data=data, content_type=content_type)
     existing = session.scalar(
         select(OwnerDocument).where(

@@ -99,6 +99,7 @@ def require_safe_text(value):
 
 
 SafeText = Annotated[str, BeforeValidator(require_safe_text)]
+DocumentTitle = Annotated[SafeText, Field(min_length=1, max_length=160)]
 Identifier = Annotated[SafeText, Field(min_length=1, max_length=32)]
 
 

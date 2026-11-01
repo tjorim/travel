@@ -21,13 +21,13 @@ from ..media.ranges import private_original_headers
 from ..media.service import read_bounded_upload
 from ..models import DocumentKind, EmergencyInfoEntry, OwnerDocument
 from ..schemas import (
+    DocumentTitle,
     EmergencyInfoEntryCreate,
     EmergencyInfoEntryResponse,
     EmergencyInfoEntryUpdate,
     Identifier,
     OwnerDocumentResponse,
     OwnerDocumentUpdate,
-    SafeText,
 )
 from ..storage import ObjectStorage, get_storage
 from .trips import owned_trip
@@ -85,7 +85,7 @@ def upload_library_document(
     subject: SubjectDep,
     storage: StorageDep,
     response: Response,
-    title: Annotated[SafeText, Form(min_length=1, max_length=160)],
+    title: Annotated[DocumentTitle, Form()],
     document_kind: Annotated[DocumentKind, Form()],
     file: Annotated[UploadFile, File()],
     linked_trip_id: Annotated[Identifier | None, Form()] = None,

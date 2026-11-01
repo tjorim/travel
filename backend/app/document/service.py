@@ -1,10 +1,12 @@
 """Copy-verify-record handling for private trip documents."""
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..media.service import MediaImportError, _object_is_referenced, _purge_pending_objects, store_uploaded_object
 from ..models import DocumentAsset, DocumentKind, ObjectState, StoredObject
+from ..schemas import DocumentTitle
 from ..storage import ObjectStorage, StagedUpload
 
 
@@ -24,6 +26,10 @@ def direct_upload(
     title: str,
 ) -> tuple[DocumentAsset, bool]:
     """Store an owner original and create one retry-safe asset record."""
+    try:
+        title = TypeAdapter(DocumentTitle).validate_python(title)
+    except ValidationError as error:
+        raise DocumentError("Invalid document title", code="invalid_document_title") from error
     stored = store_uploaded_object(session, storage, trip_id=trip_id, data=data, content_type=content_type)
     existing = session.scalar(
         select(DocumentAsset).where(DocumentAsset.trip_id == trip_id, DocumentAsset.original_object_id == stored.id)
