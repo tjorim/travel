@@ -2152,5 +2152,11 @@
   "collection_trips_label": "Reizen in deze link",
   "collection_empty": "Nog geen reizen hier",
   "collection_empty_description": "De eigenaar heeft nog geen reizen aan deze link toegevoegd. Kijk later nog eens.",
-  "visitor_back_to_collection": "Alle reizen in deze link"
+  "visitor_back_to_collection": "Alle reizen in deze link",
+  "visitor_back_to_collection": "Alle reizen in deze link",
+  "owner_export_trip_data": "Reisgegevens exporteren (JSON)",
+  "owner_exporting_trip_data": "Reisgegevens exporteren…",
+  "owner_trip_export_help": "Downloadt de gegevens van deze reis als één JSON-bestand. Het is privé: het bevat je notities en boekingsgegevens, maar geen bestanden, foto's of deellinks.",
+  "owner_trip_export_failed": "De reisgegevens konden niet worden geëxporteerd.",
+  "owner_trip_export_downloaded": "Reisgegevens geëxporteerd."
 }
