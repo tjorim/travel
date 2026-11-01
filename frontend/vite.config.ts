@@ -118,7 +118,7 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         admin: new URL("./index.html", import.meta.url).pathname,
         landing: new URL("./landing.html", import.meta.url).pathname,
