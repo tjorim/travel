@@ -3,7 +3,8 @@ import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
 import { Preferences } from "./Preferences";
 import { Button } from "@/ui/button";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Collapsible } from "@/ui/collapsible";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -294,12 +295,19 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   useLocale();
   const [attempt, setAttempt] = useState(0);
   const [storageFailed, setStorageFailed] = useState(false);
+  const [saved, setSaved] = useState<"saved" | "forgotten" | null>(null);
+  const forgottenNotice = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    // Forgetting removes the focused button: move focus to the confirmation.
+    if (saved === "forgotten") forgottenNotice.current?.focus();
+  }, [saved]);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
     setState({ kind: "loading" });
     setStorageFailed(false);
+    setSaved(null);
     const path =
       audience === "public"
         ? `/api/public/trips/${encodeURIComponent(identifier)}`
@@ -317,6 +325,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
         });
         if (response.status === 404 || response.status === 403) {
           if (audience === "share") setStorageFailed(!forgetSharedTrip(identifier));
+          setSaved(null);
           setState({ kind: "unavailable" });
         } else if (!response.ok) {
           setState({ kind: "error", failure: await apiFailure(response, m.trip_error) });
@@ -324,7 +333,11 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           const data: unknown = await response.json();
           if (!controller.signal.aborted) {
             if (isProjection(data, audience)) {
-              if (audience === "share") setStorageFailed(!rememberSharedTrip(identifier, data));
+              if (audience === "share") {
+                const remembered = rememberSharedTrip(identifier, data);
+                setStorageFailed(!remembered);
+                setSaved(remembered ? "saved" : null);
+              }
               setState({ kind: "ready", projection: data });
             } else {
               setState({ kind: "error" });
@@ -353,6 +366,37 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
           <Link to="/trips" className="text-travel-forest underline underline-offset-3">
             {m.all_public_trips()}
           </Link>
+        )}
+        {state.kind === "ready" && saved === "saved" && (
+          <section
+            aria-label={m.share_saved_title()}
+            className="min-w-0 basis-full rounded-travel-control border border-travel-border px-3 py-0.5 min-[720px]:basis-auto"
+          >
+            <Collapsible.Root>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 className="m-0 text-sm">{m.share_saved_title()}</h2>
+                <Collapsible.Trigger className="rounded-travel-control bg-transparent py-1 text-sm font-bold text-travel-forest underline underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus">
+                  {m.share_saved_details()}
+                </Collapsible.Trigger>
+                <Button
+                  className="secondary compact ml-auto"
+                  type="button"
+                  onClick={() => {
+                    const forgotten = forgetSharedTrip(identifier);
+                    setStorageFailed(!forgotten);
+                    if (forgotten) setSaved("forgotten");
+                  }}
+                >
+                  {m.share_forget_link()}
+                </Button>
+              </div>
+              <Collapsible.Panel>
+                <p className="m-0 max-w-travel-reading pb-2 leading-relaxed text-travel-muted">
+                  {m.share_saved_notice()}
+                </p>
+              </Collapsible.Panel>
+            </Collapsible.Root>
+          </section>
         )}
         <div className="ml-auto">
           <Preferences compact />
@@ -392,6 +436,11 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
         </section>
       )}
       {storageFailed && <p role="status">{m.visitor_storage_failed()}</p>}
+      {state.kind === "ready" && saved === "forgotten" && (
+        <p role="status" tabIndex={-1} ref={forgottenNotice}>
+          {m.share_forgotten()}
+        </p>
+      )}
       {state.kind === "ready" && (
         <ProjectionView projection={state.projection} audience={audience} identifier={identifier} />
       )}

@@ -213,7 +213,10 @@ recipient record: it stays on that browser/device, is never sent to an index
 endpoint, and can be removed there. Since the raw capability remains a bearer
 credential in local browser storage, the homepage explicitly warns that anyone
 using that browser profile can reopen a saved trip. A `404` for a revoked or
-expired saved link removes it from the list.
+expired saved link removes it from the list. The saved fields, the notice at
+first open, the Forget controls and the map-provider exception are specified
+in [decision 103](103-live-browser-route-contract.md); that text and this one
+agree (#108).
 
 The service generates at least 256 bits of entropy with a cryptographically
 secure random generator and encodes the capability in a URL-safe form. It
