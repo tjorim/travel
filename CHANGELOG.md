@@ -4,6 +4,12 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Record delegated visitor layout choice ID1(a): group approved area/date context near the story, preserving precision and repeated visits, with separate blocks when projected relationships are ambiguous (Refs #94).
+
+- Compare matched synthetic hotel, transport, visit and area workflows and their owner/visitor displays on laptop and Android; correct Polarsteps planning/keyboard assumptions, record local route-time/copy discrepancies and propose presentation decisions without application changes (Refs #94).
+
+- Add a standalone public/unlisted Polarsteps visitor comparison with synthetic route/lifecycle checks, measured phone/laptop layouts, native public-trip photo evidence, safe-preview decisions and explicit coverage limits (Refs #94).
+
 - Include authenticated MCP tools alongside the PWA in the planned domain/data/storage review for admin trip editing, preserving shared ownership and validation rules (Refs #94).
 
 - Record domain model, held data and storage review as the second priority after public/unlisted viewing, ahead of owner UI and feature additions (Refs #94).
