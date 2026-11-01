@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Document why the registry Spinner and Separator were not adopted: no hand-built spinner or standalone divider exists to replace (#137).
+
 - Use the owned registry Switch for the visitor "Move the map along with the story" control; other checkboxes stay checkboxes (#137).
 
 - Verify built visitor releases and print public/unlisted stories with their itinerary, without navigation or the sticky map (#114).

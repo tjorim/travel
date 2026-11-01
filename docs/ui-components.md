@@ -486,3 +486,22 @@ date), where "checked" means "included" rather than "this setting is on".
 Bundle: the visitor entries went from 589.3 to 587.0 kB raw (196.9 to 195.9 kB
 gzip), because the visitor entry no longer needs the checkbox; the admin entry is
 unchanged.
+
+## Spinner and separator (#137, item 8): not adopted
+
+Evaluated against the current source; neither has a clean spot, so neither was added.
+
+- **Spinner**: there is no hand-built loading indicator. Pending states are text
+  ("Loading…", "Saving…") with `aria-busy` on the form, and lazy views use the owned
+  `Skeleton`. A spinner would be new decoration beside text that already says the same
+  thing, not a replacement, and would add an icon animation to the motion audit.
+- **Separator**: the dividers are `border-t`/`border-b`/`divide-y` utilities on the
+  items they separate (list rows, the sticky capture bar, the header rule, the
+  collapsible route section). They are styling of the item, not standalone
+  elements; swapping them for a separator element would add DOM and a `role="separator"`
+  that screen readers announce in lists, for no behaviour gain, and `divide-y` rows
+  cannot take one without changing list semantics.
+
+Revisit the spinner if a control gets an in-progress state without a text label, and
+the separator if a standalone divider between sibling regions (such as a toolbar
+group) appears.
