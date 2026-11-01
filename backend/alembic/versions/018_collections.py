@@ -24,8 +24,8 @@ def upgrade() -> None:
         sa.Column("token_verifier", sa.String(64), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("rotations", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("activated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("token_verifier", name="collections_token_verifier_key"),
@@ -38,8 +38,8 @@ def upgrade() -> None:
         sa.Column("trip_id", sa.String(32), sa.ForeignKey("trips.id", ondelete="CASCADE"), nullable=False),
         sa.Column("revision", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("scope", sa.JSON(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint("collection_id", "trip_id", name="uq_collection_members_trip"),
     )
     op.create_index("ix_collection_members_collection_id", "collection_members", ["collection_id"])
@@ -52,7 +52,7 @@ def upgrade() -> None:
         sa.Column("collection_id", sa.String(32), nullable=False),
         sa.Column("trip_id", sa.String(32), nullable=True),
         sa.Column("kind", sa.String(60), nullable=False),
-        sa.Column("occurred_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("occurred_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("details", sa.JSON(), nullable=False),
     )
     op.create_index("ix_collection_audit_events_owner_subject", "collection_audit_events", ["owner_subject"])
