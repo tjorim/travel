@@ -205,7 +205,6 @@ export function RouteGeometryEditor({
               instance.flyTo({
                 center: suggestionsRef.current[0].coordinates,
                 zoom: 7,
-                essential: true,
               });
           }
           // A long press on touch screens ends in a click as well; do not let it add a point.
@@ -368,7 +367,7 @@ export function RouteGeometryEditor({
       north = Math.max(north, latitude);
     }
     if (coordinatesRef.current.length === 1)
-      instance.flyTo({ center: coordinatesRef.current[0], zoom: 8, essential: true });
+      instance.flyTo({ center: coordinatesRef.current[0], zoom: 8 });
     else
       instance.fitBounds(
         [
@@ -384,7 +383,6 @@ export function RouteGeometryEditor({
     map.current?.flyTo({
       center: suggestion.coordinates,
       zoom: Math.max(map.current.getZoom(), 7),
-      essential: true,
     });
   }
 

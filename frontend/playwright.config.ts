@@ -15,6 +15,9 @@ export default defineConfig({
     baseURL: `http://localhost:${port}`,
     // The owner PWA registers a service worker; a cached one would hide the mocked routes.
     serviceWorkers: "block",
+    // Layers fade and slide in for visitors who allow motion; the checks run without it so an axe pass never samples a
+    // half-transparent dialog. e2e/motion.spec.ts opts back in.
+    reducedMotion: "reduce",
     trace: "retain-on-failure",
     launchOptions: {
       // Lets a host with its own Chromium build skip `playwright install`; unset in CI.

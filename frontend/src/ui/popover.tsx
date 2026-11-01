@@ -30,7 +30,7 @@ function PopoverContent({
         <PopoverPrimitive.Popup
           data-slot="popover-content"
           className={cn(
-            "z-50 rounded-travel-media border border-travel-border bg-popover p-2 text-sm text-popover-foreground shadow-travel-card outline-hidden",
+            "z-50 rounded-travel-media border border-travel-border bg-popover p-2 text-sm text-popover-foreground shadow-travel-card outline-hidden travel-menu-motion",
             className,
           )}
           {...props}

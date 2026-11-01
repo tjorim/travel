@@ -17,7 +17,7 @@ export function SuggestInput({
       <Autocomplete.Input {...input} />
       <Autocomplete.Portal>
         <Autocomplete.Positioner className="z-50 outline-none" sideOffset={4}>
-          <Autocomplete.Popup className="max-h-72 w-(--anchor-width) overflow-y-auto rounded-lg border bg-travel-surface p-1 text-travel-ink shadow-lg empty:hidden">
+          <Autocomplete.Popup className="max-h-72 w-(--anchor-width) overflow-y-auto rounded-lg border bg-travel-surface p-1 text-travel-ink shadow-lg travel-menu-motion empty:hidden">
             <Autocomplete.List>
               {(suggestion: string) => (
                 <Autocomplete.Item
