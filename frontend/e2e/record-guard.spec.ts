@@ -72,6 +72,7 @@ for (const fail of [false, true]) {
     await page.goto(`/admin/trips/${ownerTrip.id}/story`);
     await page.getByRole("button", { name: "Trip sections", exact: true }).click();
     await page.getByRole("link", { name: "Prepare", exact: true }).click();
+    await page.getByRole("button", { name: "Account", exact: true }).click();
     await page.getByRole("button", { name: "Trip details", exact: true }).click();
     const input = page.getByRole("textbox", { name: "Title", exact: true });
     await input.fill("Synthetic submitted A");
