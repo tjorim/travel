@@ -53,13 +53,28 @@ revoke or scope edit is checked again by the API.
   unavailable responses, use `Cache-Control: no-store, private`,
   `Referrer-Policy: no-referrer`, and `X-Robots-Tag: noindex, noarchive`.
   The shell also includes a no-referrer meta policy before any subresource and
-  loads no third-party resource that could receive the URL. A token in the
+  loads no third-party resource that could receive the URL. The one exception
+  is the story map, which requests styles, tiles, fonts and, only when the
+  visitor enables them, terrain and satellite imagery from OpenFreeMap,
+  Mapterhorn and Esri. Those requests use `referrerPolicy: no-referrer` and
+  omitted credentials, never contain the token or an API path, and reveal the
+  viewed region and the visitor's IP address to the provider; the page says so
+  beside the map. A token in the
   path must be excluded from application and proxy access logs, analytics,
   telemetry, error reporting and external link referrers.
-- The browser keeps an unlisted token only in the current URL and transient
-  memory needed for its request. It does not put tokens or projection bodies
-  in localStorage, sessionStorage, IndexedDB, Cache Storage, service-worker
-  caches, persisted state, or browser analytics. The owner `/admin/`
+- The browser keeps an unlisted token in the current URL and transient memory
+  for its request, and, as decision [36](36-privacy-sharing-offline-policy.md)
+  permits, in one device-local convenience list. Opening a valid link saves
+  exactly four values in `localStorage` key `travel-saved-shared-trips@1`: the
+  token, the delivered trip title, the delivered one-line summary and the time
+  of the last visit (at most 30 entries). The list is never sent anywhere,
+  never indexed and is revalidated against `GET /api/shared/{token}`; a `403` or
+  `404` removes the entry. The page shows a notice at every open that the link
+  is saved on this browser, with a **Forget this link** control, and the
+  homepage list offers Forget and Forget all. The browser does not put tokens
+  or projection bodies in sessionStorage, IndexedDB, Cache Storage,
+  service-worker caches, persisted state or browser analytics, and does not
+  store anything else from the projection. The owner `/admin/`
   service worker stays scoped to `/admin/` and must not control visitor
   pages. Client navigation away from a share page clears its in-memory
   projection.

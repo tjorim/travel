@@ -405,7 +405,12 @@ for (const audience of ["public", "share"] as const) {
           await page.goto(path);
           const title = page.getByRole("heading", { level: 1 });
           await expect(title).toBeInViewport();
-          await expect(page.locator("#update-a h3")).toBeInViewport();
+          // On a short landscape phone the saved-link notice of an unlisted link takes the room the first update needs.
+          if (audience === "share" && height < 500)
+            await expect(
+              page.getByRole("button", { name: /Forget this link|Vergeet deze link/ }),
+            ).toBeInViewport();
+          else await expect(page.locator("#update-a h3")).toBeInViewport();
           const cover = page.locator("header img");
           expect((await cover.boundingBox())!.height).toBeLessThanOrEqual(150);
           expect((await title.boundingBox())!.y).toBeLessThan((await cover.boundingBox())!.y + 1);
