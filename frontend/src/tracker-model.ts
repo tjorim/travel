@@ -1,3 +1,4 @@
+import { DRAFT_FENCE } from "./capture-draft";
 import { formatNumber } from "./locale";
 import { FeedbackError } from "./query/feedback";
 import { m } from "./paraglide/messages.js";
@@ -166,6 +167,8 @@ export type Trip = {
 };
 
 export type UpdateDraft = {
+  /** In-memory write fence; never sent or persisted with the payload. */
+  [DRAFT_FENCE]?: import("./capture-draft").DraftFence;
   tripId: string;
   updateId: string | null;
   occurredAt: string;
@@ -527,8 +530,6 @@ export type ProjectionDocument = {
 
 import { dayjs } from "./dayjs";
 
-const draftKey = "travel-tracker-update-draft-v2";
-
 const dayMs = 86_400_000;
 
 /**
@@ -766,60 +767,14 @@ export function localDateTime(value = new Date()): string {
   return new Date(value.getTime() - offset).toISOString().slice(0, 16);
 }
 
-export function emptyDraft(tripId = ""): UpdateDraft {
-  return {
-    tripId,
-    updateId: null,
-    occurredAt: localDateTime(),
-    title: "",
-    notes: "",
-    location: null,
-    mediaAssetIds: [],
-  };
-}
-
-/** Drafts are kept per trip, so opening the capture form for one trip never
- * reads or overwrites another trip's unsaved draft. */
-function readDraftStore(): Record<string, UpdateDraft> {
-  try {
-    const value = localStorage.getItem(draftKey);
-    if (!value) return {};
-    const parsed = JSON.parse(value) as unknown;
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, UpdateDraft>) : {};
-  } catch {
-    return {};
-  }
-}
-
-export function readDraft(tripId: string): UpdateDraft | null {
-  const draft = readDraftStore()[tripId] as Partial<UpdateDraft> | undefined;
-  if (
-    !draft ||
-    typeof draft.occurredAt !== "string" ||
-    typeof draft.title !== "string" ||
-    typeof draft.notes !== "string"
-  )
-    return null;
-  return {
-    ...emptyDraft(tripId),
-    ...draft,
-    tripId,
-    updateId: typeof draft.updateId === "string" ? draft.updateId : null,
-  };
-}
-
-export function clearDraft(tripId: string): void {
-  const store = readDraftStore();
-  if (!(tripId in store)) return;
-  delete store[tripId];
-  localStorage.setItem(draftKey, JSON.stringify(store));
-}
-
-export function saveDraft(draft: UpdateDraft): void {
-  const store = readDraftStore();
-  store[draft.tripId] = draft;
-  localStorage.setItem(draftKey, JSON.stringify(store));
-}
+export {
+  DRAFT_FENCE,
+  emptyDraft,
+  readDraft,
+  clearDraft,
+  saveDraft,
+  draftIsCurrent,
+} from "./capture-draft";
 
 export function bytesLabel(bytes: number): string {
   return bytes < 1024
