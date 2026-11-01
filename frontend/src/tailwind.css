@@ -634,6 +634,16 @@
   [role="radio"]:focus-visible {
     @apply outline-3 outline-offset-2 outline-travel-focus;
   }
+  /* Map library controls and canvas get the same 3 px ring as every other control, inset where the map clips it. */
+  .maplibregl-canvas:focus-visible,
+  .maplibregl-canvas-container:focus-visible {
+    @apply -outline-offset-3 outline-3 outline-travel-focus;
+  }
+  .maplibregl-ctrl button:focus-visible,
+  .maplibregl-ctrl-attrib a:focus-visible {
+    @apply outline-3 -outline-offset-3 outline-travel-focus;
+    box-shadow: none;
+  }
   .maplibregl-ctrl-group,
   .maplibregl-ctrl-attrib {
     @apply bg-travel-surface! text-travel-ink!;
