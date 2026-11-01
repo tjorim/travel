@@ -59,6 +59,7 @@ custom control stays when the registry version would drop a requirement.
 | Spinner | Not applicable | Loading is announced as text in `role="status"` regions; a spinner would add no information. Progress is already Base UI (`PackingProgress`). |
 | RecordDialog, field.tsx, SearchCombobox, SuggestInput, TravelTextarea | Keep (unchanged) | The #279 reasons still hold: no registry component covers dirty dismissal, Base UI Field validity wiring, grouped option adaptation or free-text Autocomplete. |
 | Map and media rendering | Keep specialised | MapLibre and media or lightbox rendering have no registry equivalent. |
+| Visitor `PhotoLightbox` | Keep custom composition | One Base UI Dialog per gallery with named Previous/Next Buttons (`focusableWhenDisabled`, so focus is never dropped at an end), ←/→ keys, a pointer-event swipe on touch and pen only (48 px, mostly horizontal, `touch-pan-y` so vertical scrolling is untouched), a "Photo n of m" status and `finalFocus` returned to the last photo's trigger. No registry carousel fits a modal with approved-derivative preloading; the strip arrows in `Gallery` stay plain Buttons for the same reason. |
 
 Provenance: `empty.tsx` and `skeleton.tsx` came from
 `pnpm dlx shadcn@4.21.0 add empty skeleton --yes`, then were reformatted and

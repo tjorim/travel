@@ -463,78 +463,227 @@ function daysLater(previous: ProjectionItem | undefined, item: ProjectionItem): 
   return days > 0 ? days : null;
 }
 
-/** One shared photo as a button that opens it large; a failed load offers a retry. */
-function SharedImage({ item, url }: { item: ProjectionItem; url: string }) {
+/** The alt text of a shared photo, with a translated fallback. */
+function photoAlt(item: ProjectionItem) {
+  return text(item, "alt_text") ?? m.visitor_shared_image();
+}
+
+/** One shared photo as a button that opens the gallery's lightbox on it; a failed load offers a retry. */
+function SharedImage({
+  item,
+  url,
+  onOpen,
+  triggerRef,
+}: {
+  item: ProjectionItem;
+  url: string;
+  onOpen: () => void;
+  triggerRef: (element: HTMLButtonElement | null) => void;
+}) {
   useLocale();
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const alt = text(item, "alt_text") ?? m.visitor_shared_image();
-  const image = (expanded: boolean) => (
-    <img
-      key={`${url}:${attempt}:${expanded}`}
-      className={
-        expanded
-          ? "max-h-travel-lightbox w-full object-contain"
-          : "block aspect-4/3 h-auto w-full rounded-travel-media bg-travel-tint object-cover shadow-travel-card"
-      }
-      src={url}
-      alt={alt}
-      width={positiveSize(item, "width")}
-      height={positiveSize(item, "height")}
-      style={
-        expanded
-          ? undefined
-          : { objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }
-      }
-      loading={expanded ? "eager" : "lazy"}
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      hidden={failed}
-    />
-  );
-  const failure = failed && (
-    <div role="status">
-      <p>{m.visitor_image_failed()}</p>
-      <Button
-        type="button"
-        onClick={() => {
-          setFailed(false);
-          setAttempt((value) => value + 1);
-        }}
-      >
-        {m.retry()}
-      </Button>
-    </div>
-  );
+  const alt = photoAlt(item);
   return (
-    <Dialog.Root>
-      <Dialog.Trigger
+    <>
+      <Button
+        ref={triggerRef}
+        type="button"
         className="block w-full cursor-pointer rounded-travel-media border-0 bg-transparent p-0 text-travel-ink transition duration-150 hover:brightness-105 motion-reduce:transition-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
         aria-label={m.visitor_open_image({ title: alt })}
+        onClick={onOpen}
       >
-        {image(false)}
+        <img
+          key={`${url}:${attempt}`}
+          className="block aspect-4/3 h-auto w-full rounded-travel-media bg-travel-tint object-cover shadow-travel-card"
+          src={url}
+          alt={alt}
+          width={positiveSize(item, "width")}
+          height={positiveSize(item, "height")}
+          style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          hidden={failed}
+        />
         {failed && m.visitor_image_failed()}
-      </Dialog.Trigger>
-      {failure}
+      </Button>
+      {failed && (
+        <div role="status">
+          <p>{m.visitor_image_failed()}</p>
+          <Button
+            type="button"
+            onClick={() => {
+              setFailed(false);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            {m.retry()}
+          </Button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The enlarged photo of the lightbox; a failed load offers a retry for this photo only. */
+function LightboxImage({ item, url }: { item: ProjectionItem; url: string }) {
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  return (
+    <figure className="m-0">
+      <img
+        key={`${url}:${attempt}`}
+        className="max-h-travel-lightbox w-full object-contain"
+        src={url}
+        alt={photoAlt(item)}
+        width={positiveSize(item, "width")}
+        height={positiveSize(item, "height")}
+        loading="eager"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        hidden={failed}
+        draggable={false}
+      />
+      {failed && (
+        <div role="status">
+          <p>{m.visitor_image_failed()}</p>
+          <Button
+            type="button"
+            onClick={() => {
+              setFailed(false);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            {m.retry()}
+          </Button>
+        </div>
+      )}
+      <Markdown as="figcaption" html={text(item, "caption_html")} text={text(item, "caption")} />
+    </figure>
+  );
+}
+
+type Photo = { item: ProjectionItem; url: string };
+
+/** Fewer pixels than this, or a mostly vertical drag, is a scroll or a tap rather than a swipe. */
+const SWIPE_DISTANCE = 48;
+
+/**
+ * One dialog for all the photos of a gallery: previous and next buttons, the arrow keys and a horizontal swipe move
+ * through them, a label gives the position, and closing returns focus to the photo's own button. Only the
+ * neighbouring approved derivatives are preloaded.
+ */
+function PhotoLightbox({
+  photos,
+  index,
+  onIndex,
+  onClose,
+  returnFocus,
+}: {
+  photos: Photo[];
+  index: number | null;
+  onIndex: (index: number) => void;
+  onClose: () => void;
+  returnFocus: (index: number) => HTMLElement | boolean;
+}) {
+  useLocale();
+  // The dialog keeps showing the last photo while it fades out.
+  const last = useRef(0);
+  if (index !== null) last.current = index;
+  const current = Math.min(last.current, photos.length - 1);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const before = index === null ? undefined : photos[index - 1]?.url;
+  const after = index === null ? undefined : photos[index + 1]?.url;
+  useEffect(() => {
+    // Only the neighbouring approved derivatives are fetched ahead, never an original.
+    for (const url of [before, after]) {
+      if (!url) continue;
+      const image = new Image();
+      image.referrerPolicy = "no-referrer";
+      image.src = url;
+    }
+  }, [before, after]);
+  const photo = photos[current];
+  if (!photo) return null;
+  const go = (step: -1 | 1) => {
+    const next = current + step;
+    if (next >= 0 && next < photos.length) onIndex(next);
+  };
+  const control =
+    "grid size-11 shrink-0 place-items-center rounded-full border border-travel-control-border bg-travel-surface p-0 text-travel-forest data-disabled:opacity-40";
+  return (
+    <Dialog.Root open={index !== null} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-travel-backdrop/50 travel-backdrop-motion" />
         <Dialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <Dialog.Popup className="max-h-dvh w-full max-w-250 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-4 text-travel-ink shadow-2xl travel-popup-motion">
+          <Dialog.Popup
+            className="max-h-dvh w-full max-w-250 overflow-y-auto rounded-2xl border border-travel-border bg-travel-surface p-4 text-travel-ink shadow-2xl travel-popup-motion"
+            finalFocus={() => returnFocus(current)}
+            onKeyDown={(event) => {
+              if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+              if (event.key === "ArrowLeft") go(-1);
+              else if (event.key === "ArrowRight") go(1);
+              else return;
+              event.preventDefault();
+            }}
+          >
             <div className="mb-4 flex items-center justify-between gap-4">
-              <Dialog.Title>{alt}</Dialog.Title>
+              <Dialog.Title>{photoAlt(photo.item)}</Dialog.Title>
               <Dialog.Close>{m.visitor_close_image()}</Dialog.Close>
             </div>
             <LocaleControl />
-            <figure className="m-0">
-              {image(true)}
-              {failure}
-              <Markdown
-                as="figcaption"
-                html={text(item, "caption_html")}
-                text={text(item, "caption")}
-              />
-            </figure>
+            <div
+              className="touch-pan-y"
+              onPointerDown={(event) => {
+                swipe.current =
+                  event.pointerType === "mouse" ? null : { x: event.clientX, y: event.clientY };
+              }}
+              onPointerCancel={() => (swipe.current = null)}
+              onPointerUp={(event) => {
+                const start = swipe.current;
+                swipe.current = null;
+                if (!start) return;
+                const dx = event.clientX - start.x;
+                const dy = event.clientY - start.y;
+                if (Math.abs(dx) >= SWIPE_DISTANCE && Math.abs(dx) > Math.abs(dy) * 1.5)
+                  go(dx < 0 ? 1 : -1);
+              }}
+            >
+              <LightboxImage key={photo.item.id} item={photo.item} url={photo.url} />
+            </div>
+            {photos.length > 1 && (
+              <nav
+                className="sticky bottom-0 -mx-4 -mb-4 mt-3 flex items-center justify-center gap-4 rounded-b-2xl bg-travel-surface px-4 py-3"
+                aria-label={m.visitor_photo_navigation()}
+              >
+                <Button
+                  type="button"
+                  className={control}
+                  focusableWhenDisabled
+                  disabled={current === 0}
+                  aria-label={m.visitor_previous_photo()}
+                  onClick={() => go(-1)}
+                >
+                  <ChevronLeftIcon aria-hidden="true" className="size-5" />
+                </Button>
+                <p className="m-0 min-w-24 text-center" role="status">
+                  {m.visitor_photo_position({ current: current + 1, total: photos.length })}
+                </p>
+                <Button
+                  type="button"
+                  className={control}
+                  focusableWhenDisabled
+                  disabled={current === photos.length - 1}
+                  aria-label={m.visitor_next_photo()}
+                  onClick={() => go(1)}
+                >
+                  <ChevronRightIcon aria-hidden="true" className="size-5" />
+                </Button>
+              </nav>
+            )}
           </Dialog.Popup>
         </Dialog.Viewport>
       </Dialog.Portal>
@@ -592,6 +741,12 @@ function Gallery({
 }) {
   useLocale();
   const list = useRef<HTMLUListElement>(null);
+  const triggers = useRef(new Map<string, HTMLButtonElement>());
+  const [open, setOpen] = useState<number | null>(null);
+  const photos = items.flatMap((item) => {
+    const url = hasFileMarker(item, "image") ? fileUrl(item) : null;
+    return url ? [{ item, url }] : [];
+  });
   const [edges, setEdges] = useState({ start: true, end: false });
   const scrolls = strip && items.length > 1;
   // The arrows hide at either end of the row, which is read from the scroll position as it moves or resizes.
@@ -612,12 +767,23 @@ function Gallery({
       observer?.disconnect();
     };
   }, [scrolls, items.length]);
-  /** Scrolls the row by most of its width, without animation for visitors who prefer reduced motion. */
+  /** Scrolls to the photo before or after the first one in view, without animation under reduced motion. */
   function page(direction: -1 | 1) {
     const element = list.current;
-    element?.scrollBy?.({
-      left: direction * element.clientWidth * 0.8,
-      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    if (!element) return;
+    const edge = element.getBoundingClientRect().left;
+    const offsets = Array.from(element.children, (child) => {
+      const left = child.getBoundingClientRect().left - edge;
+      return left + element.scrollLeft;
+    });
+    const target =
+      direction === 1
+        ? offsets.find((left) => left > element.scrollLeft + 8)
+        : offsets.filter((left) => left < element.scrollLeft - 8).at(-1);
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    element.scrollTo?.({
+      left: target ?? (direction === 1 ? element.scrollWidth : 0),
+      behavior: reduced ? "auto" : "smooth",
     });
   }
   if (!items.length) return null;
@@ -671,7 +837,15 @@ function Gallery({
               <figure className="m-0">
                 {hasFileMarker(item, "image") &&
                   (fileUrl(item) ? (
-                    <SharedImage item={item} url={fileUrl(item)!} />
+                    <SharedImage
+                      item={item}
+                      url={fileUrl(item)!}
+                      onOpen={() => setOpen(photos.findIndex((photo) => photo.item.id === item.id))}
+                      triggerRef={(element) => {
+                        if (element) triggers.current.set(item.id, element);
+                        else triggers.current.delete(item.id);
+                      }}
+                    />
                   ) : (
                     <p role="status">{m.visitor_image_loading()}</p>
                   ))}
@@ -696,6 +870,16 @@ function Gallery({
           ))}
         </ul>
       </div>
+      <PhotoLightbox
+        photos={photos}
+        index={open}
+        onIndex={setOpen}
+        onClose={() => setOpen(null)}
+        returnFocus={(position) => {
+          const element = triggers.current.get(photos[position]?.item.id ?? "");
+          return element ?? true;
+        }}
+      />
     </section>
   );
 }
