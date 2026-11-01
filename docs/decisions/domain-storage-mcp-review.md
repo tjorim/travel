@@ -18,6 +18,7 @@ original trip-only ownership rule.
 
 ## Implementation Status
 
+- #119 implemented with owner approval on 2026-11-01 as a JSON-records-only owner export of one trip: see [the export format](../export-format.md). Files, originals, library documents, audit history and deleted rows are excluded; linking to this status does not change the proposed boundary below, which is historical analysis.
 - #115 resolved: trip and library upload services validate the shared `DocumentTitle` constraint before storing objects. Synthetic HTTP/MCP/service regression tests cover empty, oversized and unsafe titles; surrogate strings are tested at MCP/service boundaries because HTTP UTF-8 cannot encode them. Historical source evidence below describes the reviewed baseline.
 - #116 resolved with owner approval on 2026-11-01: MCP audit retention is 730
   days, matching sharing audits. `purge-expired-audit-events` now purges both
