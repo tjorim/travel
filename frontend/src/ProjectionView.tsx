@@ -946,7 +946,12 @@ function Updates({
   useActiveUpdate(timeline, besideMap && !!onActive, (id) => onActive?.(id));
   if (!updates.length) return null;
   return (
-    <section className="travel-card" aria-label={m.visitor_updates()}>
+    <section
+      id="story"
+      tabIndex={-1}
+      className="travel-card scroll-mt-4 focus:outline-none"
+      aria-label={m.visitor_updates()}
+    >
       <h2 className="sr-only">{m.visitor_updates()}</h2>
       <div className={besideMap ? "grid gap-3" : "travel-story-split"}>
         <Collapsible.Root className={cn("min-w-0", !besideMap && "min-[1100px]:hidden")}>
@@ -1028,6 +1033,7 @@ function Updates({
                   strip
                 />
                 <Markdown
+                  under={3}
                   className="max-w-travel-reading leading-relaxed"
                   html={text(item, "body_html")}
                   text={text(item, "body")}
@@ -1298,6 +1304,7 @@ export function ProjectionView({
     <section className="travel-card" aria-label={m.visitor_overview()}>
       <h2>{m.visitor_overview()}</h2>
       <Markdown
+        under={2}
         className="max-w-travel-reading leading-relaxed"
         html={projection.summary_html}
         text={projection.summary}
@@ -1362,6 +1369,7 @@ export function ProjectionView({
             )}
             <TripMap
               wide
+              headingLevel={2}
               points={mapPoints}
               lines={mapLines}
               follow={followStory ? followed : null}
@@ -1388,7 +1396,11 @@ export function ProjectionView({
                 <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
                 {tripDates(item) && <p>{tripDates(item)}</p>}
                 {visitTimes(item) && <p>{visitTimes(item)}</p>}
-                <Markdown html={text(item, "summary_html")} text={text(item, "summary")} />
+                <Markdown
+                  under={3}
+                  html={text(item, "summary_html")}
+                  text={text(item, "summary")}
+                />
                 {place(item.place) && <p>{place(item.place)}</p>}
               </article>
             )}

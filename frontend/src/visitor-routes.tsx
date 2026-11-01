@@ -357,6 +357,14 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   const title = m.shared_trip();
   return (
     <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
+      {state.kind === "ready" && state.projection.updates.length > 0 && (
+        <a
+          href="#story"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-travel-control focus:bg-travel-surface focus:px-4 focus:py-3 focus:font-bold focus:text-travel-forest focus:underline focus:outline-3 focus:outline-travel-focus"
+        >
+          {m.visitor_skip_to_story()}
+        </a>
+      )}
       <nav
         aria-label={m.visitor_navigation()}
         className="mb-3 flex flex-wrap items-center gap-3 text-sm"

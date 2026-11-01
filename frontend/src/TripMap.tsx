@@ -174,6 +174,14 @@ function fitToData(
     instance.fitBounds(bounds, { padding: 45, maxZoom: 10, duration, pitch: 0, bearing: 0 });
 }
 
+function Heading({
+  level,
+  ...props
+}: { level: number } & React.HTMLAttributes<HTMLHeadingElement>) {
+  const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5";
+  return <Tag {...props} />;
+}
+
 /** The owner-only points to frame when an area is focused. */
 export function areaFocusPoints(area: MapPoint, points: MapPoint[]): MapPoint[] {
   return [area, ...points.filter((point) => point.kind === "location" && point.areaId === area.id)];
@@ -184,6 +192,7 @@ export function TripMap({
   lines,
   owner = false,
   wide = false,
+  headingLevel = 3,
   perspective,
   styleUrl = configuredMapStyleUrl,
   focus,
@@ -196,6 +205,8 @@ export function TripMap({
   owner?: boolean;
   /** A visitor map beside the trip context: taller on wide screens, as the owner map is. */
   wide?: boolean;
+  /** The level of the map's own heading; the point and route lists sit one level below it. */
+  headingLevel?: 2 | 3;
   perspective?: MapPerspective;
   styleUrl?: string;
   focus?: { id: string; request: number } | null;
@@ -792,13 +803,17 @@ export function TripMap({
   if (!hasGeometry)
     return (
       <section className="travel-card grid min-w-0 gap-3.5">
-        <h3 className="m-0">{m.owner_map()}</h3>
+        <Heading level={headingLevel} className="m-0">
+          {m.owner_map()}
+        </Heading>
         <p>{m.owner_no_map_coordinates_are_available_for_this_trip_yet()}</p>
       </section>
     );
   return (
     <section className="travel-card grid min-w-0 gap-3.5" aria-label={m.owner_trip_map()}>
-      <h3 className="m-0">{m.owner_map()}</h3>
+      <Heading level={headingLevel} className="m-0">
+        {m.owner_map()}
+      </Heading>
       <div
         className={cn(
           "relative h-map-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
@@ -809,7 +824,8 @@ export function TripMap({
         <div
           ref={canvas}
           className="size-full"
-          role="img"
+          // A group, not an image: the map library puts a focusable canvas and marker controls inside it.
+          role="group"
           aria-label={m.owner_map_with_points_and_routes()}
         />
         {hovered && (
@@ -966,7 +982,7 @@ export function TripMap({
       )}
       {points.length > 0 && (
         <div>
-          <h4>{m.owner_points_on_the_map()}</h4>
+          <Heading level={headingLevel + 1}>{m.owner_points_on_the_map()}</Heading>
           <ol className="flex list-none flex-wrap gap-1.75 p-0">
             {points.map((point) => (
               <li key={point.id}>
@@ -985,7 +1001,7 @@ export function TripMap({
       )}
       {lines.length > 0 && (
         <div>
-          <h4>{m.owner_route_in_words()}</h4>
+          <Heading level={headingLevel + 1}>{m.owner_route_in_words()}</Heading>
           <ol className="mb-0 pl-5.5">
             {lines.map((line) => (
               <li key={line.id}>
