@@ -96,6 +96,7 @@ anything recorded: the application stores no GPS tracks, live or finished.
 - **Public view**: the one page for everyone, once published.
 - **Hidden link**: a named, revocable, high-entropy link (`share_link`, the
   *unlisted* view).
+- **Collection link**: one owner-wide, named, revocable link (`collection`) that opens an index of several trips; each member trip has its own scope. It has its own token, never a trip link's. The owner's *Sharing overview* lists every public trip, hidden link and collection in one place.
 - **Scope**: what a public view or hidden link lists: the `custom` records it
   includes, plus the trip title, summary and date precision. It never names
   fields.

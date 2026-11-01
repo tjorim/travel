@@ -50,6 +50,7 @@ const routeComponents = {
   TripDetail: () => null,
   Capture: () => null,
   Library: () => null,
+  Sharing: () => null,
   Settings: () => null,
 };
 

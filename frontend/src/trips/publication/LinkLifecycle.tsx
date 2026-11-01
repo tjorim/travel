@@ -18,7 +18,7 @@ export function LinkLifecycle({
   onShow,
   onRevoke,
 }: {
-  link: ShareLink | null;
+  link: Pick<ShareLink, "state" | "token"> | null;
   expiresInDays: number | null;
   reason: string;
   onExpiresInDaysChange: (days: number | null) => void;

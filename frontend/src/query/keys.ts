@@ -20,6 +20,8 @@ export const ownerKeys = {
   /** Library documents linked to one trip. Nested under the library documents. */
   linkedLibraryDocuments: (subject: string, tripId: string) =>
     [...scope(subject), "library", "documents", "linked", tripId] as const,
+  /** Owner-wide collection links and their members. */
+  collections: (subject: string) => [...scope(subject), "collections"] as const,
   providers: (subject: string) => [...scope(subject), "provider-tokens"] as const,
 };
 

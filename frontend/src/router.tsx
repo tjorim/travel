@@ -102,6 +102,10 @@ export const libraryRoute = createRoute({
   getParentRoute: () => trackerLayoutRoute,
   path: "library",
 });
+export const sharingRoute = createRoute({
+  getParentRoute: () => trackerLayoutRoute,
+  path: "sharing",
+});
 export const settingsRoute = createRoute({
   getParentRoute: () => trackerLayoutRoute,
   path: "settings",
@@ -120,6 +124,7 @@ export function buildTrackerRouteTree({
   TripDetail,
   Capture,
   Library,
+  Sharing,
   Settings,
 }: {
   Callback: FC;
@@ -129,6 +134,7 @@ export function buildTrackerRouteTree({
   TripDetail: FC;
   Capture: FC;
   Library: FC;
+  Sharing: FC;
   Settings: FC;
 }) {
   return rootRoute.addChildren([
@@ -141,6 +147,7 @@ export function buildTrackerRouteTree({
       tripDetailRoute.update({ component: TripDetail }),
       captureRoute.update({ component: Capture }),
       libraryRoute.update({ component: Library }),
+      sharingRoute.update({ component: Sharing }),
       settingsRoute.update({ component: Settings }),
       trackerNotFoundRoute,
     ]),
