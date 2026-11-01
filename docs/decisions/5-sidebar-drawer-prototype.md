@@ -493,3 +493,123 @@ bottom 482.67 against a 562.67px CSS viewport, matching the prototype's 80px
 clearance. Chromium screenshots of fixed elements after scroll at real zoom
 can offset their raster position; geometry was checked directly and open-sheet
 captures additionally reset document scroll to zero.
+
+## Real zoom verification (2026-11)
+
+Verified shipped `origin/main` `5efca8573a80b287200d2ce6328f853153eda104`
+(2026-11-01), including the compact visitor first screen, shared top bar,
+compact phone owner header, sidebar/drawer and update disclosure. This section
+supersedes the prototype's remaining browser-zoom validation limits; historical
+measurements above remain historical.
+
+Playwright 1.64.1 with its bundled Chromium, Vite 8.3.5, pnpm 10.33.0,
+frozen dependencies. A temporary Manifest V3 extension called
+`chrome.tabs.setZoom`; **192/192 `getZoom` readbacks matched 1.25/1.5**.
+No CSS zoom, deviceScaleFactor or pinch substitution. Page service workers were
+blocked, matching `e2e/mock-api.ts`'s intended isolated mocking environment.
+The initial harness used Node 24.14.0; the final clean matrix and supplementary
+probes used the current pinned Node 26.13.0. Temporary scripts, extension,
+profiles, JSON and synthetic PNGs remain outside Git in
+`/tmp/travel-realzoom-5/`. No production requests or private data were used.
+The shared preview failed with “Invalid preview URL” and
+“net::ERR_CONNECTION_REFUSED”; local Playwright supplied the documented fallback.
+
+Fixtures: the exact long English/Dutch titles from the first discovery,
+November 2054 dates, empty trips and dense trips with 24 updates/32 tasks.
+The dense synthetic summary is 400 characters (five repetitions of a sentence
+about the quay, morning train and market). Both locales × both themes were
+checked independently, rather than only English/light and Dutch/dark.
+
+### Geometry and first useful content
+
+All **192 rows have 0px horizontal overflow**, including effective phone widths
+312/260 CSS px. Values below are rounded rendered pixels from document top at
+scroll zero (`getBoundingClientRect().top × zoom`); ranges span the four
+locale/theme combinations. A visible top edge does not imply a complete card.
+Owner landmark remains the Tasks trigger. Visitor “card” is the first story or
+empty card; first-update position is recorded separately. The shipped #104
+reading order puts updates before the overview, so the historical overview y
+is no longer a like-for-like first-reading-content landmark.
+
+| Surface | Physical size | Zoom | Empty first card / Tasks y | Dense first card / Tasks y | Dense first update y |
+| --- | --- | --- | --- | --- | --- |
+| public | 1366×768 | 125% | 352 | 352 | 452 |
+| public | 1366×768 | 150% | 389 | 389 | 509 |
+| public | 1280×800 | 125% | 349 | 349 | 449 |
+| public | 1280×800 | 150% | 385 | 385 | 505 |
+| public | 1920×1080 | 125% | 222–269 | 222–269 | 322–369 |
+| public | 1920×1080 | 150% | 315 | 315 | 435 |
+| public | 390×844 | 125% | 470–510 | 470–510 | 570–610 |
+| public | 390×844 | 150% | 656–701 | 656–701 | 776–821 |
+| share | 1366×768 | 125% | 404 | 404 | 504 |
+| share | 1366×768 | 150% | 452 | 452 | 572 |
+| share | 1280×800 | 125% | 401 | 401 | 501 |
+| share | 1280×800 | 150% | 448 | 448 | 568 |
+| share | 1920×1080 | 125% | 274–321 | 274–321 | 374–421 |
+| share | 1920×1080 | 150% | 378 | 378 | 498 |
+| share | 390×844 | 125% | 549–615 | 549–615 | 648–716 |
+| share | 390×844 | 150% | 785–830 | 785–830 | 905–950 |
+| owner | 1366×768 | 125% | 502 | 502 | — |
+| owner | 1366×768 | 150% | 604–649 | 604–649 | — |
+| owner | 1280×800 | 125% | 502 | 502 | — |
+| owner | 1280×800 | 150% | 604–649 | 604–649 | — |
+| owner | 1920×1080 | 125% | 254 | 254 | — |
+| owner | 1920×1080 | 150% | 305 | 305 | — |
+| owner | 390×844 | 125% | 171 | 171 | — |
+| owner | 390×844 | 150% | 206 | 206 | — |
+
+Owner Tasks improves from slice 3's y=629 to 502 at both laptops/125%,
+756–801 to 604–649 at both laptops/150%, 380/457 to 254/305 at desktop
+125/150%, and 1014/1340–1367 to 171/206 on phones. The compact phone header
+intentionally exposes the full trip context through its named section control;
+these gains do not claim that every authored title is permanently expanded.
+Public dense first update at 390/150% is now much earlier than the historical
+1906–1945; the table records the shipped reading order rather than restoring
+the old summary-first layout. Full summaries remain available below the story.
+
+### Navigation and acceptance evidence
+
+- **Breakpoints:** effective widths for 1366/1280/1920/390 at 125% are
+  1093/1024/1536/312, and at 150% 911/853/1280/260. Both laptops use the
+  drawer; desktop uses the sidebar. Sixteen additional real-zoom probes across
+  both locales/themes confirm drawer at 1099 and sidebar at 1100 CSS px:
+  physical 1374/1375 at 125%, 1649/1650 at 150%. All have 0px overflow.
+- **Controls:** 32 owner probes report zero control rectangles crossing either
+  horizontal viewport edge. Full title context is available through the compact
+  phone header; intentional title ellipsis is distinct from a clipped control.
+  The existing 12 sidebar/drawer tests also pass, covering internal sidebar
+  scrolling, solid focus outlines, sticky top=16 CSS px, dirty editor lifetime,
+  search identity, resize, history, modal exclusion and guarded discard return.
+- **Sections and keyboard:** all six sections (Overview, Plan, Prepare, Packing,
+  Story, Sharing) were traversed in every one of 32 real-zoom owner cases:
+  **192 section visits, 0px overflow each**, with localized destination headings.
+  Twenty-four drawer cases each walk nine Tabs: **216/216 focus samples inside
+  the dialog with solid outlines**; Escape returns to the trigger in all 24.
+  The 48 owner rows in the main matrix that use drawers also pass Escape return.
+  The 12 focused repository tests separately exercise Close/outside dismissal,
+  reverse Tab order, route-heading focus, Back/Forward and desktop link order.
+- **Capture and Jump to:** all 32 capture rectangles fit horizontally. At
+  390/150%, Dutch capture is x=102.85, y=438.67, width=141.15, height=44 CSS px;
+  bottom=482.67 against viewport height=562.67, leaving 80px for bottom navigation.
+  English width is 115.70. At 125%, bottom=595.20 against height=675.20, also 80px.
+  Desktop/laptop capture remains in the shared top bar. Every owner case finds
+  task 24 through Jump to, with the localized Prepare › Tasks › record option.
+  Record activation and dialog focus are additionally covered by sidebar tests.
+- **Visitor disclosure:** all **64 dense public/share cases** open it by keyboard,
+  focus update 24 with a solid outline and activate its anchor; target focus
+  succeeds 64/64, with target top=24–257 CSS px. This includes all 32 cases at
+  150%. Eight repository disclosure tests pass separately, covering all 24
+  accessible names, initial fragments, unchanged opening history and Back.
+- **Checks:** lint, format:check and TypeScript check passed; the quiet full unit
+  run passed **93 files / 649 tests**. Focused Playwright navigation **12/12** and
+  disclosure **8/8** passed, including their axe scans. The first broad browser
+  run was interrupted after a translation-generation race and resource pressure;
+  it is not counted as a full-suite pass. No application behavior/copy changed.
+
+No browser layout defect was found in this requested trip-route matrix, so no
+application patch is included. This closes the real-zoom trip-header/navigation
+verification gap. It does not prove physical virtual keyboards, touch/safe-area
+behavior or screen-reader announcements; those broader final-regression checks
+remain explicitly tracked in [#8](https://github.com/tjorim/travel/issues/8).
+The signed-out gate and emergency editor are outside this trip-route matrix;
+the historical observations above are not newly measured passes.
