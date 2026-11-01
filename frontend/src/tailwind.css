@@ -760,3 +760,62 @@
     --spacing-travel-visitor-cover: min(96px, 12dvh);
   }
 }
+
+@layer base {
+  /* Print only the live visitor detail; owner editors and publication previews keep their layout. */
+  @media print {
+    html:has([data-visitor-print]),
+    body:has([data-visitor-print]) {
+      background: white;
+      color: black;
+    }
+    [data-visitor-print] {
+      width: 100% !important;
+      padding: 0 !important;
+      color-scheme: light;
+      --color-travel-paper: white;
+      --color-travel-surface: white;
+      --color-travel-tint: white;
+      --color-travel-ink: black;
+      --color-travel-muted: #333;
+      --color-travel-forest: #173d2b;
+    }
+    [data-visitor-print] :is(nav, button, [role="tablist"], [data-story-map], footer),
+    [data-visitor-print] > a {
+      display: none !important;
+    }
+    [data-visitor-print] :is([role="tabpanel"]:not([data-story-map]), .travel-story-map) {
+      display: block !important;
+      grid-template-columns: 1fr;
+    }
+    [data-visitor-print] [role="tabpanel"] {
+      margin-block: 1rem;
+    }
+    [data-visitor-print] .travel-story-map > * {
+      grid-column: auto;
+      position: static;
+      max-height: none;
+      overflow: visible;
+    }
+    [data-visitor-print] ul.snap-x {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      overflow: visible;
+    }
+    [data-visitor-print] ul.snap-x > li {
+      width: auto;
+      break-inside: avoid;
+    }
+    [data-visitor-print] button[type]:has(img) {
+      display: block !important;
+      break-inside: avoid;
+    }
+    [data-visitor-print] img {
+      max-height: 70mm;
+      object-fit: contain;
+    }
+    [data-visitor-print] :is(h1, h2, h3, h4) {
+      break-after: avoid;
+    }
+  }
+}

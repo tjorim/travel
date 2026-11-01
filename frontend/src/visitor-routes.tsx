@@ -356,7 +356,10 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
   const title = m.shared_trip();
   return (
-    <main className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!">
+    <main
+      data-visitor-print=""
+      className="travel-shell w-travel-visitor-shell! pt-6! min-[960px]:w-travel-owner-shell!"
+    >
       {state.kind === "ready" && state.projection.updates.length > 0 && (
         <a
           href="#story"
@@ -369,7 +372,7 @@ function VisitorPage({ audience, identifier }: { audience: Audience; identifier:
       {state.kind === "ready" && saved === "saved" && (
         <section
           aria-label={m.share_saved_title()}
-          className="mb-3 min-w-0 rounded-travel-control border border-travel-border px-3 py-0.5"
+          className="mb-3 min-w-0 rounded-travel-control border border-travel-border px-3 py-0.5 print:hidden"
         >
           <Collapsible.Root>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
