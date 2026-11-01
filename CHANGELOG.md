@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Record the bounded November owner regression pass, live synthetic authorization/projection checks, PostgreSQL verification and explicit remaining acceptance gaps (Refs #8).
+
 - Configure the build entries through Vite 8's `build.rolldownOptions` instead of the deprecated `rollupOptions` alias; the four entries and bundle budgets are unchanged (Closes #159).
 - Amend the sharing policy, route contract and publication safety check for collection links that grant several trips at once, each at its own member scope (Refs #136).
 - Record the November 2026 stack upgrade audit: current/latest versions, risks, recommended order and a new-features shortlist (#94).
