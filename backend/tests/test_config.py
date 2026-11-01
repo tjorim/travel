@@ -42,3 +42,27 @@ def test_production_accepts_geocoder_contact(contact: str) -> None:
         share_link_secret="synthetic",
         osm_place_search_user_agent=f"Travel/0.1 ({contact})",
     )
+
+
+def test_share_link_secret_is_read_from_a_file(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    secret = tmp_path / "share_link_secret"
+    secret.write_text("synthetic-file-secret\n", encoding="utf-8")
+    monkeypatch.delenv("TRAVEL_SHARE_LINK_SECRET", raising=False)
+    monkeypatch.setenv("TRAVEL_SHARE_LINK_SECRET_FILE", str(secret))
+    monkeypatch.setenv("TRAVEL_ENVIRONMENT", "production")
+    monkeypatch.setenv("TRAVEL_OSM_PLACE_SEARCH_USER_AGENT", "Travel/0.1 (contact: ops@example.test)")
+    assert Settings().share_link_secret == "synthetic-file-secret"
+
+
+def test_direct_share_link_secret_wins_over_the_file(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    secret = tmp_path / "share_link_secret"
+    secret.write_text("from-file", encoding="utf-8")
+    monkeypatch.setenv("TRAVEL_SHARE_LINK_SECRET", "from-env")
+    monkeypatch.setenv("TRAVEL_SHARE_LINK_SECRET_FILE", str(secret))
+    monkeypatch.setenv("TRAVEL_ENVIRONMENT", "development")
+    assert Settings().share_link_secret == "from-env"
+
+
+def test_missing_share_link_secret_file_fails_startup(tmp_path) -> None:
+    with pytest.raises(ValidationError, match="TRAVEL_SHARE_LINK_SECRET_FILE"):
+        Settings(environment="production", share_link_secret_file=str(tmp_path / "missing"))

@@ -1,5 +1,6 @@
 import re
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 from cryptography.fernet import Fernet
 from limits import parse_many
@@ -47,6 +48,9 @@ class Settings(BaseSettings):
     # verifier does not protect against database or backup readers. The default
     # secret is allowed only in development; deployments must override it.
     share_link_secret: str = "development-only-change-me"
+    # Path to a file holding the secret (a Docker secret in production), read
+    # at startup. An explicit TRAVEL_SHARE_LINK_SECRET takes precedence.
+    share_link_secret_file: str | None = None
 
     # Filesystem root for the local object-storage adapter. Production points
     # this at the backed-up VPS media volume; it is never a path inside Git.
@@ -113,6 +117,18 @@ class Settings(BaseSettings):
         parse_many(value)
         return value
 
+    @model_validator(mode="before")
+    @classmethod
+    def load_share_link_secret_from_file(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("share_link_secret_file") and "share_link_secret" not in data:
+            path = Path(data["share_link_secret_file"])
+            try:
+                secret = path.read_text(encoding="utf-8").strip()
+            except OSError as exc:
+                raise ValueError(f"TRAVEL_SHARE_LINK_SECRET_FILE {path} could not be read: {exc.strerror}") from exc
+            data = {**data, "share_link_secret": secret}
+        return data
+
     @model_validator(mode="after")
     def validate_no_dev_bypass_outside_development(self) -> Settings:
         if self.dev_auth_bypass_token and self.environment != "development":
@@ -125,7 +141,8 @@ class Settings(BaseSettings):
     def validate_share_link_secret_outside_development(self) -> Settings:
         if self.share_link_secret == "development-only-change-me" and self.environment != "development":
             raise ValueError(
-                "TRAVEL_SHARE_LINK_SECRET must override the default outside TRAVEL_ENVIRONMENT=development."
+                "TRAVEL_SHARE_LINK_SECRET (or TRAVEL_SHARE_LINK_SECRET_FILE) must override the default "
+                "outside TRAVEL_ENVIRONMENT=development."
             )
         return self
 
