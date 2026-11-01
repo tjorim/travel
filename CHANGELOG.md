@@ -6,6 +6,7 @@ All notable changes to the travel hub are documented here.
 
 - Reject invalid document titles in shared trip/library upload services before object writes across HTTP, MCP and direct calls (Closes #115).
 - Purge MCP and sharing audits together after 730 days; document and verify best-effort MCP recording during audit outages (Closes #116).
+- Queue trip objects as detached, retryable purge inventory in the trip-deletion transaction; retain remote worker cancellation work and linked owner-library documents, and reclaim bytes only through the committed, locked maintenance purge (Closes #117).
 
 - Group approved visits, stays and routes of the same area and day under the visitor story update they belong to, in a compact "Same area and day" block, and keep repeat, ambiguous, month/year-precision and undated records in their separate blocks; no new projection fields, with a canary test that private visit, property, booking and note values never reach the public or unlisted response or page (Closes #109).
 - Align the English and Dutch route copy and the owner scope preview with the schedule allowlist: carrier, service number and schedule may be shared; bookings, travel class, notes and documents never are (Closes #110).

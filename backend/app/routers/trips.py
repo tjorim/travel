@@ -13,8 +13,10 @@ from ..models import (
     Location,
     MediaAsset,
     MediaDerivative,
+    ObjectState,
     Route,
     Stay,
+    StoredObject,
     TravelUpdate,
     TravelUpdateMediaAsset,
     Trip,
@@ -154,7 +156,16 @@ def update_trip(trip_id: Identifier, payload: TripUpdate, session: SessionDep, s
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
-    session.delete(owned_trip(session, trip_id, subject))
+    trip = owned_trip(session, trip_id, subject)
+    # Serialize with result attachment before taking the final object inventory.
+    # Worker jobs survive derivative deletion with a null link; dispatch retries
+    # cancellation/ACK without making any provider call inside this transaction.
+    list(session.scalars(select(MediaDerivative).where(MediaDerivative.trip_id == trip_id).with_for_update()))
+    for stored in session.scalars(select(StoredObject).where(StoredObject.trip_id == trip_id).with_for_update()):
+        stored.state = ObjectState.PURGE_PENDING
+        stored.trip_id = None
+    session.flush()
+    session.delete(trip)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

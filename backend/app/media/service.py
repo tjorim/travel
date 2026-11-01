@@ -806,6 +806,12 @@ def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than:
         stored = session.get(StoredObject, object_id)
         if stored is not None and not _object_is_referenced(session, object_id):
             stored.state = ObjectState.PURGE_PENDING
+    # SET NULL also retains inventory from an upload that committed after the
+    # deleting transaction took its inventory. It has no surviving trip and
+    # must enter the same committed pending state before any physical purge.
+    for stored in session.scalars(select(StoredObject).where(StoredObject.trip_id.is_(None))):
+        if not _object_is_referenced(session, stored.id):
+            stored.state = ObjectState.PURGE_PENDING
     session.commit()
 
     purged = _purge_pending_objects(session, storage)

@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 from PIL import Image
-from sqlalchemy import select
+from sqlalchemy import select, text
 from test_media import (
     TestingSessionLocal,
     client_for,
@@ -147,6 +147,33 @@ def test_delete_after_uncertain_submission_resolves_then_cancels_without_origina
     assert calls[-2].url.path.endswith("/cancel")
     with TestingSessionLocal() as session:
         assert session.get(MediaDerivative, derivative_id) is None
+        assert session.scalar(select(MediaWorkerJob)).state == "done"
+
+
+@pytest.mark.parametrize("submitted", [False, True])
+def test_trip_deletion_retires_remote_work(queued, transport, submitted):
+    owner, path, derivative_id, storage = queued
+    client, calls, replies = transport
+    if submitted:
+        replies.append(status("running"))
+        tick(storage, client)
+    with TestingSessionLocal() as session:
+        session.execute(text("PRAGMA foreign_keys=ON"))
+    trip_path = path.split("/media/")[0]
+    assert owner.delete(trip_path).status_code == 204
+    assert owner.get(path).status_code == 404
+    with TestingSessionLocal() as session:
+        assert session.get(MediaDerivative, derivative_id) is None
+        job = session.scalar(select(MediaWorkerJob))
+        assert job.derivative_id is None
+    if submitted:
+        replies.extend([status("cancelled"), httpx.Response(204)])
+    tick(storage, client)
+    if submitted:
+        assert calls[-2].url.path.endswith("/cancel")
+    else:
+        assert calls == []
+    with TestingSessionLocal() as session:
         assert session.scalar(select(MediaWorkerJob)).state == "done"
 
 

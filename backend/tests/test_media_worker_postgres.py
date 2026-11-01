@@ -149,3 +149,57 @@ def test_delete_completes_while_upload_is_paused(postgres):
         job = session.scalar(select(MediaWorkerJob))
         assert job.derivative_id is None and job.worker_id == "a" * 32
         assert len(list(session.scalars(select(StoredObject)))) == 1
+
+
+def test_trip_delete_waits_for_import_and_queues_all_outputs(postgres, tmp_path):
+    from app.models import ObjectState
+    from app.routers.trips import delete_trip
+
+    sessions, storage, derivative_id = postgres
+    data, evidence = outputs(tmp_path, True)
+    downloading, release, deleting = Event(), Event(), Event()
+    with sessions() as session:
+        trip_id = session.get(MediaDerivative, derivative_id).trip_id
+
+    class Client:
+        def job(self, *args):
+            return {"id": "a" * 32, "state": "succeeded", "artifacts": evidence}
+
+        def download(self, worker_id, name, artifact):
+            downloading.set()
+            assert release.wait(10)
+            return data[name]
+
+        def cleanup(self, worker_id, *, cancel):
+            assert worker_id == "a" * 32
+            assert cancel is False  # Import committed before deletion; ACK remains durable.
+
+    def dispatch():
+        with sessions() as session:
+            return worker.dispatch_one(session, storage, Client())
+
+    def delete():
+        with sessions() as session:
+            deleting.set()
+            delete_trip(trip_id, session, "owner-1")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        dispatched = pool.submit(dispatch)
+        assert downloading.wait(10)
+        deleted = pool.submit(delete)
+        assert deleting.wait(10)
+        release.set()
+        assert dispatched.result(timeout=15)
+        deleted.result(timeout=15)
+    with sessions() as session:
+        assert session.get(Trip, trip_id) is None
+        inventory = list(session.scalars(select(StoredObject)))
+        assert len(inventory) == 3
+        assert all(item.trip_id is None and item.state == ObjectState.PURGE_PENDING for item in inventory)
+        assert all(storage.exists(item.object_key) for item in inventory)
+        job = session.scalar(select(MediaWorkerJob))
+        assert job.derivative_id is None and job.state == "ack"
+        job.next_attempt_at = datetime.now(UTC) - timedelta(seconds=1)
+        session.commit()
+        assert worker.dispatch_one(session, storage, Client())
+        assert service.purge_deleted_media(session, storage, older_than=timedelta(days=30)) == 3
