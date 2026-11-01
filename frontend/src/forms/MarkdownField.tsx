@@ -1,3 +1,4 @@
+import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
@@ -154,7 +155,8 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
 
   if (state.kind === "loading")
     return (
-      <p className="help" role="status">
+      <p className="help flex items-center gap-2" role="status">
+        <Spinner />
         {m.owner_loading_preview()}
       </p>
     );

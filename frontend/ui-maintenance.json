@@ -113,6 +113,17 @@
       "upstreamSha256": "7ce70cde3308e0806c1706b86f198992fd9b55e28530532e50511c858e1d48bf",
       "capturedAt": "2026-10-23T22:47:12.357560Z"
     },
+    "spinner": {
+      "files": ["src/ui/spinner.tsx"],
+      "registry": "spinner",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/spinner.json",
+      "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
+      "reviewedAt": "2026-11-01T11:55:44.872Z",
+      "reviewNote": "Adopted for pending submit buttons and text loading lines; aria-hidden, motion-safe spin only; unit, axe and e2e checks passed in both locales and themes.",
+      "upstreamSha256": "b5963ae0b6c398cf7e8edd566fee1035e70e18ac4fd6756a9f60c12f96b17264",
+      "capturedAt": "2026-11-01T11:55:44.872Z",
+      "reviewedLocalSha256": "f5785624923b98f8f3e6775469c241de46ae6854785a97f3328ee783b8668e0a"
+    },
     "RecordDialog": {
       "files": ["src/RecordDialog.tsx"],
       "registry": null,

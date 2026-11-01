@@ -1,3 +1,4 @@
+import { Spinner } from "@/ui/spinner";
 import { Button } from "@/ui/button";
 import { CloudOffIcon, RefreshCwIcon } from "lucide-react";
 import { Component, Suspense, lazy, type ComponentType, type FC, type ReactNode } from "react";
@@ -29,7 +30,10 @@ function ViewLoading() {
   useLocale();
   return (
     <section className="travel-card grid min-h-48 content-start gap-3" role="status">
-      <p className="m-0 text-sm font-bold text-travel-muted">{m.owner_view_loading()}</p>
+      <p className="m-0 flex items-center gap-2 text-sm font-bold text-travel-muted">
+        <Spinner />
+        {m.owner_view_loading()}
+      </p>
       <div className="grid gap-3 animate-travel-delayed-in motion-reduce:animate-none">
         <Skeleton className="h-5 w-2/5" />
         <Skeleton className="h-4 w-full" />

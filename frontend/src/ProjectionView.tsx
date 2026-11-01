@@ -1,3 +1,4 @@
+import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 import { m } from "./paraglide/messages.js";
@@ -899,7 +900,10 @@ function Gallery({
                       }}
                     />
                   ) : (
-                    <p role="status">{m.visitor_image_loading()}</p>
+                    <p className="flex items-center gap-2" role="status">
+                      <Spinner />
+                      {m.visitor_image_loading()}
+                    </p>
                   ))}
                 {hasFileMarker(item, "video") && fileUrl(item) && (
                   <SharedVideo
@@ -909,7 +913,10 @@ function Gallery({
                   />
                 )}
                 {hasFileMarker(item, "video") && !fileUrl(item) && (
-                  <p role="status">{m.visitor_video_loading()}</p>
+                  <p className="flex items-center gap-2" role="status">
+                    <Spinner />
+                    {m.visitor_video_loading()}
+                  </p>
                 )}
                 <Markdown
                   as="figcaption"

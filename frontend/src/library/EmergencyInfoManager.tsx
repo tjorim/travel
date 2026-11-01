@@ -1,3 +1,4 @@
+import { Spinner } from "@/ui/spinner";
 import type { ErrorFallback } from "../query/api";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
@@ -146,6 +147,8 @@ export function EmergencyInfoManager() {
         ? m.assets_loading_your_emergency_information()
         : m.assets_contacts_numbers_and_medical_notes_are_visible_only_to_you());
 
+  const loading = notice == null && entriesQuery.isPending && !entriesQuery.error;
+
   return (
     <section className="travel-card manager" aria-labelledby="emergency-info-title">
       <div className="capture-heading">
@@ -159,7 +162,8 @@ export function EmergencyInfoManager() {
           {m.assets_new_entry()}
         </Button>
       </div>
-      <p className="help" role="status">
+      <p className="help flex items-center gap-2" role="status">
+        {loading && <Spinner />}
         {message}
       </p>
       {entries.length > 0 && (

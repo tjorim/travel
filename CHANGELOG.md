@@ -4,7 +4,7 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
-- Document why the registry Spinner and Separator were not adopted: no hand-built spinner or standalone divider exists to replace (#137).
+- Adopt the owned registry Spinner beside the pending label of form submit buttons and the text-only loading lines (owner views, Markdown preview, visitor photo and video, library, emergency information, owner home); it is decorative, the text keeps the announcement, and it stays still under reduced motion. The Separator stays not adopted (#137).
 
 - Use the owned registry Switch for the visitor "Move the map along with the story" control; other checkboxes stay checkboxes (#137).
 
