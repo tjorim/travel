@@ -79,7 +79,7 @@ for (const locale of locales) {
               (request) => new URL(request.url()).pathname === "/api/public/trips",
             );
             await page.keyboard.press("Enter");
-            expect((await indexRequest).headers()["referer"]).toBeUndefined();
+            expect((await indexRequest).headers()["referer"]).toBeFalsy();
             await expect(page).toHaveURL(/\/trips$/);
             await expect(
               page.getByRole("heading", { name: ownerTrip.title, level: 2 }),

@@ -72,7 +72,11 @@ for (const width of [1280, 390])
     const { signInOwner } = await import("./mock-api");
     await mockApi(page);
     await signInOwner(page);
-    await choosePreferences(page, "en", "light");
+    await page.addInitScript(() => {
+      if (!localStorage.getItem("travel-locale")) localStorage.setItem("travel-locale", "en");
+      if (!localStorage.getItem("travel-appearance"))
+        localStorage.setItem("travel-appearance", "light");
+    });
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/admin/");
     const account = page.getByRole("button", { name: "Account", exact: true });
