@@ -2121,5 +2121,10 @@
     }
   ],
   "audit_merge_widened": "Newly shown to visitors by the merge. Public page: {publicCount}; share links: {linkCount}.",
-  "visitor_choose_update": "Choose an update"
+  "visitor_choose_update": "Choose an update",
+  "visitor_preferences": "Preferences",
+  "visitor_view": "View",
+  "visitor_story": "Story",
+  "visitor_map": "Map",
+  "visitor_plan": "Plan"
 }

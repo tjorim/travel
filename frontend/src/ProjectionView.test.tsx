@@ -596,6 +596,7 @@ it("renders dated updates in projection order with direct links and scoped photo
   const { container } = render(
     <ProjectionView projection={data} audience="share" identifier="token" />,
   );
+  fireEvent.click(screen.getByRole("button", { name: "Kies een update" }));
   expect(
     screen
       .getByRole("navigation", { name: "Updates in dit verhaal" })
@@ -905,12 +906,16 @@ const coverData = (): Projection => ({
   ],
 });
 
-it("opens the trip with its cover, title, dates and destinations", () => {
+it("opens the trip with its title before the bounded cover, dates and destinations", () => {
   render(<ProjectionView projection={coverData()} audience="public" identifier="safe-slug" />);
 
   const cover = screen.getAllByRole("img", { name: "Fishing boats" })[0];
   expect(cover.getAttribute("src")).toBe("/api/public/trips/safe-slug/files/media-cover");
   expect(cover.getAttribute("style")).toContain("30% 70%");
+  expect(
+    screen.getByRole("heading", { level: 1 }).compareDocumentPosition(cover) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   expect(screen.getByRole("heading", { level: 1, name: "Selected trip" })).toBeTruthy();
   expect(screen.getByText("1 november 2054 – 21 november 2054")).toBeTruthy();
   expect(screen.getAllByText("Keelung")).toHaveLength(2); // in the header and under its visit

@@ -2121,5 +2121,10 @@
     }
   ],
   "audit_merge_widened": "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}.",
-  "visitor_choose_update": "Kies een update"
+  "visitor_choose_update": "Kies een update",
+  "visitor_preferences": "Voorkeuren",
+  "visitor_view": "Weergave",
+  "visitor_story": "Verhaal",
+  "visitor_map": "Kaart",
+  "visitor_plan": "Planning"
 }

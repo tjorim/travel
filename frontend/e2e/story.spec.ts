@@ -62,7 +62,7 @@ const trip = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const coverSvg = (index: number) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="${index % 2 ? "#6a8f7d" : "#c9a95a"}"/><circle cx="800" cy="450" r="220" fill="#f6f1e7"/></svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${index === 2 ? 2400 : index % 2 ? 600 : 1600}" height="${index % 2 ? 1200 : index === 2 ? 400 : 900}"><rect width="${index === 2 ? 2400 : index % 2 ? 600 : 1600}" height="${index % 2 ? 1200 : index === 2 ? 400 : 900}" fill="${index % 2 ? "#6a8f7d" : "#c9a95a"}"/><circle cx="800" cy="450" r="220" fill="#f6f1e7"/></svg>`;
 
 async function open(
   page: Page,
@@ -143,25 +143,20 @@ for (const [name, data] of Object.entries(cases)) {
   }
 }
 
-test("wide screens put trip context beside the map and stack it on a phone", async ({ page }) => {
-  await page.setViewportSize({ width: 1920, height: 1000 });
+test("story comes first and the phone map is an explicit choice", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
   await open(page, trip(), "en", "light");
-  const overview = page.getByRole("region", { name: "Trip overview" });
+  const story = page.getByRole("region", { name: "Updates" });
   const map = page.getByRole("region", { name: "Trip map" });
-  const [wideOverview, wideMap] = await Promise.all([overview.boundingBox(), map.boundingBox()]);
-  expect(wideOverview!.x + wideOverview!.width).toBeLessThanOrEqual(wideMap!.x);
-  expect(Math.abs(wideOverview!.y - wideMap!.y)).toBeLessThan(2);
-  // The story shares the overview's column, so the map stays beside it as the reader goes down.
-  const story = await page.getByRole("region", { name: "Updates" }).boundingBox();
-  expect(Math.abs(story!.x - wideOverview!.x)).toBeLessThan(2);
-  expect(story!.x + story!.width).toBeLessThanOrEqual(wideMap!.x);
-
+  expect((await story.boundingBox())!.y).toBeLessThan(500);
   await page.setViewportSize({ width: 360, height: 800 });
-  const [narrowOverview, narrowMap] = await Promise.all([
-    overview.boundingBox(),
-    map.boundingBox(),
-  ]);
-  expect(narrowOverview!.y + narrowOverview!.height).toBeLessThanOrEqual(narrowMap!.y);
+  await expect(story).toBeVisible();
+  await expect(map).toBeHidden();
+  await page.getByRole("radio", { name: "Map", exact: true }).click();
+  await expect(map).toBeVisible();
+  await expect(story).toBeHidden();
+  await page.getByRole("radio", { name: "Plan", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Harbour", exact: true })).toBeVisible();
 });
 
 test("a cover that cannot load falls back to the text-only header", async ({ page }) => {
@@ -245,7 +240,7 @@ for (const audience of ["public", "share"] as const) {
         await page.goBack();
         await expect(page).toHaveURL(new RegExp(`${path}$`));
         await page.setViewportSize({ width: 1100, height: 800 });
-        await expect(chooser).toBeHidden();
+        await expect(chooser).toBeVisible();
         await expect(nav.getByRole("link")).toHaveCount(24);
         await page.setViewportSize({ width: 390, height: 844 });
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -354,9 +349,79 @@ test("the map sits beside the story, follows the update in view and pins its pho
   await expect(marker).not.toHaveAttribute("data-active", "");
   await follow.click();
   await expect(marker).toHaveAttribute("data-active", "");
-  // On a narrow screen the map sits above the story instead of beside it.
+  // On a narrow screen the map is selected explicitly.
   await page.setViewportSize({ width: 820, height: 900 });
+  await expect(map).toBeHidden();
+  await page.getByRole("radio", { name: "Map", exact: true }).click();
   await expect(map).toHaveCSS("position", "static");
   // The follow control only means something while the map is beside the story.
   await expect(follow).toBeHidden();
 });
+
+for (const audience of ["public", "share"] as const) {
+  for (const locale of ["nl", "en"] as const) {
+    for (const theme of ["light", "dark"] as const) {
+      test(`compact first screen ${audience} ${locale} ${theme}`, async ({ page }) => {
+        await mockApi(page);
+        const api =
+          audience === "public"
+            ? "/api/public/trips/compact"
+            : "/api/shared/synthetic-compact-capability";
+        const path =
+          audience === "public" ? "/trips/compact" : "/share/synthetic-compact-capability";
+        await page.route(`**${api}`, (route) =>
+          route.fulfill({
+            json: trip({
+              updates: [
+                ...trip().updates,
+                { id: "update-c", title: "Mountain path", body: "Synthetic note." },
+              ],
+              media: Array.from({ length: 12 }, (_, i) => ({
+                ...photos[i % photos.length],
+                id: `media-${i}`,
+                image: { id: `media-${i}` },
+                update: i < 1 ? "update-a" : i < 4 ? "update-b" : "update-c",
+              })),
+
+              schema_version:
+                audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1",
+            }),
+          }),
+        );
+        await page.route(`**${api}/files/*`, (route) =>
+          route.fulfill({ contentType: "image/svg+xml", body: coverSvg(0) }),
+        );
+        await choosePreferences(page, locale, theme);
+        for (const [width, height] of [
+          [1280, 720],
+          [1440, 900],
+          [1920, 1080],
+          [820, 1180],
+          [390, 844],
+          [360, 800],
+          [720, 450],
+        ]) {
+          await page.setViewportSize({ width, height });
+          await page.goto(path);
+          const title = page.getByRole("heading", { level: 1 });
+          await expect(title).toBeInViewport();
+          await expect(page.locator("#update-a h3")).toBeInViewport();
+          const cover = page.locator("header img");
+          expect((await cover.boundingBox())!.height).toBeLessThanOrEqual(150);
+          expect((await title.boundingBox())!.y).toBeLessThan((await cover.boundingBox())!.y + 1);
+          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+        }
+        await page.setViewportSize({ width: 360, height: 800 });
+        await page
+          .getByRole("button", {
+            name: locale === "en" ? "Preferences" : "Voorkeuren",
+            exact: true,
+          })
+          .click();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+        await page.keyboard.press("Escape");
+      });
+    }
+  }
+}

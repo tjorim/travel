@@ -29,17 +29,15 @@ it.each([403, 404, 503])(
 );
 
 it.each([403, 404, 503])(
-  "offers an unlisted exit for status %s in both locales",
+  "keeps unlisted preferences without a public-index link for status %s in both locales",
   async (status) => {
     server.use(http.get("/api/shared/synthetic-token", () => HttpResponse.json({}, { status })));
     render(<VisitorRoutes initialEntries={["/share/synthetic-token"]} />);
-    expect(
-      (await screen.findByRole("link", { name: "Alle openbare reizen" })).getAttribute("href"),
-    ).toBe("/trips");
+    await screen.findByRole("button", { name: "Voorkeuren" });
+    expect(screen.queryByRole("link", { name: "Alle openbare reizen" })).toBeNull();
     await screen.findByText(status === 503 ? m.trip_error() : m.unavailable_trip());
     act(() => changeLocale("en"));
-    expect(screen.getByRole("link", { name: "All public trips" }).getAttribute("href")).toBe(
-      "/trips",
-    );
+    expect(screen.getByRole("button", { name: "Preferences" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "All public trips" })).toBeNull();
   },
 );

@@ -345,3 +345,12 @@ visibility summary wraps below its title on phones; per-item controls are unchan
 Capture owns a sticky Save/status row within its scrolling form so explicit saving
 stays reachable without a second action or a new primitive. Its date/time adapter
 opts into stacked phone fields; other date/time consumers keep their layout.
+
+## Compact visitor shell (#104)
+
+Reuse the owned Base UI Popover for the visitor Preferences disclosure and
+ChoiceGroup (Base UI RadioGroup) for Story / Map / Plan below 1100 px.
+The registry Popover and Base UI radio controls support these interactions;
+no new primitive or dependency is needed. Keep the existing preferences
+persistence and closed update Collapsible. The map follow checkbox sits before
+the map so it remains reachable in the sticky column.

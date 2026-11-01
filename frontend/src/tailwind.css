@@ -4,6 +4,10 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 @theme {
+  --spacing-travel-preferences-popup: min(28rem, calc(100vw - 2rem));
+  --grid-template-columns-travel-visitor-header: minmax(0, 1fr) 18rem;
+  --spacing-travel-visitor-cover: min(150px, 18dvh);
+  --spacing-travel-visitor-cover-wide: 112px;
   --breakpoint-trip-sidebar: 1100px;
   --spacing-travel-sidebar: 224px;
   --spacing-travel-drawer: 20rem;
@@ -736,4 +740,11 @@
 
 @utility grid-cols-travel-workspace {
   grid-template-columns: var(--spacing-travel-sidebar) minmax(0, 1fr);
+}
+
+/* Keep the first update reachable in short windows and zoomed reflow layouts. */
+@media (max-height: 600px) {
+  :root {
+    --spacing-travel-visitor-cover: min(96px, 12dvh);
+  }
 }
