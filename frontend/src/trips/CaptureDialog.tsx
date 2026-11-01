@@ -265,6 +265,7 @@ export function CaptureDialog({
   return (
     <RecordDialog
       open={open}
+      className="scroll-pt-40 [&_button]:min-h-11 [&_button]:min-w-11"
       title={dialogTitle}
       dirty={initialized.current && record.dirty}
       onDismiss={onDismiss}
@@ -315,6 +316,12 @@ export function CaptureDialog({
               void form.handleSubmit();
             }}
           >
+            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-travel-divider bg-travel-surface py-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
+              <Button type="submit" disabled={record.pending}>
+                {draft.updateId ? m.owner_save_changes() : m.owner_save_travel_update()}
+              </Button>
+              <span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span>
+            </div>
             <TripChoice
               lockedTrip={lockedTrip}
               selectedTrip={selectedTrip}
@@ -331,7 +338,7 @@ export function CaptureDialog({
                 </span>
               </aside>
             )}
-            <div className="field-row">
+            <div className="grid gap-4.5">
               <form.Field
                 name="occurredAt"
                 listeners={clearSaveState}
@@ -341,7 +348,7 @@ export function CaptureDialog({
                 }}
               >
                 {(field) => (
-                  <DateTimeField field={field} label={m.owner_date_and_time()} required />
+                  <DateTimeField field={field} label={m.owner_date_and_time()} required stacked />
                 )}
               </form.Field>
               <form.Field
@@ -401,12 +408,6 @@ export function CaptureDialog({
               onFindPlace={places.reverseGeocode}
               onDismissCandidate={() => places.setCandidateGps(null)}
             />
-            <div className="flex flex-wrap items-center gap-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
-              <Button type="submit" disabled={record.pending}>
-                {draft.updateId ? m.owner_save_changes() : m.owner_save_travel_update()}
-              </Button>
-              <span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span>
-            </div>
           </form>
           {selectedTrip && selectedTrip.travel_updates.length > 0 && (
             <SavedUpdates updates={selectedTrip.travel_updates} onEdit={editUpdate} />

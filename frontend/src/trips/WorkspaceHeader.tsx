@@ -84,7 +84,7 @@ export function WorkspaceBreadcrumb({ section }: { section: TripWorkspaceSection
       <ol className="m-0 flex list-none items-center gap-1.5 p-0 text-sm font-bold text-travel-muted">
         <li className="shrink-0">
           <Link
-            className="inline-flex min-h-11 items-center text-travel-muted no-underline hover:underline focus-visible:underline"
+            className="inline-flex min-h-11 min-w-11 items-center text-travel-muted no-underline hover:underline focus-visible:underline"
             to="/trips"
             activeOptions={{ exact: true }}
           >

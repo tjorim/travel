@@ -144,7 +144,7 @@ export function VisibilityOverview({
     <div className="grid gap-2">
       {[...groups].map(([kind, items]) => (
         <Collapsible.Root className="scope-group" data-disclosure="" key={kind}>
-          <Collapsible.Trigger>
+          <Collapsible.Trigger className="max-sm:flex-wrap max-sm:justify-start max-sm:[&>strong]:basis-3/4 max-sm:[&>span]:basis-full max-sm:[&>span]:pl-6">
             <strong>{GROUP_TITLES[kind]}</strong>
             <span>
               {m.assets_of_is_set_to_everyone_or_choose_in_sharing_line({

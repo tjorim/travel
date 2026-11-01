@@ -337,3 +337,11 @@ Two small additions for planning on a laptop, both built from existing controls:
   you are going" on its overview with three links into the Plan blocks (places, a
   stay, a route). It appears only after all three lists have loaded, so a loading
   trip never flashes it, and it disappears with the first record.
+
+## Narrow owner Sharing and Capture (#112)
+
+Reuse the existing Base UI Collapsible, Button and date/time adapters. Sharing's
+visibility summary wraps below its title on phones; per-item controls are unchanged.
+Capture owns a sticky Save/status row within its scrolling form so explicit saving
+stays reachable without a second action or a new primitive. Its date/time adapter
+opts into stacked phone fields; other date/time consumers keep their layout.
