@@ -1,5 +1,5 @@
 import { Alert } from "@/ui/alert";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 import { m } from "./paraglide/messages.js";
 import { LocaleControl, selectedLocale, useLocale } from "./locale";
 import { Collapsible } from "@/ui/collapsible";
@@ -8,7 +8,15 @@ import { Button } from "@/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { cn } from "cn";
 import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
@@ -55,6 +63,48 @@ const collections = [
   "navigation",
 ] as const;
 const navigableCollections = ["places", "stays"] as const;
+
+type View = "story" | "map" | "plan";
+
+const sideBySideQuery = "(min-width: 1100px)";
+
+/** True once the viewport is wide enough for the story and map to sit side by side. */
+function useSideBySide() {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = window.matchMedia?.(sideBySideQuery);
+      query?.addEventListener?.("change", notify);
+      return () => query?.removeEventListener?.("change", notify);
+    },
+    () => window.matchMedia?.(sideBySideQuery).matches ?? false,
+    () => false,
+  );
+}
+
+/**
+ * A tab panel below 1100 px. Side by side every panel shows at once and the tab list is gone, so the
+ * panels drop their tab semantics (and inert/hidden state) rather than claim a tablist that is absent.
+ */
+function ViewPanel({
+  sideBySide,
+  ...props
+}: ComponentProps<typeof TabsContent> & { sideBySide: boolean }) {
+  return (
+    <TabsContent
+      keepMounted
+      {...(sideBySide
+        ? {
+            role: "presentation",
+            hidden: false,
+            inert: false,
+            tabIndex: undefined,
+            "aria-labelledby": undefined,
+          }
+        : {})}
+      {...props}
+    />
+  );
+}
 
 export function isProjection(value: unknown, audience: Audience): value is Projection {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -1176,7 +1226,8 @@ export function ProjectionView({
   previewResources?: PreviewResources;
 }) {
   const locale = useLocale();
-  const [view, setView] = useState<"story" | "map" | "plan">("story");
+  const sideBySide = useSideBySide();
+  const [view, setView] = useState<View>("story");
   const [activeUpdate, setActiveUpdate] = useState<string | null>(null);
   // The map moves with the reader by default; a visitor who wants to look around on their own can turn that off.
   const [followStory, setFollowStory] = useState(true);
@@ -1411,24 +1462,21 @@ export function ProjectionView({
   ) : null;
 
   return (
-    <div className={cn("grid gap-travel-grid-gap", previewResources ? "mt-5" : "mt-2")}>
+    <Tabs
+      value={view}
+      onValueChange={(next) => setView(next as View)}
+      className={cn("grid gap-travel-grid-gap", previewResources ? "mt-5" : "mt-2")}
+    >
       {header}
-      <div className="min-[1100px]:hidden [&>div>span]:sr-only">
-        <ChoiceGroup
-          label={m.visitor_view()}
-          value={view}
-          onChange={setView}
-          choices={[
-            { value: "story", label: m.visitor_story() },
-            ...(hasMap ? [{ value: "map" as const, label: m.visitor_map() }] : []),
-            ...(detailSections > 0 ? [{ value: "plan" as const, label: m.visitor_plan() }] : []),
-          ]}
-        />
+      <div className="min-[1100px]:hidden">
+        <TabsList aria-label={m.visitor_view()} activateOnFocus>
+          <TabsTrigger value="story">{m.visitor_story()}</TabsTrigger>
+          {hasMap && <TabsTrigger value="map">{m.visitor_map()}</TabsTrigger>}
+          {detailSections > 0 && <TabsTrigger value="plan">{m.visitor_plan()}</TabsTrigger>}
+        </TabsList>
       </div>
       <div className={hasMap ? "travel-story-map" : "grid min-w-0"}>
-        <div
-          className={cn("grid gap-travel-grid-gap", view !== "story" && "hidden min-[1100px]:grid")}
-        >
+        <ViewPanel value="story" sideBySide={sideBySide} className="grid gap-travel-grid-gap">
           <Updates
             updates={projection.updates}
             media={projection.media}
@@ -1456,9 +1504,9 @@ export function ProjectionView({
               />
             </section>
           )}
-        </div>
+        </ViewPanel>
         {hasMap && (
-          <div data-story-map="" className={cn(view !== "map" && "hidden min-[1100px]:block")}>
+          <ViewPanel value="map" sideBySide={sideBySide} data-story-map="">
             {mapBesideStory && (
               <Field className="mb-2.5 hidden min-[1100px]:block">
                 <FieldLabel className="flex items-center gap-2 text-sm font-semibold">
@@ -1475,12 +1523,10 @@ export function ProjectionView({
               follow={followStory ? followed : null}
               photos={mapPhotos}
             />
-          </div>
+          </ViewPanel>
         )}
       </div>
-      <div
-        className={cn("grid gap-travel-grid-gap", view !== "plan" && "hidden min-[1100px]:grid")}
-      >
+      <ViewPanel value="plan" sideBySide={sideBySide} className="grid gap-travel-grid-gap">
         <div
           className={cn(
             "grid min-w-0 items-start gap-travel-grid-gap",
@@ -1558,7 +1604,7 @@ export function ProjectionView({
             />
           )}
         </div>
-      </div>
-    </div>
+      </ViewPanel>
+    </Tabs>
   );
 }

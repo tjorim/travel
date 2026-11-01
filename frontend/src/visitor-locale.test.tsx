@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { stubViewport } from "./mocks/viewport";
 import { changeLocale } from "./locale";
 import { ProjectionView, tripDates, type Projection } from "./ProjectionView";
 import { VisitorRoutes } from "./visitor-routes";
@@ -56,6 +57,9 @@ const previewScope: ShareScope = {
   trip: { title: true, summary: true, dates: null },
   items: [],
 };
+
+// Tab panels are only hidden below the side-by-side width; these tests read the whole page.
+beforeEach(() => stubViewport(true));
 
 afterEach(() => {
   cleanup();

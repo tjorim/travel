@@ -152,11 +152,41 @@ test("story comes first and the phone map is an explicit choice", async ({ page 
   await page.setViewportSize({ width: 360, height: 800 });
   await expect(story).toBeVisible();
   await expect(map).toBeHidden();
-  await page.getByRole("radio", { name: "Map", exact: true }).click();
+  await page.getByRole("tab", { name: "Map", exact: true }).click();
   await expect(map).toBeVisible();
   await expect(story).toBeHidden();
-  await page.getByRole("radio", { name: "Plan", exact: true }).click();
+  await page.getByRole("tab", { name: "Plan", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Harbour", exact: true })).toBeVisible();
+});
+
+test("the phone view switch is a tablist with arrow keys and associated panels", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await open(page, trip(), "en", "light");
+  const list = page.getByRole("tablist", { name: "View" });
+  const [story, map, plan] = ["Story", "Map", "Plan"].map((name) =>
+    list.getByRole("tab", { name, exact: true }),
+  );
+  await expect(story).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel")).toHaveCount(1);
+  await story.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(map).toBeFocused();
+  await expect(map).toHaveAttribute("aria-selected", "true");
+  const panelId = await map.getAttribute("aria-controls");
+  await expect(page.locator(`[id="${panelId}"]`)).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: "Map" })).toBeVisible();
+  await page.keyboard.press("End");
+  await expect(plan).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Home");
+  await expect(story).toHaveAttribute("aria-selected", "true");
+  // Side by side every panel shows and the tab list is gone.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(list).toBeHidden();
+  await expect(page.getByRole("tabpanel")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Updates" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Trip map" })).toBeVisible();
 });
 
 test("a cover that cannot load falls back to the text-only header", async ({ page }) => {
@@ -352,7 +382,7 @@ test("the map sits beside the story, follows the update in view and pins its pho
   // On a narrow screen the map is selected explicitly.
   await page.setViewportSize({ width: 820, height: 900 });
   await expect(map).toBeHidden();
-  await page.getByRole("radio", { name: "Map", exact: true }).click();
+  await page.getByRole("tab", { name: "Map", exact: true }).click();
   await expect(map).toHaveCSS("position", "static");
   // The follow control only means something while the map is beside the story.
   await expect(follow).toBeHidden();

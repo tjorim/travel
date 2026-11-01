@@ -232,6 +232,17 @@
       "upstreamSha256": "1ec416475c67019d52fa69ce4a817f703148370f119badc319ae63c9be3e602e",
       "capturedAt": "2026-11-01T09:54:21.192Z",
       "reviewedLocalSha256": "bd265a34bddadc6d38b89dc3175926d90e9517be665c8780fefc1861eeaff71c"
+    },
+    "tabs": {
+      "files": ["src/ui/tabs.tsx"],
+      "registry": "tabs",
+      "origin": "https://ui.shadcn.com/r/styles/base-nova/tabs.json",
+      "reason": "Owned registry Tabs in the Travel segmented look for the visitor Story/Map/Plan switch.",
+      "reviewedAt": "2026-11-01T09:48:11.319Z",
+      "reviewNote": "Reviewed generated base-nova Tabs; replaced cva list variants with the Travel segmented look shared with ChoiceGroup and data-active fill. Visitor view switch verified: arrow/Home/End keys, panel association, both locales and themes, side-by-side at 1100px.",
+      "upstreamSha256": "f6fc78f38c183a0ef5458d424f97cef31a10735847dbb2bac08f30524faa95f3",
+      "capturedAt": "2026-11-01T09:48:11.318Z",
+      "reviewedLocalSha256": "0235adf3fb7fad17af55cdd42f8bcbdb327e08b55044b4519ad3fb8d456cd1a1"
     }
   },
   "importPolicy": {
