@@ -13,6 +13,7 @@ import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
 import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "./TripMap";
 import { TripHeader, type TripCover } from "./TripHeader";
+import { groupStoryContext, type UpdateContext } from "./visitor-context";
 import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
 
 export type ProjectionItem = { id: string; [field: string]: unknown };
@@ -926,6 +927,87 @@ function useActiveUpdate(
   }, [enabled, wide, list]);
 }
 
+/** Compact approved visits, stays and routes of the same area and day, shown with the update they belong to. */
+function UpdateContextBlock({
+  context,
+  navigationLink,
+}: {
+  context: UpdateContext;
+  navigationLink?: (item: ProjectionItem) => ReactNode;
+}) {
+  useLocale();
+  const entries = [
+    ...context.stays.map((item) => ({
+      item,
+      anchor: "stay",
+      kind: m.visitor_stay(),
+      title: text(item, "title") ?? m.visitor_stay(),
+      lines: [tripDates(item)],
+    })),
+    ...context.visits.map((item) => ({
+      item,
+      anchor: "visit",
+      kind: m.visitor_visit(),
+      title: text(item, "title") ?? m.visitor_visit(),
+      lines: [tripDates(item), visitTimes(item)],
+    })),
+    ...context.routes.map((item) => {
+      const departure = transportPlace(item.departure);
+      const arrival = transportPlace(item.arrival);
+      const mode = transportKinds()[text(item, "mode") ?? ""];
+      const status = transportStatuses()[text(item, "status") ?? ""];
+      return {
+        item,
+        anchor: "route",
+        kind: m.visitor_route(),
+        title: routeHeading(item),
+        lines: [
+          departure || arrival
+            ? `${departure ?? m.visitor_departure_unknown()} → ${arrival ?? m.visitor_arrival_unknown()}`
+            : null,
+          [mode, status].filter(Boolean).join(" · ") || null,
+          [transportTime(item, "departure"), transportTime(item, "arrival")].some(Boolean)
+            ? `${transportTime(item, "departure") ?? m.visitor_departure_time_unknown()} → ${transportTime(item, "arrival") ?? m.visitor_arrival_time_unknown()}`
+            : storyDate({ ...item, date_precision: "day" }, "departs_on"),
+        ],
+      };
+    }),
+  ];
+  if (!entries.length) return null;
+  return (
+    <section
+      data-update-context=""
+      aria-label={m.visitor_update_context()}
+      className="rounded-travel-media border border-travel-divider bg-travel-tint px-3.5 py-3 text-sm"
+    >
+      <p className="m-0 mb-2 text-xs font-bold tracking-travel-eyebrow text-travel-muted uppercase">
+        {m.visitor_update_context()}
+      </p>
+      <ul className="m-0 grid list-none gap-2.5 p-0">
+        {entries.map(({ item, anchor, kind, title, lines }) => (
+          <li
+            key={`${anchor}-${item.id}`}
+            id={`${anchor}-${item.id}`}
+            tabIndex={-1}
+            className="min-w-0 scroll-mt-6 wrap-anywhere focus:outline-none [&_a]:font-bold [&_a]:text-travel-forest [&_a]:underline-offset-3"
+          >
+            <span className="font-bold">{kind}: </span>
+            <span>{title}</span>
+            {lines
+              .filter((line): line is string => !!line)
+              .map((line) => (
+                <span key={line} className="block text-travel-muted">
+                  {line}
+                </span>
+              ))}
+            {anchor === "stay" && <span className="block">{navigationLink?.(item)}</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** The dated story: an index, then each update with its place, photos and text. */
 function Updates({
   updates,
@@ -933,9 +1015,14 @@ function Updates({
   fileUrl,
   besideMap = false,
   onActive,
+  context,
+  navigationLink,
 }: {
   updates: ProjectionItem[];
   media: ProjectionItem[];
+  /** Approved visits, stays and routes tied to exactly one update by their shared area and day. */
+  context?: Map<string, UpdateContext>;
+  navigationLink?: (item: ProjectionItem) => ReactNode;
   fileUrl: (item: ProjectionItem) => string | null;
   /** The map sits beside this story on a wide screen, so the story is one column with its index folded away. */
   besideMap?: boolean;
@@ -1038,6 +1125,12 @@ function Updates({
                   html={text(item, "body_html")}
                   text={text(item, "body")}
                 />
+                {context?.get(item.id) && (
+                  <UpdateContextBlock
+                    context={context.get(item.id)!}
+                    navigationLink={navigationLink}
+                  />
+                )}
               </article>
             </li>
           ))}
@@ -1151,15 +1244,19 @@ export function ProjectionView({
       }),
     [projection, locale],
   );
+  const story = useMemo(() => groupStoryContext(projection), [projection]);
   useEffect(() => {
     if (previewResources) return;
     const revealFragment = () => {
       const fragment = window.location.hash.slice(1);
       if (!fragment) return;
-      const story = projection.updates.some((item) => fragment === item.id);
       const target = document.getElementById(fragment);
+      // Records grouped under an update live in the story, so their anchors reveal it, not the plan.
+      const inStory =
+        projection.updates.some((item) => fragment === item.id) ||
+        target?.closest("[data-update-context]") != null;
       if (!target) return;
-      setView(story ? "story" : "plan");
+      setView(inStory ? "story" : "plan");
       requestAnimationFrame(() => {
         target.scrollIntoView?.();
         target.focus({ preventScroll: true });
@@ -1273,10 +1370,10 @@ export function ProjectionView({
     });
   }
   const detailSections = [
-    projection.visits,
+    story.separate.visits,
     projection.places,
-    projection.stays,
-    projection.routes,
+    story.separate.stays,
+    story.separate.routes,
     projection.navigation.filter((item) => !displayed.has(item.id)),
   ].filter((items) => items.length > 0).length;
   const header = (
@@ -1337,6 +1434,8 @@ export function ProjectionView({
             fileUrl={fileUrl}
             besideMap
             onActive={setActiveUpdate}
+            context={story.byUpdate}
+            navigationLink={navigationLink}
           />
           {projection.updates.length === 0 && (
             <section className="travel-card">
@@ -1390,7 +1489,7 @@ export function ProjectionView({
           <ResourceSection
             title={m.visitor_visits()}
             anchor="visit"
-            items={projection.visits}
+            items={story.separate.visits}
             render={(item) => (
               <article>
                 <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
@@ -1424,7 +1523,7 @@ export function ProjectionView({
           <ResourceSection
             title={m.visitor_stays()}
             anchor="stay"
-            items={projection.stays}
+            items={story.separate.stays}
             render={(item) => (
               <article>
                 <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
@@ -1441,7 +1540,7 @@ export function ProjectionView({
           <ResourceSection
             title={m.visitor_routes()}
             anchor="route"
-            items={projection.routes}
+            items={story.separate.routes}
             render={(item) => <RouteSummary item={item} />}
           />
           {projection.navigation.some((item) => !displayed.has(item.id)) && (

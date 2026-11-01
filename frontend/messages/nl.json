@@ -1818,6 +1818,7 @@
   "visitor_time_same": "{local} · bij jou {viewer}",
   "visitor_visit_link": "Bezoek: {title}",
   "visitor_update_link": "Update: {title}",
+  "visitor_update_context": "Zelfde plek en dag",
   "visitor_open_image": "Afbeelding openen: {title}",
   "visitor_close_image": "Afbeelding sluiten",
   "visitor_image_failed": "Deze afbeelding is niet beschikbaar.",

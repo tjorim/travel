@@ -4,6 +4,7 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Group approved visits, stays and routes of the same area and day under the visitor story update they belong to, in a compact "Same area and day" block, and keep repeat, ambiguous, month/year-precision and undated records in their separate blocks; no new projection fields, with a canary test that private visit, property, booking and note values never reach the public or unlisted response or page (Closes #109).
 - Align the English and Dutch route copy and the owner scope preview with the schedule allowlist: carrier, service number and schedule may be shared; bookings, travel class, notes and documents never are (Closes #110).
 - Reconcile decisions 36 and 103 on saved unlisted links (VD3 a): show a visible saved-on-this-browser notice with a Forget control when an unlisted link is first opened, state exactly what is stored, and align the map provider wording with the requests the page makes (Closes #108).
 - Let visitors move through a gallery's photos inside the lightbox with Previous/Next buttons, arrow keys and a horizontal swipe, with a "Photo 2 of 8" label, preloading of only the neighbouring approved derivative, and focus returning to the last photo's button; make the photo-strip arrows page to the next or previous photo (Closes #105).
