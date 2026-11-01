@@ -8,7 +8,7 @@ column cannot make it past these explicit renderers by accident.
 """
 
 import hashlib
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from typing import Any
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
@@ -28,6 +28,12 @@ _PRECISION_LENGTH = {"day": 10, "month": 7, "year": 4}
 def _safe_date(value: Any, precision: str) -> str | None:
     """Truncate an ISO date to the precision the owner chose to share."""
     return value.isoformat()[: _PRECISION_LENGTH[precision]] if value else None
+
+
+def _utc_instant(value: datetime) -> datetime:
+    # SQLite returns stored UTC instants without an offset; a visitor's browser
+    # must never read them as its own local time.
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 def _share_place(place: Area | None, shared_areas: set[str] | None = None) -> dict[str, Any] | None:
@@ -230,8 +236,8 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             values["departs_on"] = item.departs_on.isoformat()
         if item.departs_at is not None and item.arrives_at is not None:
             values.update(
-                departs_at=item.departs_at.isoformat(),
-                arrives_at=item.arrives_at.isoformat(),
+                departs_at=_utc_instant(item.departs_at).isoformat(),
+                arrives_at=_utc_instant(item.arrives_at).isoformat(),
                 departure_timezone=item.departure_timezone,
                 arrival_timezone=item.arrival_timezone,
             )
