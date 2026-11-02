@@ -192,7 +192,7 @@ counters and bounded memory are described in
 ### Visitor rate limits
 
 The anonymous delivery routes are rate limited per client with FastAPI dependencies and `limits`
-(`app/ratelimit.py`, #370). All `/public/*` routes share one counter
+(`app/ratelimit.py`, #189). All `/public/*` routes share one counter
 (`TRAVEL_RATE_LIMIT_DEFAULT`) and all `/shared/{token}*` routes another, with a
 stricter limit (`TRAVEL_RATE_LIMIT_SHARED`), so probing different tokens, files
 or navigation targets counts together. Owner routes are not limited. A throttled
