@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from fastmcp.utilities.lifespan import combine_lifespans
-from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -18,6 +17,7 @@ from .mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
+from .request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
 from .request_timing import RequestTimingMiddleware
 from .routers.areas import router as areas_router
 from .routers.collections import membership_router as collection_membership_router
@@ -65,6 +65,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=_lifespan,
 )
+app.add_middleware(RateLimitHeadersMiddleware)
 # Starlette types handlers against `Exception`, not the specific class they are registered for.
 app.add_exception_handler(StarletteHTTPException, http_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RequestValidationError, validation_error_handler)  # ty: ignore[invalid-argument-type]

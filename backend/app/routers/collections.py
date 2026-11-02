@@ -24,7 +24,7 @@ from ..database import get_session
 from ..errors import ApiException, service_exception
 from ..models import Collection, CollectionAuditEvent, CollectionMember, LinkState, Trip
 from ..projection import ScopeError, delivered, render_projection, scoped_navigation_url, validate_scope
-from ..ratelimit import limiter, shared_link_limit
+from ..ratelimit import shared_delivery_limit
 from ..schemas import (
     AuditReasonInput,
     CollectionAuditEventResponse,
@@ -664,8 +664,11 @@ def _member_of_active_collection(
     return trip, member
 
 
-@delivery_router.get("/shared/{token}/trips/{member_id}", response_model=ProjectionDocument)
-@limiter.shared_limit(shared_link_limit, scope="shared-link")
+@delivery_router.get(
+    "/shared/{token}/trips/{member_id}",
+    response_model=ProjectionDocument,
+    dependencies=[Depends(shared_delivery_limit)],
+)
 def get_shared_collection_trip(
     request: Request, token: str, member_id: str, session: SessionDep, response: Response
 ) -> dict:
@@ -679,8 +682,11 @@ def get_shared_collection_trip(
     return render_projection(trip, member.scope, "travel/unlisted-trip@1")
 
 
-@delivery_router.get("/shared/{token}/trips/{member_id}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
-@limiter.shared_limit(shared_link_limit, scope="shared-link")
+@delivery_router.get(
+    "/shared/{token}/trips/{member_id}/navigation/{local_id}",
+    status_code=status.HTTP_302_FOUND,
+    dependencies=[Depends(shared_delivery_limit)],
+)
 def get_shared_collection_navigation(
     request: Request, token: str, member_id: str, local_id: str, session: SessionDep
 ) -> RedirectResponse:
@@ -700,8 +706,9 @@ def get_shared_collection_navigation(
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)
 
 
-@delivery_router.get("/shared/{token}/trips/{member_id}/files/{local_id}")
-@limiter.shared_limit(shared_link_limit, scope="shared-link")
+@delivery_router.get(
+    "/shared/{token}/trips/{member_id}/files/{local_id}", dependencies=[Depends(shared_delivery_limit)]
+)
 def get_shared_collection_file(
     request: Request, token: str, member_id: str, local_id: str, session: SessionDep, storage: StorageDep
 ) -> Response:
