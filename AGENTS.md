@@ -34,7 +34,7 @@ TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel
 ```
 
 For frontend work, install the Node version in `frontend/.node-version` and
-run pnpm directly (the package pins pnpm 10.33.0):
+run pnpm directly (the package pins pnpm 12.16.1):
 
 ```bash
 cd frontend
