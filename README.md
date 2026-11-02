@@ -39,7 +39,7 @@ variable, `/admin/` uses Keycloak as in production.
 Production routing, secrets, backups and media storage live in the central
 `apps` infrastructure ([apps#223](https://github.com/tjorim/apps/pull/223)).
 Its VPS deployment playbook and upgrade script build `travel/frontend` with
-the provisioned Node (24 today; CI and local development use the `frontend/.node-version` 26 LTS, and the `engines` floor stays `>=24` until the VPS moves) and direct `pnpm install --frozen-lockfile` and
+the provisioned Node (26 LTS, matching `frontend/.node-version` and the `engines` floor; the VPS playbook installs it from NodeSource `node_26.x`) and direct `pnpm install --frozen-lockfile` and
 `pnpm build` commands.
 Caddy there serves the built PWA shells and proxies the API; it no longer
 serves static archive, so the archive's `private/` files are not published anywhere.
@@ -127,3 +127,5 @@ service from apps#252 (for example `http://translation-proxy:5000`). See
 ## UI maintenance
 
 See [UI dependency and component maintenance](docs/ui-maintenance.md) for package updates, component provenance, upstream review commands and validation.
+
+Toolchain versions and coordinated rollout: [Node and pnpm toolchain](docs/toolchain.md).

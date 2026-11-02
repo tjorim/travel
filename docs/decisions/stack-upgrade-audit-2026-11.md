@@ -96,6 +96,12 @@ language features, and the Playwright suite exercises the built behaviour on
 [tjorim/apps#301](https://github.com/tjorim/apps/issues/301); `Caddyfile.example`
 is unaffected.
 
+**Update:** the VPS moved to NodeSource `node_26.x`
+([apps#301](https://github.com/tjorim/apps/issues/301)), after every app moved
+its `.node-version` to 26.13.0, so the `engines` floor is now `>=26.0.0`
+([#155](https://github.com/tjorim/travel/issues/155)). The text above records the
+state when the audit was written.
+
 ## Release notes of the frontend bump PR (#158)
 
 Read on 2026-11-01 from the upstream release pages. Nothing here touches code
@@ -339,3 +345,21 @@ until the host provides pnpm 12; and the 1-day release-age gate needs a
 deliberate policy. Both are outside this repository. The tracking issue is in
 `tjorim/apps` (linked from the PR). Revisit after the host pins pnpm. No
 `packageManager` change; `pnpm@10.33.0` stays (10.34.9 is a cosmetic patch).
+
+## Toolchain alignment follow-up (2026-11-01)
+
+pnpm is now pinned to 12.16.1 alongside Node 26.13.0; see
+[the coordinated rollout](../toolchain.md). The one-day release quarantine
+remains enabled explicitly. The dependency-audit parser already handles null
+`cves`; no parser change is needed. The initial frozen installation is blocked
+until the four locked TanStack Query 5.105.1 packages published on November 1
+at 10:06 UTC mature on November 2 at 10:07 UTC. No policy exception or
+dependency downgrade is introduced. Re-run installation and frontend checks
+after that time before merging.
+
+### Validation after quarantine — 2026-11-02
+
+The unchanged lockfile now passes `pnpm install --frozen-lockfile` on Node
+26.13.0 / pnpm 12.16.1 with the one-day quarantine retained. Formatting, lint,
+typechecking, all 649 unit tests, the production build, bundle budgets and the
+full dependency audit pass. E2E validation is recorded in the alignment PR.
