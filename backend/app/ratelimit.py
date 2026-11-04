@@ -11,7 +11,7 @@ limiter = RequestRateLimiter(settings.rate_limit_default, enabled=settings.rate_
 
 
 def retry_after_seconds(request: Request, error: RateLimitExceeded) -> int:
-    return int(error.headers["Retry-After"])
+    return int(error.rate_headers["Retry-After"])
 
 
 async def public_delivery_limit(request: Request) -> None:
