@@ -191,14 +191,16 @@ counters and bounded memory are described in
 
 ### Visitor rate limits
 
-The anonymous delivery routes are rate limited per client with `slowapi`
-(`app/ratelimit.py`, #370). All `/public/*` routes share one counter
+The anonymous delivery routes are rate limited per client with FastAPI dependencies and `limits`
+(`app/ratelimit.py`, #189). All `/public/*` routes share one counter
 (`TRAVEL_RATE_LIMIT_DEFAULT`) and all `/shared/{token}*` routes another, with a
 stricter limit (`TRAVEL_RATE_LIMIT_SHARED`), so probing different tokens, files
 or navigation targets counts together. Owner routes are not limited. A throttled
 request gets `429`, the `rate_limited` error descriptor, `Retry-After` and the
 same privacy headers as that route's `404`; the response never contains the
-slug or token.
+slug or token. Explicit JSON, redirect, file and error responses also retain
+`X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. Multiple
+windows report the longest exhausted retry time.
 
 The client is the direct peer. Only when that peer is a private address (the
 Caddy container) is `X-Real-IP` used instead, so a public peer cannot choose its

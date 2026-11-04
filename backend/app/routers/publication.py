@@ -5,7 +5,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
-from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -34,7 +33,8 @@ from ..projection import (
     shared_trip_dates,
     validate_scope,
 )
-from ..ratelimit import delivery_limit, limiter, retry_after_seconds, shared_link_limit
+from ..ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
+from ..request_limits import RateLimitExceeded
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
@@ -710,8 +710,9 @@ delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(_va
 # --- Anonymous delivery -------------------------------------------------------------
 
 
-@delivery_router.get("/public/trips", response_model=list[PublicTripCard])
-@limiter.shared_limit(delivery_limit, scope="public-trip")
+@delivery_router.get(
+    "/public/trips", response_model=list[PublicTripCard], dependencies=[Depends(public_delivery_limit)]
+)
 def list_public_trips(request: Request, session: SessionDep, response: Response) -> list[PublicTripCard]:
     # Select only published surfaces. Card text is separately gated by the
     # current scope, just as it is on the individual visitor page.
@@ -733,8 +734,9 @@ def list_public_trips(request: Request, session: SessionDep, response: Response)
     ]
 
 
-@delivery_router.get("/public/trips/{slug}", response_model=ProjectionDocument)
-@limiter.shared_limit(delivery_limit, scope="public-trip")
+@delivery_router.get(
+    "/public/trips/{slug}", response_model=ProjectionDocument, dependencies=[Depends(public_delivery_limit)]
+)
 def get_public_trip(request: Request, slug: str, session: SessionDep, response: Response) -> dict:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
@@ -759,8 +761,11 @@ def get_public_trip(request: Request, slug: str, session: SessionDep, response: 
     return render_projection(trip, surface.scope, "travel/public-trip@1")
 
 
-@delivery_router.get("/public/trips/{slug}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
-@limiter.shared_limit(delivery_limit, scope="public-trip")
+@delivery_router.get(
+    "/public/trips/{slug}/navigation/{local_id}",
+    status_code=status.HTTP_302_FOUND,
+    dependencies=[Depends(public_delivery_limit)],
+)
 def get_public_navigation(request: Request, slug: str, local_id: str, session: SessionDep) -> RedirectResponse:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
@@ -792,8 +797,7 @@ def _file_response(
     return media_response(storage, object_row, request, {**headers, "Content-Disposition": disposition})
 
 
-@delivery_router.get("/public/trips/{slug}/files/{local_id}")
-@limiter.shared_limit(delivery_limit, scope="public-trip")
+@delivery_router.get("/public/trips/{slug}/files/{local_id}", dependencies=[Depends(public_delivery_limit)])
 def get_public_file(slug: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
     headers = {"Cache-Control": "no-store"}
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
@@ -809,8 +813,11 @@ def get_public_file(slug: str, local_id: str, session: SessionDep, storage: Stor
     return _file_response(trip, surface.scope, local_id, storage, headers, request)
 
 
-@delivery_router.get("/shared/{token}", response_model=ProjectionDocument | CollectionIndexDocument)
-@limiter.shared_limit(shared_link_limit, scope="shared-link")
+@delivery_router.get(
+    "/shared/{token}",
+    response_model=ProjectionDocument | CollectionIndexDocument,
+    dependencies=[Depends(shared_delivery_limit)],
+)
 def get_shared_trip(request: Request, token: str, session: SessionDep, response: Response) -> dict | BaseModel:
     # Headers are also attached to each HTTPException below: FastAPI's error
     # path builds its own response and does not carry over `response.headers`
@@ -844,8 +851,11 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     return render_projection(trip, link.scope, "travel/unlisted-trip@1")
 
 
-@delivery_router.get("/shared/{token}/navigation/{local_id}", status_code=status.HTTP_302_FOUND)
-@limiter.shared_limit(shared_link_limit, scope="shared-link")
+@delivery_router.get(
+    "/shared/{token}/navigation/{local_id}",
+    status_code=status.HTTP_302_FOUND,
+    dependencies=[Depends(shared_delivery_limit)],
+)
 def get_shared_navigation(request: Request, token: str, local_id: str, session: SessionDep) -> RedirectResponse:
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
@@ -869,8 +879,7 @@ def get_shared_navigation(request: Request, token: str, local_id: str, session: 
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers=UNLISTED_HEADERS)
 
 
-@delivery_router.get("/shared/{token}/files/{local_id}")
-@limiter.shared_limit(shared_link_limit, scope="shared-link")
+@delivery_router.get("/shared/{token}/files/{local_id}", dependencies=[Depends(shared_delivery_limit)])
 def get_shared_file(token: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS, code="not_found"

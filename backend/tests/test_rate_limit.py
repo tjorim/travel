@@ -145,3 +145,14 @@ def test_settings_reject_an_unparsable_limit(field: str) -> None:
     with pytest.raises(ValidationError):
         Settings(**{field: "often"})
     assert Settings(**{field: "30/minute;300/hour"})
+
+
+def test_collection_and_trip_links_share_the_same_probe_bucket(limits: None) -> None:
+    client = visitor()
+    assert client.get("/api/shared/unknown-token").status_code == 404
+    assert client.get("/api/shared/other-token/trips/missing").status_code == 404
+    response = client.get("/api/shared/third-token/trips/missing/files/file")
+    assert response.status_code == 429
+    assert response.headers["cache-control"] == "no-store, private"
+    assert response.headers["x-ratelimit-remaining"] == "0"
+    assert "third-token" not in response.text
