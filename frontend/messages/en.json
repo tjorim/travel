@@ -2261,8 +2261,6 @@
   "map_points_count": "Points on the map ({count})",
   "map_lines_count": "Route in words ({count})",
   "readiness_overdue": "{count} overdue tasks",
-  "readiness_transport": "{count} unconfirmed transport bookings",
-  "readiness_nights": "{count} nights without a stay",
   "readiness_departure": "{count} days until departure",
   "readiness_underway": "Day {day} of {total}",
   "readiness_day": "Day {day}",
@@ -2271,6 +2269,5 @@
   "readiness_today": "Today",
   "readiness_tomorrow": "Tomorrow",
   "readiness_empty": "Nothing planned",
-  "readiness_tasks": "{count} open tasks",
   "task_overdue_label": "Overdue"
 }

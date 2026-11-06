@@ -2261,8 +2261,6 @@
   "map_points_count": "Punten op de kaart ({count})",
   "map_lines_count": "Route in woorden ({count})",
   "readiness_overdue": "{count} achterstallige taken",
-  "readiness_transport": "{count} onbevestigde vervoersboekingen",
-  "readiness_nights": "{count} nachten zonder verblijf",
   "readiness_departure": "Nog {count} dagen tot vertrek",
   "readiness_underway": "Dag {day} van {total}",
   "readiness_day": "Dag {day}",
@@ -2271,6 +2269,5 @@
   "readiness_today": "Vandaag",
   "readiness_tomorrow": "Morgen",
   "readiness_empty": "Niets gepland",
-  "readiness_tasks": "{count} open taken",
   "task_overdue_label": "Achterstallig"
 }

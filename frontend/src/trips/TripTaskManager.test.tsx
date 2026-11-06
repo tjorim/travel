@@ -299,14 +299,9 @@ it("links readiness counts to the matching sections and identifies overdue tasks
   expect(
     (await screen.findByRole("link", { name: "1 achterstallige taken" })).getAttribute("href"),
   ).toBe("/trips/trip/prepare#tasks");
-  expect(screen.getByRole("link", { name: "1 open taken" }).getAttribute("href")).toBe(
+  // The existing badge for open tasks is the link to the same block; the strip adds only what it does not say.
+  expect(screen.getByRole("link", { name: /1 open/ }).getAttribute("href")).toBe(
     "/trips/trip/prepare#tasks",
-  );
-  expect(
-    screen.getByRole("link", { name: "0 onbevestigde vervoersboekingen" }).getAttribute("href"),
-  ).toBe("/trips/trip/plan#routes");
-  expect(screen.getByRole("link", { name: "0 nachten zonder verblijf" }).getAttribute("href")).toBe(
-    "/trips/trip/plan#stays",
   );
   expect(await screen.findByRole("button", { name: /Achterstallig: Visum/ })).toBeTruthy();
 });

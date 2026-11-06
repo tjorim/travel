@@ -27,7 +27,14 @@ import {
   type TripTask,
 } from "../tracker-model";
 
-type Badge = { label: string; value: string; done: boolean };
+/** Where a badge leads: the owner section and block holding the records it counts. */
+type Badge = {
+  label: string;
+  value: string;
+  done: boolean;
+  section: "plan" | "prepare";
+  hash: "routes" | "stays" | "tasks";
+};
 
 const isConfirmed = (status: Stay["status"] | Route["status"]) => status === "confirmed";
 
@@ -50,6 +57,8 @@ export function tripBadges(
           ? m.owner_all_confirmed()
           : m.owner_confirmed_count({ p0: booked, p1: activeRoutes.length }),
       done: booked === activeRoutes.length,
+      section: "plan",
+      hash: "routes",
     });
   }
   if (trip.starts_on && trip.ends_on && trip.ends_on > trip.starts_on) {
@@ -70,6 +79,8 @@ export function tripBadges(
         p2: missing ? m.owner_without_a_stay({ p0: missing }) : "",
       }),
       done: booked === nights.length,
+      section: "plan",
+      hash: "stays",
     });
   } else if (stays.some(stayInPlan)) {
     const active = stays.filter(stayInPlan);
@@ -78,6 +89,8 @@ export function tripBadges(
       label: m.owner_stays(),
       value: m.owner_confirmed_count({ p0: booked, p1: active.length }),
       done: booked === active.length,
+      section: "plan",
+      hash: "stays",
     });
   }
   const open = tasks.filter((task) => !task.completed_at).length;
@@ -86,6 +99,8 @@ export function tripBadges(
       label: m.owner_things_to_arrange(),
       value: open ? m.owner_open_2({ p0: open }) : m.owner_all_done(),
       done: open === 0,
+      section: "prepare",
+      hash: "tasks",
     });
   return badges;
 }
@@ -195,27 +210,6 @@ export function TripOverview({ trip }: { trip: Trip }) {
   const today = tripDay(now, stays, routes);
   const progress = tripProgress(trip.starts_on, trip.ends_on, today);
   const overdue = (tasksQuery.data ?? []).filter((task) => isOverdue(task, today)).length;
-  const unconfirmed = routes.filter(
-    (route) => route.departs_on && routeInPlan(route) && route.status !== "confirmed",
-  ).length;
-  const missing =
-    trip.starts_on && trip.ends_on
-      ? Array.from({ length: Math.max(0, daysBetween(trip.starts_on, trip.ends_on)) }, (_, index) =>
-          addDays(trip.starts_on!, index),
-        ).filter((night) => !stays.some((stay) => stayCoversNight(stay, night))).length
-      : 0;
-  const readiness = [
-    { label: m.readiness_overdue({ count: overdue }), section: "prepare", hash: "tasks" },
-    {
-      label: m.readiness_tasks({
-        count: (tasksQuery.data ?? []).filter((task) => !task.completed_at).length,
-      }),
-      section: "prepare",
-      hash: "tasks",
-    },
-    { label: m.readiness_transport({ count: unconfirmed }), section: "plan", hash: "routes" },
-    { label: m.readiness_nights({ count: missing }), section: "plan", hash: "stays" },
-  ] as const;
   const agenda = buildAgendaItems(stays, routes, visitsQuery.data ?? []);
   const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
@@ -236,20 +230,12 @@ export function TripOverview({ trip }: { trip: Trip }) {
                 : m.readiness_day({ day: progress.day })}
         </strong>
       )}
-      {staysQuery.data && routesQuery.data && tasksQuery.data && (
-        <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
-          {readiness.map((item) => (
-            <li key={item.hash + item.label}>
-              <Link
-                className="secondary action-link"
-                to={sectionPath(trip.id, item.section)}
-                hash={item.hash}
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+      {overdue > 0 && (
+        <p className="m-0">
+          <Link className="secondary action-link" to={sectionPath(trip.id, "prepare")} hash="tasks">
+            {m.readiness_overdue({ count: overdue })}
+          </Link>
+        </p>
       )}
       {trip.starts_on && (
         <p className="travel-eyebrow">
@@ -293,17 +279,8 @@ export function TripOverview({ trip }: { trip: Trip }) {
             <StatusBadge key={badge.label} render={<li />}>
               <Link
                 className="inline-flex items-center gap-1 text-inherit no-underline hover:underline focus-visible:underline"
-                to={sectionPath(
-                  trip.id,
-                  badge.label === m.owner_things_to_arrange() ? "prepare" : "plan",
-                )}
-                hash={
-                  badge.label === m.owner_things_to_arrange()
-                    ? "tasks"
-                    : badge.label === m.owner_transport()
-                      ? "routes"
-                      : "stays"
-                }
+                to={sectionPath(trip.id, badge.section)}
+                hash={badge.hash}
               >
                 <span
                   aria-hidden="true"
