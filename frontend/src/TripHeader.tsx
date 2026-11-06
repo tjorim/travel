@@ -23,8 +23,9 @@ export type TripCover = {
 
 /**
  * The opening of a trip: its title, the dates and destinations the audience is authorized to see, and the
- * cover when it receives one. Without a cover, or when the image cannot load, the text remains in place
- * without an empty image frame.
+ * cover when it receives one. With a cover, the title sits over a full-width hero (a compact band on a phone that
+ * scrolls away) on a scrim that keeps the text readable on any photo. Without a cover, or when the image cannot
+ * load, the text remains in place without an empty image frame.
  */
 export function TripHeader({
   title,
@@ -46,37 +47,60 @@ export function TripHeader({
   const shown = cover && cover.url !== failedUrl ? cover : null;
   const Heading: ElementType = level;
   const facts = [dates, destinations.length > 0 ? destinations : null].some(Boolean);
-  return (
-    <header className="grid min-w-0 items-start gap-3 min-[960px]:grid-cols-travel-visitor-header">
-      <div className={cn("grid min-w-0 gap-3", !shown && "min-[960px]:col-span-2")}>
-        <p className="sr-only">{eyebrow}</p>
-        <Heading
+  const long = title.length > LONG_TITLE_LENGTH;
+  const text = (
+    <>
+      <p className="sr-only">{eyebrow}</p>
+      <Heading
+        className={cn(
+          level === "h1" ? long && LONG_TITLE_CLASS : "tracking-tight",
+          "m-0! max-w-none! leading-tight! wrap-anywhere",
+          shown
+            ? cn(
+                "text-travel-hero-ink text-shadow-travel-hero",
+                long ? "text-2xl! min-[960px]:text-4xl!" : "text-3xl! min-[960px]:text-5xl!",
+              )
+            : "text-2xl! min-[960px]:text-3xl!",
+        )}
+      >
+        {title}
+      </Heading>
+      {facts && (
+        <p
           className={cn(
-            level === "h1"
-              ? title.length > LONG_TITLE_LENGTH && LONG_TITLE_CLASS
-              : "m-0 text-3xl leading-none tracking-tight",
-            "m-0! max-w-none! text-2xl! leading-tight! min-[960px]:text-3xl! wrap-anywhere",
+            "m-0 flex flex-wrap gap-x-4 gap-y-1 leading-normal font-medium",
+            shown ? "text-sm text-travel-hero-ink min-[680px]:text-base" : "text-travel-muted",
           )}
         >
-          {title}
-        </Heading>
-        {facts && (
-          <p className="m-0 flex flex-wrap gap-x-4 gap-y-1 leading-normal font-medium text-travel-muted">
-            {dates && <span>{dates}</span>}
-            {destinations.length > 0 && (
-              <span>
-                <span className="sr-only">{m.visitor_destinations()}: </span>
-                {destinations.join(" · ")}
-              </span>
-            )}
-          </p>
-        )}
+          {dates && <span>{dates}</span>}
+          {destinations.length > 0 && (
+            <span>
+              <span className="sr-only">{m.visitor_destinations()}: </span>
+              {destinations.join(" · ")}
+            </span>
+          )}
+        </p>
+      )}
+    </>
+  );
+  if (!shown) return <header className="grid min-w-0 gap-3">{text}</header>;
+  return (
+    <header className="grid min-w-0 grid-cols-1" data-hero="">
+      {/* First in the document so the title precedes the photo; the photo is stacked behind it in the same cell. */}
+      <div className="relative z-10 col-start-1 row-start-1 flex min-h-travel-hero min-w-0 items-end min-[960px]:min-h-travel-hero-wide">
+        <div
+          data-hero-text=""
+          className="travel-hero-scrim grid w-full min-w-0 gap-2 rounded-b-travel-card px-4 pt-14 pb-4 text-travel-hero-ink min-[680px]:px-6 min-[680px]:pb-6 min-[960px]:px-8 min-[960px]:pb-8"
+        >
+          {text}
+        </div>
       </div>
-      {shown && (
-        <figure className="m-0 min-w-0">
-          {shown.url ? (
+      <figure className="col-start-1 row-span-2 row-start-1 m-0 grid min-w-0 grid-rows-subgrid">
+        <div className="relative min-h-0 overflow-hidden rounded-travel-card bg-travel-forest">
+          {shown.url && (
             <img
-              className="block h-travel-visitor-cover w-full rounded-travel-card bg-travel-tint object-cover min-[960px]:h-travel-visitor-cover-wide"
+              data-hero-image=""
+              className="absolute inset-0 block size-full object-cover"
               src={shown.url}
               alt={shown.alt}
               width={shown.width}
@@ -87,20 +111,15 @@ export function TripHeader({
               referrerPolicy="no-referrer"
               onError={() => setFailedUrl(shown.url)}
             />
-          ) : (
-            <div
-              className="h-travel-visitor-cover w-full rounded-travel-card bg-travel-tint min-[960px]:h-travel-visitor-cover-wide"
-              aria-hidden="true"
-            />
           )}
-          <Markdown
-            as="figcaption"
-            className="mt-2 max-w-travel-reading text-sm leading-normal text-travel-muted"
-            html={shown.caption.html}
-            text={shown.caption.text}
-          />
-        </figure>
-      )}
+        </div>
+        <Markdown
+          as="figcaption"
+          className="mt-2 max-w-travel-reading text-sm leading-normal text-travel-muted"
+          html={shown.caption.html}
+          text={shown.caption.text}
+        />
+      </figure>
     </header>
   );
 }

@@ -1786,6 +1786,16 @@
   "visitor_previous_photo": "Previous photo",
   "visitor_next_photo": "Next photo",
   "visitor_photo_position": "Photo {current} of {total}",
+  "visitor_photo_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} photo",
+        "countPlural=other": "{count} photos"
+      }
+    }
+  ],
   "visitor_photo_navigation": "Browse photos",
   "visitor_map_follows_story": "Move the map along with the story",
   "visitor_days_later": [

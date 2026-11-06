@@ -59,7 +59,7 @@ custom control stays when the registry version would drop a requirement.
 | Spinner | Adopt (`src/ui/spinner.tsx`) | Registry `spinner` (Lucide `Loader2Icon`) restyled to Travel tokens: always `aria-hidden`, `motion-safe:animate-spin` so it stays still under reduced motion. It sits beside text that keeps the announcement. See "Spinner" below. Progress is already Base UI (`PackingProgress`). |
 | RecordDialog, field.tsx, SearchCombobox, SuggestInput, TravelTextarea | Keep (unchanged) | The #279 reasons still hold: no registry component covers dirty dismissal, Base UI Field validity wiring, grouped option adaptation or free-text Autocomplete. |
 | Map and media rendering | Keep specialised | MapLibre and media or lightbox rendering have no registry equivalent. |
-| Visitor `PhotoLightbox` | Keep custom composition | One Base UI Dialog per gallery with named Previous/Next Buttons (`focusableWhenDisabled`, so focus is never dropped at an end), ←/→ keys, a pointer-event swipe on touch and pen only (48 px, mostly horizontal, `touch-pan-y` so vertical scrolling is untouched), a "Photo n of m" status and `finalFocus` returned to the last photo's trigger. No registry carousel fits a modal with approved-derivative preloading; the strip arrows in `Gallery` stay plain Buttons for the same reason. |
+| Visitor `PhotoLightbox` | Keep custom composition | One Base UI Dialog per gallery, restyled as a dark full-bleed viewer (#228): named Previous/Next Buttons (`focusableWhenDisabled`, so focus is never dropped at an end), ←/→ keys, a pointer-event swipe on touch and pen only (48 px, mostly horizontal, `touch-pan-y` so vertical scrolling is untouched), a "Photo n of m" status, the caption as an overlay near the bottom and `finalFocus` returned to the last photo's trigger. It has no language switch: a delivered alt text and caption have no translation, so there is nothing to switch to (the language stays in the page preferences). No registry carousel fits a modal with approved-derivative preloading. |
 
 Provenance: `empty.tsx` and `skeleton.tsx` came from
 `pnpm dlx shadcn@4.21.0 add empty skeleton --yes`, then were reformatted and
@@ -120,6 +120,33 @@ columns they need are rejected by the lint rule; their widths are theme tokens
 of anchors, sticky beside the timeline on wide screens. The visitor lightbox is the
 existing Base UI Dialog. Gallery thumbnails use one 4:3 crop with the owner's focal
 point; the full image remains in the lightbox.
+
+## Visitor hero, mosaic and lightbox (#228)
+
+No new primitive: shadcn/Base UI have no hero, image mosaic or full-bleed viewer, so these
+stay custom compositions on native elements and the existing Base UI Button and Dialog
+(`@/ui/dialog`).
+
+- **Hero (`TripHeader`).** With a cover, the title, dates and destinations sit over a
+  full-width cover (a compact band on a phone, `--spacing-travel-hero*`, that scrolls away).
+  The title is first in the document and the photo is stacked behind it in one grid cell;
+  the caption stays a `figcaption` under it. A hugging scrim (`travel-hero-scrim`, tokens
+  `--color-travel-hero-ink` and `--color-travel-hero-scrim`, the same in both themes)
+  keeps the text readable on any photo: `e2e/story.spec.ts` measures it over a pure-white
+  cover at 360 and 1440 px, light and dark, Dutch and English (about 6.6:1, AA is 4.5:1).
+  Without a cover, or when it fails to load, the header is today's text block. A preview
+  that is still loading the cover shows the forest-green placeholder behind the text. When
+  printed, the photo and scrim are dropped and the text prints as ink.
+- **Mosaic (`Gallery lead`).** Replaces the sideways strip and its paging arrows. One photo
+  stays one large frame; two sit side by side, the first larger; three or more are a large
+  first photo over tiles in rows that always fill the width (3, 2 or 3+2, never one alone).
+  Every photo is visible and is its own button (named by its alt text), and a count pill
+  states how many there are (`visitor_photo_count`). Tiles show no inline caption (the
+  lightbox does); a video keeps its own full-width frame under the photos. Row heights and
+  the pair's height are theme tokens (`--spacing-travel-mosaic-*`).
+- **Map tab (`TripMap bare`).** Below 1100 px the map drops its card and shows its heading
+  to assistive technology only, and the canvas grows to most of the window
+  (`--spacing-map-phone-canvas`). Beside the story (≥1100 px) it keeps the card and heading.
 
 ## Owner workspaces (#495)
 

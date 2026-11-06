@@ -268,6 +268,7 @@ export function TripMap({
   owner = false,
   collapseLists = false,
   wide = false,
+  bare = false,
   headingLevel = 3,
   perspective,
   styleUrl = configuredMapStyleUrl,
@@ -282,6 +283,11 @@ export function TripMap({
   collapseLists?: boolean;
   /** A visitor map beside the trip context: taller on wide screens, as the owner map is. */
   wide?: boolean;
+  /**
+   * Below the width where the map sits beside the story, drop the card around the map and keep its heading for
+   * assistive technology only, so the map itself gets the room; the canvas also grows to most of the window.
+   */
+  bare?: boolean;
   /** The level of the map's own heading; the point and route lists sit one level below it. */
   headingLevel?: 2 | 3;
   perspective?: MapPerspective;
@@ -887,8 +893,11 @@ export function TripMap({
       </section>
     );
   return (
-    <section className="travel-card grid min-w-0 gap-3.5" aria-label={m.owner_trip_map()}>
-      <Heading level={headingLevel} className="m-0">
+    <section
+      className={cn("grid min-w-0 gap-3.5", bare ? "min-[1100px]:travel-card" : "travel-card")}
+      aria-label={m.owner_trip_map()}
+    >
+      <Heading level={headingLevel} className={cn("m-0", bare && "max-[1099px]:sr-only")}>
         {m.owner_map()}
       </Heading>
       <div
@@ -896,6 +905,7 @@ export function TripMap({
           "relative h-map-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
           owner && "min-[960px]:h-map-owner-canvas",
           wide && "min-[1100px]:h-map-wide-canvas",
+          bare && "max-[1099px]:h-map-phone-canvas",
         )}
       >
         <div

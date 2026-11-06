@@ -318,17 +318,19 @@ for (const locale of ["en", "nl"] as const) {
   }
 }
 
-test("a row of photos has arrows that page it, hidden at each end", async ({ page }) => {
+test("an update with several photos leads with one and shows the rest as a mosaic with the count", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await open(page, trip(), "en", "light");
-  const strip = page.locator("ul.snap-x").first();
-  const next = page.getByRole("button", { name: "Next photo" });
-  const previous = page.getByRole("button", { name: "Previous photo" });
-  await expect(next).toBeVisible();
-  await expect(previous).toBeHidden();
-  await next.click();
-  await expect.poll(() => strip.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
-  await expect(previous).toBeVisible();
+  const mosaic = page.locator("[data-mosaic]").first();
+  await expect(mosaic.locator("li")).toHaveCount(3);
+  await expect(page.getByText("3 photos")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next photo" })).toHaveCount(0);
+  const [lead, tile] = await mosaic
+    .locator("li")
+    .evaluateAll((items) => items.slice(0, 2).map((item) => item.getBoundingClientRect().height));
+  expect(lead).toBeGreaterThan(tile! * 2);
 });
 
 test("the map sits beside the story, follows the update in view and pins its photo", async ({
@@ -388,6 +390,101 @@ test("the map sits beside the story, follows the update in view and pins its pho
   await expect(follow).toBeHidden();
 });
 
+/** The lightest pixel behind each text box of the hero, with its glyphs hidden, gives the worst contrast the text can get. */
+async function worstContrast(page: Page, selectors: string[]) {
+  const boxes = [];
+  for (const selector of selectors) {
+    const element = page.locator(selector).first();
+    const color = await element.evaluate((node) => getComputedStyle(node).color);
+    boxes.push({ selector, color, box: (await element.boundingBox())! });
+  }
+  await page.addStyleTag({
+    content: "[data-hero-text] * { color: transparent !important; text-shadow: none !important; }",
+  });
+  const result: Record<string, number> = {};
+  for (const { selector, color, box } of boxes) {
+    const png = (await page.screenshot({ clip: box })).toString("base64");
+    result[selector] = await page.evaluate(
+      async ([data, text]) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${data}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext("2d")!;
+        context.drawImage(image, 0, 0);
+        const channel = (value: number) => {
+          const unit = value / 255;
+          return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+        };
+        const luminance = (r: number, g: number, b: number) =>
+          0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+        const [tr, tg, tb] = text!.match(/\d+(\.\d+)?/g)!.map(Number);
+        const foreground = luminance(tr!, tg!, tb!);
+        let lightest = 0;
+        const { data: pixels } = context.getImageData(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < pixels.length; i += 4)
+          lightest = Math.max(lightest, luminance(pixels[i]!, pixels[i + 1]!, pixels[i + 2]!));
+        return (foreground + 0.05) / (lightest + 0.05);
+      },
+      [png, color] as const,
+    );
+  }
+  return result;
+}
+
+// The photo behind the title is the worst case a scrim can meet: pure white. Tall titles, a phone and a desktop,
+// both themes and both languages must keep WCAG AA (4.5:1) for the title, the dates and the destinations.
+for (const [width, title] of [
+  [360, "A slow journey through mountains, forests and small towns along the coast"],
+  [1440, "Exampleland 2054"],
+] as const) {
+  for (const [locale, theme] of [
+    ["en", "light"],
+    ["nl", "dark"],
+  ] as const) {
+    test(`text over a white cover keeps AA contrast ${width} ${locale} ${theme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await mockApi(page);
+      await page.route("**/api/public/trips/exampleland-2054", (route) =>
+        route.fulfill({ json: trip({ title }) }),
+      );
+      await page.route("**/api/public/trips/exampleland-2054/files/*", (route) =>
+        route.fulfill({
+          contentType: "image/svg+xml",
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#ffffff"/></svg>',
+        }),
+      );
+      await choosePreferences(page, locale, theme);
+      await page.goto("/trips/exampleland-2054");
+      const image = page.locator("[data-hero-image]");
+      await expect
+        .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+        .toBeGreaterThan(0);
+      const ratios = await worstContrast(page, [
+        "[data-hero-text] h1",
+        "[data-hero-text] > p:not(.sr-only):last-child",
+      ]);
+      for (const [selector, ratio] of Object.entries(ratios))
+        expect(ratio, selector).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+}
+
+test("a trip without a cover keeps the text header, and a failed cover falls back to it", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, trip({ cover: null }), "en", "light");
+  await expect(page.locator("[data-hero]")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: "Exampleland 2054" })).toBeVisible();
+  // The first update starts high on the first screen, below the dates and destinations.
+  await expect(page.locator("#update-a h3")).toBeInViewport();
+});
+
 for (const audience of ["public", "share"] as const) {
   for (const locale of ["nl", "en"] as const) {
     for (const theme of ["light", "dark"] as const) {
@@ -443,9 +540,13 @@ for (const audience of ["public", "share"] as const) {
               page.getByRole("button", { name: /Forget this link|Vergeet deze link/ }),
             ).toBeInViewport();
           else await expect(page.locator("#update-a h3")).toBeInViewport();
-          const cover = page.locator("header img");
-          expect((await cover.boundingBox())!.height).toBeLessThanOrEqual(150);
-          expect((await title.boundingBox())!.y).toBeLessThan((await cover.boundingBox())!.y + 1);
+          // The hero is a bounded band that carries the title; the first update still starts inside the first screen.
+          const hero = (await page.locator("[data-hero]").boundingBox())!;
+          expect(hero.height).toBeLessThanOrEqual(height * 0.5);
+          expect(hero.width).toBeGreaterThan(width - 80);
+          const heading = (await title.boundingBox())!;
+          expect(heading.y).toBeGreaterThanOrEqual(hero.y);
+          expect(heading.y + heading.height).toBeLessThanOrEqual(hero.y + hero.height + 1);
           expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
         }
         await page.setViewportSize({ width: 360, height: 800 });
