@@ -1365,7 +1365,17 @@ class ProjectionDocument(BaseModel):
     navigation: list[dict]
 
 
+class PublicTripCover(BaseModel):
+    url: str
+    width: int | None
+    height: int | None
+    alt_text: str | None
+    focal_x: float | None
+    focal_y: float | None
+
+
 class PublicTripCard(BaseModel):
+    cover: PublicTripCover | None = None
     slug: str
     title: str | None
     summary: str | None = Field(description=MARKDOWN)

@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import { ApiError, apiFailure, errorMessage } from "./query/api";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "./locale";
@@ -80,12 +81,60 @@ type LoadState =
 
 /** `summary` is Markdown; a card shows its one-line plain-text `summary_text` instead. */
 type PublicTripCard = {
+  cover?: {
+    url: string;
+    width: number | null;
+    height: number | null;
+    alt_text: string | null;
+    focal_x: number | null;
+    focal_y: number | null;
+  } | null;
   slug: string;
   title: string | null;
   summary: string | null;
   summary_text?: string | null;
   dates?: ProjectionItem | null;
 };
+function PublicCard({ trip }: { trip: PublicTripCard }) {
+  useLocale();
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const cover = trip.cover && trip.cover.url !== failedUrl ? trip.cover : null;
+  return (
+    <Link
+      className={cn("travel-trip-card", cover && "overflow-hidden border-t-0 p-0")}
+      to={`/trips/${encodeURIComponent(trip.slug)}`}
+    >
+      {cover && (
+        <div className="aspect-video w-full shrink-0 overflow-hidden bg-travel-hover">
+          <img
+            className="block size-full object-cover"
+            src={cover.url}
+            alt={cover.alt_text ?? ""}
+            width={cover.width ?? undefined}
+            height={cover.height ?? undefined}
+            style={{ objectPosition: `${cover.focal_x ?? 50}% ${cover.focal_y ?? 50}%` }}
+            decoding="async"
+            loading="lazy"
+            onError={() => setFailedUrl(cover.url)}
+          />
+        </div>
+      )}
+      <div className={cn("flex min-w-0 flex-1 flex-col", cover && "p-travel-card-pad")}>
+        <span className="mb-4 text-sm font-medium text-travel-muted">
+          {tripDates(trip.dates) ?? m.public_trip()}
+        </span>
+        <h2>{trip.title ?? m.published_trip()}</h2>
+        {(trip.summary_text ?? trip.summary) && (
+          <p className="line-clamp-4">{trip.summary_text ?? trip.summary}</p>
+        )}
+        <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
+          {m.view_trip()} <span aria-hidden="true">→</span>
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 type IndexState =
   | { kind: "loading" }
   | { kind: "ready"; trips: PublicTripCard[] }
@@ -102,6 +151,13 @@ function isPublicTripCards(value: unknown): value is PublicTripCard[] {
         card.slug.length > 0 &&
         (card.title === null || typeof card.title === "string") &&
         (card.summary === null || typeof card.summary === "string") &&
+        (card.cover == null ||
+          (typeof card.cover === "object" &&
+            typeof card.cover.url === "string" &&
+            (card.cover.alt_text == null || typeof card.cover.alt_text === "string") &&
+            [card.cover.width, card.cover.height, card.cover.focal_x, card.cover.focal_y].every(
+              (value) => value == null || typeof value === "number",
+            ))) &&
         (card.summary_text == null || typeof card.summary_text === "string") &&
         (card.dates == null || (typeof card.dates === "object" && !Array.isArray(card.dates))),
     )
@@ -253,18 +309,7 @@ function TripIndex() {
           <ul className="travel-trip-grid">
             {state.trips.map((trip) => (
               <li key={trip.slug} className="min-w-0">
-                <Link className="travel-trip-card" to={`/trips/${encodeURIComponent(trip.slug)}`}>
-                  <span className="mb-4 text-sm font-medium text-travel-muted">
-                    {tripDates(trip.dates) ?? m.public_trip()}
-                  </span>
-                  <h2>{trip.title ?? m.published_trip()}</h2>
-                  {(trip.summary_text ?? trip.summary) && (
-                    <p className="line-clamp-4">{trip.summary_text ?? trip.summary}</p>
-                  )}
-                  <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
-                    {m.view_trip()} <span aria-hidden="true">→</span>
-                  </span>
-                </Link>
+                <PublicCard trip={trip} />
               </li>
             ))}
           </ul>

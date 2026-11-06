@@ -11,7 +11,26 @@ const trips = [
   { slug: "sparse", title: null },
   { slug: "word", title: "AnUnbrokenAuthoredTitle".repeat(8) },
   { slug: "short", title: "A weekend away" },
-].map((trip) => ({ ...trip, summary: null, dates: null }));
+].map((trip, index) => ({
+  ...trip,
+  summary: null,
+  dates: null,
+  cover:
+    index === 0
+      ? {
+          url:
+            "data:image/svg+xml," +
+            encodeURIComponent(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="#52796f"/></svg>',
+            ),
+          width: 1200,
+          height: 800,
+          alt_text: "Synthetic green landscape",
+          focal_x: 30,
+          focal_y: 70,
+        }
+      : null,
+}));
 
 for (const locale of ["nl", "en"] as const) {
   for (const theme of ["light", "dark"] as const) {

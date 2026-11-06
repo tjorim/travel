@@ -123,6 +123,10 @@ outside the allowlist can be selected.
 | Trip cover | the id of the one chosen photo, only if that audience already receives the photo | any photo the audience does not receive; the choice itself |
 | Document | never shared | the original and all metadata |
 
+The public index cards on `/` and `/trips` also show the nominated cover, only
+when the public projection receives it. They carry its scoped public file URL,
+approved alt text, dimensions and focal point; nomination never delivers a photo.
+
 ## Where a twin is still needed
 
 Twins are kept only for **photos and videos**, where the application generates a different shareable artifact. Documents are always private, either in the owner-wide library or specific to a trip; neither home is published.

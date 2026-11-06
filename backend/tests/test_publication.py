@@ -229,13 +229,20 @@ def test_public_listing_tracks_live_scope_and_publication_without_owner_data() -
     )
     slug = owner.post(f"/api/trips/{published['id']}/public-projection/publish").json()["slug"]
     assert visitor.get("/api/public/trips").json() == [
-        {"slug": slug, "title": "Public trip", "summary": None, "dates": None, "summary_text": None}
+        {"cover": None, "slug": slug, "title": "Public trip", "summary": None, "dates": None, "summary_text": None}
     ]
 
     owner.put(f"/api/trips/{published['id']}/public-projection", json=scope(title=False, summary=True))
     cards = visitor.get("/api/public/trips").json()
     assert cards == [
-        {"slug": slug, "title": None, "summary": "A private trip.", "dates": None, "summary_text": "A private trip."}
+        {
+            "cover": None,
+            "slug": slug,
+            "title": None,
+            "summary": "A private trip.",
+            "dates": None,
+            "summary_text": "A private trip.",
+        }
     ]
     assert not {"id", "trip_id", "owner_subject", "scope", "token"} & cards[0].keys()
     assert draft["id"] not in str(cards) and unlisted["id"] not in str(cards)
@@ -1238,13 +1245,14 @@ def test_a_cover_is_only_shown_to_audiences_that_already_receive_the_photo(tmp_p
     assert cover_url == f"{photo['path']}/file"
     assert owner.get(cover_url).status_code == 200
     assert "cover_url" not in owner.post(f"{trips_path}/public-projection/preview").json()
-    owner.put(f"{trips_path}/public-projection", json={"scope": scope()})
+    owner.put(f"{trips_path}/public-projection", json=scope())
     owner.post(f"{trips_path}/public-projection/publish")
     slug = owner.get(f"{trips_path}/public-projection").json()["slug"]
     visitor = TestClient(app)
 
     # Choosing a cover does not publish it: the photo is still private.
     assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is None
     assert owner.post(f"{trips_path}/public-projection/preview").json()["cover"] is None
     overview = owner.get(f"{trips_path}/overview").json()
     assert overview["audiences"][0]["shows_cover"] is False
@@ -1254,6 +1262,19 @@ def test_a_cover_is_only_shown_to_audiences_that_already_receive_the_photo(tmp_p
     assert owner.put(photo["trip"], json={"visibility": "everyone"}).status_code == 200
     document = visitor.get(f"/api/public/trips/{slug}").json()
     assert document["cover"] == document["media"][0]["id"]
+    card_cover = visitor.get("/api/public/trips").json()[0]["cover"]
+    assert card_cover == {
+        "url": f"/api/public/trips/{slug}/files/{document['cover']}",
+        **{key: document["media"][0][key] for key in ("width", "height", "alt_text", "focal_x", "focal_y")},
+    }
+    assert visitor.get(card_cover["url"]).status_code == 200
+    owner.put(photo["trip"], json={"visibility": "custom"})
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is None
+    owner.put(f"{trips_path}/public-projection", json=scope(item("media_derivative", photo["derivative"]["id"])))
+    assert visitor.get("/api/public/trips").json()[0]["cover"] == card_cover
+    owner.put(f"{trips_path}/public-projection", json=scope())
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is None
+    owner.put(photo["trip"], json={"visibility": "everyone"})
     assert visitor.get(f"/api/public/trips/{slug}/files/{document['cover']}").status_code == 200
     assert owner.get(f"{trips_path}/overview").json()["audiences"][0]["shows_cover"] is True
 
@@ -1261,18 +1282,21 @@ def test_a_cover_is_only_shown_to_audiences_that_already_receive_the_photo(tmp_p
     owner.patch(trips_path, json={"cover_derivative_id": other["derivative"]["id"]})
     assert owner.get(photo["path"]).json()["is_cover"] is False
     assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is None
 
     # Removing the cover, or withdrawing the photo, leaves no cover and no file.
     owner.patch(trips_path, json={"cover_derivative_id": photo["derivative"]["id"]})
     assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] == document["cover"]
     owner.put(photo["trip"], json={"visibility": "private"})
     assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is None
     assert visitor.get(f"/api/public/trips/{slug}/files/{document['cover']}").status_code == 404
     owner.put(photo["trip"], json={"visibility": "everyone"})
     removed = owner.patch(trips_path, json={"cover_derivative_id": None}).json()
     assert removed["cover_derivative_id"] is None
     assert removed["cover_url"] is None
     assert visitor.get(f"/api/public/trips/{slug}").json()["cover"] is None
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is None
 
 
 def test_a_custom_cover_reaches_only_the_link_that_lists_it(tmp_path: Path) -> None:
@@ -1301,8 +1325,17 @@ def test_deleting_the_cover_copy_leaves_the_trip_without_a_cover(tmp_path: Path)
     photo = _photo_copy(owner, trip["id"])
     owner.patch(trips_path, json={"cover_derivative_id": photo["derivative"]["id"]})
 
+    owner.put(photo["trip"], json={"visibility": "everyone"})
+    owner.post(f"{trips_path}/public-projection/publish")
+    visitor = TestClient(app)
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is not None
+
     assert owner.delete(photo["path"]).status_code == 204
     assert owner.get(trips_path).json()["cover_derivative_id"] is None
+
+    assert visitor.get("/api/public/trips").json()[0]["cover"] is None
+    owner.post(f"{trips_path}/public-projection/unpublish")
+    assert visitor.get("/api/public/trips").json() == []
 
 
 def test_only_a_finished_share_copy_of_a_photo_of_this_trip_can_be_the_cover(tmp_path: Path) -> None:
