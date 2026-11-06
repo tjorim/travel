@@ -51,7 +51,9 @@ enforces the scope; this check is about choosing it deliberately.
       specific for the photo, because the pin ties the two together.
 - [ ] If the trip has a cover, check that photo like any other shared image:
       choosing it publishes nothing, so it is shown only to audiences that already
-      receive it. The sharing check lists an audience that receives no cover.
+      receive it. The public index cards on `/` and `/trips` also show this photo
+      with its approved alt text and crop, using the same scoped public file route.
+      Review that appearance too. The sharing check lists an audience that receives no cover.
 - [ ] Documents in the owner-wide library and trips have no scope choice, visitor field, or file route.
 - [ ] For a named link, choose the shortest sensible lifetime and send the
       capability only through a private channel.

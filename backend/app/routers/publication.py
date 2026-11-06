@@ -30,7 +30,6 @@ from ..projection import (
     render_projection,
     scoped_file,
     scoped_navigation_url,
-    shared_trip_dates,
     validate_scope,
 )
 from ..ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
@@ -723,15 +722,26 @@ def list_public_trips(request: Request, session: SessionDep, response: Response)
         .order_by(PublicSurface.created_at.desc(), PublicSurface.slug)
     ).all()
     response.headers["Cache-Control"] = "no-store"
-    return [
-        PublicTripCard(
-            slug=surface.slug,
-            title=trip.title if surface.scope.get("trip", {}).get("title", True) else None,
-            summary=trip.summary if surface.scope.get("trip", {}).get("summary", True) else None,
-            dates=shared_trip_dates(trip, surface.scope),
+    cards = []
+    for surface, trip in rows:
+        projection = render_projection(trip, surface.scope, "travel/public-trip@1")
+        photo = next((item for item in projection["media"] if item["id"] == projection["cover"]), None)
+        cover = None
+        if photo is not None:
+            cover = {
+                "url": f"/api/public/trips/{surface.slug}/files/{photo['id']}",
+                **{key: photo[key] for key in ("width", "height", "alt_text", "focal_x", "focal_y")},
+            }
+        cards.append(
+            PublicTripCard(
+                slug=surface.slug,
+                title=projection["title"],
+                summary=projection["summary"],
+                dates=projection["dates"],
+                cover=cover,
+            )
         )
-        for surface, trip in rows
-    ]
+    return cards
 
 
 @delivery_router.get(
