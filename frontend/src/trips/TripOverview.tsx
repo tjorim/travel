@@ -1,3 +1,7 @@
+import { Link } from "@tanstack/react-router";
+import { buildAgendaItems } from "./AgendaView";
+import { isOverdue, tripDay, tripProgress } from "./readiness";
+import { sectionPath } from "./workspace-sections";
 import { Badge as StatusBadge } from "@/ui/badge";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
@@ -23,7 +27,14 @@ import {
   type TripTask,
 } from "../tracker-model";
 
-type Badge = { label: string; value: string; done: boolean };
+/** Where a badge leads: the owner section and block holding the records it counts. */
+type Badge = {
+  label: string;
+  value: string;
+  done: boolean;
+  section: "plan" | "prepare";
+  hash: "routes" | "stays" | "tasks";
+};
 
 const isConfirmed = (status: Stay["status"] | Route["status"]) => status === "confirmed";
 
@@ -46,6 +57,8 @@ export function tripBadges(
           ? m.owner_all_confirmed()
           : m.owner_confirmed_count({ p0: booked, p1: activeRoutes.length }),
       done: booked === activeRoutes.length,
+      section: "plan",
+      hash: "routes",
     });
   }
   if (trip.starts_on && trip.ends_on && trip.ends_on > trip.starts_on) {
@@ -66,6 +79,8 @@ export function tripBadges(
         p2: missing ? m.owner_without_a_stay({ p0: missing }) : "",
       }),
       done: booked === nights.length,
+      section: "plan",
+      hash: "stays",
     });
   } else if (stays.some(stayInPlan)) {
     const active = stays.filter(stayInPlan);
@@ -74,6 +89,8 @@ export function tripBadges(
       label: m.owner_stays(),
       value: m.owner_confirmed_count({ p0: booked, p1: active.length }),
       done: booked === active.length,
+      section: "plan",
+      hash: "stays",
     });
   }
   const open = tasks.filter((task) => !task.completed_at).length;
@@ -82,6 +99,8 @@ export function tripBadges(
       label: m.owner_things_to_arrange(),
       value: open ? m.owner_open_2({ p0: open }) : m.owner_all_done(),
       done: open === 0,
+      section: "prepare",
+      hash: "tasks",
     });
   return badges;
 }
@@ -168,6 +187,7 @@ export function TripOverview({ trip }: { trip: Trip }) {
   const locale = useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
+  const visitsQuery = useTripResource(trip.id, "visits");
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const [now, setNow] = useState(() => new Date());
 
@@ -187,6 +207,10 @@ export function TripOverview({ trip }: { trip: Trip }) {
     [locale, trip, staysQuery.data, routesQuery.data, tasksQuery.data],
   );
 
+  const today = tripDay(now, stays, routes);
+  const progress = tripProgress(trip.starts_on, trip.ends_on, today);
+  const overdue = (tasksQuery.data ?? []).filter((task) => isOverdue(task, today)).length;
+  const agenda = buildAgendaItems(stays, routes, visitsQuery.data ?? []);
   const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
   if (!trip.starts_on && !badges.length && !stays.length && !routes.length) return null;
@@ -195,6 +219,24 @@ export function TripOverview({ trip }: { trip: Trip }) {
       className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0"
       aria-label={m.owner_trip_overview()}
     >
+      {progress && (
+        <strong>
+          {progress.kind === "before"
+            ? m.readiness_departure({ count: progress.days })
+            : progress.kind === "finished"
+              ? m.readiness_finished()
+              : progress.total
+                ? m.readiness_underway({ day: progress.day, total: progress.total })
+                : m.readiness_day({ day: progress.day })}
+        </strong>
+      )}
+      {overdue > 0 && (
+        <p className="m-0">
+          <Link className="secondary action-link" to={sectionPath(trip.id, "prepare")} hash="tasks">
+            {m.readiness_overdue({ count: overdue })}
+          </Link>
+        </p>
+      )}
       {trip.starts_on && (
         <p className="travel-eyebrow">
           {formatDay(trip.starts_on, "D MMMM")}
@@ -203,20 +245,54 @@ export function TripOverview({ trip }: { trip: Trip }) {
         </p>
       )}
       {localTimes}
+      {progress?.kind === "underway" && visitsQuery.data && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[today, addDays(today, 1)].map((date, index) => {
+            const entries = agenda.filter(
+              (item) => item.first <= date && (item.last ?? item.first) >= date,
+            );
+            return (
+              <section key={date}>
+                <h3 className="m-0 text-base">
+                  {index === 0 ? m.readiness_today() : m.readiness_tomorrow()}
+                </h3>
+                {entries.length ? (
+                  <ul className="m-0 grid gap-1 pl-5">
+                    {entries.map((item) => (
+                      <li key={item.id}>
+                        {item.time && <time>{item.time} </time>}
+                        {item.kind}: {item.title}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="m-0 text-travel-muted">{m.readiness_empty()}</p>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
       {badges.length > 0 && (
         <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
           {badges.map((badge) => (
             <StatusBadge key={badge.label} render={<li />}>
-              <span
-                aria-hidden="true"
-                className={
-                  badge.done
-                    ? "size-2 rounded-full bg-travel-link"
-                    : "size-2 rounded-full bg-travel-status-pending"
-                }
-              />
-              <span className="shrink-0">{badge.label}</span>{" "}
-              <strong className="text-travel-ink">{badge.value}</strong>
+              <Link
+                className="inline-flex items-center gap-1 text-inherit no-underline hover:underline focus-visible:underline"
+                to={sectionPath(trip.id, badge.section)}
+                hash={badge.hash}
+              >
+                <span
+                  aria-hidden="true"
+                  className={
+                    badge.done
+                      ? "size-2 rounded-full bg-travel-link"
+                      : "size-2 rounded-full bg-travel-status-pending"
+                  }
+                />
+                <span className="shrink-0">{badge.label}</span>{" "}
+                <strong className="text-travel-ink">{badge.value}</strong>
+              </Link>
             </StatusBadge>
           ))}
         </ul>

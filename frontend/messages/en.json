@@ -2259,5 +2259,15 @@
   "sharing_collection_link_warning": "Anyone with this link sees every trip in the collection, each at its own scope.",
   "sharing_draft_hint": "Add the trips first, check each preview, then activate.",
   "map_points_count": "Points on the map ({count})",
-  "map_lines_count": "Route in words ({count})"
+  "map_lines_count": "Route in words ({count})",
+  "readiness_overdue": "{count} overdue tasks",
+  "readiness_departure": "{count} days until departure",
+  "readiness_underway": "Day {day} of {total}",
+  "readiness_day": "Day {day}",
+  "readiness_finished": "Finished",
+  "task_overdue": "Overdue: {title}",
+  "readiness_today": "Today",
+  "readiness_tomorrow": "Tomorrow",
+  "readiness_empty": "Nothing planned",
+  "task_overdue_label": "Overdue"
 }

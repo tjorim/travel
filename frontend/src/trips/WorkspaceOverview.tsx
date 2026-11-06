@@ -27,8 +27,8 @@ export function WorkspaceOverview({ trip, areas, mapFocus, onOpenMapRecord }: Se
       </div>
       <div className="travel-overview-split">
         <div className="min-w-0 empty:hidden min-[1100px]:col-start-1 min-[1100px]:row-start-1">
-          <FirstSteps trip={trip} areas={areas} />
           <TripOverview trip={trip} />
+          <FirstSteps trip={trip} areas={areas} />
         </div>
         <div
           className="min-w-0 min-[1100px]:col-start-2 min-[1100px]:row-span-3 min-[1100px]:row-start-1"

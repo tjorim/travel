@@ -44,7 +44,7 @@ function route(id: string, changes: Partial<Route> = {}): Route {
 const badges = (routes: Route[]) => tripBadges({ starts_on: null, ends_on: null }, [], routes, []);
 
 it("counts planned day-only journeys in transport booking progress", () => {
-  expect(badges([route("1"), route("2"), route("3"), route("4")])).toEqual([
+  expect(badges([route("1"), route("2"), route("3"), route("4")])).toMatchObject([
     { label: "Vervoer", value: "0/4 bevestigd", done: false },
   ]);
 });
@@ -62,10 +62,10 @@ it("counts confirmed day-only journeys alongside timed journeys", () => {
       route("cancelled", { status: "cancelled" }),
       route("unscheduled", { departs_on: null }),
     ]),
-  ).toEqual([{ label: "Vervoer", value: "2/3 bevestigd", done: false }]);
+  ).toMatchObject([{ label: "Vervoer", value: "2/3 bevestigd", done: false }]);
   expect(
     badges([route("first", { status: "confirmed" }), route("second", { status: "confirmed" })]),
-  ).toEqual([{ label: "Vervoer", value: "bevestigd", done: true }]);
+  ).toMatchObject([{ label: "Vervoer", value: "bevestigd", done: true }]);
   expect(
     badges([
       route("cancelled", { status: "cancelled" }),
@@ -115,7 +115,7 @@ it("never counts a stay idea as covering a night", () => {
       [],
       [],
     ),
-  ).toEqual([{ label: "Verblijven", value: "1/1 bevestigd", done: true }]);
+  ).toMatchObject([{ label: "Verblijven", value: "1/1 bevestigd", done: true }]);
 });
 
 it("does not place the owner at a stay idea", () => {
@@ -126,7 +126,7 @@ it("does not place the owner at a stay idea", () => {
 it("leaves route ideas out of booking progress and whereabouts", () => {
   const ideas = [route("a", { status: "idea" }), route("b", { status: "idea" })];
   expect(badges(ideas)).toEqual([]);
-  expect(badges([...ideas, route("c", { status: "confirmed" })])).toEqual([
+  expect(badges([...ideas, route("c", { status: "confirmed" })])).toMatchObject([
     { label: "Vervoer", value: "bevestigd", done: true },
   ]);
   const timed = route("d", {

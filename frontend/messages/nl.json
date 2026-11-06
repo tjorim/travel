@@ -2259,5 +2259,15 @@
   "sharing_collection_link_warning": "Iedereen met deze link ziet elke reis in de verzameling, elk met een eigen bereik.",
   "sharing_draft_hint": "Voeg eerst de reizen toe, bekijk elk voorbeeld en activeer dan.",
   "map_points_count": "Punten op de kaart ({count})",
-  "map_lines_count": "Route in woorden ({count})"
+  "map_lines_count": "Route in woorden ({count})",
+  "readiness_overdue": "{count} achterstallige taken",
+  "readiness_departure": "Nog {count} dagen tot vertrek",
+  "readiness_underway": "Dag {day} van {total}",
+  "readiness_day": "Dag {day}",
+  "readiness_finished": "Afgelopen",
+  "task_overdue": "Achterstallig: {title}",
+  "readiness_today": "Vandaag",
+  "readiness_tomorrow": "Morgen",
+  "readiness_empty": "Niets gepland",
+  "task_overdue_label": "Achterstallig"
 }

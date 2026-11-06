@@ -27,9 +27,14 @@ export function useOpenSections(
     if (!id || !parts.some((part) => part.id === id)) return undefined;
     setOpen((current) => ({ ...current, [id]: true }));
     // The block expands on the next render; scroll once it has its full height.
-    const frame = requestAnimationFrame(() =>
-      document.getElementById(id)?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
-    );
+    const frame = requestAnimationFrame(() => {
+      const element = document.getElementById(id);
+      element?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      (
+        element?.querySelector<HTMLElement>("[data-section-focus]") ??
+        element?.querySelector<HTMLButtonElement>("button")
+      )?.focus({ preventScroll: true });
+    });
     return () => cancelAnimationFrame(frame);
   };
 

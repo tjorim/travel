@@ -1,3 +1,4 @@
+import { isOverdue, tripDay } from "./readiness";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "../query/feedback";
@@ -21,6 +22,7 @@ import {
 } from "../query/owner-queries";
 import {
   formatInstant,
+  formatDay,
   localDateTime,
   type TaskLink,
   type Trip,
@@ -222,6 +224,9 @@ export function TripTaskManager({
           : m.owner_outstanding_bookings_and_preparations_stay_on_a_private_list());
   const fail = (fallback: import("../query/api").ErrorFallback) => (error: unknown) =>
     setNotice(errorNotice(error, fallback));
+  const readinessStays = useTripResource(trip.id, "stays").data ?? [];
+  const readinessRoutes = useTripResource(trip.id, "routes").data ?? [];
+  const today = tripDay(new Date(), readinessStays, readinessRoutes);
   const openTasks = tasks
     .filter((task) => !task.completed_at)
     .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
@@ -257,12 +262,21 @@ export function TripTaskManager({
     >
       <Button className="document-select" type="button" onClick={() => inspect(task)}>
         <strong>{task.title}</strong>
+        {isOverdue(task, today) && (
+          <strong
+            role="note"
+            className="block text-travel-danger"
+            aria-label={m.task_overdue({ title: task.title })}
+          >
+            {m.task_overdue_label()}
+          </strong>
+        )}
         <span>
           {task.completed_at
             ? m.owner_checked_off({
-                p0: task.due_date ? m.owner_was_due({ p0: task.due_date }) : "",
+                p0: task.due_date ? m.owner_was_due({ p0: formatDay(task.due_date) }) : "",
               })
-            : `${task.due_date ? m.owner_due({ p0: task.due_date }) : m.owner_no_deadline()}${task.remind_at ? m.owner_reminder_2({ p0: formatInstant(task.remind_at) }) : ""}`}
+            : `${task.due_date ? m.owner_due({ p0: formatDay(task.due_date) }) : m.owner_no_deadline()}${task.remind_at ? m.owner_reminder_2({ p0: formatInstant(task.remind_at) }) : ""}`}
         </span>
       </Button>
       <div className="button-row">
@@ -283,7 +297,12 @@ export function TripTaskManager({
   );
 
   return (
-    <section className="travel-card manager" aria-labelledby="tasks-title">
+    <section
+      className="travel-card manager"
+      aria-labelledby="tasks-title"
+      tabIndex={-1}
+      data-section-focus=""
+    >
       <div className="capture-heading">
         <div>
           <h3 id="tasks-title">{m.owner_things_to_arrange()}</h3>
