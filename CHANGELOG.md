@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Make phone Capture photo-first: choose or take photos (uploaded to the trip's private library, deduplicated, with thumbnails, retry and removal), write one line and save, on the trip underway (else the next upcoming, else the last captured into) and the time now, with Save and a short private-by-default line in a sticky bar that follows the on-screen keyboard; the language switch, connection status, full privacy text, date and time, private note, library photos and location fold under a keyboard-reachable "More" (Closes #233).
+
 - Add owner readiness links, calendar-day countdown and progress, overdue task marking, consistent task dates, and today/tomorrow agenda summaries (Closes #232).
 
 - Show public trip covers on the landing and trip index cards only when the public audience receives the approved photo; reserve image space and fall back to text when loading fails (Closes #229).

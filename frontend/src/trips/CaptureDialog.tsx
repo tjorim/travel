@@ -1,16 +1,19 @@
 import { Button } from "@/ui/button";
+import { Collapsible } from "@/ui/collapsible";
 import { useStore } from "@tanstack/react-form";
+import { ChevronDownIcon, LockIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { decodeSubject } from "../auth";
 import { useAuth } from "../auth-context";
 import { requiredText, TextField } from "../forms/fields";
 import { DateTimeField } from "../forms/DateTimeFields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { blockUnreadableEntries } from "../forms/unreadable-entry";
+import { blockUnreadableEntries, UNREADABLE_ENTRY } from "../forms/unreadable-entry";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useRecordForm } from "../forms/useRecordForm";
-import { useLocale } from "../locale";
+import { LocaleControl, useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { errorMessage } from "../query/api";
 import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/feedback";
@@ -29,15 +32,21 @@ import {
   type PlaceSearchResult,
   type TravelUpdate,
   type TravelUpdateCandidateIntent,
+  type Trip,
   type UpdateDraft,
 } from "../tracker-model";
+import { CapturePhotos } from "./capture/CapturePhotos";
+import { captureTripOrder } from "./capture/default-trip";
 import { LocationSearch } from "./capture/LocationSearch";
 import { PhotoLinks } from "./capture/PhotoLinks";
 import { SavedUpdates } from "./capture/SavedUpdates";
 import { TripChoice } from "./capture/TripChoice";
 import { useCaptureMedia } from "./capture/use-capture-media";
 import { SAVE_FALLBACK, useCaptureMutations } from "./capture/use-capture-mutations";
+import { useCaptureUploads } from "./capture/use-capture-uploads";
 import { usePlaceSearch } from "./capture/use-place-search";
+import { useVisualViewportFit } from "./capture/use-visual-viewport";
+import { today } from "./trip-state";
 
 export type CaptureDialogProps = {
   open: boolean;
@@ -49,8 +58,9 @@ export type CaptureDialogProps = {
   onDismiss: () => void;
 };
 
-/** The shared capture form (date/time, title, private notes, media, optional location) as an
- * accessible dialog over the current workspace. Drafts are kept per trip, so opening this for
+/** The shared capture form as an accessible dialog over the current workspace. It is photo-first: choose or take
+ * photos, write one line and save, on the trip underway and the time now. The date and time, private note, linked
+ * library photos, location, language and connection status fold under "More". Drafts are kept per trip, so opening this for
  * one trip never reads or silently overwrites another trip's unsaved draft. */
 export function CaptureDialog(props: CaptureDialogProps) {
   const { session } = useAuth();
@@ -78,7 +88,10 @@ function OwnerCaptureDialog({
   const [saveState, setSaveState] = useFeedback<string>("");
   const initialized = useRef(false);
   const [loadedTrip, setLoadedTrip] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const submittedDraft = useRef<UpdateDraft | null>(null);
+  // The submit handler is created before the photo uploads it must wait for, so it reads their state from here.
+  const uploadState = useRef({ failed: false });
 
   const { saveUpdate, deleteUpdate } = useCaptureMutations();
 
@@ -92,6 +105,7 @@ function OwnerCaptureDialog({
         throw new FeedbackError(() =>
           m.owner_you_are_offline_this_draft_stays_on_this_device_and_is_not_sent_automati(),
         );
+      if (uploadState.current.failed) throw new FeedbackError(() => m.capture_photo_blocks_save());
       submittedDraft.current = {
         ...values,
         [DRAFT_FENCE]: values[DRAFT_FENCE] ? { ...values[DRAFT_FENCE] } : undefined,
@@ -129,6 +143,7 @@ function OwnerCaptureDialog({
       setSaveState(textNotice(() => m.owner_travel_update_saved()));
       record.load(emptyDraft(values.tripId));
       places.reset();
+      uploads.reset();
     },
   });
   const draft = record.values;
@@ -142,12 +157,25 @@ function OwnerCaptureDialog({
     () => (lockedTripId ? (trips.find((trip) => trip.id === lockedTripId) ?? null) : null),
     [lockedTripId, trips],
   );
+  const uploads = useCaptureUploads(selectedTrip?.id ?? null, (asset) => {
+    form.setFieldValue("mediaAssetIds", (current: string[]) =>
+      current.includes(asset.id) ? current : [...current, asset.id],
+    );
+    setSaveState(
+      textNotice(() =>
+        m.capture_photo_added({ name: asset.original_filename ?? m.owner_unnamed_photo() }),
+      ),
+    );
+  });
+  uploadState.current.failed = uploads.failed;
   const { media, attachedMedia, mediaState } = useCaptureMedia(
     selectedTrip?.id ?? null,
     open,
     draft.mediaAssetIds,
+    uploads.uploaded,
   );
   const places = usePlaceSearch(selectedTrip?.id ?? null, Boolean(session));
+  const keyboardFit = useVisualViewportFit(open);
 
   useEffect(() => {
     const updateConnection = () => setConnection(navigator.onLine);
@@ -165,7 +193,7 @@ function OwnerCaptureDialog({
     // A candidate is a deliberate handoff, so it is taken even when the dialog — mounted closed over the trip
     // workspace — has already loaded a stored draft; only the stored-draft path runs once.
     if ((initialized.current && !candidate) || trips.length === 0) return;
-    const tripId = lockedTripId ?? candidate?.tripId ?? trips[0].id;
+    const tripId = lockedTripId ?? candidate?.tripId ?? startingTripId(trips);
     if (!trips.some((trip) => trip.id === tripId)) return;
     initialized.current = true;
     setLoadedTrip(tripId);
@@ -220,6 +248,35 @@ function OwnerCaptureDialog({
     };
   }, [draft, loadedTrip]);
 
+  /** The trip a new capture starts on: one with an unsent draft wins, then underway, upcoming and last used. */
+  function startingTripId(list: Trip[]): string {
+    const ordered = captureTripOrder(list, today());
+    return (ordered.find((trip) => readDraft(trip.id)) ?? ordered[0]).id;
+  }
+
+  // A reopened dialog that holds nothing yet starts again on the trip underway and the time now.
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    const reopened = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (!reopened || !initialized.current || candidate || lockedTripId || trips.length === 0)
+      return;
+    const blank =
+      !draft.updateId &&
+      !draft.title &&
+      !draft.notes &&
+      !draft.location &&
+      !draft.mediaAssetIds.length;
+    if (!blank) return;
+    const tripId = startingTripId(trips);
+    if (tripId === draft.tripId) {
+      record.load(emptyDraft(tripId));
+      return;
+    }
+    selectTrip(tripId);
+    // `selectTrip` and the draft are read at the moment of reopening only.
+  }, [open]);
+
   function updateDraft(values: Partial<UpdateDraft>) {
     for (const [name, value] of Object.entries(values))
       form.setFieldValue(name as Extract<keyof UpdateDraft, string>, value as never);
@@ -255,6 +312,8 @@ function OwnerCaptureDialog({
       mediaAssetIds: update.media_asset_ids,
     });
     places.reset();
+    // A saved update's note and place live under "More"; editing it should show them.
+    setMoreOpen(true);
     setSaveState(textNotice(() => m.owner_you_are_editing_a_saved_travel_update()));
   }
 
@@ -323,13 +382,26 @@ function OwnerCaptureDialog({
     : draft.updateId
       ? m.owner_edit_travel_update()
       : m.owner_new_travel_update();
+  const status = record.serverError ?? (saveState || draftState);
+
+  function submitForm() {
+    // Fields under "More" cannot show their error while it is folded, so open it when one of them is the problem.
+    if (!moreOpen && record.formRef.current?.querySelector(`[${UNREADABLE_ENTRY}]`))
+      flushSync(() => setMoreOpen(true));
+    if (blockUnreadableEntries(record.formRef.current)) return;
+    void form.handleSubmit().then(() => {
+      if (form.getFieldMeta("occurredAt")?.errors.length) setMoreOpen(true);
+    });
+  }
 
   return (
     <RecordDialog
       open={open}
-      className="scroll-pt-40 [&_button]:min-h-11 [&_button]:min-w-11"
+      className="scroll-pb-40 [&_button]:min-h-11 [&_button]:min-w-11"
+      keyboardFit={keyboardFit}
+      localeControl={false}
       title={dialogTitle}
-      dirty={initialized.current && record.dirty}
+      dirty={initialized.current && (record.dirty || uploads.items.length > 0)}
       onDismiss={onDismiss}
     >
       {!session && (
@@ -350,40 +422,29 @@ function OwnerCaptureDialog({
       )}
       {session && trips.length > 0 && (
         <>
-          {draft.updateId && (
-            <div className="capture-heading">
-              <p className="travel-eyebrow">{m.owner_mobile_capture()}</p>
-              <div className="button-row">
-                <Button className="secondary compact" type="button" onClick={startNew}>
-                  {m.owner_new_travel_update()}
-                </Button>
-                <Button className="danger compact" type="button" onClick={removeUpdate}>
-                  {m.owner_delete()}
-                </Button>
-              </div>
-            </div>
-          )}
-          <p className={`connection ${connection ? "online" : "offline"}`} role="status">
-            {connection
-              ? m.owner_connected_you_choose_when_to_save()
-              : m.owner_offline_drafts_stay_local_there_is_no_automatic_synchronisation()}
-          </p>
           <form
             ref={record.formRef}
-            className="grid gap-4.5 rounded-travel-card border border-travel-card-border bg-travel-surface p-5 shadow-travel-card"
+            className="grid gap-4"
             noValidate
             onSubmit={(event) => {
               event.preventDefault();
-              if (blockUnreadableEntries(record.formRef.current)) return;
-              void form.handleSubmit();
+              submitForm();
             }}
           >
-            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-travel-divider bg-travel-surface py-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
-              <Button type="submit" disabled={record.pending}>
-                {draft.updateId ? m.owner_save_changes() : m.owner_save_travel_update()}
-              </Button>
-              <span aria-live="polite">{record.serverError ?? (saveState || draftState)}</span>
-            </div>
+            {draft.updateId && (
+              <div className="capture-heading">
+                <p className="travel-eyebrow m-0">{m.owner_mobile_capture()}</p>
+                <div className="button-row">
+                  <Button className="secondary compact" type="button" onClick={startNew}>
+                    {m.owner_new_travel_update()}
+                  </Button>
+                  <Button className="danger compact" type="button" onClick={removeUpdate}>
+                    {m.owner_delete()}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {!connection && <ConnectionStatus connection={connection} />}
             <TripChoice
               lockedTrip={lockedTrip}
               selectedTrip={selectedTrip}
@@ -392,84 +453,129 @@ function OwnerCaptureDialog({
               search={searchTrips}
               onSelect={selectTrip}
             />
-            {selectedTrip && (
-              <aside className="publication" aria-label={m.owner_sharing_this_travel_update()}>
-                <strong>{m.owner_before_saving()}</strong>
-                <span>
-                  {m.owner_a_new_travel_update_is_private_your_notes_location_and_photos_are_never()}
-                </span>
-              </aside>
-            )}
-            <div className="grid gap-4.5">
-              <form.Field
-                name="occurredAt"
-                listeners={clearSaveState}
-                validators={{
-                  onChange: requiredText(m.owner_enter_the_date_and_time),
-                  onSubmit: requiredText(m.owner_enter_the_date_and_time),
-                }}
-              >
-                {(field) => (
-                  <DateTimeField field={field} label={m.owner_date_and_time()} required stacked />
-                )}
-              </form.Field>
-              <form.Field
-                name="title"
-                listeners={clearSaveState}
-                validators={{
-                  onChange: requiredText(m.owner_give_the_travel_update_a_title),
-                  onSubmit: requiredText(m.owner_give_the_travel_update_a_title),
-                }}
-              >
-                {(field) => (
-                  <TextField
-                    field={field}
-                    label={m.owner_title()}
-                    required
-                    maxLength={160}
-                    placeholder={m.owner_for_example_first_evening()}
-                  />
-                )}
-              </form.Field>
-            </div>
-            <form.Field name="notes" listeners={clearSaveState}>
+            <CapturePhotos
+              photoIds={draft.mediaAssetIds}
+              assets={attachedMedia}
+              uploads={uploads.items}
+              online={connection && Boolean(selectedTrip)}
+              onAdd={uploads.add}
+              onRemove={toggleMedia}
+              onRetry={uploads.retry}
+              onDropUpload={uploads.drop}
+            />
+            <form.Field
+              name="title"
+              listeners={clearSaveState}
+              validators={{
+                onChange: requiredText(m.owner_give_the_travel_update_a_title),
+                onSubmit: requiredText(m.owner_give_the_travel_update_a_title),
+              }}
+            >
               {(field) => (
-                <MarkdownField
+                <TextField
                   field={field}
-                  label={m.owner_private_note()}
-                  optional
-                  maxLength={10000}
-                  rows={6}
-                  placeholder={m.owner_what_do_you_want_to_remember_you_never_share_this()}
+                  label={m.owner_title()}
+                  required
+                  maxLength={160}
+                  enterKeyHint="done"
+                  placeholder={m.owner_for_example_first_evening()}
                 />
               )}
             </form.Field>
-            <PhotoLinks
-              mediaState={mediaState}
-              media={media}
-              attachedMedia={attachedMedia}
-              selectedIds={draft.mediaAssetIds}
-              dismissedSuggestions={places.dismissedSuggestions}
-              onToggle={toggleMedia}
-              onUseCaptureDate={adoptCaptureDate}
-              onFindPlace={places.reverseGeocode}
-              onDismiss={(assetId) =>
-                places.setDismissedSuggestions((current) => [...current, assetId])
-              }
-            />
-            <LocationSearch
-              candidateGps={places.candidateGps}
-              query={places.query}
-              location={draft.location}
-              state={places.state}
-              results={places.results}
-              onQueryChange={places.setQuery}
-              onSearch={places.search}
-              onSelect={selectPlace}
-              onClear={() => updateDraft({ location: null })}
-              onFindPlace={places.reverseGeocode}
-              onDismissCandidate={() => places.setCandidateGps(null)}
-            />
+            <Collapsible.Root open={moreOpen} onOpenChange={setMoreOpen} className="grid gap-4">
+              <Collapsible.Trigger className="group flex min-h-11 w-full items-center gap-2 rounded-xl border border-travel-card-border bg-travel-surface px-3.5 py-2 text-left font-bold text-travel-ink">
+                <ChevronDownIcon
+                  className="size-4 shrink-0 text-travel-muted transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+                <span className="grid min-w-0 gap-0.5">
+                  {m.capture_more()}
+                  <span className="text-sm font-medium text-travel-muted">
+                    {m.capture_more_hint()}
+                  </span>
+                </span>
+              </Collapsible.Trigger>
+              <Collapsible.Panel keepMounted className="grid gap-4">
+                <LocaleControl />
+                {connection && <ConnectionStatus connection={connection} />}
+                {selectedTrip && (
+                  <aside className="publication" aria-label={m.owner_sharing_this_travel_update()}>
+                    <strong>{m.owner_before_saving()}</strong>
+                    <span>
+                      {m.owner_a_new_travel_update_is_private_your_notes_location_and_photos_are_never()}
+                    </span>
+                  </aside>
+                )}
+                <form.Field
+                  name="occurredAt"
+                  listeners={clearSaveState}
+                  validators={{
+                    onChange: requiredText(m.owner_enter_the_date_and_time),
+                    onSubmit: requiredText(m.owner_enter_the_date_and_time),
+                  }}
+                >
+                  {(field) => (
+                    <DateTimeField field={field} label={m.owner_date_and_time()} required stacked />
+                  )}
+                </form.Field>
+                <form.Field name="notes" listeners={clearSaveState}>
+                  {(field) => (
+                    <MarkdownField
+                      field={field}
+                      label={m.owner_private_note()}
+                      optional
+                      maxLength={10000}
+                      rows={6}
+                      placeholder={m.owner_what_do_you_want_to_remember_you_never_share_this()}
+                    />
+                  )}
+                </form.Field>
+                <PhotoLinks
+                  mediaState={mediaState}
+                  media={media}
+                  attachedMedia={attachedMedia}
+                  selectedIds={draft.mediaAssetIds}
+                  dismissedSuggestions={places.dismissedSuggestions}
+                  onToggle={toggleMedia}
+                  onUseCaptureDate={adoptCaptureDate}
+                  onFindPlace={places.reverseGeocode}
+                  onDismiss={(assetId) =>
+                    places.setDismissedSuggestions((current) => [...current, assetId])
+                  }
+                />
+                <LocationSearch
+                  candidateGps={places.candidateGps}
+                  query={places.query}
+                  location={draft.location}
+                  state={places.state}
+                  results={places.results}
+                  onQueryChange={places.setQuery}
+                  onSearch={places.search}
+                  onSelect={selectPlace}
+                  onClear={() => updateDraft({ location: null })}
+                  onFindPlace={places.reverseGeocode}
+                  onDismissCandidate={() => places.setCandidateGps(null)}
+                />
+              </Collapsible.Panel>
+            </Collapsible.Root>
+            <div className="sticky bottom-0 z-10 -mx-4.5 grid gap-2 border-t border-travel-divider bg-travel-surface px-4.5 pt-3 pb-3 min-[621px]:-mx-5.5 min-[621px]:px-5.5">
+              <p className="m-0 flex items-center gap-1.5 text-sm leading-normal text-travel-muted">
+                <LockIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                {m.capture_private_short()}
+              </p>
+              <div className="grid gap-1.5 min-[621px]:flex min-[621px]:items-center min-[621px]:gap-3 [&_span]:text-sm [&_span]:leading-normal [&_span]:text-travel-muted">
+                <Button
+                  className="w-full shrink-0 whitespace-nowrap min-[621px]:w-auto"
+                  type="submit"
+                  disabled={record.pending || uploads.busy}
+                >
+                  {draft.updateId ? m.owner_save_changes() : m.owner_save_travel_update()}
+                </Button>
+                <span className="min-w-0 empty:hidden" aria-live="polite">
+                  {uploads.busy ? m.capture_photos_uploading() : status}
+                </span>
+              </div>
+            </div>
           </form>
           {selectedTrip && selectedTrip.travel_updates.length > 0 && (
             <SavedUpdates updates={selectedTrip.travel_updates} onEdit={editUpdate} />
@@ -478,5 +584,16 @@ function OwnerCaptureDialog({
       )}
       {confirmation.dialog}
     </RecordDialog>
+  );
+}
+
+function ConnectionStatus({ connection }: { connection: boolean }) {
+  useLocale();
+  return (
+    <p className={`connection ${connection ? "online" : "offline"}`} role="status">
+      {connection
+        ? m.owner_connected_you_choose_when_to_save()
+        : m.owner_offline_drafts_stay_local_there_is_no_automatic_synchronisation()}
+    </p>
   );
 }

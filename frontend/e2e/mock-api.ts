@@ -37,8 +37,37 @@ export const sharedToken = "share-token-1";
 const json = (route: Route, body: unknown, status = 200) =>
   route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 
+/** A 1×1 PNG, standing in for an owner photo's thumbnail. */
+const pixel = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** What the mocked owner API received: photos uploaded to the trip and travel updates saved to it. */
+export type MockApiRecord = {
+  uploads: { filename: string }[];
+  updates: Record<string, unknown>[];
+};
+
 /** Answers the owner, public and shared APIs in the page; any other request leaves the machine only if it is local. */
-export async function mockApi(page: Page) {
+export async function mockApi(page: Page): Promise<MockApiRecord> {
+  const record: MockApiRecord = { uploads: [], updates: [] };
+  const media = () =>
+    record.uploads.map((upload, index) => ({
+      id: `photo-${index + 1}`,
+      media_kind: "photo",
+      byte_size: 100,
+      content_type: "image/png",
+      captured_at: null,
+      captured_local: false,
+      created_at: "2054-11-02T10:00:00Z",
+      original_filename: upload.filename,
+      camera_make: null,
+      camera_model: null,
+      gps: null,
+      file_url: `/api/trips/${ownerTrip.id}/media/photo-${index + 1}/file`,
+      thumbnail_url: `/api/trips/${ownerTrip.id}/media/photo-${index + 1}/thumbnail`,
+    }));
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.hostname !== "localhost") return route.abort();
@@ -58,8 +87,42 @@ export async function mockApi(page: Page) {
     if (path === "/api/public/trips/exampleland-2054") return json(route, publicTrip);
     if (path === `/api/shared/${sharedToken}`) return json(route, sharedTrip);
 
+    // Capture: choosing a photo uploads it, saving writes the update; both are kept for the test to inspect.
+    if (
+      route.request().method() === "POST" &&
+      path === `/api/trips/${ownerTrip.id}/media/uploads`
+    ) {
+      const filename =
+        /filename="([^"]*)"/.exec(route.request().postData() ?? "")?.[1] ?? "photo.png";
+      record.uploads.push({ filename });
+      return json(route, media().at(-1));
+    }
+    if (
+      route.request().method() === "POST" &&
+      path === `/api/trips/${ownerTrip.id}/travel-updates`
+    ) {
+      const body = JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>;
+      record.updates.push(body);
+      return json(
+        route,
+        {
+          id: `update-${record.updates.length}`,
+          date_precision: "day",
+          body: "",
+          area_id: null,
+          visibility: "private",
+          location: null,
+          ...body,
+        },
+        201,
+      );
+    }
     if (route.request().method() !== "GET") return json(route, { detail: "read-only mock" }, 405);
-    if (path === "/api/trips") return json(route, [ownerTrip]);
+    if (path.includes("/media/") && (path.endsWith("/thumbnail") || path.endsWith("/file")))
+      return route.fulfill({ status: 200, contentType: "image/png", body: pixel });
+    if (path === `/api/trips/${ownerTrip.id}/media`) return json(route, media());
+    if (path === "/api/trips")
+      return json(route, [{ ...ownerTrip, travel_updates: record.updates.map(saved) }]);
     if (path === `/api/trips/${ownerTrip.id}/public-projection`) {
       return json(route, {
         revision: 1,
@@ -87,7 +150,20 @@ export async function mockApi(page: Page) {
     // Every other owner collection (stays, routes, documents, library, provider status...) is empty.
     return json(route, []);
   });
+  return record;
 }
+
+const saved = (body: Record<string, unknown>, index: number) => ({
+  id: `update-${index + 1}`,
+  date_precision: "day",
+  body: "",
+  area_id: null,
+  visibility: "private",
+  location: null,
+  private_notes: null,
+  media_asset_ids: [],
+  ...body,
+});
 
 /** The unsigned token the dev server seeds (`devSession` in vite.config.ts); the mocked API never checks it. */
 export async function signInOwner(page: Page) {

@@ -2269,5 +2269,21 @@
   "readiness_today": "Today",
   "readiness_tomorrow": "Tomorrow",
   "readiness_empty": "Nothing planned",
-  "task_overdue_label": "Overdue"
+  "task_overdue_label": "Overdue",
+  "capture_photos": "Photos",
+  "capture_choose_photos": "Choose photos",
+  "capture_take_photo": "Take a photo",
+  "capture_photos_offline": "Photos can only be added while you are online. Your note stays here as a draft.",
+  "capture_remove_photo": "Remove {name} from this update",
+  "capture_remove": "Remove",
+  "capture_uploading_photo": "Uploading {name}…",
+  "capture_photo_added": "{name} added to this update.",
+  "capture_upload_failed": "{name} could not be uploaded.",
+  "capture_retry_upload": "Try again",
+  "capture_retry_upload_named": "Try uploading {name} again",
+  "capture_photo_blocks_save": "A photo was not uploaded. Try again or remove it before saving.",
+  "capture_photos_uploading": "Photos are still uploading…",
+  "capture_private_short": "Private — only you see this, photos included.",
+  "capture_more": "More",
+  "capture_more_hint": "Language, date and time, location, connection"
 }

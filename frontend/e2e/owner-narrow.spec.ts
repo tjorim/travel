@@ -73,6 +73,10 @@ for (const locale of ["nl", "en"] as const) {
           exact: true,
         });
         await title.fill("Synthetic local draft");
+        // The note, date and time sit under "More" so the line and Save come first.
+        await dialog
+          .getByRole("button", { name: new RegExp(`^${message(locale, "capture_more")}`) })
+          .click();
         const notes = dialog.getByRole("textbox", {
           name: message(locale, "owner_private_note"),
           exact: false,
