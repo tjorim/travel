@@ -82,6 +82,7 @@ afterEach(async () => {
 
 it("draws routes, areas and locations from the shared reads", async () => {
   renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
+  await openLists();
   await screen.findByRole("button", { name: /Oostkust/ });
   expect(screen.getByRole("button", { name: "Taipei" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Café" })).toBeTruthy();
@@ -91,12 +92,14 @@ it("draws routes, areas and locations from the shared reads", async () => {
 it("uses a location's saved name over the locality it repeats for other points", async () => {
   api.collection("/api/trips/trip/locations", [cafe, pagoda]);
   renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
+  await openLists();
   await screen.findByRole("button", { name: "Longshan Temple" });
   expect(screen.queryAllByRole("button", { name: "Taipei" })).toHaveLength(1);
 });
 
 it("shows a route added elsewhere as soon as its read is refreshed, with no revision prop", async () => {
   const { client } = renderWithOwner(<OwnerTripMap trip={trip} areas={[]} />);
+  await openLists();
   await screen.findByRole("button", { name: /Oostkust/ });
   api.push("/api/trips/trip/routes", route("r2", "Westkust"));
   await act(async () => {
@@ -135,6 +138,7 @@ it("falls back to the pinned map copy when the live reads are refused", async ()
     ),
   );
   renderWithOwner(<OwnerTripMap trip={trip} areas={[]} />);
+  await openLists(false);
   await screen.findByRole("button", { name: "Bewaarde stad" });
   expect(
     screen.getByText(
@@ -146,6 +150,7 @@ it("falls back to the pinned map copy when the live reads are refused", async ()
 
 it("pins the current map data for offline use", async () => {
   renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
+  await openLists();
   await screen.findByRole("button", { name: /Oostkust/ });
   fireEvent.click(screen.getByRole("button", { name: "Kaart offline bewaren" }));
   await screen.findByText(/offline bewaard op dit toestel/);
@@ -157,6 +162,7 @@ it("offers a private derived area dot and stores it only on request", async () =
   api.collection("/api/trips/trip/locations", [{ ...cafe, area_id: "taipei" }]);
   api.on("PATCH", /\/areas\/taipei$/, (_url, body) => ({ ...unpointed, ...body }));
   renderWithOwner(<OwnerTripMap trip={trip} areas={[unpointed]} />);
+  await openLists();
   fireEvent.click(await screen.findByRole("button", { name: "Taipei" }));
   expect(api.count("PATCH /api/trips/trip/areas/taipei")).toBe(0);
   fireEvent.click(screen.getByRole("button", { name: "Gebruik als punt" }));
@@ -167,3 +173,10 @@ it("offers a private derived area dot and stores it only on request", async () =
     }),
   );
 });
+
+async function openLists(hasRoutes = true) {
+  const points = await screen.findByRole("button", { name: /Punten op de kaart/ });
+  expect(points.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(points);
+  if (hasRoutes) fireEvent.click(await screen.findByRole("button", { name: /Route in woorden/ }));
+}

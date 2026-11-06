@@ -3,6 +3,7 @@ import { textNotice, useFeedback } from "./query/feedback";
 import { useLocale } from "./locale";
 import { m } from "./paraglide/messages.js";
 import { themeColor, useTheme } from "./appearance";
+import { Collapsible } from "@/ui/collapsible";
 import { Button } from "@/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/ui/toggle-group";
 import { useEffect, useRef, useState } from "react";
@@ -190,16 +191,60 @@ function applySatellite(instance: MapLibreMap, on: boolean) {
   paintBuildings(instance, on);
 }
 
+/** Frame the majority regional cluster, leaving isolated long-haul stops for the whole-trip view. */
+export function framingCoordinates(
+  points: MapPoint[],
+  lines: MapLine[],
+  whole = false,
+): [number, number][] {
+  if (whole || !points.length)
+    return [
+      ...points.map((point) => point.coordinates),
+      ...lines.flatMap((line) => line.coordinates),
+    ];
+  const clusters: MapPoint[][] = [];
+  const remaining = new Set(points);
+  const nearby = (a: MapPoint, b: MapPoint) => {
+    const radians = Math.PI / 180;
+    const [lng1, lat1] = a.coordinates.map((value) => value * radians);
+    const [lng2, lat2] = b.coordinates.map((value) => value * radians);
+    const distance =
+      12742 *
+      Math.asin(
+        Math.sqrt(
+          Math.sin((lat2 - lat1) / 2) ** 2 +
+            Math.cos(lat1) * Math.cos(lat2) * Math.sin((lng2 - lng1) / 2) ** 2,
+        ),
+      );
+    return distance < 2000;
+  };
+  for (const point of remaining) {
+    const cluster = [point];
+    remaining.delete(point);
+    for (const member of cluster)
+      for (const candidate of remaining)
+        if (nearby(member, candidate)) {
+          remaining.delete(candidate);
+          cluster.push(candidate);
+        }
+    clusters.push(cluster);
+  }
+  const largest = clusters.sort((a, b) => b.length - a.length)[0];
+  return (largest && largest.length > points.length / 2 ? largest : points).map(
+    (point) => point.coordinates,
+  );
+}
+
 function fitToData(
   instance: MapLibreMap,
   Bounds: typeof import("maplibre-gl").LngLatBounds,
   points: MapPoint[],
   lines: MapLine[],
   duration = 0,
+  whole = false,
 ) {
   const bounds = new Bounds();
-  points.forEach((point) => bounds.extend(point.coordinates));
-  lines.forEach((line) => line.coordinates.forEach((coordinate) => bounds.extend(coordinate)));
+  framingCoordinates(points, lines, whole).forEach((coordinate) => bounds.extend(coordinate));
   if (!bounds.isEmpty())
     instance.fitBounds(bounds, { padding: 45, maxZoom: 10, duration, pitch: 0, bearing: 0 });
 }
@@ -221,6 +266,7 @@ export function TripMap({
   points,
   lines,
   owner = false,
+  collapseLists = false,
   wide = false,
   headingLevel = 3,
   perspective,
@@ -233,6 +279,7 @@ export function TripMap({
   points: MapPoint[];
   lines: MapLine[];
   owner?: boolean;
+  collapseLists?: boolean;
   /** A visitor map beside the trip context: taller on wide screens, as the owner map is. */
   wide?: boolean;
   /** The level of the map's own heading; the point and route lists sit one level below it. */
@@ -654,7 +701,7 @@ export function TripMap({
     if (!ready || !instance?.getLayer("followed-stop")) return;
     const point = follow ? points.find((candidate) => candidate.id === follow) : undefined;
     instance.setFilter("followed-stop", ["==", ["get", "id"], point?.id ?? ""]);
-    if (point) instance.easeTo({ center: point.coordinates, duration: 700 });
+    if (point) instance.easeTo({ center: point.coordinates, zoom: 9, duration: 700 });
   }, [follow, ready]);
 
   // Photo markers are pointer shortcuts laid over the map; the same updates stay reachable from the point buttons below it.
@@ -824,7 +871,7 @@ export function TripMap({
     if (!instance) return;
     instance.setFilter("focused-locations", focusFilter(""));
     void import("maplibre-gl").then(({ LngLatBounds }) => {
-      if (map.current === instance) fitToData(instance, LngLatBounds, points, lines, 500);
+      if (map.current === instance) fitToData(instance, LngLatBounds, points, lines, 500, true);
     });
   }
 
@@ -989,43 +1036,55 @@ export function TripMap({
         </div>
       )}
       {points.length > 0 && (
-        <div>
-          <Heading level={headingLevel + 1}>{m.owner_points_on_the_map()}</Heading>
-          <ol className="flex list-none flex-wrap gap-1.75 p-0">
-            {points.map((point) => (
-              <li key={point.id}>
-                <Button
-                  className="secondary compact"
-                  type="button"
-                  aria-pressed={selectedKind === "point" && selected === point.id}
-                  onClick={() => selectPoint(point)}
-                >
-                  {point.label}
-                </Button>
-              </li>
-            ))}
-          </ol>
-        </div>
+        <Collapsible.Root defaultOpen={!collapseLists}>
+          <Heading level={headingLevel + 1}>
+            <Collapsible.Trigger className="min-h-11 rounded-travel-control bg-transparent text-left font-bold text-travel-forest underline focus-visible:outline-3 focus-visible:outline-travel-focus">
+              {m.map_points_count({ count: points.length })}
+            </Collapsible.Trigger>
+          </Heading>
+          <Collapsible.Panel>
+            <ol className="flex list-none flex-wrap gap-1.75 p-0">
+              {points.map((point) => (
+                <li key={point.id}>
+                  <Button
+                    className="secondary compact"
+                    type="button"
+                    aria-pressed={selectedKind === "point" && selected === point.id}
+                    onClick={() => selectPoint(point)}
+                  >
+                    {point.label}
+                  </Button>
+                </li>
+              ))}
+            </ol>
+          </Collapsible.Panel>
+        </Collapsible.Root>
       )}
       {lines.length > 0 && (
-        <div>
-          <Heading level={headingLevel + 1}>{m.owner_route_in_words()}</Heading>
-          <ol className="mb-0 pl-5.5">
-            {lines.map((line) => (
-              <li key={line.id}>
-                <Button
-                  className="secondary compact text-left"
-                  type="button"
-                  aria-pressed={selectedKind === "line" && selected === line.id}
-                  onClick={() => selectLine(line)}
-                >
-                  {line.from && line.to ? `${line.from} → ${line.to} · ` : ""}
-                  {line.label}
-                </Button>
-              </li>
-            ))}
-          </ol>
-        </div>
+        <Collapsible.Root defaultOpen={!collapseLists}>
+          <Heading level={headingLevel + 1}>
+            <Collapsible.Trigger className="min-h-11 rounded-travel-control bg-transparent text-left font-bold text-travel-forest underline focus-visible:outline-3 focus-visible:outline-travel-focus">
+              {m.map_lines_count({ count: lines.length })}
+            </Collapsible.Trigger>
+          </Heading>
+          <Collapsible.Panel>
+            <ol className="mb-0 pl-5.5">
+              {lines.map((line) => (
+                <li key={line.id}>
+                  <Button
+                    className="secondary compact text-left"
+                    type="button"
+                    aria-pressed={selectedKind === "line" && selected === line.id}
+                    onClick={() => selectLine(line)}
+                  >
+                    {line.from && line.to ? `${line.from} → ${line.to} · ` : ""}
+                    {line.label}
+                  </Button>
+                </li>
+              ))}
+            </ol>
+          </Collapsible.Panel>
+        </Collapsible.Root>
       )}
     </section>
   );

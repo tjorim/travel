@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { areaFocusPoints, TripMap } from "./TripMap";
+import { areaFocusPoints, framingCoordinates, TripMap } from "./TripMap";
 
 afterEach(cleanup);
 
@@ -29,7 +29,7 @@ it("keeps the route and stop controls usable when WebGL is unavailable", () => {
   ).toBeTruthy();
   expect(screen.getByRole("button", { name: "Area city" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Area route" })).toBeTruthy();
-  const words = screen.getByRole("heading", { name: "Route in woorden" }).parentElement!;
+  const words = screen.getByRole("heading", { name: "Route in woorden (1)" }).parentElement!;
   expect(within(words).getByRole("button", { name: "Area route" })).toBeTruthy();
   expect(within(words).queryByText("Area city")).toBeNull();
   expect((screen.getByRole("button", { name: "3D-terrein" }) as HTMLButtonElement).disabled).toBe(
@@ -121,4 +121,64 @@ it("keeps point and route cards synchronized with the textual controls and reset
   expect(screen.getByRole("button", { name: /Lisbon–Coimbra/ }).getAttribute("aria-pressed")).toBe(
     "false",
   );
+});
+
+it("fits the destination cluster initially and every flight coordinate on reset", () => {
+  const points = [
+    { id: "a", label: "A", coordinates: [121, 25] as [number, number] },
+    { id: "b", label: "B", coordinates: [120, 23] as [number, number] },
+    { id: "c", label: "C", coordinates: [4, 51] as [number, number] },
+  ];
+  const lines = [
+    {
+      id: "flight",
+      label: "Flight",
+      transport: "flight" as const,
+      coordinates: [
+        [4, 51],
+        [121, 25],
+      ] as [number, number][],
+    },
+  ];
+  expect(framingCoordinates(points, lines)).toEqual([
+    [121, 25],
+    [120, 23],
+  ]);
+  expect(framingCoordinates(points, lines, true)).toContainEqual([4, 51]);
+  expect(framingCoordinates([], lines)).toEqual(lines[0].coordinates);
+  expect(framingCoordinates([points[0], points[2]], lines)).toEqual([
+    [121, 25],
+    [4, 51],
+  ]);
+  expect(framingCoordinates([points[0]], [{ ...lines[0], transport: "train" }])).toEqual([
+    [121, 25],
+  ]);
+  expect(framingCoordinates([points[0]], lines)).toEqual([[121, 25]]);
+});
+
+it("hides owner lists until their counted disclosures are activated", () => {
+  render(
+    <TripMap
+      collapseLists
+      points={[{ id: "a", label: "Area", coordinates: [121, 25] }]}
+      lines={[
+        {
+          id: "r",
+          label: "Leg",
+          coordinates: [
+            [121, 25],
+            [120, 23],
+          ],
+        },
+      ]}
+    />,
+  );
+  expect(screen.queryByRole("button", { name: "Area" })).toBeNull();
+  const trigger = screen.getByRole("button", { name: "Punten op de kaart (1)" });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(trigger);
+  expect(screen.getByRole("button", { name: "Area" })).toBeTruthy();
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Route in woorden (1)" }));
+  expect(screen.getByRole("button", { name: "Leg" })).toBeTruthy();
 });

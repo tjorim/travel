@@ -2247,5 +2247,7 @@
   "sharing_delete_collection_title": "{name} verwijderen?",
   "sharing_delete_collection_description": "De verzameling en haar keuzes worden verwijderd. Dit kan niet ongedaan worden gemaakt.",
   "sharing_collection_link_warning": "Iedereen met deze link ziet elke reis in de verzameling, elk met een eigen bereik.",
-  "sharing_draft_hint": "Voeg eerst de reizen toe, bekijk elk voorbeeld en activeer dan."
+  "sharing_draft_hint": "Voeg eerst de reizen toe, bekijk elk voorbeeld en activeer dan.",
+  "map_points_count": "Punten op de kaart ({count})",
+  "map_lines_count": "Route in woorden ({count})"
 }

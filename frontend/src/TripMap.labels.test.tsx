@@ -12,6 +12,7 @@ type CapturedMap = {
   removed: boolean;
   options: Record<string, unknown>;
   fitted: number;
+  eased?: Record<string, unknown>;
   projection?: string;
   terrain?: unknown;
   visibility?: string;
@@ -71,7 +72,10 @@ vi.mock("maplibre-gl", () => ({
     setLayoutProperty(_id: string, _property: string, value: string) {
       this.visibility = value;
     }
-    easeTo() {}
+    eased?: Record<string, unknown>;
+    easeTo(options: Record<string, unknown>) {
+      this.eased = options;
+    }
     flyTo() {}
     addControl() {}
     addSource(id: string, source: { data: FeatureCollection<Point> }) {
@@ -232,4 +236,17 @@ it("starts over from the whole trip when the trip geometry changes", async () =>
   expect(screen.getByRole("button", { name: /^Satelliet/ }).getAttribute("aria-pressed")).toBe(
     "false",
   );
+});
+
+it("follows the active story at area zoom without essential animation", async () => {
+  Object.defineProperty(window, "WebGLRenderingContext", { configurable: true, value: class {} });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({} as WebGLRenderingContext);
+  const points: MapPoint[] = [{ id: "a", label: "Area", coordinates: [121, 25] }];
+  const view = render(<TripMap points={points} lines={[]} follow="a" />);
+  await waitFor(() =>
+    expect(maps[0]?.eased).toEqual({ center: [121, 25], zoom: 9, duration: 700 }),
+  );
+  view.rerender(<TripMap points={points} lines={[]} follow={null} />);
+  view.rerender(<TripMap points={points} lines={[]} follow="a" />);
+  expect(maps[0].eased?.essential).not.toBe(true);
 });
