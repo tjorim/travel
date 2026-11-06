@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.15"
 
 [[package]]
@@ -1274,10 +1274,10 @@ wheels = [
 
 [[package]]
 name = "timezonefinder-data"
-version = "4.2026.5"
+version = "4.2026.6"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/80/31cc84dccb1500788d98cc78f09bff4ff247a6a744ab9c6545b86985e514/timezonefinder_data-4.2026.5-py3-none-any.whl", hash = "sha256:b020cdabd5087087a587fb9b049bdbc3f1ea83916f9fbecbc93a941cc0e70efe", size = 32822639, upload-time = "2026-10-20T07:52:10.451Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/3a/11646d57c8f2d1651ff39cc825f2c8bf6566028f3098576ce5dc4c61ee82/timezonefinder_data-4.2026.6-py3-none-any.whl", hash = "sha256:35d6302b86e61693ff86c3aa2284da7126ec324df8c4254f6e910cf3e7e0e9e1", size = 32868199, upload-time = "2026-11-01T19:06:45.609Z" },
 ]
 
 [[package]]
