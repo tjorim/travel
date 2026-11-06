@@ -1,10 +1,10 @@
 {
-  "note": "Initial static JS (the entry's import closure) and total JS, in bytes, checked by `pnpm bundle:check` after a build. Set about 10% above the measured sizes (admin 596.7 kB raw / 198.2 kB gzip, visitor entries 530.8 / 178.2, total 848.8 gzip); raise a limit with the change that needs it, and say why. Visitor raw limits went 585 to 590 kB for Base UI Tabs (#137): 579.4 to 587.1 kB raw, 193.2 to 195.9 kB gzip, measured on the same dependency set. Visitor raw limits went 590 to 594 kB for the collection-link index and member trip route (#136): 589.x to 591.2 kB raw measured on the same dependency set. Visitor gzip limits went 196 to 198 kB once the registry Alert, Badge, Toggle group and Tabs (#137 items 1-4) were all merged: 196.84 kB gzip measured on the combined build.",
+  "note": "Initial static JS (the entry's import closure) and total JS, in bytes, checked by `pnpm bundle:check` after a build. Set about 10% above the measured sizes (admin 596.7 kB raw / 198.2 kB gzip, visitor entries 530.8 / 178.2, total 848.8 gzip); raise a limit with the change that needs it, and say why. Visitor raw limits went 585 to 590 kB for Base UI Tabs (#137): 579.4 to 587.1 kB raw, 193.2 to 195.9 kB gzip, measured on the same dependency set. Visitor raw limits went 590 to 594 kB for the collection-link index and member trip route (#136): 589.x to 591.2 kB raw measured on the same dependency set. Visitor raw limits went 594 to 596 kB for the photo-led visitor pages (#228): 594.5 kB raw measured on the same dependency set (the shared message catalogue gained the photo count; the entry hosts the landing, public and share pages). Visitor gzip limits went 196 to 198 kB once the registry Alert, Badge, Toggle group and Tabs (#137 items 1-4) were all merged: 196.84 kB gzip measured on the combined build.",
   "entries": {
     "admin": { "raw": 656000, "gzip": 218000 },
-    "landing": { "raw": 594000, "gzip": 198000 },
-    "public": { "raw": 594000, "gzip": 198000 },
-    "share": { "raw": 594000, "gzip": 198000 }
+    "landing": { "raw": 596000, "gzip": 198000 },
+    "public": { "raw": 596000, "gzip": 198000 },
+    "share": { "raw": 596000, "gzip": 198000 }
   },
   "total": { "gzip": 935000 }
 }

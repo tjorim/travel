@@ -1786,6 +1786,16 @@
   "visitor_previous_photo": "Vorige foto",
   "visitor_next_photo": "Volgende foto",
   "visitor_photo_position": "Foto {current} van {total}",
+  "visitor_photo_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} foto",
+        "countPlural=other": "{count} foto's"
+      }
+    }
+  ],
   "visitor_photo_navigation": "Foto’s doorbladeren",
   "visitor_map_follows_story": "Laat de kaart met het verhaal meebewegen",
   "visitor_days_later": [

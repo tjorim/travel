@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Lead the visitor pages with their photos: a full-width cover hero with the title over a scrim (compact band on phones), a mosaic with a larger first photo and a visible count for updates with several photos instead of the sideways strip, a dark full-bleed lightbox with swipe, a caption overlay and an announced position (without a language switch, since photos have no translation), and a larger bare map on the phone Map tab (Closes #228).
+
 - Frame maps around the destination, zoom story following to area scale, and collapse the owner map lists with counted disclosures (Closes #227).
 
 - Record the shipped trip header/navigation real-zoom verification: 192 browser-zoom measurements, both locales/themes, six owner sections, drawer/sidebar boundaries and keyboard disclosure/capture/search checks (Refs #5).

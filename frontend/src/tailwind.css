@@ -5,9 +5,8 @@
 
 @theme {
   --spacing-travel-preferences-popup: min(28rem, calc(100vw - 2rem));
-  --grid-template-columns-travel-visitor-header: minmax(0, 1fr) 18rem;
-  --spacing-travel-visitor-cover: min(150px, 18dvh);
-  --spacing-travel-visitor-cover-wide: 112px;
+  --spacing-travel-hero: clamp(13rem, 28dvh, 16rem);
+  --spacing-travel-hero-wide: clamp(17rem, 44dvh, 27rem);
   --breakpoint-trip-sidebar: 1100px;
   --spacing-travel-sidebar: 224px;
   --spacing-travel-drawer: 20rem;
@@ -15,6 +14,15 @@
   --text-travel-sidebar-title: 1.125rem;
 
   --max-height-travel-lightbox: 70dvh;
+  --grid-template-columns-travel-mosaic-pair: 3fr 2fr;
+  --spacing-travel-safe-top: max(0.75rem, env(safe-area-inset-top));
+  --spacing-travel-safe-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  --spacing-travel-lightbox-caption: max(1.25rem, calc((100% - 42rem) / 2));
+  --text-shadow-travel-hero: 0 1px 14px rgb(0 0 0 / 0.35);
+  --spacing-travel-mosaic-row: 6rem;
+  --spacing-travel-mosaic-row-wide: 9rem;
+  --spacing-travel-mosaic-pair: 14rem;
+  --spacing-travel-mosaic-pair-wide: 20rem;
   --font-travel-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --text-travel-title: clamp(2.2rem, 9vw, 5.8rem);
   --text-travel-title-long: clamp(1.75rem, 6vw, 3.25rem);
@@ -47,6 +55,7 @@
   --tracking-travel-markdown-label: 0.08em;
   --spacing-map-canvas: clamp(300px, 48vw, 480px);
   --spacing-map-owner-canvas: clamp(420px, 48vw, 620px);
+  --spacing-map-phone-canvas: clamp(22rem, 72dvh, 40rem);
   --spacing-map-wide-canvas: clamp(420px, 36vw, 640px);
   --spacing-map-story: clamp(420px, 40vw, 640px);
   --spacing-route-canvas: clamp(240px, 38vw, 360px);
@@ -64,6 +73,12 @@
     }
   }
   --color-travel-backdrop: #19342d;
+  /* Text over the visitor hero and the lightbox sits on a dark scrim in both themes, so these do not change with it. */
+  --color-travel-hero-ink: #fffcf5;
+  --color-travel-hero-scrim: #0d1f19;
+  --color-travel-lightbox: #070e0b;
+  --color-travel-lightbox-ink: #f4f1e8;
+  --color-travel-lightbox-focus: #ffd166;
   --color-travel-on-action: #fffcf5;
   --color-travel-ink: #19342d;
   --color-travel-label: #27483e;
@@ -757,8 +772,21 @@
 /* Keep the first update reachable in short windows and zoomed reflow layouts. */
 @media (max-height: 600px) {
   :root {
-    --spacing-travel-visitor-cover: min(96px, 12dvh);
+    --spacing-travel-hero: 8.5rem;
+    --spacing-travel-hero-wide: 12rem;
   }
+}
+
+/*
+ * The scrim hugs the text it protects: solid behind the title, dates and destinations, fading out over the top
+ * of its own padding, so a long title keeps its contrast on any photo instead of relying on a fixed gradient.
+ */
+@utility travel-hero-scrim {
+  background-image: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-travel-hero-scrim) 72%, transparent) calc(100% - 3.5rem),
+    transparent
+  );
 }
 
 @layer base {
@@ -797,13 +825,32 @@
       max-height: none;
       overflow: visible;
     }
-    [data-visitor-print] ul.snap-x {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      overflow: visible;
+    /* The hero's photo and scrim are backgrounds a printer drops; its text prints as ink on the page. */
+    [data-visitor-print] [data-hero-image] {
+      display: none !important;
     }
-    [data-visitor-print] ul.snap-x > li {
-      width: auto;
+    [data-visitor-print] [data-hero] > div {
+      min-height: 0 !important;
+    }
+    [data-visitor-print] [data-hero-text] {
+      background: none !important;
+      padding: 0 !important;
+      color: black !important;
+    }
+    [data-visitor-print] [data-hero-text] :is(h1, h2, p) {
+      color: black !important;
+      text-shadow: none !important;
+    }
+    [data-visitor-print] [data-mosaic] {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      height: auto !important;
+    }
+    [data-visitor-print] [data-mosaic] > li {
+      grid-column: auto !important;
+      height: 60mm !important;
+      min-height: 0 !important;
+      aspect-ratio: auto !important;
       break-inside: avoid;
     }
     [data-visitor-print] button[type]:has(img) {

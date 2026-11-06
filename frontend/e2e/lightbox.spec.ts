@@ -131,8 +131,10 @@ test("one photo has no traversal controls and a wide or portrait frame fits", as
   const image = await dialog.getByRole("img").boundingBox();
   expect(image!.width).toBeLessThanOrEqual(1280);
   await page.keyboard.press("ArrowLeft");
+  // The viewer is full-bleed, so a portrait photo may use the whole window height but never more.
   const portrait = await dialog.getByRole("img").boundingBox();
-  expect(portrait!.height).toBeLessThanOrEqual(800 * 0.7 + 1);
+  expect(portrait!.height).toBeLessThanOrEqual(800);
+  expect(portrait!.height).toBeGreaterThan(800 * 0.7);
 });
 
 test.describe("touch", () => {
@@ -174,42 +176,62 @@ test.describe("touch", () => {
   }
 });
 
-for (const reduced of ["reduce", "no-preference"] as const) {
-  for (const width of [360, 1280]) {
-    test(`strip arrows advance and return ${reduced} ${width}`, async ({ page }) => {
-      await page.emulateMedia({ reducedMotion: reduced });
-      await page.setViewportSize({ width, height: 900 });
-      await open(page, "en", "light");
-      const row = page.locator("ul.snap-x").nth(2);
-      const section = page.getByRole("region", { name: /Media for update 3/ });
-      const next = section.getByRole("button", { name: "Next photo" });
-      const previous = section.getByRole("button", { name: "Previous photo" });
-      const scroll = () => row.evaluate((element) => element.scrollLeft);
-      // Smooth scrolling is still moving when a click returns, so measure once two readings agree.
-      const settle = async () => {
-        let before = -1;
-        await expect
-          .poll(async () => {
-            const now = await scroll();
-            const same = now === before;
-            before = now;
-            return same;
-          })
-          .toBe(true);
-        return before;
-      };
-      await expect(next).toBeVisible();
-      await next.click();
-      await expect.poll(scroll).toBeGreaterThan(50);
-      const first = await settle();
-      await next.click();
-      await expect.poll(scroll).toBeGreaterThan(first + 50);
-      const second = await settle();
-      expect(second).toBeGreaterThan(first);
-      await previous.click();
-      expect(await settle()).toBe(first);
-      await previous.click();
-      expect(await settle()).toBe(0);
-    });
-  }
+test("the lightbox is a dark full-bleed viewer with the caption over the photo and no language switch", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, "en", "light");
+  await page.getByRole("button", { name: "Open image: Synthetic photo 6" }).click();
+  const dialog = page.getByRole("dialog");
+  const popup = (await dialog.boundingBox())!;
+  expect(popup).toMatchObject({ x: 0, y: 0, width: 1280, height: 800 });
+  await expect(dialog).toHaveCSS("background-color", "rgb(7, 14, 11)");
+  // The caption is an overlay near the bottom of the viewer, on the photo, not a block under it.
+  const caption = (await dialog.getByText("Caption 6").boundingBox())!;
+  const image = (await dialog.getByRole("img").boundingBox())!;
+  expect(caption.y).toBeGreaterThan(800 * 0.7);
+  expect(caption.y + caption.height).toBeLessThanOrEqual(image.y + image.height + 1);
+  // A photo's alt text and caption have no translation, so there is no Dutch/English switch inside the viewer.
+  await expect(dialog.getByRole("radio")).toHaveCount(0);
+  await expect(dialog.getByText("Nederlands")).toHaveCount(0);
+  await expect(dialog.getByText("Photo 3 of 8")).toBeVisible();
+  // Escape closes it and focus returns to the thumbnail it opened from.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Open image: Synthetic photo 6" })).toBeFocused();
+});
+
+for (const width of [360, 1280]) {
+  test(`updates with several photos show a larger first photo, a mosaic and the count ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, "en", "light");
+    // The three-photo update: a lead over two tiles, all inside the column.
+    const three = page.getByRole("region", { name: /Media for update 2/ });
+    await expect(three.getByText("3 photos")).toBeVisible();
+    const boxes = await three.locator("[data-mosaic] > li").evaluateAll((items) =>
+      items.map((item) => {
+        const { x, y, width, height } = item.getBoundingClientRect();
+        return { x, y, width, height };
+      }),
+    );
+    expect(boxes).toHaveLength(3);
+    expect(boxes[0]!.width).toBeGreaterThan(boxes[1]!.width * 1.8);
+    expect(boxes[0]!.height).toBeGreaterThan(boxes[1]!.height * 1.5);
+    expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height - 1);
+    for (const box of boxes) expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    // The eight-photo update keeps every photo visible, one button each, with no hidden scrolling row.
+    const eight = page.getByRole("region", { name: /Media for update 3/ });
+    await expect(eight.getByText("8 photos")).toBeVisible();
+    await expect(eight.getByRole("button", { name: /^Open image/ })).toHaveCount(8);
+    await expect(eight.getByRole("button", { name: /Next photo|Previous photo/ })).toHaveCount(0);
+    for (const tile of await eight.locator("[data-mosaic] > li").all())
+      await expect(tile).toBeVisible();
+    // A single photo keeps its large frame and shows no count.
+    const one = page.getByRole("region", { name: /Media for update 1/ });
+    await expect(one.locator("[data-mosaic]")).toHaveCount(0);
+    await expect(one.getByText(/photos?$/)).toHaveCount(0);
+  });
 }
