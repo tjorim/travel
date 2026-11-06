@@ -1,3 +1,4 @@
+import { isOverdue, tripDay } from "./readiness";
 import { Link } from "@tanstack/react-router";
 
 import { useLocale } from "../locale";
@@ -11,6 +12,9 @@ const SHOWN = 5;
 /** The next open tasks at a glance. They are edited on the Prepare tab, which this card links to. */
 export function OverviewTasks({ trip }: { trip: Trip }) {
   useLocale();
+  const readinessStays = useTripResource(trip.id, "stays").data ?? [];
+  const readinessRoutes = useTripResource(trip.id, "routes").data ?? [];
+  const today = tripDay(new Date(), readinessStays, readinessRoutes);
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const open = (tasksQuery.data ?? [])
     .filter((task) => !task.completed_at)
@@ -28,6 +32,15 @@ export function OverviewTasks({ trip }: { trip: Trip }) {
               key={task.id}
             >
               <strong>{task.title}</strong>
+              {isOverdue(task, today) && (
+                <strong
+                  role="note"
+                  className="text-travel-danger"
+                  aria-label={m.task_overdue({ title: task.title })}
+                >
+                  {m.task_overdue_label()}
+                </strong>
+              )}
               <span>
                 {task.due_date
                   ? m.owner_due({ p0: formatDay(task.due_date) })

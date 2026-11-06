@@ -1,3 +1,7 @@
+import { Link } from "@tanstack/react-router";
+import { buildAgendaItems } from "./AgendaView";
+import { isOverdue, tripDay, tripProgress } from "./readiness";
+import { sectionPath } from "./workspace-sections";
 import { Badge as StatusBadge } from "@/ui/badge";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
@@ -168,6 +172,7 @@ export function TripOverview({ trip }: { trip: Trip }) {
   const locale = useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
+  const visitsQuery = useTripResource(trip.id, "visits");
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
   const [now, setNow] = useState(() => new Date());
 
@@ -187,6 +192,31 @@ export function TripOverview({ trip }: { trip: Trip }) {
     [locale, trip, staysQuery.data, routesQuery.data, tasksQuery.data],
   );
 
+  const today = tripDay(now, stays, routes);
+  const progress = tripProgress(trip.starts_on, trip.ends_on, today);
+  const overdue = (tasksQuery.data ?? []).filter((task) => isOverdue(task, today)).length;
+  const unconfirmed = routes.filter(
+    (route) => route.departs_on && routeInPlan(route) && route.status !== "confirmed",
+  ).length;
+  const missing =
+    trip.starts_on && trip.ends_on
+      ? Array.from({ length: Math.max(0, daysBetween(trip.starts_on, trip.ends_on)) }, (_, index) =>
+          addDays(trip.starts_on!, index),
+        ).filter((night) => !stays.some((stay) => stayCoversNight(stay, night))).length
+      : 0;
+  const readiness = [
+    { label: m.readiness_overdue({ count: overdue }), section: "prepare", hash: "tasks" },
+    {
+      label: m.readiness_tasks({
+        count: (tasksQuery.data ?? []).filter((task) => !task.completed_at).length,
+      }),
+      section: "prepare",
+      hash: "tasks",
+    },
+    { label: m.readiness_transport({ count: unconfirmed }), section: "plan", hash: "routes" },
+    { label: m.readiness_nights({ count: missing }), section: "plan", hash: "stays" },
+  ] as const;
+  const agenda = buildAgendaItems(stays, routes, visitsQuery.data ?? []);
   const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
   if (!trip.starts_on && !badges.length && !stays.length && !routes.length) return null;
@@ -195,6 +225,32 @@ export function TripOverview({ trip }: { trip: Trip }) {
       className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0"
       aria-label={m.owner_trip_overview()}
     >
+      {progress && (
+        <strong>
+          {progress.kind === "before"
+            ? m.readiness_departure({ count: progress.days })
+            : progress.kind === "finished"
+              ? m.readiness_finished()
+              : progress.total
+                ? m.readiness_underway({ day: progress.day, total: progress.total })
+                : m.readiness_day({ day: progress.day })}
+        </strong>
+      )}
+      {staysQuery.data && routesQuery.data && tasksQuery.data && (
+        <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+          {readiness.map((item) => (
+            <li key={item.hash + item.label}>
+              <Link
+                className="secondary action-link"
+                to={sectionPath(trip.id, item.section)}
+                hash={item.hash}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
       {trip.starts_on && (
         <p className="travel-eyebrow">
           {formatDay(trip.starts_on, "D MMMM")}
@@ -203,20 +259,63 @@ export function TripOverview({ trip }: { trip: Trip }) {
         </p>
       )}
       {localTimes}
+      {progress?.kind === "underway" && visitsQuery.data && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[today, addDays(today, 1)].map((date, index) => {
+            const entries = agenda.filter(
+              (item) => item.first <= date && (item.last ?? item.first) >= date,
+            );
+            return (
+              <section key={date}>
+                <h3 className="m-0 text-base">
+                  {index === 0 ? m.readiness_today() : m.readiness_tomorrow()}
+                </h3>
+                {entries.length ? (
+                  <ul className="m-0 grid gap-1 pl-5">
+                    {entries.map((item) => (
+                      <li key={item.id}>
+                        {item.time && <time>{item.time} </time>}
+                        {item.kind}: {item.title}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="m-0 text-travel-muted">{m.readiness_empty()}</p>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
       {badges.length > 0 && (
         <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
           {badges.map((badge) => (
             <StatusBadge key={badge.label} render={<li />}>
-              <span
-                aria-hidden="true"
-                className={
-                  badge.done
-                    ? "size-2 rounded-full bg-travel-link"
-                    : "size-2 rounded-full bg-travel-status-pending"
+              <Link
+                className="inline-flex items-center gap-1 text-inherit no-underline hover:underline focus-visible:underline"
+                to={sectionPath(
+                  trip.id,
+                  badge.label === m.owner_things_to_arrange() ? "prepare" : "plan",
+                )}
+                hash={
+                  badge.label === m.owner_things_to_arrange()
+                    ? "tasks"
+                    : badge.label === m.owner_transport()
+                      ? "routes"
+                      : "stays"
                 }
-              />
-              <span className="shrink-0">{badge.label}</span>{" "}
-              <strong className="text-travel-ink">{badge.value}</strong>
+              >
+                <span
+                  aria-hidden="true"
+                  className={
+                    badge.done
+                      ? "size-2 rounded-full bg-travel-link"
+                      : "size-2 rounded-full bg-travel-status-pending"
+                  }
+                />
+                <span className="shrink-0">{badge.label}</span>{" "}
+                <strong className="text-travel-ink">{badge.value}</strong>
+              </Link>
             </StatusBadge>
           ))}
         </ul>

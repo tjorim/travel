@@ -13,6 +13,9 @@ import {
   visitTitle,
   wallClock,
   type Trip,
+  type Stay,
+  type Route,
+  type Visit,
   areaName,
 } from "../tracker-model";
 
@@ -29,6 +32,66 @@ type AgendaItem = {
   time: string | null;
   where: string;
 };
+
+export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]): AgendaItem[] {
+  return [
+    ...stays.map((stay): AgendaItem => ({
+      id: `stay-${stay.id}`,
+      recordKind: "stay",
+      recordId: stay.id,
+      kind: m.owner_stay(),
+      title: stayLabel(stay),
+      first: stay.check_in_date,
+      last: addDays(stay.check_out_date, -1),
+      time: stay.check_in_time?.slice(0, 5) ?? null,
+      where: areaName(stay.area),
+    })),
+    // A route is on its departure day, with a time only once it has one.
+    ...routes.flatMap((route): AgendaItem[] =>
+      route.departs_on
+        ? [
+            {
+              id: `route-${route.id}`,
+              recordKind: "route",
+              recordId: route.id,
+              kind: m.owner_route(),
+              title: routeTitle(route),
+              first: route.departs_on,
+              last: route.arrives_at ? localDate(route.arrives_at, route.arrival_timezone) : null,
+              time: route.departs_at
+                ? wallClock(route.departs_at, route.departure_timezone).slice(11, 16)
+                : null,
+              where: areaName(route.departure_area),
+            },
+          ]
+        : [],
+    ),
+    ...visits.flatMap((visit): AgendaItem[] =>
+      visit.starts_on
+        ? [
+            {
+              id: `visit-${visit.id}`,
+              recordKind: "visit",
+              recordId: visit.id,
+              kind: m.owner_visit(),
+              title: visitTitle(visit),
+              first: visit.starts_on,
+              last: visit.ends_on,
+              time: visit.start_time?.slice(0, 5) ?? null,
+              where: areaName(visit.area),
+            },
+          ]
+        : [],
+    ),
+    // The list above is already in each record's own meaningful order (stays by check-in day,
+    // routes by day/time/creation, visits by explicit position); a stable sort below keeps that
+    // order for same-day, same-time ties instead of an opaque id breaking it arbitrarily.
+  ].sort(
+    (left, right) =>
+      left.first.localeCompare(right.first) ||
+      (left.time ?? "99:99").localeCompare(right.time ?? "99:99"),
+  );
+}
 
 /**
  * Everything on the trip by day, in order, then what has no day yet: each row opens the record it
@@ -48,67 +111,8 @@ export function AgendaView({
   const routesQuery = useTripResource(trip.id, "routes");
   const visitsQuery = useTripResource(trip.id, "visits");
 
-  const items = useMemo<AgendaItem[]>(
-    () =>
-      [
-        ...(staysQuery.data ?? []).map((stay): AgendaItem => ({
-          id: `stay-${stay.id}`,
-          recordKind: "stay",
-          recordId: stay.id,
-          kind: m.owner_stay(),
-          title: stayLabel(stay),
-          first: stay.check_in_date,
-          last: addDays(stay.check_out_date, -1),
-          time: stay.check_in_time?.slice(0, 5) ?? null,
-          where: areaName(stay.area),
-        })),
-        // A route is on its departure day, with a time only once it has one.
-        ...(routesQuery.data ?? []).flatMap((route): AgendaItem[] =>
-          route.departs_on
-            ? [
-                {
-                  id: `route-${route.id}`,
-                  recordKind: "route",
-                  recordId: route.id,
-                  kind: m.owner_route(),
-                  title: routeTitle(route),
-                  first: route.departs_on,
-                  last: route.arrives_at
-                    ? localDate(route.arrives_at, route.arrival_timezone)
-                    : null,
-                  time: route.departs_at
-                    ? wallClock(route.departs_at, route.departure_timezone).slice(11, 16)
-                    : null,
-                  where: areaName(route.departure_area),
-                },
-              ]
-            : [],
-        ),
-        ...(visitsQuery.data ?? []).flatMap((visit): AgendaItem[] =>
-          visit.starts_on
-            ? [
-                {
-                  id: `visit-${visit.id}`,
-                  recordKind: "visit",
-                  recordId: visit.id,
-                  kind: m.owner_visit(),
-                  title: visitTitle(visit),
-                  first: visit.starts_on,
-                  last: visit.ends_on,
-                  time: visit.start_time?.slice(0, 5) ?? null,
-                  where: areaName(visit.area),
-                },
-              ]
-            : [],
-        ),
-        // The list above is already in each record's own meaningful order (stays by check-in day,
-        // routes by day/time/creation, visits by explicit position); a stable sort below keeps that
-        // order for same-day, same-time ties instead of an opaque id breaking it arbitrarily.
-      ].sort(
-        (left, right) =>
-          left.first.localeCompare(right.first) ||
-          (left.time ?? "99:99").localeCompare(right.time ?? "99:99"),
-      ),
+  const items = useMemo(
+    () => buildAgendaItems(staysQuery.data ?? [], routesQuery.data ?? [], visitsQuery.data ?? []),
     [locale, staysQuery.data, routesQuery.data, visitsQuery.data],
   );
 

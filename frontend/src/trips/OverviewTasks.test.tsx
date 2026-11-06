@@ -38,6 +38,8 @@ const render = () =>
 
 function serve(tasks: TripTask[] | number) {
   server.use(
+    http.get("*/api/trips/:id/stays", () => HttpResponse.json([])),
+    http.get("*/api/trips/:id/routes", () => HttpResponse.json([])),
     http.all("*", () =>
       typeof tasks === "number"
         ? HttpResponse.json({}, { status: tasks })
@@ -86,4 +88,10 @@ it("says so when nothing is left to arrange, and when the tasks cannot be read",
   render();
   expect(await screen.findByRole("alert")).toBeTruthy();
   expect(screen.queryByText("Niets meer te regelen.")).toBeNull();
+});
+
+it("identifies an overdue task with text as well as colour", async () => {
+  serve([task("late", "Visum", { due_date: "2000-01-02" })]);
+  render();
+  expect(await screen.findByLabelText("Achterstallig: Visum")).toHaveClass("text-travel-danger");
 });

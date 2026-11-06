@@ -113,3 +113,16 @@ export async function choosePreferences(page: Page, locale: "nl" | "en", theme: 
     [locale, theme],
   );
 }
+
+/** A dated synthetic task for the readiness and overdue checks. */
+export const overdueTask = {
+  id: "readiness-task",
+  title: "Arrange synthetic documents",
+  due_date: "2000-01-02",
+  completed_at: null,
+  notes: null,
+  remind_at: null,
+  reminded_at: null,
+  links: [],
+  created_at: "2000-01-01T00:00:00Z",
+};

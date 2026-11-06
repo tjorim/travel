@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add owner readiness links, calendar-day countdown and progress, overdue task marking, consistent task dates, and today/tomorrow agenda summaries (Closes #232).
+
 - Show public trip covers on the landing and trip index cards only when the public audience receives the approved photo; reserve image space and fall back to text when loading fails (Closes #229).
 
 - Lead the visitor pages with their photos: a full-width cover hero with the title over a scrim (compact band on phones), a mosaic with a larger first photo and a visible count for updates with several photos instead of the sideways strip, a dark full-bleed lightbox with swipe, a caption overlay and an announced position (without a language switch, since photos have no translation), and a larger bare map on the phone Map tab (Closes #228).

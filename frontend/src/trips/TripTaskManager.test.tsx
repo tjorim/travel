@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
+import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { renderWithOwner, testToken } from "../query/test-utils";
+import { renderRoutesWithOwner, renderWithOwner, testToken } from "../query/test-utils";
 import type { Stay, Route, Trip, TripTask, TripTaskAlert } from "../tracker-model";
 import { TripOverview } from "./TripOverview";
 import { TripTaskManager } from "./TripTaskManager";
@@ -62,6 +63,7 @@ beforeEach(() => {
         return json(failure.body, failure.status);
       }
       const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+      if (url.endsWith("/visits")) return json([]);
       if (url.endsWith("/stays")) return json([] as Stay[]);
       if (url.endsWith("/routes")) return json([] as Route[]);
       if (url.endsWith("/task-alerts")) return json(api.alerts);
@@ -178,15 +180,20 @@ it("names each completion and reopen action after its task", async () => {
 });
 
 it("refreshes the overview badge when a task is completed elsewhere on the screen", async () => {
-  renderWithOwner(
-    <>
-      <TripOverview trip={trip} />
-      <TripTaskManager trip={trip} />
-    </>,
+  renderRoutesWithOwner(
+    createRootRoute({
+      component: () => (
+        <>
+          <TripOverview trip={trip} />
+          <TripTaskManager trip={trip} />
+        </>
+      ),
+    }),
+    ["/"],
   );
-  await screen.findByText("2 open");
+  await screen.findAllByText("2 open");
   fireEvent.click(screen.getAllByRole("button", { name: /^Afvinken: / })[0]);
-  await screen.findByText("1 open");
+  await screen.findAllByText("1 open");
   // One shared read per resource: overview and manager never fetch the tasks twice.
   expect(
     api.requests.filter((request) => request === "GET /api/trips/trip/trip-tasks").length,
@@ -274,4 +281,32 @@ it("requires a name and an https address for each link", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Taak toevoegen" }));
   await screen.findByText("Gebruik een https-adres.");
   expect(api.requests.some((request) => request.startsWith("POST"))).toBe(false);
+});
+
+it("links readiness counts to the matching sections and identifies overdue tasks", async () => {
+  api.tasks = [task("late", "Visum", { due_date: "2000-01-02" })];
+  renderRoutesWithOwner(
+    createRootRoute({
+      component: () => (
+        <>
+          <TripOverview trip={trip} />
+          <TripTaskManager trip={trip} />
+        </>
+      ),
+    }),
+    ["/"],
+  );
+  expect(
+    (await screen.findByRole("link", { name: "1 achterstallige taken" })).getAttribute("href"),
+  ).toBe("/trips/trip/prepare#tasks");
+  expect(screen.getByRole("link", { name: "1 open taken" }).getAttribute("href")).toBe(
+    "/trips/trip/prepare#tasks",
+  );
+  expect(
+    screen.getByRole("link", { name: "0 onbevestigde vervoersboekingen" }).getAttribute("href"),
+  ).toBe("/trips/trip/plan#routes");
+  expect(screen.getByRole("link", { name: "0 nachten zonder verblijf" }).getAttribute("href")).toBe(
+    "/trips/trip/plan#stays",
+  );
+  expect(await screen.findByRole("button", { name: /Achterstallig: Visum/ })).toBeTruthy();
 });
