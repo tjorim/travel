@@ -2247,5 +2247,7 @@
   "sharing_delete_collection_title": "Delete {name}?",
   "sharing_delete_collection_description": "The collection and its choices are removed. This cannot be undone.",
   "sharing_collection_link_warning": "Anyone with this link sees every trip in the collection, each at its own scope.",
-  "sharing_draft_hint": "Add the trips first, check each preview, then activate."
+  "sharing_draft_hint": "Add the trips first, check each preview, then activate.",
+  "map_points_count": "Points on the map ({count})",
+  "map_lines_count": "Route in words ({count})"
 }

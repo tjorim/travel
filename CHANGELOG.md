@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Frame maps around the destination, zoom story following to area scale, and collapse the owner map lists with counted disclosures (Closes #227).
+
 - Record the shipped trip header/navigation real-zoom verification: 192 browser-zoom measurements, both locales/themes, six owner sections, drawer/sidebar boundaries and keyboard disclosure/capture/search checks (Refs #5).
 
 - Record the bounded November owner regression pass, live synthetic authorization/projection checks, PostgreSQL verification and explicit remaining acceptance gaps (Refs #8).

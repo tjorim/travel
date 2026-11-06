@@ -264,6 +264,7 @@ export function OwnerTripMap({
   return (
     <>
       <TripMap
+        collapseLists
         points={displayedPoints}
         lines={lines}
         owner={!snapshot && !unavailable}
