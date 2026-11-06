@@ -158,9 +158,11 @@ export function RecordDialog({
               aria-label={title}
             >
               <div className="mb-4.5 flex items-start justify-between gap-4">
-                <Dialog.Title className="m-0">{title}</Dialog.Title>
+                <Dialog.Title className="m-0 min-w-0 wrap-anywhere max-[480px]:text-xl!">
+                  {title}
+                </Dialog.Title>
                 <Dialog.Close
-                  className={cn(compactButton, secondaryButton)}
+                  className={cn(compactButton, secondaryButton, "shrink-0 whitespace-nowrap")}
                   disabled={pending}
                   aria-label={m.owner_close({ p0: title })}
                 >
