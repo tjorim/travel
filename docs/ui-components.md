@@ -603,18 +603,20 @@ table gives screen readers the cell-to-header relation. After a choice, focus mo
 (`tabIndex={-1}`), because the button that opened the confirmation is then disabled. A notice with
 Undo sits in a `role="status"` region beside the group.
 
-## Day choices in the agenda (#240)
+## Day menu in the agenda (#240)
 
-Each day of the owner agenda has an "Add" control (`DayAddMenu` in `trips/AgendaView.tsx`) that
-offers "Add a visit on this day", "Add a stay from this day" and "Add a route on this day". It is
-the existing `Popover` (`@/ui/popover`, the pattern of the account menu) holding three Base UI
-`Button`s, not a `role="menu"`: the choices are plain commands, the trigger carries a day-specific
-accessible name, and Popover gives Escape, outside press and focus return. The Base UI Menu
-(shadcn `dropdown-menu`) was tried first and dropped: it added about 13 kB gzip to the owner
-bundle for three buttons (`pnpm bundle:check` went from 926 to 939 kB against a 935 kB budget),
-and the registry Menu adds nothing a popover of buttons lacks here. Three buttons per day would
-instead add dozens of tab stops on a long trip. The dialogs it opens are the existing record
-dialogs; no dialog was built for this.
+Each day of the owner agenda has an "Add" control (`DayAddMenu` in `trips/AgendaView.tsx`) that offers
+"Add a visit on this day", "Add a stay from this day" and "Add a route on this day". It is the
+Base UI Menu, adopted through the generated shadcn `dropdown-menu` (`src/ui/dropdown-menu.tsx`,
+trimmed to the menu, trigger, content and item, with Travel tokens and the `travel-menu-motion`
+transition). A menu is the right semantics here: the trigger carries a day-specific accessible
+name, the items are commands rather than form content, and the menu brings arrow-key navigation,
+typeahead, Escape and focus return. A `Popover` of buttons (the account menu pattern) was
+rejected for that reason, and three buttons per day would add up to dozens of tab stops on a long
+trip. The dialogs it opens are the existing record dialogs; no dialog was built for this.
+The Menu adds about 13 kB gzip to the owner bundle (926 to 939 kB); the total budget in
+`bundle-budget.json` was raised to 945 kB with it. Bundle size is not a reason to avoid a registry
+component: raise the budget with the change that needs it and say why.
 
 On the map, the same three commands are links in the selected point's detail panel (the
 existing `MapLink` buttons), so no new control was added there.

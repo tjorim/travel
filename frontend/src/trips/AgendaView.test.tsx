@@ -253,7 +253,7 @@ it("starts a visit, stay or route on a day, with the area where the owner sleeps
   renderWithOwner(<AgendaView trip={trip} onCreateRecord={create} />);
   const [add] = await screen.findAllByRole("button", { name: /^Toevoegen aan / });
   fireEvent.click(add!);
-  fireEvent.click(await screen.findByRole("button", { name: "Bezoek op deze dag toevoegen" }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Bezoek op deze dag toevoegen" }));
   expect(create).toHaveBeenLastCalledWith(
     "visit",
     { day: "2054-11-16", areaId: "linkou" },
@@ -261,12 +261,14 @@ it("starts a visit, stay or route on a day, with the area where the owner sleeps
   );
 
   fireEvent.click(add!);
-  fireEvent.click(await screen.findByRole("button", { name: "Verblijf vanaf deze dag toevoegen" }));
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "Verblijf vanaf deze dag toevoegen" }),
+  );
   // A new stay is usually somewhere else: only the day is filled in.
   expect(create).toHaveBeenLastCalledWith("stay", { day: "2054-11-16" }, expect.any(HTMLElement));
 
   fireEvent.click(add!);
-  fireEvent.click(await screen.findByRole("button", { name: "Route op deze dag toevoegen" }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Route op deze dag toevoegen" }));
   expect(create).toHaveBeenLastCalledWith(
     "route",
     { day: "2054-11-16", areaId: "linkou" },
