@@ -53,6 +53,8 @@ export function LinkList({
                     p1: dateLabel(current.expires_at),
                     p2: history.length ? m.assets_previous({ count: history.length }) : "",
                   })}
+                  {!!current.exclusions?.excluded.length &&
+                    ` · ${m.exclusions_link_summary({ count: current.exclusions.excluded.length })}`}
                 </span>
               </Button>
               {history.length > 0 && (

@@ -452,3 +452,42 @@ Safety rules this adds to the policy:
 - Downgrading the migration never widens: followed records become `month`, and every
   record is held to the coarsest cap any audience of its trip sets, because older code
   ignores the audience setting.
+
+## Per-link exclusions on top of the public baseline (#237)
+
+Decision (owner), 2026-11-06, issue #237: a hidden link starts from the public
+baseline (every record set to `everyone`) and may **exclude** individual
+`everyone` records through `exclude` in its share scope, in addition to the
+`custom` records it lists. Collection members share the same scope type. Nothing
+outside an audience's allowlist is ever delivered, and subtraction never reveals a
+field; the public view is the baseline and has no exclusions. The rules, the
+dependency cascade and the widening confirmation are in
+[the domain model](../domain-model.md#hidden-links-start-from-the-public-view).
+
+Safety rules this adds to the policy:
+
+- `exclude` is optional and additive, so every stored scope delivers exactly what
+  it did before. A save that leaves it out keeps the stored list (a client that does
+  not know the field cannot widen an audience); only an explicit `[]` or `null`
+  clears it.
+- An exclusion hides everything that points at the excluded record for that audience
+  (an area hides the locations in it and what uses them, a location what uses it, an
+  update its photos), so no delivered document names a record the audience does not
+  receive. The filtering lives in one function, `app/exclusions.py`, read by
+  `projection.delivered`, which every document, file, navigation, collection and
+  preview path already uses; `access.receivers` (audit and merge reviews) applies
+  it too.
+- An exclusion keeps holding while its record cannot be shared right now, and
+  an entry for a deleted record or one no longer `everyone` is ignored on read and
+  dropped by the next write.
+- Removing an exclusion from a live audience is a widening: refused with
+  `409 exclusion_widening_needs_acknowledgement` until `confirm_widening`
+  accepts it, like the merge widening of decision 27. Adding one narrows and
+  needs nothing. Both are `share_link.scope_change` or
+  `collection.member_scope_change` audit entries carrying record ids and counts
+  only.
+- No migration: `exclude` lives in the existing JSON scope and reuses the existing
+  audit kinds. Rolling the application back to code from before this change would
+  ignore a stored `exclude` and deliver the whole baseline to those links, so revoke
+  or edit every link and collection member that has exclusions before such a
+  rollback.

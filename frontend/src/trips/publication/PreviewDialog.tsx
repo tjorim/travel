@@ -7,7 +7,8 @@ import { m } from "../../paraglide/messages.js";
 import { RecordDialog } from "../../RecordDialog";
 import type { ShareLink, ShareScope } from "../../tracker-model";
 import { RenderedPreview } from "../RenderedPreview";
-import { LINK_STATE_LABELS, projectionSummary } from "./catalog";
+import { kindCountsText, LINK_STATE_LABELS, projectionSummary } from "./catalog";
+import { useExclusionReview } from "./use-exclusion-review";
 
 export type Preview = {
   name: string | (() => string);
@@ -37,6 +38,9 @@ export function PreviewDialog({
   onClose: () => void;
 }) {
   useLocale();
+  // The preview is the audience's real delivery; this says how it differs from the public page.
+  const review = useExclusionReview(tripId, preview.scope);
+  const left = preview.audience === "share" ? (review.data?.excluded.length ?? 0) : 0;
   return (
     <RecordDialog
       open
@@ -60,6 +64,13 @@ export function PreviewDialog({
             : LINK_STATE_LABELS[links.find((link) => link.id === preview.linkId)?.state ?? "draft"]}
         </p>
         <p>{projectionSummary(preview.document)}</p>
+        {left > 0 && (
+          <p>
+            {m.exclusions_preview_note({ count: left })}
+            {!!Object.keys(review.data?.also_hidden ?? {}).length &&
+              ` ${m.exclusions_preview_also({ counts: kindCountsText(review.data?.also_hidden) })}`}
+          </p>
+        )}
         <p className="help">{m.sharing_preview_unsaved_note()}</p>
         <RenderedPreview
           projection={preview.document}

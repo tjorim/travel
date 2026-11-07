@@ -2339,5 +2339,74 @@
         "countPlural=other": "{count} more photos"
       }
     }
-  ]
+  ],
+  "exclusions_heading": "Left out of this audience",
+  "exclusions_intro": "Everything set to Everyone reaches this audience too. Untick a record to keep it from this audience only; the public page keeps showing it.",
+  "exclusions_visibility_note": "{p0} set to Everyone reach this audience unless you untick them below; you can select the {p1} private items below for this audience, which automatically sets them to “Choose in Sharing”.",
+  "exclusions_show_on_link": "Show on this link",
+  "exclusions_show_named": "Show “{name}” on this link",
+  "exclusions_group_line": "{p0} of {p1} shown",
+  "exclusions_also_hides": "Unticking this also hides {counts}, which depend on it.",
+  "exclusions_summary": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "This audience leaves out {count} record",
+        "countPlural=other": "This audience leaves out {count} records"
+      }
+    }
+  ],
+  "exclusions_summary_also": "so it also hides {counts}",
+  "exclusions_show_all": "Show everything again",
+  "exclusions_none": "Nothing is set to Everyone yet, so there is nothing to leave out of this audience.",
+  "exclusions_stale": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} earlier choice no longer applies (the record was deleted or is no longer set to Everyone); saving drops it.",
+        "countPlural=other": "{count} earlier choices no longer apply (the records were deleted or are no longer set to Everyone); saving drops them."
+      }
+    }
+  ],
+  "exclusions_loading": "Checking what this audience receives…",
+  "exclusions_error": "What this audience receives could not be checked.",
+  "exclusions_widen_title": "Show more on this link?",
+  "exclusions_widen_description": "This link is live. Saving shows the people who have it {counts} that they do not see now.",
+  "exclusions_widen_acknowledge": "I understand that people with this link will see more",
+  "exclusions_widen_confirm": "Show more",
+  "exclusions_check_excluded": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Leaves out {count} record set to Everyone",
+        "countPlural=other": "Leaves out {count} records set to Everyone"
+      }
+    }
+  ],
+  "exclusions_link_summary": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "leaves out {count} record",
+        "countPlural=other": "leaves out {count} records"
+      }
+    }
+  ],
+  "exclusions_preview_note": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Compared with the public page, this audience leaves out {count} record.",
+        "countPlural=other": "Compared with the public page, this audience leaves out {count} records."
+      }
+    }
+  ],
+  "audit_exclusions_changed": "Left out of this link: {added} added, {removed} removed.",
+  "audit_exclusions_widened": "People with this link now see more: {counts}.",
+  "exclusions_preview_also": "That also hides {counts}, which depend on them."
 }

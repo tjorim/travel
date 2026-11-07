@@ -4,7 +4,7 @@ import { m } from "../paraglide/messages.js";
 import { ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { useOwner, useOwnerMutation, type Owner } from "../query/owner-queries";
-import type { ProjectionDocument, ShareLink, ShareScope } from "../tracker-model";
+import type { ProjectionDocument, ScopeExclusions, ShareLink, ShareScope } from "../tracker-model";
 
 export type CollectionMember = {
   revision: number;
@@ -15,6 +15,7 @@ export type CollectionMember = {
   scope: ShareScope;
   /** How many records this member delivers today; 0 means a visitor sees at most the trip header. */
   delivered_records: number;
+  exclusions?: ScopeExclusions;
   created_at: string;
   updated_at: string;
 };
@@ -111,12 +112,18 @@ export function useCollectionMutations() {
     invalidate: refresh,
   });
   const setMemberScope = useOwnerMutation<
-    { collectionId: string; member: CollectionMember; scope: ShareScope },
+    {
+      collectionId: string;
+      member: CollectionMember;
+      scope: ShareScope;
+      /** Accepts that removing exclusions from an active collection shows its visitors more. */
+      confirmWidening?: boolean;
+    },
     Collection
   >({
     fallback: save,
-    request: ({ collectionId, member, scope }) => ({
-      path: `${collectionsPath}/${collectionId}/members/${member.id}`,
+    request: ({ collectionId, member, scope, confirmWidening }) => ({
+      path: `${collectionsPath}/${collectionId}/members/${member.id}${confirmWidening ? "?confirm_widening=true" : ""}`,
       method: "PUT",
       body: scope,
       headers: { "If-Match": `"${member.revision}"` },

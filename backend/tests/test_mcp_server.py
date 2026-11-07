@@ -1658,3 +1658,68 @@ def test_audience_date_precision_is_set_and_followed_over_mcp_like_the_applicati
     with TestingSessionLocal() as session:
         kinds = [event.kind for event in session.scalars(select(AuditEvent))]
         assert AuditEventKind.PRECISION_FOLLOW_AUDIENCE in kinds
+
+
+def test_link_exclusions_work_over_mcp_like_the_application(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Exclusions"))["id"]
+    area = backend.save_area(trip_id, schemas.AreaInput(label="Taipei", latitude=25.03, longitude=121.56))
+    visit = backend.create_visit(trip_id, schemas.VisitCreate(area_id=area["id"], title="Night market"))
+    other = backend.create_visit(trip_id, schemas.VisitCreate(area_id=area["id"], title="Temple"))
+    for record in (visit, other):
+        backend.set_visibility(trip_id, "visit", record["id"], "everyone", confirm=True)
+    backend.set_visibility(trip_id, "area", area["id"], "everyone", confirm=True)
+
+    # The review is a read tool and stores nothing; it names what an excluded area also hides.
+    assert MCP_TOOL_CAPABILITIES["preview_share_link_exclusions"] == {"effect": "read", "requires_confirmation": False}
+    exclude = [schemas.ShareScopeItemInput(kind="area", id=area["id"])]
+    review = backend.preview_share_link_exclusions(trip_id, exclude=exclude)
+    assert {(item["kind"], item["id"]) for item in review["baseline"]} >= {("area", area["id"]), ("visit", visit["id"])}
+    assert review["excluded"][0]["hides"] == {"visit": 2}
+    assert review["also_hidden"] == {"visit": 2}
+
+    link = backend.create_share_link(
+        trip_id, schemas.ShareLinkCreate(label="Friends", scope=schemas.ShareScopeInput(exclude=exclude)), confirm=True
+    )
+    assert link["scope"]["exclude"] == [{"kind": "area", "id": area["id"]}]
+    assert link["exclusions"]["excluded"][0]["hides"] == {"visit": 2}
+    assert "token" not in link
+    assert backend.preview_share_link(trip_id, link["id"])["visits"] == []
+    backend.activate_share_link(trip_id, link["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+
+    # Removing the exclusion from a live link is refused until the owner has accepted what it shows.
+    clear = schemas.ShareLinkUpdate(scope=schemas.ShareScopeInput(exclude=[]))
+    with pytest.raises(ValueError, match="exclusion_widening_needs_acknowledgement") as refused:
+        backend.update_share_link(trip_id, link["id"], clear, confirm=True)
+    assert json.loads(str(refused.value))["counts"] == {"area": 1, "visit": 2}
+    assert backend.get_share_link(trip_id, link["id"])["scope"]["exclude"] == link["scope"]["exclude"]
+    accepted = schemas.ShareLinkUpdate(scope=schemas.ShareScopeInput(exclude=[]), confirm_widening=True)
+    updated = backend.update_share_link(trip_id, link["id"], accepted, confirm=True)
+    assert "exclude" not in updated["scope"] and updated["exclusions"]["excluded"] == []
+    assert len(backend.preview_share_link(trip_id, link["id"])["visits"]) == 2
+    with TestingSessionLocal() as session:
+        event = session.scalars(
+            select(AuditEvent).where(AuditEvent.kind == AuditEventKind.SHARE_LINK_SCOPE_CHANGE)
+        ).one()
+    assert event.details["exclusions"]["widened"] == {"area": 1, "visit": 2}
+
+    # The public view is the baseline and takes no exclusions.
+    with pytest.raises(ValueError, match="public view is the baseline"):
+        backend.set_public_projection_scope(trip_id, schemas.ShareScopeInput(exclude=exclude), confirm=True)
+
+    # A collection member uses the same scope and the same confirmation.
+    collection = backend.create_collection(schemas.CollectionCreate(label="Family"), confirm=True)
+    member = backend.add_collection_member(
+        collection["id"],
+        schemas.CollectionMemberCreate(trip_id=trip_id, scope=schemas.ShareScopeInput(exclude=exclude)),
+        confirm=True,
+    )["members"][0]
+    assert member["exclusions"]["also_hidden"] == {"visit": 2}
+    backend.activate_collection(collection["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+    with pytest.raises(ValueError, match="exclusion_widening_needs_acknowledgement"):
+        backend.update_collection_member(
+            collection["id"], member["id"], schemas.ShareScopeInput(exclude=[]), confirm=True
+        )
+    cleared = backend.update_collection_member(
+        collection["id"], member["id"], schemas.ShareScopeInput(exclude=[]), confirm=True, confirm_widening=True
+    )
+    assert cleared["members"][0]["exclusions"]["excluded"] == []

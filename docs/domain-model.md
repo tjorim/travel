@@ -90,7 +90,8 @@ anything recorded: the application stores no GPS tracks, live or finished.
 ## Words
 
 - **Visibility**: a record's own choice of who receives it: `private` (the
-  default, nobody), `everyone` (the public view and every hidden link) or
+  default, nobody), `everyone` (the public view and every hidden link, unless a
+  link excludes it, see *Hidden links start from the public view*) or
   `custom` (only the audiences that list it). It is the source of truth for
   that record, and the same three choices apply to every shareable record.
 - **Public view**: the one page for everyone, once published.
@@ -98,8 +99,10 @@ anything recorded: the application stores no GPS tracks, live or finished.
   *unlisted* view).
 - **Collection link**: one owner-wide, named, revocable link (`collection`) that opens an index of several trips; each member trip has its own scope. It has its own token, never a trip link's. The owner's *Sharing overview* lists every public trip, hidden link and collection in one place.
 - **Scope**: what a public view or hidden link lists: the `custom` records it
-  includes, plus the trip title, summary and date precision, and the audience's
-  own date precision (see *Date precision* below). It never names fields.
+  includes, the `everyone` records a hidden link or collection member leaves
+  out (`exclude`), plus the trip title, summary and date precision, and the
+  audience's own date precision (see *Date precision* below). It never names
+  fields.
 - **Private original**: something whose exact content must never leave the
   owner boundary: a stay's property and booking, a location's address, a route's
   booking, a photo original, a document original.
@@ -126,6 +129,68 @@ outside the allowlist can be selected.
 The public index cards on `/` and `/trips` also show the nominated cover, only
 when the public projection receives it. They carry its scoped public file URL,
 approved alt text, dimensions and focal point; nomination never delivers a photo.
+
+## Hidden links start from the public view
+
+Every audience starts from the **baseline**: the records set to `everyone`. A
+hidden link or a collection member can then subtract and add:
+
+```
+received = (everyone records − the link's exclusions) + the link's custom records
+           then minus whatever depends on an exclusion
+```
+
+`exclude` in the share scope lists baseline records (kind and id) the audience must
+not receive. It is optional and additive, so a scope stored without it delivers
+exactly what it always did, and a save that leaves it out keeps the stored list (an
+older client can never widen an audience); `exclude: []` or `null` clears it. The
+public view *is* the baseline and refuses `exclude` (`422 scope_exclusion_not_allowed`).
+Nothing outside an audience's allowlist is ever delivered, and subtraction never
+reveals a field.
+
+**Dependencies.** A delivered document must not point at something the audience does
+not receive, so one rule applies on the server, in `app/exclusions.py`, and nowhere
+else: *excluding a record also hides, for that audience only, every record that
+depends on it.*
+
+| Excluded | Also hidden for that audience |
+|---|---|
+| Area | the locations filed under it; the visits, stays, routes and updates that use the area or one of those locations; and the photos of those updates |
+| Location | the visits, stays, routes and updates that use it, and the photos of those updates (not its area) |
+| Update | its photos |
+| Photo | nothing; if it is the trip cover, the audience gets no cover |
+| Visit, stay, route | nothing |
+
+The rule applies to every record the audience would otherwise receive, `custom`
+ones included: an exclusion is the owner's statement that this audience must not
+read about the record. It is deterministic (it depends only on the trip's records),
+and the same function filters the document, the file and navigation routes, the
+collection entry and member page, the owner's preview and the Sharing check. The
+owner API and MCP name what each exclusion also hides (`exclusions` on a link or
+collection member, and `POST /trips/{trip_id}/share-scope/exclusion-review` or
+`preview_share_link_exclusions` before saving).
+
+An exclusion hides records, never words: authored text (the trip summary, another
+record's title or body) is delivered as written and may still mention an excluded
+area's name, so the owner reads the link's preview.
+
+**Stale entries.** Only a record that exists and is still reached by the baseline
+(set to `everyone`, or a photo attached to an `everyone` update) is excluded. A
+stored id whose record was deleted, or is no longer `everyone`, is ignored, reported
+as `stale`, and dropped by the next write. A write refuses an id that is not part
+of the trip (`scope_unavailable`) unless the audience already stores it. A record
+that cannot be shared right now (a cancelled visit, an update without text) keeps
+its exclusion for when it can again.
+
+**Widening.** Adding an exclusion narrows the audience and needs no confirmation.
+Removing one from an *active* hidden link or collection member shows its visitors
+records they do not receive, so the save is refused with
+`409 exclusion_widening_needs_acknowledgement` (listing the records) until it is
+repeated with `confirm_widening` (a field of the share-link update, a query
+parameter of the collection member update, and an MCP argument). A draft needs
+none. The change is audited like any scope change, with the ids added and removed
+and the counts newly shown, never a label or other owner text; sharing-scope
+revisions work as before ([decision 15](decisions/15-sharing-scope-revisions.md)).
 
 ## Date precision
 
@@ -196,7 +261,8 @@ the owner's screens only; no projection or visitor response includes it.
 - New records are `private`.
 - A scope can list only a `custom` record. Leaving `custom`, or deleting the
   record, removes it from every scope.
-- `everyone` reaches every audience and cannot be narrowed for one link.
+- `everyone` reaches every audience; a hidden link or collection member can
+  exclude individual `everyone` records for itself only (the public view cannot).
 - *Delen* and each record's own editor set the same field, so they never
   disagree.
 - An area cannot be deleted while a visit, reisupdate, location or route still
@@ -204,6 +270,5 @@ the owner's screens only; no projection or visitor response includes it.
 
 ## Known gaps
 
-- The `everyone` choice cannot be narrowed for one link.
 - Nothing yet turns a location the owner already has into a named location
   automatically; the owner names it in *Locaties*.

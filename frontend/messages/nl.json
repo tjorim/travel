@@ -2339,5 +2339,74 @@
         "countPlural=other": "nog {count} foto's"
       }
     }
-  ]
+  ],
+  "exclusions_heading": "Weggelaten voor dit publiek",
+  "exclusions_intro": "Alles wat op “Iedereen” staat, bereikt dit publiek ook. Haal het vinkje weg bij een onderdeel om het alleen voor dit publiek te verbergen; de openbare pagina blijft het tonen.",
+  "exclusions_visibility_note": "{p0} op “Iedereen” bereiken dit publiek, tenzij je ze hieronder uitvinkt; {p1} privé kun je hieronder aanvinken om het voor dit publiek te kiezen, wat het automatisch op “Zelf kiezen in Delen” zet.",
+  "exclusions_show_on_link": "Toon op deze link",
+  "exclusions_show_named": "Toon “{name}” op deze link",
+  "exclusions_group_line": "{p0} van {p1} getoond",
+  "exclusions_also_hides": "Als je dit uitvinkt, verberg je ook {counts}, die ervan afhangen.",
+  "exclusions_summary": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Dit publiek laat {count} onderdeel weg",
+        "countPlural=other": "Dit publiek laat {count} onderdelen weg"
+      }
+    }
+  ],
+  "exclusions_summary_also": "en verbergt daarmee ook {counts}",
+  "exclusions_show_all": "Alles weer tonen",
+  "exclusions_none": "Er staat nog niets op “Iedereen”, dus er valt niets weg te laten voor dit publiek.",
+  "exclusions_stale": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} eerdere keuze geldt niet meer (het onderdeel is verwijderd of staat niet meer op “Iedereen”); bij opslaan vervalt die.",
+        "countPlural=other": "{count} eerdere keuzes gelden niet meer (de onderdelen zijn verwijderd of staan niet meer op “Iedereen”); bij opslaan vervallen ze."
+      }
+    }
+  ],
+  "exclusions_loading": "Controleren wat dit publiek ontvangt…",
+  "exclusions_error": "Wat dit publiek ontvangt kon niet worden gecontroleerd.",
+  "exclusions_widen_title": "Meer tonen op deze link?",
+  "exclusions_widen_description": "Deze link is actief. Door op te slaan zien de mensen die hem hebben {counts} die ze nu niet zien.",
+  "exclusions_widen_acknowledge": "Ik begrijp dat mensen met deze link meer gaan zien",
+  "exclusions_widen_confirm": "Meer tonen",
+  "exclusions_check_excluded": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Laat {count} onderdeel op “Iedereen” weg",
+        "countPlural=other": "Laat {count} onderdelen op “Iedereen” weg"
+      }
+    }
+  ],
+  "exclusions_link_summary": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "laat {count} onderdeel weg",
+        "countPlural=other": "laat {count} onderdelen weg"
+      }
+    }
+  ],
+  "exclusions_preview_note": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Ten opzichte van de openbare pagina laat dit publiek {count} onderdeel weg.",
+        "countPlural=other": "Ten opzichte van de openbare pagina laat dit publiek {count} onderdelen weg."
+      }
+    }
+  ],
+  "audit_exclusions_changed": "Weggelaten van deze link: {added} erbij, {removed} eraf.",
+  "audit_exclusions_widened": "Mensen met deze link zien nu meer: {counts}.",
+  "exclusions_preview_also": "Daarmee verbergt het ook {counts}, die ervan afhangen."
 }

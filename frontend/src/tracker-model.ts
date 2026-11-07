@@ -452,7 +452,38 @@ export type ShareScope = {
   trip: { title: boolean; summary: boolean; dates: DatePrecision | null };
   defaults?: { date_precision: DatePrecision | null } | null;
   items: ShareScopeItem[];
+  /**
+   * Hidden links and collection members only: records set to Everyone that this audience does not receive, on top of
+   * its custom `items`. Absent keeps the stored exclusions (so an older client can never widen an audience); an
+   * empty list removes them. The public page is the baseline and has none.
+   */
+  exclude?: ShareScopeItem[] | null;
 };
+
+/** Counts of records by kind, only the kinds with at least one. */
+export type KindCounts = Partial<Record<ShareScopeKind, number>>;
+
+/** One excluded record and the records that depend on it, hidden from the same audience with it. */
+export type ExcludedRecord = ShareScopeItem & {
+  /** Whether the audience would receive the record without the exclusion. */
+  received: boolean;
+  hides: KindCounts;
+  also_hides: ShareScopeItem[];
+};
+
+/** What a hidden link or collection member leaves out of the public baseline, and what that also hides. */
+export type ScopeExclusions = {
+  excluded: ExcludedRecord[];
+  also_hidden: KindCounts;
+  /** Stored exclusions that no longer apply; the next save drops them. */
+  stale: number;
+};
+
+/** The exclusions of a scope plus every record the public baseline reaches, which an audience may exclude. */
+export type ExclusionReview = ScopeExclusions & { baseline: ShareScopeItem[] };
+
+/** The 409 detail of a live audience's save that would show visitors records they do not receive now. */
+export type ExclusionWidening = { revealed: ShareScopeItem[]; counts: KindCounts };
 
 /** How the visits or stays an audience receives read their dates. */
 export type OverviewRecordPrecision = {
@@ -494,6 +525,9 @@ export type OverviewAudience = {
   date_precision: DatePrecision | null;
   record_precision: Partial<Record<"visits" | "stays", OverviewRecordPrecision>>;
   scope_items: number;
+  /** Hidden links: how many records set to Everyone it leaves out, and what else that hides, by kind. */
+  excluded?: number;
+  excluded_also_hides?: KindCounts;
   delivered: Record<"visits" | "places" | "stays" | "routes" | "updates" | "media", number>;
   without_map_point: Record<"visits" | "stays" | "updates", number>;
   /** Whether the trip's chosen cover photo is among the photos this audience receives. */
@@ -549,6 +583,8 @@ export type ShareLink = {
   created_at: string;
   activated_at: string | null;
   revoked_at: string | null;
+  /** What this link leaves out of the public baseline and what that also hides. */
+  exclusions?: ScopeExclusions;
 };
 
 export type ProjectionDocument = {
@@ -949,5 +985,7 @@ export type AuditEvent = {
     /** A `record.precision_follow_audience`: the records that now follow the audience, and who reads them differently. */
     changed?: PrecisionCounts;
     audiences?: { audience: string; widened: PrecisionCounts; narrowed: PrecisionCounts }[];
+    /** A live scope change that added or removed exclusions: their ids, and what removing them newly showed. */
+    exclusions?: { added: ShareScopeItem[]; removed: ShareScopeItem[]; widened: KindCounts };
   };
 };

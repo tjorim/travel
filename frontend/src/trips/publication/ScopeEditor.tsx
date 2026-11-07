@@ -12,6 +12,7 @@ import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useSetVisibility } from "../visibility";
 import { DATE_PRECISIONS, GROUP_TITLES, groupBy, updateItem, type CatalogItem } from "./catalog";
+import { ExclusionList } from "./ExclusionList";
 
 function ScopeGroup({
   kind,
@@ -160,6 +161,21 @@ function VisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
   );
 }
 
+/** The same note for a hidden link or collection member, which can leave records set to Everyone out. */
+function AudienceVisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
+  useLocale();
+  const own = catalog.filter((item) => !item.followsUpdate);
+  if (!own.length) return null;
+  return (
+    <p className="help">
+      {m.exclusions_visibility_note({
+        p0: own.filter((item) => item.visibility === "everyone").length,
+        p1: own.filter((item) => item.visibility === "private").length,
+      })}
+    </p>
+  );
+}
+
 /**
  * How precisely this audience may read dates. It caps every record's own setting (the coarser wins), so
  * "days" lets records that follow the audience show days, and a record's own month still shows months.
@@ -208,6 +224,7 @@ export function ScopeEditor({
   tripId,
   onError,
   disabled = false,
+  allowExclusions = false,
 }: {
   scope: ShareScope;
   setScope: (scope: ShareScope) => void;
@@ -217,6 +234,8 @@ export function ScopeEditor({
   tripId: string;
   onError: (error: unknown) => void;
   disabled?: boolean;
+  /** A hidden link or collection member starts from the public baseline and may leave records out of it. The public page may not. */
+  allowExclusions?: boolean;
 }) {
   useLocale();
   const groups = groupBy(catalog.filter((item) => item.visibility !== "everyone"));
@@ -284,7 +303,20 @@ export function ScopeEditor({
         )}
       </div>
       <AudiencePrecision scope={scope} setScope={setScope} />
-      <VisibilityNote catalog={catalog} />
+      {allowExclusions ? (
+        <>
+          <AudienceVisibilityNote catalog={catalog} />
+          <ExclusionList
+            scope={scope}
+            setScope={setScope}
+            catalog={catalog}
+            tripId={tripId}
+            disabled={disabled}
+          />
+        </>
+      ) : (
+        <VisibilityNote catalog={catalog} />
+      )}
       <div className="grid gap-2">
         {[...groups].map(([kind, items]) => (
           <ScopeGroup
@@ -298,7 +330,7 @@ export function ScopeEditor({
           />
         ))}
       </div>
-      {!groups.size && (
+      {!groups.size && !allowExclusions && (
         <p className="help">
           {m.assets_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}
         </p>

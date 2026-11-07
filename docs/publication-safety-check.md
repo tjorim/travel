@@ -30,6 +30,15 @@ enforces the scope; this check is about choosing it deliberately.
       record's own setting always applies. Read the Sharing check's date lines
       for the effective result before publishing, and before using *Follow the
       audience's precision*, which can show finer dates to a live audience.
+- [ ] A hidden link receives everything set to Everyone unless you untick it in
+      that link's editor. Read the Sharing check's *Leaves out N records* line
+      for each link: unticking an area or location also hides what uses it, an
+      update also hides its photos, and the cover only shows where its photo
+      does. The public page is the baseline and cannot leave anything out.
+      Removing a left-out record from an active link asks you first, because
+      its visitors then see more. An exclusion hides records, not words: a name
+      you wrote yourself, such as in the trip summary or another record's title,
+      stays in that text, so read the link's preview as a stranger would.
 - [ ] A reisupdate shares only its title, the text written for visitors, its
       date and its area; never its private notes. Read the text as a stranger
       would, and remember the date precision applies.

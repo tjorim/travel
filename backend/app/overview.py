@@ -17,6 +17,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .access import COLLECTIONS
+from .exclusion_review import scope_exclusions
+from .exclusions import hidden_records
 from .models import DocumentAsset, LinkState, Location, MediaAsset, PublicSurface, ShareLink, SurfaceState, Trip
 from .precision import audience_precision, precision_summary
 from .projection import delivered as delivered_records
@@ -64,6 +66,7 @@ def _audience(
     schema_version: str,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     document = render_projection(trip, scope, schema_version)
+    exclusions = scope_exclusions(trip, scope)
     delivered = {key: len(document[key]) for key in _DELIVERED}
     unmapped = {
         key: sum(1 for item in document[key] if item.get("place") is not None and item["place"]["latitude"] is None)
@@ -85,6 +88,8 @@ def _audience(
             for kind, value in precision_summary(delivered_records(trip, scope), scope).items()
         },
         "scope_items": len(scope.get("items", [])),
+        "excluded": len(exclusions.excluded),
+        "excluded_also_hides": exclusions.also_hidden,
         "delivered": delivered,
         "without_map_point": unmapped,
         "shows_cover": document["cover"] is not None,
@@ -113,7 +118,9 @@ def _audience(
             + (f", only the trip {' and '.join(shown)}" if shown else "")
             + ". Set records to everyone, or choose custom records for it.",
         )
-    if live and trip.cover_derivative_id is not None and document["cover"] is None:
+    # A cover this audience excludes (or loses with its update) is the owner's own choice, not a gap to warn about.
+    cover_left_out = ("media_derivative", trip.cover_derivative_id) in hidden_records(trip, scope)
+    if live and trip.cover_derivative_id is not None and document["cover"] is None and not cover_left_out:
         warn(
             "cover_not_received",
             "info",

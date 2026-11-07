@@ -197,6 +197,16 @@ def trip_audiences(session: Session, trip_id: str) -> list[tuple[str, dict]]:
     return audiences
 
 
+def _excluded(kind: str, record: Any, scope: dict) -> bool:
+    """Whether this scope's exclusions (or what depends on them) hide the record from its audience."""
+    # Imported here: ``exclusions`` builds on this module's kinds.
+    from .exclusions import hidden_records
+
+    session = object_session(record)
+    trip = session.get(Trip, record.trip_id) if session is not None else None
+    return trip is not None and (kind, record.id) in hidden_records(trip, scope)
+
+
 def receivers(kind: str, record: Any, audiences: list[tuple[str, dict]]) -> set[str]:
     """The names of the audiences this record reaches, by the rule delivery applies."""
     return {
@@ -207,6 +217,7 @@ def receivers(kind: str, record: Any, audiences: list[tuple[str, dict]]) -> set[
             record,
             {item.get("id") for item in scope.get("items", []) if item.get("kind") == kind},
         )
+        and not (scope.get("exclude") and _excluded(kind, record, scope))
     }
 
 
