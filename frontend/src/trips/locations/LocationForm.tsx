@@ -1,3 +1,4 @@
+import { AdvancedSection } from "../../forms/AdvancedSection";
 import { areaName } from "../../tracker-model";
 import { Button } from "@/ui/button";
 
@@ -175,25 +176,31 @@ export function LocationForm({
       </record.form.Field>
       {editingId && (
         <>
-          <record.form.Field name="shareAddress">
-            {(field) => (
-              <CheckboxField
-                field={field}
-                label={m.owner_also_share_the_address_with_this_location_s_recipients()}
-                disabled={!canShareAddress && !field.state.value}
-              />
+          <record.form.Subscribe selector={(state) => state.values.shareAddress}>
+            {(inUse) => (
+              <AdvancedSection summary={m.sharing_advanced_location_summary()} inUse={inUse}>
+                <record.form.Field name="shareAddress">
+                  {(field) => (
+                    <CheckboxField
+                      field={field}
+                      label={m.owner_also_share_the_address_with_this_location_s_recipients()}
+                      disabled={!canShareAddress && !field.state.value}
+                    />
+                  )}
+                </record.form.Field>
+                <p className="help">
+                  {canShareAddress
+                    ? m.owner_exact_address_shown_to_visitors_when_address_sharing_is_on({
+                        p0: projectionText(addressPreview),
+                      })
+                    : m.owner_no_shareable_address_fill_in_an_address_field_first_to_enable_address_sh()}{" "}
+                  {m.owner_country_code_2()} {record.values.countryCode || "geen"}
+                  {m.owner_public_name_3()} {record.values.label || "geen"}
+                  {m.owner_these_are_separate_from_the_address_your_name_and_private_notes_stay_pri()}
+                </p>
+              </AdvancedSection>
             )}
-          </record.form.Field>
-          <p className="help">
-            {canShareAddress
-              ? m.owner_exact_address_shown_to_visitors_when_address_sharing_is_on({
-                  p0: projectionText(addressPreview),
-                })
-              : m.owner_no_shareable_address_fill_in_an_address_field_first_to_enable_address_sh()}{" "}
-            {m.owner_country_code_2()} {record.values.countryCode || "geen"}
-            {m.owner_public_name_3()} {record.values.label || "geen"}
-            {m.owner_these_are_separate_from_the_address_your_name_and_private_notes_stay_pri()}
-          </p>
+          </record.form.Subscribe>
           <p className="help">
             <RecipientsText
               state={recipientState}

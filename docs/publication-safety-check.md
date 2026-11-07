@@ -10,6 +10,12 @@ enforces the scope; this check is about choosing it deliberately.
 - [ ] Open the rendered preview in the publication controls and read every
       shown item as a stranger would, then inspect the delivered fields. Do
       not rely only on the list of ticked items.
+- [ ] The audience editor keeps what most audiences need in view (title,
+      summary, *Dates shown to this audience*, and for a link what it leaves
+      out). Records chosen for one audience only ("Aangepast") and the trip
+      dates sit under *Advanced*, which opens by itself when the audience
+      already uses them: do not skip the Sharing check or the preview because
+      *Advanced* is closed.
 - [ ] List every record set to "Iedereen" (`everyone`), in "Zichtbaarheid per
       onderdeel" in Delen: it reaches the public page and every hidden link
       without being ticked, so read each one as a stranger would. "Privé"
@@ -24,7 +30,10 @@ enforces the scope; this check is about choosing it deliberately.
       and drawn line, but never a location's address, a booking code, travel
       class, notes or document.
 - [ ] Choose trip dates only at the precision you intend to share (year,
-      month or day), and prefer areas and deliberately drawn routes.
+      month or day), and prefer areas and deliberately drawn routes. The trip
+      dates control, *How precise can the travel dates be?*, sits under
+      *Advanced* in the audience editor; it is hidden by default, and the editor
+      opens *Advanced* by itself when the audience already shows them.
 - [ ] Set *Dates shown to this audience* for the public view and each link. It
       caps every date, the trip dates included, and the coarser of it and a
       record's own setting always applies. Read the Sharing check's date lines

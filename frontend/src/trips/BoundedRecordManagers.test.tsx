@@ -3,7 +3,13 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
+import {
+  chooseOption,
+  openAdvanced,
+  renderWithOwner,
+  selectedOption,
+  testToken,
+} from "../query/test-utils";
 import type { Area, Location, Stay, Trip } from "../tracker-model";
 import { AreaManager } from "./AreaManager";
 import { StayManager } from "./StayManager";
@@ -510,6 +516,7 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
   // A new stay follows the audience, which also limits its dates; the coarser choice applies.
+  openAdvanced();
   expect(selectedOption("Datums voor bezoekers")).toBe("Zoals het publiek");
   chooseOption("Datums voor bezoekers", "Volledige datums");
   fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Taipei" } });

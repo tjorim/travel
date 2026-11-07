@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { chooseOption, renderWithOwner, testToken } from "../query/test-utils";
+import { chooseOption, openAdvanced, renderWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type { Area, Location, Trip } from "../tracker-model";
 import { changeLocale } from "../locale";
@@ -197,6 +197,7 @@ it("blocks address sharing without address parts", async () => {
   );
   expect(await screen.findByText(/Geen adres vastgelegd/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  openAdvanced();
   expect(
     screen
       .getByRole("checkbox", { name: "Adres ook delen met ontvangers van deze locatie" })

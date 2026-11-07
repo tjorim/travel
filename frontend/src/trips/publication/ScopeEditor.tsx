@@ -2,6 +2,7 @@ import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
 import { useState } from "react";
 
+import { AdvancedSection } from "../../forms/AdvancedSection";
 import { SearchSelect } from "../../forms/fields";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
@@ -85,7 +86,7 @@ function ScopeGroup({
 
   return (
     <Collapsible.Root className="scope-group" data-disclosure="">
-      <Collapsible.Trigger>
+      <Collapsible.Trigger className="max-sm:flex-wrap max-sm:justify-start max-sm:[&>strong]:basis-3/4 max-sm:[&>span]:basis-full max-sm:[&>span]:pl-6">
         <strong>{GROUP_TITLES[kind]}</strong>
         <span>{m.assets_of_selected_line({ p0: count, p1: items.length })}</span>
       </Collapsible.Trigger>
@@ -215,6 +216,55 @@ function AudiencePrecision({
   );
 }
 
+/**
+ * The trip's own start and end dates: whether visitors read them at all, and how finely. The audience's date limit
+ * above caps them as well (the coarser setting wins), so this stays an Advanced choice with a plain default: hidden.
+ */
+function TripDates({
+  scope,
+  setScope,
+  hasDates,
+}: {
+  scope: ShareScope;
+  setScope: (scope: ShareScope) => void;
+  hasDates: boolean;
+}) {
+  useLocale();
+  return (
+    <div className="grid gap-1.5">
+      <Field className="max-w-sm">
+        <FieldLabel>{m.assets_how_precise_can_the_travel_dates_be()}</FieldLabel>
+        <SearchSelect
+          ariaLabel={m.assets_how_precise_can_the_travel_dates_be()}
+          value={scope.trip.dates ?? ""}
+          onChange={(value) =>
+            setScope({
+              ...scope,
+              trip: { ...scope.trip, dates: (value || null) as ShareScope["trip"]["dates"] },
+            })
+          }
+        >
+          <option value="">{m.assets_hide()}</option>
+          {Object.entries(DATE_PRECISIONS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </SearchSelect>
+      </Field>
+      <small>{m.sharing_advanced_trip_dates_help()}</small>
+      {scope.trip.dates === "day" && <small>{m.assets_visitors_see_the_start_and_end_day()}</small>}
+      {scope.trip.dates === "month" && (
+        <small>{m.assets_visitors_see_only_the_start_and_end_month()}</small>
+      )}
+      {scope.trip.dates === "year" && <small>{m.assets_visitors_see_only_the_travel_year()}</small>}
+      {scope.trip.dates && !hasDates && (
+        <small>{m.assets_this_trip_has_no_travel_dates_yet()}</small>
+      )}
+    </div>
+  );
+}
+
 export function ScopeEditor({
   scope,
   setScope,
@@ -239,6 +289,9 @@ export function ScopeEditor({
 }) {
   useLocale();
   const groups = groupBy(catalog.filter((item) => item.visibility !== "everyone"));
+  // Advanced holds what most audiences never touch. It opens by itself when the audience already uses it, so a
+  // choice stored in it is never hidden from the owner.
+  const advancedInUse = scope.trip.dates !== null || scope.items.length > 0;
   return (
     <FieldSet
       className="m-0 grid min-w-0 gap-3 rounded-xl border border-travel-divider p-3.75 [&>legend]:px-1.5 [&>legend]:font-extrabold [&>p]:m-0 [&>p]:text-sm"
@@ -269,38 +322,6 @@ export function ScopeEditor({
             {m.owner_summary()}
           </FieldLabel>
         </Field>
-        <Field>
-          <FieldLabel>{m.assets_how_precise_can_the_travel_dates_be()}</FieldLabel>
-          <SearchSelect
-            ariaLabel={m.assets_how_precise_can_the_travel_dates_be()}
-            value={scope.trip.dates ?? ""}
-            onChange={(value) =>
-              setScope({
-                ...scope,
-                trip: { ...scope.trip, dates: (value || null) as ShareScope["trip"]["dates"] },
-              })
-            }
-          >
-            <option value="">{m.assets_hide()}</option>
-            {Object.entries(DATE_PRECISIONS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </SearchSelect>
-        </Field>
-        {scope.trip.dates === "day" && (
-          <small>{m.assets_visitors_see_the_start_and_end_day()}</small>
-        )}
-        {scope.trip.dates === "month" && (
-          <small>{m.assets_visitors_see_only_the_start_and_end_month()}</small>
-        )}
-        {scope.trip.dates === "year" && (
-          <small>{m.assets_visitors_see_only_the_travel_year()}</small>
-        )}
-        {scope.trip.dates && !hasDates && (
-          <small>{m.assets_this_trip_has_no_travel_dates_yet()}</small>
-        )}
       </div>
       <AudiencePrecision scope={scope} setScope={setScope} />
       {allowExclusions ? (
@@ -317,24 +338,31 @@ export function ScopeEditor({
       ) : (
         <VisibilityNote catalog={catalog} />
       )}
-      <div className="grid gap-2">
-        {[...groups].map(([kind, items]) => (
-          <ScopeGroup
-            key={kind}
-            kind={kind}
-            items={items}
-            scope={scope}
-            setScope={setScope}
-            tripId={tripId}
-            onError={onError}
-          />
-        ))}
-      </div>
-      {!groups.size && !allowExclusions && (
-        <p className="help">
-          {m.assets_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}
-        </p>
-      )}
+      <AdvancedSection summary={m.sharing_advanced_scope_summary()} inUse={advancedInUse}>
+        <TripDates scope={scope} setScope={setScope} hasDates={hasDates} />
+        <div className="grid gap-2">
+          <div className="grid gap-1">
+            <h4 className="m-0 text-base">{m.sharing_advanced_custom_heading()}</h4>
+            <p className="help m-0">{m.sharing_advanced_custom_help()}</p>
+          </div>
+          {[...groups].map(([kind, items]) => (
+            <ScopeGroup
+              key={kind}
+              kind={kind}
+              items={items}
+              scope={scope}
+              setScope={setScope}
+              tripId={tripId}
+              onError={onError}
+            />
+          ))}
+          {!groups.size && !allowExclusions && (
+            <p className="help">
+              {m.assets_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}
+            </p>
+          )}
+        </div>
+      </AdvancedSection>
     </FieldSet>
   );
 }

@@ -229,7 +229,15 @@ afterEach(() => {
 });
 
 const publicScope = () => within(screen.getByRole("group", { name: "Wat iedereen mag zien" }));
+/** Opens a disclosure by its button unless it is open already. */
+async function openDisclosure(scope: ReturnType<typeof within>, title: string) {
+  const trigger = await scope.findByRole("button", { name: new RegExp(`^${title}`) });
+  if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
+  return trigger;
+}
 async function openPublicGroup(title: string) {
+  // Records chosen for one audience sit under Advanced, then in one section per kind.
+  await openDisclosure(publicScope(), "Geavanceerd");
   const trigger = await publicScope().findByRole("button", { name: new RegExp(`^${title}`) });
   if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
   return within(trigger.closest("[data-disclosure]")!);
@@ -255,7 +263,7 @@ it("says what reaches every audience anyway and offers no field checklist", asyn
   await scopeEditor.findByText("Reisupdates");
   expect(
     scopeEditor.getByText(
-      /1 voor iedereen verschijnt hier altijd; 1 privé kun je hieronder aanvinken/,
+      /1 voor iedereen verschijnt hier altijd; 1 privé kun je onder Geavanceerd aanvinken/,
     ),
   ).toBeTruthy();
   await openPublicGroup("Reisupdates");
@@ -819,6 +827,51 @@ it("leaves the date setting of an older scope alone: nothing is sent unless the 
   expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")).not.toHaveProperty(
     "defaults",
   );
+});
+
+const TRIP_DATES = "Hoe precies mogen de reisdatums zijn?";
+const advancedButton = () =>
+  publicScope().getByRole("button", { name: /^Geavanceerd/ }) as HTMLButtonElement;
+
+it("keeps Advanced closed while nothing in it differs from the default, with the one date control outside", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  // The audience's date control is a primary control; the older trip-dates control lives under Advanced.
+  await publicScope().findByRole("combobox", { name: DATE_LIMIT });
+  await waitFor(() => expect(advancedButton().getAttribute("aria-expanded")).toBe("false"));
+  expect(publicScope().queryByRole("combobox", { name: TRIP_DATES })).toBeNull();
+  expect(publicScope().queryByRole("button", { name: /^Reisupdates/ })).toBeNull();
+  fireEvent.click(advancedButton());
+  await publicScope().findByRole("combobox", { name: TRIP_DATES });
+  expect(selectedOption(TRIP_DATES)).toBe("Niet tonen");
+  expect(publicScope().getByRole("button", { name: /^Reisupdates/ })).toBeTruthy();
+});
+
+it("opens Advanced by itself when the audience already shows trip dates, and saves them unchanged", async () => {
+  status = {
+    ...status,
+    scope: { ...scope(), trip: { title: true, summary: true, dates: "year" } },
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  await publicScope().findByRole("combobox", { name: TRIP_DATES });
+  expect(advancedButton().getAttribute("aria-expanded")).toBe("true");
+  expect(selectedOption(TRIP_DATES)).toBe("Alleen het jaar");
+  // Editing something else never rewrites the stored trip dates or the audience's date setting.
+  fireEvent.click(
+    (await openPublicGroup("Reisupdates")).getByRole("checkbox", { name: /Stad ↔ natuur/ }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
+  const sent = api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!;
+  expect(sent.trip.dates).toBe("year");
+  expect(sent).not.toHaveProperty("defaults");
+});
+
+it("opens Advanced by itself when the audience already lists records of its own", async () => {
+  status = { ...status, scope: scope([{ kind: "travel_update", id: "u1" }]) };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  await publicScope().findByRole("button", { name: /^Reisupdates/ });
+  expect(advancedButton().getAttribute("aria-expanded")).toBe("true");
+  expect(publicScope().getByText("Onderdelen alleen voor dit publiek")).toBeTruthy();
 });
 
 it("starts a new link at months, and keeps the choice in the previewed scope", async () => {

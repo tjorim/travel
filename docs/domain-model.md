@@ -213,6 +213,14 @@ receives a finer date than either the record or the audience allows.
 | month | month | month | month | year |
 | year | year | year | year | year |
 
+In the owner's audience editor, *Dates shown to this audience* is the primary date control.
+*How precise can the travel dates be?* (the trip dates row above) sits under the collapsed
+*Advanced* disclosure beside the audience's `custom` record lists; the disclosure opens by itself
+when the audience already shows trip dates or lists records, and nothing is rewritten when the
+editor opens or saves unless the owner edits that control. Per-record *Dates for visitors*,
+*Show the time* and *Also share the address* sit under *Advanced* in the visit, stay and
+location editors in the same way ([#241](decisions/241-sharing-presets.md)).
+
 An audience without a setting caps nothing, so a scope stored before the setting
 existed delivers exactly what it always did (every record then holds its own value).
 The only fallback is for a record that follows an audience that sets nothing: it

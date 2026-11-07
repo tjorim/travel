@@ -68,6 +68,12 @@ export function restoreObjectUrls() {
   Reflect.deleteProperty(URL, "revokeObjectURL");
 }
 
+/** Opens the "Geavanceerd" disclosure of a form unless it is open already (it opens by itself when it holds a choice). */
+export function openAdvanced() {
+  const trigger = screen.getByRole("button", { name: /^Geavanceerd/ });
+  if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
+}
+
 /** The visible text of a search combobox's current choice, by its accessible label. */
 export function selectedOption(label: string): string {
   return (screen.getByRole("combobox", { name: label }) as HTMLInputElement).value;

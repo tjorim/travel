@@ -1,3 +1,4 @@
+import { AdvancedSection } from "../../forms/AdvancedSection";
 import { DateField, TimeField } from "../../forms/DateTimeFields";
 import { RecordForm, requiredText, SelectField, TextField } from "../../forms/fields";
 import { MarkdownField } from "../../forms/MarkdownField";
@@ -59,14 +60,20 @@ export function StayForm({
       <record.form.Subscribe selector={(state) => state.values.status}>
         {(status) => status === "idea" && <IdeaNote kind="stay" />}
       </record.form.Subscribe>
-      <record.form.Field name="shareDatePrecision">
-        {(field) => (
-          <SelectField field={field} label={m.owner_dates_for_visitors()}>
-            {recordPrecisionOptions()}
-          </SelectField>
+      <record.form.Subscribe selector={(state) => state.values.shareDatePrecision !== ""}>
+        {(inUse) => (
+          <AdvancedSection summary={m.owner_dates_for_visitors()} inUse={inUse}>
+            <record.form.Field name="shareDatePrecision">
+              {(field) => (
+                <SelectField field={field} label={m.owner_dates_for_visitors()}>
+                  {recordPrecisionOptions()}
+                </SelectField>
+              )}
+            </record.form.Field>
+            <p className="help">{m.precision_record_help()}</p>
+          </AdvancedSection>
         )}
-      </record.form.Field>
-      <p className="help">{m.precision_record_help()}</p>
+      </record.form.Subscribe>
       <record.form.Field name="propertyName">
         {(field) => (
           <TextField
