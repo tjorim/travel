@@ -239,6 +239,20 @@ as counts only. It changes nothing, and it says nothing once the trip has starte
 the own value of all visits and stays, or of one kind, to `null` in one step, after
 showing which live audiences will read finer dates and asking for an acknowledgement.
 
+### The visitor's day-by-day plan
+
+The Plan reads the delivered document only ([#230](https://github.com/tjorim/travel/issues/230)). When
+any visit or stay arrives at day precision, it adds **By day**: a section per calendar day with a dated
+item, listing that day's visits, the routes departing that day (each once, never again on its arrival
+day) and the stay, shown on its check-in day, as "Sleeping in" on each night between its two delivered
+dates, and on its check-out day. Month and year records, undated visits and routes without a day are
+not placed or ordered into a day; they follow under **Other plans** with their own precision. When no
+visit or stay is shared by day, the three lists remain with a neutral note that exact days are not
+shown. The client never counts nights, days or records it did not receive, and never reads a day from
+record order, from a missing time or from a private record. A route's day is shared as entered whatever
+the audience's precision, so routes alone never make an audience a day audience. Records already shown
+with a story update (same area and day) are not repeated in the plan.
+
 ## Where a twin is still needed
 
 Twins are kept only for **photos and videos**, where the application generates a different shareable artifact. Documents are always private, either in the owner-wide library or specific to a trip; neither home is published.

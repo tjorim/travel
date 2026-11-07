@@ -80,8 +80,13 @@ it("switches projection chrome, dates and map alternatives while keeping authore
   fireEvent.click(screen.getByRole("button", { name: "Mijn plek" }));
   act(() => changeLocale("en"));
   expect(screen.getByText("April 2054 – May 2054")).toBeTruthy();
-  expect(screen.getByText("2 April 2054")).toBeTruthy();
-  expect(screen.getByText(/3 Apr 2054, 07:30/)).toBeTruthy();
+  // The visit sits on its day, and the route on the day it leaves in its own zone (not the browser's).
+  expect(view.container.querySelector('[data-day="2054-04-02"] time')?.textContent).toBe(
+    "Thu 2 Apr",
+  );
+  expect(
+    view.container.querySelector('[data-day="2054-04-03"] [data-day-entry="route"]')?.textContent,
+  ).toContain("07:30");
   fireEvent.click(screen.getByRole("button", { name: "Choose an update" }));
   expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Visit: Mijn bezoek" }).getAttribute("href")).toBe(
@@ -90,7 +95,7 @@ it("switches projection chrome, dates and map alternatives while keeping authore
   expect(screen.getByRole("link", { name: "Directions" }).getAttribute("href")).toBe(
     `/api/shared/${token}/navigation/place`,
   );
-  expect(screen.getByRole("heading", { name: "Train" })).toBeTruthy();
+  expect(screen.getByText("Train")).toBeTruthy();
   expect(screen.getByText(/Confirmed/)).toBeTruthy();
   expect(screen.getByRole("img", { name: "Mijn foto" })).toBe(img);
   expect(img.getAttribute("src")).toBe(url);
