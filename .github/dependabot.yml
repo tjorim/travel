@@ -77,9 +77,13 @@ updates:
           - "timezonefinder-data"
 
   # pnpm projects use Dependabot's npm ecosystem support.
+  # Direct dependencies only: Dependabot updates a transitive package with
+  # `pnpm update <pkg>@<version>`, which pnpm 12 rejects, so every transitive
+  # bump failed the run with dependency_file_not_resolvable. Transitive
+  # packages still move whenever a direct dependency is updated.
   - package-ecosystem: "npm"
     allow:
-      - dependency-type: all
+      - dependency-type: direct
     directory: "/frontend"
     schedule:
       interval: "weekly"
@@ -173,10 +177,6 @@ updates:
           - "isbot"
           - "seroval"
           - "seroval-plugins"
-      # Babel packages are transitive and must resolve to one version per major line
-      babel:
-        patterns:
-          - "@babel/*"
       # TypeScript and its runtime helpers
       typescript:
         patterns:
@@ -202,14 +202,6 @@ updates:
         patterns:
           - "maplibre-gl"
           - "@maplibre/*"
-      # Transitive packages that Dependabot would otherwise open one PR each for
-      transitive:
-        patterns:
-          - "baseline-browser-mapping"
-          - "enhanced-resolve"
-          - "ip-address"
-          - "@napi-rs/wasm-runtime"
-
   # Monitor the backend image's base images.
   - package-ecosystem: "docker"
     directory: "/backend"
