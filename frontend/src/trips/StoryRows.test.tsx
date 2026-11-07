@@ -82,6 +82,12 @@ function seed(media: ReturnType<typeof asset>[], copies: Record<string, object[]
       (copies[item.id] ?? []) as never[],
     );
   api.on("GET", /^\/files\//, () => ({}));
+  api.on("POST", /\/share-scope\/exclusion-review$/, () => ({
+    excluded: [],
+    also_hidden: {},
+    stale: 0,
+    baseline: [],
+  }));
   api.on("POST", /\/preview$/, (_body, _match) => ({
     schema_version: "travel/public-trip@1",
     title: "Exampleland",

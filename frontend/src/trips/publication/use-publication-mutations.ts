@@ -22,11 +22,13 @@ export function usePublicationMutations(tripId: string) {
   const linksPath = tripPath(tripId, "share-links");
   const refreshStatus = (subject: string) => [
     [...ownerKeys.trip(subject, tripId), "audit-events"],
+    [...ownerKeys.trip(subject, tripId), "exclusion-review"],
     ownerKeys.tripResource(subject, tripId, "public-projection"),
     ownerKeys.tripResource(subject, tripId, "overview"),
   ];
   const refreshLinks = (subject: string) => [
     [...ownerKeys.trip(subject, tripId), "audit-events"],
+    [...ownerKeys.trip(subject, tripId), "exclusion-review"],
     ownerKeys.tripResource(subject, tripId, "share-links"),
     ownerKeys.tripResource(subject, tripId, "overview"),
   ];
@@ -65,14 +67,21 @@ export function usePublicationMutations(tripId: string) {
     invalidate: (subject) => [...refreshStatus(subject), ownerKeys.trips(subject)],
   });
   const saveLink = useOwnerMutation<
-    { id: string | null; label: string; scope: ShareScope; revision?: number },
+    {
+      id: string | null;
+      label: string;
+      scope: ShareScope;
+      revision?: number;
+      /** Accepts that removing exclusions from an active link shows its visitors more. */
+      confirmWidening?: boolean;
+    },
     ShareLink
   >({
     fallback: m.assets_the_share_link_could_not_be_saved,
-    request: ({ id, label, scope, revision }) => ({
+    request: ({ id, label, scope, revision, confirmWidening }) => ({
       path: id ? `${linksPath}/${id}` : linksPath,
       method: id ? "PATCH" : "POST",
-      body: { label, scope },
+      body: { label, scope, ...(id && confirmWidening ? { confirm_widening: true } : {}) },
       ...(id ? { headers: { "If-Match": `"${revision}"` } } : {}),
     }),
     invalidate: refreshLinks,

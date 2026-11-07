@@ -8,9 +8,13 @@ import { m } from "../paraglide/messages.js";
 import type { Projection } from "../ProjectionView";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { RecordDialog } from "../RecordDialog";
-import type { ShareScope, Trip } from "../tracker-model";
+import type { ExclusionWidening, ShareScope, Trip } from "../tracker-model";
 import { RenderedPreview } from "../trips/RenderedPreview";
 import { cloneScope } from "../trips/publication/catalog";
+import {
+  ExclusionWideningDialog,
+  exclusionWidening,
+} from "../trips/publication/ExclusionWideningDialog";
 import { ScopeEditor } from "../trips/publication/ScopeEditor";
 import { usePublicationCatalog } from "../trips/publication/use-publication-catalog";
 import {
@@ -40,6 +44,8 @@ export function MemberScopeDialog({
   const [notice, setNotice] = useFeedback<string | null>(null);
   const [preview, setPreview] = useState<{ document: Projection; scope: ShareScope } | null>(null);
   const locked = collection.state === "revoked" || collection.state === "expired";
+  // Saving would show an active collection's visitors more (an exclusion was removed); the owner confirms first.
+  const [widening, setWidening] = useState<ExclusionWidening | null>(null);
 
   async function showPreview() {
     const candidate = cloneScope(scope);
@@ -55,12 +61,19 @@ export function MemberScopeDialog({
     }
   }
 
-  async function save() {
+  async function save(confirmWidening = false) {
     try {
-      await setMemberScope.mutateAsync({ collectionId: collection.id, member, scope });
+      await setMemberScope.mutateAsync({
+        collectionId: collection.id,
+        member,
+        scope,
+        confirmWidening,
+      });
       setNotice(textNotice(() => m.sharing_scope_saved()));
     } catch (error) {
-      setNotice(errorNotice(error, m.sharing_collection_save_error));
+      const found = exclusionWidening(error);
+      if (found) setWidening(found);
+      else setNotice(errorNotice(error, m.sharing_collection_save_error));
     }
   }
 
@@ -82,6 +95,7 @@ export function MemberScopeDialog({
           hasDates={Boolean(trip.starts_on || trip.ends_on)}
           tripId={trip.id}
           disabled={locked}
+          allowExclusions
           onError={(error) => setNotice(errorNotice(error, m.sharing_collection_save_error))}
         />
         <div className="button-row">
@@ -104,6 +118,16 @@ export function MemberScopeDialog({
             {m.owner_close_2()}
           </Button>
         </div>
+        {widening && (
+          <ExclusionWideningDialog
+            widening={widening}
+            onCancel={() => setWidening(null)}
+            onConfirm={() => {
+              setWidening(null);
+              void save(true);
+            }}
+          />
+        )}
         {preview && session && (
           <>
             <p className="help">{m.sharing_preview_unsaved_note()}</p>

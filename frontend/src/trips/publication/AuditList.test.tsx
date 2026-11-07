@@ -64,6 +64,19 @@ const events = [
       },
     ],
   }),
+  {
+    ...event("share_link.scope_change", {
+      exclusions: {
+        added: [{ kind: "area", id: "secret-area-a" }],
+        removed: [
+          { kind: "visit", id: "secret-visit-a" },
+          { kind: "visit", id: "secret-visit-b" },
+        ],
+        widened: { visit: 2, stay: 1 },
+      },
+    }),
+    id: "scope-with-exclusions",
+  },
 ];
 it.each(["en", "nl"] as const)(
   "renders private audit details in %s and updates on locale changes",
@@ -79,10 +92,10 @@ it.each(["en", "nl"] as const)(
       ),
     ).toBeVisible();
     expect(
-      screen.getByText(
+      screen.getAllByText(
         locale === "en" ? "Share link selection changed." : "Selectie van een deellink gewijzigd.",
       ),
-    ).toBeVisible();
+    ).toHaveLength(2);
     expect(
       screen.getByText(
         locale === "en"
@@ -138,6 +151,21 @@ it.each(["en", "nl"] as const)(
         locale === "en"
           ? "More precise dates for visitors. Public page: 1; share links: 0."
           : "Preciezere datums voor bezoekers. Openbare pagina: 1; deellinks: 0.",
+      ),
+    ).toBeVisible();
+    // Counts and kinds only: no record id or label from the exclusions is shown.
+    expect(
+      screen.getByText(
+        locale === "en"
+          ? "Left out of this link: 1 added, 2 removed."
+          : "Weggelaten van deze link: 1 erbij, 2 eraf.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        locale === "en"
+          ? "People with this link now see more: 2 visits, 1 stay."
+          : "Mensen met deze link zien nu meer: 2 bezoeken, 1 verblijf.",
       ),
     ).toBeVisible();
     expect(container.textContent).not.toContain("secret-");

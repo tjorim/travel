@@ -6,6 +6,7 @@ import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwner } from "../../query/owner-queries";
 import type { AuditEvent } from "../../tracker-model";
 import { isVisitorField, visitorFieldLabel } from "../locations/model";
+import { kindCountsText } from "./catalog";
 
 function eventMessage(event: AuditEvent) {
   const messages = {
@@ -128,6 +129,23 @@ export function AuditList({ tripId }: { tripId: string }) {
                     {m.audit_precision_follow_audiences(audienceCounts(precisionWidened(event)))}
                   </p>
                 )}
+              {event.kind === "share_link.scope_change" && !!event.details.exclusions && (
+                <>
+                  <p>
+                    {m.audit_exclusions_changed({
+                      added: formatNumber(event.details.exclusions.added.length),
+                      removed: formatNumber(event.details.exclusions.removed.length),
+                    })}
+                  </p>
+                  {!!Object.keys(event.details.exclusions.widened).length && (
+                    <p>
+                      {m.audit_exclusions_widened({
+                        counts: kindCountsText(event.details.exclusions.widened),
+                      })}
+                    </p>
+                  )}
+                </>
+              )}
               {event.kind === "record.visibility_change" && (
                 <>
                   {!!event.details.newly_reached?.length && (

@@ -172,6 +172,12 @@ beforeEach(() => {
     .collection("/api/trips/trip/documents", []);
   server.use(http.get("/api/trips/trip/audit-events", () => HttpResponse.json([])));
   api.on("PUT", /\/visibility\/[^/]+\/[^/]+$/, (body) => body);
+  api.on("POST", /\/share-scope\/exclusion-review$/, () => ({
+    excluded: [],
+    also_hidden: {},
+    stale: 0,
+    baseline: [],
+  }));
   api.on("GET", /^\/api\/trips\/trip\/public-projection$/, () => status);
   api.on("GET", /^\/api\/trips\/trip\/overview$/, () => overview);
   api.on("PUT", /^\/api\/trips\/trip\/public-projection$/, (body) => {
@@ -974,4 +980,258 @@ it("says so when no visit or stay has its own date setting", async () => {
   );
   expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(api.count("POST /api/trips/trip/date-precision/follow-audience")).toBe(1);
+});
+
+// --- Hidden links start from the public baseline and can leave records out of it ---
+
+type ReviewBody = {
+  exclude: { kind: string; id: string }[];
+  items: { kind: string; id: string }[];
+};
+/** A server stand-in: the baseline reaches the update “Aankomst”; excluding it also hides its two photos. */
+function serveReview(stale = 0) {
+  api.on("POST", /\/share-scope\/exclusion-review$/, (body) => {
+    const exclude = (body as ReviewBody).exclude;
+    const left = exclude.some((item) => item.kind === "travel_update" && item.id === "u2");
+    return {
+      baseline: [{ kind: "travel_update", id: "u2" }],
+      excluded: left
+        ? [
+            {
+              kind: "travel_update",
+              id: "u2",
+              received: true,
+              hides: { media_derivative: 2 },
+              also_hides: [
+                { kind: "media_derivative", id: "x1" },
+                { kind: "media_derivative", id: "x2" },
+              ],
+            },
+          ]
+        : [],
+      also_hidden: left ? { media_derivative: 2 } : {},
+      stale,
+    };
+  });
+}
+/** The server refuses the next save of this link (409) until the owner has acknowledged what it would show. */
+function refuseOnce(linkId: string, counts: Record<string, number>) {
+  const seen = { calls: 0, body: undefined as unknown };
+  server.use(
+    http.patch(
+      `/api/trips/trip/share-links/${linkId}`,
+      async ({ request }) => {
+        seen.calls += 1;
+        seen.body = await request.json();
+        return HttpResponse.json(
+          { detail: { code: "exclusion_widening_needs_acknowledgement", revealed: [], counts } },
+          { status: 409 },
+        );
+      },
+      { once: true },
+    ),
+  );
+  return seen;
+}
+const exclusionSection = () =>
+  within(screen.getByRole("region", { name: "Weggelaten voor dit publiek" }));
+
+it("lists what a link receives from the public page, ticked, and leaves one record out of this link only", async () => {
+  serveReview();
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
+  const section = exclusionSection();
+  fireEvent.click(await section.findByRole("button", { name: /Reisupdates/ }));
+  const checkbox = await section.findByRole("checkbox", { name: "Toon “Aankomst” op deze link" });
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  expect(section.getByText("1 van 1 getoond")).toBeTruthy();
+
+  fireEvent.click(checkbox);
+  expect(checkbox.getAttribute("aria-checked")).toBe("false");
+  // The server says what else the unticked update takes with it; the screen does not work that out itself.
+  await section.findByText(/verberg je ook 2 media, die ervan afhangen/);
+  expect(section.getByRole("status").textContent).toMatch(
+    /Dit publiek laat 1 onderdeel weg en verbergt daarmee ook 2 media/,
+  );
+  expect(
+    api.lastBody<ReviewBody>("POST /api/trips/trip/share-scope/exclusion-review")?.exclude,
+  ).toEqual([{ kind: "travel_update", id: "u2" }]);
+
+  fireEvent.click(screen.getByRole("button", { name: "Link opslaan" }));
+  await waitFor(() => expect(api.count("PATCH /api/trips/trip/share-links/l1")).toBe(1));
+  const saved = api.lastBody<{ scope: ShareScope }>("PATCH /api/trips/trip/share-links/l1");
+  expect(saved?.scope.exclude).toEqual([{ kind: "travel_update", id: "u2" }]);
+  expect(saved?.scope.items).toEqual([]);
+});
+
+it("shows every record again with one button, and previews the unsaved exclusions", async () => {
+  serveReview();
+  api.rows("/api/trips/trip/share-links")[0]!.scope = {
+    ...scope(),
+    exclude: [{ kind: "travel_update", id: "u2" }],
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
+  const section = exclusionSection();
+  const checkbox = await section.findByRole("checkbox", { name: "Toon “Aankomst” op deze link" });
+  expect(checkbox.getAttribute("aria-checked")).toBe("false");
+  fireEvent.click(await section.findByRole("button", { name: "Alles weer tonen" }));
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  expect(section.queryByRole("button", { name: "Alles weer tonen" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
+  await screen.findByRole("dialog", { name: "Preview van Familie" });
+  expect(api.lastBody<ShareScope>("POST /api/trips/trip/share-links/l1/preview")?.exclude).toEqual(
+    [],
+  );
+});
+
+it("says how many stored exclusions no longer apply", async () => {
+  serveReview(2);
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
+  await exclusionSection().findByText(/2 eerdere keuzes gelden niet meer/);
+});
+
+it("does not send exclusions an older scope never had, and keeps stored ones when only the name changes", async () => {
+  serveReview();
+  api.rows("/api/trips/trip/share-links")[0]!.scope = {
+    ...scope(),
+    exclude: [{ kind: "travel_update", id: "u2" }],
+  };
+  api.collection("/api/trips/trip/share-links", [
+    ...api.rows("/api/trips/trip/share-links"),
+    link("l9", "Oud", "draft"),
+  ]);
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Oud/ }));
+  const name = await screen.findByRole("textbox", { name: "Naam van de link" });
+  fireEvent.change(name, { target: { value: "Oud en bewaard" } });
+  fireEvent.click(screen.getByRole("button", { name: "Link opslaan" }));
+  await waitFor(() => expect(api.count("PATCH /api/trips/trip/share-links/l9")).toBe(1));
+  expect(
+    api.lastBody<{ scope: Record<string, unknown> }>("PATCH /api/trips/trip/share-links/l9")?.scope,
+  ).not.toHaveProperty("exclude");
+});
+
+it("asks before an active link shows more because an exclusion was removed, and only then sends the acknowledgement", async () => {
+  serveReview();
+  const active = link("l2", "Vrienden", "active");
+  active.scope = { ...scope(), exclude: [{ kind: "travel_update", id: "u2" }] };
+  api.collection("/api/trips/trip/share-links", [active]);
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Vrienden/ }));
+  fireEvent.click(
+    await exclusionSection().findByRole("checkbox", { name: "Toon “Aankomst” op deze link" }),
+  );
+  const refused = refuseOnce("l2", { travel_update: 1, media_derivative: 2 });
+  fireEvent.click(screen.getByRole("button", { name: "Link opslaan" }));
+  const dialog = await screen.findByRole("alertdialog", { name: "Meer tonen op deze link?" });
+  expect(
+    within(dialog).getByText(
+      /zien de mensen die hem hebben 1 reisupdate, 2 media die ze nu niet zien/,
+    ),
+  ).toBeTruthy();
+  expect(refused.body).not.toHaveProperty("confirm_widening");
+  // Nothing is sent until the owner has ticked the acknowledgement.
+  const confirm = within(dialog).getByRole("button", { name: "Meer tonen" }) as HTMLButtonElement;
+  expect(confirm.disabled).toBe(true);
+  fireEvent.click(
+    within(dialog).getByRole("checkbox", {
+      name: /Ik begrijp dat mensen met deze link meer gaan zien/,
+    }),
+  );
+  fireEvent.click(confirm);
+  await waitFor(() => expect(api.count("PATCH /api/trips/trip/share-links/l2")).toBe(1));
+  expect(
+    api.lastBody<{ confirm_widening: boolean; scope: ShareScope }>(
+      "PATCH /api/trips/trip/share-links/l2",
+    ),
+  ).toMatchObject({
+    confirm_widening: true,
+    scope: { exclude: [] },
+  });
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+});
+
+it("keeps the edit and sends nothing when the owner declines the widening", async () => {
+  serveReview();
+  const active = link("l2", "Vrienden", "active");
+  active.scope = { ...scope(), exclude: [{ kind: "travel_update", id: "u2" }] };
+  api.collection("/api/trips/trip/share-links", [active]);
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Vrienden/ }));
+  const checkbox = await exclusionSection().findByRole("checkbox", {
+    name: "Toon “Aankomst” op deze link",
+  });
+  fireEvent.click(checkbox);
+  const refused = refuseOnce("l2", { travel_update: 1 });
+  fireEvent.click(screen.getByRole("button", { name: "Link opslaan" }));
+  const dialog = await screen.findByRole("alertdialog", { name: "Meer tonen op deze link?" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Annuleren" }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(refused.calls).toBe(1);
+  expect(api.count("PATCH /api/trips/trip/share-links/l2")).toBe(0);
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+});
+
+it("states in the sharing check how many records a link leaves out and what that also hides", async () => {
+  overview = {
+    trip_id: "trip",
+    counts: {},
+    visibility: {},
+    audiences: [
+      audience(),
+      audience({
+        kind: "share_link",
+        id: "l1",
+        label: "Familie",
+        state: "active",
+        live: true,
+        excluded: 2,
+        excluded_also_hides: { visit: 2, stay: 1, location: 1 },
+      }),
+    ],
+    warnings: [],
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  await screen.findByText(
+    /Laat 2 onderdelen op “Iedereen” weg, en verbergt daarmee ook 2 bezoeken, 1 verblijf, 1 plaats/,
+  );
+  // The public page leaves nothing out, so it says nothing about it.
+  expect(screen.getAllByText(/Laat \d+ onderde/)).toHaveLength(1);
+});
+
+it("lists a link that leaves records out with how many", async () => {
+  api.rows("/api/trips/trip/share-links")[0]!.exclusions = {
+    excluded: [{ kind: "area", id: "b1", received: true, hides: { visit: 1 }, also_hides: [] }],
+    also_hidden: { visit: 1 },
+    stale: 0,
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const row = await screen.findByRole("button", { name: /Familie/ });
+  expect(row.textContent).toMatch(/laat 1 onderdeel weg/);
+});
+
+it("offers no way to leave records out on the public page: it is the baseline", async () => {
+  serveReview();
+  renderWithOwner(<PublicationManager trip={trip} />);
+  await publicScope().findByText("Reisupdates");
+  expect(screen.queryByRole("region", { name: "Weggelaten voor dit publiek" })).toBeNull();
+  expect(api.count("POST /api/trips/trip/share-scope/exclusion-review")).toBe(0);
+});
+
+it("says in a link's preview how it differs from the public page", async () => {
+  serveReview();
+  api.rows("/api/trips/trip/share-links")[0]!.scope = {
+    ...scope(),
+    exclude: [{ kind: "travel_update", id: "u2" }],
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
+  await exclusionSection().findByRole("checkbox", { name: "Toon “Aankomst” op deze link" });
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
+  const dialog = await screen.findByRole("dialog", { name: "Preview van Familie" });
+  await within(dialog).findByText(
+    /Ten opzichte van de openbare pagina laat dit publiek 1 onderdeel weg\. Daarmee verbergt het ook 2 media, die ervan afhangen\./,
+  );
 });

@@ -12,6 +12,7 @@ import { useOwner, useTripResource } from "../query/owner-queries";
 import type { Projection } from "../ProjectionView";
 import { RecordDialog } from "../RecordDialog";
 import type {
+  ExclusionWidening,
   ProjectionDocument,
   ShareLink,
   PublicProjectionStatus,
@@ -19,6 +20,7 @@ import type {
   Trip,
 } from "../tracker-model";
 import { cloneScope, emptyScope, publicUrl, shareUrl } from "./publication/catalog";
+import { ExclusionWideningDialog, exclusionWidening } from "./publication/ExclusionWideningDialog";
 import { FollowAudiencePrecision } from "./publication/FollowAudiencePrecision";
 import { LinkLifecycle } from "./publication/LinkLifecycle";
 import { LinkList, type LinkSeries } from "./publication/LinkList";
@@ -81,6 +83,10 @@ export function PublicationManager({ trip }: { trip: Trip }) {
 
   const publicRevision = useRef(1);
   const linkRevision = useRef(1);
+  // Saving would show an active link's visitors more (an exclusion was removed): the server listed it and waits for
+  // the owner's say-so, which the next save carries.
+  const [widening, setWidening] = useState<ExclusionWidening | null>(null);
+  const acknowledgedWidening = useRef(false);
   const [publicConflict, setPublicConflict] = useState<PublicProjectionStatus | null>(null);
   const [linkConflict, setLinkConflict] = useState<ShareLink | null>(null);
   async function protect<T>(save: () => Promise<T>, conflict: (current: T) => void): Promise<T> {
@@ -114,18 +120,27 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     defaultValues: { label: "", scope: emptyScope() },
     fallback: m.assets_the_share_link_could_not_be_saved,
     serverFields: { label: "label" },
+    intercept: (error) => {
+      const found = exclusionWidening(error);
+      if (found) setWidening(found);
+      return found !== null;
+    },
     // Saving never activates: a new link is created as a draft the owner can preview, then activate explicitly.
-    submit: (values) =>
-      protect(
+    submit: (values) => {
+      const confirmWidening = acknowledgedWidening.current;
+      acknowledgedWidening.current = false;
+      return protect(
         () =>
           saveLink.mutateAsync({
             id: editingLinkId,
             label: values.label.trim(),
             scope: values.scope,
             revision: linkRevision.current,
+            confirmWidening,
           }),
         setLinkConflict,
-      ),
+      );
+    },
     onSuccess: (saved) => {
       const wasNew = editingLinkId === null;
       loadLink(saved);
@@ -154,6 +169,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   function loadLink(link: ShareLink) {
     linkRevision.current = link.revision;
     setLinkConflict(null);
+    setWidening(null);
+    acknowledgedWidening.current = false;
     setLinkEditor({ linkId: link.id });
     linkRecord.load({ label: link.label, scope: cloneScope(link.scope) });
     setPreview(null);
@@ -163,6 +180,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
 
   function loadNewLink() {
     setLinkConflict(null);
+    setWidening(null);
+    acknowledgedWidening.current = false;
     setLinkEditor({ linkId: null });
     linkRecord.load({ label: "", scope: emptyScope() });
     setPreview(null);
@@ -188,6 +207,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   function closeLinkEditor() {
     if (linkEditor === null) return;
     setLinkConflict(null);
+    setWidening(null);
+    acknowledgedWidening.current = false;
     setLinkEditor(null);
     linkRecord.load({ label: "", scope: emptyScope() });
   }
@@ -431,6 +452,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                   tripId={trip.id}
                   onError={fail(m.owner_visibility_save_failed)}
                   disabled
+                  allowExclusions
                 />
                 <Button
                   onClick={() => {
@@ -499,10 +521,22 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                     tripId={trip.id}
                     onError={fail(m.owner_visibility_save_failed)}
                     disabled={lockedLink}
+                    allowExclusions
                   />
                 )}
               </linkRecord.form.Field>
             </RecordForm>
+            {widening && (
+              <ExclusionWideningDialog
+                widening={widening}
+                onCancel={() => setWidening(null)}
+                onConfirm={() => {
+                  acknowledgedWidening.current = true;
+                  setWidening(null);
+                  void linkRecord.form.handleSubmit();
+                }}
+              />
+            )}
             <LinkLifecycle
               link={selectedLink}
               expiresInDays={expiresInDays}

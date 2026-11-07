@@ -79,19 +79,21 @@ it("preserves a dirty sharing editor and confirmation without changing its scope
             ? { trip_id: "trip", slug: "eigen-reis", surface_state: "unpublished", scope }
             : url.endsWith("overview")
               ? { audiences: [], warnings: [] }
-              : url.endsWith("share-links")
-                ? [
-                    {
-                      id: "link",
-                      series_id: "link",
-                      label: "Eigen publiek",
-                      state: "draft",
-                      scope,
-                      token: null,
-                      expires_at: null,
-                    },
-                  ]
-                : [],
+              : url.endsWith("exclusion-review")
+                ? { excluded: [], also_hidden: {}, stale: 0, baseline: [] }
+                : url.endsWith("share-links")
+                  ? [
+                      {
+                        id: "link",
+                        series_id: "link",
+                        label: "Eigen publiek",
+                        state: "draft",
+                        scope,
+                        token: null,
+                        expires_at: null,
+                      },
+                    ]
+                  : [],
         ),
       ),
     ),

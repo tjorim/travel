@@ -10,7 +10,13 @@ import type {
   TripOverview,
 } from "../../tracker-model";
 import { VisibilityControl } from "../visibility";
-import { DATE_PRECISIONS, GROUP_TITLES, groupBy, type CatalogItem } from "./catalog";
+import {
+  DATE_PRECISIONS,
+  GROUP_TITLES,
+  groupBy,
+  kindCountsText,
+  type CatalogItem,
+} from "./catalog";
 
 const MAP_KINDS = {
   visits: m.assets_count_visits,
@@ -55,6 +61,16 @@ export function precisionLines(audience: OverviewAudience): string[] {
     lines.push(m.precision_check_kind({ kind: label(), breakdown }));
   }
   return lines;
+}
+
+/** What a hidden link leaves out of the public baseline: how many records, and what that also hides. */
+export function exclusionLines(audience: OverviewAudience): string[] {
+  if (!audience.excluded) return [];
+  const also = kindCountsText(audience.excluded_also_hides);
+  return [
+    m.exclusions_check_excluded({ count: audience.excluded }) +
+      (also ? `, ${m.exclusions_summary_also({ counts: also })}` : ""),
+  ];
 }
 
 /** Describe canonical warning codes; server prose is diagnostic only. */
@@ -154,7 +170,7 @@ export function SharingReview({ overview }: { overview: TripOverview | undefined
                 ].join(", "),
               })}
               <ul className="m-0 mt-1 grid list-disc gap-0.5 pl-5 text-sm">
-                {precisionLines(audience).map((line) => (
+                {[...exclusionLines(audience), ...precisionLines(audience)].map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>

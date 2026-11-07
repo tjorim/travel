@@ -1,6 +1,7 @@
 import { m } from "../../paraglide/messages.js";
 import {
   formatInstantDate,
+  type KindCounts,
   type ProjectionDocument,
   type ShareLink,
   type ShareScope,
@@ -87,8 +88,29 @@ export function cloneScope(scope: Partial<ShareScope> | null | undefined): Share
     ...(scope?.defaults !== undefined
       ? { defaults: scope.defaults && { date_precision: scope.defaults.date_precision ?? null } }
       : {}),
+    // Absent stays absent too: the server then keeps the audience's stored exclusions, so a client that does not
+    // know them can never widen an audience.
+    ...(scope?.exclude !== undefined
+      ? { exclude: (scope.exclude ?? []).map(({ kind, id }) => ({ kind, id })) }
+      : {}),
     items: Array.isArray(scope?.items) ? scope.items.map(({ kind, id }) => ({ kind, id })) : [],
   };
+}
+
+/** Whether this audience leaves the record out of what it receives from the public baseline. */
+export const isExcluded = (scope: ShareScope, item: { kind: ShareScopeKind; id: string }) =>
+  (scope.exclude ?? []).some((value) => value.kind === item.kind && value.id === item.id);
+
+/** Leaves a baseline record out of (`shown: false`) or puts it back into (`shown: true`) this audience's scope. */
+export function setShown(
+  scope: ShareScope,
+  item: { kind: ShareScopeKind; id: string },
+  shown: boolean,
+): ShareScope {
+  const rest = (scope.exclude ?? []).filter(
+    (value) => !(value.kind === item.kind && value.id === item.id),
+  );
+  return { ...scope, exclude: shown ? rest : [...rest, { kind: item.kind, id: item.id }] };
 }
 
 export function shareUrl(token: string): string {
@@ -140,3 +162,19 @@ export const groupBy = (items: CatalogItem[]) =>
  * chosen. A still-private record can be chosen directly here: checking it promotes it to "Zelf kiezen" first, then
  * adds it to this audience's scope, so choosing content for an audience never requires leaving this form.
  */
+
+/** "2 visits, 1 stay": counts of records by kind, an area and a location both counting as a place. */
+export function kindCountsText(counts: KindCounts | undefined): string {
+  if (!counts) return "";
+  const places = (counts.area ?? 0) + (counts.location ?? 0);
+  return [
+    counts.visit ? m.assets_count_visits({ count: counts.visit }) : "",
+    counts.stay ? m.assets_count_stays({ count: counts.stay }) : "",
+    counts.route ? m.assets_count_routes({ count: counts.route }) : "",
+    counts.travel_update ? m.assets_count_updates({ count: counts.travel_update }) : "",
+    places ? m.assets_count_places({ count: places }) : "",
+    counts.media_derivative ? m.assets_count_media({ count: counts.media_derivative }) : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
