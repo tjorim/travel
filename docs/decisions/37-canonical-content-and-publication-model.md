@@ -100,6 +100,7 @@ object keys or provider URLs.
 {
   "schema_version": "travel/share-scope@1",
   "trip": {"title": true, "summary": true, "dates": "month"},
+  "defaults": {"date_precision": "month"},
   "items": [
     {"kind": "travel_update", "id": "opaque-id"},
     {"kind": "area", "id": "opaque-id"},
@@ -111,6 +112,12 @@ object keys or provider URLs.
   ]
 }
 ```
+
+`defaults` is optional and additive (amended 2026-11-07, #236), so the schema keeps
+its version: a scope stored without it caps nothing and delivers exactly what it
+always did. `defaults.date_precision` (`day`, `month` or `year`) is the finest date
+this audience may read; it is combined with each record's own precision and the
+coarser value wins (see the [domain model](../domain-model.md#date-precision)).
 
 A scope lists records; it never names fields. Which record an audience receives
 is decided by the record's own `visibility` (amended 2026-09-25, see the

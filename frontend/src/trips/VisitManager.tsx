@@ -73,7 +73,7 @@ export function VisitManager({
           notes: values.notes.trim() || null,
           summary: values.summary.trim() || null,
           share_time: values.shareTime,
-          share_date_precision: values.shareDatePrecision,
+          share_date_precision: values.shareDatePrecision || null,
           ...(!id || !samePlace(values.place, baseline.current.place)
             ? placeFields(values.place)
             : {}),

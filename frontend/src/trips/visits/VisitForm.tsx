@@ -6,20 +6,9 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../labels";
 import { PlacePicker } from "../PlacePicker";
+import { recordPrecisionOptions } from "../record-precision";
 import { VisitRouteHint } from "../VisitRouteHint";
 import { lastDay, type Values } from "./model";
-
-const PRECISION_LABELS = {
-  get day() {
-    return m.owner_full_dates();
-  },
-  get month() {
-    return m.owner_months_only();
-  },
-  get year() {
-    return m.owner_year_only();
-  },
-} as const;
 
 /** The visit editor's fields. */
 export function VisitForm({
@@ -176,11 +165,7 @@ export function VisitForm({
         <record.form.Field name="shareDatePrecision">
           {(field) => (
             <SelectField field={field} label={m.owner_dates_for_visitors()}>
-              {Object.entries(PRECISION_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
+              {recordPrecisionOptions()}
             </SelectField>
           )}
         </record.form.Field>
@@ -198,6 +183,7 @@ export function VisitForm({
           )}
         </record.form.Field>
       </div>
+      <p className="help">{m.precision_record_help()}</p>
     </RecordForm>
   );
 }

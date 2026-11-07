@@ -7,6 +7,7 @@ import { m } from "../../paraglide/messages.js";
 import { addDays, daysBetween, type PlaceSearchResult, type Stay } from "../../tracker-model";
 import { STAY_STATUS_LABELS } from "../labels";
 import { PlaceSearchField } from "../PlaceSearchField";
+import { recordPrecisionOptions } from "../record-precision";
 import { checkOutAfterCheckIn, httpsOnly, overlapLabel, overlaps, type StayValues } from "./model";
 import { IdeaNote } from "../IdeaNote";
 
@@ -61,12 +62,11 @@ export function StayForm({
       <record.form.Field name="shareDatePrecision">
         {(field) => (
           <SelectField field={field} label={m.owner_dates_for_visitors()}>
-            <option value="day">{m.owner_full_dates()}</option>
-            <option value="month">{m.owner_months_only()}</option>
-            <option value="year">{m.owner_year_only()}</option>
+            {recordPrecisionOptions()}
           </SelectField>
         )}
       </record.form.Field>
+      <p className="help">{m.precision_record_help()}</p>
       <record.form.Field name="propertyName">
         {(field) => (
           <TextField

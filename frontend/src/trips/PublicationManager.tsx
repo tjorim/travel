@@ -19,6 +19,7 @@ import type {
   Trip,
 } from "../tracker-model";
 import { cloneScope, emptyScope, publicUrl, shareUrl } from "./publication/catalog";
+import { FollowAudiencePrecision } from "./publication/FollowAudiencePrecision";
 import { LinkLifecycle } from "./publication/LinkLifecycle";
 import { LinkList, type LinkSeries } from "./publication/LinkList";
 import { PreviewDialog, type Preview } from "./publication/PreviewDialog";
@@ -349,6 +350,11 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         </div>
         <VisibilityOverview tripId={trip.id} catalog={catalog} />
       </div>
+      <FollowAudiencePrecision
+        tripId={trip.id}
+        onDone={(message) => setNotice(textNotice(message))}
+        onError={fail(m.precision_follow_failed)}
+      />
       {publicConflict && (
         <div role="alert" className="grid gap-2">
           <p>{m.sharing_scope_conflict()}</p>

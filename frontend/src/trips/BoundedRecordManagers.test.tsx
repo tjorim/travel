@@ -509,13 +509,32 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
-  expect(selectedOption("Datums voor bezoekers")).toBe("Alleen maanden");
+  // A new stay follows the audience, which also limits its dates; the coarser choice applies.
+  expect(selectedOption("Datums voor bezoekers")).toBe("Zoals het publiek");
   chooseOption("Datums voor bezoekers", "Volledige datums");
   fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() =>
     expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({
       share_date_precision: "day",
+    }),
+  );
+});
+
+it("lets a stay follow the audience's date precision, sending null", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
+  expect(
+    within(screen.getByRole("dialog")).getByText(/elk publiek beperkt zijn datums/i),
+  ).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Taipei" } });
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({
+      share_date_precision: null,
     }),
   );
 });

@@ -201,8 +201,8 @@ export type Stay = {
   location: Location;
   area: Area;
   visibility: Visibility;
-  /** How exactly visitors see the nights of a shared stay. */
-  share_date_precision: "day" | "month" | "year";
+  /** How exactly visitors see the nights of a shared stay; null follows each audience's own date precision. */
+  share_date_precision: DatePrecision | null;
 };
 
 /**
@@ -277,7 +277,8 @@ export type Visit = {
   summary_html?: string | null;
   visibility: Visibility;
   share_time: boolean;
-  share_date_precision: "day" | "month" | "year";
+  /** The finest date visitors may read; null follows each audience's own date precision. The coarser wins. */
+  share_date_precision: DatePrecision | null;
   /** Routes this visit probably restates: same day and area, and it is about the journey. */
   possible_route_duplicates?: { id: string; title: string }[];
 };
@@ -439,10 +440,44 @@ export type ShareScopeKind =
 /** An audience lists only records whose visibility is custom; which fields show is fixed per kind. */
 export type ShareScopeItem = { kind: ShareScopeKind; id: string };
 
+export type DatePrecision = "day" | "month" | "year";
+
+/**
+ * What one audience receives of the trip. `defaults.date_precision` caps every date it shows, on top of each
+ * record's own setting (the coarser wins). Absent keeps the audience's stored setting; `date_precision: null`
+ * removes the cap, so each record's own value applies.
+ */
 export type ShareScope = {
   schema_version: "travel/share-scope@1";
-  trip: { title: boolean; summary: boolean; dates: "day" | "month" | "year" | null };
+  trip: { title: boolean; summary: boolean; dates: DatePrecision | null };
+  defaults?: { date_precision: DatePrecision | null } | null;
   items: ShareScopeItem[];
+};
+
+/** How the visits or stays an audience receives read their dates. */
+export type OverviewRecordPrecision = {
+  by_precision: Partial<Record<DatePrecision, number>>;
+  /** Records held coarser than the audience alone would allow, by their own setting. */
+  limited_by_record: number;
+  /** Records that follow an audience which sets nothing, so they show months. */
+  default_applied: number;
+};
+
+export type PrecisionCounts = { visits: number; stays: number };
+
+/** A live audience whose dates change when visits and stays follow the audience. */
+export type FollowAudienceAudience = {
+  /** `public`, `link:<id>` or `collection:<id>`. */
+  audience: string;
+  label: string | null;
+  widened: PrecisionCounts;
+  narrowed: PrecisionCounts;
+};
+
+export type FollowAudienceResult = {
+  applied: boolean;
+  changed: PrecisionCounts;
+  audiences: FollowAudienceAudience[];
 };
 
 /** What one audience (the public page or a draft/active link) receives right now. */
@@ -454,7 +489,10 @@ export type OverviewAudience = {
   live: boolean;
   shares_title: boolean;
   shares_summary: boolean;
-  dates_precision: "day" | "month" | "year" | null;
+  dates_precision: DatePrecision | null;
+  /** The audience's own cap on every date; null when it sets none. */
+  date_precision: DatePrecision | null;
+  record_precision: Partial<Record<"visits" | "stays", OverviewRecordPrecision>>;
   scope_items: number;
   delivered: Record<"visits" | "places" | "stays" | "routes" | "updates" | "media", number>;
   without_map_point: Record<"visits" | "stays" | "updates", number>;
@@ -888,7 +926,8 @@ export type AuditEventKind =
   | "location.update"
   | "public_projection.scope_change"
   | "share_link.scope_change"
-  | "record.visibility_change";
+  | "record.visibility_change"
+  | "record.precision_follow_audience";
 export type AuditEvent = {
   id: string;
   kind: AuditEventKind;
@@ -907,5 +946,8 @@ export type AuditEvent = {
     changes?: { field: string; audiences: string[] }[];
     /** A `location.merge` or `area.merge`: per duplicate, the audiences that newly read the kept record. */
     merged?: { id: string; widened?: { audience: string }[] }[];
+    /** A `record.precision_follow_audience`: the records that now follow the audience, and who reads them differently. */
+    changed?: PrecisionCounts;
+    audiences?: { audience: string; widened: PrecisionCounts; narrowed: PrecisionCounts }[];
   };
 };

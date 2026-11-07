@@ -98,6 +98,8 @@ const audience = (overrides: Partial<OverviewAudience> = {}): OverviewAudience =
   shares_title: true,
   shares_summary: true,
   dates_precision: null,
+  date_precision: null,
+  record_precision: {},
   scope_items: 0,
   delivered: { visits: 0, places: 0, stays: 0, routes: 0, updates: 0, media: 0 },
   without_map_point: { visits: 0, stays: 0, updates: 0 },
@@ -768,4 +770,208 @@ it("retains a draft across a deferred scope conflict and retries with the chosen
   fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
   await waitFor(() => expect(headers).toEqual(['"1"', '"2"']));
   await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
+});
+
+const DATE_LIMIT = "Datums die dit publiek ziet";
+
+it("sets how precisely the public page shows dates and sends the choice with the scope", async () => {
+  status = { ...status, scope: { ...scope(), defaults: { date_precision: "month" } } };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  await publicScope().findByRole("combobox", { name: DATE_LIMIT });
+  await waitFor(() => expect(selectedOption(DATE_LIMIT)).toBe("Maanden"));
+  // The explanation says a record's own setting can only make dates coarser.
+  expect(publicScope().getByText(/alleen grover maken, nooit preciezer/)).toBeTruthy();
+
+  chooseOption(DATE_LIMIT, "Dagen");
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
+  expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!.defaults).toEqual({
+    date_precision: "day",
+  });
+
+  chooseOption(DATE_LIMIT, "Geen limiet: elk onderdeel bepaalt zelf");
+  expect(publicScope().getByText(/alleen de maand/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await waitFor(() =>
+    expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")!.defaults).toEqual({
+      date_precision: null,
+    }),
+  );
+});
+
+it("leaves the date setting of an older scope alone: nothing is sent unless the owner changes it", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  await publicScope().findByRole("combobox", { name: DATE_LIMIT });
+  await waitFor(() =>
+    expect(selectedOption(DATE_LIMIT)).toBe("Geen limiet: elk onderdeel bepaalt zelf"),
+  );
+  fireEvent.click(
+    (await openPublicGroup("Reisupdates")).getByRole("checkbox", { name: /Stad ↔ natuur/ }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await screen.findByText("Keuze bewaard. Niet-geselecteerde inhoud blijft privé.");
+  expect(api.lastBody<ShareScope>("PUT /api/trips/trip/public-projection")).not.toHaveProperty(
+    "defaults",
+  );
+});
+
+it("starts a new link at months, and keeps the choice in the previewed scope", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe link" }));
+  const editor = within(await screen.findByRole("dialog"));
+  await editor.findByRole("combobox", { name: DATE_LIMIT });
+  expect(selectedOption(DATE_LIMIT)).toBe("Maanden");
+  chooseOption(DATE_LIMIT, "Jaren");
+  fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Vrienden" } });
+  fireEvent.click(screen.getByRole("button", { name: "Concept opslaan" }));
+  await screen.findByText(/Concept opgeslagen/);
+  expect(
+    api.lastBody<{ scope: ShareScope }>("POST /api/trips/trip/share-links")!.scope.defaults,
+  ).toEqual({
+    date_precision: "year",
+  });
+});
+
+it("states in the sharing check how each audience reads dates and which records are held coarser", async () => {
+  overview = {
+    trip_id: "trip",
+    counts: {},
+    visibility: {},
+    audiences: [
+      audience({
+        state: "published",
+        live: true,
+        date_precision: "day",
+        record_precision: {
+          visits: {
+            by_precision: { day: 9, month: 3 },
+            limited_by_record: 3,
+            default_applied: 0,
+          },
+          stays: { by_precision: { day: 4 }, limited_by_record: 0, default_applied: 0 },
+        },
+      }),
+      audience({
+        kind: "share_link",
+        id: "l1",
+        label: "Familie",
+        state: "active",
+        live: true,
+        date_precision: null,
+        record_precision: {
+          visits: { by_precision: { month: 2 }, limited_by_record: 0, default_applied: 2 },
+        },
+      }),
+    ],
+    warnings: [],
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const check = within(await screen.findByRole("list", { name: "Controle voor het delen" }));
+  expect(check.getByText("Datums die dit publiek ziet: dagen.")).toBeTruthy();
+  expect(
+    check.getByText(
+      "Bezoeken: 9 per dag, 3 per maand; 3 grover gehouden door hun eigen instelling",
+    ),
+  ).toBeTruthy();
+  expect(check.getByText("Verblijven: 4 per dag")).toBeTruthy();
+  expect(
+    check.getByText(
+      "Voor dit publiek is geen datumlimiet ingesteld; de eigen instelling van elk onderdeel geldt.",
+    ),
+  ).toBeTruthy();
+  expect(
+    check.getByText("Bezoeken: 2 per maand; 2 volgen geen instelling en tonen daarom de maand"),
+  ).toBeTruthy();
+});
+
+const followResult = (overrides = {}) => ({
+  applied: false,
+  changed: { visits: 2, stays: 1 },
+  audiences: [
+    {
+      audience: "public",
+      label: null,
+      widened: { visits: 2, stays: 1 },
+      narrowed: { visits: 0, stays: 0 },
+    },
+  ],
+  ...overrides,
+});
+
+it("lets visits and stays follow the audience after showing who will see more precise dates", async () => {
+  api.on("POST", /\/date-precision\/follow-audience$/, (body) => {
+    const request = body as { confirm: boolean };
+    return followResult({ applied: request.confirm });
+  });
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Precisie van het publiek volgen…" }));
+  const dialog = within(await screen.findByRole("alertdialog"));
+  expect(dialog.getByText(/Onderdelen die hun eigen datuminstelling loslaten: 3/)).toBeTruthy();
+  expect(
+    dialog.getByText("De pagina voor iedereen ziet preciezere datums voor 2 bezoeken, 1 verblijf."),
+  ).toBeTruthy();
+  // Nothing is stored by the check, and the change waits for the owner to accept the widening.
+  expect(api.lastBody("POST /api/trips/trip/date-precision/follow-audience")).toEqual({
+    kinds: ["visit", "stay"],
+    confirm: false,
+    confirm_widening: false,
+  });
+  const confirm = dialog.getByRole("button", { name: "Het publiek volgen" }) as HTMLButtonElement;
+  expect(confirm.disabled).toBe(true);
+  fireEvent.click(
+    dialog.getByRole("checkbox", { name: /Ik begrijp dat deze bezoekers preciezere datums zien/ }),
+  );
+  expect(confirm.disabled).toBe(false);
+  fireEvent.click(confirm);
+  await screen.findByText("Onderdelen die nu de precisie van het publiek volgen: 3.");
+  expect(api.lastBody("POST /api/trips/trip/date-precision/follow-audience")).toEqual({
+    kinds: ["visit", "stay"],
+    confirm: true,
+    confirm_widening: true,
+  });
+});
+
+it("follows the audience for one kind only, and needs no acknowledgement when nobody sees more", async () => {
+  api.on("POST", /\/date-precision\/follow-audience$/, (body) => {
+    const request = body as { confirm: boolean };
+    return followResult({
+      applied: request.confirm,
+      changed: { visits: 1, stays: 0 },
+      audiences: [
+        {
+          audience: "link:l1",
+          label: "Familie",
+          widened: { visits: 0, stays: 0 },
+          narrowed: { visits: 1, stays: 0 },
+        },
+      ],
+    });
+  });
+  renderWithOwner(<PublicationManager trip={trip} />);
+  chooseOption("Toepassen op", "Bezoeken");
+  fireEvent.click(await screen.findByRole("button", { name: "Precisie van het publiek volgen…" }));
+  const dialog = within(await screen.findByRole("alertdialog"));
+  expect(dialog.getByText(/Link “Familie” ziet minder precieze datums voor 1 bezoek/)).toBeTruthy();
+  expect(dialog.queryByRole("checkbox")).toBeNull();
+  fireEvent.click(dialog.getByRole("button", { name: "Het publiek volgen" }));
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/date-precision/follow-audience")).toEqual({
+      kinds: ["visit"],
+      confirm: true,
+      confirm_widening: false,
+    }),
+  );
+});
+
+it("says so when no visit or stay has its own date setting", async () => {
+  api.on("POST", /\/date-precision\/follow-audience$/, () =>
+    followResult({ changed: { visits: 0, stays: 0 }, audiences: [] }),
+  );
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Precisie van het publiek volgen…" }));
+  await screen.findByText(
+    "Geen bezoek of verblijf heeft een eigen datuminstelling; ze volgen het publiek al.",
+  );
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(api.count("POST /api/trips/trip/date-precision/follow-audience")).toBe(1);
 });

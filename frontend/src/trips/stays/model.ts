@@ -4,6 +4,7 @@ import {
   formatDay,
   locationName,
   stayLabel,
+  type DatePrecision,
   type LocationInput,
   type Stay,
   type Trip,
@@ -25,7 +26,8 @@ export type StayValues = {
   bookingReference: string;
   contactDetails: string;
   notes: string;
-  shareDatePrecision: Stay["share_date_precision"];
+  /** Empty follows each audience's own date precision. */
+  shareDatePrecision: DatePrecision | "";
 };
 
 export const blankStay = (trip: Trip): StayValues => {
@@ -45,7 +47,7 @@ export const blankStay = (trip: Trip): StayValues => {
     bookingReference: "",
     contactDetails: "",
     notes: "",
-    shareDatePrecision: "month",
+    shareDatePrecision: "",
   };
 };
 const locationInput = (place: Stay["location"]): LocationInput | null => {
@@ -67,7 +69,7 @@ export const fromStay = (stay: Stay): StayValues => ({
   bookingReference: stay.booking_reference ?? "",
   contactDetails: stay.contact_details ?? "",
   notes: stay.notes ?? "",
-  shareDatePrecision: stay.share_date_precision,
+  shareDatePrecision: stay.share_date_precision ?? "",
 });
 
 export const stayFields = {

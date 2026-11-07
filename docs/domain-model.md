@@ -98,8 +98,8 @@ anything recorded: the application stores no GPS tracks, live or finished.
   *unlisted* view).
 - **Collection link**: one owner-wide, named, revocable link (`collection`) that opens an index of several trips; each member trip has its own scope. It has its own token, never a trip link's. The owner's *Sharing overview* lists every public trip, hidden link and collection in one place.
 - **Scope**: what a public view or hidden link lists: the `custom` records it
-  includes, plus the trip title, summary and date precision. It never names
-  fields.
+  includes, plus the trip title, summary and date precision, and the audience's
+  own date precision (see *Date precision* below). It never names fields.
 - **Private original**: something whose exact content must never leave the
   owner boundary: a stay's property and booking, a location's address, a route's
   booking, a photo original, a document original.
@@ -115,9 +115,9 @@ outside the allowlist can be selected.
 |---|---|---|
 | Area | label, region, country, generalized point | time zone |
 | Location | its public name, city, country, point, and directions; its address only if the owner also chooses that | address (unless chosen), postal code, notes, provider ids, display name |
-| Reisupdate | title, the text written for visitors, the date at its precision, its area | private notes, location, attached originals, exact time |
-| Stay | its area and its nights, at the date precision chosen for it | property, location, booking, contact, notes |
-| Visit | title (else the shared location's name or the area's), the text for visitors, its area, the days at the precision chosen; the times only if the owner also chooses that (and only with full dates) | notes, the exact location (unless shared), the times (unless chosen) |
+| Reisupdate | title, the text written for visitors, the date at its precision (never finer than the audience allows), its area | private notes, location, attached originals, exact time |
+| Stay | its area and its nights, at the date precision chosen for it and its audience | property, location, booking, contact, notes |
+| Visit | title (else the shared location's name or the area's), the text for visitors, its area, the days at the precision chosen for it and its audience; the times only if the owner also chooses that (and only with full dates) | notes, the exact location (unless shared), the times (unless chosen) |
 | Route | mode, status, its two areas, name, schedule, carrier, service reference, the drawn line | booking reference, class, notes, documents, the exact locations (unless shared) |
 | Photo | an approved, metadata-stripped copy, with caption and alt text | the original and its EXIF |
 | Trip cover | the id of the one chosen photo, only if that audience already receives the photo | any photo the audience does not receive; the choice itself |
@@ -126,6 +126,40 @@ outside the allowlist can be selected.
 The public index cards on `/` and `/trips` also show the nominated cover, only
 when the public projection receives it. They carry its scoped public file URL,
 approved alt text, dimensions and focal point; nomination never delivers a photo.
+
+## Date precision
+
+How exactly a visitor reads *when* is decided in one rule, applied on the server
+by `app/precision.py` in the same code path for the owner's preview, the Sharing
+check and the real delivery: **the coarser value always wins**, so a visitor never
+receives a finer date than either the record or the audience allows.
+
+| Layer | Where it is set | Values |
+|---|---|---|
+| Audience | `defaults.date_precision` in the share scope of the public view, a hidden link or a collection member (*Dates shown to this audience*) | `day`, `month`, `year`, or absent |
+| Visit, stay | its own `share_date_precision` (*Dates for visitors*) | `day`, `month`, `year`, or `null` = same as the audience |
+| Reisupdate | its own `date_precision` | `day`, `month`, `year` |
+| Trip dates | `trip.dates` in the scope, also capped by the audience | `day`, `month`, `year`, or absent (hidden) |
+
+| Record's own value | Audience: not set | Audience: day | Audience: month | Audience: year |
+|---|---|---|---|---|
+| not set (follows the audience) | month | day | month | year |
+| day | day | day | month | year |
+| month | month | month | month | year |
+| year | year | year | year | year |
+
+An audience without a setting caps nothing, so a scope stored before the setting
+existed delivers exactly what it always did (every record then holds its own value).
+The only fallback is for a record that follows an audience that sets nothing: it
+reads by `month`, the conservative default every new record always had. A new public
+view, hidden link or collection member starts with an explicit `month`; saving a scope
+that leaves `defaults` out keeps the audience's stored setting, so an older client can
+never widen an audience, and `defaults: null` removes it. A time (`share_time`) only
+shows on a full date, so a coarser effective precision hides it. The Sharing check
+states each audience's setting, how many visits and stays read at each precision, and
+how many are held coarser by their own setting. *Follow the audience's precision* sets
+the own value of all visits and stays, or of one kind, to `null` in one step, after
+showing which live audiences will read finer dates and asking for an acknowledgement.
 
 ## Where a twin is still needed
 
