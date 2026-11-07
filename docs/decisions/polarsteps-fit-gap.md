@@ -279,6 +279,8 @@ Each is a question for the owner. The recommended option is first.
 drafts a stay or route for review. (c) Plus an inbound email address on the VPS
 (needs a `tjorim/apps` issue). (d) Nothing; keep entering by hand.
 
+Option (a) is written up in [booking-confirmation-recipe.md](../booking-confirmation-recipe.md).
+
 **D2. What should work offline during an active trip?**
 (a) Nothing more than today (read-only copies, local drafts). (b) An outbox that
 syncs new reisupdates and photos when online. (c) (b) plus region map tiles

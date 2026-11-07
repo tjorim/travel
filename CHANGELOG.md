@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Document the assistant recipe for booking confirmations in `docs/booking-confirmation-recipe.md`: the owner's own assistant, connected to the Travel MCP server (run locally until `tjorim/apps#226`), turns a pasted or attached hotel, flight or train confirmation into a draft stay or route through `batch_create`, keeps the original as a private trip document and never changes visibility unasked; linked from the backend README and the Polarsteps fit gap (Closes #249).
+
 - Tidy the owner workspace: "Jump to" says what it searches ("Search this trip" / "Zoek in deze reis") and stays one row on phones; "Full summary" sits on the Overview's day heading row instead of its own row; a trip list of one lays its card out at reading width. The visitor map no longer shows "Map tiles could not be fully loaded" for aborted requests or a single failed tile while the map draws: its map colours are kept in the stylesheet (Tailwind had dropped them, so stops and routes were not drawn), and the notice needs a run of failed tiles with none loaded (Closes #235).
 
 - Show each travel update's photos (up to four owner-side thumbnails and a "+N" count, loaded lazily through the authenticated owner routes) and a "Preview as visitor" action in the Story list that opens the existing rendered preview of an audience that receives the update, scrolled to it, or is disabled with a reason when nobody does; the owner Agenda and the Overview Today/Tomorrow block now list a stay on every night it covers ("Sleeping in …") and its check-out morning instead of only its check-in day; the update rows' accessible name now contains their visible text (Closes #234).

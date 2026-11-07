@@ -435,6 +435,9 @@ is found by its own name. See
 `/api/mcp/capabilities` lists the full catalogue and the listed surface as
 `visible_tools`.
 
+To turn a pasted or attached booking confirmation into a draft stay or route with your
+assistant, follow [docs/booking-confirmation-recipe.md](../docs/booking-confirmation-recipe.md).
+
 The local
 MCP server is mounted by FastAPI at `/mcp` only when both
 `TRAVEL_MCP_BASE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. It accepts
