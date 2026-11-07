@@ -16,6 +16,8 @@ export type Preview = {
   /** The candidate scope that was rendered; files and directions are resolved against the same scope. */
   scope: ShareScope;
   document: Projection;
+  /** The delivered item to bring into view, such as one travel update; none leaves the preview at its top. */
+  focusId?: string;
 };
 
 /** What a visitor would receive for the public page or one share link, rendered and as the delivered fields. */
@@ -66,6 +68,7 @@ export function PreviewDialog({
           linkId={preview.linkId}
           scope={preview.scope}
           session={session}
+          focusId={preview.focusId}
         />
         <Collapsible.Root>
           <Collapsible.Trigger className="bg-transparent p-0 text-left font-bold text-travel-forest">

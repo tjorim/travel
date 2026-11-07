@@ -10,13 +10,12 @@ import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../for
 import { useRecordForm } from "../forms/useRecordForm";
 
 import { ownerKeys } from "../query/keys";
-import { tripPath, useOwnerMutation } from "../query/owner-queries";
+import { tripPath, useOwner, useOwnerMutation } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import {
   localDateTime,
   locationName,
-  updateDateLabel,
   type Area,
   type LocationInput,
   type PlaceSearchResult,
@@ -24,7 +23,10 @@ import {
   type Trip,
   type Visibility,
 } from "../tracker-model";
-import { VISIBILITY_LABELS, VisibilityControl, visibilityLabel } from "./visibility";
+import { UpdateRow } from "./UpdateRow";
+import { useUpdatePhotos } from "./UpdatePhotos";
+import { useUpdatePreview } from "./UpdatePreview";
+import { VISIBILITY_LABELS, VisibilityControl } from "./visibility";
 import { PlaceSearchField } from "./PlaceSearchField";
 
 type Values = {
@@ -94,6 +96,11 @@ export function TravelUpdateManager({
   useDialogFocus(focusId, dialog.inspect);
   const [message, setMessage] = useFeedback<string>(
     textNotice(() => m.owner_a_travel_update_stays_private_until_you_choose_who_may_see_it()),
+  );
+  const owner = useOwner();
+  const photos = useUpdatePhotos(trip);
+  const preview = useUpdatePreview(trip, (error) =>
+    setMessage(errorNotice(error, m.assets_the_preview_could_not_be_loaded_2)),
   );
   const path = tripPath(trip.id, "travel-updates");
   // An update may add a reusable location and its derived area as well as changing the trip's embedded update list.
@@ -195,20 +202,16 @@ export function TravelUpdateManager({
       {trip.travel_updates.length > 0 && (
         <div className="saved-records mt-0.5">
           {trip.travel_updates.map((item) => (
-            <article className="excerpt-row" key={item.id}>
-              <Button
-                className="document-select"
-                type="button"
-                onClick={() => dialog.inspect(item.id)}
-                aria-label={m.owner_view_travel_update({ p0: item.title })}
-              >
-                <strong>{item.title}</strong>
-                <span>
-                  {updateDateLabel(item.occurred_at, item.date_precision)} ·{" "}
-                  {visibilityLabel(item.visibility)} · {item.area?.label ?? m.owner_no_place()}
-                </span>
-              </Button>
-            </article>
+            <UpdateRow
+              key={item.id}
+              item={item}
+              photos={photos.get(item.id) ?? []}
+              session={owner?.session ?? null}
+              hasAudience={preview.audienceOf(item) !== null}
+              loading={preview.loading}
+              onInspect={() => dialog.inspect(item.id)}
+              onPreview={() => void preview.open(item)}
+            />
           ))}
         </div>
       )}
@@ -414,6 +417,7 @@ export function TravelUpdateManager({
           </RecordForm>
         )}
       </RecordDialog>
+      {preview.dialog}
     </section>
   );
 }

@@ -712,7 +712,6 @@
   "owner_travel_update_deleted": "Travel update deleted.",
   "owner_what_happened_with_a_private_and_a_shared_part_your_notes_location_and_p": "What happened, with a private and a shared part. Your notes, location and photos always stay private; the title and text for visitors are shared only if you choose.",
   "owner_new_update": "New update",
-  "owner_view_travel_update": "View travel update {p0}",
   "owner_unnamed_area": "Unnamed area",
   "api_name_this_area_before_sharing_it": "Name this area before sharing it",
   "api_name_the_area_of_this_record_before_sharing_it": "Name the area of this record before sharing it",
@@ -2285,5 +2284,25 @@
   "capture_photos_uploading": "Photos are still uploading…",
   "capture_private_short": "Private — only you see this, photos included.",
   "capture_more": "More",
-  "capture_more_hint": "Language, date and time, location, connection"
+  "capture_more_hint": "Language, date and time, location, connection",
+  "agenda_sleeping_in": "Sleeping in {place}",
+  "agenda_check_out": "Check-out: {place}",
+  "owner_preview_as_visitor": "Preview as visitor",
+  "owner_preview_as_visitor_for": "Preview as visitor: {p0}",
+  "owner_preview_private_update": "Private: nobody can see this update.",
+  "owner_preview_needs_text": "Write the text for visitors first.",
+  "owner_preview_needs_area_name": "Name the area first.",
+  "owner_preview_no_audience": "No audience receives this update yet.",
+  "owner_photos_of_update": "Photos for {p0}",
+  "owner_update_photo_alt": "Photo for {p0}",
+  "owner_more_photos_of_update": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} more photo",
+        "countPlural=other": "{count} more photos"
+      }
+    }
+  ]
 }

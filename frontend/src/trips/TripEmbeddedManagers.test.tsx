@@ -46,6 +46,7 @@ function embed(
     const created = shape({
       id: `new-${list().length}`,
       position: list().length,
+      media_asset_ids: [],
       ...(body as object),
     });
     set([...list(), created]);
@@ -91,6 +92,15 @@ beforeEach(() => {
   };
   api = fakeApi();
   api.collection("/api/trips/trip/locations", []);
+  // The story rows read photos and the audiences that would receive an update.
+  api.collection("/api/trips/trip/media", []);
+  api.value("/api/trips/trip/public-projection", {
+    surface_state: "unpublished",
+    scope: { items: [] },
+    revision: 1,
+    slug: null,
+  });
+  api.value("/api/trips/trip/share-links", []);
   api.on("GET", /^\/api\/trips$/, () => [state.trip]);
   embed("travel_updates", "travel-updates");
 });
@@ -107,7 +117,7 @@ const confirmDelete = () =>
 
 it("opens a travel update in detail before editing and asks before discarding edits", async () => {
   renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Reisupdate Aankomst bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Aankomst\b/ }));
   expect(await screen.findByRole("heading", { name: "Aankomst" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(screen.getByRole("heading", { name: "Reisupdate bewerken" })).toBeTruthy();
@@ -140,13 +150,13 @@ it("adds an update to the list once saved", async () => {
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw verhaal" } });
   fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
-  await screen.findByRole("button", { name: "Reisupdate Nieuw verhaal bekijken" });
+  await screen.findByRole("button", { name: /^Nieuw verhaal\b/ });
   expect(screen.getByText("Reisupdate opgeslagen.")).toBeTruthy();
 });
 
 it("shows an edited update and removes it only after the in-app confirmation", async () => {
   renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
-  fireEvent.click(await screen.findByRole("button", { name: "Reisupdate Vertrek bekijken" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Vertrek\b/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   // The editor opens with the saved record, not a blank form.
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Vertrek");
@@ -155,16 +165,14 @@ it("shows an edited update and removes it only after the in-app confirmation", a
   );
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Terugvlucht" } });
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
-  await screen.findByRole("button", { name: "Reisupdate Terugvlucht bekijken" });
-  expect(screen.queryByRole("button", { name: "Reisupdate Vertrek bekijken" })).toBeNull();
+  await screen.findByRole("button", { name: /^Terugvlucht\b/ });
+  expect(screen.queryByRole("button", { name: /^Vertrek\b/ })).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Reisupdate Aankomst bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Aankomst\b/ }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(0);
   confirmDelete();
-  await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Reisupdate Aankomst bekijken" })).toBeNull(),
-  );
+  await waitFor(() => expect(screen.queryByRole("button", { name: /^Aankomst\b/ })).toBeNull());
   expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(1);
 });
 
@@ -176,15 +184,13 @@ it("saves who may see an update with the update itself, private by default", asy
   fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
   chooseOption("Zichtbaarheid", "Iedereen — alle bezoekers");
   fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
-  await screen.findByRole("button", { name: "Reisupdate Voor iedereen bekijken" });
+  await screen.findByRole("button", { name: /^Voor iedereen\b/ });
   expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({
     visibility: "everyone",
   });
   // The list says who sees each update.
-  expect(
-    screen.getByRole("button", { name: "Reisupdate Voor iedereen bekijken" }).textContent,
-  ).toContain("Iedereen");
-  expect(
-    screen.getByRole("button", { name: "Reisupdate Aankomst bekijken" }).textContent,
-  ).toContain("Privé");
+  expect(screen.getByRole("button", { name: /^Voor iedereen\b/ }).textContent).toContain(
+    "Iedereen",
+  );
+  expect(screen.getByRole("button", { name: /^Aankomst\b/ }).textContent).toContain("Privé");
 });

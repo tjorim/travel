@@ -1282,6 +1282,7 @@ export function ProjectionView({
   identifier,
   apiBase,
   previewResources,
+  focusId,
 }: {
   projection: Projection;
   audience: Audience;
@@ -1289,6 +1290,8 @@ export function ProjectionView({
   /** Where this document's files and navigation live when that is not `/api/{public/trips|shared}/{identifier}`. */
   apiBase?: string;
   previewResources?: PreviewResources;
+  /** An update of this document to bring into view and focus on first show, as the owner's preview does. */
+  focusId?: string;
 }) {
   const locale = useLocale();
   const deliveryBase =
@@ -1488,6 +1491,10 @@ export function ProjectionView({
       target?.focus({ preventScroll: true });
     });
   }
+  useEffect(() => {
+    if (focusId && projection.updates.some((item) => item.id === focusId)) openUpdate(focusId);
+    // Only a different requested update re-aims the view, not each rendering of the same one.
+  }, [focusId, projection]);
   const detailSections = [
     story.separate.visits,
     projection.places,
