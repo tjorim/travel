@@ -17,6 +17,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from .models import (
+    AlternativeGroup,
+    AlternativeGroupMember,
     Area,
     DocumentAsset,
     ImportRecord,
@@ -96,6 +98,7 @@ PACKING_ITEM = (
     "id", "bag_id", "label", "quantity", "category", "packed", "position", "essential", "last_minute", "valuable",
     "cabin_only", "checked_only", "notes", "weight_g",
 )  # fmt: skip
+ALTERNATIVE_GROUP = ("id", "kind", "label", "created_at", "updated_at")
 PUBLIC_SURFACE = ("slug", "state", "revision", "scope", "created_at", "updated_at")
 SHARE_LINK = (
     "id", "label", "series_id", "state", "revision", "scope", "expires_at", "created_at", "updated_at",
@@ -237,6 +240,20 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
                 "items": [_record(item, PACKING_ITEM) for item in items],
             }
 
+    def alternative_groups() -> Iterator[dict[str, Any]]:
+        members: dict[str, list[dict[str, Any]]] = {}
+        for member in session.scalars(
+            select(AlternativeGroupMember)
+            .join(AlternativeGroup, AlternativeGroup.id == AlternativeGroupMember.group_id)
+            .where(AlternativeGroup.trip_id == trip_id)
+            .order_by(AlternativeGroupMember.created_at, AlternativeGroupMember.id)
+        ):
+            members.setdefault(member.group_id, []).append({"record_id": member.record_id, "chosen": member.chosen})
+        for (row,) in _batched(
+            session, owned(AlternativeGroup).order_by(AlternativeGroup.created_at, AlternativeGroup.id)
+        ):
+            yield _record(row, ALTERNATIVE_GROUP) | {"members": members.get(row.id, [])}
+
     def publication() -> Iterator[str]:
         surface = session.get(PublicSurface, trip_id)
         yield f',"publication":{{"public_surface":{_dump(_record(surface, PUBLIC_SURFACE) if surface else None)}'
@@ -252,6 +269,7 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
     yield _array("visits", plain(Visit, VISIT, Visit.position))
     yield _array("stays", plain(Stay, STAY, Stay.check_in_date))
     yield _array("routes", routes())
+    yield _array("alternative_groups", alternative_groups())
     yield _array("travel_updates", updates())
     yield _array("media_assets", media_assets())
     yield _array("media_derivatives", derivatives())

@@ -199,6 +199,9 @@ class AuditEventKind(StrEnum):
     VISIBILITY_CHANGE = "record.visibility_change"
     # Letting visits and stays follow the audience's date precision can show visitors finer dates at once.
     PRECISION_FOLLOW_AUDIENCE = "record.precision_follow_audience"
+    # Choosing one alternative of a group changes the status of its members at once, and can be undone.
+    ALTERNATIVE_CHOOSE = "alternative_group.choose"
+    ALTERNATIVE_UNDO_CHOICE = "alternative_group.undo_choice"
 
 
 class AuditTargetType(StrEnum):
@@ -207,6 +210,15 @@ class AuditTargetType(StrEnum):
     LOCATION = "location"
     AREA = "area"
     RECORD = "record"
+    ALTERNATIVE_GROUP = "alternative_group"
+
+
+class AlternativeGroupKind(StrEnum):
+    """What an alternative group compares: all of its members are of this one kind."""
+
+    STAY = "stay"
+    VISIT = "visit"
+    ROUTE = "route"
 
 
 def _enum_column(enum_cls: type[StrEnum], name: str):
@@ -358,6 +370,9 @@ class Trip(Base):
     media_derivatives: Mapped[list[MediaDerivative]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
     )
+    alternative_groups: Mapped[list[AlternativeGroup]] = relationship(
+        back_populates="trip", cascade="all, delete-orphan", order_by="AlternativeGroup.created_at"
+    )
 
     # A deleted trip leaves every collection in the same transaction.
     collection_memberships: Mapped[list[CollectionMember]] = relationship(cascade="all, delete-orphan")
@@ -496,6 +511,10 @@ class Stay(Base):
     trip: Mapped[Trip] = relationship(back_populates="stays")
     area: Mapped[Area] = relationship(foreign_keys=[area_id])
     location: Mapped[Location | None] = relationship(foreign_keys=[location_id])
+    # Owner-only: the alternative group this stay is compared in, if any. Never delivered to a visitor.
+    alternative_membership: Mapped[AlternativeGroupMember | None] = relationship(
+        back_populates="stay", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class Route(Base):
@@ -558,6 +577,10 @@ class Route(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="routes")
+    # Owner-only: the alternative group this route is compared in, if any. Never delivered to a visitor.
+    alternative_membership: Mapped[AlternativeGroupMember | None] = relationship(
+        back_populates="route", cascade="all, delete-orphan", uselist=False
+    )
     departure_area: Mapped[Area] = relationship(foreign_keys=[departure_area_id])
     arrival_area: Mapped[Area] = relationship(foreign_keys=[arrival_area_id])
     departure_location: Mapped[Location | None] = relationship(foreign_keys=[departure_location_id])
@@ -649,6 +672,84 @@ class Visit(Base):
     trip: Mapped[Trip] = relationship(back_populates="visits")
     area: Mapped[Area] = relationship(foreign_keys=[area_id])
     location: Mapped[Location | None] = relationship(foreign_keys=[location_id])
+    # Owner-only: the alternative group this visit is compared in, if any. Never delivered to a visitor.
+    alternative_membership: Mapped[AlternativeGroupMember | None] = relationship(
+        back_populates="visit", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class AlternativeGroup(Base):
+    """Owner-only: stays, visits or routes the owner is choosing between, and the one chosen.
+
+    A group holds records of one ``kind`` and is private planning state: it is never part of a
+    projection, a share, a file, navigation or a collection, and nothing a visitor receives
+    mentions it. Existing ideas are not grouped automatically; the owner confirms a suggestion
+    (``routers.alternatives``) or builds a group by hand. Choosing a member sets it to planned and
+    the others to cancelled (or removes them) in one transaction with an audit event."""
+
+    __tablename__ = "alternative_groups"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind: Mapped[AlternativeGroupKind] = mapped_column(
+        _enum_column(AlternativeGroupKind, "travel_alternative_group_kind"), nullable=False
+    )
+    label: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    trip: Mapped[Trip] = relationship(back_populates="alternative_groups")
+    members: Mapped[list[AlternativeGroupMember]] = relationship(
+        back_populates="group", cascade="all, delete-orphan", order_by="AlternativeGroupMember.created_at"
+    )
+
+
+class AlternativeGroupMember(Base):
+    """One stay, visit or route in an alternative group; a record is in at most one group.
+
+    Exactly one of the three record columns is set, matching the group's ``kind``. ``chosen`` marks
+    the member the owner picked; at most one member of a group is chosen."""
+
+    __tablename__ = "alternative_group_members"
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN stay_id IS NULL THEN 0 ELSE 1 END) + (CASE WHEN visit_id IS NULL THEN 0 ELSE 1 END) "
+            "+ (CASE WHEN route_id IS NULL THEN 0 ELSE 1 END) = 1",
+            name="ck_alternative_member_one_record",
+        ),
+        Index(
+            "uq_alternative_group_one_chosen",
+            "group_id",
+            unique=True,
+            postgresql_where=text("chosen"),
+            sqlite_where=text("chosen"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    group_id: Mapped[str] = mapped_column(
+        ForeignKey("alternative_groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    stay_id: Mapped[str | None] = mapped_column(ForeignKey("stays.id", ondelete="CASCADE"), nullable=True, unique=True)
+    visit_id: Mapped[str | None] = mapped_column(
+        ForeignKey("visits.id", ondelete="CASCADE"), nullable=True, unique=True
+    )
+    route_id: Mapped[str | None] = mapped_column(
+        ForeignKey("routes.id", ondelete="CASCADE"), nullable=True, unique=True
+    )
+    chosen: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    group: Mapped[AlternativeGroup] = relationship(back_populates="members")
+    stay: Mapped[Stay | None] = relationship(back_populates="alternative_membership")
+    visit: Mapped[Visit | None] = relationship(back_populates="alternative_membership")
+    route: Mapped[Route | None] = relationship(back_populates="alternative_membership")
+
+    @property
+    def record_id(self) -> str:
+        return (self.stay_id or self.visit_id or self.route_id) or ""
 
 
 class PackingList(Base):

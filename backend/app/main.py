@@ -19,6 +19,7 @@ from .mcp_server import (
 )
 from .request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
 from .request_timing import RequestTimingMiddleware
+from .routers.alternatives import router as alternatives_router
 from .routers.areas import router as areas_router
 from .routers.collections import membership_router as collection_membership_router
 from .routers.collections import router as collections_router
@@ -85,6 +86,7 @@ app.include_router(collection_membership_router, prefix="/api")
 app.include_router(sharing_presets_router, prefix="/api")
 app.include_router(publication_delivery_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
+app.include_router(alternatives_router, prefix="/api")
 app.include_router(routes_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(packing_router, prefix="/api")

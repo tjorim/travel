@@ -605,6 +605,56 @@ def test_set_visibility_tool_needs_confirmation_and_uses_the_owner_rules(backend
     assert backend.list_locations(trip["id"])[0]["visibility"] == "everyone"
 
 
+def test_alternative_group_tools_share_the_api_handlers_and_ask_for_confirmation(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Alternatives"))
+    area = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan", country_code="TW"))
+    stays = [
+        backend.create_stay(
+            trip["id"],
+            schemas.StayCreate(
+                area_id=area["id"], check_in_date=start, check_out_date=end, status="idea", property_name=name
+            ),
+        )
+        for name, start, end in (("Hotel A", "2054-04-01", "2054-04-04"), ("Hotel B", "2054-04-02", "2054-04-05"))
+    ]
+    (suggestion,) = backend.suggest_alternative_groups(trip["id"])
+    assert sorted(suggestion["member_ids"]) == sorted(stay["id"] for stay in stays)
+    assert backend.list_alternative_groups(trip["id"]) == []  # a suggestion stores nothing
+    group = backend.create_alternative_group(
+        trip["id"],
+        schemas.AlternativeGroupCreate(kind="stay", member_ids=suggestion["member_ids"], label="Tainan nights"),
+    )
+    assert group["label"] == "Tainan nights" and group["chosen_id"] is None
+    (listed,) = backend.list_alternative_groups(trip["id"])
+    assert {member["stay"]["property_name"] for member in listed["members"]} == {"Hotel A", "Hotel B"}
+    assert "booking_reference" not in listed["members"][0]["stay"]  # compact rows
+    assert "booking_reference" in backend.get_alternative_group(trip["id"], group["id"])["members"][0]["stay"]
+
+    choice = schemas.AlternativeChoose(member_id=stays[1]["id"])
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.choose_alternative(trip["id"], group["id"], choice)
+    assert {item["status"] for item in backend.list_stays(trip["id"])} == {"idea"}
+    result = backend.choose_alternative(trip["id"], group["id"], choice, confirm=True)
+    assert result["chosen_id"] == stays[1]["id"] and result["cancelled_ids"] == [stays[0]["id"]]
+    assert {item["id"]: item["status"] for item in backend.list_stays(trip["id"])} == {
+        stays[0]["id"]: "cancelled",
+        stays[1]["id"]: "planned",
+    }
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.undo_alternative_choice(trip["id"], group["id"], result["event_id"])
+    undone = backend.undo_alternative_choice(trip["id"], group["id"], result["event_id"], confirm=True)
+    assert undone["chosen_id"] is None
+    assert {item["status"] for item in backend.list_stays(trip["id"])} == {"idea"}
+    with pytest.raises(ValueError, match="confirm=true"):
+        backend.delete_alternative_group(trip["id"], group["id"])
+    assert backend.delete_alternative_group(trip["id"], group["id"], confirm=True) == {"status": "deleted"}
+    assert len(backend.list_stays(trip["id"])) == 2
+    for name in ("choose_alternative", "undo_alternative_choice", "delete_alternative_group"):
+        assert MCP_TOOL_CAPABILITIES[name] == {"effect": "write", "requires_confirmation": True}
+    for name in ("list_alternative_groups", "get_alternative_group", "suggest_alternative_groups"):
+        assert MCP_TOOL_CAPABILITIES[name]["effect"] == "read"
+
+
 def _protocol_client(factory: sessionmaker = TestingSessionLocal) -> Client:
     return Client(create_mcp_server(factory))
 

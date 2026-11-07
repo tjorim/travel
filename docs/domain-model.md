@@ -42,6 +42,9 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   `area_id`, always equal to the area of its location when it has one.
 - **Route** (*route*): how the trip gets from one area to another, by a travel
   mode (flight, train, bus, ferry, car, bike, walk or other). See below.
+- **Alternative group** (*alternatieven*): the owner's own set of two or more
+  stays, visits or routes they are choosing between, and the one they chose.
+  See below.
 - **Reisupdate**: what happened, with a private part and a shared part. It can
   be linked to a location (private) and to an area (shared).
 - **Photo** and **video**: files shared only as application-generated approved copies. Documents are always private.
@@ -61,6 +64,52 @@ There is no record called "place". The word is only used for the search that
 suggests a location (*locaties zoeken*, which suggests and never saves) and
 for the one merged list of shared areas and locations in what a visitor
 receives. In Dutch, *plaats* means a town, so it is not used for a location.
+
+### Alternatives
+
+An **idea** (a stay, visit or route with status `idea`) is a candidate under
+comparison. Ideas may overlap, are never part of the plan, and cannot be shared.
+When several ideas compete for the same nights, days or journey, the owner can
+put them in an **alternative group** (*alternatieven*), which stores the choice
+between them instead of leaving it to be inferred from dates.
+
+- A group belongs to one trip and has one **kind** (stay, visit or route); all
+  of its members are records of that kind. A record is in at most one group. A
+  group may carry a label. Members may have any status, so a candidate can be
+  compared with an already planned stay.
+- A group has at most one **chosen** member. Deleting a member's record takes it
+  out of the group; deleting the trip deletes its groups.
+- **Groups are private planning state.** They are never delivered: not in the
+  public view, a hidden link, a collection, a file or navigation, and no
+  visitor response mentions them. A rejected alternative is also made private.
+- **Existing ideas are not grouped automatically.** The app suggests groups and
+  the owner confirms them (or builds one by hand). A suggestion is computed on
+  request from ungrouped ideas and stores nothing:
+  - *Stays*: ideas whose nights overlap (`check_in_date < other check_out_date`
+    both ways), even when the dates differ. Ideas that overlap in a chain
+    (A with B, B with C) form one suggestion. Ideas that only touch (one checks
+    out the morning another checks in) share no night and are not suggested.
+  - *Visits*: ideas that each span several days and share a day. Single-day
+    visits are not suggested, because two things on one day are usually both
+    done; the owner can still group them by hand.
+  - *Routes*: ideas between the same two areas on the same departure day.
+- **Choose this one** (*Kies deze*) settles a group in one confirmed
+  operation, in one transaction, with an audit event
+  (`alternative_group.choose`; ids and statuses only, never names or notes):
+  the chosen member becomes `planned` (it keeps `planned` or `confirmed`), and
+  every other member is either **cancelled and made private** (the default,
+  recorded like any other audience change) or **removed**, the owner's choice.
+  The app and the MCP tools use the same handlers.
+- **Undo** restores the statuses and visibility the choice changed, and the
+  previously chosen member, while the group is as the choice left it. Only the
+  latest choice can be undone; it is refused once a member was edited since, a
+  newer choice replaced it, or the others were removed (deleted records cannot
+  be restored, which the confirmation says). Undoing is itself audited
+  (`alternative_group.undo_choice`).
+- Owner views are unaffected by the public precision rules: comparing
+  alternatives shows exact locations, dates and notes to the owner only.
+- The trip export lists groups explicitly (`alternative_groups`, each with its
+  kind, label and members); see [the export format](export-format.md).
 
 ### How they relate
 
