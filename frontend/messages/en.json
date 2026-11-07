@@ -2525,5 +2525,113 @@
   "owner_map_add_visit_here": "Add a visit here",
   "owner_map_add_stay_here": "Add a stay here",
   "owner_map_add_route_from_here": "Add a route from here",
-  "owner_library_trip_documents_note": "Documents that belong to one trip are kept in that trip's Prepare section."
+  "owner_library_trip_documents_note": "Documents that belong to one trip are kept in that trip's Prepare section.",
+  "preset_heading": "Start from a preset",
+  "preset_intro": "A preset chooses what this audience receives in one step, instead of one record at a time. You review the result before it applies, and the choices below stay available as exceptions. A record you add later never joins a preset by itself: it stays private until you choose it.",
+  "preset_choose_label": "Preset",
+  "preset_none": "Same as the public page",
+  "preset_none_help": "A new link starts with what the public page shows.",
+  "preset_story_only": "Story only",
+  "preset_story_only_help": "Your travel updates with their approved photos. No places, routes, visits or stays.",
+  "preset_story_and_route": "Story and route",
+  "preset_story_and_route_help": "The story, the named areas it uses, and your planned or booked routes.",
+  "preset_planned_trip": "Planned trip",
+  "preset_planned_trip_help": "Adds planned or confirmed visits and stays, with dates by month at most. Never a property, booking, address, note or document.",
+  "preset_new_link_chosen_help": "“{preset}” is applied when you save the draft and replaces the selection below. The preview and the Sharing check show the result before you activate the link.",
+  "preset_review_button": "Review preset",
+  "preset_reviewing": "Reviewing…",
+  "preset_choose_first": "Choose a preset to review.",
+  "preset_save_first": "Save or discard your changes first: the review reads the saved audience.",
+  "preset_review_failed": "The preset could not be reviewed.",
+  "preset_apply_failed": "The preset could not be applied.",
+  "preset_label_no_exceptions": "{preset}, no exceptions",
+  "preset_label_exceptions": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{preset}, with {count} exception",
+        "countPlural=other": "{preset}, with {count} exceptions"
+      }
+    }
+  ],
+  "preset_label_applied_on": "Last applied {date}.",
+  "preset_applied_done": "“{preset}” applied.",
+  "preset_applied_nothing": "This audience already received exactly what “{preset}” selects. Nothing changed.",
+  "preset_check_line": "Preset: {label}",
+  "preset_exceptions_heading": "Different from the preset",
+  "preset_exceptions_intro": "What this audience receives differently from what “{preset}” would select today. A record you add later shows up here until you choose it or leave it out.",
+  "preset_exceptions_none": "No exceptions: this audience receives what the preset selects.",
+  "preset_exceptions_unsaved": "Counted from the saved audience; they update when you save.",
+  "preset_exceptions_received": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Received, but not in the preset ({count})",
+        "countPlural=other": "Received, but not in the preset ({count})"
+      }
+    }
+  ],
+  "preset_exceptions_missing": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "In the preset, but not received ({count})",
+        "countPlural=other": "In the preset, but not received ({count})"
+      }
+    }
+  ],
+  "preset_exception_hide": "Hide",
+  "preset_exception_hide_named": "Hide “{name}” from this audience",
+  "preset_exception_show": "Show",
+  "preset_exception_show_named": "Show “{name}” to this audience",
+  "preset_exception_unsaved": "Change not saved yet",
+  "preset_exception_way_out_everyone": "Set to Everyone, so the public page always shows it. Change its own visibility to hide it; that changes every audience.",
+  "preset_exception_untitled": "Untitled",
+  "preset_review_title": "Apply “{preset}”?",
+  "preset_review_description": "This changes what {audience} receives. Nothing is stored until you apply it.",
+  "preset_review_audience_public": "the page for everyone",
+  "preset_review_audience_link": "the link “{label}”",
+  "preset_review_audience_member": "the collection “{label}”",
+  "preset_review_live": "This audience is live: people who have it see the change as soon as you apply it.",
+  "preset_review_draft": "This audience delivers nothing yet, so nobody sees the change until you share it.",
+  "preset_review_nothing": "This audience already receives exactly what the preset selects.",
+  "preset_review_adds": "Starts to receive: {counts}",
+  "preset_review_removes": "Stops receiving: {counts}",
+  "preset_review_records": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Show the record ({count})",
+        "countPlural=other": "Show the records ({count})"
+      }
+    }
+  ],
+  "preset_review_precision_changed": "Dates shown to this audience change from {before} to {after}, at most.",
+  "preset_review_precision_same": "Dates shown to this audience stay {after}, at most.",
+  "preset_review_precision_none": "no limit",
+  "preset_review_reads_coarser": "These now read less precisely: {counts}.",
+  "preset_review_replaces_heading": "Choices you made by hand that this resets",
+  "preset_review_replaces_exclusion_removed": "left out of this audience",
+  "preset_review_replaces_left_out_by_you": "not listed for this audience",
+  "preset_review_left_heading": "Left as it is",
+  "preset_review_left_unlist": "Listed for this audience by hand, and not in the preset. Remove it under Advanced, in the records for this audience only.",
+  "preset_review_left_exclude": "Set to Everyone and not in the preset. Leave it out under “Left out of this audience” if this audience should not have it.",
+  "preset_review_left_public": "Set to Everyone, which the public page always shows. Change the record’s own visibility to hide it; that changes every audience.",
+  "preset_review_left_needed": "Hiding it would also hide a record the preset includes, so it stays. Change its own visibility if you want it gone everywhere.",
+  "preset_review_decision_heading": "Not included, needs your decision",
+  "preset_review_decision_share_time": "shows its time, which a preset never adds",
+  "preset_review_decision_other": "cannot be shared yet",
+  "preset_review_widening": "People who have this audience will see {counts} that they do not see now.",
+  "preset_review_acknowledge": "I understand that people with this audience will see more",
+  "preset_review_apply": "Apply preset",
+  "preset_review_applying": "Applying…",
+  "preset_review_stale": "The records changed since you opened this review. This is the new review; check it before you apply.",
+  "preset_review_conflict": "This audience was changed elsewhere since you opened it. Reload it to see the current choices, then review the preset again.",
+  "preset_review_reload": "Reload the audience",
+  "preset_review_too_large": "This preset is too large for one audience: it would list {items} records and leave out {exclude}, and the limits are {max_items} and {max_exclude}. Nothing is changed. Choose a smaller preset, or leave some records private.",
+  "preset_review_not_applicable": "This preset cannot be applied."
 }

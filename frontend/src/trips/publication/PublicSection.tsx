@@ -6,6 +6,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import type { PublicProjectionStatus, ShareScope, Trip } from "../../tracker-model";
 import { publicUrl, type CatalogItem } from "./catalog";
+import type { ScopePreset } from "./PresetSection";
 import { ScopeEditor } from "./ScopeEditor";
 
 export type PublicValues = { scope: ShareScope };
@@ -16,6 +17,7 @@ export function PublicSection({
   status,
   record,
   catalog,
+  preset,
   toggling,
   previewing,
   onScopeChange,
@@ -28,6 +30,7 @@ export function PublicSection({
   status: PublicProjectionStatus | null;
   record: ReturnType<typeof useRecordForm<PublicValues, PublicProjectionStatus>>;
   catalog: CatalogItem[];
+  preset: ScopePreset;
   toggling: boolean;
   previewing: boolean;
   onScopeChange: () => void;
@@ -106,6 +109,7 @@ export function PublicSection({
               hasDates={Boolean(trip.starts_on)}
               tripId={trip.id}
               onError={onError}
+              preset={preset}
             />
           )}
         </record.form.Field>

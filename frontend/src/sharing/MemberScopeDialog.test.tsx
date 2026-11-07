@@ -147,3 +147,70 @@ it("saves a narrower member scope straight away, without the acknowledgement", a
   ]);
   expect(screen.queryByRole("alertdialog")).toBeNull();
 });
+
+it("reviews and applies a preset to a collection member, then shows the scope the server answers with", async () => {
+  const review = {
+    schema_version: "travel/sharing-preset@1",
+    preset: "story_only",
+    audience: { id: "collection:m1", kind: "collection_member", label: "Familie", live: true },
+    applicable: true,
+    refusal: null,
+    changes: [{ kind: "travel_update", id: "u2", label: "Aankomst", action: "remove_exclusion" }],
+    change_counts: { remove_exclusion: 1 },
+    precision: { before: null, after: "month", changed: true, reads_coarser: {} },
+    comparison: {
+      before: {},
+      after: { travel_update: 1 },
+      added: { travel_update: 1 },
+      removed: {},
+      widened: [{ kind: "travel_update", id: "u2", label: "Aankomst" }],
+      narrowed: [],
+    },
+    left_as_is: [],
+    needs_decision: [],
+    replaces_exceptions: [
+      { kind: "travel_update", id: "u2", label: "Aankomst", reason: "exclusion_removed" },
+    ],
+    requires_acknowledgement: true,
+    fingerprint: "fp-member",
+  };
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preset\/review$/, () => review);
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preset$/, () => ({
+    applied: true,
+    review,
+    audience: { ...member, revision: 4, scope: scope([]), applied_preset: "story_only" },
+  }));
+  renderWithOwner(
+    <MemberScopeDialog
+      collection={collection("active")}
+      member={member}
+      trip={trip}
+      onClose={() => undefined}
+    />,
+  );
+  fireEvent.click(await screen.findByRole("radio", { name: "Alleen het verhaal" }));
+  fireEvent.click(screen.getByRole("button", { name: "Voorinstelling bekijken" }));
+  const dialog = await screen.findByRole("alertdialog", {
+    name: "“Alleen het verhaal” toepassen?",
+  });
+  // The collection is active and the preset shows its visitors more.
+  const apply = within(dialog).getByRole("button", { name: "Voorinstelling toepassen" });
+  expect(apply).toBeDisabled();
+  fireEvent.click(within(dialog).getByRole("checkbox"));
+  fireEvent.click(apply);
+  await waitFor(() => expect(api.count("POST /api/collections/c1/members/m1/preset")).toBe(1));
+  expect(api.lastBody("POST /api/collections/c1/members/m1/preset")).toEqual({
+    preset: "story_only",
+    fingerprint: "fp-member",
+    confirm_widening: true,
+  });
+  expect(api.lastHeaders("POST /api/collections/c1/members/m1/preset")?.get("If-Match")).toBe(
+    '"3"',
+  );
+  // The exclusion the preset removed is gone from the editor.
+  const section = within(
+    await screen.findByRole("region", { name: "Weggelaten voor dit publiek" }),
+  );
+  const checkbox = await section.findByRole("checkbox", { name: "Toon “Aankomst” op deze link" });
+  await waitFor(() => expect(checkbox.getAttribute("aria-checked")).toBe("true"));
+});

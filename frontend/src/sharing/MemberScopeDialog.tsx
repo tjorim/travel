@@ -16,6 +16,7 @@ import {
   exclusionWidening,
 } from "../trips/publication/ExclusionWideningDialog";
 import { ScopeEditor } from "../trips/publication/ScopeEditor";
+import type { PresetAppliedAudience } from "../trips/publication/use-sharing-presets";
 import { usePublicationCatalog } from "../trips/publication/use-publication-catalog";
 import {
   collectionsPath,
@@ -41,6 +42,11 @@ export function MemberScopeDialog({
   const { catalog } = usePublicationCatalog(trip);
   const { setMemberScope, previewMember } = useCollectionMutations();
   const [scope, setScope] = useState<ShareScope>(() => cloneScope(member.scope));
+  // What the member holds on the server; the editor has unsaved edits when its scope differs.
+  const dirty = JSON.stringify(scope) !== JSON.stringify(cloneScope(member.scope));
+  // Applying a preset rewrites the member on the server, so the editor takes the scope the server answers with.
+  const adopt = (saved: PresetAppliedAudience) =>
+    setScope(cloneScope((saved as CollectionMember).scope));
   const [notice, setNotice] = useFeedback<string | null>(null);
   const [preview, setPreview] = useState<{ document: Projection; scope: ShareScope } | null>(null);
   const locked = collection.state === "revoked" || collection.state === "expired";
@@ -96,6 +102,14 @@ export function MemberScopeDialog({
           tripId={trip.id}
           disabled={locked}
           allowExclusions
+          preset={{
+            target: { kind: "member", collectionId: collection.id, memberId: member.id },
+            revision: () => member.revision,
+            label: member,
+            dirty,
+            onApplied: adopt,
+            onReload: adopt,
+          }}
           onError={(error) => setNotice(errorNotice(error, m.sharing_collection_save_error))}
         />
         <div className="button-row">

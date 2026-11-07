@@ -5,6 +5,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import type { ShareLink } from "../../tracker-model";
 import { dateLabel, LINK_STATE_LABELS } from "./catalog";
+import { presetLabelText } from "./PresetSection";
 
 export type LinkSeries = { id: string; current: ShareLink; history: ShareLink[] };
 
@@ -55,6 +56,8 @@ export function LinkList({
                   })}
                   {!!current.exclusions?.excluded.length &&
                     ` · ${m.exclusions_link_summary({ count: current.exclusions.excluded.length })}`}
+                  {current.applied_preset &&
+                    ` · ${presetLabelText(current.applied_preset, current.preset_exceptions?.count ?? 0)}`}
                 </span>
               </Button>
               {history.length > 0 && (

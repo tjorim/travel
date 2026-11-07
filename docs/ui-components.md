@@ -625,3 +625,24 @@ existing `MapLink` buttons), so no new control was added there.
 text links use. It joins the two homes of documents and of sharing; see
 [the decision note](decisions/240-create-in-place-and-duplicate-homes.md). No shadcn or Base UI
 component covers a router link.
+
+## Sharing preset picker and review dialog (#241, step 3)
+
+`trips/publication/PresetSection.tsx` composes existing controls only. The preset choice is the
+`ChoiceGroup` (Base UI `RadioGroup`): the presets are required single choices, with *Same as the
+public page* as an extra first choice only for a hidden link that does not exist yet, so registry
+`toggle-group` (deselectable `aria-pressed` buttons) is still the wrong semantics, as in the
+`ChoiceGroup` entry above. The review is a `DeleteConfirmation` (the Base UI Alert Dialog behind
+`RecordDialog.tsx`): a decision that needs an explicit *Apply*, cannot be dismissed by an outside
+click and nests inside the link and collection editors like the widening dialogs do. It gained
+three props for this, kept in the shared component rather than a second dialog: `wide` (a wider sheet
+whose content scrolls), `confirmTone` (`primary` for a reviewed change that does not widen; the
+default `danger` stays for deleting and widening) and `returnFocus` (focus goes back to the
+*Review preset* button, which stays enabled after an apply for exactly that reason). The lists of
+records inside it are `Collapsible` disclosures (the `scope-group` look of Sharing), open when six
+or fewer. The widening acknowledgement is the same `TravelCheckbox` inside a `Field` as every other
+widening dialog. `PresetExceptionsList.tsx` is a plain list of `Button`s: its actions only change the
+editor's scope through the controls that already exist (tick, untick, exclusion), so no new write path
+and no custom control. Visible button text starts with the accessible name's words (WCAG 2.5.3),
+which the Dutch copy had to be changed for ("Verberg", "Toon").
+

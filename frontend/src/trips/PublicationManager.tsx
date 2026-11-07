@@ -17,6 +17,7 @@ import type {
   ShareLink,
   PublicProjectionStatus,
   ShareScope,
+  SharingPresetId,
   Trip,
 } from "../tracker-model";
 import { cloneScope, emptyScope, publicUrl, shareUrl } from "./publication/catalog";
@@ -24,6 +25,7 @@ import { ExclusionWideningDialog, exclusionWidening } from "./publication/Exclus
 import { FollowAudiencePrecision } from "./publication/FollowAudiencePrecision";
 import { LinkLifecycle } from "./publication/LinkLifecycle";
 import { LinkList, type LinkSeries } from "./publication/LinkList";
+import type { ScopePreset } from "./publication/PresetSection";
 import { PreviewDialog, type Preview } from "./publication/PreviewDialog";
 import { PublicSection, type PublicValues } from "./publication/PublicSection";
 import { RevealedLinkDialog } from "./publication/RevealedLinkDialog";
@@ -68,6 +70,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
   const [revealedLink, setRevealedLink] = useState<{ label: string; url: string } | null>(null);
   const [expiresInDays, setExpiresInDays] = useState<number | null>(30);
   const [reason, setReason] = useState("");
+  // A link that does not exist yet takes its starting preset with its creation; null is "same as the public page".
+  const [newLinkPreset, setNewLinkPreset] = useState<SharingPresetId | null>(null);
   const {
     savePublic,
     previewPublicScope,
@@ -137,6 +141,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             scope: values.scope,
             revision: linkRevision.current,
             confirmWidening,
+            preset: editingLinkId === null ? newLinkPreset : null,
           }),
         setLinkConflict,
       );
@@ -172,6 +177,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     setWidening(null);
     acknowledgedWidening.current = false;
     setLinkEditor({ linkId: link.id });
+    setNewLinkPreset(null);
     linkRecord.load({ label: link.label, scope: cloneScope(link.scope) });
     setPreview(null);
     setRevealedLink(null);
@@ -183,6 +189,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     setWidening(null);
     acknowledgedWidening.current = false;
     setLinkEditor({ linkId: null });
+    setNewLinkPreset(null);
     linkRecord.load({ label: "", scope: emptyScope() });
     setPreview(null);
     setRevealedLink(null);
@@ -210,6 +217,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     setWidening(null);
     acknowledgedWidening.current = false;
     setLinkEditor(null);
+    setNewLinkPreset(null);
     linkRecord.load({ label: "", scope: emptyScope() });
   }
 
@@ -252,6 +260,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         id: null,
         label: values.label.trim(),
         scope: values.scope,
+        preset: newLinkPreset,
       });
       created = true;
       loadLink(target);
@@ -339,6 +348,31 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         : m.assets_choose_who_sees_each_item_new_items_are_private());
   const isPublished = publicStatus?.surface_state === "published";
 
+  // The preset pickers act on the saved audience; applying one loads the audience the server answers with.
+  const loadPublic = (saved: PublicProjectionStatus) => {
+    publicRevision.current = saved.revision;
+    setPublicConflict(null);
+    publicRecord.load({ scope: cloneScope(saved.scope) });
+    setPreview(null);
+  };
+  const publicPreset: ScopePreset = {
+    target: { kind: "public" },
+    revision: () => publicRevision.current,
+    label: publicStatus,
+    dirty: publicRecord.dirty,
+    onApplied: (audience) => loadPublic(audience as PublicProjectionStatus),
+    onReload: (current) => loadPublic(current as PublicProjectionStatus),
+  };
+  const linkPreset: ScopePreset = {
+    target: selectedLink ? { kind: "link", linkId: selectedLink.id } : null,
+    revision: () => linkRevision.current,
+    label: selectedLink,
+    dirty: linkRecord.dirty,
+    ...(selectedLink ? {} : { creation: { value: newLinkPreset, onChange: setNewLinkPreset } }),
+    onApplied: (audience) => loadLink(audience as ShareLink),
+    onReload: (current) => loadLink(current as ShareLink),
+  };
+
   return (
     <section className="travel-card manager gap-4.5" aria-labelledby="publication-manager-title">
       <div className="capture-heading">
@@ -413,6 +447,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         status={publicStatus}
         record={publicRecord}
         catalog={catalog}
+        preset={publicPreset}
         toggling={togglePublic.isPending}
         previewing={previewPublicScope.isPending}
         onScopeChange={() => setPreview(null)}
@@ -522,6 +557,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                     onError={fail(m.owner_visibility_save_failed)}
                     disabled={lockedLink}
                     allowExclusions
+                    preset={linkPreset}
                   />
                 )}
               </linkRecord.form.Field>
