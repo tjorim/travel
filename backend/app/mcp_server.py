@@ -70,6 +70,7 @@ from .routers import (
 from .routers import (
     precision as precision_routes,
 )
+from .routers import sharing_presets as preset_routes
 from .routers import visibility as visibility_routes
 from .secrets import get_secret_store
 from .storage import get_storage
@@ -1080,6 +1081,32 @@ class TravelMcpBackend:
             trip_id,
             lambda s, sub: publication.review_exclusions(trip_id, payload, s, sub),
             lambda x: _model(x, schemas.ExclusionReview),
+        )
+
+    def list_sharing_presets(self, trip_id: str) -> dict[str, Any]:
+        """List the sharing presets (story_only, story_and_route, planned_trip): named starting points for what one audience receives. Each selects kinds of records (updates; then also areas and routes; then also visits and stays), only planned or confirmed plans, never locations, addresses, times or documents, and sets the audience's dates to at most month precision. A preset never makes a record visible to everyone."""
+        return self._call(
+            "sharing_preset.list",
+            "trip",
+            trip_id,
+            trip_id,
+            lambda s, sub: preset_routes.preset_catalog_response(trip_id, s, sub),
+            lambda x: _model(x, schemas.SharingPresetCatalog),
+        )
+
+    def preview_sharing_preset(
+        self, trip_id: str, preset: schemas.SharingPresetId, audience: str = "public"
+    ) -> dict[str, Any]:
+        """Review a sharing preset for one audience before anything is applied (applying is not available yet). audience is `public`, `link:<link id>` or `collection:<collection member id>`. Returns the changes the preset would make (records listed for or unlisted from this audience, records left out of a hidden link, private records that become custom for this audience only), how many records of each kind the audience receives now and afterwards, which records it would newly receive (widened, and requires_acknowledgement when the audience is live) or stop receiving, the date precision before and after, the records it keeps receiving that the preset does not include with the way out (left_as_is), the records a preset did not sweep in and why (needs_decision), and the owner's choices it would reset (replaces_exceptions). A plan beyond the scope limits is refused with refusal.code preset_too_large. Show the owner the review. Stores nothing, claims no revision and records no audit event."""
+        return self._call(
+            "sharing_preset.preview",
+            "trip",
+            trip_id,
+            trip_id,
+            lambda s, sub: preset_routes.review_sharing_preset(
+                trip_id, audience, schemas.SharingPresetRequest(preset=preset), s, sub
+            ),
+            lambda x: _model(x, schemas.SharingPresetReview),
         )
 
     def activate_share_link(

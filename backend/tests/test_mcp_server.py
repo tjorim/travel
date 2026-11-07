@@ -29,6 +29,7 @@ from app.database import Base
 from app.mcp_server import (
     MCP_TOOL_CAPABILITIES,
     OutageAwareJWTVerifier,
+    ResponseValidationError,
     ToolFailureMiddleware,
     TravelMcpBackend,
     _unauthorized_reason,
@@ -37,7 +38,7 @@ from app.mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
-from app.models import AuditEvent, AuditEventKind, McpAuditEvent, Trip
+from app.models import AuditEvent, AuditEventKind, McpAuditEvent, TravelUpdate, Trip, Visibility
 from app.routers import trips as trips_router
 from app.task_alerts import process_due_task_alerts
 
@@ -1660,6 +1661,54 @@ def test_audience_date_precision_is_set_and_followed_over_mcp_like_the_applicati
     with TestingSessionLocal() as session:
         kinds = [event.kind for event in session.scalars(select(AuditEvent))]
         assert AuditEventKind.PRECISION_FOLLOW_AUDIENCE in kinds
+
+
+def test_sharing_presets_are_reviewed_over_mcp_without_storing_anything(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Presets"))["id"]
+    area = backend.save_area(trip_id, schemas.AreaInput(label="Taipei", latitude=25.03, longitude=121.56))
+    update = backend.create_travel_update(
+        trip_id,
+        schemas.TravelUpdateCreate(
+            occurred_at=datetime(2054, 4, 4, 10, tzinfo=UTC), title="Arrived", body="Safe words.", area_id=area["id"]
+        ),
+    )
+    visit = backend.create_visit(trip_id, schemas.VisitCreate(area_id=area["id"], title="Night market"))
+    backend.set_visibility(trip_id, "visit", visit["id"], "everyone", confirm=True)
+    link = backend.create_share_link(trip_id, schemas.ShareLinkCreate(label="Friends"), confirm=True)
+    with TestingSessionLocal() as session:
+        audited = len(list(session.scalars(select(AuditEvent))))
+
+    # Both are read tools: no confirmation, and the manifest says so.
+    for name in ("list_sharing_presets", "preview_sharing_preset"):
+        assert MCP_TOOL_CAPABILITIES[name] == {"effect": "read", "requires_confirmation": False}
+    catalog = backend.list_sharing_presets(trip_id)
+    assert [item["id"] for item in catalog["presets"]] == ["story_only", "story_and_route", "planned_trip"]
+
+    review = backend.preview_sharing_preset(trip_id, "story_only", audience=f"link:{link['id']}")
+    assert review["applicable"] is True and review["audience"]["kind"] == "link"
+    assert [(item["action"], item["id"]) for item in review["changes"]] == [
+        ("promote", update["id"]),
+        ("exclude", visit["id"]),
+    ]
+    assert review["comparison"]["added"] == {"travel_update": 1} and review["comparison"]["removed"] == {"visit": 1}
+    assert review["requires_acknowledgement"] is False
+    # The same review as the application API gives, through the shared handler.
+    public = backend.preview_sharing_preset(trip_id, "story_only")
+    assert public["audience"]["id"] == "public" and public["changes"][0]["action"] == "promote"
+    assert {item["reason"] for item in public["left_as_is"]} == {"everyone_on_public_view"}
+
+    with pytest.raises(ValueError, match="not found"):
+        backend.preview_sharing_preset(trip_id, "story_only", audience="link:missing")
+    with pytest.raises(ResponseValidationError, match="preset:literal_error"):
+        backend.preview_sharing_preset(trip_id, "everything")
+
+    # Nothing was stored: the update is still private, the link unchanged and no audit event was recorded.
+    with TestingSessionLocal() as session:
+        stored = session.get(TravelUpdate, update["id"])
+        assert stored is not None and stored.visibility == Visibility.PRIVATE
+    assert backend.get_share_link(trip_id, link["id"])["scope"] == link["scope"]
+    with TestingSessionLocal() as session:
+        assert len(list(session.scalars(select(AuditEvent)))) == audited
 
 
 def test_link_exclusions_work_over_mcp_like_the_application(backend: TravelMcpBackend) -> None:

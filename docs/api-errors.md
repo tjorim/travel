@@ -35,7 +35,9 @@ when visits and stays follow the audience's date precision, with counts per kind
 `decisions/36-privacy-sharing-offline-policy.md`); the 409
 `exclusion_widening_needs_acknowledgement` lists the `revealed` records (kind and id) and their
 `counts` per kind when saving would remove exclusions from an active hidden link or collection
-member; the 422 `scope_exclusion_not_allowed` refuses `exclude` on the public view.
+member; the 422 `scope_exclusion_not_allowed` refuses `exclude` on the public view. A sharing
+preset review (`.../preset/review`, [#241](decisions/241-sharing-presets.md)) is a 200 even when the plan cannot
+be applied: `refusal.code` `preset_too_large` carries the counts and the limits, and `comparison` is then null.
 None reaches a visitor.
 Resource dependency conflicts include per-kind counts and their total `count`.
 Upload size failures include the numeric MB limit as `max_length`.

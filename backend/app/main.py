@@ -37,6 +37,7 @@ from .routers.publication import delivery_rate_limit_handler
 from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
 from .routers.routes import router as routes_router
+from .routers.sharing_presets import router as sharing_presets_router
 from .routers.stays import router as stays_router
 from .routers.tasks import router as tasks_router
 from .routers.translation import router as translation_router
@@ -81,6 +82,7 @@ app.include_router(precision_router, prefix="/api")
 app.include_router(publication_router, prefix="/api")
 app.include_router(collections_router, prefix="/api")
 app.include_router(collection_membership_router, prefix="/api")
+app.include_router(sharing_presets_router, prefix="/api")
 app.include_router(publication_delivery_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
 app.include_router(routes_router, prefix="/api")
