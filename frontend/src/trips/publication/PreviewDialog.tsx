@@ -8,7 +8,9 @@ import { RecordDialog } from "../../RecordDialog";
 import type { ShareLink, ShareScope } from "../../tracker-model";
 import { RenderedPreview } from "../RenderedPreview";
 import { kindCountsText, LINK_STATE_LABELS, projectionSummary } from "./catalog";
+import { futureDisclosureLines } from "./SharingReview";
 import { useExclusionReview } from "./use-exclusion-review";
+import { useFutureDisclosure } from "./use-future-disclosure";
 
 export type Preview = {
   name: string | (() => string);
@@ -41,6 +43,18 @@ export function PreviewDialog({
   // The preview is the audience's real delivery; this says how it differs from the public page.
   const review = useExclusionReview(tripId, preview.scope);
   const left = preview.audience === "share" ? (review.data?.excluded.length ?? 0) : 0;
+  // What this candidate shows of a trip that has not started: the same counts the Sharing check words, for this audience.
+  const future = useFutureDisclosure(
+    tripId,
+    preview.audience === "public" ? { kind: "public" } : { kind: "link", linkId: preview.linkId },
+    preview.scope,
+  );
+  const futureLines = futureDisclosureLines(
+    future.data ?? { transport: 0, day_dates: 0 },
+    preview.audience === "public"
+      ? m.assets_the_page_for_everyone()
+      : m.assets_link({ p0: links.find((link) => link.id === preview.linkId)?.label ?? "" }),
+  );
   return (
     <RecordDialog
       open
@@ -70,6 +84,13 @@ export function PreviewDialog({
             {!!Object.keys(review.data?.also_hidden ?? {}).length &&
               ` ${m.exclusions_preview_also({ counts: kindCountsText(review.data?.also_hidden) })}`}
           </p>
+        )}
+        {futureLines.length > 0 && (
+          <ul className="m-0 grid list-disc gap-0.5 pl-5 text-travel-review-warning">
+            {futureLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         )}
         <p className="help">{m.sharing_preview_unsaved_note()}</p>
         <RenderedPreview

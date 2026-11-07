@@ -180,6 +180,8 @@ beforeEach(() => {
   }));
   api.on("GET", /^\/api\/trips\/trip\/public-projection$/, () => status);
   api.on("GET", /^\/api\/trips\/trip\/overview$/, () => overview);
+  // Every preview asks what it shows of the future; a test that expects a line overrides this.
+  api.on("POST", /\/future-disclosure$/, () => ({ transport: 0, day_dates: 0 }));
   api.on("PUT", /^\/api\/trips\/trip\/public-projection$/, (body) => {
     status = { ...status, scope: body as ShareScope };
     return status;
@@ -747,6 +749,33 @@ it("shows what each audience receives and words the review warnings in Dutch", a
   expect(
     review.getByText("De pagina voor iedereen toont de reisdatums (alleen maanden)."),
   ).toBeTruthy();
+});
+
+it("previews the future transport and day dates of the unsaved public scope, in words", async () => {
+  api.on("POST", /^\/api\/trips\/trip\/public-projection\/future-disclosure$/, () => ({
+    transport: 2,
+    day_dates: 3,
+  }));
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
+  fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bekijk als bezoeker" }));
+  const dialog = await screen.findByRole("dialog", { name: "Publieke preview" });
+  expect(
+    await within(dialog).findByText(
+      "De pagina voor iedereen kan vóór de reis lezen wanneer en hoe u reist: 2 vervoersverbindingen met tijd of maatschappij. Zet die routes tot uw vertrek op privé.",
+    ),
+  ).toBeTruthy();
+  expect(
+    within(dialog).getByText(
+      "De pagina voor iedereen toont datums per dag bij 3 records met een datum vóór de reis. Zet tot uw vertrek “Datums die dit publiek ziet” op maand.",
+    ),
+  ).toBeTruthy();
+  // The candidate is what the review counts; nothing was saved.
+  expect(
+    api.lastBody<ShareScope>("POST /api/trips/trip/public-projection/future-disclosure")?.items,
+  ).toEqual([]);
+  expect(api.count("PUT /api/trips/trip/public-projection")).toBe(0);
 });
 
 it("retains a draft across a deferred scope conflict and retries with the chosen revision", async () => {

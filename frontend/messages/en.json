@@ -2000,6 +2000,28 @@
   "assets_cover_removed": "Cover removed.",
   "assets_the_cover_could_not_be_saved": "The cover could not be saved.",
   "assets_receives_no_cover_because_the_chosen_photo_is_not_among_its_photos": "{p0} shows no cover because it does not receive the chosen cover photo. Share the photo with everyone, attach it to a shared update, or choose it for this audience.",
+  "assets_count_transport_legs": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} transport leg with a time or carrier",
+        "countPlural=other": "{count} transport legs with a time or carrier"
+      }
+    }
+  ],
+  "assets_future_transport_times": "{p0} can read when and how you travel before the trip starts: {p1}. Until you leave, set those routes to private.",
+  "assets_count_day_dated_records": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} dated record",
+        "countPlural=other": "{count} dated records"
+      }
+    }
+  ],
+  "assets_future_day_dates": "{p0} shows dates by day for {p1} before the trip starts. Until you leave, set “Dates shown to this audience” to month.",
   "api_choose_a_finished_share_copy_of_a_photo": "Choose a finished share copy of a photo as the cover.",
   "visitor_destinations": "Destinations",
   "visitor_more_destinations": "+{count} more",

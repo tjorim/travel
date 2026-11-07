@@ -543,7 +543,9 @@ export type OverviewWarning = {
     | "cover_not_received"
     | "undated_visit_duplicates_dated"
     | "location_repeats_area"
-    | "visit_restates_route";
+    | "visit_restates_route"
+    | "future_transport_times"
+    | "future_day_dates";
   severity: "warning" | "info";
   /** English, for API and MCP clients; the PWA words each code itself. */
   message: string;
@@ -552,6 +554,14 @@ export type OverviewWarning = {
   text: string | null;
   kind: string | null;
   id: string | null;
+  /** How many routes or records a future warning counts; never their titles. */
+  count?: number | null;
+};
+
+/** Owner-only: what a candidate scope shows of a trip that has not started yet, in counts (zero: nothing to warn). */
+export type FutureDisclosure = {
+  transport: number;
+  day_dates: number;
 };
 
 /** Owner-only review of a trip: counts per kind, who receives what, and what to check before sharing. */
