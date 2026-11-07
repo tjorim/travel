@@ -2,6 +2,7 @@ import { m } from "../../paraglide/messages.js";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwnerMutation } from "../../query/owner-queries";
 import type {
+  FollowAudienceResult,
   ProjectionDocument,
   PublicProjectionStatus,
   ShareLink,
@@ -111,7 +112,31 @@ export function usePublicationMutations(tripId: string) {
     invalidate: refreshLinks,
   });
 
+  const followAudience = useOwnerMutation<
+    { kinds: ("visit" | "stay")[]; confirm: boolean; confirmWidening?: boolean },
+    FollowAudienceResult
+  >({
+    fallback: m.precision_follow_failed,
+    // Without `confirm` the server only reports what would change; nothing is stored.
+    request: ({ kinds, confirm, confirmWidening }) => ({
+      path: tripPath(tripId, "date-precision/follow-audience"),
+      method: "POST",
+      body: { kinds, confirm, confirm_widening: confirmWidening ?? false },
+    }),
+    invalidate: (subject, { confirm }) =>
+      confirm
+        ? [
+            ownerKeys.tripResource(subject, tripId, "visits"),
+            ownerKeys.tripResource(subject, tripId, "stays"),
+            ownerKeys.tripResource(subject, tripId, "overview"),
+            [...ownerKeys.trip(subject, tripId), "audit-events"],
+          ]
+        : [],
+    gcTime: 0,
+  });
+
   return {
+    followAudience,
     savePublic,
     previewPublicScope,
     togglePublic,

@@ -177,7 +177,8 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
     start_time: "18:30",
     end_time: "21:00",
     share_time: false,
-    share_date_precision: "month",
+    // A new visit follows the audience's date precision.
+    share_date_precision: null,
   });
 });
 
@@ -286,6 +287,21 @@ it("rewrites the place only when it changed, and shows where the nights are spen
   expect(sent).toMatchObject({ notes: "Laptop mee", kind: "work", status: "confirmed" });
   expect(sent).not.toHaveProperty("area_id");
   expect(sent).not.toHaveProperty("location");
+});
+
+it("edits a visit's own date precision and lets it follow the audience again", async () => {
+  seed([visit("v1", 0, { title: "Night market", share_date_precision: "day" })]);
+  renderWithOwner(<VisitManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Night market bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  await screen.findByRole("combobox", { name: "Waar" });
+  expect(selectedOption("Datums voor bezoekers")).toBe("Volledige datums");
+  chooseOption("Datums voor bezoekers", "Zoals het publiek");
+  fireEvent.click(screen.getByRole("button", { name: "Bezoek opslaan" }));
+  await screen.findByText("Bezoek opgeslagen.");
+  expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toMatchObject({
+    share_date_precision: null,
+  });
 });
 
 it("cancels a visit idea and keeps it off the share controls", async () => {

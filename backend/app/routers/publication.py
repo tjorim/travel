@@ -91,9 +91,15 @@ async def delivery_rate_limit_handler(request: Request, error: RateLimitExceeded
     )
 
 
-def _apply_scope(session: Session, trip_id: Identifier, subject: str, scope: ShareScopeInput) -> dict:
+def _apply_scope(
+    session: Session, trip_id: Identifier, subject: str, scope: ShareScopeInput, stored: dict | None = None
+) -> dict:
+    """Validate a submitted scope and return it as stored.
+
+    ``stored`` is the audience's current scope; a new audience passes ``None`` and so starts with the
+    conservative default date precision (see ``ShareScopeInput.document``)."""
     trip = owned_trip(session, trip_id, subject)
-    scope_dict = scope.model_dump()
+    scope_dict = scope.document(stored)
     try:
         validate_scope(trip, scope_dict)
     except ScopeError as error:
@@ -102,13 +108,15 @@ def _apply_scope(session: Session, trip_id: Identifier, subject: str, scope: Sha
 
 
 def _preview_scope(
-    session: Session, trip_id: Identifier, subject: str, candidate: ShareScopeInput | None, saved: dict
+    session: Session, trip_id: Identifier, subject: str, candidate: ShareScopeInput | None, saved: dict | None
 ) -> dict:
     """The scope a preview renders: the owner's unsaved candidate, validated like a save, else the saved one.
 
     Nothing is stored and no audit event is recorded, so a preview never changes what a live audience receives.
     """
-    return saved if candidate is None else _apply_scope(session, trip_id, subject, candidate)
+    if candidate is None:
+        return saved or {}
+    return _apply_scope(session, trip_id, subject, candidate, saved)
 
 
 def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurface:
@@ -116,7 +124,8 @@ def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurfa
     if surface is None:
         try:
             with session.begin_nested():
-                surface = PublicSurface(trip_id=trip_id, scope={})
+                # A new public view reads dates by month until the owner chooses otherwise.
+                surface = PublicSurface(trip_id=trip_id, scope={"defaults": {"date_precision": "month"}})
                 session.add(surface)
                 session.flush()
         except IntegrityError:
@@ -173,8 +182,8 @@ def set_public_projection_scope(
     subject: SubjectDep,
     if_match: Annotated[str | None, Header()] = None,
 ) -> PublicProjectionStatusResponse:
-    scope = _apply_scope(session, trip_id, subject, payload)
     surface = _get_or_create_surface(session, trip_id)
+    scope = _apply_scope(session, trip_id, subject, payload, surface.scope)
     _claim_revision(session, surface, if_match)
     before = scope_fingerprint(surface.scope)
     surface.scope = scope
@@ -204,7 +213,7 @@ def preview_public_projection(
 ) -> dict:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else {})
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None)
     response.headers["Cache-Control"] = "no-store"
     return render_projection(trip, scope, "travel/public-trip@1")
 
@@ -235,7 +244,7 @@ def preview_public_candidate_file(
 ) -> Response:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else {})
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None)
     return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
@@ -249,7 +258,7 @@ def preview_public_candidate_navigation(
 ) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else {})
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None)
     return _preview_navigation(trip, scope, local_id)
 
 
@@ -379,7 +388,7 @@ def owned_link(session: Session, trip_id: Identifier, subject: str, link_id: Ide
 def create_share_link(
     trip_id: Identifier, payload: ShareLinkCreate, session: SessionDep, subject: SubjectDep
 ) -> ShareLink:
-    scope = _apply_scope(session, trip_id, subject, payload.scope)
+    scope = _apply_scope(session, trip_id, subject, payload.scope, None)
     link = ShareLink(trip_id=trip_id, label=payload.label, series_id="", scope=scope, state=LinkState.DRAFT)
     session.add(link)
     session.flush()
@@ -441,7 +450,7 @@ def update_share_link(
         link.label = payload.label
     if payload.scope is not None:
         before = scope_fingerprint(link.scope)
-        link.scope = _apply_scope(session, trip_id, subject, payload.scope)
+        link.scope = _apply_scope(session, trip_id, subject, payload.scope, link.scope)
         after = scope_fingerprint(link.scope)
         # A draft link delivers nothing yet; its activation records the scope.
         if link.state == LinkState.ACTIVE and before != after:

@@ -49,6 +49,21 @@ const events = [
       { field: "area_id", audiences: ["link:secret-link-a"] },
     ],
   }),
+  event("record.precision_follow_audience", {
+    changed: { visits: 2, stays: 1 },
+    audiences: [
+      {
+        audience: "public",
+        widened: { visits: 2, stays: 1 },
+        narrowed: { visits: 0, stays: 0 },
+      },
+      {
+        audience: "link:secret-link-a",
+        widened: { visits: 0, stays: 0 },
+        narrowed: { visits: 1, stays: 0 },
+      },
+    ],
+  }),
 ];
 it.each(["en", "nl"] as const)(
   "renders private audit details in %s and updates on locale changes",
@@ -108,6 +123,21 @@ it.each(["en", "nl"] as const)(
         locale === "en"
           ? "Newly shown to visitors by the merge. Public page: 1; share links: 1."
           : "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: 1; deellinks: 1.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        locale === "en"
+          ? "Visits and stays now follow each audience’s date precision."
+          : "Bezoeken en verblijven volgen nu de datumprecisie van elk publiek.",
+      ),
+    ).toBeVisible();
+    // Only the audience that reads finer dates is counted; the one that reads coarser dates is not.
+    expect(
+      screen.getByText(
+        locale === "en"
+          ? "More precise dates for visitors. Public page: 1; share links: 0."
+          : "Preciezere datums voor bezoekers. Openbare pagina: 1; deellinks: 0.",
       ),
     ).toBeVisible();
     expect(container.textContent).not.toContain("secret-");

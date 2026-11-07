@@ -104,7 +104,7 @@ export function StayManager({
           booking_reference: values.bookingReference.trim() || null,
           contact_details: values.contactDetails.trim() || null,
           notes: values.notes.trim() || null,
-          share_date_precision: values.shareDatePrecision,
+          share_date_precision: values.shareDatePrecision || null,
           ...(!id || changed
             ? {
                 location: values.location?.existing_location_id

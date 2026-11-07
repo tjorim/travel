@@ -420,3 +420,35 @@ audience projection and link model above.
 The [browser persistence contract](../browser-persistence-contract.md) aligns account isolation,
 schema checks, asynchronous cleanup and storage failure across the five apps.
 App-specific retention and offline capabilities remain as documented here.
+
+## Date precision per audience (#236)
+
+Decision (owner), 2026-11-06, issue #236: precision is set **per audience, with a
+per-record override, and the stricter (coarser) value always wins**. An audience
+(the public view, a hidden link, a collection member) may set
+`defaults.date_precision` in its share scope; a visit or stay keeps an optional
+`share_date_precision` where `null` follows the audience; a reisupdate keeps its
+own `date_precision`; the trip's `dates` precision in the scope remains a cap on
+the trip dates. The effective precision of a date is the coarser of every value
+that is set, and `month` when none is. The layers, the full table and the
+bulk *Follow the audience's precision* action are described in
+[the domain model](../domain-model.md#date-precision).
+
+Safety rules this adds to the policy:
+
+- An audience that sets nothing caps nothing, so existing scopes keep their current
+  output; the migration only makes the column nullable and keeps every explicit value.
+- A new audience starts at `month`. Saving a scope without `defaults` keeps the stored
+  setting (a client that does not know the field cannot widen an audience); only an
+  explicit `defaults: null` or `date_precision: null` removes the cap.
+- Letting records follow the audience can show visitors finer dates. The bulk action
+  therefore previews, per live audience, how many visits and stays would read finer
+  (`widened`) or coarser (`narrowed`), refuses a confirmed change with
+  `409 precision_widening_needs_acknowledgement` until `confirm_widening` accepts it
+  (like the merge widening of decision 27), and records the change in the audit trail
+  as `record.precision_follow_audience` with audience ids and counts only.
+- The order of a shared list (visits and stays are sorted by their exact dates) is not a
+  date and is unchanged by precision; this decision does not change it.
+- Downgrading the migration never widens: followed records become `month`, and every
+  record is held to the coarsest cap any audience of its trip sets, because older code
+  ignores the audience setting.

@@ -16,18 +16,16 @@ from .errors import ServiceError
 from .markdown import markdown_text, render_inline, render_markdown
 from .models import Area, Location, MediaDerivative, MediaKind, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
+from .precision import PRECISION_LENGTH, audience_precision, coarser, effective_precision, own_value
 
 
 class ScopeError(ServiceError):
     """The scope is not safe to render for this trip."""
 
 
-_PRECISION_LENGTH = {"day": 10, "month": 7, "year": 4}
-
-
 def _safe_date(value: Any, precision: str) -> str | None:
     """Truncate an ISO date to the precision the owner chose to share."""
-    return value.isoformat()[: _PRECISION_LENGTH[precision]] if value else None
+    return value.isoformat()[: PRECISION_LENGTH[precision]] if value else None
 
 
 def _utc_instant(value: datetime) -> datetime:
@@ -200,7 +198,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
     if kind in {"area", "location"}:
         values = _share_shared_place(item)
     elif kind == "visit":
-        precision = item.share_date_precision.value
+        precision = effective_precision(own_value(item), context["date_precision"])
         shared_location = _embedded_location(item.location, context)
         values = {
             "title": item.title or (shared_location or {}).get("label") or item.area.label,
@@ -254,7 +252,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         if any(points.values()):
             values["map"] = points
     elif kind == "stay":
-        precision = item.share_date_precision.value
+        precision = effective_precision(own_value(item), context["date_precision"])
         values = {
             "title": item.area.label,
             "place": _share_place(item.area, context["areas"]),
@@ -265,12 +263,13 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         if location := _embedded_location(item.location, context):
             values["location"] = location
     elif kind == "travel_update":
+        precision = coarser(item.date_precision.value, context["date_precision"]) or item.date_precision.value
         values = {
             "title": item.title,
             "body": item.body,
             "body_html": render_markdown(item.body),
-            "date_precision": item.date_precision.value,
-            "story_date": _safe_date(item.occurred_at.date(), item.date_precision.value),
+            "date_precision": precision,
+            "story_date": _safe_date(item.occurred_at.date(), precision),
             "place": _share_place(item.area, context["areas"]),
         }
         if location := _embedded_location(item.location, context):
@@ -303,10 +302,13 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
 
 
 def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
-    """The trip's travel dates, only at the precision the scope selects."""
-    precision = scope.get("trip", {}).get("dates")
-    if precision not in _PRECISION_LENGTH or (trip.starts_on is None and trip.ends_on is None):
+    """The trip's travel dates, only at the precision the scope selects.
+
+    The audience's own date precision also caps them: the coarser of the two applies."""
+    chosen = scope.get("trip", {}).get("dates")
+    if chosen not in PRECISION_LENGTH or (trip.starts_on is None and trip.ends_on is None):
         return None
+    precision = coarser(chosen, audience_precision(scope)) or chosen
     return {
         "starts_on": _safe_date(trip.starts_on, precision),
         "ends_on": _safe_date(trip.ends_on, precision),
@@ -345,6 +347,8 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "updates": {item.id: local_id("travel_update", item) for item in records["travel_update"]},
         "locations": {item.id for item in records["location"]},
         "areas": {item.id for item in records["area"]},
+        # The audience's own cap on every date; the coarser of it and a record's own value is shown.
+        "date_precision": audience_precision(scope),
     }
     # Markdown fields carry their source, sanitized HTML for display, and, for
     # the trip summary shown on cards, a one-line plain-text preview.

@@ -25,6 +25,11 @@ enforces the scope; this check is about choosing it deliberately.
       class, notes or document.
 - [ ] Choose trip dates only at the precision you intend to share (year,
       month or day), and prefer areas and deliberately drawn routes.
+- [ ] Set *Dates shown to this audience* for the public view and each link. It
+      caps every date, the trip dates included, and the coarser of it and a
+      record's own setting always applies. Read the Sharing check's date lines
+      for the effective result before publishing, and before using *Follow the
+      audience's precision*, which can show finer dates to a live audience.
 - [ ] A reisupdate shares only its title, the text written for visitors, its
       date and its area; never its private notes. Read the text as a stranger
       would, and remember the date precision applies.

@@ -73,7 +73,7 @@ def test_known_database_failures_are_field_errors(owner):
         ("PATCH", base + f"/stays/{stay['id']}", {"check_in_time": "15:00Z"}, "check_in_time"),
         ("POST", "/api/trips", {"title": "bad\x00text"}, "title"),
         ("PATCH", base, {"title": None}, "title"),
-        ("PATCH", base + f"/stays/{stay['id']}", {"share_date_precision": None}, "share_date_precision"),
+        ("PATCH", base + f"/stays/{stay['id']}", {"status": None}, "status"),
         (
             "POST",
             base + "/visits",

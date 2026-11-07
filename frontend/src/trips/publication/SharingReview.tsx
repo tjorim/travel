@@ -2,7 +2,13 @@ import { Collapsible } from "@/ui/collapsible";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { TripOverview, OverviewAudience, OverviewWarning } from "../../tracker-model";
+import type {
+  DatePrecision,
+  OverviewAudience,
+  OverviewRecordPrecision,
+  OverviewWarning,
+  TripOverview,
+} from "../../tracker-model";
 import { VisibilityControl } from "../visibility";
 import { DATE_PRECISIONS, GROUP_TITLES, groupBy, type CatalogItem } from "./catalog";
 
@@ -11,6 +17,45 @@ const MAP_KINDS = {
   stays: m.assets_count_stays,
   updates: m.assets_count_updates,
 };
+
+const PRECISION_NAMES: Record<DatePrecision, () => string> = {
+  day: () => m.precision_audience_day().toLowerCase(),
+  month: () => m.precision_audience_month().toLowerCase(),
+  year: () => m.precision_audience_year().toLowerCase(),
+};
+const PRECISION_PARTS: Record<DatePrecision, (inputs: { count: number }) => string> = {
+  day: m.precision_check_by_day,
+  month: m.precision_check_by_month,
+  year: m.precision_check_by_year,
+};
+
+/** How an audience reads dates: its own limit, then how many visits and stays read at each precision. */
+export function precisionLines(audience: OverviewAudience): string[] {
+  const lines = [
+    audience.date_precision
+      ? m.precision_check_audience({ precision: PRECISION_NAMES[audience.date_precision]() })
+      : m.precision_check_audience_unset(),
+  ];
+  const kinds = [["visits", m.owner_visits] as const, ["stays", m.owner_stays] as const];
+  for (const [kind, label] of kinds) {
+    const summary: OverviewRecordPrecision | undefined = audience.record_precision?.[kind];
+    const parts = (["day", "month", "year"] as const)
+      .filter((precision) => (summary?.by_precision[precision] ?? 0) > 0)
+      .map((precision) => PRECISION_PARTS[precision]({ count: summary!.by_precision[precision]! }));
+    if (!summary || !parts.length) continue;
+    const breakdown = [
+      parts.join(", "),
+      summary.limited_by_record
+        ? m.precision_check_limited({ count: summary.limited_by_record })
+        : "",
+      summary.default_applied ? m.precision_check_default({ count: summary.default_applied }) : "",
+    ]
+      .filter(Boolean)
+      .join("; ");
+    lines.push(m.precision_check_kind({ kind: label(), breakdown }));
+  }
+  return lines;
+}
 
 /** Describe canonical warning codes; server prose is diagnostic only. */
 function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): string {
@@ -108,6 +153,11 @@ export function SharingReview({ overview }: { overview: TripOverview | undefined
                   m.assets_count_media({ count: delivered.media }),
                 ].join(", "),
               })}
+              <ul className="m-0 mt-1 grid list-disc gap-0.5 pl-5 text-sm">
+                {precisionLines(audience).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
             </li>
           );
         })}

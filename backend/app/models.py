@@ -197,6 +197,8 @@ class AuditEventKind(StrEnum):
     PUBLIC_PROJECTION_SCOPE_CHANGE = "public_projection.scope_change"
     SHARE_LINK_SCOPE_CHANGE = "share_link.scope_change"
     VISIBILITY_CHANGE = "record.visibility_change"
+    # Letting visits and stays follow the audience's date precision can show visitors finer dates at once.
+    PRECISION_FOLLOW_AUDIENCE = "record.precision_follow_audience"
 
 
 class AuditTargetType(StrEnum):
@@ -474,10 +476,12 @@ class Stay(Base):
     contact_details: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # A shared stay is only its city or area and its nights, at this precision;
-    # never the property, location or booking details.
+    # never the property, location or booking details. ``None`` follows the
+    # audience; an audience never gets a finer precision than this or its own
+    # setting allows (see ``app.precision``).
     visibility: Mapped[Visibility] = _visibility_column()
-    share_date_precision: Mapped[DatePrecision] = mapped_column(
-        _enum_column(DatePrecision, "travel_date_precision"), default=DatePrecision.MONTH, nullable=False
+    share_date_precision: Mapped[DatePrecision | None] = mapped_column(
+        _enum_column(DatePrecision, "travel_date_precision"), default=None, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -631,9 +635,10 @@ class Visit(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[Visibility] = _visibility_column()
     # Whether a shared visit also shows its times. A separate choice from sharing the visit at all.
+    # ``share_date_precision`` is this visit's own cap on its days; ``None`` follows the audience.
     share_time: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    share_date_precision: Mapped[DatePrecision] = mapped_column(
-        _enum_column(DatePrecision, "travel_date_precision"), default=DatePrecision.MONTH, nullable=False
+    share_date_precision: Mapped[DatePrecision | None] = mapped_column(
+        _enum_column(DatePrecision, "travel_date_precision"), default=None, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

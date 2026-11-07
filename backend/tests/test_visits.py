@@ -197,7 +197,12 @@ def test_a_shared_visit_shows_its_place_and_days_and_the_time_only_when_chosen()
     assert (
         owner.put(
             f"{base}/public-projection",
-            json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+            json={
+                "schema_version": "travel/share-scope@1",
+                "trip": {"title": True, "summary": True},
+                "defaults": None,
+                "items": [],
+            },
         ).status_code
         == 200
     )
@@ -244,7 +249,12 @@ def test_a_visit_status_is_owner_only_planning_state() -> None:
     assert (
         owner.put(
             f"{base}/public-projection",
-            json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+            json={
+                "schema_version": "travel/share-scope@1",
+                "trip": {"title": True, "summary": True},
+                "defaults": None,
+                "items": [],
+            },
         ).status_code
         == 200
     )
@@ -263,7 +273,12 @@ def test_a_visit_without_a_title_goes_by_its_shared_location_or_its_area() -> No
     assert (
         owner.put(
             f"{base}/public-projection",
-            json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []},
+            json={
+                "schema_version": "travel/share-scope@1",
+                "trip": {"title": True, "summary": True},
+                "defaults": None,
+                "items": [],
+            },
         ).status_code
         == 200
     )

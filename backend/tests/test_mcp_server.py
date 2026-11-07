@@ -1612,3 +1612,49 @@ def test_mcp_collection_tools_mirror_the_link_tools_and_hide_the_token(
         backend.revoke_collection(created["id"])  # needs confirmation
     assert backend.revoke_collection(created["id"], reason="Done", confirm=True)["state"] == "revoked"
     assert backend.remove_collection_member.__name__ == "remove_collection_member"
+
+
+def test_audience_date_precision_is_set_and_followed_over_mcp_like_the_application(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Precision"))["id"]
+    area = backend.save_area(trip_id, schemas.AreaInput(label="Taipei", latitude=25.03, longitude=121.56))
+    visit = backend.create_visit(
+        trip_id, schemas.VisitCreate(area_id=area["id"], starts_on="2054-04-04", share_date_precision="month")
+    )
+    stay = backend.create_stay(
+        trip_id, schemas.StayCreate(area_id=area["id"], check_in_date="2054-04-01", check_out_date="2054-04-05")
+    )
+    # A new record follows the audience; the compact list shows it, and an explicit value stays.
+    assert stay["share_date_precision"] is None
+    assert {row["id"]: row["share_date_precision"] for row in backend.list_visits(trip_id)} == {visit["id"]: "month"}
+    assert backend.update_visit(trip_id, visit["id"], schemas.VisitUpdate(title="Market"))["share_date_precision"] == (
+        "month"
+    )
+    for kind, record in (("visit", visit), ("stay", stay)):
+        backend.set_visibility(trip_id, kind, record["id"], "everyone", confirm=True)
+
+    # The audience setting goes through the same scope handling: a new public view reads by month.
+    assert backend.get_public_projection_status(trip_id)["scope"]["defaults"] == {"date_precision": "month"}
+    scope = schemas.ShareScopeInput(defaults=schemas.ShareScopeDefaultsInput(date_precision="day"))
+    backend.set_public_projection_scope(trip_id, scope, confirm=True)
+    backend.publish_public_projection(trip_id, confirm=True)
+    preview = backend.preview_public_projection(trip_id)
+    assert (preview["visits"][0]["starts_on"], preview["stays"][0]["starts_on"]) == ("2054-04", "2054-04-01")
+    link = backend.create_share_link(trip_id, schemas.ShareLinkCreate(label="Family"), confirm=True)
+    assert link["scope"]["defaults"] == {"date_precision": "month"}
+
+    review = backend.follow_audience_date_precision(trip_id)
+    assert review["applied"] is False and review["changed"] == {"visits": 1, "stays": 0}
+    assert review["audiences"][0]["audience"] == "public" and review["audiences"][0]["widened"]["visits"] == 1
+    with pytest.raises(ValueError, match="precision_widening_needs_acknowledgement") as refused:
+        backend.follow_audience_date_precision(trip_id, confirm=True)
+    assert json.loads(str(refused.value))["audiences"][0]["audience"] == "public"
+    assert backend.get_visit(trip_id, visit["id"])["share_date_precision"] == "month"
+
+    applied = backend.follow_audience_date_precision(trip_id, kinds=["visit"], confirm=True, confirm_widening=True)
+    assert applied["applied"] is True
+    assert backend.get_visit(trip_id, visit["id"])["share_date_precision"] is None
+    assert backend.preview_public_projection(trip_id)["visits"][0]["starts_on"] == "2054-04-04"
+    assert MCP_TOOL_CAPABILITIES["follow_audience_date_precision"] == {"effect": "write", "requires_confirmation": True}
+    with TestingSessionLocal() as session:
+        kinds = [event.kind for event in session.scalars(select(AuditEvent))]
+        assert AuditEventKind.PRECISION_FOLLOW_AUDIENCE in kinds

@@ -138,7 +138,13 @@ The zone is owner-only and never part of a shared projection.
 
 A trip's `starts_on`/`ends_on` are owner-only local dates. A share scope can
 include them with `trip.dates` set to `day`, `month` or `year`; the
-projection then truncates both dates to that precision.
+projection then truncates both dates to that precision. An audience can also cap
+every date it shows with `defaults.date_precision` in its scope, and a visit or stay's
+own `share_date_precision` (`null` follows the audience) can only make a date coarser:
+the coarser value always wins, with `month` when neither is set (see
+`docs/domain-model.md`). `POST /trips/{trip_id}/date-precision/follow-audience` (MCP
+`follow_audience_date_precision`) sets visits' and stays' own value to `null` in bulk,
+previewing first which live audiences would read finer dates.
 
 `GET /api/health` checks database connectivity. FastAPI publishes the full
 OpenAPI description at `/openapi.json` and interactive development docs at

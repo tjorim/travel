@@ -29,7 +29,10 @@ and its audiences (see `decisions/32-shared-location-edits.md`), and the 409
 `merge_widening_needs_acknowledgement` lists, per duplicate, the audiences that newly read the
 kept record and the moved stays, visits, routes and updates that show it (see
 `decisions/27-merge-widening.md`); the 409 `merge_private_choice_is_stale` lists the
-`records` chosen to be made private that the merge no longer newly shows to anyone.
+`records` chosen to be made private that the merge no longer newly shows to anyone; the 409
+`precision_widening_needs_acknowledgement` lists the live `audiences` that would read finer dates
+when visits and stays follow the audience's date precision, with counts per kind (see
+`decisions/36-privacy-sharing-offline-policy.md`).
 None reaches a visitor.
 Resource dependency conflicts include per-kind counts and their total `count`.
 Upload size failures include the numeric MB limit as `max_length`.

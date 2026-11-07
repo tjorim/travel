@@ -20,6 +20,7 @@ function eventMessage(event: AuditEvent) {
     "share_link.scope_change": m.audit_link_scope,
     "location.merge": m.audit_location_merge,
     "area.merge": m.audit_area_merge,
+    "record.precision_follow_audience": m.audit_precision_follow,
   };
   if (event.kind === "location.update")
     return m.audit_location_update({
@@ -52,6 +53,12 @@ function eventMessage(event: AuditEvent) {
 
 const changedFields = (event: AuditEvent) =>
   (event.details.changes ?? []).map((change) => change.field);
+
+/** The audiences that started to read finer dates when visits and stays followed the audience. */
+const precisionWidened = (event: AuditEvent) =>
+  (event.details.audiences ?? [])
+    .filter((entry) => entry.widened.visits + entry.widened.stays > 0)
+    .map((entry) => entry.audience);
 
 /** The audiences a merge newly showed the kept record to, each counted once. */
 const mergeWidened = (event: AuditEvent) => [
@@ -114,6 +121,12 @@ export function AuditList({ tripId }: { tripId: string }) {
               {(event.kind === "location.merge" || event.kind === "area.merge") &&
                 !!mergeWidened(event).length && (
                   <p>{m.audit_merge_widened(audienceCounts(mergeWidened(event)))}</p>
+                )}
+              {event.kind === "record.precision_follow_audience" &&
+                !!precisionWidened(event).length && (
+                  <p>
+                    {m.audit_precision_follow_audiences(audienceCounts(precisionWidened(event)))}
+                  </p>
                 )}
               {event.kind === "record.visibility_change" && (
                 <>

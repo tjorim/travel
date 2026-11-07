@@ -68,9 +68,11 @@ export const DATE_PRECISIONS = {
   },
 } as const;
 
+/** A new audience starts conservative: dates read by month until the owner chooses days. */
 export const emptyScope = (): ShareScope => ({
   schema_version: "travel/share-scope@1",
   trip: { title: true, summary: true, dates: null },
+  defaults: { date_precision: "month" },
   items: [],
 });
 export function cloneScope(scope: Partial<ShareScope> | null | undefined): ShareScope {
@@ -81,6 +83,10 @@ export function cloneScope(scope: Partial<ShareScope> | null | undefined): Share
       summary: scope?.trip?.summary ?? true,
       dates: scope?.trip?.dates ?? null,
     },
+    // Absent stays absent: the server then keeps the audience's stored setting.
+    ...(scope?.defaults !== undefined
+      ? { defaults: scope.defaults && { date_precision: scope.defaults.date_precision ?? null } }
+      : {}),
     items: Array.isArray(scope?.items) ? scope.items.map(({ kind, id }) => ({ kind, id })) : [],
   };
 }

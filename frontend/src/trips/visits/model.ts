@@ -3,6 +3,7 @@ import {
   addDays,
   locationName,
   stayCoversNight,
+  type DatePrecision,
   type Stay,
   type Trip,
   type Visit,
@@ -63,7 +64,8 @@ export type Values = {
   notes: string;
   summary: string;
   shareTime: boolean;
-  shareDatePrecision: Visit["share_date_precision"];
+  /** Empty follows each audience's own date precision. */
+  shareDatePrecision: DatePrecision | "";
 };
 
 export const blank = (): Values => ({
@@ -78,7 +80,7 @@ export const blank = (): Values => ({
   notes: "",
   summary: "",
   shareTime: false,
-  shareDatePrecision: "month",
+  shareDatePrecision: "",
 });
 export const fromVisit = (visit: Visit): Values => ({
   place: placeOfVisit(visit),
@@ -92,7 +94,7 @@ export const fromVisit = (visit: Visit): Values => ({
   notes: visit.notes ?? "",
   summary: visit.summary ?? "",
   shareTime: visit.share_time,
-  shareDatePrecision: visit.share_date_precision,
+  shareDatePrecision: visit.share_date_precision ?? "",
 });
 export const serverFields = {
   title: "title",

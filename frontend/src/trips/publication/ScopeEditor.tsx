@@ -7,7 +7,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "../../query/api";
 import { FeedbackError } from "../../query/feedback";
-import type { ShareScope, ShareScopeKind } from "../../tracker-model";
+import type { DatePrecision, ShareScope, ShareScopeKind } from "../../tracker-model";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useSetVisibility } from "../visibility";
@@ -160,6 +160,45 @@ function VisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
   );
 }
 
+/**
+ * How precisely this audience may read dates. It caps every record's own setting (the coarser wins), so
+ * "days" lets records that follow the audience show days, and a record's own month still shows months.
+ */
+function AudiencePrecision({
+  scope,
+  setScope,
+}: {
+  scope: ShareScope;
+  setScope: (scope: ShareScope) => void;
+}) {
+  useLocale();
+  const value = scope.defaults?.date_precision ?? "";
+  return (
+    <div className="grid gap-1.5">
+      <Field className="max-w-sm">
+        <FieldLabel>{m.precision_audience_label()}</FieldLabel>
+        <SearchSelect
+          ariaLabel={m.precision_audience_label()}
+          value={value}
+          onChange={(next) =>
+            setScope({
+              ...scope,
+              defaults: { date_precision: (next || null) as DatePrecision | null },
+            })
+          }
+        >
+          <option value="">{m.precision_audience_unset()}</option>
+          <option value="day">{m.precision_audience_day()}</option>
+          <option value="month">{m.precision_audience_month()}</option>
+          <option value="year">{m.precision_audience_year()}</option>
+        </SearchSelect>
+      </Field>
+      <small>{m.precision_audience_help()}</small>
+      {!value && <small>{m.precision_audience_unset_help()}</small>}
+    </div>
+  );
+}
+
 export function ScopeEditor({
   scope,
   setScope,
@@ -244,6 +283,7 @@ export function ScopeEditor({
           <small>{m.assets_this_trip_has_no_travel_dates_yet()}</small>
         )}
       </div>
+      <AudiencePrecision scope={scope} setScope={setScope} />
       <VisibilityNote catalog={catalog} />
       <div className="grid gap-2">
         {[...groups].map(([kind, items]) => (
