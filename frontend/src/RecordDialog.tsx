@@ -5,13 +5,17 @@ import { Button } from "@/ui/button";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { cn } from "cn";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 type RecordDialogProps = {
   open: boolean;
   title: string;
   children: ReactNode;
   className?: string;
+  /** Room an on-screen keyboard leaves: the sheet is lifted by `lift` and kept within `height`, in pixels. */
+  keyboardFit?: { lift: number; height: number };
+  /** Whether the language switch sits under the title; a dialog that keeps it elsewhere hides it here. */
+  localeControl?: boolean;
   dirty?: boolean;
   /** A failure to report inside the dialog, where the owner is looking, such as a refused delete. */
   error?: string | null;
@@ -64,6 +68,8 @@ export function RecordDialog({
   title,
   children,
   className,
+  keyboardFit,
+  localeControl = true,
   dirty = false,
   error,
   onDismiss,
@@ -119,7 +125,15 @@ export function RecordDialog({
           <Dialog.Backdrop className={backdrop} />
           <Dialog.Viewport className={viewport}>
             <Dialog.Popup
-              className={cn(popup, className)}
+              className={cn(popup, keyboardFit && "sheet-fit", className)}
+              style={
+                keyboardFit
+                  ? ({
+                      "--sheet-lift": `${keyboardFit.lift}px`,
+                      "--sheet-height": `${keyboardFit.height}px`,
+                    } as CSSProperties)
+                  : undefined
+              }
               finalFocus={() => {
                 const trigger = origin.current;
                 const where = position.current;
@@ -144,18 +158,22 @@ export function RecordDialog({
               aria-label={title}
             >
               <div className="mb-4.5 flex items-start justify-between gap-4">
-                <Dialog.Title className="m-0">{title}</Dialog.Title>
+                <Dialog.Title className="m-0 min-w-0 wrap-anywhere max-[480px]:text-xl!">
+                  {title}
+                </Dialog.Title>
                 <Dialog.Close
-                  className={cn(compactButton, secondaryButton)}
+                  className={cn(compactButton, secondaryButton, "shrink-0 whitespace-nowrap")}
                   disabled={pending}
                   aria-label={m.owner_close({ p0: title })}
                 >
                   {m.owner_close_2()}
                 </Dialog.Close>
               </div>
-              <div className="mb-4">
-                <LocaleControl />
-              </div>
+              {localeControl && (
+                <div className="mb-4">
+                  <LocaleControl />
+                </div>
+              )}
               {error && (
                 <p className="form-error mb-4" role="alert">
                   {error}

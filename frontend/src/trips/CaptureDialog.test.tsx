@@ -19,6 +19,12 @@ vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 let trips: Trip[];
 let api: FakeApi;
 
+/** Date and time, the private note, linked library photos and the location sit under "Meer". */
+const openMore = async () => {
+  const trigger = await screen.findByRole("button", { name: /^Meer/ });
+  if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
+};
+
 beforeEach(() => {
   mockCaptureLocks();
   auth.session = { accessToken: testToken(), expiresAt: Date.now() + 3600000 };
@@ -109,6 +115,7 @@ it("takes a media-review candidate even though the closed dialog already loaded 
   );
   const title = (await screen.findByLabelText("Titel")) as HTMLInputElement;
   await waitFor(() => expect(title.value).toBe(""));
+  await openMore();
   expect(
     (await screen.findByRole("checkbox", { name: /kust\.jpg/ })).getAttribute("aria-checked"),
   ).toBe("true");
@@ -130,6 +137,7 @@ it("asks for at least two characters, then searches, lists results and keeps the
     attribution_url: "https://www.openstreetmap.org/copyright",
   }));
   renderWithOwner(<CaptureDialog open lockedTripId="t1" onDismiss={() => undefined} />);
+  await openMore();
   const query = await screen.findByLabelText("Zoek locatie");
   fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
   expect(await screen.findByText(/minstens twee tekens/)).toBeTruthy();
@@ -162,6 +170,7 @@ it("offers a linked photo's capture date and place as private suggestions", asyn
     attribution_url: "https://www.openstreetmap.org/copyright",
   }));
   renderWithOwner(<CaptureDialog open lockedTripId="t1" onDismiss={() => undefined} />);
+  await openMore();
   fireEvent.click(await screen.findByRole("checkbox", { name: /kust\.jpg/ }));
 
   fireEvent.click(await screen.findByRole("button", { name: "Gebruik opnamedatum" }));

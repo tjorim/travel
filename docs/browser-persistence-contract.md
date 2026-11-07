@@ -71,7 +71,15 @@ unencrypted localStorage, separately from encrypted offline pins. Version 3 uses
 one `travel-capture-draft-v3:<encoded subject>:<encoded trip>` key per owner/trip.
 Only the current authenticated subject may restore or explicitly submit a draft;
 restored fields and the schema/owner/trip envelope are validated. No token or
-upload bytes are persisted, and nothing is automatically sent to the API.
+upload bytes are persisted, and nothing is automatically sent to the API apart from
+the explicit actions below. A photo chosen in Capture is uploaded to the trip's
+private library at once (online only; the picker is disabled offline) and the draft
+keeps only its media ID, so a restored draft shows the thumbnail again by reading
+the library; files still uploading or failed are kept in memory, never in storage.
+Taking a photo out of a draft only unlinks it; the private library item stays.
+Capture starts on the trip with an unsent draft, else the trip underway, the next
+upcoming one, or the last captured into; this is derived from trip data and stores
+nothing new.
 
 Logout preserves pending capture drafts for their original owner without a TTL.
 They become available again only when that owner signs in. Existing pin/key wipes

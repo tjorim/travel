@@ -88,6 +88,11 @@ afterEach(() => {
   expect(api.unexpected).toEqual([]);
 });
 
+/** Date and time, the private note, linked library photos and the location sit under "Meer". */
+const openMore = async () => {
+  const trigger = await screen.findByRole("button", { name: /^Meer/ });
+  if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
+};
 const renderCapture = () => renderRoutesWithOwner(routeTree, ["/"]);
 const savedUpdates = () =>
   within(screen.getByRole("heading", { name: "Opgeslagen reisupdates" }).closest("section")!);
@@ -113,6 +118,7 @@ it("asks for a title, but not for notes, before anything is sent", async () => {
 it("saves a new update, lists it at once and clears the local draft", async () => {
   renderCapture();
   fireEvent.change(await screen.findByLabelText("Titel"), { target: { value: "Nachtmarkt" } });
+  await openMore();
   fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {
     target: { value: "Pindakaas-ijs" },
   });
@@ -133,6 +139,8 @@ it("saves a new update, lists it at once and clears the local draft", async () =
 it("opens a saved update prefilled and shows its edit at once", async () => {
   renderCapture();
   fireEvent.click(await screen.findByRole("button", { name: /Eerste avond/ }));
+  // Editing a saved update shows its note and place at once.
+  expect(screen.getByRole("button", { name: /^Meer/ }).getAttribute("aria-expanded")).toBe("true");
   expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Eerste avond");
   expect((screen.getByLabelText("Privénotitie (optioneel)") as HTMLTextAreaElement).value).toBe(
     "Nachtmarkt",
@@ -159,6 +167,7 @@ it("removes a deleted update from the list after the in-app confirmation", async
 it("keeps the typed update and says the local draft is safe when the server refuses", async () => {
   renderCapture();
   fireEvent.change(await screen.findByLabelText("Titel"), { target: { value: "Nachtmarkt" } });
+  await openMore();
   fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {
     target: { value: "Pindakaas-ijs" },
   });
@@ -185,8 +194,11 @@ it("does not send anything while offline and keeps the draft local", async () =>
   act(() => {
     window.dispatchEvent(new Event("offline"));
   });
-  await screen.findByText(/Offline — concepten blijven lokaal/);
+  // Offline is the one connection state shown outside "Meer": the owner must see it before choosing photos.
+  const notice = await screen.findByText(/Offline — concepten blijven lokaal/);
+  expect(notice.closest("[hidden]")).toBeNull();
   fireEvent.change(title, { target: { value: "Nachtmarkt" } });
+  await openMore();
   fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {
     target: { value: "Pindakaas-ijs" },
   });
@@ -213,6 +225,7 @@ it("searches a place, lets the owner choose it and sends it with the update", as
   }));
   renderCapture();
   await screen.findByLabelText("Titel");
+  await openMore();
   fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
   await screen.findByText("Vul minstens twee tekens in om een locatie te zoeken.");
   fireEvent.change(screen.getByLabelText("Zoek locatie"), { target: { value: "Taipei Main" } });
@@ -235,6 +248,7 @@ it("searches a place, lets the owner choose it and sends it with the update", as
 
 it("links a private photo to the update", async () => {
   renderCapture();
+  await openMore();
   fireEvent.click(await screen.findByRole("checkbox", { name: /markt.jpg/ }));
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Markt" } });
   fireEvent.change(screen.getByLabelText("Privénotitie (optioneel)"), {

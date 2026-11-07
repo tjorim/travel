@@ -436,6 +436,14 @@
   }
 }
 
+/* A bottom sheet kept above an on-screen keyboard: the dialog sets --sheet-lift and --sheet-height from the visual viewport. */
+@utility sheet-fit {
+  && {
+    margin-bottom: var(--sheet-lift);
+    max-height: var(--sheet-height);
+  }
+}
+
 @utility saved-records {
   @apply grid gap-2;
   & h3 {

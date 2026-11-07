@@ -374,6 +374,30 @@ Capture owns a sticky Save/status row within its scrolling form so explicit savi
 stays reachable without a second action or a new primitive. Its date/time adapter
 opts into stacked phone fields; other date/time consumers keep their layout.
 
+## Photo-first phone Capture (#233)
+
+Capture now opens on the trip's photos, one line (the update's required title) and
+Save; the trip underway (else the next upcoming, else the last captured into) and the
+time now are prefilled. The language switch, connection status, the full private-by-
+default explanation, date and time, private note, photos already in the trip's library
+and the location fold under "More".
+
+No custom control stays: the folded section is the existing Base UI Collapsible
+adapter (`@/ui/collapsible`, trigger and panel as in `SectionAccordion`), photo
+choosing is a Base UI `Button` that opens a hidden Base UI `Input type="file"`
+(`multiple`; a second one with `capture="environment"` for the camera, offered only
+for coarse pointers), grouped with `FieldSet`/`FieldLegend`. shadcn and Base UI have
+no file-picker or thumbnail-grid component to adopt; the thumbnail tiles are plain
+Tailwind with a Base UI `Button` to take a photo out. The private-by-default
+sentence stays beside Save in a short form (`capture_private_short`) and in full in
+More; the sticky Save bar keeps both in view.
+
+The one addition to the shared dialog is `RecordDialog`'s `keyboardFit` (a lift and
+height from `window.visualViewport`, applied as the `sheet-fit` utility) and
+`localeControl={false}`: phone browsers shrink only the visual viewport when the
+keyboard opens, so a sheet pinned to the layout viewport would put Save under the
+keys. Other dialogs are unchanged.
+
 ## Compact visitor shell (#104)
 
 Reuse the owned Base UI Popover for the visitor Preferences disclosure and

@@ -2269,5 +2269,21 @@
   "readiness_today": "Vandaag",
   "readiness_tomorrow": "Morgen",
   "readiness_empty": "Niets gepland",
-  "task_overdue_label": "Achterstallig"
+  "task_overdue_label": "Achterstallig",
+  "capture_photos": "Foto’s",
+  "capture_choose_photos": "Foto’s kiezen",
+  "capture_take_photo": "Foto maken",
+  "capture_photos_offline": "Foto’s toevoegen kan alleen online. Je notitie blijft hier als concept staan.",
+  "capture_remove_photo": "{name} uit deze update halen",
+  "capture_remove": "Weghalen",
+  "capture_uploading_photo": "{name} wordt geüpload…",
+  "capture_photo_added": "{name} toegevoegd aan deze update.",
+  "capture_upload_failed": "{name} kon niet worden geüpload.",
+  "capture_retry_upload": "Opnieuw proberen",
+  "capture_retry_upload_named": "{name} opnieuw uploaden",
+  "capture_photo_blocks_save": "Een foto is niet geüpload. Probeer het opnieuw of haal hem weg voordat je opslaat.",
+  "capture_photos_uploading": "Foto’s worden nog geüpload…",
+  "capture_private_short": "Privé — alleen jij ziet dit, foto’s ook.",
+  "capture_more": "Meer",
+  "capture_more_hint": "Taal, datum en tijd, locatie, verbinding"
 }

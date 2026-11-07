@@ -6,7 +6,13 @@ import { useTripResource } from "../../query/owner-queries";
 import type { MediaAsset } from "../../tracker-model";
 
 /** The trip's photos that can be linked, the linked ones among them and the status line above the list. */
-export function useCaptureMedia(tripId: string | null, open: boolean, selectedIds: string[]) {
+export function useCaptureMedia(
+  tripId: string | null,
+  open: boolean,
+  selectedIds: string[],
+  /** Photos uploaded from Capture itself, known before the library has been read again. */
+  uploaded: MediaAsset[] = [],
+) {
   // The dialog stays mounted (closed) over its workspace, so media is only fetched once it is actually open.
   const mediaQuery = useTripResource(open && tripId ? tripId : null, "media");
   const media = useMemo(
@@ -16,9 +22,12 @@ export function useCaptureMedia(tripId: string | null, open: boolean, selectedId
   const attachedMedia = useMemo(
     () =>
       selectedIds
-        .map((id) => media.find((asset) => asset.id === id))
+        .map(
+          (id) =>
+            media.find((asset) => asset.id === id) ?? uploaded.find((asset) => asset.id === id),
+        )
         .filter((asset): asset is MediaAsset => Boolean(asset)),
-    [selectedIds, media],
+    [selectedIds, media, uploaded],
   );
   const mediaState = !tripId
     ? ""

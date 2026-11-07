@@ -256,3 +256,12 @@ media and sync, with no real content visible (recommended). (b) Another assisted
 Android session with synthetic media prepared outside Git and separately agreed
 tracking/permission tests. (c) Accept the listed unknowns; do not infer parity
 from web/help sources. iOS and long-running battery tests remain separate.
+
+## Follow-up: photo-first Capture (#233)
+
+MD1 (a) and #112 shortened Capture once; #233 is the next step. Choosing or taking
+photos comes first, then one line (the title, which the update still requires),
+with the trip underway and the time now prefilled. Everything else, including the
+full private-by-default text, folds under "More", while a short private line stays
+beside the sticky Save. This answers neither D-question about publication nor GPS:
+a new update stays private and no precise location is captured.
