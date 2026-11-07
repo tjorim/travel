@@ -110,28 +110,6 @@ export const locationLine = (place: Stay["location"] | undefined) =>
   place ? [...new Set([locationName(place), place.locality].filter(Boolean))].join(" · ") : "";
 export const overlaps = (stay: Stay, checkIn: string, checkOut: string) =>
   stay.check_in_date < checkOut && checkIn < stay.check_out_date;
-/** Ideas for the same dates are shown together as alternatives; a lone idea is listed like any stay. */
-export function stayEntries(stays: Stay[]): { stays: Stay[]; dates?: string }[] {
-  const groups = new Map<string, Stay[]>();
-  for (const stay of stays.filter((item) => item.status === "idea")) {
-    const key = `${stay.check_in_date}|${stay.check_out_date}`;
-    groups.set(key, [...(groups.get(key) ?? []), stay]);
-  }
-  const shown = new Set<string>();
-  return stays.flatMap((stay) => {
-    const key = `${stay.check_in_date}|${stay.check_out_date}`;
-    const group = stay.status === "idea" ? groups.get(key)! : [stay];
-    if (group.length < 2) return [{ stays: [stay] }];
-    if (shown.has(key)) return [];
-    shown.add(key);
-    return [
-      {
-        stays: group,
-        dates: `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
-      },
-    ];
-  });
-}
 export const overlapLabel = (stay: Stay) =>
   `${stayLabel(stay)} (${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)})`;
 /** Whether any of the fields that describe the stay's place differ from what the editor opened with. */

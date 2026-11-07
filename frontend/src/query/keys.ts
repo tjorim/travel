@@ -28,6 +28,8 @@ export const ownerKeys = {
 /** Owner-only collections that hang off one trip, named by their API path. */
 export type TripResource =
   | "stays"
+  | "alternative-groups"
+  | "alternative-groups/suggestions"
   | "trip-tasks"
   | "task-alerts"
   | "areas"

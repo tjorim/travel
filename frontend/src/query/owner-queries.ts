@@ -11,6 +11,8 @@ import { useMemo } from "react";
 import { decodeSubject, readSession, type TrackerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
+  AlternativeGroup,
+  AlternativeSuggestion,
   Area,
   DocumentAsset,
   EmergencyInfoEntry,
@@ -56,6 +58,8 @@ export function currentStoredOwner(): Owner | null {
 
 type TripResourceData = {
   stays: Stay[];
+  "alternative-groups": AlternativeGroup[];
+  "alternative-groups/suggestions": AlternativeSuggestion[];
   "trip-tasks": TripTask[];
   "task-alerts": TripTaskAlert[];
   areas: Area[];
@@ -71,6 +75,8 @@ type TripResourceData = {
 
 const resourceFailure: Record<TripResource, ErrorFallback> = {
   stays: m.owner_your_stays_could_not_be_loaded,
+  "alternative-groups": m.owner_your_alternatives_could_not_be_loaded,
+  "alternative-groups/suggestions": m.owner_your_alternatives_could_not_be_loaded,
   "trip-tasks": m.owner_your_tasks_could_not_be_loaded,
   "task-alerts": m.owner_your_notifications_could_not_be_loaded,
   areas: m.owner_your_areas_could_not_be_loaded,

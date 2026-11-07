@@ -399,25 +399,41 @@ it("shows an edited stay and removes a deleted one without a reload", async () =
   expect(api.count("DELETE /api/trips/trip/stays/s2")).toBe(1);
 });
 
-it("groups ideas for the same nights as alternatives and keeps them off the share controls", async () => {
+it("lists a stored group of ideas as alternatives, never groups ideas by itself, and keeps them off the share controls", async () => {
   const idea = (id: string, name: string): Stay => ({
     ...stay(id, name),
     status: "idea",
     booking_reference: null,
   });
+  const ideas = [idea("i1", "Hotel A"), idea("i2", "Hotel B")];
   api = fakeApi()
     .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [
-      idea("i1", "Hotel A"),
-      idea("i2", "Hotel B"),
-      stay("s1", "Hotel C"),
-    ])
-    .collection("/api/trips/trip/locations", []);
+    .collection("/api/trips/trip/stays", [...ideas, stay("s1", "Hotel C")])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/alternative-groups", [
+      {
+        id: "g1",
+        kind: "stay",
+        label: null,
+        chosen_id: null,
+        members: ideas.map((item) => ({
+          record_id: item.id,
+          chosen: false,
+          stay: item,
+          visit: null,
+          route: null,
+        })),
+        created_at: "2054-01-01T00:00:00Z",
+        updated_at: "2054-01-01T00:00:00Z",
+      },
+    ]);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   const group = await screen.findByRole("group", { name: "Alternatieven · 16 nov → 18 nov" });
-  expect(within(group).getByRole("button", { name: /Hotel A.*Idee/ })).toBeTruthy();
-  expect(within(group).getByRole("button", { name: /Hotel B.*Idee/ })).toBeTruthy();
+  expect(within(group).getByRole("button", { name: /^Hotel A/ }).textContent).toContain("Idee");
+  expect(within(group).getByRole("button", { name: /^Hotel B/ })).toBeTruthy();
   expect(within(group).queryByRole("button", { name: /Hotel C/ })).toBeNull();
+  // Only the stored group is a group: the same ideas in the list are not grouped again.
+  expect(screen.getAllByRole("group", { name: /^Alternatieven/ })).toHaveLength(1);
 
   fireEvent.click(within(group).getByRole("button", { name: /^Hotel A/ }));
   expect(screen.getByText(/Een idee is een kandidaat/)).toBeTruthy();

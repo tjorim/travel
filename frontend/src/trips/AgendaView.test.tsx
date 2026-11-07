@@ -229,6 +229,6 @@ it("opens the record behind an agenda row when it is clicked", async () => {
   const onOpenRecord = vi.fn();
   renderWithOwner(<AgendaView trip={trip} onOpenRecord={onOpenRecord} />);
   await screen.findByText(/Verblijf: Hotel Royal/);
-  fireEvent.click(screen.getByRole("button", { name: "Verblijf Hotel Royal openen" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Verblijf: Hotel Royal/ }));
   expect(onOpenRecord).toHaveBeenCalledWith("stay", "s1");
 });

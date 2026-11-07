@@ -131,6 +131,8 @@ export class FakeApi {
         return new HttpResponse(null, { status: 204 });
       }
     }
+    // Every trip screen with an alternatives panel reads these; a test that is not about them sees none.
+    if (method === "GET" && /\/alternative-groups(\/suggestions)?$/.test(url)) return json([]);
     this.unexpected.push(key);
     return json({ detail: `unexpected request ${key}` }, 404);
   }
