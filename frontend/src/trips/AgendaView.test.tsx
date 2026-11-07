@@ -232,3 +232,53 @@ it("opens the record behind an agenda row when it is clicked", async () => {
   fireEvent.click(screen.getByRole("button", { name: /^Verblijf: Hotel Royal/ }));
   expect(onOpenRecord).toHaveBeenCalledWith("stay", "s1");
 });
+
+it("starts a visit, stay or route on a day, with the area where the owner sleeps", async () => {
+  seed(
+    [
+      {
+        id: "s1",
+        check_in_date: "2054-11-16",
+        check_out_date: "2054-11-19",
+        property_name: "Hotel Royal",
+        check_in_time: null,
+        area: linkou,
+        status: "confirmed",
+      },
+    ],
+    [],
+    [],
+  );
+  const create = vi.fn();
+  renderWithOwner(<AgendaView trip={trip} onCreateRecord={create} />);
+  const [add] = await screen.findAllByRole("button", { name: /^Toevoegen aan / });
+  fireEvent.click(add!);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Bezoek op deze dag toevoegen" }));
+  expect(create).toHaveBeenLastCalledWith(
+    "visit",
+    { day: "2054-11-16", areaId: "linkou" },
+    expect.any(HTMLElement),
+  );
+
+  fireEvent.click(add!);
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "Verblijf vanaf deze dag toevoegen" }),
+  );
+  // A new stay is usually somewhere else: only the day is filled in.
+  expect(create).toHaveBeenLastCalledWith("stay", { day: "2054-11-16" }, expect.any(HTMLElement));
+
+  fireEvent.click(add!);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Route op deze dag toevoegen" }));
+  expect(create).toHaveBeenLastCalledWith(
+    "route",
+    { day: "2054-11-16", areaId: "linkou" },
+    expect.any(HTMLElement),
+  );
+});
+
+it("offers no way to start a record unless the workspace can open one", async () => {
+  seed([], [], [{ id: "v1", title: "Nachtmarkt", area: taipei, starts_on: "2054-11-21" }]);
+  renderWithOwner(<AgendaView trip={trip} />);
+  await screen.findByText(/Bezoek: Nachtmarkt/);
+  expect(screen.queryByRole("button", { name: /^Toevoegen aan / })).toBeNull();
+});

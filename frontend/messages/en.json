@@ -2516,5 +2516,14 @@
   "api_a_newer_alternative_choice_replaced_this_one": "A newer choice replaced this one.",
   "api_there_is_no_alternative_choice_to_undo": "There is no choice to undo.",
   "api_removed_alternatives_cannot_be_restored": "The alternatives were removed, so the choice cannot be undone.",
-  "api_the_alternatives_changed_since_this_choice": "The alternatives were edited after this choice, so it cannot be undone."
+  "api_the_alternatives_changed_since_this_choice": "The alternatives were edited after this choice, so it cannot be undone.",
+  "owner_agenda_add": "Add",
+  "owner_agenda_add_to_day": "Add to {day}",
+  "owner_agenda_add_visit_on_day": "Add a visit on this day",
+  "owner_agenda_add_stay_from_day": "Add a stay from this day",
+  "owner_agenda_add_route_on_day": "Add a route on this day",
+  "owner_map_add_visit_here": "Add a visit here",
+  "owner_map_add_stay_here": "Add a stay here",
+  "owner_map_add_route_from_here": "Add a route from here",
+  "owner_library_trip_documents_note": "Documents that belong to one trip are kept in that trip's Prepare section."
 }

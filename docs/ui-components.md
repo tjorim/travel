@@ -602,3 +602,23 @@ the merge dialog. The side-by-side comparison is a native `<table>` with column 
 table gives screen readers the cell-to-header relation. After a choice, focus moves to the group
 (`tabIndex={-1}`), because the button that opened the confirmation is then disabled. A notice with
 Undo sits in a `role="status"` region beside the group.
+
+## Day menu in the agenda (#240)
+
+Each day of the owner agenda has an "Add" control (`DayAddMenu` in `trips/AgendaView.tsx`) that offers
+"Add a visit on this day", "Add a stay from this day" and "Add a route on this day". It is the
+Base UI Menu, adopted through the generated shadcn `dropdown-menu` (`src/ui/dropdown-menu.tsx`,
+trimmed to the menu, trigger, content and item, with Travel tokens and the `travel-menu-motion`
+transition). A menu is the right semantics here: the trigger carries a day-specific accessible
+name, the items are commands rather than form content, and the menu brings arrow-key navigation,
+typeahead, Escape and focus return. A `Popover` of buttons (the account menu pattern) was
+rejected for that reason, and three buttons per day would add up to dozens of tab stops on a long
+trip. The dialogs it opens are the existing record dialogs; no dialog was built for this.
+
+On the map, the same three commands are links in the selected point's detail panel (the
+existing `MapLink` buttons), so no new control was added there.
+
+`trips/HomeLink.tsx` is a styled router `Link`, a plain text link with the 44 px target the other
+text links use. It joins the two homes of documents and of sharing; see
+[the decision note](decisions/240-create-in-place-and-duplicate-homes.md). No shadcn or Base UI
+component covers a router link.

@@ -12,7 +12,8 @@ import {
   areaName,
 } from "../../tracker-model";
 import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS, clock, visitWhen } from "../labels";
-import { emptyPlace, placeOfVisit, type PlaceValue } from "../PlacePicker";
+import type { CreatePrefill } from "../create-request";
+import { emptyPlace, placeOfPrefill, placeOfVisit, type PlaceValue } from "../PlacePicker";
 import type { FormContext } from "../../forms/form-context";
 
 type TripDates = Pick<Trip, "starts_on" | "ends_on">;
@@ -81,6 +82,12 @@ export const blank = (): Values => ({
   summary: "",
   shareTime: false,
   shareDatePrecision: "",
+});
+/** A new visit that starts on the day and in the place an in-place start names. */
+export const visitFromPrefill = (prefill: CreatePrefill): Values => ({
+  ...blank(),
+  startsOn: prefill.day ?? "",
+  place: placeOfPrefill(prefill),
 });
 export const fromVisit = (visit: Visit): Values => ({
   place: placeOfVisit(visit),

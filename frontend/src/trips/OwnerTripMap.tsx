@@ -10,6 +10,7 @@ import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-quer
 import { ownerKeys } from "../query/keys";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
 import { locationName, routeTitle, type Area, type Trip, areaName } from "../tracker-model";
+import type { CreateKind, CreatePrefill } from "./create-request";
 
 type OfflineSnapshot = { points: MapPoint[]; lines: MapLine[] };
 
@@ -18,11 +19,14 @@ export function OwnerTripMap({
   areas,
   focus,
   onOpenRecord,
+  onCreateRecord,
 }: {
   trip: Trip;
   areas: Area[];
   focus?: { id: string; request: number } | null;
   onOpenRecord?: (kind: "area" | "location" | "visit" | "route" | "update", id: string) => void;
+  /** Starts a visit, stay or route at a point: the plan opens the existing dialog with the place filled in. */
+  onCreateRecord?: (kind: CreateKind, prefill: CreatePrefill) => void;
 }) {
   const locale = useLocale();
   const offline = useOfflineCopies();
@@ -157,6 +161,8 @@ export function OwnerTripMap({
     [locale, routesQuery.data, areaPoints],
   );
   const openRecord = onOpenRecord;
+  // A saved offline copy has no live records to add to.
+  const canCreate = Boolean(onCreateRecord) && !snapshot && !unavailable;
   const displayedPoints = useMemo(
     () =>
       (snapshot?.points ?? points).map((point) => {
@@ -167,6 +173,10 @@ export function OwnerTripMap({
         const updates = trip.travel_updates.filter(
           (update) => update.area_id === areaId || update.location?.id === point.id,
         );
+        const here: CreatePrefill =
+          point.kind === "location"
+            ? { areaId: point.areaId, locationId: point.id }
+            : { areaId: point.id };
         const links = [
           ...(point.kind === "area" || point.kind === "derived"
             ? [{ label: m.owner_open_area(), onOpen: () => openRecord?.("area", point.id) }]
@@ -187,6 +197,22 @@ export function OwnerTripMap({
             }),
             onOpen: () => openRecord?.("update", update.id),
           })),
+          ...(canCreate
+            ? [
+                {
+                  label: m.owner_map_add_visit_here(),
+                  onOpen: () => onCreateRecord?.("visit", here),
+                },
+                {
+                  label: m.owner_map_add_stay_here(),
+                  onOpen: () => onCreateRecord?.("stay", here),
+                },
+                {
+                  label: m.owner_map_add_route_from_here(),
+                  onOpen: () => onCreateRecord?.("route", here),
+                },
+              ]
+            : []),
         ];
         return {
           ...point,
@@ -195,7 +221,16 @@ export function OwnerTripMap({
           links,
         };
       }),
-    [locale, snapshot?.points, points, visitsQuery.data, trip.travel_updates, openRecord],
+    [
+      locale,
+      snapshot?.points,
+      points,
+      visitsQuery.data,
+      trip.travel_updates,
+      openRecord,
+      canCreate,
+      onCreateRecord,
+    ],
   );
   const lines = useMemo(
     () =>

@@ -21,6 +21,8 @@ type RecordDialogProps = {
   error?: string | null;
   onDismiss: () => void;
   onAfterClose?: () => void;
+  /** Where focus goes on closing when the caller knows better than the control that was focused on opening. */
+  returnFocus?: () => HTMLElement | null;
 };
 
 const backdrop = "fixed inset-0 bg-travel-backdrop/50 travel-backdrop-motion";
@@ -74,6 +76,7 @@ export function RecordDialog({
   error,
   onDismiss,
   onAfterClose,
+  returnFocus,
 }: RecordDialogProps) {
   useLocale();
   const [pending, setPending] = useState(false);
@@ -135,6 +138,8 @@ export function RecordDialog({
                   : undefined
               }
               finalFocus={() => {
+                const preferred = returnFocus?.();
+                if (preferred) return preferred;
                 const trigger = origin.current;
                 const where = position.current;
                 if (!where) return trigger;

@@ -12,6 +12,7 @@ import { useTripResource, useTripsQuery } from "../query/owner-queries";
 import type { TravelUpdateCandidateIntent } from "../tracker-model";
 import { EmptyState } from "@/ui/EmptyState";
 import type { AgendaRecordKind } from "../trips/AgendaView";
+import type { CreateKind, CreatePrefill, CreateRequest } from "../trips/create-request";
 import type { MapRecordKind, RecordFocus } from "../trips/record-focus";
 import { tripsStatusMessage } from "../trips/trips-status";
 import { TripEditor } from "../trips/TripEditor";
@@ -71,6 +72,18 @@ export function TripWorkspaceView({
   const [recordFocus, setRecordFocus] = useState<RecordFocus | null>(null);
   const openAgendaRecord = (kind: AgendaRecordKind, id: string) =>
     setRecordFocus({ kind, id, token: Date.now() });
+  // The agenda or the map asks the plan to open a new visit, stay or route with the day or place filled in. Held
+  // here, not in the URL or browser, until the matching block has opened its dialog; the map is on the overview, so
+  // asking from there also moves to the plan.
+  const [createRequest, setCreateRequest] = useState<CreateRequest | null>(null);
+  const createRecord = (
+    kind: CreateKind,
+    prefill: CreatePrefill,
+    returnTo: HTMLElement | null = null,
+  ) => {
+    setCreateRequest({ kind, prefill, token: Date.now(), returnTo });
+    if (section !== "plan") void navigate({ to: sectionPath(tripId, "plan") });
+  };
   const openRecordRequest = location.state.openRecord;
   const openRecordKind = openRecordRequest?.kind;
   const openRecordId = openRecordRequest?.id;
@@ -183,6 +196,9 @@ export function TripWorkspaceView({
             onOpenMapRecord={openMapRecord}
             onOpenAgendaRecord={openAgendaRecord}
             onShowOnMap={showOnMap}
+            createRequest={createRequest}
+            onCreateRecord={createRecord}
+            onCreateHandled={() => setCreateRequest(null)}
             onStartCaptureFromCandidate={startCaptureFromCandidate}
           />
         </div>

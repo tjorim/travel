@@ -13,7 +13,8 @@ import { RecordDialog } from "../RecordDialog";
 import { visitTitle, type Trip, type Visit } from "../tracker-model";
 import { AlternativesPanel } from "./alternatives/AlternativesPanel";
 import { hasPlace, placeFields, samePlace } from "./PlacePicker";
-import { blank, fromVisit, serverFields, type Values } from "./visits/model";
+import { useInPlaceCreate, type CreateRequestProps } from "./create-request";
+import { blank, fromVisit, serverFields, visitFromPrefill, type Values } from "./visits/model";
 import { useVisitMutations } from "./visits/use-visit-mutations";
 import { VisitDetails } from "./visits/VisitDetails";
 import { VisitForm } from "./visits/VisitForm";
@@ -23,11 +24,13 @@ export function VisitManager({
   trip,
   onShowOnMap,
   focusId,
+  createRequest,
+  onCreateHandled,
 }: {
   trip: Trip;
   onShowOnMap?: (pointId: string) => void;
   focusId?: DialogFocusRequest | null;
-}) {
+} & CreateRequestProps) {
   useLocale();
   const offline = useOfflineCopies();
   const visitsQuery = useTripResource(trip.id, "visits");
@@ -48,6 +51,10 @@ export function VisitManager({
   // A place is only rewritten when the editor changed it.
   const baseline = useRef<Values>(blank());
   const { save, move, remove } = useVisitMutations(trip.id);
+  const inPlace = useInPlaceCreate("visit", createRequest, onCreateHandled, (prefill) => {
+    load(visitFromPrefill(prefill));
+    dialog.create();
+  });
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
@@ -61,7 +68,7 @@ export function VisitManager({
         throw new FeedbackError(() => m.owner_a_time_belongs_to_a_day_choose_the_first_day_first());
       if (values.endTime && !values.startTime)
         throw new FeedbackError(() => m.owner_also_enter_a_start_time());
-      await save.mutateAsync({
+      const saved = await save.mutateAsync({
         id,
         payload: {
           title: values.title.trim() || null,
@@ -83,6 +90,7 @@ export function VisitManager({
       });
       // A pinned copy holds the previous version of the visit.
       if (id) await offline.removeByResource("visit", id);
+      else inPlace.saved(saved.id);
     },
     onSuccess: () => {
       close();
@@ -204,6 +212,7 @@ export function VisitManager({
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
+        returnFocus={inPlace.returnFocus}
       >
         {!editing && selected && (
           <VisitDetails

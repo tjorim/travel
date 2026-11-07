@@ -13,6 +13,7 @@ import { lazyView } from "../lazy-view";
 import { m } from "../paraglide/messages.js";
 import type { Area, TravelUpdateCandidateIntent, Trip } from "../tracker-model";
 import type { AgendaRecordKind } from "./AgendaView";
+import type { CreateKind, CreatePrefill, CreateRequest } from "./create-request";
 import type { MapRecordKind, RecordFocus, RecordKind } from "./record-focus";
 import { WorkspaceOverview } from "./WorkspaceOverview";
 
@@ -25,6 +26,10 @@ export type SectionProps = {
   onOpenMapRecord: (kind: MapRecordKind, id: string) => void;
   onOpenAgendaRecord: (kind: AgendaRecordKind, id: string) => void;
   onShowOnMap: (pointId: string) => void;
+  /** The pending in-place start of a visit, stay or route, until the plan's matching block has opened its dialog. */
+  createRequest: CreateRequest | null;
+  onCreateRecord: (kind: CreateKind, prefill: CreatePrefill, returnTo?: HTMLElement | null) => void;
+  onCreateHandled: () => void;
   onStartCaptureFromCandidate: (candidate: TravelUpdateCandidateIntent) => void;
 };
 

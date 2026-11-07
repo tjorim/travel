@@ -5,6 +5,7 @@ import { EmptyState } from "@/ui/EmptyState";
 import { DocumentLibraryManager } from "../library/DocumentLibraryManager";
 import { EmergencyInfoManager } from "../library/EmergencyInfoManager";
 import { OfflineManager } from "../offline/OfflineManager";
+import { HomeLink } from "../trips/HomeLink";
 
 export function Library() {
   useLocale();
@@ -17,6 +18,9 @@ export function Library() {
         <p className="travel-eyebrow">{m.assets_separate_from_your_trips()}</p>
         <h2 id="library-title">{m.library()}</h2>
         <p>{m.assets_travel_documents_and_emergency_information_that_belong_to_no_specific_tr()}</p>
+        <p>
+          {m.owner_library_trip_documents_note()} <HomeLink to="/trips">{m.trips()}</HomeLink>
+        </p>
       </div>
       <DocumentLibraryManager />
       <EmergencyInfoManager />
