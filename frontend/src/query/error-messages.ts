@@ -263,6 +263,18 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_approve_this_copy_before_sharing_it();
     case "the_original_has_been_deleted":
       return m.api_the_original_has_been_deleted();
+    case "a_record_is_in_at_most_one_alternative_group":
+      return m.api_a_record_is_in_at_most_one_alternative_group();
+    case "alternatives_need_at_least_two_different_records":
+      return m.api_alternatives_need_at_least_two_different_records();
+    case "a_newer_alternative_choice_replaced_this_one":
+      return m.api_a_newer_alternative_choice_replaced_this_one();
+    case "there_is_no_alternative_choice_to_undo":
+      return m.api_there_is_no_alternative_choice_to_undo();
+    case "removed_alternatives_cannot_be_restored":
+      return m.api_removed_alternatives_cannot_be_restored();
+    case "the_alternatives_changed_since_this_choice":
+      return m.api_the_alternatives_changed_since_this_choice();
     case "operation_failed":
       return m.api_operation_failed();
     case "invalid_input":

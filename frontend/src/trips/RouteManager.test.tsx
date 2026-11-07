@@ -137,26 +137,39 @@ const pickAreas = (from = "Taipei (heel gebied)", to = "Tainan (heel gebied)") =
 const idea = (id: string, label: string) =>
   route(id, label, { status: "idea", departs_on: "2054-12-01" });
 
-it("groups ideas for the same journey as alternatives and keeps them off the share controls", async () => {
+it("lists a stored group of route ideas as alternatives and keeps them off the share controls", async () => {
+  const ideas = [idea("i1", "HSR"), idea("i2", "Bus")];
   seed([
-    idea("i1", "HSR"),
-    idea("i2", "Bus"),
+    ...ideas,
     route("r1", "Chosen train", { departs_on: "2054-12-01" }),
     route("i3", "Other day", { status: "idea", departs_on: "2054-12-02" }),
   ]);
+  api.collection("/api/trips/trip/alternative-groups", [
+    {
+      id: "g1",
+      kind: "route",
+      label: null,
+      chosen_id: null,
+      members: ideas.map((item) => ({
+        record_id: item.id,
+        chosen: false,
+        stay: null,
+        visit: null,
+        route: item,
+      })),
+      created_at: "2054-01-01T00:00:00Z",
+      updated_at: "2054-01-01T00:00:00Z",
+    },
+  ]);
   renderWithOwner(<RouteManager trip={trip} />);
-  const group = await screen.findByRole("group", {
-    name: "Alternatieven · Taipei → Tainan · 1 dec",
-  });
-  expect(within(group).getByRole("button", { name: "Route HSR bekijken" }).textContent).toContain(
-    "Idee",
-  );
-  expect(within(group).getByRole("button", { name: "Route Bus bekijken" })).toBeTruthy();
-  expect(within(group).queryByRole("button", { name: "Route Chosen train bekijken" })).toBeNull();
-  // A lone idea for another day is listed like any route.
+  const group = await screen.findByRole("group", { name: "Alternatieven · 1 dec" });
+  expect(within(group).getByRole("button", { name: /^HSR/ }).textContent).toContain("Idee");
+  expect(within(group).getByRole("button", { name: /^Bus/ })).toBeTruthy();
+  expect(within(group).queryByRole("button", { name: /Chosen train/ })).toBeNull();
+  // Ideas are never grouped by their dates alone.
   expect(screen.getAllByRole("group")).toHaveLength(1);
 
-  fireEvent.click(within(group).getByRole("button", { name: "Route HSR bekijken" }));
+  fireEvent.click(within(group).getByRole("button", { name: /^HSR/ }));
   expect(screen.getByText(/Een idee is een kandidaat/)).toBeTruthy();
   expect(screen.queryByText("Wie mag dit zien?")).toBeNull();
 });

@@ -590,3 +590,15 @@ location editors. It starts closed only when nothing inside differs from the def
 itself when something does (a stored choice is never hidden), and never closes by itself; its
 trigger is a button with `aria-expanded`, reachable by keyboard and screen reader, and the panel
 stays mounted so form state is kept.
+
+## Alternatives panel and comparison (#238)
+
+`trips/alternatives/` composes existing controls only. A group is a `role="group"` container with
+Base UI `Button`s; "Choose this one" and "Dissolve group" reuse `DeleteConfirmation` (the Base UI
+Alert Dialog behind `RecordDialog.tsx`) with the `ChoiceGroup` radio group for "cancel or remove
+the others"; the member editor is a `RecordDialog` with `Field`/`FieldSet`/`TravelCheckbox`, as in
+the merge dialog. The side-by-side comparison is a native `<table>` with column and row headers
+(`CompareTable.tsx`): neither shadcn nor Base UI has a table primitive that fits, and a plain
+table gives screen readers the cell-to-header relation. After a choice, focus moves to the group
+(`tabIndex={-1}`), because the button that opened the confirmation is then disabled. A notice with
+Undo sits in a `role="status"` region beside the group.

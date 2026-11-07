@@ -141,3 +141,34 @@ it("leaves route ideas out of booking progress and whereabouts", () => {
       .kind,
   ).toBe("travel");
 });
+
+it("tells nights an undecided stored group still compares from nights with no stay at all", () => {
+  const trip = { starts_on: "2054-11-28", ends_on: "2054-12-01" };
+  const ideas = [
+    stay("a", "idea", "2054-11-28", "2054-11-30"),
+    stay("b", "idea", "2054-11-28", "2054-11-30"),
+  ];
+  const group = (chosenId: string | null) =>
+    ({
+      id: "g",
+      kind: "stay",
+      label: null,
+      chosen_id: chosenId,
+      members: ideas.map((item) => ({
+        record_id: item.id,
+        chosen: item.id === chosenId,
+        stay: item,
+        visit: null,
+        route: null,
+      })),
+    }) as never;
+  // Without a group both candidate nights are simply missing.
+  expect(tripBadges(trip, ideas, [], [])[0].value).toContain("3 zonder verblijf");
+  // With an undecided group those two nights are being chosen; the third still has no stay.
+  const [choosing] = tripBadges(trip, ideas, [], [], [group(null)]);
+  expect(choosing.value).toContain("1 zonder verblijf");
+  expect(choosing.value).toContain("2 nog te kiezen");
+  expect(choosing.done).toBe(false);
+  // Once the group has a chosen member nothing is left to choose between.
+  expect(tripBadges(trip, ideas, [], [], [group("a")])[0].value).not.toContain("nog te kiezen");
+});

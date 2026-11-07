@@ -598,6 +598,45 @@ export type ShareLink = {
   exclusions?: ScopeExclusions;
 };
 
+/** What an alternative group compares; all of its members are records of this kind. */
+export type AlternativeKind = "stay" | "visit" | "route";
+
+/** Owner-only: records being chosen between and the one chosen. Never part of anything a visitor receives. */
+export type AlternativeGroup = {
+  id: string;
+  kind: AlternativeKind;
+  label: string | null;
+  /** The record id of the chosen member; null while undecided. */
+  chosen_id: string | null;
+  members: {
+    record_id: string;
+    chosen: boolean;
+    stay: Stay | null;
+    visit: Visit | null;
+    route: Route | null;
+  }[];
+  created_at: string;
+  updated_at: string;
+};
+
+/** Ungrouped ideas that look like alternatives; stored only once the owner confirms them. */
+export type AlternativeSuggestion = {
+  kind: AlternativeKind;
+  member_ids: string[];
+  starts_on: string | null;
+  ends_on: string | null;
+  reason: "overlapping_nights" | "overlapping_days" | "same_journey";
+};
+
+export type AlternativeChoice = {
+  group: AlternativeGroup;
+  event_id: string;
+  chosen_id: string;
+  cancelled_ids: string[];
+  removed_ids: string[];
+  undoable: boolean;
+};
+
 export type ProjectionDocument = {
   schema_version: string;
   title: string | null;
@@ -975,11 +1014,19 @@ export type AuditEventKind =
   | "public_projection.scope_change"
   | "share_link.scope_change"
   | "record.visibility_change"
-  | "record.precision_follow_audience";
+  | "record.precision_follow_audience"
+  | "alternative_group.choose"
+  | "alternative_group.undo_choice";
 export type AuditEvent = {
   id: string;
   kind: AuditEventKind;
-  target_type: "public_surface" | "share_link" | "location" | "area" | "record";
+  target_type:
+    | "public_surface"
+    | "share_link"
+    | "location"
+    | "area"
+    | "record"
+    | "alternative_group";
   target_id: string;
   occurred_at: string;
   details: {
@@ -999,5 +1046,7 @@ export type AuditEvent = {
     audiences?: { audience: string; widened: PrecisionCounts; narrowed: PrecisionCounts }[];
     /** A live scope change that added or removed exclusions: their ids, and what removing them newly showed. */
     exclusions?: { added: ShareScopeItem[]; removed: ShareScopeItem[]; widened: KindCounts };
+    /** An `alternative_group.choose`: what happened to the other members (ids and statuses only). */
+    others?: "cancel" | "remove";
   };
 };

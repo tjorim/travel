@@ -27,6 +27,11 @@ function eventMessage(event: AuditEvent) {
     return m.audit_location_update({
       fields: changedFields(event).filter(isVisitorField).map(visitorFieldLabel).join(", "),
     });
+  if (event.kind === "alternative_group.choose")
+    return event.details.others === "remove"
+      ? m.audit_alternative_choose_removed()
+      : m.audit_alternative_choose();
+  if (event.kind === "alternative_group.undo_choice") return m.audit_alternative_undo();
   if (event.kind !== "record.visibility_change")
     return messages[event.kind]?.() ?? m.audit_unknown();
   const { record_kind, from, to } = event.details;

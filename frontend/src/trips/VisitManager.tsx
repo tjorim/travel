@@ -11,6 +11,7 @@ import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/fe
 import { useTripResource } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import { visitTitle, type Trip, type Visit } from "../tracker-model";
+import { AlternativesPanel } from "./alternatives/AlternativesPanel";
 import { hasPlace, placeFields, samePlace } from "./PlacePicker";
 import { blank, fromVisit, serverFields, type Values } from "./visits/model";
 import { useVisitMutations } from "./visits/use-visit-mutations";
@@ -179,6 +180,7 @@ export function VisitManager({
             ? m.owner_loading_your_visits()
             : message}
       </p>
+      <AlternativesPanel tripId={trip.id} kind="visit" records={visits} onOpen={dialog.inspect} />
       {visits.length > 0 && (
         <VisitList
           visits={visits}
