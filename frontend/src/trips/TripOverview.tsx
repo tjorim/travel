@@ -261,7 +261,7 @@ export function TripOverview({ trip }: { trip: Trip }) {
                     {entries.map((item) => (
                       <li key={item.id}>
                         {item.time && <time>{item.time} </time>}
-                        {item.kind}: {item.title}
+                        {item.text}
                       </li>
                     ))}
                   </ul>

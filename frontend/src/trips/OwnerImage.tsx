@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { TrackerSession } from "../auth";
 import { useLocale } from "../locale";
@@ -11,15 +11,33 @@ export function OwnerImage({
   url,
   alt,
   className,
+  lazy = false,
 }: {
   session: TrackerSession;
   url: string;
   alt: string;
   className?: string;
+  /** Wait to fetch until the placeholder (which holds the image's size) nears the viewport. */
+  lazy?: boolean;
 }) {
   useLocale();
   const [src, setSrc] = useState<string | null>(null);
+  const placeholder = useRef<HTMLSpanElement>(null);
+  const [near, setNear] = useState(!lazy || typeof IntersectionObserver === "undefined");
   useEffect(() => {
+    const node = placeholder.current;
+    if (near || !node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [near]);
+  useEffect(() => {
+    if (!near) return;
     const controller = new AbortController();
     let objectUrl: string | null = null;
     setSrc(null);
@@ -38,8 +56,14 @@ export function OwnerImage({
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [session, url]);
+  }, [session, url, near]);
   if (!src)
-    return <span className={`${className ?? ""} media-thumbnail-placeholder`} aria-hidden="true" />;
+    return (
+      <span
+        ref={placeholder}
+        className={`${className ?? ""} media-thumbnail-placeholder`}
+        aria-hidden="true"
+      />
+    );
   return <img className={className} src={src} alt={alt} />;
 }

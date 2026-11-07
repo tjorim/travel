@@ -569,3 +569,12 @@ not link or image-loading behavior; Base UI has no card interaction primitive.
 Keep the existing TanStack whole-card link, with a native image and a reserved
 16:9 frame, approved alt text/focal point and text-only failure fallback. No
 nested interactive control or new UI adapter is needed.
+
+## Story rows: photo strip and preview action (#234)
+
+The travel update rows keep the existing Base UI `Button` for the preview action and
+add a custom thumbnail strip (`trips/UpdatePhotos.tsx`): shadcn has no thumbnail-strip or
+avatar-group item that loads authenticated blobs, and Base UI has no media primitive.
+The strip is a plain list of fixed-size tiles (`OwnerImage`, now with a `lazy` option that
+waits for an `IntersectionObserver` before fetching) and a "+N" tile; the preview reuses
+`PreviewDialog` and `RecordDialog` rather than a second dialog.

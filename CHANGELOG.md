@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Show each travel update's photos (up to four owner-side thumbnails and a "+N" count, loaded lazily through the authenticated owner routes) and a "Preview as visitor" action in the Story list that opens the existing rendered preview of an audience that receives the update, scrolled to it, or is disabled with a reason when nobody does; the owner Agenda and the Overview Today/Tomorrow block now list a stay on every night it covers ("Sleeping in …") and its check-out morning instead of only its check-in day; the update rows' accessible name now contains their visible text (Closes #234).
+
 - Make phone Capture photo-first: choose or take photos (uploaded to the trip's private library, deduplicated, with thumbnails, retry and removal), write one line and save, on the trip underway (else the next upcoming, else the last captured into) and the time now, with Save and a short private-by-default line in a sticky bar that follows the on-screen keyboard; the language switch, connection status, full privacy text, date and time, private note, library photos and location fold under a keyboard-reachable "More" (Closes #233).
 
 - Add owner readiness links, calendar-day countdown and progress, overdue task marking, consistent task dates, and today/tomorrow agenda summaries (Closes #232).

@@ -712,7 +712,6 @@
   "owner_travel_update_deleted": "Reisupdate verwijderd.",
   "owner_what_happened_with_a_private_and_a_shared_part_your_notes_location_and_p": "Wat er gebeurde, met een privé- en een gedeeld deel. Je notities, locatie en foto’s blijven altijd privé; de titel en de tekst voor bezoekers deel je alleen als je dat kiest.",
   "owner_new_update": "Nieuwe update",
-  "owner_view_travel_update": "Reisupdate {p0} bekijken",
   "owner_unnamed_area": "Naamloos gebied",
   "api_name_this_area_before_sharing_it": "Geef dit gebied eerst een naam voordat je het deelt.",
   "api_name_the_area_of_this_record_before_sharing_it": "Geef het gebied van dit item eerst een naam voordat je het deelt.",
@@ -2285,5 +2284,25 @@
   "capture_photos_uploading": "Foto’s worden nog geüpload…",
   "capture_private_short": "Privé — alleen jij ziet dit, foto’s ook.",
   "capture_more": "Meer",
-  "capture_more_hint": "Taal, datum en tijd, locatie, verbinding"
+  "capture_more_hint": "Taal, datum en tijd, locatie, verbinding",
+  "agenda_sleeping_in": "Slapen in {place}",
+  "agenda_check_out": "Uitchecken: {place}",
+  "owner_preview_as_visitor": "Bekijk als bezoeker",
+  "owner_preview_as_visitor_for": "Bekijk als bezoeker: {p0}",
+  "owner_preview_private_update": "Privé: niemand ziet deze update.",
+  "owner_preview_needs_text": "Schrijf eerst de tekst voor bezoekers.",
+  "owner_preview_needs_area_name": "Geef eerst het gebied een naam.",
+  "owner_preview_no_audience": "Geen publiek ontvangt deze update al.",
+  "owner_photos_of_update": "Foto's bij {p0}",
+  "owner_update_photo_alt": "Foto bij {p0}",
+  "owner_more_photos_of_update": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "nog {count} foto",
+        "countPlural=other": "nog {count} foto's"
+      }
+    }
+  ]
 }

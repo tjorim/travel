@@ -16,6 +16,7 @@ export function RenderedPreview({
   scope,
   session,
   previewBase,
+  focusId,
 }: {
   projection: Projection;
   audience: Audience;
@@ -26,6 +27,8 @@ export function RenderedPreview({
   session: TrackerSession;
   /** Where this preview's files and directions are resolved, for a preview that is not a trip's own audience. */
   previewBase?: string;
+  /** A delivered item, such as one update, to bring into view once the preview shows. */
+  focusId?: string;
 }) {
   useLocale();
   const [images, setImages] = useState<Record<string, string>>({});
@@ -139,6 +142,7 @@ export function RenderedPreview({
         projection={projection}
         audience={audience}
         identifier=""
+        focusId={focusId}
         previewResources={{
           images,
           openFile: (id) => void openFile(id),

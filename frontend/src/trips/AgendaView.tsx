@@ -9,6 +9,7 @@ import {
   formatDayRange,
   localDate,
   routeTitle,
+  stayInPlan,
   stayLabel,
   visitTitle,
   wallClock,
@@ -21,31 +22,91 @@ import {
 
 export type AgendaRecordKind = "stay" | "route" | "visit";
 
-type AgendaItem = {
+export type AgendaItem = {
   id: string;
   recordKind: AgendaRecordKind;
   recordId: string;
   kind: string;
   title: string;
+  /** What the row says: the kind and title, or for a stay's later nights where the owner sleeps. */
+  text: string;
+  /** The day this item is listed under. */
   first: string;
+  /** The last day it also covers, for a route or visit that spans days; a stay lists each of its days itself. */
   last: string | null;
+  /** The last day of the span the row names, shown beside the first. */
+  through: string | null;
   time: string | null;
   where: string;
+  /** For a stay: the check-in day, a later night or the check-out morning. */
+  phase?: "check-in" | "night" | "check-out";
 };
+
+/**
+ * A stay on every day it matters: the check-in day (with its range), each night after it as "sleeping in",
+ * and the check-out morning, which adds no night. Only a stay in the plan sleeps anywhere; an idea or a
+ * cancelled stay is listed on its check-in day alone. All arithmetic is on date-only strings.
+ */
+function stayItems(stay: Stay): AgendaItem[] {
+  const base = {
+    recordKind: "stay" as const,
+    recordId: stay.id,
+    kind: m.owner_stay(),
+    last: null,
+    where: areaName(stay.area),
+  };
+  const place = stay.property_name ?? areaName(stay.area);
+  const lastNight = addDays(stay.check_out_date, -1);
+  const checkIn: AgendaItem = {
+    ...base,
+    id: `stay-${stay.id}`,
+    title: stayLabel(stay),
+    text: `${base.kind}: ${stayLabel(stay)}`,
+    first: stay.check_in_date,
+    through: lastNight,
+    time: stay.check_in_time?.slice(0, 5) ?? null,
+    phase: "check-in",
+  };
+  if (!stayInPlan(stay) || stay.check_out_date <= stay.check_in_date) return [checkIn];
+  const nights: AgendaItem[] = [];
+  for (
+    let night = addDays(stay.check_in_date, 1);
+    night < stay.check_out_date;
+    night = addDays(night, 1)
+  )
+    nights.push({
+      ...base,
+      id: `stay-${stay.id}-night-${night}`,
+      title: place,
+      text: m.agenda_sleeping_in({ place }),
+      first: night,
+      through: null,
+      time: null,
+      phase: "night",
+    });
+  return [
+    checkIn,
+    ...nights,
+    {
+      ...base,
+      id: `stay-${stay.id}-check-out`,
+      title: place,
+      text: m.agenda_check_out({ place }),
+      first: stay.check_out_date,
+      through: null,
+      time: stay.check_out_time?.slice(0, 5) ?? null,
+      phase: "check-out",
+    },
+  ];
+}
+
+/** Within a day: timed first; an untimed check-out is the morning's first thing, other untimed items come last. */
+const sortTime = (item: AgendaItem) =>
+  item.time ?? (item.phase === "check-out" ? "00:00" : "99:99");
 
 export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]): AgendaItem[] {
   return [
-    ...stays.map((stay): AgendaItem => ({
-      id: `stay-${stay.id}`,
-      recordKind: "stay",
-      recordId: stay.id,
-      kind: m.owner_stay(),
-      title: stayLabel(stay),
-      first: stay.check_in_date,
-      last: addDays(stay.check_out_date, -1),
-      time: stay.check_in_time?.slice(0, 5) ?? null,
-      where: areaName(stay.area),
-    })),
+    ...stays.flatMap(stayItems),
     // A route is on its departure day, with a time only once it has one.
     ...routes.flatMap((route): AgendaItem[] =>
       route.departs_on
@@ -56,8 +117,12 @@ export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]
               recordId: route.id,
               kind: m.owner_route(),
               title: routeTitle(route),
+              text: `${m.owner_route()}: ${routeTitle(route)}`,
               first: route.departs_on,
               last: route.arrives_at ? localDate(route.arrives_at, route.arrival_timezone) : null,
+              through: route.arrives_at
+                ? localDate(route.arrives_at, route.arrival_timezone)
+                : null,
               time: route.departs_at
                 ? wallClock(route.departs_at, route.departure_timezone).slice(11, 16)
                 : null,
@@ -75,8 +140,10 @@ export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]
               recordId: visit.id,
               kind: m.owner_visit(),
               title: visitTitle(visit),
+              text: `${m.owner_visit()}: ${visitTitle(visit)}`,
               first: visit.starts_on,
               last: visit.ends_on,
+              through: visit.ends_on,
               time: visit.start_time?.slice(0, 5) ?? null,
               where: areaName(visit.area),
             },
@@ -88,8 +155,7 @@ export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]
     // order for same-day, same-time ties instead of an opaque id breaking it arbitrarily.
   ].sort(
     (left, right) =>
-      left.first.localeCompare(right.first) ||
-      (left.time ?? "99:99").localeCompare(right.time ?? "99:99"),
+      left.first.localeCompare(right.first) || sortTime(left).localeCompare(sortTime(right)),
   );
 }
 
@@ -130,8 +196,10 @@ export function AgendaView({
         recordId: visit.id,
         kind: m.owner_visit(),
         title: visitTitle(visit),
+        text: `${m.owner_visit()}: ${visitTitle(visit)}`,
         first: "",
         last: null,
+        through: null,
         time: null,
         where: areaName(visit.area),
       })),
@@ -143,8 +211,10 @@ export function AgendaView({
         recordId: route.id,
         kind: m.owner_route(),
         title: routeTitle(route),
+        text: `${m.owner_route()}: ${routeTitle(route)}`,
         first: "",
         last: null,
+        through: null,
         time: null,
         where: areaName(route.departure_area),
       })),
@@ -157,15 +227,16 @@ export function AgendaView({
         type="button"
         disabled={!onOpenRecord}
         onClick={() => onOpenRecord?.(item.recordKind, item.recordId)}
-        aria-label={m.owner_open_3({ p0: item.kind, p1: item.title })}
+        aria-label={
+          item.phase === "night" || item.phase === "check-out"
+            ? undefined
+            : m.owner_open_3({ p0: item.kind, p1: item.title })
+        }
       >
-        {item.time && <time>{item.time}</time>}{" "}
-        <span>
-          {item.kind}: {item.title}
-        </span>{" "}
+        {item.time && <time>{item.time}</time>} <span>{item.text}</span>{" "}
         <small>
-          {item.last && item.last !== item.first
-            ? `${formatDayRange(item.first, item.last)} · `
+          {item.through && item.through !== item.first
+            ? `${formatDayRange(item.first, item.through)} · `
             : ""}
           {item.where}
         </small>

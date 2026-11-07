@@ -121,6 +121,11 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
   expect(rows).toEqual([
     expect.stringContaining("10:40 Route: Amsterdam → Taipei"),
     expect.stringContaining("Verblijf: Hotel Royal"),
+    // The stay sleeps on every night after check-in, then checks out without an extra night.
+    expect.stringContaining("Slapen in Hotel Royal"),
+    expect.stringContaining("Slapen in Hotel Royal"),
+    expect.stringContaining("Slapen in Hotel Royal"),
+    expect.stringContaining("Uitchecken: Hotel Royal"),
     expect.stringContaining("18:30 Bezoek: Nachtmarkt"),
     // A route with a day but no train yet is on that day, after what has a time.
     expect.stringContaining("Route: Naar het noorden"),
