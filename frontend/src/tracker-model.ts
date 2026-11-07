@@ -490,7 +490,19 @@ export type ExclusionWidening = { revealed: ShareScopeItem[]; counts: KindCounts
 export type SharingPresetId = "story_only" | "story_and_route" | "planned_trip";
 
 /** A record a preset review or exception names; `label` is the owner's own name for it and never reaches a visitor. */
-export type PresetRecordRef = { kind: ShareScopeKind; id: string; label: string | null };
+export type PresetRecordRef = {
+  kind: ShareScopeKind;
+  id: string;
+  label: string | null;
+  /** A stay's check-in day (ISO), formatted for the reader's locale next to its name. */
+  day?: string | null;
+};
+
+/** The owner's name for a record in a review, with its day when the name alone does not tell records apart. */
+export function presetRecordName(record: PresetRecordRef, fallback: string): string {
+  const name = record.label || fallback;
+  return record.day ? `${name} · ${formatDay(record.day, "D MMM YYYY")}` : name;
+}
 
 /** How an audience differs now from what its last-applied preset would select today. Computed on each read. */
 export type PresetExceptions = {

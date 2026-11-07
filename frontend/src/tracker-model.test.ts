@@ -2,7 +2,13 @@
 import { afterEach, expect, it, vi } from "vitest";
 
 import { setLocale } from "./paraglide/runtime.js";
-import { areaName, captureInputValue, formatCapture, openBlobInNewTab } from "./tracker-model";
+import {
+  areaName,
+  captureInputValue,
+  formatCapture,
+  openBlobInNewTab,
+  presetRecordName,
+} from "./tracker-model";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -65,4 +71,12 @@ it("names an unnamed area in the selected locale and keeps a given name as writt
   } finally {
     setLocale("en", { reload: false });
   }
+});
+
+it("names a preset record by its label and, for a stay, its check-in day in the selected locale", () => {
+  const stay = { kind: "stay", id: "s1", label: "Alpha Town", day: "2054-04-01" } as const;
+  // The day is formatted, never shown as the raw ISO string, whichever locale is selected.
+  expect(presetRecordName(stay, "Untitled")).toMatch(/^Alpha Town · 1 \p{L}+ 2054$/u);
+  expect(presetRecordName({ kind: "visit", id: "v1", label: "Market" }, "Untitled")).toBe("Market");
+  expect(presetRecordName({ kind: "visit", id: "v2", label: null }, "Untitled")).toBe("Untitled");
 });

@@ -10,12 +10,13 @@ import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "../../query/api";
 import { descriptorMessage } from "../../query/error-messages";
 import { DeleteConfirmation } from "../../RecordDialog";
-import type {
-  DatePrecision,
-  KindCounts,
-  PresetRecordRef,
-  ShareScopeKind,
-  SharingPresetReview,
+import {
+  presetRecordName,
+  type DatePrecision,
+  type KindCounts,
+  type PresetRecordRef,
+  type ShareScopeKind,
+  type SharingPresetReview,
 } from "../../tracker-model";
 import { GROUP_TITLES, kindCountsText } from "./catalog";
 import {
@@ -72,7 +73,7 @@ function RecordList({
             <ul className="m-0 grid gap-0.5 pl-5">
               {group.map((record) => (
                 <li key={record.id}>
-                  {record.label || m.preset_exception_untitled()}
+                  {presetRecordName(record, m.preset_exception_untitled())}
                   {note?.(record) && <small className="text-travel-muted"> · {note(record)}</small>}
                 </li>
               ))}

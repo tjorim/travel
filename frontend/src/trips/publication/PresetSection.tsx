@@ -90,21 +90,23 @@ export function PresetSection({
     ...(creation ? [{ value: none, label: m.preset_none() }] : []),
     ...PRESET_IDS.map((id) => ({ value: id as string, label: PRESET_NAMES[id]() })),
   ];
-  const value: string = creation ? (creation.value ?? none) : chosen;
+  // Without a choice of its own the picker rests on the preset the audience carries, so the current one is visible.
+  const picked: SharingPresetId | "" = chosen || (applied as SharingPresetId | null) || "";
+  const value: string = creation ? (creation.value ?? none) : picked;
   const described = value && value !== none ? (value as SharingPresetId) : null;
 
   async function startReview() {
-    if (!target || !chosen) return;
+    if (!target || !picked) return;
     setFailure(null);
     setNotice(null);
     try {
-      setOpen(await review.mutateAsync({ target, preset: chosen }));
+      setOpen(await review.mutateAsync({ target, preset: picked }));
     } catch (error) {
       setFailure(errorNotice(error, m.preset_review_failed));
     }
   }
 
-  const blocked = preset.dirty ? m.preset_save_first() : !chosen ? m.preset_choose_first() : null;
+  const blocked = preset.dirty ? m.preset_save_first() : !picked ? m.preset_choose_first() : null;
 
   return (
     <section className="grid gap-2.5" aria-labelledby={headingId}>

@@ -253,6 +253,19 @@ def test_photos_are_only_approved_copies_attached_to_included_updates(world: Wor
     assert shown == {"Photo of A", "Photo of station", "Photo of plain"}
 
 
+def test_a_stay_is_named_by_its_area_and_carries_its_check_in_day_separately(world: World) -> None:
+    add_extras(world)
+    everything(world, "private")
+    link = world.link()
+    body = review(world, f"link:{link['id']}", "planned_trip").json()
+    stays = [item for item in body["comparison"]["widened"] if item["kind"] == "stay"]
+    assert stays
+    for stay in stays:
+        # The label never carries a date: the interface formats the day for the reader's locale.
+        assert stay["label"] in {"Alpha Town", "Beta City"} and stay["day"].startswith("2054-")
+    assert all(item["day"] is None for item in body["comparison"]["widened"] if item["kind"] != "stay")
+
+
 # --- a preset never writes everyone, never widens another audience -------------------
 
 
