@@ -93,10 +93,15 @@ updates:
         patterns:
           - "vite"
           - "@vitejs/plugin-react"
-      # Group TanStack packages (devtools must track react-query's query-core; router and form ship on the same train)
+      # Keep TanStack Query and its devtools together (devtools must track react-query's query-core)
       tanstack-query:
         patterns:
-          - "@tanstack/*"
+          - "@tanstack/react-query"
+          - "@tanstack/react-query-devtools"
+      # TanStack Router ships on its own release cadence
+      tanstack-router:
+        patterns:
+          - "@tanstack/react-router"
       testing:
         patterns:
           - "@testing-library/*"
@@ -104,9 +109,12 @@ updates:
           - "vitest"
           - "@playwright/*"
           - "@axe-core/*"
-          - "msw"
           - "happy-dom"
           - "fake-indexeddb"
+      # Mock Service Worker drives the API mocks in Vitest and the offline tests
+      msw:
+        patterns:
+          - "msw"
       # The shadcn CLI and its lint companion; Base UI runtime stays ungrouped so its regressions are attributable
       shadcn-cli:
         patterns:
@@ -194,11 +202,3 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
-    groups:
-      # Toolchain setup actions in ci.yml; they change the same job setup
-      setup-actions:
-        patterns:
-          - "astral-sh/setup-uv"
-          - "pnpm/action-setup"
-          - "actions/setup-node"
-          - "actions/setup-python"
