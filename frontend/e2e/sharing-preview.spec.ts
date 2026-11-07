@@ -13,6 +13,12 @@ for (const locale of ["nl", "en"] as const) {
     await page.route(`**/api/trips/${ownerTrip.id}/public-projection**`, (route) => {
       const request = route.request();
       if (request.method() === "GET") return route.fallback();
+      // The review of the unsaved candidate's future counts is a POST that stores nothing: answer it as a read.
+      if (new URL(request.url()).pathname.endsWith("/future-disclosure"))
+        return route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({ transport: 0, day_dates: 0 }),
+        });
       writes.push(`${request.method()} ${new URL(request.url()).pathname}`);
       if (new URL(request.url()).pathname.endsWith("/preview"))
         return route.fulfill({
