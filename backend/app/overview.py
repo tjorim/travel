@@ -12,7 +12,7 @@ and, before a trip starts, future transport times and dates shown by day.
 import math
 import re
 from collections import Counter
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
@@ -38,7 +38,7 @@ PLANNING_MARKERS = re.compile(
 _VISIBLE_TEXT = ("title", "label", "summary")
 _DELIVERED = ("visits", "places", "stays", "routes", "updates", "media")
 # Kinds whose visitor entry carries the area point a map places it at.
-_PRECISION_KEYS = {"visit": "visits", "stay": "stays"}
+_PRECISION_KEYS = {"visit": "visits", "stay": "stays", "route": "routes"}
 _MAPPED = {"visits": "visit", "stays": "stay", "updates": "reisupdate"}
 
 
@@ -74,25 +74,42 @@ def _on_or_after(value: str | None, today: date) -> bool:
     return value is not None and date.fromisoformat(value) >= today
 
 
+def _period_on_or_after(value: str | None, today: date) -> bool:
+    """Whether a rendered date at any precision (``YYYY-MM-DD``, ``YYYY-MM`` or ``YYYY``) ends today or later.
+
+    A month or a year counts by its last day, so a route shown only by month is still found while any part of
+    that month is ahead."""
+    if value is None:
+        return False
+    if len(value) == 4:
+        return date(int(value), 12, 31) >= today
+    if len(value) == 7:
+        year, month = int(value[:4]), int(value[5:])
+        return (date(year + month // 12, month % 12 + 1, 1) - timedelta(days=1)) >= today
+    return _on_or_after(value, today)
+
+
 def future_counts(trip: Trip, document: dict[str, Any], today: date) -> dict[str, int]:
     """What a rendered document shows of the future before a trip starts, counted in records.
 
     Read from the rendered document, so it is exactly what the audience receives:
 
-    * ``transport``: routes that depart today or later and carry a departure time or a carrier or service
-      reference (a flight or train with an exact schedule);
-    * ``day_dates``: the trip dates, visits, stays and reisupdates shown by day whose date (or span end) is today
-      or later. Routes are not counted here: their departure day is not limited by a date precision.
+    * ``transport``: routes that depart today or later (by their shown day, month or year) and carry a departure
+      time or a carrier or service reference (a flight or train with an exact schedule);
+    * ``day_dates``: the trip dates, visits, stays, routes and reisupdates shown by day whose date (or span end)
+      is today or later. A route counts when its departure day is shown by day, exactly like a visit or stay.
 
     Both are zero once the trip has started or ended."""
     if not not_started(trip, today):
         return {"transport": 0, "day_dates": 0}
     transport = 0
+    day_dates = 0
     for route in document["routes"]:
         scheduled = route.get("departs_at") or route.get("carrier") or route.get("service_reference")
-        if scheduled and _on_or_after(route.get("departs_on"), today):
+        if scheduled and _period_on_or_after(route.get("departs_on"), today):
             transport += 1
-    day_dates = 0
+        if route.get("date_precision") == "day":
+            day_dates += int(_on_or_after(route.get("departs_on"), today))
     trip_dates = document["dates"]
     if trip_dates and trip_dates["date_precision"] == "day":
         ends = max(
@@ -217,6 +234,18 @@ def _audience(
             f"{name} shows {future['day_dates']} dated records by day before the trip starts. "
             "Until you leave, set Dates shown to this audience to month.",
             count=future["day_dates"],
+        )
+    # A route's day follows the audience's date setting (#262): say so wherever that hides a day it used to show.
+    cap = audience_precision(scope)
+    dated_routes = sum(1 for route in document["routes"] if "departs_on" in route)
+    if cap in ("month", "year") and dated_routes:
+        warn(
+            "route_dates_follow_audience",
+            "info",
+            f"{name} shows {dated_routes} routes by {cap} only, without departure times, because routes follow "
+            "its date setting. Set Dates shown to this audience to day to show the day.",
+            cap,
+            count=dated_routes,
         )
     for text in sorted(set(_visible_texts(document))):
         if match := PLANNING_MARKERS.search(text):

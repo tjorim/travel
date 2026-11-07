@@ -111,7 +111,7 @@ delivered.
 | Reisupdates | all with text for visitors: title, text, date, area | same | same |
 | Photos and videos | approved copies **attached to the included updates** (they travel with them) | same | same |
 | Areas | none, so updates carry no map point (the Sharing check already counts these as *without a map point*) | named areas that an included update or route uses (never an area no included record names): label, region, country, rounded point | same |
-| Routes | none | planned or booked routes (never ideas): mode, status, the two areas, schedule, carrier and service reference, drawn line | same |
+| Routes | none | planned or booked routes (never ideas): mode, status, the two areas, the departure day at the audience's date precision (the preset's month cap turns it into a month and withholds the times, #262), carrier and service reference, drawn line | same |
 | Visits | none | none | planned and confirmed visits (never ideas or cancelled): title, text for visitors, area, days at the audience's precision |
 | Stays | none | none | planned and booked stays (never ideas): area and nights at the audience's precision |
 | Locations | never | never | never |

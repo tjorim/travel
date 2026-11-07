@@ -213,6 +213,7 @@ function AudiencePrecision({
       </Field>
       <small>{m.precision_audience_help()}</small>
       {!value && <small>{m.precision_audience_unset_help()}</small>}
+      <small>{m.precision_audience_routes_help()}</small>
     </div>
   );
 }

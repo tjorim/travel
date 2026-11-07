@@ -65,10 +65,12 @@ export function localDay(instant: string, timeZone: string | null): string | nul
   }
 }
 
-/** The day a route departs, from the day it carries or else the local day of its delivered departure instant. */
+/**
+ * The day a route departs, only when the document shares one: the day it carries at day precision, else the local day
+ * of its delivered departure instant. A month or a year, or a day the route says is coarser, never places it.
+ */
 export function routeDepartureDay(route: ProjectionItem): string | null {
-  const planned = text(route, "departs_on");
-  if (planned) return isIsoDay(planned) ? planned : null;
+  if (text(route, "departs_on")) return sharedDay(route, "departs_on");
   const at = text(route, "departs_at");
   return at ? localDay(at, text(route, "departure_timezone")) : null;
 }
@@ -113,8 +115,8 @@ const coarse = (item: ProjectionItem) => {
  *
  * Only delivered fields count. A visit or stay sits on a day only when it is shared at day precision with a real
  * date; a stay also sits on each night between its check-in and check-out, read from its own two delivered dates
- * alone. A route sits once, on its departure day. Month- and year-precision records, undated records and routes
- * without a day are never placed, ordered or counted into a day: they stay in `other`, with their own precision.
+ * alone. A route sits once, on its departure day, and only when it is shared at day precision. Month- and
+ * year-precision records, undated records and routes without a day are never placed, ordered or counted into a day: they stay in `other`, with their own precision.
  * Nothing is derived from the order of records, from times that were not shared or from records the audience does
  * not receive.
  *

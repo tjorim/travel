@@ -145,6 +145,22 @@ it("ignores updates without a day-precision date or a shared area", () => {
   expect(ids(result.separate.visits)).toEqual(["v1"]);
 });
 
+it("leaves a route shared only by month or year in the separate block", () => {
+  const result = groupStoryContext({
+    updates: [update("u1", "2054-11-02")],
+    visits: [],
+    stays: [],
+    routes: [
+      route("month", { departs_on: "2054-11", date_precision: "month" }),
+      route("year", { departs_on: "2054", date_precision: "year" }),
+      route("lying", { departs_on: "2054-11-02", date_precision: "month" }),
+      route("day", { departs_on: "2054-11-02", date_precision: "day" }),
+    ],
+  });
+  expect(ids(result.byUpdate.get("u1")!.routes)).toEqual(["day"]);
+  expect(ids(result.separate.routes)).toEqual(["month", "year", "lying"]);
+});
+
 it("reads a timed route's day in its departure time zone", () => {
   const result = groupStoryContext({
     updates: [update("u1", "2054-11-03")],

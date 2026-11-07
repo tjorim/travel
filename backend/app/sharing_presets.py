@@ -57,7 +57,7 @@ from .models import (
     Trip,
     Visibility,
 )
-from .precision import audience_precision, coarser, effective_precision, is_finer, own_value
+from .precision import audience_precision, coarser, effective_precision, is_finer, own_value, route_precision
 from .projection import ScopeError, delivered, prepare_scope
 from .schemas import (
     MAX_SCOPE_EXCLUSIONS,
@@ -454,7 +454,11 @@ def _counts(found: dict[str, set[str]] | Iterable[Ref]) -> dict[str, int]:
 def _coarser_dates(trip: Trip, before_scope: dict, after_scope: dict, kept: dict[str, set[str]]) -> dict[str, int]:
     """Records received both before and after whose date reads coarser afterwards, per kind."""
     cap_before, cap_after = audience_precision(before_scope), audience_precision(after_scope)
-    counts = {"visit": 0, "stay": 0, "travel_update": 0}
+    counts = {"visit": 0, "stay": 0, "route": 0, "travel_update": 0}
+    for route in trip.routes:
+        # A route reads at the audience's cap alone (a day when it sets none).
+        if route.id in kept["route"] and route.departs_on is not None:
+            counts["route"] += is_finer(route_precision(cap_before), route_precision(cap_after))
     for kind in ("visit", "stay"):
         for record in COLLECTIONS[kind](trip):
             if record.id not in kept[kind] or (kind == "visit" and record.starts_on is None):

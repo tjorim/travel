@@ -116,3 +116,38 @@ it("never echoes owner text: a warning without a count reads as zero, not as the
   expect(review.queryByText(/Geheime routetitel/)).toBeNull();
   expect(review.getByText(/kan vóór de reis lezen/)).toBeTruthy();
 });
+
+it("calls out routes that now follow a month or year audience, in both languages", () => {
+  const warnings = [
+    warning({ code: "route_dates_follow_audience", severity: "info", text: "month", count: 2 }),
+    warning({
+      code: "route_dates_follow_audience",
+      severity: "info",
+      text: "year",
+      audience: "Familie",
+      audience_id: "l1",
+      count: 1,
+    }),
+  ];
+  render(<SharingReview overview={overview(warnings)} />);
+  const dutch = within(screen.getByRole("list", { name: "Controle voor het delen" }));
+  expect(
+    dutch.getByText(
+      "Routes volgen nu de datuminstelling van dit publiek: De pagina voor iedereen toont 2 routes per maand, zonder vertrektijden, tot u dagen toestaat.",
+    ),
+  ).toBeTruthy();
+  expect(
+    dutch.getByText(
+      "Routes volgen nu de datuminstelling van dit publiek: Link “Familie” toont 1 route per jaar, zonder vertrektijden, tot u dagen toestaat.",
+    ),
+  ).toBeTruthy();
+  cleanup();
+  act(() => changeLocale("en"));
+  render(<SharingReview overview={overview(warnings)} />);
+  const english = within(screen.getByRole("list", { name: "Sharing check" }));
+  expect(
+    english.getByText(
+      "Routes now follow this audience’s date setting: The page for everyone shows 2 routes by month, without departure times, until you allow days.",
+    ),
+  ).toBeTruthy();
+});

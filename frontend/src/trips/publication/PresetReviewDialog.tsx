@@ -143,6 +143,7 @@ export function PresetReviewDialog({
   const coarserText = kindCountsText({
     visit: review.precision.reads_coarser.visit,
     stay: review.precision.reads_coarser.stay,
+    route: review.precision.reads_coarser.route,
     travel_update: review.precision.reads_coarser.travel_update,
   });
   const nothing =

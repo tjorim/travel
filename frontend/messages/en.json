@@ -2037,6 +2037,8 @@
     }
   ],
   "assets_future_day_dates": "{p0} shows dates by day for {p1} before the trip starts. Until you leave, set “Dates shown to this audience” to month.",
+  "assets_route_dates_follow_month": "Routes now follow this audience’s date setting: {p0} shows {p1} by month, without departure times, until you allow days.",
+  "assets_route_dates_follow_year": "Routes now follow this audience’s date setting: {p0} shows {p1} by year, without departure times, until you allow days.",
   "api_choose_a_finished_share_copy_of_a_photo": "Choose a finished share copy of a photo as the cover.",
   "visitor_destinations": "Destinations",
   "visitor_more_destinations": "+{count} more",
@@ -2340,6 +2342,7 @@
   "precision_audience_year": "Years",
   "precision_audience_help": "A record’s own setting can only make dates coarser, never finer. Visits and stays set to “Same as the audience” follow this choice.",
   "precision_audience_unset_help": "With no limit, visits and stays set to “Same as the audience” show months only.",
+  "precision_audience_routes_help": "Routes follow this choice too: with months or years, visitors see only the month or year a route leaves, and no departure times. With no limit they see the day.",
   "precision_record_follow": "Same as the audience",
   "precision_record_help": "Each audience limits its dates too, and the coarser choice always applies.",
   "precision_check_audience": "Dates shown to this audience: {precision}.",

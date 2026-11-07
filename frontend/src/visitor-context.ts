@@ -53,8 +53,8 @@ function day(item: ProjectionItem, field: string): string | null {
 }
 
 function routeDay(route: ProjectionItem): string | null {
-  const planned = text(route, "departs_on");
-  if (planned && DAY.test(planned)) return planned;
+  // A route shared only by month or year has no day, and no instant is delivered with it.
+  if (text(route, "departs_on")) return day(route, "departs_on");
   const at = text(route, "departs_at");
   if (!at || !dayjs(at).isValid()) return null;
   try {

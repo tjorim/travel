@@ -133,6 +133,11 @@ keeps the day. Send `departs_at`/`arrives_at` without an offset together with
 `departure_timezone`/`arrival_timezone` to enter local wall-clock times such
 as "AMS 10:40 → TPE 06:25 the next day"; a time with an explicit offset is
 used as-is. Responses always carry the UTC offset.
+Visitors read a route's day at the audience's date setting, like every other date
+([#262](../docs/decisions/36-privacy-sharing-offline-policy.md#routes-follow-the-audiences-date-setting-262)):
+`departs_on` is delivered as `YYYY-MM-DD`, `YYYY-MM` or `YYYY` with a `date_precision`, the
+departure and arrival times only to an audience that reads days, and an audience without a setting keeps
+the full day.
 
 An area (city or region) can carry an IANA `timezone`; edit it with
 `PATCH /trips/{trip_id}/areas/{area_id}`. Stays inherit it through

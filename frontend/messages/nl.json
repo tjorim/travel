@@ -2037,6 +2037,8 @@
     }
   ],
   "assets_future_day_dates": "{p0} toont datums per dag bij {p1} vóór de reis. Zet tot uw vertrek “Datums die dit publiek ziet” op maand.",
+  "assets_route_dates_follow_month": "Routes volgen nu de datuminstelling van dit publiek: {p0} toont {p1} per maand, zonder vertrektijden, tot u dagen toestaat.",
+  "assets_route_dates_follow_year": "Routes volgen nu de datuminstelling van dit publiek: {p0} toont {p1} per jaar, zonder vertrektijden, tot u dagen toestaat.",
   "api_choose_a_finished_share_copy_of_a_photo": "Kies een afgeronde deelkopie van een foto als omslag.",
   "visitor_destinations": "Bestemmingen",
   "visitor_more_destinations": "+{count} meer",
@@ -2340,6 +2342,7 @@
   "precision_audience_year": "Jaren",
   "precision_audience_help": "De eigen instelling van een onderdeel kan datums alleen grover maken, nooit preciezer. Bezoeken en verblijven met “Zoals het publiek” volgen deze keuze.",
   "precision_audience_unset_help": "Zonder limiet tonen bezoeken en verblijven met “Zoals het publiek” alleen de maand.",
+  "precision_audience_routes_help": "Routes volgen deze keuze ook: bij maanden of jaren tonen ze enkel de vertrekmaand of het vertrekjaar, zonder vertrektijden. Zonder limiet zien bezoekers de dag.",
   "precision_record_follow": "Zoals het publiek",
   "precision_record_help": "Ook elk publiek beperkt zijn datums, en de grofste keuze geldt altijd.",
   "precision_check_audience": "Datums die dit publiek ziet: {precision}.",

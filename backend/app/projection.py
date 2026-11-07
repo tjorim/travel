@@ -17,7 +17,7 @@ from .exclusions import EXCLUDE_KEY, hidden_records, is_excludable, stored_exclu
 from .markdown import markdown_text, render_inline, render_markdown
 from .models import Area, Location, MediaDerivative, MediaKind, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
-from .precision import PRECISION_LENGTH, audience_precision, coarser, effective_precision, own_value
+from .precision import PRECISION_LENGTH, audience_precision, coarser, effective_precision, own_value, route_precision
 
 
 class ScopeError(ServiceError):
@@ -290,10 +290,13 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             "carrier": item.carrier,
             "service_reference": item.service_reference,
         }
-        # A route shares its schedule as the owner entered it: the day, and the times once booked.
+        # A route's day follows the audience's date setting (a day when it sets none). An exact instant would
+        # give the day away, so the times are shared only to an audience that may read days.
+        precision = route_precision(context["date_precision"])
         if item.departs_on is not None:
-            values["departs_on"] = item.departs_on.isoformat()
-        if item.departs_at is not None and item.arrives_at is not None:
+            values["departs_on"] = _safe_date(item.departs_on, precision)
+            values["date_precision"] = precision
+        if precision == "day" and item.departs_at is not None and item.arrives_at is not None:
             values.update(
                 departs_at=_utc_instant(item.departs_at).isoformat(),
                 arrives_at=_utc_instant(item.arrives_at).isoformat(),

@@ -180,7 +180,7 @@ outside the allowlist can be selected.
 | Reisupdate | title, the text written for visitors, the date at its precision (never finer than the audience allows), its area | private notes, location, attached originals, exact time |
 | Stay | its area and its nights, at the date precision chosen for it and its audience | property, location, booking, contact, notes |
 | Visit | title (else the shared location's name or the area's), the text for visitors, its area, the days at the precision chosen for it and its audience; the times only if the owner also chooses that (and only with full dates) | notes, the exact location (unless shared), the times (unless chosen) |
-| Route | mode, status, its two areas, name, schedule, carrier, service reference, the drawn line | booking reference, class, notes, documents, the exact locations (unless shared) |
+| Route | mode, status, its two areas, name, its departure day at the audience's date precision, the departure and arrival times (only to an audience that reads days), carrier, service reference, the drawn line | booking reference, class, notes, documents, the exact locations (unless shared) |
 | Photo | an approved, metadata-stripped copy, with caption and alt text | the original and its EXIF |
 | Trip cover | the id of the one chosen photo, only if that audience already receives the photo | any photo the audience does not receive; the choice itself |
 | Document | never shared | the original and all metadata |
@@ -269,6 +269,7 @@ receives a finer date than either the record or the audience allows.
 | Audience | `defaults.date_precision` in the share scope of the public view, a hidden link or a collection member (*Dates shown to this audience*) | `day`, `month`, `year`, or absent |
 | Visit, stay | its own `share_date_precision` (*Dates for visitors*) | `day`, `month`, `year`, or `null` = same as the audience |
 | Reisupdate | its own `date_precision` | `day`, `month`, `year` |
+| Route | none of its own: it follows the audience's cap alone (decided in [#262](decisions/36-privacy-sharing-offline-policy.md#routes-follow-the-audiences-date-setting-262)) | the audience's value, or `day` when the audience sets none |
 | Trip dates | `trip.dates` in the scope, also capped by the audience | `day`, `month`, `year`, or absent (hidden) |
 
 | Record's own value | Audience: not set | Audience: day | Audience: month | Audience: year |
@@ -288,18 +289,29 @@ location editors in the same way ([#241](decisions/241-sharing-presets.md)).
 
 An audience without a setting caps nothing, so a scope stored before the setting
 existed delivers exactly what it always did (every record then holds its own value).
+
+A **route** has no value of its own, so only the audience decides: its `departs_on` is delivered as
+`YYYY-MM-DD`, `YYYY-MM` or `YYYY` with a `date_precision` beside it, and an audience that sets no cap keeps the
+full day (unlike a visit or stay, which fall back to `month`). A departure time is an exact instant that gives the
+day away, so `departs_at`, `arrives_at` and their time zones are delivered only to an audience that reads days,
+like a visit's time. Delivery order stays the stored order (by day, then time, undated last), the same as visits
+and stays: the document carries no position or sort key. Routes also follow every other path that renders an
+audience's document (preview, collection member, link preview card, MCP "as visitors see it").
 The only fallback is for a record that follows an audience that sets nothing: it
 reads by `month`, the conservative default every new record always had. A new public
 view, hidden link or collection member starts with an explicit `month`; saving a scope
 that leaves `defaults` out keeps the audience's stored setting, so an older client can
 never widen an audience, and `defaults: null` removes it. A time (`share_time`) only
 shows on a full date, so a coarser effective precision hides it. The Sharing check
-states each audience's setting, how many visits and stays read at each precision, and
-how many are held coarser by their own setting. Before a trip starts (its start is after
+states each audience's setting, how many visits, stays and routes read at each precision, and
+how many visits or stays are held coarser by their own setting. Before a trip starts (its start is after
 the server's current UTC date; with no start, a route departs after that date) it also
 warns, per audience, about the routes from today on that carry an exact time or a carrier
-(`future_transport_times`) and the dates from today on shown by day (`future_day_dates`),
-as counts only. It changes nothing, and it says nothing once the trip has started or ended
+(`future_transport_times`) and the dates from today on shown by day (`future_day_dates`, which counts a route whose departure day is
+shown by day just like a visit, stay or reisupdate), as counts only. An audience whose cap is month or year and that
+receives dated routes also gets an info note (`route_dates_follow_audience`) saying routes now follow its date
+setting. A route shown only by month or year still counts for `future_transport_times` while any part of that
+month or year is ahead. It changes nothing, and it says nothing once the trip has started or ended
 ([#231](decisions/36-privacy-sharing-offline-policy.md#future-transport-and-dates-warning-231)). *Follow the audience's precision* sets
 the own value of all visits and stays, or of one kind, to `null` in one step, after
 showing which live audiences will read finer dates and asking for an acknowledgement.
@@ -314,8 +326,8 @@ dates, and on its check-out day. Month and year records, undated visits and rout
 not placed or ordered into a day; they follow under **Other plans** with their own precision. When no
 visit or stay is shared by day, the three lists remain with a neutral note that exact days are not
 shown. The client never counts nights, days or records it did not receive, and never reads a day from
-record order, from a missing time or from a private record. A route's day is shared as entered whatever
-the audience's precision, so routes alone never make an audience a day audience. Records already shown
+record order, from a missing time or from a private record. A route's day is shared at the audience's precision, and only a route that arrives with a full day is placed
+on one; routes alone never make an audience a day audience. Records already shown
 with a story update (same area and day) are not repeated in the plan.
 
 ## Where a twin is still needed

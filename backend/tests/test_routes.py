@@ -388,7 +388,10 @@ def test_owner_can_select_a_redacted_transport_summary_for_public_and_unlisted_v
         }
         assert summary[0]["carrier"] == "EVA Air"
         assert summary[0]["service_reference"] == "BR-087"
-        assert summary[0]["departs_on"] == "2054-04-01"
+        # A new audience starts at month, and a route follows the audience's date setting (#262).
+        assert summary[0]["departs_on"] == "2054-04"
+        assert summary[0]["date_precision"] == "month"
+        assert "departs_at" not in summary[0] and "arrives_at" not in summary[0]
         # Exact location endpoints appear on the map only when the location itself is shared.
         assert "map" not in summary[0]
         assert "booking_reference" not in summary[0]
