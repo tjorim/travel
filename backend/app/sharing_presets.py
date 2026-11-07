@@ -209,6 +209,24 @@ def _matches(rule: KindRule, record: Any) -> bool:
     return rule.statuses is None or record.status.value in rule.statuses
 
 
+def _named_areas(trip: Trip, target: dict[str, set[str]]) -> set[str]:
+    """The areas the target's updates, routes, visits and stays name."""
+    named: set[str] = set()
+    for update in trip.travel_updates:
+        if update.id in target["travel_update"] and update.area is not None:
+            named.add(update.area.id)
+    for route in trip.routes:
+        if route.id in target["route"]:
+            named.update((route.departure_area_id, route.arrival_area_id))
+    for visit in trip.visits:
+        if visit.id in target["visit"]:
+            named.add(visit.area_id)
+    for stay in trip.stays:
+        if stay.id in target["stay"]:
+            named.add(stay.area_id)
+    return named
+
+
 def compute_target(trip: Trip, preset: SharingPreset) -> tuple[dict[str, set[str]], list[Reason]]:
     """The records the preset selects that can be shared right now, and those it selects but cannot sweep in.
 
@@ -227,6 +245,10 @@ def compute_target(trip: Trip, preset: SharingPreset) -> tuple[dict[str, set[str
                 needs.append(Reason(rule.kind, record.id, "share_time_is_on"))
             else:
                 target[rule.kind].add(record.id)
+    if any(rule.kind == "area" for rule in preset.selects):
+        # An area is shared for the records that name it, never on its own: an area no included record uses (a home
+        # town, a stopover the owner keeps private) would reveal a place and add nothing to a visitor's map.
+        target["area"] &= _named_areas(trip, target)
     for photo in trip.media_derivatives:
         if photo.travel_update_id not in target["travel_update"]:
             continue

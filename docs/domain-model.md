@@ -304,7 +304,7 @@ never read at delivery: `projection.delivered` stays the one place that decides 
 | Preset (`travel/sharing-preset@1`) | Selects | Dates |
 |---|---|---|
 | `story_only` | reisupdates with text, and their approved photos | at most `month` |
-| `story_and_route` | the above, named areas and planned or confirmed routes | at most `month` |
+| `story_and_route` | the above, the named areas that the included records use, and planned or confirmed routes | at most `month` |
 | `planned_trip` | the above, planned or confirmed visits and stays | at most `month` |
 
 A preset never writes `everyone`, so no other audience gains anything. A private record it selects becomes `custom`

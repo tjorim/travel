@@ -910,3 +910,19 @@ def test_a_collection_member_review_is_owner_only_and_checks_the_collection(worl
     revoked = world.owner.post(f"/api/collections/{collection['id']}/revoke", json={})
     assert revoked.status_code == 200, revoked.text
     assert member_review(world, collection["id"], member["id"], "story_only").status_code == 409
+
+
+@pytest.mark.parametrize("preset", ["story_and_route", "planned_trip"])
+def test_a_preset_shares_only_areas_that_an_included_record_names(world: World, preset: str) -> None:
+    add_extras(world)
+    world._post(
+        "area",
+        "HOME",
+        "areas",
+        {"label": "Home Town", "country_code": "TW", "latitude": 24.0, "longitude": 120.5},
+    )
+    everything(world, "private")
+    link = world.link()
+    body = review(world, f"link:{link['id']}", preset).json()
+    assert "HOME" not in names(world, body["comparison"]["widened"])
+    assert {"A", "B"} <= names(world, body["comparison"]["widened"])
