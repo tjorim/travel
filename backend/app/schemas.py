@@ -1311,6 +1311,9 @@ class OverviewAudience(BaseModel):
     delivered: dict[str, int]
     without_map_point: dict[str, int]
     shows_cover: bool = False
+    # The sharing preset last applied here and how many records differ from it today (#241); a display label only.
+    preset: str | None = None
+    preset_exceptions: int = 0
 
 
 class OverviewWarning(BaseModel):
@@ -1571,6 +1574,25 @@ class SharingPresetRequest(InputModel):
     preset: SharingPresetId = Field(description="`story_only`, `story_and_route` or `planned_trip`.")
 
 
+class SharingPresetApplyRequest(InputModel):
+    """Apply a reviewed preset to one audience. The `fingerprint` must be the one the review returned."""
+
+    preset: SharingPresetId = Field(description="`story_only`, `story_and_route` or `planned_trip`.")
+    fingerprint: str = Field(
+        min_length=1,
+        max_length=64,
+        description="The `fingerprint` of the review the owner accepted. If the records or the audience changed since, "
+        "the apply is refused with 409 preset_preview_is_stale and a fresh review, and nothing changes.",
+    )
+    confirm_widening: bool = Field(
+        default=False,
+        description="Accept that a live audience newly receives the records the review lists as `widened`. Without it "
+        "such an apply is refused with 409 preset_widening_needs_acknowledgement and nothing changes, not even the "
+        "revision. A draft link, a draft collection and an unpublished page deliver nothing yet and need none. Not "
+        "stored.",
+    )
+
+
 class SharingPresetKindRule(BaseModel):
     kind: str = Field(description="A kind of record the preset selects.")
     statuses: list[str] | None = Field(
@@ -1600,6 +1622,23 @@ class PresetRecordRef(BaseModel):
     kind: ShareScopeKind
     id: str
     label: str | None = Field(description="The owner's own name for the record. Owner-only; never audited.")
+
+
+class PresetExceptions(BaseModel):
+    """How an audience differs now from what its last-applied preset would select today. Owner-only: it names records.
+
+    These are not stored: they are computed from the records and the audience's scope each time, so a manual edit,
+    a record created later and a deleted record are all reflected."""
+
+    shown: list[PresetRecordRef] = Field(
+        description="Records the audience receives that the preset would not select (an update you listed by hand, an "
+        "`everyone` record outside the preset)."
+    )
+    hidden: list[PresetRecordRef] = Field(
+        description="Records the preset would select that the audience does not receive (one you hid or left out, or "
+        "a record created since)."
+    )
+    count: int = Field(description="`shown` plus `hidden`.")
 
 
 class PresetChange(PresetRecordRef):
@@ -1750,6 +1789,12 @@ class PublicProjectionStatusResponse(BaseModel):
     scope: dict
     surface_state: SurfaceState
     slug: str | None
+    # The sharing preset last applied here, as a display label (#241): it decides nothing about what is delivered.
+    applied_preset: str | None = None
+    applied_preset_at: datetime | None = None
+    preset_exceptions: PresetExceptions | None = Field(
+        default=None, description="Null when no preset was applied. Owner-only."
+    )
 
 
 class VisibilityUpdate(InputModel):
@@ -1758,9 +1803,17 @@ class VisibilityUpdate(InputModel):
     visibility: Visibility
 
 
+CREATE_WITH_PRESET = (
+    "Optionally start from a sharing preset instead of the public baseline: it is applied in the same transaction, "
+    "after the audience is created, through the same code and rules as the preset apply route. Absent means no "
+    "preset ('same as the public page')."
+)
+
+
 class ShareLinkCreate(InputModel):
     label: str = Field(min_length=1, max_length=120)
     scope: ShareScopeInput = Field(default_factory=ShareScopeInput)
+    preset: SharingPresetId | None = Field(default=None, description=CREATE_WITH_PRESET)
 
 
 CONFIRM_EXCLUSION_WIDENING = (
@@ -1799,6 +1852,12 @@ class ShareLinkResponse(BaseModel):
     revoked_at: datetime | None
     # What this link leaves out of the public baseline and what that also hides. Filled in by the owner endpoints.
     exclusions: ScopeExclusions = Field(default_factory=ScopeExclusions)
+    # The sharing preset last applied here, as a display label (#241): it decides nothing about what is delivered.
+    applied_preset: str | None = None
+    applied_preset_at: datetime | None = None
+    preset_exceptions: PresetExceptions | None = Field(
+        default=None, description="Null when no preset was applied. Owner-only."
+    )
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -1818,6 +1877,12 @@ class McpShareLinkResponse(BaseModel):
     activated_at: datetime | None
     revoked_at: datetime | None
     exclusions: ScopeExclusions = Field(default_factory=ScopeExclusions)
+    # The sharing preset last applied here, as a display label (#241): it decides nothing about what is delivered.
+    applied_preset: str | None = None
+    applied_preset_at: datetime | None = None
+    preset_exceptions: PresetExceptions | None = Field(
+        default=None, description="Null when no preset was applied. Owner-only."
+    )
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -1843,6 +1908,7 @@ class CollectionUpdate(InputModel):
 class CollectionMemberCreate(InputModel):
     trip_id: Identifier
     scope: ShareScopeInput = Field(default_factory=ShareScopeInput)
+    preset: SharingPresetId | None = Field(default=None, description=CREATE_WITH_PRESET)
 
 
 class CollectionMemberUpdate(InputModel):
@@ -1859,6 +1925,12 @@ class CollectionMemberResponse(BaseModel):
     # How many records this member delivers today; 0 means the audience sees at most the trip header.
     delivered_records: int
     exclusions: ScopeExclusions = Field(default_factory=ScopeExclusions)
+    # The sharing preset last applied here, as a display label (#241): it decides nothing about what is delivered.
+    applied_preset: str | None = None
+    applied_preset_at: datetime | None = None
+    preset_exceptions: PresetExceptions | None = Field(
+        default=None, description="Null when no preset was applied. Owner-only."
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -1876,6 +1948,26 @@ class CollectionResponse(BaseModel):
     activated_at: datetime | None
     revoked_at: datetime | None
     members: list[CollectionMemberResponse]
+
+
+class SharingPresetApplyResult(BaseModel):
+    """What an apply did. `applied` is false when the audience already matched: nothing was written, no revision was
+    claimed and no audit event was recorded."""
+
+    applied: bool
+    review: SharingPresetReview = Field(description="The plan that was applied (or found to be empty).")
+
+
+class PublicPresetApplyResult(SharingPresetApplyResult):
+    audience: PublicProjectionStatusResponse
+
+
+class LinkPresetApplyResult(SharingPresetApplyResult):
+    audience: ShareLinkResponse
+
+
+class MemberPresetApplyResult(SharingPresetApplyResult):
+    audience: CollectionMemberResponse
 
 
 # MCP collection metadata is deliberately independent of the token-bearing REST model.

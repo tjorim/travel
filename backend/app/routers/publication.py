@@ -55,6 +55,7 @@ from ..schemas import (
     ShareLinkUpdate,
     ShareScopeInput,
 )
+from ..sharing_presets import apply_preset, exceptions_of
 from ..storage import ObjectStorage, get_storage
 from .trips import owned_trip, trip_query
 
@@ -171,8 +172,11 @@ def _claim_revision(session: Session, record: PublicSurface | ShareLink, expecte
     if result.scalar_one_or_none() is None:
         session.rollback()
         session.refresh(record)
+        trip = session.scalar(trip_query().where(Trip.id == record.trip_id))
         current = (
-            _public_status(record) if isinstance(record, PublicSurface) else ShareLinkResponse.model_validate(record)
+            _public_status(record, trip)
+            if isinstance(record, PublicSurface)
+            else (link_response(record, trip) if trip is not None else ShareLinkResponse.model_validate(record))
         )
         raise ApiException(
             code="scope_revision_conflict",
@@ -217,7 +221,7 @@ def set_public_projection_scope(
             details={"scope_version_before": before, "scope_version_after": after},
         )
     session.commit()
-    return _public_status(surface)
+    return public_status(session, surface)
 
 
 @router.post("/public-projection/preview", response_model=ProjectionDocument)
@@ -338,7 +342,7 @@ def publish_public_projection(
         details={"scope_version": scope_fingerprint(surface.scope)},
     )
     session.commit()
-    return _public_status(surface)
+    return public_status(session, surface)
 
 
 @router.post("/public-projection/unpublish", response_model=PublicProjectionStatusResponse)
@@ -365,7 +369,7 @@ def unpublish_public_projection(
         details=details,
     )
     session.commit()
-    return _public_status(surface)
+    return public_status(session, surface)
 
 
 @router.get("/public-projection", response_model=PublicProjectionStatusResponse)
@@ -375,17 +379,27 @@ def get_public_projection_status(
     owned_trip(session, trip_id, subject)
     surface = _get_or_create_surface(session, trip_id)
     session.commit()
-    return _public_status(surface)
+    return public_status(session, surface)
 
 
-def _public_status(surface: PublicSurface) -> PublicProjectionStatusResponse:
+def _public_status(surface: PublicSurface, trip: Trip | None = None) -> PublicProjectionStatusResponse:
+    """The owner's view of the public page; ``trip`` fills in the exceptions of an applied preset."""
     return PublicProjectionStatusResponse(
         revision=surface.revision,
         trip_id=surface.trip_id,
         scope=surface.scope,
         surface_state=surface.state,
         slug=surface.slug,
+        applied_preset=surface.applied_preset,
+        applied_preset_at=surface.applied_preset_at,
+        preset_exceptions=exceptions_of(trip, surface) if trip is not None else None,
     )
+
+
+def public_status(session: Session, surface: PublicSurface) -> PublicProjectionStatusResponse:
+    """The same, loading the trip only when a preset label needs it."""
+    trip = session.scalar(trip_query().where(Trip.id == surface.trip_id)) if surface.applied_preset else None
+    return _public_status(surface, trip)
 
 
 # --- Owner: named unlisted share links --------------------------------------------
@@ -404,6 +418,7 @@ def link_response(link: ShareLink, trip: Trip) -> ShareLinkResponse:
     """The owner's view of a link, with what its exclusions leave out and also hide."""
     response = ShareLinkResponse.model_validate(link)
     response.exclusions = scope_exclusions(trip, link.scope)
+    response.preset_exceptions = exceptions_of(trip, link)
     return response
 
 
@@ -411,6 +426,7 @@ def activation_response(link: ShareLink, trip: Trip) -> ShareLinkActivateRespons
     """The same for a link that was just activated or rotated, which also carries its capability."""
     response = ShareLinkActivateResponse.model_validate(link)
     response.exclusions = scope_exclusions(trip, link.scope)
+    response.preset_exceptions = exceptions_of(trip, link)
     return response
 
 
@@ -492,8 +508,14 @@ def create_share_link(
         target_id=link.id,
         details={"label": link.label, "scope_version": scope_fingerprint(scope)},
     )
+    trip = owned_trip(session, trip_id, subject)
+    if payload.preset is not None:
+        # In the same transaction, through the same code as the apply route: a new link has received nothing yet.
+        apply_preset(
+            session, trip, subject, link, payload.preset, fingerprint=None, confirm_widening=False, claim=None, new=True
+        )
     session.commit()
-    return link_response(link, owned_trip(session, trip_id, subject))
+    return link_response(link, trip)
 
 
 @router.get("/audit-events", response_model=list[AuditEventResponse])
@@ -776,6 +798,9 @@ def rotate_share_link(
         series_id=old_link.series_id or old_link.id,
         scope=old_link.scope,
         state=LinkState.DRAFT,
+        # The same scope under a new URL: the display label carries over with it.
+        applied_preset=old_link.applied_preset,
+        applied_preset_at=old_link.applied_preset_at,
     )
     session.add(new_link)
     session.flush()

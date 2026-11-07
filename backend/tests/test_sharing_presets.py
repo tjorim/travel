@@ -1,10 +1,10 @@
-"""Sharing presets, step 1 of #241: the planner and a read-only review.
+"""Sharing presets, steps 1 and 2 of #241: the planner and a read-only review (applying is in ``test_sharing_presets_apply``).
 
 The world is the synthetic trip of ``test_link_exclusions`` (two areas, a hotel and a station, visits, stays, routes,
 updates with photos, a cover) plus a few records a preset must not sweep in: ideas, a cancelled visit, a visit that
-shows its time, an update without text, an unnamed area and a photo that is not approved. Nothing is applied in this
-step, so the tests that need an "after" apply the plan in memory the way the next step will write it, and then ask
-``projection.delivered`` what every audience receives."""
+shows its time, an update without text, an unnamed area and a photo that is not approved. These tests plan and review;
+the tests that need an "after" apply the plan in memory and then ask ``projection.delivered`` what every audience
+receives."""
 
 import random
 from pathlib import Path
@@ -699,7 +699,7 @@ def test_an_unknown_preset_or_audience_is_refused(world: World) -> None:
     extra = world.owner.post(
         f"{world.base}/public-projection/preset/review", json={"preset": "story_only", "confirm": True}
     )
-    assert extra.status_code == 422  # step 1 has no apply: an unknown field is refused, never ignored
+    assert extra.status_code == 422  # a review never applies: an unknown field is refused, never ignored
 
 
 def test_a_revoked_link_has_nothing_to_review(world: World) -> None:
@@ -724,7 +724,7 @@ def test_every_preset_route_requires_the_owner() -> None:
         # FastAPI keeps an included router as one entry that wraps the router's own routes.
         elif (included := getattr(route, "original_router", None)) is not None:
             pending.extend(included.routes)
-    assert len(found) == 4
+    assert len(found) == 7  # three review routes, three apply routes and the catalog
 
 
 def test_a_review_is_not_part_of_any_visitor_response(world: World) -> None:

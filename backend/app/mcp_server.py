@@ -131,6 +131,16 @@ def _mcp_collection(value: Any) -> dict[str, Any]:
     return schemas.McpCollectionResponse.model_validate(value.model_dump()).model_dump(mode="json")
 
 
+def _preset_applied(value: Any) -> dict[str, Any]:
+    """An applied preset's result from the REST representation; a link is shown without its capability token."""
+    data = value.model_dump(mode="json")
+    if isinstance(value, schemas.LinkPresetApplyResult):
+        data["audience"] = schemas.McpShareLinkResponse.model_validate(value.audience.model_dump()).model_dump(
+            mode="json"
+        )
+    return data
+
+
 def _collection_with_url(value: Any) -> dict[str, Any]:
     return {**_mcp_collection(value), "share_url": _share_url(value.token)}
 
@@ -1108,7 +1118,7 @@ class TravelMcpBackend:
     def preview_sharing_preset(
         self, trip_id: str, preset: schemas.SharingPresetId, audience: str = "public"
     ) -> dict[str, Any]:
-        """Review a sharing preset for one audience before anything is applied (applying is not available yet). audience is `public`, `link:<link id>` or `collection:<collection member id>`. Returns the changes the preset would make (records listed for or unlisted from this audience, records left out of a hidden link, private records that become custom for this audience only), how many records of each kind the audience receives now and afterwards, which records it would newly receive (widened, and requires_acknowledgement when the audience is live) or stop receiving, the date precision before and after, the records it keeps receiving that the preset does not include with the way out (left_as_is), the records a preset did not sweep in and why (needs_decision), and the owner's choices it would reset (replaces_exceptions). A plan beyond the scope limits is refused with refusal.code preset_too_large. Show the owner the review. Stores nothing, claims no revision and records no audit event."""
+        """Review a sharing preset for one audience before anything is applied (apply_sharing_preset applies it). audience is `public`, `link:<link id>` or `collection:<collection member id>`. Returns the changes the preset would make (records listed for or unlisted from this audience, records left out of a hidden link, private records that become custom for this audience only), how many records of each kind the audience receives now and afterwards, which records it would newly receive (widened, and requires_acknowledgement when the audience is live) or stop receiving, the date precision before and after, the records it keeps receiving that the preset does not include with the way out (left_as_is), the records a preset did not sweep in and why (needs_decision), and the owner's choices it would reset (replaces_exceptions). A plan beyond the scope limits is refused with refusal.code preset_too_large. Show the owner the review, and pass its fingerprint to apply_sharing_preset only after they accept. Stores nothing, claims no revision and records no audit event."""
         return self._call(
             "sharing_preset.preview",
             "trip",
@@ -1118,6 +1128,30 @@ class TravelMcpBackend:
                 trip_id, audience, schemas.SharingPresetRequest(preset=preset), s, sub
             ),
             lambda x: _model(x, schemas.SharingPresetReview),
+        )
+
+    def apply_sharing_preset(
+        self,
+        trip_id: str,
+        preset: schemas.SharingPresetId,
+        fingerprint: str,
+        audience: str = "public",
+        confirm: bool = False,
+        confirm_widening: bool = False,
+    ) -> dict[str, Any]:
+        """Apply a sharing preset to one audience (`public`, `link:<link id>` or `collection:<collection member id>`) after the owner accepted the preview_sharing_preset review; fingerprint is that review's fingerprint. In one transaction it makes the preset's private records custom and lists them for this audience only (a preset never writes everyone, so no other audience changes), unlists or leaves out the records the preset does not include (a hidden link or collection member; the public view cannot leave records out), caps the audience's dates at month at most, and resets the owner's earlier exceptions. Without confirm=true nothing is stored. If the records or the audience changed since the preview, it is refused (code preset_preview_is_stale, with a fresh review): show that review again. A plan beyond the scope limits is refused (code preset_too_large). When a live audience (published public view, active link or collection) would newly receive records, confirm=true alone is refused with a JSON review (code preset_widening_needs_acknowledgement; counts and widened records): show it to the owner and repeat with confirm=true and confirm_widening=true only after they accept; a draft audience needs no acknowledgement. Returns applied (false when the audience already matched: nothing written), the review that was applied and the audience with its applied_preset label and preset_exceptions (the live difference from the preset). The apply is recorded in the audit trail with the preset id, the audience id and counts only."""
+        payload = schemas.SharingPresetApplyRequest(
+            preset=preset, fingerprint=fingerprint, confirm_widening=confirm_widening
+        )
+        return self._call(
+            "sharing_preset.apply",
+            "trip",
+            trip_id,
+            trip_id,
+            lambda s, sub: preset_routes.apply_sharing_preset(trip_id, audience, payload, s, sub),
+            _preset_applied,
+            confirm=confirm,
+            needs_confirmation=True,
         )
 
     def activate_share_link(
@@ -2378,6 +2412,7 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
             "merge_locations",
             "merge_areas",
             "follow_audience_date_precision",
+            "apply_sharing_preset",
             "choose_alternative",
             "undo_alternative_choice",
         },

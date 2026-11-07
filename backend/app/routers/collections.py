@@ -43,6 +43,7 @@ from ..schemas import (
     ShareLinkActivateRequest,
     ShareScopeInput,
 )
+from ..sharing_presets import apply_preset, exceptions_of
 from ..storage import ObjectStorage, get_storage
 from .publication import (
     UNLISTED_HEADERS,
@@ -124,6 +125,9 @@ def _member_response(member: CollectionMember, trip: Trip) -> CollectionMemberRe
         scope=member.scope,
         delivered_records=sum(len(records) for records in delivered(trip, member.scope).values()),
         exclusions=scope_exclusions(trip, member.scope),
+        applied_preset=member.applied_preset,
+        applied_preset_at=member.applied_preset_at,
+        preset_exceptions=exceptions_of(trip, member),
         created_at=member.created_at,
         updated_at=member.updated_at,
     )
@@ -300,7 +304,7 @@ def add_collection_member(
             detail="A revoked or expired collection cannot be edited",
             code="a_revoked_or_expired_collection_cannot_be_edited",
         )
-    _, scope = _scope_for(session, subject, payload.trip_id, payload.scope)
+    trip, scope = _scope_for(session, subject, payload.trip_id, payload.scope)
     if any(member.trip_id == payload.trip_id for member in collection.members):
         raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
@@ -333,6 +337,19 @@ def add_collection_member(
         kind="collection.member_add",
         details={"member_id": member.id, "scope_version": scope_fingerprint(scope)},
     )
+    if payload.preset is not None:
+        # In the same transaction, through the same code as the apply route: a new member has received nothing yet.
+        apply_preset(
+            session,
+            trip,
+            subject,
+            member,
+            payload.preset,
+            fingerprint=None,
+            confirm_widening=False,
+            claim=None,
+            new=True,
+        )
     session.commit()
     return collection_response(session, collection)
 

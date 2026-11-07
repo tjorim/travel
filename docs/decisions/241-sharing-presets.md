@@ -1,8 +1,10 @@
 # Sharing Presets With Per-Record Exceptions
 
-Design note, 2026-11-07, issue #241. **Status: step 1 of 4 implemented (planner and
-read-only review); applying, the interface and the shorter check are not.** See
-[Step 1 implemented](#step-1-implemented-planner-and-read-only-review) at the end. The owner decided on 2026-11-06 for presets with
+Design note, 2026-11-07, issue #241. **Status: steps 1 and 2 of 4 implemented (planner
+and read-only review; apply, migration 022 and audit); the owner interface and the
+shorter check are not.** See
+[Step 1 implemented](#step-1-implemented-planner-and-read-only-review) and
+[Step 2 implemented](#step-2-implemented-apply-migration-and-audit) at the end. The owner decided on 2026-11-06 for presets with
 per-record exceptions and today's fine-grained controls under an Advanced view
 (option a of #241); this note designs the presets and does not reopen that.
 The Advanced view and the single date control shipped first (see the end of this
@@ -445,7 +447,7 @@ Shipped (Part of #241). Nothing is applied: no migration, no scope or visibility
    visibility.
 4. **A new hidden link** is untouched in this step; the optional picker whose first choice is "Same as the public
    page" belongs to the interface step.
-5. **The last-applied label** (nullable columns, migration 020) is part of step 2; step 1 has no label and no migration.
+5. **The last-applied label** (nullable columns; migration 022, the number 020 of the first plan having gone to an earlier change) is part of step 2; step 1 has no label and no migration.
 6. **The public view and `everyone` records outside the preset** are left as they are and listed with the way out
    (`left_as_is`, `everyone_on_public_view`, `change_visibility`).
 
@@ -456,3 +458,69 @@ Applying (writes, `If-Match` revisions, `409 preset_widening_needs_acknowledgeme
 `publication-safety-check.md`.
 
 **Review amendment, 2026-11-07:** areas are selected only when an included update, route, visit or stay names them, so a private place the owner keeps for themselves (a home town) is never swept in by the table's "all named areas"; an unused area adds nothing to a visitor's map.
+
+
+## Step 2 implemented: apply, migration and audit
+
+Shipped (Part of #241). The backend applies a reviewed preset; the owner interface and the shorter safety check are steps 3 and 4.
+
+- **Routes.** `POST /trips/{id}/public-projection/preset`, `POST /trips/{id}/share-links/{link_id}/preset` and
+  `POST /collections/{collection_id}/members/{member_id}/preset`, body `{preset, fingerprint, confirm_widening}` with
+  `If-Match`; the response is `{applied, review, audience}` with the audience as the owner sees it (new revision,
+  label, exceptions). They sit next to the review paths and share one handler with the MCP tool
+  `apply_sharing_preset(trip_id, preset, fingerprint, audience, confirm, confirm_widening)` (a write tool that
+  requires `confirm`, like `follow_audience_date_precision`). There is no `confirm` field on the REST body: the
+  endpoint is the apply, the review has its own path.
+- **One function, `sharing_presets.apply_preset`**, serves the three routes and the two creation paths. It first claims
+  the audience's revision (`If-Match`, or unconditionally when absent, 412 `scope_revision_conflict` with the
+  current record), which also locks the row while the plan is read; every refusal then rolls the transaction back, so
+  "the revision is not claimed" holds without ordering tricks. In order it refuses: a fingerprint that no longer
+  matches (409 `preset_preview_is_stale` with the fresh review), a plan beyond 200 listed records or 500
+  exclusions (409 `preset_too_large`, the same counts as the review's `refusal`), and a live audience that would newly
+  receive records without `confirm_widening` (409 `preset_widening_needs_acknowledgement`: audience, counts per kind,
+  the widened records). Then it writes: `set_visibility(…, custom)` for each promoted record (the same function a
+  manual choice uses, so the sharing gate still applies, but no per-record `record.visibility_change` events are
+  written), then `prepare_scope` on the planned scope with the audience's own rules (so a stale or invalid scope is a
+  422 and rolls the promotions back), then the scope, the label and the audit event. No other path writes a record.
+- **Never `everyone`, never another audience.** Before writing, every change is checked (`promote` only a private
+  record, `list`/`unlist` only a custom one, and the planned `items` list no `everyone` record); after the
+  promotions the session is checked for any pending write of `everyone`; after the scope write every other audience of
+  the trip (drafts too) is rendered again and must be byte-for-byte what it was. Any violation rolls back and
+  fails. The tests inject a faulty plan and a faulty write to prove each guard.
+- **Draft versus live.** The acknowledgement follows the review's `requires_acknowledgement` (a live audience that would
+  newly receive records; narrowing never needs one). A draft link, a draft collection and an unpublished public view
+  deliver nothing yet. A **new** link or collection member created with a `preset` has received nothing, so it takes
+  no fingerprint, claims no revision and needs no acknowledgement even in an active collection: its first delivered
+  state is the preset's.
+- **Idempotence, as designed.** The same preset on an audience that already matches the plan and already carries
+  that label writes nothing (`applied: false`, the claimed revision is given back, no audit event). If the plan is
+  empty but the audience carries no label or another one (the owner built the same selection by hand), the label is
+  written, which is a write: it advances the revision and is audited.
+- **Migration 022** adds nullable `applied_preset` (string, 32) and `applied_preset_at` to `public_surfaces`,
+  `share_links` and `collection_members`, and the audit kind `audience.preset_apply`. Every existing row starts `NULL`
+  and keeps its scope; the downgrade drops the columns and deletes the audit rows that use the new kind (PostgreSQL
+  cannot drop an enum value; the unused value stays) and the `collection.member_preset_apply` collection events. Run
+  against PostgreSQL: up, down one revision, down to base, up again, and `alembic check` shows no drift;
+  `tests/test_sharing_preset_label_migration_postgres.py` covers it. No preset id is constrained in the database, so
+  a later preset needs no migration and a label from a newer application is shown without exceptions.
+- **The label is display only.** Projection, delivery, files, navigation, the collection index and `access.receivers` do
+  not read it (a test flips it, clears it and sets an unknown id and the audience receives the same). Owner
+  responses add `applied_preset`, `applied_preset_at` and `preset_exceptions` to the public view status, the link
+  (also its MCP form, which still has no token), the collection member, the Sharing check's audience entries
+  (`preset`, `preset_exceptions` as a count) and the owner export; a test asserts no visitor response (public page,
+  public list, link, collection index, member page) mentions it. Rotating a link carries the label with the scope.
+- **Exceptions.** `preset_exceptions` is computed on every owner read (`preset_exceptions(trip, scope, preset_id)`), never stored: for
+  areas, visits, stays, routes and updates, `shown` = delivered records the preset would not select and `hidden` =
+  records the preset would select that are not delivered (including a record created later, as answer 1 implies).
+  Manual edits keep the label and change this list; re-applying resets it. Locations and loose photos are never
+  exceptions.
+- **Audit.** One `audience.preset_apply` event (target the public view or the link) or, for a member, one
+  `collection.member_preset_apply` collection event, with the preset and audience ids, `on_creation`, `live`,
+  `widening_acknowledged`, the counts per action and per kind of widened, narrowed, left-as-is, needs-decision and
+  replaced records, the precision before and after and the scope fingerprints. No title, label, note or caption is
+  written (a test searches the details for the owner text of the world). A draft apply is audited too: the aggregate
+  event is cheap and the owner may later ask why a draft looks as it does.
+- **Not done here** (tracked in the later steps of #241): the preset picker, the review dialog and the exceptions
+  lists in the interface, the first choice "Same as the public page" on a new link, decision 36 and the shorter
+  `publication-safety-check.md`. The `preset_changed_another_audience` guard reaches the client as an unhandled
+  service error, as the review's does.

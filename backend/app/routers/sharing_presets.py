@@ -1,22 +1,26 @@
-"""Owner-only, read-only review of a sharing preset for one audience (#241, step 1).
+"""Owner-only review and apply of a sharing preset for one audience (#241).
 
 The review plans the preset and compares what the audience receives before and after, in a transaction that is
-rolled back: it stores nothing, claims no revision and records no audit event. It is shared by the REST routes and
-the MCP tools, and never reachable through a visitor response."""
+rolled back: it stores nothing, claims no revision and records no audit event. The apply writes the same plan in one
+transaction (see ``sharing_presets.apply_preset``). Both are shared by the REST routes and the MCP tools, and never
+reachable through a visitor response."""
 
-from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
-from ..models import Collection, CollectionMember, LinkState, PublicSurface, ShareLink, SurfaceState
+from ..models import Collection, CollectionMember, LinkState, PublicSurface, ShareLink
 from ..schemas import (
     Identifier,
+    LinkPresetApplyResult,
+    MemberPresetApplyResult,
+    PublicPresetApplyResult,
+    SharingPresetApplyRequest,
     SharingPresetCatalog,
     SharingPresetDefinition,
     SharingPresetKindRule,
@@ -26,10 +30,16 @@ from ..schemas import (
 from ..sharing_presets import (
     PRESET_DATE_PRECISION,
     PRESET_SCHEMA_VERSION,
+    Holder,
     PresetAudience,
+    apply_preset,
+    audience_of,
+    expired,
     preset_catalog,
     review_preset,
 )
+from .collections import _claim_member_revision, _member_response
+from .publication import _claim_revision, _get_or_create_surface, link_response, public_status
 from .trips import owned_trip
 
 router = APIRouter(tags=["publication"])
@@ -45,18 +55,29 @@ def _not_found(detail: str) -> ApiException:
     return ApiException(status_code=status.HTTP_404_NOT_FOUND, detail=detail, code="not_found")
 
 
-def _expired(expires_at: datetime | None) -> bool:
-    if expires_at is None:
-        return False
-    return (expires_at if expires_at.tzinfo is not None else expires_at.replace(tzinfo=UTC)) <= datetime.now(UTC)
-
-
 def _not_editable(what: str) -> ApiException:
     return ApiException(
         status_code=status.HTTP_409_CONFLICT,
         detail=f"A revoked or expired {what} cannot be edited",
         code=f"a_revoked_or_expired_{what}_cannot_be_edited",
     )
+
+
+def _owned_member_of_collection(
+    session: Session, collection_id: Identifier, member_id: Identifier, subject: str
+) -> CollectionMember:
+    member = session.scalar(
+        select(CollectionMember)
+        .join(Collection, Collection.id == CollectionMember.collection_id)
+        .where(
+            CollectionMember.id == member_id,
+            CollectionMember.collection_id == collection_id,
+            Collection.owner_subject == subject,
+        )
+    )
+    if member is None:
+        raise _not_found("Member not found")
+    return member
 
 
 def preset_catalog_response(trip_id: Identifier, session: Session, subject: str) -> SharingPresetCatalog:
@@ -79,42 +100,25 @@ def preset_catalog_response(trip_id: Identifier, session: Session, subject: str)
     )
 
 
-def review_sharing_preset(
-    trip_id: Identifier, audience_id: str, payload: SharingPresetRequest, session: Session, subject: str
-) -> SharingPresetReview:
-    """Review a preset for ``public``, ``link:<id>`` or ``collection:<member id>`` of one of the owner's trips.
+def resolve_audience(session: Session, trip_id: Identifier, audience_id: str, subject: str) -> Holder | None:
+    """The stored public view, link or collection member named by ``public``, ``link:<id>`` or ``collection:<id>``.
 
-    A draft link or collection and an unpublished page are reviewed too (they deliver nothing yet); a revoked or
-    expired one cannot be edited, so it has nothing to review. Reads only: this never creates the public view."""
-    trip = owned_trip(session, trip_id, subject)
+    A draft link or collection and an unpublished page can be edited (they deliver nothing yet); a revoked or expired
+    one cannot. Another owner's audience is a 404. ``None`` only for a public view that was never saved."""
+    owned_trip(session, trip_id, subject, load_relations=False)
     kind, _, identifier = audience_id.partition(":")
     if audience_id == "public":
-        surface = session.get(PublicSurface, trip_id)
-        audience = PresetAudience(
-            id="public",
-            kind="public",
-            label=None,
-            scope=surface.scope if surface is not None else UNSAVED_PUBLIC_SCOPE,
-            live=surface is not None and surface.state == SurfaceState.PUBLISHED,
-            can_exclude=False,
-        )
-    elif kind == "link" and identifier:
+        return session.get(PublicSurface, trip_id)
+    if kind == "link" and identifier:
         link = session.scalar(select(ShareLink).where(ShareLink.id == identifier, ShareLink.trip_id == trip_id))
         if link is None:
             raise _not_found("Share link not found")
         if link.state not in (LinkState.DRAFT, LinkState.ACTIVE) or (
-            link.state == LinkState.ACTIVE and _expired(link.expires_at)
+            link.state == LinkState.ACTIVE and expired(link.expires_at)
         ):
             raise _not_editable("link")
-        audience = PresetAudience(
-            id=f"link:{link.id}",
-            kind="link",
-            label=link.label,
-            scope=link.scope,
-            live=link.state == LinkState.ACTIVE,
-            can_exclude=True,
-        )
-    elif kind == "collection" and identifier:
+        return link
+    if kind == "collection" and identifier:
         found = session.execute(
             select(CollectionMember, Collection)
             .join(Collection, Collection.id == CollectionMember.collection_id)
@@ -128,20 +132,69 @@ def review_sharing_preset(
             raise _not_found("Member not found")
         member, collection = found
         if collection.state not in (LinkState.DRAFT, LinkState.ACTIVE) or (
-            collection.state == LinkState.ACTIVE and _expired(collection.expires_at)
+            collection.state == LinkState.ACTIVE and expired(collection.expires_at)
         ):
             raise _not_editable("collection")
-        audience = PresetAudience(
-            id=f"collection:{member.id}",
-            kind="collection_member",
-            label=collection.label,
-            scope=member.scope,
-            live=collection.state == LinkState.ACTIVE,
-            can_exclude=True,
+        return member
+    raise _not_found("Audience not found")
+
+
+def review_sharing_preset(
+    trip_id: Identifier, audience_id: str, payload: SharingPresetRequest, session: Session, subject: str
+) -> SharingPresetReview:
+    """Review a preset for ``public``, ``link:<id>`` or ``collection:<member id>`` of one of the owner's trips.
+
+    Reads only: this never creates the public view, and a view that was never saved is reviewed as the default scope
+    (dates by month) that a new one would hold."""
+    trip = owned_trip(session, trip_id, subject)
+    holder = resolve_audience(session, trip_id, audience_id, subject)
+    audience = (
+        audience_of(holder)
+        if holder is not None
+        else PresetAudience(
+            id="public", kind="public", label=None, scope=UNSAVED_PUBLIC_SCOPE, live=False, can_exclude=False
         )
-    else:
-        raise _not_found("Audience not found")
+    )
     return review_preset(session, trip, audience, payload.preset)
+
+
+def apply_sharing_preset(
+    trip_id: Identifier,
+    audience_id: str,
+    payload: SharingPresetApplyRequest,
+    session: Session,
+    subject: str,
+    if_match: str | None = None,
+) -> PublicPresetApplyResult | LinkPresetApplyResult | MemberPresetApplyResult:
+    """Apply a reviewed preset to one audience and commit; see ``sharing_presets.apply_preset`` for the rules.
+
+    The audience's revision is claimed from ``If-Match`` (412 ``scope_revision_conflict`` when stale; absent stays an
+    unconditional write that still advances the revision, like every other scope write)."""
+    trip = owned_trip(session, trip_id, subject)
+    holder = resolve_audience(session, trip_id, audience_id, subject)
+    if holder is None:
+        holder = _get_or_create_surface(session, trip_id)
+    claim = (
+        (lambda: _claim_member_revision(session, holder, if_match))
+        if isinstance(holder, CollectionMember)
+        else (lambda: _claim_revision(session, holder, if_match))
+    )
+    review, applied = apply_preset(
+        session,
+        trip,
+        subject,
+        holder,
+        payload.preset,
+        fingerprint=payload.fingerprint,
+        confirm_widening=payload.confirm_widening,
+        claim=claim,
+    )
+    session.commit()
+    if isinstance(holder, PublicSurface):
+        return PublicPresetApplyResult(applied=applied, review=review, audience=public_status(session, holder))
+    if isinstance(holder, ShareLink):
+        return LinkPresetApplyResult(applied=applied, review=review, audience=link_response(holder, trip))
+    return MemberPresetApplyResult(applied=applied, review=review, audience=_member_response(holder, trip))
 
 
 @router.get("/trips/{trip_id}/sharing-presets", response_model=SharingPresetCatalog)
@@ -171,15 +224,47 @@ def review_collection_member_preset(
     session: SessionDep,
     subject: SubjectDep,
 ) -> SharingPresetReview:
-    member = session.scalar(
-        select(CollectionMember)
-        .join(Collection, Collection.id == CollectionMember.collection_id)
-        .where(
-            CollectionMember.id == member_id,
-            CollectionMember.collection_id == collection_id,
-            Collection.owner_subject == subject,
-        )
-    )
-    if member is None:
-        raise _not_found("Member not found")
+    member = _owned_member_of_collection(session, collection_id, member_id, subject)
     return review_sharing_preset(member.trip_id, f"collection:{member.id}", payload, session, subject)
+
+
+@router.post("/trips/{trip_id}/public-projection/preset", response_model=PublicPresetApplyResult)
+def apply_public_preset(
+    trip_id: Identifier,
+    payload: SharingPresetApplyRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    if_match: Annotated[str | None, Header()] = None,
+) -> PublicPresetApplyResult:
+    result = apply_sharing_preset(trip_id, "public", payload, session, subject, if_match)
+    assert isinstance(result, PublicPresetApplyResult)
+    return result
+
+
+@router.post("/trips/{trip_id}/share-links/{link_id}/preset", response_model=LinkPresetApplyResult)
+def apply_link_preset(
+    trip_id: Identifier,
+    link_id: Identifier,
+    payload: SharingPresetApplyRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    if_match: Annotated[str | None, Header()] = None,
+) -> LinkPresetApplyResult:
+    result = apply_sharing_preset(trip_id, f"link:{link_id}", payload, session, subject, if_match)
+    assert isinstance(result, LinkPresetApplyResult)
+    return result
+
+
+@router.post("/collections/{collection_id}/members/{member_id}/preset", response_model=MemberPresetApplyResult)
+def apply_collection_member_preset(
+    collection_id: Identifier,
+    member_id: Identifier,
+    payload: SharingPresetApplyRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    if_match: Annotated[str | None, Header()] = None,
+) -> MemberPresetApplyResult:
+    member = _owned_member_of_collection(session, collection_id, member_id, subject)
+    result = apply_sharing_preset(member.trip_id, f"collection:{member.id}", payload, session, subject, if_match)
+    assert isinstance(result, MemberPresetApplyResult)
+    return result

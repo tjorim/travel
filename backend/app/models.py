@@ -202,6 +202,8 @@ class AuditEventKind(StrEnum):
     # Choosing one alternative of a group changes the status of its members at once, and can be undone.
     ALTERNATIVE_CHOOSE = "alternative_group.choose"
     ALTERNATIVE_UNDO_CHOICE = "alternative_group.undo_choice"
+    # Applying a sharing preset rewrites one audience's scope and the visibility of the records it lists at once (#241).
+    AUDIENCE_PRESET_APPLY = "audience.preset_apply"
 
 
 class AuditTargetType(StrEnum):
@@ -882,6 +884,10 @@ class PublicSurface(Base):
     )
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # Display label only (#241): the preset last applied to this audience and when. Nothing that decides what an
+    # audience receives (projection, files, navigation, `access.receivers`) ever reads it.
+    applied_preset: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    applied_preset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -908,6 +914,10 @@ class ShareLink(Base):
     state: Mapped[LinkState] = mapped_column(_enum_column(LinkState, "travel_link_state"), default=LinkState.DRAFT)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # Display label only (#241): the preset last applied to this audience and when. Nothing that decides what an
+    # audience receives (projection, files, navigation, `access.receivers`) ever reads it.
+    applied_preset: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    applied_preset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     token: Mapped[str | None] = mapped_column(String(128), nullable=True)
     token_verifier: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -968,6 +978,10 @@ class CollectionMember(Base):
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # Display label only (#241): the preset last applied to this audience and when. Nothing that decides what an
+    # audience receives (projection, files, navigation, `access.receivers`) ever reads it.
+    applied_preset: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    applied_preset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
