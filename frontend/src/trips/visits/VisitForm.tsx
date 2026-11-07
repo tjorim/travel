@@ -1,3 +1,4 @@
+import { AdvancedSection } from "../../forms/AdvancedSection";
 import { CheckboxField, SelectField, RecordForm, TextField } from "../../forms/fields";
 import { DateField, TimeField } from "../../forms/DateTimeFields";
 import { MarkdownField } from "../../forms/MarkdownField";
@@ -161,29 +162,37 @@ export function VisitForm({
       >
         {(draft) => <VisitRouteHint tripId={tripId} draft={draft} />}
       </record.form.Subscribe>
-      <div className="field-row">
-        <record.form.Field name="shareDatePrecision">
-          {(field) => (
-            <SelectField field={field} label={m.owner_dates_for_visitors()}>
-              {recordPrecisionOptions()}
-            </SelectField>
-          )}
-        </record.form.Field>
-        <record.form.Field name="shareTime">
-          {(field) => (
-            <CheckboxField
-              field={field}
-              label={
-                <>
-                  {m.owner_show_the_time_to_visitors()}{" "}
-                  <small>{m.owner_only_with_full_dates()}</small>
-                </>
-              }
-            />
-          )}
-        </record.form.Field>
-      </div>
-      <p className="help">{m.precision_record_help()}</p>
+      <record.form.Subscribe
+        selector={(state) => state.values.shareTime || state.values.shareDatePrecision !== ""}
+      >
+        {(inUse) => (
+          <AdvancedSection summary={m.sharing_advanced_visit_summary()} inUse={inUse}>
+            <div className="field-row">
+              <record.form.Field name="shareDatePrecision">
+                {(field) => (
+                  <SelectField field={field} label={m.owner_dates_for_visitors()}>
+                    {recordPrecisionOptions()}
+                  </SelectField>
+                )}
+              </record.form.Field>
+              <record.form.Field name="shareTime">
+                {(field) => (
+                  <CheckboxField
+                    field={field}
+                    label={
+                      <>
+                        {m.owner_show_the_time_to_visitors()}{" "}
+                        <small>{m.owner_only_with_full_dates()}</small>
+                      </>
+                    }
+                  />
+                )}
+              </record.form.Field>
+            </div>
+            <p className="help">{m.precision_record_help()}</p>
+          </AdvancedSection>
+        )}
+      </record.form.Subscribe>
     </RecordForm>
   );
 }

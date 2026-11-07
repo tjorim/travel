@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import {
   chooseOption,
+  openAdvanced,
   renderWithOwner,
   resetOfflineDb,
   selectedOption,
@@ -162,6 +163,11 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
   });
   fireEvent.change(screen.getByLabelText("Begintijd (optioneel)"), { target: { value: "18:30" } });
   fireEvent.change(screen.getByLabelText("Eindtijd (optioneel)"), { target: { value: "21:00" } });
+  // Showing the time is an advanced choice: closed, and off, by default.
+  expect(screen.getByRole("button", { name: /^Geavanceerd/ }).getAttribute("aria-expanded")).toBe(
+    "false",
+  );
+  openAdvanced();
   expect(
     screen
       .getByRole("checkbox", { name: /Toon de tijd aan bezoekers/ })
@@ -191,6 +197,7 @@ it("chooses to show the time to visitors", async () => {
     target: { value: "2054-11-21" },
   });
   fireEvent.change(screen.getByLabelText("Begintijd (optioneel)"), { target: { value: "10:00" } });
+  openAdvanced();
   chooseOption("Datums voor bezoekers", "Volledige datums");
   fireEvent.click(screen.getByRole("checkbox", { name: /Toon de tijd aan bezoekers/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));

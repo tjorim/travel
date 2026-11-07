@@ -578,3 +578,15 @@ avatar-group item that loads authenticated blobs, and Base UI has no media primi
 The strip is a plain list of fixed-size tiles (`OwnerImage`, now with a `lazy` option that
 waits for an `IntersectionObserver` before fetching) and a "+N" tile; the preview reuses
 `PreviewDialog` and `RecordDialog` rather than a second dialog.
+
+## Advanced disclosure (#241)
+
+`src/forms/AdvancedSection.tsx` is a composition of the existing Base UI Collapsible
+adapter (`@/ui/collapsible`), styled like the `scope-group` disclosures of Sharing. shadcn and
+Base UI offer no "advanced options" component beyond Collapsible. It holds the controls most
+owners never touch: the trip dates and the `custom` record lists of an audience editor, and
+*Dates for visitors*, *Show the time* and *Also share the address* in the visit, stay and
+location editors. It starts closed only when nothing inside differs from the default, opens by
+itself when something does (a stored choice is never hidden), and never closes by itself; its
+trigger is a button with `aria-expanded`, reachable by keyboard and screen reader, and the panel
+stays mounted so form state is kept.

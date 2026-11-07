@@ -1699,7 +1699,7 @@
   "assets_location_from_media_items_line": "Location from {p0} media item(s)",
   "assets_this_suggestion_has_not_been_saved_line": "{p0} . {p1} . This suggestion has not been saved.",
   "assets_of_selected_line": "{p0} of {p1} selected",
-  "assets_for_everyone_always_appears_here_you_can_select_private_items_bel_line": "{p0} for everyone always appear here; you can select the {p1} private items below for this audience, which automatically sets them to “Choose in Sharing”.",
+  "assets_for_everyone_always_appears_here_you_can_select_private_items_bel_line": "{p0} for everyone always appear here; you can select the {p1} private items under Advanced for this audience, which automatically sets them to “Choose in Sharing”.",
   "assets_of_is_set_to_everyone_or_choose_in_sharing_line": "{p0} of {p1} is set to “Everyone” or “Choose in Sharing”",
   "assets_expires_line": "{p0} · expires {p1} {p2}",
   "assets_previous_view_line": [
@@ -2342,7 +2342,7 @@
   ],
   "exclusions_heading": "Left out of this audience",
   "exclusions_intro": "Everything set to Everyone reaches this audience too. Untick a record to keep it from this audience only; the public page keeps showing it.",
-  "exclusions_visibility_note": "{p0} set to Everyone reach this audience unless you untick them below; you can select the {p1} private items below for this audience, which automatically sets them to “Choose in Sharing”.",
+  "exclusions_visibility_note": "{p0} set to Everyone reach this audience unless you untick them below; you can select the {p1} private items under Advanced for this audience, which automatically sets them to “Choose in Sharing”.",
   "exclusions_show_on_link": "Show on this link",
   "exclusions_show_named": "Show “{name}” on this link",
   "exclusions_group_line": "{p0} of {p1} shown",
@@ -2408,5 +2408,12 @@
   ],
   "audit_exclusions_changed": "Left out of this link: {added} added, {removed} removed.",
   "audit_exclusions_widened": "People with this link now see more: {counts}.",
-  "exclusions_preview_also": "That also hides {counts}, which depend on them."
+  "exclusions_preview_also": "That also hides {counts}, which depend on them.",
+  "sharing_advanced_title": "Advanced",
+  "sharing_advanced_scope_summary": "Trip dates and records chosen only for this audience",
+  "sharing_advanced_trip_dates_help": "Decides whether visitors read the trip’s start and end dates at all. “Dates shown to this audience” caps them too: the coarser setting wins.",
+  "sharing_advanced_custom_heading": "Records for this audience only",
+  "sharing_advanced_custom_help": "A private record you select here is set to “Choose in Sharing” and reaches only the audiences that list it.",
+  "sharing_advanced_visit_summary": "Dates for visitors and the time",
+  "sharing_advanced_location_summary": "Also share the address"
 }
