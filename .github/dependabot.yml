@@ -21,13 +21,14 @@ updates:
       - "platform:backend"
     versioning-strategy: "increase"
     groups:
-      # fastmcp pulls in mcp and mcp-types; keep them moving together
+      # fastmcp pulls in mcp, mcp-types and its CLI (cyclopts); keep them moving together
       fastmcp:
         patterns:
           - "fastmcp"
           - "fastmcp-slim"
           - "mcp"
           - "mcp-types"
+          - "cyclopts"
       # Keep Pydantic, its validation core, and settings integration together
       pydantic:
         patterns:
@@ -44,6 +45,22 @@ updates:
         patterns:
           - "markdown-it-py"
           - "mdit-py-plugins"
+      # psycopg[binary] installs psycopg-binary; they share one release train
+      psycopg:
+        patterns:
+          - "psycopg"
+          - "psycopg-binary"
+      # timezonefinder ships its data as a separate package
+      timezonefinder:
+        patterns:
+          - "timezonefinder"
+          - "timezonefinder-data"
+      # Token and OAuth handling: authlib depends on joserfc, PyJWT is the direct JWT library
+      auth:
+        patterns:
+          - "authlib"
+          - "joserfc"
+          - "pyjwt"
 
   # pnpm projects use Dependabot's npm ecosystem support.
   - package-ecosystem: "npm"
@@ -76,11 +93,10 @@ updates:
         patterns:
           - "vite"
           - "@vitejs/plugin-react"
-      # Group TanStack Query packages (devtools must track react-query's query-core; duplicate copies drift apart)
+      # Group TanStack packages (devtools must track react-query's query-core; router and form ship on the same train)
       tanstack-query:
         patterns:
-          - "@tanstack/react-query"
-          - "@tanstack/react-query-devtools"
+          - "@tanstack/*"
       testing:
         patterns:
           - "@testing-library/*"
@@ -88,6 +104,21 @@ updates:
           - "vitest"
           - "@playwright/*"
           - "@axe-core/*"
+          - "msw"
+          - "happy-dom"
+          - "fake-indexeddb"
+      # The shadcn CLI and its lint companion; Base UI runtime stays ungrouped so its regressions are attributable
+      shadcn-cli:
+        patterns:
+          - "shadcn"
+          - "@shadcn/*"
+      # Transitive packages that Dependabot would otherwise open one PR each for
+      transitive:
+        patterns:
+          - "baseline-browser-mapping"
+          - "enhanced-resolve"
+          - "ip-address"
+          - "@napi-rs/wasm-runtime"
       oxc:
         patterns:
           - "oxlint"
@@ -163,3 +194,11 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
+    groups:
+      # Toolchain setup actions in ci.yml; they change the same job setup
+      setup-actions:
+        patterns:
+          - "astral-sh/setup-uv"
+          - "pnpm/action-setup"
+          - "actions/setup-node"
+          - "actions/setup-python"
