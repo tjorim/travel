@@ -167,6 +167,15 @@ collection member shows its visitors more, so the save is refused with 409
 share-link update, a query parameter of `PUT /collections/{id}/members/{member_id}`, an MCP
 argument). The change is audited with record ids and counts only.
 
+A sharing preset (`story_only`, `story_and_route`, `planned_trip`, [#241](../docs/decisions/241-sharing-presets.md))
+is a template over those same mechanisms for one audience (the public view, a hidden link or a collection
+member): `GET /trips/{trip_id}/sharing-presets` lists the definitions, `POST …/preset/review` reviews one without
+storing anything and `POST …/preset` applies a reviewed one (`fingerprint`, `confirm_widening`, `If-Match`; 409
+`preset_preview_is_stale`, `preset_too_large` and `preset_widening_needs_acknowledgement`). MCP: `list_sharing_presets`
+and `preview_sharing_preset` (read) and `apply_sharing_preset` (write, `confirm`) call the same handlers. A preset
+writes no `everyone`, changes no other audience and adds no field to any allowlist; see
+[the domain model](../docs/domain-model.md#sharing-presets).
+
 `GET /api/health` checks database connectivity. FastAPI publishes the full
 OpenAPI description at `/openapi.json` and interactive development docs at
 `/docs`; production routing may choose not to expose the latter.

@@ -513,3 +513,62 @@ Safety rules this adds to the policy:
 - The warning carries counts only (`count`), never a title, label or owner text.
 - Route departure days are not limited by any audience's date setting, so a route with only a
   day and no time or carrier is not counted (its day is shown in full). Tracked in #262.
+
+## Sharing presets are templates over the allowlists (#241)
+
+Amended 2026-11-07, issue #241 (the owner chose on 2026-11-06: presets with per-record
+exceptions, today's fine-grained controls under Advanced). The design, the six answered
+questions and the tests are in [the design note](241-sharing-presets.md); the behaviour is
+in [the domain model](../domain-model.md#sharing-presets).
+
+A **sharing preset** (`story_only`, `story_and_route`, `planned_trip`; code constants,
+`travel/sharing-preset@1`) is an audience-scoped template. Applying one to the public view,
+one hidden link or one collection member plans, from the trip's records as they are now,
+the writes that make that audience receive the preset's records, shows them for review and
+then writes them through the mechanisms this policy already defines: `custom` visibility
+plus the audience's `items`, the audience's `exclude` (#237) and its
+`defaults.date_precision` (#236).
+
+This amendment changes no allowlist and no rule of this policy:
+
+- **No field is added.** A preset only chooses records and caps dates. The server-side
+  list of shareable fields per kind, and what a field can reveal, are untouched; no
+  address, booking, note, document, time (`share_time`) or `share_address` is set by a
+  preset, and a location (and with it an address) is never selected.
+- **`everyone` keeps its meaning**: delivered to the public view and every hidden link and
+  collection member. A preset never writes `everyone`, never changes another audience
+  (checked before the write and rolled back otherwise) and is not a filter: a record set
+  to `everyone` later still reaches an audience that was given a preset. The label of the
+  last applied preset is display-only; delivery, files, navigation, `access.receivers`
+  and every visitor response never read or carry it.
+- **New records stay private.** A preset is applied once; nothing joins an audience because
+  a preset was applied.
+- **Existing scopes are unchanged.** The migration adds two nullable label columns; every
+  stored scope and record delivers exactly what it did.
+- **Widening needs the acknowledgement of decision 27.** Applying a preset to a live
+  audience always shows the review; one that would newly deliver records is refused with
+  `409 preset_widening_needs_acknowledgement` until `confirm_widening`. The apply also
+  carries the review's fingerprint (`409 preset_preview_is_stale`) and the audience's
+  revision (decision 15). A draft or unpublished audience delivers nothing yet.
+- **One audit event per apply** (`audience.preset_apply`, or
+  `collection.member_preset_apply`), with ids and counts only.
+- **The owner and MCP share one handler**: `list_sharing_presets`, `preview_sharing_preset`
+  and `apply_sharing_preset` (a confirmed write) call the same functions as the REST routes
+  and are found through the layered discovery of decision 196.
+
+Answers to the open questions of the design note (taken under the owner's delegation on
+2026-11-07; the owner can overrule any by editing the issue):
+
+1. Records created later do **not** join a preset.
+2. Re-applying **resets** the exceptions, after listing them in the review.
+3. Photos: **approved photos attached to the included updates** only; loose photos keep
+   their own visibility.
+4. A new hidden link **starts as the public baseline**, with an optional picker whose
+   first choice is *Same as the public page*.
+5. The label lives in **nullable columns** (migration 022), not in the audit trail.
+6. `everyone` records outside a preset on the public view are **left as they are and
+   listed with the way out**.
+
+The [publication safety check](../publication-safety-check.md) now starts from the
+audience's preset and exceptions list: 7 items per audience (4 more for a collection link)
+instead of 18 (24 with the collection section).

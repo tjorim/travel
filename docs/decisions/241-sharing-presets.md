@@ -1,11 +1,13 @@
 # Sharing Presets With Per-Record Exceptions
 
-Design note, 2026-11-07, issue #241. **Status: steps 1 to 3 of 4 implemented (planner
-and read-only review; apply, migration 022 and audit; the owner interface); the
-shorter check is not.** See
+Design note, 2026-11-07, issue #241. **Status: implemented** (all four steps: planner and
+read-only review; apply, migration 022 and audit; the owner interface; documents, the shorter
+check and the final regression). See
 [Step 1 implemented](#step-1-implemented-planner-and-read-only-review),
-[Step 2 implemented](#step-2-implemented-apply-migration-and-audit) and
-[Step 3 implemented](#step-3-implemented-the-owner-interface) at the end. The owner decided on 2026-11-06 for presets with
+[Step 2 implemented](#step-2-implemented-apply-migration-and-audit),
+[Step 3 implemented](#step-3-implemented-the-owner-interface) and
+[Step 4 implemented](#step-4-implemented-documents-the-shorter-check-and-the-final-regression)
+at the end, and [the acceptance list](#acceptance-of-241-and-where-it-is-satisfied). The owner decided on 2026-11-06 for presets with
 per-record exceptions and today's fine-grained controls under an Advanced view
 (option a of #241); this note designs the presets and does not reopen that.
 The Advanced view and the single date control shipped first (see the end of this
@@ -588,3 +590,53 @@ Shipped (Part of #241). Frontend only; the shorter safety check is step 4. No ba
   `e2e/sharing-presets.spec.ts` with axe (a draft link in both locales and themes at 390 px, an active link needing the
   acknowledgement and the public page at 1440 px); `e2e/mock-api.ts` gains `mockSharingPresets`. Screenshots were checked
   locally (not committed).
+
+
+## Step 4 implemented: documents, the shorter check and the final regression
+
+Shipped (Closes #241). Documents and tests only; no behaviour changed.
+
+- **`docs/publication-safety-check.md`** now starts from the audience, its preset and its exceptions list instead of one
+  line per kind of record. It opens with *What the app already guarantees* (nothing to tick: no address, booking, note
+  or document delivered, approved copies only, expiry and revocation, widening acknowledgement, a preset never writing
+  `everyone` or touching another audience, per-audience date caps, per-link exclusions, and, said plainly, that
+  `everyone` means everyone and a preset is a template, so a later `everyone` record still reaches a link). What
+  remains are the checks a person must make: the preset's review, the exceptions list and the `everyone` records,
+  the Sharing check lines (dates, future transport, what a link leaves out), reading the rendered preview for
+  words, images, places and lines, and lifetime and channel. **Count: 7 items per audience, plus 4 for a collection
+  link, against 18 (24 with the collection section) before.** The issue's "about 15" was approximate; 18 was the
+  figure for a trip view or link.
+- **Decision 36** has a dated amendment (2026-11-07): presets as audience-scoped templates over the existing
+  allowlists, that they change no allowlist or what a field can reveal, and the six answers.
+- **`docs/domain-model.md`** was read against `sharing_presets.py`, the routers and the picker. Fixes: ideas and
+  cancelled plans are never selected and not listed (only a visit that shows its time, a blocked record and an
+  unapproved photo copy are listed as needing a decision); a review of a never-saved public view creates nothing and
+  an apply creates it unpublished; added what a preset is not (a later `everyone` record still reaches the
+  audience), and a short description of the owner interface and MCP discovery. `backend/README.md` describes the
+  routes and tools.
+- **Final regression** (`tests/test_sharing_presets_apply.py::test_after_each_preset_visitors_receive_the_preset_and_no_field_outside_the_allowlists`):
+  a synthetic trip with a private value planted in every place a preset could leak one (location address, notes and
+  display name; visit and stay notes; property, booking reference, contact; route booking reference, class, notes
+  and an attached document; update private notes) is first shared with everything to learn the keys the allowlists
+  can deliver. Then each preset is applied, through the real routes, to the published public view and to one active
+  hidden link, with a second link as bystander. For each visitor response: exactly the preset's records, no key
+  outside the maximal allowlist, none of the forbidden field names, no planted value, preset id or canonical id
+  anywhere in the text, dates at month; and the bystander's response is byte-identical before and after. It
+  found no bug. The existing tests keep covering `applied_preset` and `preset_exceptions` on the collection
+  surfaces.
+- **MCP** (acceptance item 5): `list_sharing_presets`, `preview_sharing_preset` and `apply_sharing_preset` call the
+  same handlers as the REST routes (`routers/sharing_presets.py`); the tests assert the manifest (read, read, write
+  with confirmation), the same review, `preset_widening_needs_acknowledgement` and `preset_preview_is_stale` as JSON
+  in the error, the audit event and creation with a preset. Gap found and fixed: the layered discovery tests had no
+  preset phrasing, so three `search_tools` queries were added.
+
+### Acceptance of #241 and where it is satisfied
+
+| Acceptance item | Where |
+|---|---|
+| A preset's effective output is covered by projection tests and shown in the Sharing check and preview before it goes live | `test_sharing_presets.py` (each preset's target, `test_the_review_matches_what_delivered_returns_for_the_planned_scope`, the randomised property test, no other audience changes), `test_sharing_presets_apply.py` (the final regression above); the review dialog (`PresetSection.test.tsx`, `e2e/sharing-presets.spec.ts`) and the Sharing check's "Preset: …" line (`PublicationManager.test.tsx`) show it before *Apply*; the rendered preview stays the confirmation step |
+| Existing scopes and records keep their output after migration; presets only change what new choices default to | Migration 022 adds nullable columns only (`test_sharing_preset_label_migration_postgres.py`), `test_the_label_is_never_read_by_delivery`, the legacy golden tests (`test_legacy_scope_golden.py`, `test_legacy_exclusion_golden.py`), answer 1 (new records stay private) |
+| Switching preset on a live audience asks for confirmation, with the widening warning from #27 and #32 | `test_widening_a_live_audience_needs_an_acknowledgement_and_a_draft_does_not`, `test_a_refused_widening_does_not_claim_the_revision`, the review dialog's acknowledgement (`PresetSection.test.tsx`), decision 36 amendment |
+| `docs/domain-model.md`, decision 36 and `docs/publication-safety-check.md` describe presets and the shorter check | Step 4 (this PR) |
+| MCP tools expose the same behaviour through the shared handlers | `test_sharing_presets_are_reviewed_over_mcp_without_storing_anything`, `test_a_sharing_preset_is_applied_over_mcp_with_the_same_rules_as_the_application`, the three discovery queries in `test_mcp_server.py` |
+| Both locales and themes, narrow layouts, keyboard and screen reader | `e2e/sharing-presets.spec.ts` with axe (both locales and themes at 390 px, 1440 px), `pnpm locale:audit`, the dialog's focus return and guarded dismissal (`PresetSection.test.tsx`) |

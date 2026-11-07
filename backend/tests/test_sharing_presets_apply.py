@@ -864,3 +864,232 @@ def test_a_new_collection_member_can_start_from_a_preset(world: World, active: b
     assert member["delivered_records"] > 0
     assert audit_details(world, "member")["on_creation"] is True
     assert audit_details(world, "member")["widening_acknowledged"] is False
+
+
+# --- the final regression: what visitors receive after each preset (step 4 of #241) --------------------
+
+NAMES = {
+    "A": "Alpha Town",
+    "B": "Beta City",
+    "V1": "Visit A",
+    "V2": "Visit B",
+    "V3": "Visit Hotel",
+    "V4": "Visit Station",
+    "ST1": "2054-04",
+    "ST2": "2054-05",
+    "R1": "Rail A-B",
+    "R2": "Bus hotel-station",
+    "U1": "Update A",
+    "U2": "Update Station",
+    "U3": "Update Plain",
+    "P1": "Photo of A",
+    "P2": "Photo of station",
+    "P3": "Photo of plain",
+}
+KIND_OF = {
+    "A": "places",
+    "B": "places",
+    "V1": "visits",
+    "V2": "visits",
+    "V3": "visits",
+    "V4": "visits",
+    "ST1": "stays",
+    "ST2": "stays",
+    "R1": "routes",
+    "R2": "routes",
+    "U1": "updates",
+    "U2": "updates",
+    "U3": "updates",
+    "P1": "media",
+    "P2": "media",
+    "P3": "media",
+}
+# Values the owner keeps for themselves. None of them may appear in any visitor response, whatever preset was applied.
+PRIVATE_VALUES = (
+    "CANARY-ADDRESS-1",
+    "CANARY-ADDRESS-2",
+    "CANARY-POSTAL",
+    "CANARY-LOCATION-NOTE",
+    "CANARY-DISPLAY-NAME",
+    "CANARY-VISIT-NOTE",
+    "CANARY-PROPERTY",
+    "CANARY-BOOKING",
+    "CANARY-CONTACT",
+    "CANARY-STAY-NOTE",
+    "CANARY-CLASS",
+    "CANARY-ROUTE-NOTE",
+    "CANARY-DOCUMENT-TITLE",
+    "CANARY-DOCUMENT.txt",
+    "PRIVATE NOTE",
+)
+# Field names that never appear in a visitor response (the allowlists hold none of them).
+FORBIDDEN_KEYS = (
+    "address_line1",
+    "address_line2",
+    "postal_code",
+    "display_name",
+    "private_notes",
+    "notes",
+    "property_name",
+    "booking_reference",
+    "contact_details",
+    "travel_class",
+    "document_asset_ids",
+    "original_filename",
+    "owner_subject",
+    "share_address",
+    "share_time",
+    "applied_preset",
+    "preset_exceptions",
+    "visibility",
+    "revision",
+    "scope",
+)
+
+
+def plant_private_values(world: World) -> None:
+    """Fill every private field a preset must never deliver, on records the presets do select."""
+    base = world.base
+    patch = world.owner.patch
+
+    def change(path: str, body: dict) -> None:
+        response = patch(f"{base}/{path}", json=body)
+        assert response.status_code == 200, response.text
+
+    for name in ("H", "S"):
+        change(
+            f"locations/{world.ids[name][1]}",
+            {
+                "address_line1": "CANARY-ADDRESS-1",
+                "address_line2": "CANARY-ADDRESS-2",
+                "postal_code": "CANARY-POSTAL",
+                "notes": "CANARY-LOCATION-NOTE",
+                "display_name": "CANARY-DISPLAY-NAME",
+            },
+        )
+    for name in ("V1", "V2", "V3", "V4"):
+        change(f"visits/{world.ids[name][1]}", {"notes": "CANARY-VISIT-NOTE"})
+    for name in ("ST1", "ST2"):
+        change(
+            f"stays/{world.ids[name][1]}",
+            {
+                "property_name": "CANARY-PROPERTY",
+                "booking_reference": "CANARY-BOOKING",
+                "contact_details": "CANARY-CONTACT",
+                "notes": "CANARY-STAY-NOTE",
+            },
+        )
+    document = world.owner.post(
+        f"{base}/documents/uploads",
+        data={"title": "CANARY-DOCUMENT-TITLE", "document_kind": "booking"},
+        files={"file": ("CANARY-DOCUMENT.txt", b"private booking details", "text/plain")},
+    )
+    assert document.status_code == 201, document.text
+    for name in ("R1", "R2"):
+        change(
+            f"routes/{world.ids[name][1]}",
+            {
+                "booking_reference": "CANARY-BOOKING",
+                "travel_class": "CANARY-CLASS",
+                "notes": "CANARY-ROUTE-NOTE",
+                "document_asset_ids": [document.json()["id"]],
+            },
+        )
+
+
+def all_keys(value: object) -> set[str]:
+    """Every object key anywhere in a JSON document."""
+    if isinstance(value, dict):
+        return set(value) | {key for item in value.values() for key in all_keys(item)}
+    if isinstance(value, list):
+        return {key for item in value for key in all_keys(item)}
+    return set()
+
+
+def visible(document: dict) -> dict[str, set[str]]:
+    """What a delivered document shows, by the name that identifies each record."""
+    media = {item["id"]: item["caption"] for item in document["media"]}
+    return {
+        "places": {item["label"] for item in document["places"]},
+        "visits": {item["title"] for item in document["visits"]},
+        "stays": {item["starts_on"] for item in document["stays"]},
+        "routes": {item["label"] for item in document["routes"]},
+        "updates": {item["title"] for item in document["updates"]},
+        "media": set(media.values()),
+    }
+
+
+def expected_visible(target: set[str]) -> dict[str, set[str]]:
+    shown: dict[str, set[str]] = {key: set() for key in ("places", "visits", "stays", "routes", "updates", "media")}
+    for name in target:
+        shown[KIND_OF[name]].add(NAMES[name])
+    return shown
+
+
+def test_after_each_preset_visitors_receive_the_preset_and_no_field_outside_the_allowlists(world: World) -> None:
+    """The visitor-facing end of the whole feature, on the real routes and the real documents.
+
+    The same synthetic trip, with private values planted in every place a preset could leak one, is first shared with
+    everything to learn which fields the allowlists can deliver at all. Then each preset is applied to the public view
+    and to one hidden link (a second link, never given a preset, is the bystander): their documents must hold exactly
+    the preset's records, no key outside that allowlist, no private value or canonical id, and the bystander must be
+    byte-identical before and after."""
+    add_extras(world)
+    plant_private_values(world)
+    anonymous = TestClient(world_app())
+    canonical_ids = {record_id for _, record_id in world.ids.values()} | {world.id}
+
+    for kind, record_id in world.ids.values():  # whatever can be shared right now (not a cancelled visit or an idea)
+        world.owner.put(f"{world.base}/visibility/{kind}/{record_id}", json={"visibility": "everyone"})
+    slug = world.publish()
+    maximal = all_keys(anonymous.get(f"/api/public/trips/{slug}").json())
+    assert maximal and not maximal & set(FORBIDDEN_KEYS)
+    everything(world, "private")
+
+    link, token = world.active_link()
+    bystander, bystander_token = world.active_link()
+    public_scope = world.owner.get(f"{world.base}/public-projection").json()
+    assert public_scope["surface_state"] == "published"
+    bystander_before = anonymous.get(f"/api/shared/{bystander_token}").text
+
+    for preset in PRESET_IDS:
+        for path, read in (
+            ("public-projection", f"/api/public/trips/{slug}"),
+            (f"share-links/{link['id']}", f"/api/shared/{token}"),
+        ):
+            target = Target(
+                "public" if path == "public-projection" else "link",
+                "",
+                f"{world.base}/{path}/preset/review",
+                f"{world.base}/{path}/preset",
+                dict,
+            )
+            response = apply(world, target, preset, confirm_widening=True)
+            assert response.status_code == 200, response.text
+            visitor = anonymous.get(read)
+            assert visitor.status_code == 200, visitor.text
+            document = visitor.json()
+
+            # Exactly the preset's records are shown (locations and loose photos stay private here), and no ideas,
+            # cancelled visits, timed visits or unapproved photos ride along.
+            assert visible(document) == expected_visible(TARGETS[preset])
+            # No field the maximal allowlist does not already deliver, and none of the owner-only ones.
+            assert all_keys(document) <= maximal
+            assert not all_keys(document) & set(FORBIDDEN_KEYS)
+            # No private value, label, canonical id or document anywhere in the response text.
+            for value in (*PRIVATE_VALUES, preset, *canonical_ids):
+                assert value not in visitor.text, (preset, path, value)
+            assert "application/pdf" not in visitor.text and "/documents/" not in visitor.text
+            # Dates stay at the preset's cap: month precision, never a day.
+            assert all(len(stay["starts_on"]) == 7 for stay in document["stays"])
+            assert all(len(visit["starts_on"]) == 7 for visit in document["visits"])
+
+        # A preset applied to one audience never widens another.
+        assert anonymous.get(f"/api/shared/{bystander_token}").text == bystander_before
+        assert visible(anonymous.get(f"/api/shared/{bystander_token}").json()) == expected_visible(set())
+
+    # The public page and the preview agree, and the index lists nothing the preset did not select.
+    index = anonymous.get("/api/public/trips")
+    assert index.status_code == 200
+    for value in (*PRIVATE_VALUES, "applied_", "preset"):
+        assert value not in index.text
