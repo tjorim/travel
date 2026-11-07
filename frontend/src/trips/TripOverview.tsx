@@ -5,7 +5,7 @@ import { sectionPath } from "./workspace-sections";
 import { Badge as StatusBadge } from "@/ui/badge";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { dayjs } from "../dayjs";
 import { useTripResource } from "../query/owner-queries";
@@ -183,7 +183,8 @@ export function LocalTimes({
   );
 }
 
-export function TripOverview({ trip }: { trip: Trip }) {
+/** `action` sits on the first heading row, beside the day count, so a link to the rest of the trip takes no row of its own. */
+export function TripOverview({ trip, action }: { trip: Trip; action?: ReactNode }) {
   const locale = useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
@@ -213,22 +214,27 @@ export function TripOverview({ trip }: { trip: Trip }) {
   const agenda = buildAgendaItems(stays, routes, visitsQuery.data ?? []);
   const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
   const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
-  if (!trip.starts_on && !badges.length && !stays.length && !routes.length) return null;
+  if (!trip.starts_on && !badges.length && !stays.length && !routes.length && !action) return null;
   return (
     <section
       className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0"
       aria-label={m.owner_trip_overview()}
     >
-      {progress && (
-        <strong>
-          {progress.kind === "before"
-            ? m.readiness_departure({ count: progress.days })
-            : progress.kind === "finished"
-              ? m.readiness_finished()
-              : progress.total
-                ? m.readiness_underway({ day: progress.day, total: progress.total })
-                : m.readiness_day({ day: progress.day })}
-        </strong>
+      {(progress || action) && (
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          {progress && (
+            <strong>
+              {progress.kind === "before"
+                ? m.readiness_departure({ count: progress.days })
+                : progress.kind === "finished"
+                  ? m.readiness_finished()
+                  : progress.total
+                    ? m.readiness_underway({ day: progress.day, total: progress.total })
+                    : m.readiness_day({ day: progress.day })}
+            </strong>
+          )}
+          {action}
+        </div>
       )}
       {overdue > 0 && (
         <p className="m-0">

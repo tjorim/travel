@@ -124,6 +124,11 @@
   --color-travel-error-ink: #8a2e27;
   --color-travel-warning: #b68110;
   --color-travel-warning-surface: #fff6d9;
+  --shadow-travel-card: 0 3px 12px #19342d08;
+}
+
+/* The map reads these from the document at run time (themeColor), so Tailwind must keep them even with no utility. */
+@theme static {
   --color-travel-map-blue: #63b3ff;
   --color-travel-map-gold: #d4a017;
   --color-travel-map-orange: #e37749;
@@ -133,7 +138,6 @@
   --color-travel-map-building: #d9d3c5;
   --color-travel-map-mint: #6ee7c7;
   --color-travel-map-yellow: #ffd166;
-  --shadow-travel-card: 0 3px 12px #19342d08;
 }
 
 :root[data-theme="dark"] {

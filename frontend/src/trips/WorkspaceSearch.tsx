@@ -84,13 +84,14 @@ export function WorkspaceSearch({ tripId }: { tripId: string }) {
       ),
     ]);
   return (
-    <Field className="flex items-center gap-2.5 max-[679px]:grid max-[679px]:gap-1 min-[680px]:max-w-md">
+    <Field className="flex items-center gap-2.5 min-[680px]:max-w-md">
       <FieldLabel className="shrink-0 text-sm font-bold text-travel-muted">
         {m.owner_jump_to()}
       </FieldLabel>
       <div className="min-w-0 flex-1">
         <AsyncSearchSelect
           ariaLabel={m.owner_jump_to()}
+          placeholder={m.owner_search_this_trip()}
           value=""
           defaultOptions={destinations()}
           loadOptions={search}

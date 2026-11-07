@@ -84,26 +84,40 @@ export function HomeTripCard({
   );
 }
 
-/** A trip in the owner's list: the whole card is one link, so it opens in a new tab like any page. */
-export function ListTripCard({ trip, state }: { trip: Trip; state: TripState }) {
+/**
+ * A trip in the owner's list: the whole card is one link, so it opens in a new tab like any page. `wide` (a list of
+ * one) sets the cover beside the text from 680px, so a lone card fills a reading-width column without stretching.
+ */
+export function ListTripCard({
+  trip,
+  state,
+  wide = false,
+}: {
+  trip: Trip;
+  state: TripState;
+  wide?: boolean;
+}) {
   useLocale();
   return (
     <Link
       className={cn(
         SURFACE,
         ACCENT[state],
-        "gap-3 text-inherit no-underline transition-colors hover:bg-travel-hover focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus",
+        wide ? "gap-4 min-[680px]:grid min-[680px]:grid-cols-2 min-[680px]:items-center" : "gap-3",
+        "text-inherit no-underline transition-colors hover:bg-travel-hover focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus",
       )}
       to={`/trips/${encodeURIComponent(trip.id)}`}
     >
       <TripCover trip={trip} />
-      <TripStatePill state={state} />
-      <h4 className="m-0 line-clamp-3 text-xl leading-tight tracking-tight">{trip.title}</h4>
-      <p className="m-0 mt-auto text-sm leading-normal text-travel-muted">
-        {[tripDateRange(trip), m.owner_travel_update_count({ count: trip.travel_updates.length })]
-          .filter(Boolean)
-          .join(" · ")}
-      </p>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <TripStatePill state={state} />
+        <h4 className="m-0 line-clamp-3 text-xl leading-tight tracking-tight">{trip.title}</h4>
+        <p className="m-0 mt-auto text-sm leading-normal text-travel-muted">
+          {[tripDateRange(trip), m.owner_travel_update_count({ count: trip.travel_updates.length })]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      </div>
     </Link>
   );
 }

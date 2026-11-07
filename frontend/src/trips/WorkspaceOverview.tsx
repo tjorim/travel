@@ -17,17 +17,19 @@ export function WorkspaceOverview({ trip, areas, mapFocus, onOpenMapRecord }: Se
   useLocale();
   return (
     <>
-      <div className="flex justify-end">
-        <Link
-          className="secondary action-link"
-          to={`/trips/${encodeURIComponent(trip.id)}/details`}
-        >
-          {m.owner_complete_private_overview()}
-        </Link>
-      </div>
       <div className="travel-overview-split">
         <div className="min-w-0 empty:hidden min-[1100px]:col-start-1 min-[1100px]:row-start-1">
-          <TripOverview trip={trip} />
+          <TripOverview
+            trip={trip}
+            action={
+              <Link
+                className="secondary action-link"
+                to={`/trips/${encodeURIComponent(trip.id)}/details`}
+              >
+                {m.owner_complete_private_overview()}
+              </Link>
+            }
+          />
           <FirstSteps trip={trip} areas={areas} />
         </div>
         <div

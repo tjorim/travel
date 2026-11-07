@@ -43,6 +43,12 @@ it("offers every tab and every block inside a tab", async () => {
     expect(await screen.findByRole("option", { name })).toBeTruthy();
 });
 
+it("says what the empty field searches, while keeping its label as the name", async () => {
+  render();
+  const search = await screen.findByRole("combobox", { name: "Ga naar" });
+  expect(search.getAttribute("placeholder")).toBe("Zoek in deze reis");
+});
+
 it("goes to a block with its hash, and asks it to expand", async () => {
   const { router } = render();
   await screen.findByRole("combobox", { name: "Ga naar" });

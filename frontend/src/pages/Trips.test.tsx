@@ -2,6 +2,7 @@
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { parseFlagParam } from "../router/search-params";
@@ -91,7 +92,10 @@ vi.mock("../trips/TripTaskManager", () => ({
   ),
 }));
 vi.mock("../library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
-vi.mock("../trips/TripOverview", () => ({ TripOverview: () => null }));
+// The overview only passes its action through: the link beside its heading is what the workspace tests check.
+vi.mock("../trips/TripOverview", () => ({
+  TripOverview: ({ action }: { action?: ReactNode }) => <>{action}</>,
+}));
 
 const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({
   id,

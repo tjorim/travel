@@ -1,3 +1,4 @@
+import { mapErrorReporter } from "./map-errors";
 import { mapMessages, useMapMessages } from "./map-messages";
 import { textNotice, useFeedback } from "./query/feedback";
 import { useLocale } from "./locale";
@@ -649,15 +650,25 @@ export function TripMap({
           );
           setReady(true);
         });
-        created.on("error", () => {
-          if (!disposed)
+        // Only a failure that leaves the owner without a map gets a notice; see mapErrorReporter.
+        const reporter = mapErrorReporter({
+          style: () =>
+            setError(
+              textNotice(() => m.owner_the_map_style_could_not_be_loaded_use_the_route_in_words()),
+            ),
+          tiles: () =>
             setError(
               textNotice(() =>
-                created.isStyleLoaded()
-                  ? m.owner_map_tiles_could_not_be_fully_loaded_the_route_in_words_remains_available()
-                  : m.owner_the_map_style_could_not_be_loaded_use_the_route_in_words(),
+                m.owner_map_tiles_could_not_be_fully_loaded_the_route_in_words_remains_available(),
               ),
-            );
+            ),
+          clear: () => setError(""),
+        });
+        created.on("sourcedata", (event) => {
+          if (event.tile && !disposed) reporter.tileLoaded();
+        });
+        created.on("error", (event) => {
+          if (!disposed) reporter.error(event, Boolean(created.isStyleLoaded()));
         });
       })
       .catch(() => {

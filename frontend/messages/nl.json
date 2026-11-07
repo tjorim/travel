@@ -314,6 +314,7 @@
   "breadcrumb": "Kruimelpad",
   "owner_capture_in_trip": "Vastleggen in deze reis",
   "owner_jump_to": "Ga naar",
+  "owner_search_this_trip": "Zoek in deze reis",
   "owner_jump_more_matches": "Nog {p0} in {p1}: typ verder om te verfijnen",
   "owner_prepare": "Voorbereiden",
   "owner_manage_tasks_in_prepare": "Beheren bij Voorbereiden",
