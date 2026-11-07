@@ -2,121 +2,134 @@
 
 Run this short review before publishing a trip's public view, activating or
 rotating a named share link or collection link, adding a trip to a live
-collection, or widening an already-live scope. The server
-enforces the scope; this check is about choosing it deliberately.
+collection, or widening an already-live scope. The server enforces the scope;
+this check is about choosing it deliberately.
 
-## Before publishing or activating
+The check starts from **the audience** (the public view, one hidden link or one
+collection member), its **preset** and its **exceptions list**, not from one
+line per kind of record. The app already counts, lists and renders what the
+audience receives; you confirm that result and read the words only a person can
+judge. There are **7 items per audience** (and 4 more for a collection link).
+The earlier check had 18 items for a trip view or link and 24 with the
+collection section ([#241](decisions/241-sharing-presets.md)).
 
-- [ ] Open the rendered preview in the publication controls and read every
-      shown item as a stranger would, then inspect the delivered fields. Do
-      not rely only on the list of ticked items.
-- [ ] The audience editor keeps what most audiences need in view (title,
-      summary, *Dates shown to this audience*, and for a link what it leaves
-      out). Records chosen for one audience only ("Aangepast") and the trip
-      dates sit under *Advanced*, which opens by itself when the audience
-      already uses them: do not skip the Sharing check or the preview because
-      *Advanced* is closed.
-- [ ] List every record set to "Iedereen" (`everyone`), in "Zichtbaarheid per
-      onderdeel" in Delen: it reaches the public page and every hidden link
-      without being ticked, so read each one as a stranger would. "Privé"
-      records reach nobody.
-- [ ] Check that no shared text (titles, summaries, stage summaries, the text
-      written for visitors in a reisupdate, public location names, captions,
-      route labels) contains an exact
-      accommodation, home or meeting address, a booking or confirmation code,
-      a ticket document, a travel-party name or contact detail, or a live or
-      near-real-time location. A selected route may show its
-      mode, its two areas, a carrier, flight/service number, schedule, status
-      and drawn line, but never a location's address, a booking code, travel
-      class, notes or document.
-- [ ] Choose trip dates only at the precision you intend to share (year,
-      month or day), and prefer areas and deliberately drawn routes. The trip
-      dates control, *How precise can the travel dates be?*, sits under
-      *Advanced* in the audience editor; it is hidden by default, and the editor
-      opens *Advanced* by itself when the audience already shows them.
-- [ ] Set *Dates shown to this audience* for the public view and each link. It
-      caps every date, the trip dates included, and the coarser of it and a
-      record's own setting always applies. Read the Sharing check's date lines
-      for the effective result before publishing, and before using *Follow the
-      audience's precision*, which can show finer dates to a live audience.
-- [ ] Before the trip starts, read the Sharing check's future lines for each audience (the same lines appear in the
-      preview). A route with an exact time or a carrier shows that schedule, and dates shown by day show the
-      day; the check counts them, never their titles, and only warns (#231). Until you leave, set those routes
-      to *Privé* and *Dates shown to this audience* to month. The lines disappear once the trip has started or
-      ended. A route's departure day is shown in full whatever the audience's date setting, and the check counts
-      it only when the route also has a time or a carrier, so read such routes in the preview as a stranger would
-      (#262 decides whether route days should follow the audience's setting).
-- [ ] A hidden link receives everything set to Everyone unless you untick it in
-      that link's editor. Read the Sharing check's *Leaves out N records* line
-      for each link: unticking an area or location also hides what uses it, an
-      update also hides its photos, and the cover only shows where its photo
-      does. The public page is the baseline and cannot leave anything out.
-      Removing a left-out record from an active link asks you first, because
-      its visitors then see more. An exclusion hides records, not words: a name
-      you wrote yourself, such as in the trip summary or another record's title,
-      stays in that text, so read the link's preview as a stranger would.
-- [ ] A reisupdate shares only its title, the text written for visitors, its
-      date and its area; never its private notes. Read the text as a stranger
-      would, and remember the date precision applies.
-- [ ] A shared location (a monument, a hot spring) shows its public name, city and
-      point. Do not share a place that is a home, a hotel or a meeting point.
-- [ ] A shared stay shows only its area and its nights at the precision you
-      chose, never the property. Check that the area is not too specific.
-- [ ] The visitor page groups a shared visit, stay or route under the one update
-      of the same area and day (both shared at day precision), and keeps the rest
-      in separate blocks. This adds no field: it only places records you already
-      share beside each other, so check that a stay or visit shown under an update
-      does not reveal more together than apart (for example a stay that places
-      you in an area on a day the update date alone would not).
-- [ ] A route appears on the map with your drawn line, or as a straight line
-      between its two areas. Its stations or airports show only when you share
-      those locations under their public names; check the line does not pass
-      close to a home or meeting point.
-- [ ] For every selected image, check the visible content and caption; only
-      approved, metadata-stripped photo or video derivatives can be selected.
-- [ ] A photo of an update is also pinned on the map, as a round marker at the
-      area that update shares, and the map eases to that area while the reader
-      is at the update. The marker shows only a photo the audience already
-      receives, at a place it already sees; check that the area is not too
-      specific for the photo, because the pin ties the two together.
-- [ ] If the trip has a cover, check that photo like any other shared image:
-      choosing it publishes nothing, so it is shown only to audiences that already
-      receive it. The public index cards on `/` and `/trips` also show this photo
-      with its approved alt text and crop, using the same scoped public file route.
-      Review that appearance too. The sharing check lists an audience that receives no cover.
-- [ ] Documents in the owner-wide library and trips have no scope choice, visitor field, or file route.
-- [ ] For a named link, choose the shortest sensible lifetime and send the
-      capability only through a private channel.
+## What the app already guarantees
 
-## Before activating or changing a collection link
+Nothing below needs a tick. It holds for every audience and every preset, and
+the tests cover it:
+
+- Private is the default; a record reaches only the audiences its visibility
+  and an audience's list select, from a fixed server-side list of fields per
+  kind. **No address, booking, note, document or travel-party detail is ever
+  delivered**, and a preset adds no field to any list.
+- Only approved, metadata-stripped photo or video copies can be shared.
+- A hidden link or collection link expires and can be revoked; a revoked,
+  expired or unpublished audience delivers nothing, and responses are `no-store`.
+- Widening a live audience (a merge, removing a left-out record, letting
+  records follow the audience's dates, applying a preset that adds records)
+  is refused until you acknowledge it. Narrowing needs no acknowledgement.
+- A preset **never writes `everyone` and never changes another audience**. It
+  never selects a location (so never an address), a loose gallery photo, an
+  idea, a cancelled plan, or a visit that shows its time; it caps an audience's
+  dates at month at most and never makes them finer.
+- Dates are capped per audience (*Dates shown to this audience*); the coarser of
+  that cap and a record's own setting always applies.
+- `everyone` means everyone: the public view and every hidden link and
+  collection member receive it. **A preset is a template, not a filter.**
+
+## For each audience
+
+Complete these seven items for the public view and for each hidden link and
+collection member, in the audience editor under *Delen* ("Sharing").
+
+- [ ] **Start from a preset and read its review.** Choose *Story only*, *Story
+      and route* or *Planned trip* (*Alleen het verhaal*, *Verhaal en route*,
+      *Geplande reis*), or, for a new hidden link, *Same as the public page*
+      on purpose. Press *Review preset* and read what the audience newly
+      receives, what it stops receiving, the dates before and after, what
+      "needs a decision" and what the apply resets. A draft delivers nothing
+      yet; on a live audience, confirm only after reading the widening warning.
+      Do not skip this because *Advanced* is closed: it opens by itself when an
+      audience already uses what is inside.
+- [ ] **Read the exceptions list and what the preset left as it is.** "Different
+      from the preset" names every record received but not in the preset and
+      every preset record not received, including records added since. Read the
+      **`everyone` records**: a preset never changes them, so every one still
+      reaches the public view and every hidden link (a link can leave them out
+      under *Left out of this audience*; the public view cannot, so change the
+      record's own visibility to *Privé* or *Aangepast*, which changes every
+      audience). Locations and loose photos keep their own visibility. A record
+      you create later is *Privé* and joins nothing, but one you later set to
+      *Iedereen* reaches this audience even though a preset was applied.
+- [ ] **Read the Sharing check lines for the audience.** They state the effective
+      date precision per audience (and what a record held to a coarser value
+      does), the records a link leaves out and what that also hides (an area,
+      location or update hides what uses it), and whether the audience gets a
+      cover or map points. Before the trip starts they warn about future
+      routes with an exact time or carrier and about dates shown by day: set
+      those routes to *Privé* and the dates to month until you leave. A route's
+      departure day is shown in full whatever the date setting and is counted
+      only with a time or a carrier ([#262](https://github.com/tjorim/travel/issues/262)),
+      so read such routes in the preview.
+- [ ] **Open the rendered preview and read every item as a stranger.** The
+      shared words are yours and no rule can read them: titles, summaries, stage
+      summaries, the text written for visitors in a *reisupdate*, public
+      location names, captions, route labels. None may contain an exact
+      accommodation, home or meeting address, a booking or confirmation code, a
+      ticket, a travel-party name or contact detail, or a live or near-real-time
+      location. An exclusion hides records, not words: a name you wrote yourself
+      stays in the trip summary or another record's title. A shared stay shows
+      only its area and nights, so check the area is not too specific, and a
+      visit, stay or route grouped under an update of the same area and day does
+      not reveal more together than apart.
+- [ ] **Check every shared image.** For each selected photo or video look at the
+      visible content and the caption. A photo of an update is also pinned on the
+      map at that update's area, tying the two together. The cover is a photo
+      like any other and also appears on the public index cards (`/` and
+      `/trips`) with its alt text and crop; the Sharing check lists an audience
+      that receives no cover.
+- [ ] **Check the places and lines.** A shared location (a monument, a hot
+      spring) shows its public name, city and point, so it must not be a home, a
+      hotel or a meeting point. Presets never share locations, so any shared
+      one is your own choice. A route is drawn with your line or a straight line
+      between its two areas and shows stations or airports only when you share
+      those locations; the line must not pass close to a home or meeting point.
+- [ ] **Choose the audience's lifetime and channel.** For a named link choose
+      the shortest sensible lifetime and send the capability only through a
+      private channel. The public view is open to anyone and may be indexed.
+
+## Also for a collection link
 
 A collection link opens several trips with one URL, so a mistake reaches every
-member. Complete the list above for **each member trip at its own member
-scope**, and also:
+member. Complete the seven items above for **each member trip at its own member
+scope** (a member scope is separate from the trip's own links, so do not assume
+a member shows what that trip's "Family" link shows), and also:
 
-- [ ] Preview every member as a visitor would see it. A member scope is
-      separate from the trip's own links, so do not assume a member shows what
-      that trip's "Family" link shows.
-- [ ] Read the collection title (if you set one) and each member's title,
-      summary and dates in the index as a stranger would. The index shows them
-      only where the member scope allows; hide what the audience does not need.
-- [ ] Remember that `everyone` records reach every member and cannot be
-      narrowed per member. If a record must not reach the collection, make it
-      "Privé" or "Aangepast" instead.
-- [ ] Add only the trips this audience should know exist. The index names every
-      member, so adding a trip tells the audience that the trip exists.
+- [ ] Read the collection title (if any) and each member's title, summary and
+      dates in the index as a stranger would, and add only the trips this
+      audience should know exist: the index names every member.
+- [ ] Remember that `everyone` records reach every member and cannot be narrowed
+      per member. Make a record *Privé* or *Aangepast* if it must not reach the
+      collection.
 - [ ] A collection link is one capability: anyone who has it sees every member.
-      Choose the shortest sensible lifetime and send it only through a private
-      channel, as for a named link. Never paste a per-trip link into a
-      collection or reuse one as the other.
+      Choose the shortest sensible lifetime, send it only through a private
+      channel, and never paste a per-trip link into a collection or reuse one as
+      the other.
 - [ ] After removing a trip or revoking, expect the member pages to stop
       immediately, but not copies a recipient already holds.
 
+Documents in the owner-wide library and in trips have no scope choice, visitor
+field or file route, so there is nothing to check for them.
+
 ## If something was shared by mistake
 
-1. Set the record back to "Privé" (or remove it from the scope), or unpublish the public view or
-   revoke the link. Views are rendered live, so the next request no longer
-   receives it; public and unlisted responses are sent `no-store`.
+1. Set the record back to "Privé" (or remove it from the scope, or leave it out
+   of the hidden link), or unpublish the public view or revoke the link. Views
+   are rendered live, so the next request no longer receives it; public and
+   unlisted responses are sent `no-store`. A preset cannot be undone as a whole:
+   apply a narrower preset to a hidden link, which leaves out what it does not
+   include, or change the records themselves. The public view cannot leave an
+   `everyone` record out, so change that record's visibility.
 2. Rotate a named link or collection link if its capability itself reached the
    wrong people. To stop one trip only, remove it from the collection; to stop
    everything, revoke the collection.

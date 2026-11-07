@@ -360,8 +360,11 @@ A preset never writes `everyone`, so no other audience gains anything. A private
 and is listed for this audience only; a listed record it does not select is unlisted; on a hidden link or collection
 member an `everyone` record it does not select is left out, unless leaving it out would also hide a record the
 preset includes. The public view has no `exclude`, so its `everyone` records stay and the review lists them with the
-way out. Locations (and with them addresses) and loose gallery photos are never selected or changed; times, ideas,
-cancelled plans and anything that cannot be shared yet are not swept in and are listed as needing a decision.
+way out. Locations (and with them addresses) and loose gallery photos are never selected or changed. Ideas and
+cancelled visits, stays and routes are never selected (and not listed). A visit that already shows its time, an
+update without text, an unnamed area and an unapproved photo copy are not swept in either; they are listed as
+needing a decision, with the reason. A preset never sets `share_time` or `share_address`, and adds no field to any
+allowlist: it only chooses records and caps the audience's dates.
 
 **Review (read-only, owner-only).** `POST /trips/{id}/public-projection/preset/review`,
 `POST /trips/{id}/share-links/{link_id}/preset/review` and
@@ -374,7 +377,9 @@ or lose what (`widened`, `narrowed`; `requires_acknowledgement` for a live audie
 widening of [#27](decisions/27-merge-widening.md)), the date precision before and after, `left_as_is`,
 `needs_decision` and `replaces_exceptions`, and a `fingerprint` of the plan. A plan that would exceed the scope
 limits (200 listed records, 500 exclusions) is not applicable: `refusal.code` is `preset_too_large`. A review stores
-nothing, claims no revision and records no audit event, and no visitor response carries any of it.
+nothing, claims no revision and records no audit event, and no visitor response carries any of it. Reviewing the
+public view of a trip that never had one does not create it (it reads the default scope, dates by month); applying
+creates it unpublished.
 
 **Apply (owner-only).** `POST …/public-projection/preset`, `POST …/share-links/{link_id}/preset` and
 `POST /collections/{collection_id}/members/{member_id}/preset` take `{"preset", "fingerprint", "confirm_widening"}`
@@ -407,6 +412,25 @@ counts per kind of widened, narrowed, left-as-is, needs-decision and replaced re
 after, whether a widening was acknowledged and the scope fingerprints, never a title, label or note; the per-record
 visibility events are not written for the promotions. Rotating a link keeps its label; the Sharing check's audience
 entry carries `preset` and `preset_exceptions` (a count).
+
+**What a preset is not.** It is not a rule that outlives the apply. A record created later is `private` and joins
+no audience, and a later `everyone` record still reaches the public view and every hidden link, because `everyone`
+means everyone: after "Story only", a new `everyone` stay still reaches that link unless the link leaves it out. The
+owner sees such a record in the audience's exceptions list (received, but not in the preset). Presets also do not
+touch other audiences, the trip title, summary, trip dates or cover, a link's label, token or expiry, the date
+settings of individual records, or the collection's own title, members and lifecycle.
+
+**Owner interface** ([#241](decisions/241-sharing-presets.md), step 3). The audience editor of the public page, of
+each hidden link and of each collection member starts with the preset picker (*Start from a preset*) and *Review
+preset*, which opens the server's review (records gained and lost by name, dates before and after, what is left as
+it is with the way out, what needs a decision, what the apply resets) and, for a live audience that would see more,
+the acknowledgement that enables *Apply*. A new hidden link offers *Same as the public page* first. An audience
+that carries a label shows "Story and route, with 2 exceptions" and the two exception lists, each record with the
+control that already exists (list or unlist for this audience, or leave out of a hidden link). The Sharing check
+shows a "Preset: …" line per audience. The older controls (*Records for this audience only*, trip dates, *Show the
+time*, *Also share the address*) stay under *Advanced*. The PWA words the presets itself and does not call
+`GET …/sharing-presets`; that list serves API and MCP clients. The preset tools are hidden behind the layered MCP
+discovery (`search_tools`, decision 196) like the other owner tools.
 
 ## Behaviour to rely on
 

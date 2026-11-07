@@ -1296,6 +1296,9 @@ SEARCH_QUERIES = {
     "import photos from google": {"start_media_import_session"},
     "reisupdate schrijven": {"create_travel_update"},
     "emergency numbers": {"list_emergency_info"},
+    "apply a sharing preset to a hidden link": {"apply_sharing_preset"},
+    "review what a sharing preset would change": {"preview_sharing_preset"},
+    "which sharing presets exist": {"list_sharing_presets"},
     "noodnummers": {"list_emergency_info"},
     "tasks due this week": {"list_trip_tasks", "list_task_alerts"},
 }
