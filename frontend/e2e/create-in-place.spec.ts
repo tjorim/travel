@@ -99,7 +99,7 @@ for (const locale of locales) {
         // Escape closes the menu and the record dialog guards nothing yet: focus goes back to the day's Add control.
         await first.click();
         await page
-          .getByRole("menuitem", { name: message(locale, "owner_agenda_add_stay_from_day") })
+          .getByRole("button", { name: message(locale, "owner_agenda_add_stay_from_day") })
           .click();
         const stayDialog = page.getByRole("dialog", { name: message(locale, "owner_add_stay") });
         await expect(stayDialog).toBeVisible();
@@ -114,7 +114,7 @@ for (const locale of locales) {
         // A visit on that day opens with the day and the area where the stay is.
         await first.click();
         await page
-          .getByRole("menuitem", { name: message(locale, "owner_agenda_add_visit_on_day") })
+          .getByRole("button", { name: message(locale, "owner_agenda_add_visit_on_day") })
           .click();
         const dialog = page.getByRole("dialog", { name: message(locale, "owner_add_visit") });
         await expect(dialog).toBeVisible();

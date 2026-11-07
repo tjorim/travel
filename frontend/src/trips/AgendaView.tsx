@@ -1,14 +1,9 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { Button } from "@/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { PlusIcon } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   agendaRowAttribute,
@@ -175,7 +170,7 @@ export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]
 }
 
 /**
- * One day's menu for starting a record there. The existing dialogs open with the day filled in, and with the area
+ * One day's popover of choices for starting a record there. The existing dialogs open with the day filled in, and with the area
  * where the owner is that day when a stay shows it (a new stay leaves the area to choose: it is usually elsewhere).
  */
 function DayAddMenu({
@@ -188,30 +183,35 @@ function DayAddMenu({
   onCreate: (kind: CreateKind, prefill: CreatePrefill, returnTo: HTMLElement | null) => void;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
-  const start = (kind: CreateKind) =>
+  const [open, setOpen] = useState(false);
+  const start = (kind: CreateKind) => {
+    setOpen(false);
     onCreate(kind, kind === "stay" ? { day } : { day, areaId: area }, trigger.current);
+  };
+  const choice =
+    "flex min-h-11 w-full cursor-pointer items-center rounded-travel-control border-0 bg-transparent px-3 py-2 text-left font-medium text-travel-ink hover:bg-travel-hover focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-travel-focus";
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
         ref={trigger}
         className="secondary compact inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg px-2.75 py-2 text-sm font-bold"
         aria-label={m.owner_agenda_add_to_day({ day: formatDayRange(day, null) })}
       >
         <PlusIcon className="size-4" aria-hidden="true" />
         {m.owner_agenda_add()}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => start("visit")}>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="grid min-w-52 gap-0.5 p-1">
+        <Button className={choice} type="button" onClick={() => start("visit")}>
           {m.owner_agenda_add_visit_on_day()}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => start("stay")}>
+        </Button>
+        <Button className={choice} type="button" onClick={() => start("stay")}>
           {m.owner_agenda_add_stay_from_day()}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => start("route")}>
+        </Button>
+        <Button className={choice} type="button" onClick={() => start("route")}>
           {m.owner_agenda_add_route_on_day()}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }
 

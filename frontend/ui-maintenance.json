@@ -92,17 +92,6 @@
       "reviewedAt": null,
       "reviewNote": null
     },
-    "dropdown-menu": {
-      "files": ["src/ui/dropdown-menu.tsx"],
-      "registry": "dropdown-menu",
-      "origin": "https://ui.shadcn.com/r/styles/base-nova/dropdown-menu.json",
-      "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
-      "reviewedAt": "2026-11-07T13:31:27.931Z",
-      "reviewNote": "Trimmed to the menu, trigger, content and item the agenda day menu uses; Travel tokens and the travel-menu-motion transition replace the animate-in classes; keyboard, focus return and browser checks passed.",
-      "upstreamSha256": "6786e426e239075630326de9b3e2c952d9e4274443f9715c4ffe6bb438f2fa8d",
-      "capturedAt": "2026-11-07T13:31:27.930Z",
-      "reviewedLocalSha256": "ad057fa6427200f75d448518fe33a326f88c4dd72de37246028fd8677462fd05"
-    },
     "popover": {
       "files": ["src/ui/popover.tsx"],
       "registry": "popover",
