@@ -62,7 +62,7 @@ VISIT = (
     "start_time", "end_time", "notes", "summary", "share_time", "share_date_precision", "created_at", "updated_at",
 )  # fmt: skip
 STAY = (
-    "id", "visibility", "location_id", "check_in_date", "check_out_date", "check_in_time", "check_out_time",
+    "id", "visibility", "area_id", "location_id", "check_in_date", "check_out_date", "check_in_time", "check_out_time",
     "status", "property_name", "website_url", "booking_reference", "contact_details", "notes",
     "share_date_precision", "created_at", "updated_at",
 )  # fmt: skip

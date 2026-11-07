@@ -294,6 +294,7 @@ it("merges duplicate areas and points at the city-level locations that follow", 
         label: "Taipei",
         locations: 1,
         visits: 4,
+        stays: 2,
         routes: 0,
         travel_updates: 0,
         narrowed_audiences: ["link 'Familie'"],
@@ -310,6 +311,8 @@ it("merges duplicate areas and points at the city-level locations that follow", 
   fireEvent.click(within(dialog).getByRole("checkbox"));
   fireEvent.click(within(dialog).getByRole("button", { name: "Voorbeeld bekijken" }));
   expect(await within(dialog).findByText("Locaties die verhuizen: 1")).toBeTruthy();
+  // Stays filed under an area alone move with it, so the preview counts them.
+  expect(within(dialog).getByText("Verblijven die verhuizen: 2")).toBeTruthy();
   expect(api.lastBody("POST /api/trips/trip/areas/merge")).toEqual({
     keep_id: "taoyuan",
     duplicate_ids: ["taipei"],

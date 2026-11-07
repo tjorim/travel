@@ -75,3 +75,19 @@ it("offers no stepper without a handler and none while saving", () => {
       .disabled,
   ).toBe(true);
 });
+
+it("shows a stay without an accommodation by its area, with no placeholder name", () => {
+  render(
+    <StayList
+      stays={[
+        stay("a", {
+          property_name: null,
+          area: { id: "area-1", label: "Alishan" } as Stay["area"],
+        }),
+      ]}
+      onInspect={() => {}}
+    />,
+  );
+  expect(screen.getByText("Nog te kiezen in Alishan")).toBeTruthy();
+  expect(screen.getByText(/^Alishan · /)).toBeTruthy();
+});

@@ -6,14 +6,14 @@ the ``custom`` records it lists. Subtraction only ever removes: nothing outside 
 is delivered, and an exclusion can never reveal a field.
 
 A record that points at an excluded one would otherwise leave a dangling reference in the delivered
-document (a visit names its area, a stay its location, a photo its update), so one conservative rule
+document (a visit names its area, a stay its area and maybe its location, a photo its update), so one conservative rule
 applies, computed here and nowhere else:
 
     Excluding a record also hides, for that audience only, every record that depends on it.
 
 * an **area** hides the locations filed under it, and through them everything below;
 * a **location** hides the visits, stays, routes and updates that use it;
-* an **area** also hides the visits, routes and updates that name it;
+* an **area** also hides the visits, stays, routes and updates that name it;
 * an **update** hides the photos attached to it;
 * a **photo** hides only itself, and when it is the trip cover the audience simply gets no cover.
 
@@ -95,7 +95,7 @@ def closure(trip: Trip, seeds: dict[str, set[str]]) -> dict[str, set[str]]:
         or (item.location is not None and item.location.area_id in areas)
     }
     stays = set(seeds.get("stay", ())) | {
-        item.id for item in trip.stays if _touches(areas, locations, [item.location.area_id], [item.location_id])
+        item.id for item in trip.stays if _touches(areas, locations, [item.area_id], [item.location_id])
     }
     routes = set(seeds.get("route", ())) | {
         item.id

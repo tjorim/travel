@@ -114,10 +114,14 @@ A stay is the set of nights slept at one accommodation: `check_in_date` is
 the first night and `check_out_date` the departure morning, so it covers
 every night from check-in up to, but not including, check-out. Both dates and
 the optional `check_in_time`/`check_out_time` are local to the stay. Every
-stay has a `location` (filed under an area). While the accommodation is
-still being chosen, send only `area_id`: every such stay in that area shares
-one city-level location instead of each adding a copy, and `property_name`
-stays empty. Setting `location` to `null` later returns a stay to it.
+stay has an `area` and, once an accommodation is chosen, a `location` in it.
+While the accommodation is still being chosen, send only `area_id`: the stay is
+filed under that area alone and no location (placeholder or otherwise) is
+created, `location` is `null` in every response and the export, and
+`property_name` stays empty. A `location` settles the area; an `area_id` sent
+with it must be that location's own (`that_location_is_not_in_the_chosen_area`).
+Setting `location` to `null` later returns a stay to its area; `area_id` alone
+moves the stay and keeps its location only when it is already in that area.
 
 A route's day comes first: `departs_on` is the local departure day, in the
 departure time zone, and can be set on its own ("on 5 December, no train yet").

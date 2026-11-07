@@ -20,12 +20,14 @@ import {
 } from "../tracker-model";
 import {
   blankStay,
+  accommodationOf,
   fromStay,
   locationLine,
   overlaps,
   placeChanged,
   PLACE_REQUIRED,
   stayFields,
+  stayPlaceFields,
   type StayValues,
 } from "./stays/model";
 import { StayDetails } from "./stays/StayDetails";
@@ -105,19 +107,7 @@ export function StayManager({
           contact_details: values.contactDetails.trim() || null,
           notes: values.notes.trim() || null,
           share_date_precision: values.shareDatePrecision || null,
-          ...(!id || changed
-            ? {
-                location: values.location?.existing_location_id
-                  ? { existing_location_id: values.location.existing_location_id }
-                  : {
-                      ...values.location,
-                      display_name: propertyName || null,
-                      address_line1: values.address.trim() || null,
-                      locality: values.locality.trim() || null,
-                      country_code: values.countryCode.trim().toUpperCase() || null,
-                    },
-              }
-            : {}),
+          ...(!id || changed ? stayPlaceFields(values) : {}),
         },
       });
     },
@@ -126,17 +116,16 @@ export function StayManager({
       setMessage(textNotice(() => m.owner_private_stay_saved()));
     },
   });
-  // Only a new stay, or one whose place fields were edited, needs a place to send; the message sits on the Plaats field.
-  function placeRequired({ fieldApi }: { fieldApi: { form: { state: { values: StayValues } } } }) {
+  // Only a new stay, or one whose place fields were edited, needs a place to send; the message sits on the Area field.
+  // The area is required until an accommodation is chosen; an accommodation settles it itself.
+  function areaRequired({ fieldApi }: { fieldApi: { form: { state: { values: StayValues } } } }) {
     const values = fieldApi.form.state.values;
-    const hasPlace = Boolean(
-      values.location?.existing_location_id ||
-      values.propertyName.trim() ||
-      values.address.trim() ||
-      values.locality.trim(),
-    );
     const changed = placeChanged(values, baseline.current);
-    return (!stayDialog.editingId || changed) && !hasPlace ? PLACE_REQUIRED : undefined;
+    return (!stayDialog.editingId || changed) &&
+      accommodationOf(values) === "none" &&
+      !values.areaId
+      ? PLACE_REQUIRED
+      : undefined;
   }
   function loadStay(values: StayValues) {
     baseline.current = values;
@@ -235,7 +224,7 @@ export function StayManager({
             editingId={editingStayId}
             stays={stays}
             currentPlace={currentPlace}
-            placeRequired={placeRequired}
+            areaRequired={areaRequired}
           />
         )}
       </RecordDialog>

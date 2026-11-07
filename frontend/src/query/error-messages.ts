@@ -39,8 +39,6 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_choose_an_existing_area_or_a_new_area();
     case "say_where_this_stay_is_an_area_or_a_location":
       return m.api_say_where_this_stay_is_an_area_or_a_location();
-    case "give_an_area_or_a_location_not_both_a_location_names_its_own_area":
-      return m.api_give_an_area_or_a_location_not_both_a_location_names_its_own_area();
     case "say_where_an_area_or_a_location":
       return m.api_say_where_an_area_or_a_location();
     case "an_item_cannot_be_both_cabin_only_and_checked_only":

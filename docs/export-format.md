@@ -27,13 +27,20 @@ is "Export trip data (JSON)" in the trip's details dialog.
 Dates, times and instants are ISO 8601 strings; identifiers are the opaque ids
 used by the API, so relationships are plain id references:
 
-- `locations[].area_id`, `visits[].area_id/location_id`, `stays[].location_id`,
+- `locations[].area_id`, `visits[].area_id/location_id`, `stays[].area_id/location_id`,
   `routes[].departure_/arrival_ area_id and location_id`,
   `travel_updates[].area_id/location_id`.
 - `routes[].document_ids` and `travel_updates[].media_asset_ids` list the
   associated documents and media assets by id.
 - `media_derivatives[].media_asset_id/travel_update_id`, `media_assets[].import_id`.
 - `packing_lists[]` nest their `bags` and `items`; `items[].bag_id` points at a bag.
+
+A stay always has an `area_id`; its `location_id` is `null` while the
+accommodation is not chosen yet (the stay is filed under its area alone, with no
+placeholder location). When both are present the location lies in that area.
+`stays[].area_id` was added without changing the schema version, because adding
+a field is compatible; a consumer that assumed `stays[].location_id` is never
+`null` must now handle `null` and can read the area from `stays[].area_id`.
 
 Each record lists its columns explicitly in `backend/app/export.py`. A column
 added to a model later is **not** exported until reviewed and added there.

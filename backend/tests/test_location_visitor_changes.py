@@ -197,7 +197,9 @@ def test_an_area_move_that_carries_a_shared_visit_and_route_end_needs_acknowledg
     assert moved.status_code == 200
     assert owner.get(f"{setup.base}/visits").json()[0]["area"]["id"] == setup.tainan["id"]
     (event,) = setup.events()
-    assert event["details"] == {"changes": [{"field": "area_id", "audiences": ["public"], "visits": 1, "routes": 1}]}
+    assert event["details"] == {
+        "changes": [{"field": "area_id", "audiences": ["public"], "visits": 1, "routes": 1, "stays": 0}]
+    }
 
 
 def test_an_area_move_that_carries_nothing_visitors_receive_is_free() -> None:

@@ -62,7 +62,7 @@ const stay = (id: string, name: string): Stay => ({
   booking_reference: "ABC",
   contact_details: null,
   notes: null,
-  location: {} as Stay["location"],
+  location: null,
   area: area,
   visibility: "private",
   share_date_precision: "month",
@@ -77,6 +77,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
   expect(api.unexpected).toEqual([]);
 });
+
+/** Opens the stay editor's area choice and picks an area, waiting for the areas to load. */
+async function chooseArea(name: string) {
+  fireEvent.keyDown(await screen.findByRole("combobox", { name: "Gebied" }), { key: "ArrowDown" });
+  fireEvent.click(await screen.findByRole("option", { name }));
+}
 
 const confirmDelete = () =>
   fireEvent.click(
@@ -260,6 +266,7 @@ it("turns a place lookup into an editable, rounded area", async () => {
 
 it("keeps an exact looked-up stay place private until the stay is saved", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
   api.on("POST", /\/places\/search$/, () => ({
@@ -306,6 +313,7 @@ it("keeps an exact looked-up stay place private until the stay is saved", async 
 
 it("reuses a saved location for a new stay instead of copying its address", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", [savedLocation]);
   api.on("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
@@ -328,6 +336,7 @@ it("reuses a saved location for a new stay instead of copying its address", asyn
 
 it("keeps a stay's saved location when a hotel detail is corrected", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [
       { ...stay("s1", "Airport hotel"), location: savedLocation },
     ])
@@ -347,6 +356,7 @@ it("keeps a stay's saved location when a hotel detail is corrected", async () =>
 
 it("opens a stay in private detail before editing, prefilled", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
@@ -367,6 +377,7 @@ it("opens a stay in private detail before editing, prefilled", async () => {
 
 it("shows an edited stay and removes a deleted one without a reload", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel"), stay("s2", "Hostel")])
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
@@ -395,6 +406,7 @@ it("groups ideas for the same nights as alternatives and keeps them off the shar
     booking_reference: null,
   });
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [
       idea("i1", "Hotel A"),
       idea("i2", "Hotel B"),
@@ -415,6 +427,7 @@ it("groups ideas for the same nights as alternatives and keeps them off the shar
 it("offers to cancel the rejected ideas once a stay for the same nights is chosen", async () => {
   const idea = (id: string, name: string): Stay => ({ ...stay(id, name), status: "idea" });
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [
       idea("i1", "Hotel A"),
       idea("i2", "Hotel B"),
@@ -436,6 +449,7 @@ it("offers to cancel the rejected ideas once a stay for the same nights is chose
 
 it("creates a stay idea without warning about overlapping stays", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
@@ -447,6 +461,7 @@ it("creates a stay idea without warning about overlapping stays", async () => {
   fireEvent.change(screen.getByLabelText("Accommodatie (leeg zolang je nog kiest)"), {
     target: { value: "Hotel Alt" },
   });
+  await chooseArea("Taipei");
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({
@@ -457,6 +472,7 @@ it("creates a stay idea without warning about overlapping stays", async () => {
 
 it("rewrites a stay's place only when a place field changed", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
@@ -473,6 +489,7 @@ it("rewrites a stay's place only when a place field changed", async () => {
 
 it("keeps check-out after check-in and moves it along with the first night", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[]} />);
@@ -495,6 +512,7 @@ it("keeps check-out after check-in and moves it along with the first night", asy
 
 it("sets who sees a stay from its own detail, with the same control as everywhere", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
     .collection("/api/trips/trip/locations", []);
   api.on("PUT", /\/visibility\/stay\/s1$/, (body) => body);
@@ -511,6 +529,7 @@ it("sets who sees a stay from its own detail, with the same control as everywher
 
 it("lets the owner choose how precisely visitors see a stay's nights", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
@@ -519,7 +538,7 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
   openAdvanced();
   expect(selectedOption("Datums voor bezoekers")).toBe("Zoals het publiek");
   chooseOption("Datums voor bezoekers", "Volledige datums");
-  fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Taipei" } });
+  await chooseArea("Taipei");
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() =>
     expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({
@@ -530,6 +549,7 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
 
 it("lets a stay follow the audience's date precision, sending null", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
@@ -537,7 +557,7 @@ it("lets a stay follow the audience's date precision, sending null", async () =>
   expect(
     within(screen.getByRole("dialog")).getByText(/elk publiek beperkt zijn datums/i),
   ).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Taipei" } });
+  await chooseArea("Taipei");
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() =>
     expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({
@@ -546,32 +566,94 @@ it("lets a stay follow the audience's date precision, sending null", async () =>
   );
 });
 
-it("refuses a stay without a location, but accepts a city on its own", async () => {
+it("refuses a stay with neither an area nor an accommodation, then files it under its area alone", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
-  await screen.findByText(
-    "Kies waar je verblijft: zoek een locatie, of vul een adres of plaats in.",
-  );
-  // The message belongs to the Plaats field, which takes focus, rather than a banner at the foot of the form.
-  expect(screen.getByLabelText("Plaats (optioneel)").getAttribute("aria-invalid")).toBe("true");
-  expect(document.activeElement).toBe(screen.getByLabelText("Plaats (optioneel)"));
+  await screen.findByText("Kies het gebied van dit verblijf, of zoek de accommodatie.");
   expect(api.count("POST /api/trips/trip/stays")).toBe(0);
 
+  // Only the area is chosen: no location is sent, so none is created.
+  await chooseArea("Taipei");
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  const body = api.lastBody<Record<string, unknown>>("POST /api/trips/trip/stays");
+  expect(body).toMatchObject({ area_id: "area-1", location: null });
+  expect(screen.getByRole("button", { name: /Nog te kiezen in Taipei/ })).toBeTruthy();
+});
+
+it("accepts a typed address without choosing an area, deriving the area from its city", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
+  fireEvent.change(screen.getByLabelText("Adres (optioneel)"), {
+    target: { value: "1 Alishan Road" },
+  });
   fireEvent.change(screen.getByLabelText("Plaats (optioneel)"), { target: { value: "Alishan" } });
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
   await waitFor(() =>
     expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({
-      location: { locality: "Alishan" },
+      location: { address_line1: "1 Alishan Road", locality: "Alishan" },
     }),
   );
+  expect(api.lastBody("POST /api/trips/trip/stays")).not.toHaveProperty("area_id");
+});
+
+it("chooses the accommodation later and can go back to not having one", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/stays", [{ ...stay("s1", "Hotel"), property_name: null }])
+    .collection("/api/trips/trip/locations", [savedLocation]);
+  api.on("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Nog te kiezen in Taipei/ }));
+  expect(screen.getByText("Accommodatie nog niet gekozen · Taipei")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  await waitFor(() => expect(selectedOption("Gebied")).toBe("Taipei"));
+  expect(screen.queryByRole("button", { name: "Accommodatie loskoppelen" })).toBeNull();
+
+  // A saved location is chosen: it settles the area, which then follows it and cannot be edited apart.
+  fireEvent.change(await screen.findByLabelText("Gebruik een bestaande locatie"), {
+    target: { value: "Brussels" },
+  });
+  fireEvent.click(await screen.findByRole("option", { name: "Brussels Airport · Zaventem" }));
+  expect(screen.getByText("Het gebied volgt de gekozen accommodatie.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf opslaan" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("PATCH /api/trips/trip/stays/s1")).toMatchObject({
+    location: { existing_location_id: "bru" },
+  });
+});
+
+it("returns a stay with an accommodation to its area alone", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/stays", [
+      { ...stay("s1", "Airport hotel"), location: savedLocation },
+    ])
+    .collection("/api/trips/trip/locations", [savedLocation]);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Airport hotel/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Accommodatie loskoppelen" }));
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf opslaan" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("PATCH /api/trips/trip/stays/s1")).toMatchObject({
+    area_id: "area-1",
+    location: null,
+  });
 });
 
 it("warns, without blocking, when a stay's nights overlap another stay", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
@@ -585,6 +667,7 @@ it("warns, without blocking, when a stay's nights overlap another stay", async (
 
 it("names the location a stay is already linked to when editing it", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [{ ...stay("s1", "Hotel"), location: savedLocation }])
     .collection("/api/trips/trip/locations", []);
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);

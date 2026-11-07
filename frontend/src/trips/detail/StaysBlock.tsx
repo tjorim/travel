@@ -35,7 +35,7 @@ export function StaysBlock({ trip, stays }: { trip: Trip; stays: Stay[] }) {
                 </p>
               )}
               <p>
-                {placeLabel(stay.location)}
+                {stay.location ? placeLabel(stay.location) : m.owner_accommodation_not_chosen_yet()}
                 {` · ${areaName(stay.area)}`}
               </p>
               {stay.website_url && (

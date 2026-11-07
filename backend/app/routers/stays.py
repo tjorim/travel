@@ -11,8 +11,8 @@ from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
 from ..models import Location, Stay, StayStatus, Trip, Visibility
-from ..schemas import Identifier, LocationInput, StayCreate, StayResponse, StayUpdate
-from .placement import area_location, location_from_input, selected_area
+from ..schemas import Identifier, StayCreate, StayResponse, StayUpdate
+from .placement import selected_area, stay_place
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["stays"])
@@ -22,7 +22,7 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 
 def _stay_query():
-    return select(Stay).options(selectinload(Stay.location).selectinload(Location.area))
+    return select(Stay).options(selectinload(Stay.area), selectinload(Stay.location).selectinload(Location.area))
 
 
 def owned_stay(trip: Trip, stay_id: Identifier) -> Stay:
@@ -30,25 +30,6 @@ def owned_stay(trip: Trip, stay_id: Identifier) -> Stay:
     if stay is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found", code="not_found")
     return stay
-
-
-def stay_location(
-    session: Session, trip_id: Identifier, area_id: Identifier | None, location: LocationInput | None
-) -> Location:
-    """The location a stay points at: the one given, or its area's city-level location.
-
-    A location that names nothing but its area is the same thing as the area,
-    so it too reuses the city-level location rather than adding another."""
-    if location is not None and location.model_fields_set - {"area_id"}:
-        return location_from_input(session, trip_id, location)
-    area_id = location.area_id if location is not None else area_id
-    if area_id is None:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Say where this stay is",
-            code="say_where_this_stay_is",
-        )
-    return area_location(session, trip_id, selected_area(session, trip_id, area_id))
 
 
 def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
@@ -69,9 +50,11 @@ def list_stays(trip_id: Identifier, session: SessionDep, subject: SubjectDep) ->
 def create_stay(trip_id: Identifier, payload: StayCreate, session: SessionDep, subject: SubjectDep) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     validate_stay_nights(payload.check_in_date, payload.check_out_date)
+    area, location = stay_place(session, trip.id, payload.area_id, payload.location)
     stay = Stay(
         trip=trip,
-        location=stay_location(session, trip.id, payload.area_id, payload.location),
+        area=area,
+        location=location,
         website_url=str(payload.website_url) if payload.website_url is not None else None,
         **payload.model_dump(exclude={"area_id", "location", "website_url"}),
     )
@@ -85,32 +68,40 @@ def get_stay(trip_id: Identifier, stay_id: Identifier, session: SessionDep, subj
     return owned_stay(owned_trip(session, trip_id, subject), stay_id)
 
 
+def _update_place(session: Session, trip: Trip, stay: Stay, payload: StayUpdate) -> None:
+    """Change where a stay is: its accommodation, its area, or both.
+
+    ``location`` null returns the stay to "accommodation not chosen yet" and
+    keeps its area; ``area_id`` alone moves the stay to that area and keeps the
+    accommodation only when it is already in it."""
+    fields = payload.model_fields_set
+    if "location" not in fields and "area_id" not in fields:
+        return
+    if "location" in fields and payload.location is not None:
+        area, location = stay_place(session, trip.id, payload.area_id, payload.location)
+    elif "area_id" in fields and payload.area_id is not None:
+        area, location = selected_area(session, trip.id, payload.area_id), None
+        if stay.location is not None and stay.location.area_id == area.id and "location" not in fields:
+            location = stay.location  # the same area: keep the accommodation
+    elif "location" in fields:  # cleared: keep the area, forget the accommodation
+        area, location = stay.area, None
+    else:
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A stay needs an area",
+            code="a_stay_needs_an_area",
+        )
+    stay.area = area
+    stay.location = location
+
+
 @router.patch("/stays/{stay_id}", response_model=StayResponse)
 def update_stay(
     trip_id: Identifier, stay_id: Identifier, payload: StayUpdate, session: SessionDep, subject: SubjectDep
 ) -> Stay:
     trip = owned_trip(session, trip_id, subject)
     stay = owned_stay(trip, stay_id)
-    fields = payload.model_fields_set
-    if "location" in fields and payload.location is not None:
-        if payload.area_id is not None:
-            raise ApiException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Give an area or a location, not both; a location names its own area",
-                code="give_an_area_or_a_location_not_both_a_location_names_its_own_area",
-            )
-        stay.location = stay_location(session, trip.id, None, payload.location)
-    elif "area_id" in fields and payload.area_id is not None:
-        if stay.location.area_id != payload.area_id:
-            stay.location = stay_location(session, trip.id, payload.area_id, None)
-    elif "location" in fields:  # cleared: keep the area, forget the accommodation
-        stay.location = area_location(session, trip.id, stay.location.area)
-    elif "area_id" in fields:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="A stay needs an area",
-            code="a_stay_needs_an_area",
-        )
+    _update_place(session, trip, stay, payload)
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"})
     for required in ("check_in_date", "check_out_date", "status"):
         if required in values and values[required] is None:

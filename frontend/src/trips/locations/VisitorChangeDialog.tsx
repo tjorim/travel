@@ -48,6 +48,7 @@ export function VisitorChangeDialog({
                 {m.owner_visitor_change_carried({
                   p0: change.visits ?? 0,
                   p1: change.routes ?? 0,
+                  p2: change.stays ?? 0,
                 })}
               </span>
             )}

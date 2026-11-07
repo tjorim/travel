@@ -579,12 +579,18 @@ def test_duplicate_areas_merge_so_their_locations_can_be_merged_too() -> None:
     keep = owner.post(f"{base}/areas", json={"label": "Taipei", "timezone": "Asia/Taipei"}).json()
     duplicate = owner.post(f"{base}/areas", json={"label": "Taipei City"}).json()
 
-    # Each area has an undecided stay, so each holds its own city-level location.
+    # Each area has an undecided stay (filed under the area alone: it creates no location), and each
+    # also holds one legacy city-level location that only names the city.
     kept_stay, moved_stay = (
         owner.post(
             f"{base}/stays", json={"area_id": area["id"], "check_in_date": day, "check_out_date": "2054-04-09"}
         ).json()
         for area, day in ((keep, "2054-04-01"), (duplicate, "2054-04-05"))
+    )
+    assert kept_stay["location"] is None and moved_stay["location"] is None
+    kept_city, moved_city = (
+        owner.post(f"{base}/locations", json={"locality": area["label"], "area_id": area["id"]}).json()
+        for area in (keep, duplicate)
     )
     hotel = owner.post(
         f"{base}/locations", json={"display_name": "Hotel", "label": "Hotel", "area_id": duplicate["id"]}
@@ -608,9 +614,10 @@ def test_duplicate_areas_merge_so_their_locations_can_be_merged_too() -> None:
     body = preview.json()
     assert body["applied"] is False
     (summary,) = body["duplicates"]
-    assert (summary["locations"], summary["visits"], summary["routes"], summary["travel_updates"]) == (2, 1, 1, 1)
+    assert (summary["locations"], summary["visits"], summary["stays"], summary["routes"]) == (2, 1, 1, 1)
+    assert summary["travel_updates"] == 1
     assert summary["narrowed_audiences"] == ["link 'Family'"]
-    city_level = {kept_stay["location"]["id"], moved_stay["location"]["id"]}
+    city_level = {kept_city["id"], moved_city["id"]}
     assert set(body["city_level_location_ids"]) == city_level
     assert hotel["id"] not in body["city_level_location_ids"]
     assert len(owner.get(f"{base}/areas").json()) == 2
@@ -635,14 +642,15 @@ def test_duplicate_areas_merge_so_their_locations_can_be_merged_too() -> None:
     events = [event for event in owner.get(f"{base}/audit-events").json() if event["kind"] == "area.merge"]
     assert [(event["target_type"], event["target_id"]) for event in events] == [("area", keep["id"])]
     assert events[0]["details"]["merged"][0]["locations"] == 2
+    assert events[0]["details"]["merged"][0]["stays"] == 1
 
     # Now in one area, the two city-level locations fold into one.
     folded = owner.post(
         f"{base}/locations/merge",
-        json={"keep_id": kept_stay["location"]["id"], "duplicate_ids": [moved_stay["location"]["id"]], "confirm": True},
+        json={"keep_id": kept_city["id"], "duplicate_ids": [moved_city["id"]], "confirm": True},
     )
     assert folded.status_code == 200, folded.text
-    assert owner.get(f"{base}/stays/{moved_stay['id']}").json()["location"]["id"] == kept_stay["location"]["id"]
+    assert owner.get(f"{base}/stays/{moved_stay['id']}").json()["location"] is None
 
 
 def test_owner_corrects_location_address_without_changing_its_map_point_or_other_fields() -> None:

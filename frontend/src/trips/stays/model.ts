@@ -22,6 +22,8 @@ export type StayValues = {
   address: string;
   locality: string;
   countryCode: string;
+  /** The stay's area: required while there is no accommodation; follows the accommodation once there is one. */
+  areaId: string;
   location: LocationInput | null;
   bookingReference: string;
   contactDetails: string;
@@ -43,6 +45,7 @@ export const blankStay = (trip: Trip): StayValues => {
     address: "",
     locality: "",
     countryCode: "",
+    areaId: "",
     location: null,
     bookingReference: "",
     contactDetails: "",
@@ -65,6 +68,7 @@ export const fromStay = (stay: Stay): StayValues => ({
   address: stay.location?.address_line1 ?? "",
   locality: stay.location?.locality ?? "",
   countryCode: stay.location?.country_code ?? "",
+  areaId: stay.area.id,
   location: locationInput(stay.location),
   bookingReference: stay.booking_reference ?? "",
   contactDetails: stay.contact_details ?? "",
@@ -90,6 +94,7 @@ export const PLACE_FIELDS = [
   "address",
   "locality",
   "countryCode",
+  "areaId",
   "location",
 ] as const;
 
@@ -97,8 +102,7 @@ export const checkOutAfterCheckIn = ({ value, fieldApi }: { value: string } & Fo
   value && value <= String(fieldApi.form.getFieldValue("checkInDate" as never) ?? "")
     ? m.owner_check_out_is_no_earlier_than_the_morning_after_the_first_night
     : undefined;
-export const PLACE_REQUIRED =
-  m.owner_choose_where_you_are_staying_search_for_a_location_or_enter_an_address_o;
+export const PLACE_REQUIRED = m.owner_choose_the_area_of_this_stay_or_search_for_the_accommodation;
 export const httpsOnly = ({ value }: { value: string }) =>
   value.trim() && !value.trim().startsWith("https://") ? m.owner_use_an_https_address : undefined;
 
@@ -133,3 +137,38 @@ export const overlapLabel = (stay: Stay) =>
 /** Whether any of the fields that describe the stay's place differ from what the editor opened with. */
 export const placeChanged = (values: StayValues, baseline: StayValues) =>
   PLACE_FIELDS.some((name) => values[name] !== baseline[name]);
+
+/**
+ * What the editor describes of the accommodation: a saved location, a new one (a search result or an
+ * address) or nothing yet. A name or a city alone does not make a location: the stay keeps its
+ * property name, and without an address it is filed under its area alone.
+ */
+export const accommodationOf = (values: StayValues): "saved" | "new" | "none" =>
+  values.location?.existing_location_id
+    ? "saved"
+    : values.location || values.address.trim()
+      ? "new"
+      : "none";
+
+/** The place fields of a stay request: its accommodation with the area it settles, or its area alone. */
+export function stayPlaceFields(values: StayValues): Record<string, unknown> {
+  const accommodation = accommodationOf(values);
+  if (accommodation === "saved")
+    return { location: { existing_location_id: values.location!.existing_location_id } };
+  if (accommodation === "new")
+    return {
+      location: {
+        ...values.location,
+        display_name: values.propertyName.trim() || null,
+        address_line1: values.address.trim() || null,
+        locality: values.locality.trim() || null,
+        country_code: values.countryCode.trim().toUpperCase() || null,
+        ...(values.areaId ? { area_id: values.areaId } : {}),
+      },
+    };
+  return { area_id: values.areaId, location: null };
+}
+
+/** The accommodation line of a stay: its location, or that none is chosen yet. */
+export const accommodationLine = (stay: Pick<Stay, "location">) =>
+  stay.location ? locationLine(stay.location) : m.owner_accommodation_not_chosen_yet();

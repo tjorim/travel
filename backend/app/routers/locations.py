@@ -99,12 +99,15 @@ def _carry_links(session: Session, location: Location) -> None:
 
     A record's area must hold its location, so moving the location moves them
     with it instead of leaving the owner to detach, move and reattach each one.
-    Stays and reisupdates take their area from the location already."""
+    A stay at the location moves too, because it stores its own area. Reisupdates
+    take their area from the location already."""
     for end in ("departure", "arrival"):
         for route in session.scalars(select(Route).where(getattr(Route, f"{end}_location_id") == location.id)):
             setattr(route, f"{end}_area", location.area)
     for visit in session.scalars(select(Visit).where(Visit.location_id == location.id)):
         visit.area = location.area
+    for stay in session.scalars(select(Stay).where(Stay.location_id == location.id)):
+        stay.area = location.area
 
 
 # What a place-search result says about one place: stale once the point moves elsewhere.
@@ -170,14 +173,15 @@ def _area_change(
     before_area: Area,
     visits: list[Visit],
     routes: list[Route],
+    stays: list[Stay],
     live: list[LiveAudience],
 ) -> FieldChange | None:
-    """The visitor-facing effect of moving a location to another area: its visits and route ends move with it.
+    """The visitor-facing effect of moving a location to another area: its visits, stays and route ends move with it.
 
-    Visitors read a visit's place and a route's ends from their areas, so the
-    audiences are those that receive any of the records carried along."""
+    Visitors read a visit's or stay's place and a route's ends from their areas,
+    so the audiences are those that receive any of the records carried along."""
     reached: dict[str, LiveAudience] = {}
-    for kind, records in (("visit", visits), ("route", routes)):
+    for kind, records in (("visit", visits), ("stay", stays), ("route", routes)):
         for record in records:
             for audience in reached_by(kind, record, live):
                 reached[audience.id] = audience
@@ -192,6 +196,7 @@ def _area_change(
         after_label=location.area.label,
         visits=len(visits),
         routes=len(routes),
+        stays=len(stays),
     )
 
 
@@ -220,9 +225,10 @@ def update_location(
     live = live_audiences(session, trip_id)
     before_view = location_visitor_view(location)
     before_area = location.area
-    visits, routes = [], []
+    visits, routes, stays = [], [], []
     if live and "area_id" in changes and payload.area_id not in (None, location.area_id):
         visits = list(session.scalars(select(Visit).where(Visit.location_id == location.id)))
+        stays = list(session.scalars(select(Stay).where(Stay.location_id == location.id)))
         routes = list(
             session.scalars(
                 select(Route).where(
@@ -272,7 +278,9 @@ def update_location(
             code="give_this_location_a_public_name_before_sharing_it",
         )
     visitor_changes = text_changes(before_view, location_visitor_view(location), reached_by("location", location, live))
-    if (visits or routes) and (area_change := _area_change(session, location, before_area, visits, routes, live)):
+    if (visits or routes or stays) and (
+        area_change := _area_change(session, location, before_area, visits, routes, stays, live)
+    ):
         visitor_changes.append(area_change)
     if visitor_changes and not payload.acknowledge_visitor_changes:
         details = [change.as_detail() for change in visitor_changes]
@@ -385,8 +393,9 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
 
     Every visit, stay, route end and reisupdate at a duplicate moves to the kept
     location in one transaction, and then the duplicates are deleted. The kept
-    location keeps its own name, visibility and area; visits and route ends move
-    into that area with it.
+    location keeps its own name, visibility and area; visits, stays and route
+    ends move into that area with it. A stay filed under an area alone has no
+    location, so a location merge never touches it.
 
     A live audience that receives the kept location but not a duplicate starts
     to read the kept name and point through the records that move. The preview
@@ -451,6 +460,7 @@ def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session
             visit.location = keep
         for stay in found["stays"]:
             stay.location = keep
+            stay.area = keep.area
         for update in found["travel_updates"]:
             update.location = keep
         for route in found["routes"]:

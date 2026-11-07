@@ -156,6 +156,7 @@ export type VisitorChange = {
   after_label?: string | null;
   visits?: number;
   routes?: number;
+  stays?: number;
 };
 const VISITOR_FIELDS: VisitorField[] = [
   "label",

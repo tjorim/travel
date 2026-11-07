@@ -3,7 +3,7 @@ import { Button } from "@/ui/button";
 import { useLocale } from "../../locale";
 import { Markdown } from "../../Markdown";
 import { m } from "../../paraglide/messages.js";
-import { stayLabel, type Stay } from "../../tracker-model";
+import { areaName, stayLabel, type Stay } from "../../tracker-model";
 import { VisibilityControl } from "../visibility";
 import { RecordActions } from "../RecordActions";
 import { IdeaNote } from "../IdeaNote";
@@ -31,12 +31,16 @@ export function StayDetails({
     <div className="stack-form">
       <div>
         <h3>{stayLabel(selected)}</h3>
-        {(selected.location?.address_line1 || selected.location?.locality) && (
-          <p>
-            {[selected.location.address_line1, selected.location.locality]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+        {selected.location ? (
+          (selected.location.address_line1 || selected.location.locality) && (
+            <p>
+              {[selected.location.address_line1, selected.location.locality]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )
+        ) : (
+          <p>{m.owner_stay_accommodation_not_chosen_yet_in({ p0: areaName(selected.area) })}</p>
         )}
         <p>
           {selected.booking_reference
