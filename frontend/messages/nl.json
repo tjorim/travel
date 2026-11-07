@@ -2516,5 +2516,14 @@
   "api_a_newer_alternative_choice_replaced_this_one": "Een nieuwere keuze heeft deze vervangen.",
   "api_there_is_no_alternative_choice_to_undo": "Er is geen keuze om ongedaan te maken.",
   "api_removed_alternatives_cannot_be_restored": "De alternatieven zijn verwijderd, dus de keuze kan niet ongedaan worden gemaakt.",
-  "api_the_alternatives_changed_since_this_choice": "De alternatieven zijn na deze keuze bewerkt, dus ze kan niet ongedaan worden gemaakt."
+  "api_the_alternatives_changed_since_this_choice": "De alternatieven zijn na deze keuze bewerkt, dus ze kan niet ongedaan worden gemaakt.",
+  "owner_agenda_add": "Toevoegen",
+  "owner_agenda_add_to_day": "Toevoegen aan {day}",
+  "owner_agenda_add_visit_on_day": "Bezoek op deze dag toevoegen",
+  "owner_agenda_add_stay_from_day": "Verblijf vanaf deze dag toevoegen",
+  "owner_agenda_add_route_on_day": "Route op deze dag toevoegen",
+  "owner_map_add_visit_here": "Bezoek hier toevoegen",
+  "owner_map_add_stay_here": "Verblijf hier toevoegen",
+  "owner_map_add_route_from_here": "Route vanaf hier toevoegen",
+  "owner_library_trip_documents_note": "Documenten die bij één reis horen, staan in het onderdeel Voorbereiden van die reis."
 }

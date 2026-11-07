@@ -23,6 +23,7 @@ import {
 import {
   blankStay,
   accommodationOf,
+  stayFromPrefill,
   fromStay,
   locationLine,
   overlaps,
@@ -32,6 +33,7 @@ import {
   stayPlaceFields,
   type StayValues,
 } from "./stays/model";
+import { useInPlaceCreate, type CreateRequestProps } from "./create-request";
 import { StayDetails } from "./stays/StayDetails";
 import { StayForm } from "./stays/StayForm";
 import { StayList } from "./stays/StayList";
@@ -40,15 +42,18 @@ import { useStayMutations } from "./stays/use-stay-mutations";
 export function StayManager({
   trip,
   focusId,
+  createRequest,
+  onCreateHandled,
 }: {
   trip: Trip;
   areas?: Area[];
   focusId?: DialogFocusRequest | null;
-}) {
+} & CreateRequestProps) {
   useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const stays = staysQuery.data ?? [];
   const groupsQuery = useTripResource(trip.id, "alternative-groups");
+  const locationsQuery = useTripResource(trip.id, "locations");
   const stayDialog = useRecordDialog(stays);
   useDialogFocus(focusId, stayDialog.inspect);
   const [message, setMessage] = useFeedback<string>(
@@ -61,6 +66,15 @@ export function StayManager({
   const baseline = useRef<StayValues>(blankStay(trip));
 
   const { save: saveStay, remove: deleteStay } = useStayMutations(trip.id);
+  const inPlace = useInPlaceCreate("stay", createRequest, onCreateHandled, (prefill) => {
+    loadStay(stayFromPrefill(trip, prefill, locationsQuery.data ?? []));
+    stayDialog.create();
+    setPrefilledPlace(
+      locationLine((locationsQuery.data ?? []).find((place) => place.id === prefill.locationId)),
+    );
+  });
+  // The name of the saved location a new stay started from; the editor shows it as the linked accommodation.
+  const [prefilledPlace, setPrefilledPlace] = useState("");
 
   async function cancelAlternatives(alternatives: Stay[]) {
     try {
@@ -96,7 +110,7 @@ export function StayManager({
       const propertyName = values.propertyName.trim();
       const changed = placeChanged(values, baseline.current);
       const id = stayDialog.editingId ?? null;
-      await saveStay.mutateAsync({
+      const saved = await saveStay.mutateAsync({
         id,
         payload: {
           property_name: propertyName || null,
@@ -113,6 +127,7 @@ export function StayManager({
           ...(!id || changed ? stayPlaceFields(values) : {}),
         },
       });
+      if (!id) inPlace.saved(saved.id);
     },
     onSuccess: () => {
       closeStay();
@@ -140,6 +155,7 @@ export function StayManager({
   }
   function newStay() {
     loadStay(blankStay(trip));
+    setPrefilledPlace("");
     stayDialog.create();
   }
   function editStay(stay: Stay) {
@@ -174,7 +190,9 @@ export function StayManager({
             overlaps(other, selectedStay.check_in_date, selectedStay.check_out_date),
         )
       : [];
-  const currentPlace = locationLine(stays.find((stay) => stay.id === editingStayId)?.location);
+  const currentPlace = editingStayId
+    ? locationLine(stays.find((stay) => stay.id === editingStayId)?.location)
+    : prefilledPlace;
 
   return (
     <section className="travel-card manager" aria-labelledby="stays-title">
@@ -211,6 +229,7 @@ export function StayManager({
         dirty={editingStay && stayRecord.dirty}
         error={stayDialog.error}
         onDismiss={closeStay}
+        returnFocus={inPlace.returnFocus}
       >
         {!editingStay && selectedStay && (
           <StayDetails

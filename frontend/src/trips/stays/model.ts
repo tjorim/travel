@@ -5,11 +5,13 @@ import {
   locationName,
   stayLabel,
   type DatePrecision,
+  type Location,
   type LocationInput,
   type Stay,
   type Trip,
 } from "../../tracker-model";
 import type { FormContext } from "../../forms/form-context";
+import type { CreatePrefill } from "../create-request";
 
 export type StayValues = {
   propertyName: string;
@@ -51,6 +53,36 @@ export const blankStay = (trip: Trip): StayValues => {
     contactDetails: "",
     notes: "",
     shareDatePrecision: "",
+  };
+};
+/**
+ * A new stay that checks in on the day and sits in the area (and, for a saved location, at the accommodation)
+ * an in-place start names. A location fills the same fields choosing it in the search would.
+ */
+export const stayFromPrefill = (
+  trip: Trip,
+  prefill: CreatePrefill,
+  locations: readonly Location[],
+): StayValues => {
+  const blankValues = blankStay(trip);
+  const checkInDate = prefill.day ?? blankValues.checkInDate;
+  const location = prefill.locationId
+    ? locations.find((candidate) => candidate.id === prefill.locationId)
+    : undefined;
+  return {
+    ...blankValues,
+    checkInDate,
+    checkOutDate: addDays(checkInDate, 1),
+    areaId: location?.area_id ?? prefill.areaId ?? "",
+    ...(location
+      ? {
+          propertyName: location.display_name ?? "",
+          address: location.address_line1 ?? "",
+          locality: location.locality ?? "",
+          countryCode: location.country_code ?? "",
+          location: { existing_location_id: location.id },
+        }
+      : {}),
   };
 };
 const locationInput = (place: Stay["location"]): LocationInput | null => {

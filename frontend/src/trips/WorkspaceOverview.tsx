@@ -13,7 +13,13 @@ import type { SectionProps } from "./workspace-sections";
  * The workspace's first section: the trip at a glance, its map, recent travel updates and open tasks, in that
  * reading order on a phone. On a wide screen the map takes the main column and the other three stack beside it.
  */
-export function WorkspaceOverview({ trip, areas, mapFocus, onOpenMapRecord }: SectionProps) {
+export function WorkspaceOverview({
+  trip,
+  areas,
+  mapFocus,
+  onOpenMapRecord,
+  onCreateRecord,
+}: SectionProps) {
   useLocale();
   return (
     <>
@@ -36,7 +42,13 @@ export function WorkspaceOverview({ trip, areas, mapFocus, onOpenMapRecord }: Se
           className="min-w-0 min-[1100px]:col-start-2 min-[1100px]:row-span-3 min-[1100px]:row-start-1"
           data-trip-map=""
         >
-          <OwnerTripMap trip={trip} areas={areas} focus={mapFocus} onOpenRecord={onOpenMapRecord} />
+          <OwnerTripMap
+            trip={trip}
+            areas={areas}
+            focus={mapFocus}
+            onOpenRecord={onOpenMapRecord}
+            onCreateRecord={onCreateRecord}
+          />
         </div>
         <section
           className="travel-card grid min-w-0 content-start gap-3.5 min-[1100px]:col-start-1 min-[1100px]:row-start-2"

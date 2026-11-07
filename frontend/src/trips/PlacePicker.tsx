@@ -61,6 +61,18 @@ export function placeOf(area: Area, location: Location | null): PlaceValue {
   return { ...emptyPlace(), choice: location ? `location:${location.id}` : `area:${area.id}` };
 }
 
+/** The place an in-place start names: a location when it points at one, else its area, else nothing yet. */
+export const placeOfPrefill = ({
+  areaId,
+  locationId,
+}: {
+  areaId?: string;
+  locationId?: string;
+}): PlaceValue => ({
+  ...emptyPlace(),
+  choice: locationId ? `location:${locationId}` : areaId ? `area:${areaId}` : "",
+});
+
 export const placeOfVisit = (visit: Pick<Visit, "area" | "location">): PlaceValue =>
   placeOf(visit.area, visit.location);
 

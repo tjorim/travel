@@ -14,7 +14,8 @@ import {
   type TimedRoute,
   areaName,
 } from "../../tracker-model";
-import { hasPlace, emptyPlace, placeOf, type PlaceValue } from "../PlacePicker";
+import type { CreatePrefill } from "../create-request";
+import { hasPlace, emptyPlace, placeOf, placeOfPrefill, type PlaceValue } from "../PlacePicker";
 import type { RouteCoordinate } from "../RouteGeometryEditor";
 import type { FormContext } from "../../forms/form-context";
 
@@ -111,6 +112,13 @@ export function blank(): Values {
     coordinates: "",
   };
 }
+
+/** A new route that leaves on the day and from the place an in-place start names. */
+export const routeFromPrefill = (prefill: CreatePrefill): Values => ({
+  ...blank(),
+  departsOn: prefill.day ?? "",
+  departure: placeOfPrefill(prefill),
+});
 
 export const fromRoute = (route: Route): Values => ({
   mode: route.mode,

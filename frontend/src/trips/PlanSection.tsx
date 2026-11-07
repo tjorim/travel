@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { useLocale } from "../locale";
 import { useTripResource } from "../query/owner-queries";
 import { AgendaView } from "./AgendaView";
@@ -19,9 +21,17 @@ export default function PlanSection({
   recordFocus,
   onOpenAgendaRecord,
   onShowOnMap,
+  createRequest,
+  onCreateRecord,
+  onCreateHandled,
 }: SectionProps) {
   useLocale();
   const { isOpen, setOpen } = useOpenSections(PARTS, recordFocus);
+  // A new record from elsewhere ends up in the agenda: keep that block open so focus can land on it.
+  const createToken = createRequest?.token;
+  useEffect(() => {
+    if (createToken) setOpen("agenda", true);
+  }, [createToken]);
   const visits = useTripResource(trip.id, "visits").data;
   const stays = useTripResource(trip.id, "stays").data;
   const routes = useTripResource(trip.id, "routes").data;
@@ -47,7 +57,14 @@ export default function PlanSection({
   };
   return (
     <>
-      {block("agenda", <AgendaView trip={trip} onOpenRecord={onOpenAgendaRecord} />)}
+      {block(
+        "agenda",
+        <AgendaView
+          trip={trip}
+          onOpenRecord={onOpenAgendaRecord}
+          onCreateRecord={onCreateRecord}
+        />,
+      )}
       {block(
         "areas",
         <AreaManager
@@ -62,13 +79,29 @@ export default function PlanSection({
           trip={trip}
           onShowOnMap={onShowOnMap}
           focusId={focusFor(recordFocus, "visit")}
+          createRequest={createRequest}
+          onCreateHandled={onCreateHandled}
         />,
       )}
       {block(
         "stays",
-        <StayManager trip={trip} areas={areas} focusId={focusFor(recordFocus, "stay")} />,
+        <StayManager
+          trip={trip}
+          areas={areas}
+          focusId={focusFor(recordFocus, "stay")}
+          createRequest={createRequest}
+          onCreateHandled={onCreateHandled}
+        />,
       )}
-      {block("routes", <RouteManager trip={trip} focusId={focusFor(recordFocus, "route")} />)}
+      {block(
+        "routes",
+        <RouteManager
+          trip={trip}
+          focusId={focusFor(recordFocus, "route")}
+          createRequest={createRequest}
+          onCreateHandled={onCreateHandled}
+        />,
+      )}
     </>
   );
 }

@@ -397,3 +397,39 @@ it("describes when a visit is, and which nights a stay covers", () => {
     uncovered: 0,
   });
 });
+
+it("opens a new visit on the day and in the place an in-place start names, handled once", async () => {
+  seed();
+  const handled = vi.fn();
+  const request = {
+    kind: "visit",
+    prefill: { day: "2054-11-18", areaId: "tainan" },
+    token: 1,
+  } as const;
+  renderWithOwner(<VisitManager trip={trip} createRequest={request} onCreateHandled={handled} />);
+  await screen.findByRole("dialog", { name: "Bezoek toevoegen" });
+  await waitFor(() => expect(selectedOption("Waar")).toBe("Tainan (heel gebied)"));
+  expect(handled).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
+  await screen.findByRole("button", { name: "Bezoek Tainan bekijken" });
+  expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
+    area_id: "tainan",
+    starts_on: "2054-11-18",
+  });
+});
+
+it("leaves a request for another kind of record alone", async () => {
+  seed();
+  const handled = vi.fn();
+  renderWithOwner(
+    <VisitManager
+      trip={trip}
+      createRequest={{ kind: "stay", prefill: { day: "2054-11-18" }, token: 1 }}
+      onCreateHandled={handled}
+    />,
+  );
+  await screen.findByRole("button", { name: "Nieuw bezoek" });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(handled).not.toHaveBeenCalled();
+});

@@ -20,7 +20,15 @@ import {
   type Trip,
 } from "../tracker-model";
 import { placeFields, samePlace } from "./PlacePicker";
-import { blank, fromRoute, parseCoordinates, serverFields, type Values } from "./routes/model";
+import { useInPlaceCreate, type CreateRequestProps } from "./create-request";
+import {
+  blank,
+  fromRoute,
+  parseCoordinates,
+  routeFromPrefill,
+  serverFields,
+  type Values,
+} from "./routes/model";
 import { RouteDetails } from "./routes/RouteDetails";
 import { RouteForm } from "./routes/RouteForm";
 import { RouteList } from "./routes/RouteList";
@@ -29,10 +37,12 @@ import { useRouteMutations } from "./routes/use-route-mutations";
 export function RouteManager({
   trip,
   focusId,
+  createRequest,
+  onCreateHandled,
 }: {
   trip: Trip;
   focusId?: DialogFocusRequest | null;
-}) {
+} & CreateRequestProps) {
   useLocale();
   const routesQuery = useTripResource(trip.id, "routes");
   const areasQuery = useTripResource(trip.id, "areas");
@@ -54,6 +64,10 @@ export function RouteManager({
   // An end's location is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<Values>(blank());
   const { save, remove } = useRouteMutations(trip.id);
+  const inPlace = useInPlaceCreate("route", createRequest, onCreateHandled, (prefill) => {
+    load(routeFromPrefill(prefill));
+    dialog.create();
+  });
   async function cancelAlternatives(alternatives: Route[]) {
     try {
       for (const alternative of alternatives)
@@ -89,7 +103,7 @@ export function RouteManager({
       const line = values.coordinates.trim() ? parseCoordinates(values.coordinates) : null;
       if (typeof line === "string")
         throw new FeedbackError(() => parseCoordinates(values.coordinates) as string);
-      await save.mutateAsync({
+      const saved = await save.mutateAsync({
         id,
         payload: {
           mode: values.mode,
@@ -116,6 +130,7 @@ export function RouteManager({
             : {}),
         },
       });
+      if (!id) inPlace.saved(saved.id);
     },
     onSuccess: () => {
       close();
@@ -192,6 +207,7 @@ export function RouteManager({
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
+        returnFocus={inPlace.returnFocus}
       >
         {!editing && selected && (
           <RouteDetails
