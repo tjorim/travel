@@ -2000,6 +2000,28 @@
   "assets_cover_removed": "Omslag verwijderd.",
   "assets_the_cover_could_not_be_saved": "Het omslag kon niet worden opgeslagen.",
   "assets_receives_no_cover_because_the_chosen_photo_is_not_among_its_photos": "{p0} toont geen omslag omdat het de gekozen omslagfoto niet ontvangt. Deel de foto met iedereen, voeg haar toe aan een gedeelde update of kies haar voor dit publiek.",
+  "assets_count_transport_legs": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} vervoersverbinding met tijd of maatschappij",
+        "countPlural=other": "{count} vervoersverbindingen met tijd of maatschappij"
+      }
+    }
+  ],
+  "assets_future_transport_times": "{p0} kan vóór de reis lezen wanneer en hoe u reist: {p1}. Zet die routes tot uw vertrek op privé.",
+  "assets_count_day_dated_records": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} record met een datum",
+        "countPlural=other": "{count} records met een datum"
+      }
+    }
+  ],
+  "assets_future_day_dates": "{p0} toont datums per dag bij {p1} vóór de reis. Zet tot uw vertrek “Datums die dit publiek ziet” op maand.",
   "api_choose_a_finished_share_copy_of_a_photo": "Kies een afgeronde deelkopie van een foto als omslag.",
   "visitor_destinations": "Bestemmingen",
   "visitor_more_destinations": "+{count} meer",

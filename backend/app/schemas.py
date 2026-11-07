@@ -1317,6 +1317,17 @@ class OverviewWarning(BaseModel):
     text: str | None = None
     kind: str | None = None
     id: str | None = None
+    # How many records or routes the warning counts (future transport and day dates); never their titles.
+    count: int | None = None
+
+
+class FutureDisclosure(BaseModel):
+    """Owner-only: what a candidate audience scope shows of the future before the trip starts, in counts.
+
+    Both are zero when the trip has started or ended, or when nothing qualifies. Nothing is stored."""
+
+    transport: int
+    day_dates: int
 
 
 class TripOverviewResponse(BaseModel):

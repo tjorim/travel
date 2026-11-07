@@ -4,6 +4,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import type {
   DatePrecision,
+  FutureDisclosure,
   OverviewAudience,
   OverviewRecordPrecision,
   OverviewWarning,
@@ -73,6 +74,38 @@ export function exclusionLines(audience: OverviewAudience): string[] {
   ];
 }
 
+/**
+ * What an audience reads before the trip starts, from the server's counts: exact transport times and dates shown by
+ * day. Shared by the Sharing check and the preview, so both say the same thing about the same counts.
+ */
+export function futureWarningText(
+  code: "future_transport_times" | "future_day_dates",
+  name: string,
+  count: number,
+): string {
+  return code === "future_transport_times"
+    ? m.assets_future_transport_times({
+        p0: name,
+        p1: m.assets_count_transport_legs({ count }),
+      })
+    : m.assets_future_day_dates({
+        p0: name,
+        p1: m.assets_count_day_dated_records({ count }),
+      });
+}
+
+/** The lines a disclosure count gives for one audience, empty when it shows nothing of the future. */
+export function futureDisclosureLines(disclosure: FutureDisclosure, name: string): string[] {
+  return [
+    ...(disclosure.transport
+      ? [futureWarningText("future_transport_times", name, disclosure.transport)]
+      : []),
+    ...(disclosure.day_dates
+      ? [futureWarningText("future_day_dates", name, disclosure.day_dates)]
+      : []),
+  ];
+}
+
 /** Describe canonical warning codes; server prose is diagnostic only. */
 function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): string {
   const name =
@@ -116,6 +149,9 @@ function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): st
       return m.assets_receives_no_cover_because_the_chosen_photo_is_not_among_its_photos({
         p0: name,
       });
+    case "future_transport_times":
+    case "future_day_dates":
+      return futureWarningText(warning.code, name, warning.count ?? 0);
     case "undated_visit_duplicates_dated":
       return m.assets_visit_has_no_date_but_its_area_already_has_a_dated_visit_give_it_a_date_({
         p0: warning.text ?? "",

@@ -88,6 +88,7 @@ function seed(media: ReturnType<typeof asset>[], copies: Record<string, object[]
     stale: 0,
     baseline: [],
   }));
+  api.on("POST", /\/future-disclosure$/, () => ({ transport: 0, day_dates: 0 }));
   api.on("POST", /\/preview$/, (_body, _match) => ({
     schema_version: "travel/public-trip@1",
     title: "Exampleland",

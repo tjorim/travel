@@ -39,6 +39,13 @@ enforces the scope; this check is about choosing it deliberately.
       record's own setting always applies. Read the Sharing check's date lines
       for the effective result before publishing, and before using *Follow the
       audience's precision*, which can show finer dates to a live audience.
+- [ ] Before the trip starts, read the Sharing check's future lines for each audience (the same lines appear in the
+      preview). A route with an exact time or a carrier shows that schedule, and dates shown by day show the
+      day; the check counts them, never their titles, and only warns (#231). Until you leave, set those routes
+      to *Privé* and *Dates shown to this audience* to month. The lines disappear once the trip has started or
+      ended. A route's departure day is shown in full whatever the audience's date setting, and the check counts
+      it only when the route also has a time or a carrier, so read such routes in the preview as a stranger would
+      (#262 decides whether route days should follow the audience's setting).
 - [ ] A hidden link receives everything set to Everyone unless you untick it in
       that link's editor. Read the Sharing check's *Leaves out N records* line
       for each link: unticking an area or location also hides what uses it, an
