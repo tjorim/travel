@@ -34,7 +34,6 @@ from test_sharing_presets import (
 
 from app import sharing_presets
 from app.access import COLLECTIONS
-from app.errors import ServiceError
 from app.models import (
     AuditEvent,
     AuditEventKind,
@@ -392,9 +391,8 @@ def test_the_planner_refuses_a_plan_that_would_promote_an_everyone_record(
     monkeypatch.setattr(sharing_presets, "plan_preset", faulty)
     fingerprint = review_of(world, target, "story_only")["fingerprint"]
     before = stored(world)
-    with pytest.raises(ServiceError) as caught:
-        apply(world, target, "story_only", fingerprint=fingerprint)
-    assert caught.value.code == "preset_must_not_write_everyone"
+    response = apply(world, target, "story_only", fingerprint=fingerprint)
+    assert response.status_code == 422 and error_code_of(response) == "preset_must_not_write_everyone"
     assert stored(world) == before
 
 

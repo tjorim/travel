@@ -755,10 +755,10 @@ def apply_preset(
         return review, False
 
     index = _index(trip)
-    _never_everyone(plan, index)
     others = _other_audiences(session, trip.id, audience)
     others_before = {name: _received(trip, scope) for name, scope in others}
     try:
+        _never_everyone(plan, index)
         for ref in plan.promoted():
             set_visibility(trip, ref[0], ref[1], Visibility.CUSTOM)
         if _written_everyone(session):  # before the flush resets what the session knows it changed
