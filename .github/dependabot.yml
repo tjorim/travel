@@ -21,7 +21,7 @@ updates:
       - "platform:backend"
     versioning-strategy: "increase"
     groups:
-      # fastmcp pulls in mcp, mcp-types and its CLI (cyclopts); keep them moving together
+      # fastmcp pulls in mcp and mcp-types; cyclopts is its CLI dependency. Keep them moving together
       fastmcp:
         patterns:
           - "fastmcp"
@@ -37,30 +37,46 @@ updates:
           - "pydantic-settings"
       python-quality:
         patterns:
-          - "pytest"
           - "ruff"
           - "ty"
-      # markdown-it plugins are pinned against their core release
-      markdown:
+          - "pytest"
+          - "pytest-asyncio"
+      # Postgres drivers (psycopg[binary] installs psycopg-binary), SQLAlchemy/Alembic and the
+      # SQLite driver used for dev and tests
+      database:
         patterns:
-          - "markdown-it-py"
-          - "mdit-py-plugins"
-      # psycopg[binary] installs psycopg-binary; they share one release train
-      psycopg:
-        patterns:
-          - "psycopg"
-          - "psycopg-binary"
-      # timezonefinder ships its data as a separate package
-      timezonefinder:
-        patterns:
-          - "timezonefinder"
-          - "timezonefinder-data"
-      # Token and OAuth handling: authlib depends on joserfc, PyJWT is the direct JWT library
+          - "psycopg*"
+          - "asyncpg"
+          - "sqlalchemy"
+          - "alembic"
+          - "aiosqlite"
+      # Token, OIDC and JOSE libraries are security-sensitive; review them together.
+      # cachetools is a transitive google-auth dependency
       auth:
         patterns:
           - "authlib"
           - "joserfc"
           - "pyjwt"
+          - "google-auth"
+          - "cachetools"
+          - "cryptography"
+      # FastAPI request stack and its async/multipart dependencies
+      fastapi-stack:
+        patterns:
+          - "fastapi"
+          - "starlette"
+          - "python-multipart"
+          - "anyio"
+      # markdown-it plugins are pinned against their core release
+      markdown:
+        patterns:
+          - "markdown-it-py"
+          - "mdit-py-plugins"
+      # timezonefinder ships its data as a separate package
+      timezonefinder:
+        patterns:
+          - "timezonefinder"
+          - "timezonefinder-data"
 
   # pnpm projects use Dependabot's npm ecosystem support.
   - package-ecosystem: "npm"
@@ -93,33 +109,97 @@ updates:
         patterns:
           - "vite"
           - "@vitejs/plugin-react"
-      # Keep TanStack Query and its devtools together (devtools must track react-query's query-core)
-      tanstack-query:
+      # tailwindcss and its Vite plugin share one release train
+      tailwind:
         patterns:
-          - "@tanstack/react-query"
-          - "@tanstack/react-query-devtools"
-      # TanStack Router ships on its own release cadence
-      tanstack-router:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+      # OXC toolchain: linter, formatter and parser
+      oxc:
         patterns:
-          - "@tanstack/react-router"
+          - "oxlint"
+          - "oxfmt"
+          - "oxc-parser"
+      # Inlang i18n packages
+      i18n:
+        patterns:
+          - "@inlang/*"
+      # Vitest, Testing Library and the test-environment helpers
+      # tinybench is vitest's benchmark runner; it is a transitive dependency
       testing:
         patterns:
           - "@testing-library/*"
           - "@vitest/*"
           - "vitest"
-          - "@playwright/*"
-          - "@axe-core/*"
           - "happy-dom"
           - "fake-indexeddb"
-      # Mock Service Worker drives the API mocks in Vitest and the offline tests
+          - "tinybench"
+      # msw's own stack: msw, its @msw/@mswjs packages, and the helpers and cookie/URL packages it ships with.
+      # Generic utilities it reaches (yargs, wrap-ansi, type-fest, graphql, ...) stay ungrouped.
       msw:
         patterns:
           - "msw"
-      # The shadcn CLI and its lint companion; Base UI runtime stays ungrouped so its regressions are attributable
-      shadcn-cli:
+          - "@msw/*"
+          - "@mswjs/*"
+          - "@open-draft/until"
+          - "@inquirer/*"
+          - "tldts"
+          - "tldts-core"
+          - "tough-cookie"
+          - "outvariant"
+          - "rettime"
+          - "headers-polyfill"
+          - "until-async"
+          - "is-node-process"
+      # Playwright and the axe-core integration used by the e2e suite
+      playwright:
+        patterns:
+          - "@playwright/*"
+          - "@axe-core/*"
+      # TanStack Query packages must share one @tanstack/query-core; duplicate copies break QueryClient types
+      tanstack-query:
+        patterns:
+          - "@tanstack/react-query"
+          - "@tanstack/react-query-devtools"
+          - "@tanstack/query-persist-client-core"
+      # TanStack Router with its internals; seroval is router-core's serializer
+      tanstack-router:
+        patterns:
+          - "@tanstack/react-router"
+          - "@tanstack/router-*"
+          - "@tanstack/history"
+          - "isbot"
+          - "seroval"
+          - "seroval-plugins"
+      # Babel packages are transitive and must resolve to one version per major line
+      babel:
+        patterns:
+          - "@babel/*"
+      # TypeScript and its runtime helpers
+      typescript:
+        patterns:
+          - "typescript"
+          - "tslib"
+      # Base UI is the shipped runtime (@base-ui/react and its pinned @base-ui/utils);
+      # its behaviour changes get their own PR
+      base-ui:
+        patterns:
+          - "@base-ui/*"
+      # shadcn CLI and its registry tooling (dev-only). Kept apart from the Base UI runtime group so a
+      # regression is attributable to one of them (docs/ui-maintenance.md)
+      shadcn:
         patterns:
           - "shadcn"
           - "@shadcn/*"
+      # Icon set kept in its own group so icon releases are reviewed separately
+      lucide:
+        patterns:
+          - "lucide-react"
+      # Review the map renderer and its scoped dependencies together
+      maplibre:
+        patterns:
+          - "maplibre-gl"
+          - "@maplibre/*"
       # Transitive packages that Dependabot would otherwise open one PR each for
       transitive:
         patterns:
@@ -127,29 +207,6 @@ updates:
           - "enhanced-resolve"
           - "ip-address"
           - "@napi-rs/wasm-runtime"
-      oxc:
-        patterns:
-          - "oxlint"
-          - "oxfmt"
-          - "oxc-parser"
-      i18n:
-        patterns:
-          - "@inlang/*"
-      # Review the map renderer and its scoped dependencies together.
-      maplibre:
-        patterns:
-          - "maplibre-gl"
-          - "@maplibre/*"
-      # tldts and its core package share one release train.
-      tldts:
-        patterns:
-          - "tldts"
-          - "tldts-core"
-      # tailwindcss and its Vite plugin share one release train
-      tailwind:
-        patterns:
-          - "tailwindcss"
-          - "@tailwindcss/*"
 
   # Monitor the backend image's base images.
   - package-ecosystem: "docker"
@@ -202,3 +259,7 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
+    groups:
+      codeql:
+        patterns:
+          - "github/codeql-action/*"
