@@ -949,6 +949,8 @@
   "owner_stay_area_help": "Het gebied is waar je slaapt. Zolang de accommodatie niet vaststaat, kies je alleen het gebied: er wordt geen plaats voor aangemaakt, en bezoekers zien alleen het gebied en de nachten.",
   "owner_area_follows_the_accommodation": "Het gebied volgt de gekozen accommodatie.",
   "owner_accommodation_not_chosen_yet": "Accommodatie nog niet gekozen",
+  "owner_no_exact_location_yet": "Nog geen exacte locatie",
+  "owner_search_for_the_name": "Zoek “{p0}”",
   "owner_stay_accommodation_not_chosen_yet_in": "Accommodatie nog niet gekozen · {p0}",
   "owner_remove_the_accommodation": "Accommodatie loskoppelen",
   "owner_remove_the_accommodation_help": "Het verblijf blijft in zijn gebied en de opgeslagen locatie zelf wordt niet verwijderd.",

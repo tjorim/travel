@@ -949,6 +949,8 @@
   "owner_stay_area_help": "The area is where you sleep. While the accommodation is not decided, choose only the area: no place is created for it, and visitors only ever see the area and the nights.",
   "owner_area_follows_the_accommodation": "The area follows the chosen accommodation.",
   "owner_accommodation_not_chosen_yet": "Accommodation not chosen yet",
+  "owner_no_exact_location_yet": "No exact location yet",
+  "owner_search_for_the_name": "Search for “{p0}”",
   "owner_stay_accommodation_not_chosen_yet_in": "Accommodation not chosen yet · {p0}",
   "owner_remove_the_accommodation": "Remove the accommodation",
   "owner_remove_the_accommodation_help": "The stay stays in its area and the saved location itself is not deleted.",

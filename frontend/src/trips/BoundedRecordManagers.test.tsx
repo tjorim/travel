@@ -632,6 +632,43 @@ it("chooses the accommodation later and can go back to not having one", async ()
   });
 });
 
+it("adds an exact location to an area-only stay by searching for its property name", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel Idea")])
+    .collection("/api/trips/trip/locations", []);
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "© OpenStreetMap contributors",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+    results: [
+      {
+        osm_element_type: "node",
+        osm_element_id: "7",
+        display_name: "Hotel Idea",
+        address_line1: "1 Example Road",
+        locality: "Taipei",
+        country_code: "TW",
+        latitude: 25.047,
+        longitude: 121.51,
+      },
+    ],
+  }));
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  // The row says, in text, that this considered stay has no exact location yet.
+  expect(await screen.findByText(/Nog geen exacte locatie/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Hotel Idea/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Zoek “Hotel Idea”" }));
+  const result = await screen.findByRole("button", { name: /^Hotel Idea$/ });
+  expect(api.lastBody("POST /api/trips/trip/places/search")).toEqual({ query: "Hotel Idea" });
+  fireEvent.click(result);
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf opslaan" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("PATCH /api/trips/trip/stays/s1")).toMatchObject({
+    location: { osm_element_id: "7", latitude: 25.047, longitude: 121.51, area_id: "area-1" },
+  });
+});
+
 it("returns a stay with an accommodation to its area alone", async () => {
   api = fakeApi()
     .collection("/api/trips/trip/areas", [area])

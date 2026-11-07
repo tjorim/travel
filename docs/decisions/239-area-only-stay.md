@@ -27,8 +27,11 @@ documents against a golden captured on the code that still created placeholders.
 Before this change a stay given only an area was filed under one shared
 "city-level" location per area (`area_location`): private, no label, no address,
 no point, no notes, `locality` = the area's label, `country_code` = the area's
-country. A location is converted only when it is exactly that shape **and** only
-stays use it:
+country. An owner may also have typed a generic "Verblijf in <city>" with the
+area's own two-decimal point. The owner compares hotels by their **exact**
+private location, so only city-level shells are converted; anything exact is
+kept. A location is converted only when it is such a shell **and** only stays
+use it:
 
 | Location | Migration |
 |---|---|
@@ -36,6 +39,8 @@ stays use it:
 | the same shape, also used by a visit, a route end or a reisupdate, or named in a public view, hidden link or collection member scope | kept, stays attached |
 | shared (`everyone` or `custom`), or with a public name | kept (this is the owner-named "Verblijf in &lt;city&gt;" kind: visitors may receive it) |
 | with a display name, address, postal code, admin area, point, viewport, OSM or provider reference, notes, or a shared address | kept |
+| a point with three or more decimals (also when unlabeled, with no address, on an idea stay), or a point that is not the area's own | kept (exact private data) |
+| a private, unlabeled shell whose point has at most two decimals and equals the area's own point, with no display name or only "Verblijf in <area>" | its stays become area-only; the location is deleted |
 | a city or country that differs from its area's | kept |
 | placeholder-shaped but not used by any stay | kept (the migration only removes what it frees) |
 

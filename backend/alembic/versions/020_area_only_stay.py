@@ -16,9 +16,13 @@ A location counts as a placeholder only when ALL of these hold; otherwise it is
 kept, with its stays attached:
 
 * it is ``private`` and its address is not shared;
-* it has no public name, no address, postal code, admin area, display name,
-  coordinates, viewport, OSM or navigation-provider reference and no notes
-  (what ``area_location`` never sets);
+* it has no public name, no address, postal code, admin area, viewport, OSM or
+  navigation-provider reference and no notes (what ``area_location`` never sets);
+* it holds no exact position: either no coordinates at all, or coordinates that
+  have at most two decimals and equal the area's own point (a city-level shell).
+  Coordinates with three or more decimals, or anywhere else, are an exact private
+  location the owner compares hotels by: such a location is always kept;
+* it has no display name, or only the generic "Verblijf in <area label>";
 * its ``locality`` is empty or equals its area's label, and its country is empty or
   equals its area's country (what ``area_location`` sets), so an owner's
   edit to either makes it theirs;
@@ -60,6 +64,20 @@ _UNSET_FIELDS = (
     "notes",
 )
 _NAMES_NOTHING = " AND ".join(f"l.{field} IS NULL" for field in _UNSET_FIELDS)
+# What an owner-exact location has that a shell does not: drop the ones a shell may carry.
+_SHELL_FIELDS = tuple(f for f in _UNSET_FIELDS if f not in ("display_name", "latitude", "longitude"))
+_SHELL_NAMES_NOTHING = " AND ".join(f"l.{field} IS NULL" for field in _SHELL_FIELDS)
+# No position, or a two-decimal one sitting on the area's own point: a city-level shell, not an exact place.
+_SHELL_POINT = """(
+    (l.latitude IS NULL AND l.longitude IS NULL)
+    OR (
+        a.latitude IS NOT NULL AND a.longitude IS NOT NULL
+        AND l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+        AND abs(l.latitude - a.latitude) < 0.000001 AND abs(l.longitude - a.longitude) < 0.000001
+        AND l.latitude = round(l.latitude::numeric, 2)::double precision
+        AND l.longitude = round(l.longitude::numeric, 2)::double precision
+    )
+)"""
 
 # A location's id may appear in a share scope as a chosen or excluded item.
 _NOT_IN_A_SCOPE = " AND ".join(
@@ -67,8 +85,18 @@ _NOT_IN_A_SCOPE = " AND ".join(
     for table in ("public_surfaces", "share_links", "collection_members")
 )
 
+# The strict, previous shape: what ``area_location`` made (and what the downgrade reuses or recreates).
 _PLACEHOLDER = f"""
     l.visibility = 'private' AND NOT l.share_address AND {_NAMES_NOTHING}
+    AND (l.locality IS NULL OR lower(l.locality) = lower(a.label))
+    AND (l.country_code IS NULL OR l.country_code = a.country_code)
+"""
+# What the upgrade converts: the strict shape, also with the area's own two-decimal point and the generic
+# "Verblijf in <area>" name an owner may have typed. Never a three-decimal point, an address, notes or a name.
+_SHELL = f"""
+    l.visibility = 'private' AND NOT l.share_address AND {_SHELL_NAMES_NOTHING}
+    AND {_SHELL_POINT}
+    AND (l.display_name IS NULL OR lower(l.display_name) = lower('Verblijf in ' || a.label))
     AND (l.locality IS NULL OR lower(l.locality) = lower(a.label))
     AND (l.country_code IS NULL OR l.country_code = a.country_code)
 """
@@ -89,7 +117,7 @@ def upgrade() -> None:
         f"""
 CREATE TEMPORARY TABLE _placeholder_locations ON COMMIT DROP AS
 SELECT l.id FROM public.locations l JOIN public.areas a ON a.id = l.area_id
-WHERE {_PLACEHOLDER}
+WHERE {_SHELL}
   AND EXISTS (SELECT 1 FROM public.stays s WHERE s.location_id = l.id)
   AND NOT ({_USED_ELSEWHERE})
   AND {_NOT_IN_A_SCOPE}

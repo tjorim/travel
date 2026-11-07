@@ -26,6 +26,7 @@ export function PlaceSearchField({
   onSelect,
   allowExisting = false,
   current,
+  suggestedQuery,
 }: {
   tripId: string;
   legend: string;
@@ -38,6 +39,8 @@ export function PlaceSearchField({
   allowExisting?: boolean;
   /** Names the place the record is already linked to, shown until a new one is chosen. */
   current?: string;
+  /** A phrase worth searching for (for example the stay's property name), offered as one button. */
+  suggestedQuery?: string;
 }) {
   useLocale();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,16 +62,16 @@ export function PlaceSearchField({
     invalidate: () => [],
     gcTime: 0,
   });
-  function find() {
+  function find(phrase = query) {
     if (search.isPending) return;
-    if (query.trim().length < 2) {
+    if (phrase.trim().length < 2) {
       setState(textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()));
       return;
     }
     setFailed(false);
     setResults(null);
     setState(textNotice(() => m.owner_searching_locations()));
-    search.mutateAsync({ query: query.trim() }).then(
+    search.mutateAsync({ query: phrase.trim() }).then(
       (response) => {
         setResults(response);
         setState(
@@ -143,11 +146,31 @@ export function PlaceSearchField({
           </FieldLabel>
         </Field>
         <div className="flex items-end">
-          <Button className="secondary" type="button" disabled={search.isPending} onClick={find}>
+          <Button
+            className="secondary"
+            type="button"
+            disabled={search.isPending}
+            onClick={() => find()}
+          >
             {m.owner_search()}
           </Button>
         </div>
       </div>
+      {suggestedQuery?.trim() && (
+        <div>
+          <Button
+            className="secondary compact"
+            type="button"
+            disabled={search.isPending}
+            onClick={() => {
+              setQuery(suggestedQuery.trim());
+              find(suggestedQuery);
+            }}
+          >
+            {m.owner_search_for_the_name({ p0: suggestedQuery.trim() })}
+          </Button>
+        </div>
+      )}
       {(state || current) && (
         <p className="help" role="status">
           {state || current}

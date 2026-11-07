@@ -142,22 +142,31 @@ export function StayForm({
           />
         )}
       </record.form.Field>
-      <PlaceSearchField
-        tripId={tripId}
-        legend={m.owner_search_stay()}
-        inputLabel={m.owner_search_for_accommodation_or_an_address()}
-        placeholder={m.owner_for_example_central_station_hotel()}
-        help={m.owner_stay_search_help()}
-        onSelect={choosePlace}
-        allowExisting
-        current={
-          currentPlace
-            ? m.owner_linked_location_choose_or_search_for_another_below_to_replace_it({
-                p0: currentPlace,
-              })
-            : undefined
+      <record.form.Subscribe
+        selector={(state) =>
+          accommodationOf(state.values) === "none" ? state.values.propertyName : ""
         }
-      />
+      >
+        {(suggestedQuery) => (
+          <PlaceSearchField
+            tripId={tripId}
+            suggestedQuery={suggestedQuery}
+            legend={m.owner_search_stay()}
+            inputLabel={m.owner_search_for_accommodation_or_an_address()}
+            placeholder={m.owner_for_example_central_station_hotel()}
+            help={m.owner_stay_search_help()}
+            onSelect={choosePlace}
+            allowExisting
+            current={
+              currentPlace
+                ? m.owner_linked_location_choose_or_search_for_another_below_to_replace_it({
+                    p0: currentPlace,
+                  })
+                : undefined
+            }
+          />
+        )}
+      </record.form.Subscribe>
       <div className="field-row">
         <record.form.Field
           name="checkInDate"

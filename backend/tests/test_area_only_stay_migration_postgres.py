@@ -56,6 +56,51 @@ CASES: dict[str, tuple[dict, str | None, bool]] = {
     "placeholder_with_a_route": (PLACEHOLDER, "route", False),
     "placeholder_with_an_update": (PLACEHOLDER, "update", False),
     "placeholder_in_a_scope": (PLACEHOLDER, "scope", False),
+    # The owner's city-level shells with the area's own two-decimal point, converted when private.
+    "generic_verblijf_on_the_area_point": (
+        {
+            "visibility": Visibility.PRIVATE,
+            "display_name": "Verblijf in Taipei",
+            "locality": "Taipei",
+            "country_code": "TW",
+            "latitude": 25.03,
+            "longitude": 121.56,
+        },
+        None,
+        True,
+    ),
+    # The same, shared with visitors: they receive it, so converting would change what they read. Kept.
+    "shared_generic_verblijf_on_the_area_point": (
+        {
+            "visibility": Visibility.EVERYONE,
+            "label": "Verblijf in Taipei",
+            "display_name": "Verblijf in Taipei",
+            "locality": "Taipei",
+            "country_code": "TW",
+            "latitude": 25.03,
+            "longitude": 121.56,
+        },
+        None,
+        False,
+    ),
+    # An exact private position never counts as a shell, whatever else is missing.
+    "unlabeled_four_decimal_point_no_address": (
+        {**PLACEHOLDER, "latitude": 25.0470, "longitude": 121.5100},
+        None,
+        False,
+    ),
+    "three_decimals_on_the_area_point": ({**PLACEHOLDER, "latitude": 25.031, "longitude": 121.561}, None, False),
+    "confirmed_hotel_with_four_decimals_and_address": (
+        {
+            **PLACEHOLDER,
+            "display_name": "Hotel Exact",
+            "address_line1": "3 Example Road",
+            "latitude": 25.0412,
+            "longitude": 121.5233,
+        },
+        None,
+        False,
+    ),
     "shared_and_named": (
         {"visibility": Visibility.EVERYONE, "label": "Verblijf in Taipei", "display_name": "Verblijf in Taipei"},
         None,
@@ -87,7 +132,7 @@ def _seed(engine) -> dict:
         trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
         session.add(trip)
         session.flush()
-        area = Area(trip_id=trip.id, label="Taipei", country_code="TW")
+        area = Area(trip_id=trip.id, label="Taipei", country_code="TW", latitude=25.03, longitude=121.56)
         other = Area(trip_id=trip.id, label="Tainan", country_code="TW")
         chiayi = Area(trip_id=trip.id, label="Chiayi City", country_code="TW")
         session.add_all([area, other, chiayi])
@@ -137,13 +182,14 @@ def _seed(engine) -> dict:
                 session.execute(
                     text(
                         "INSERT INTO stays (id, trip_id, location_id, check_in_date, check_out_date, status, "
-                        "visibility, share_date_precision) VALUES (:id, :trip, :location, :check_in, :check_out, "
-                        "'planned', 'everyone', 'month')"
+                        "visibility, share_date_precision, property_name) VALUES (:id, :trip, :location, "
+                        ":check_in, :check_out, 'planned', 'everyone', 'month', :name)"
                     ),
                     {
                         "id": stay_id,
                         "trip": trip.id,
                         "location": locations[name],
+                        "name": f"Property {name}",
                         "check_in": date(2054, 1, 1) + timedelta(days=index + second * 40),
                         "check_out": date(2054, 1, 2) + timedelta(days=index + second * 40),
                     },
@@ -190,6 +236,18 @@ def test_upgrade_converts_only_placeholders_that_stays_alone_use(database) -> No
             else:
                 assert location_id == ids["locations"][name], name
         assert (ids["locations"][name] in remaining) is (not converted), name
+    # The property name belongs to the stay: converting never touches it.
+    with engine.connect() as connection:
+        names = dict(connection.execute(text("SELECT id, property_name FROM stays")).all())
+    for name in CASES:
+        assert names[ids["stays"][name]] == f"Property {name}", name
+    # No stay with an exact position (three or more decimals) lost its location.
+    for name in (
+        "unlabeled_four_decimal_point_no_address",
+        "three_decimals_on_the_area_point",
+        "confirmed_hotel_with_four_decimals_and_address",
+    ):
+        assert rows[ids["stays"][name]][1] == ids["locations"][name], name
     # A placeholder nothing pointed at is not touched: only what the migration frees is removed.
     assert ids["locations"]["orphan"] in remaining
     with engine.connect() as connection:
@@ -211,7 +269,8 @@ def test_downgrade_gives_every_stay_a_location_again_and_a_round_trip_converts_a
     command.upgrade(config, "head")
     before = _stay_rows(engine)
     area_only = {stay_id for stay_id, (_, location_id) in before.items() if location_id is None}
-    assert len(area_only) == 4  # two stays on one placeholder, and the two other placeholders
+    # Two stays on one placeholder, the two other plain placeholders and the generic one on the area's point.
+    assert len(area_only) == 5
     tainan, chiayi = ids["areas"]["Tainan"], ids["areas"]["Chiayi"]
     # Undecided stays in an area whose placeholder survives (the downgrade reuses it) and in one with none.
     reused, fresh = uuid4().hex, uuid4().hex
