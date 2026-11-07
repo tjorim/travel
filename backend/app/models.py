@@ -453,16 +453,21 @@ class Stay(Base):
     ``check_in_date <= d < check_out_date``. Both are local calendar dates
     at the accommodation, as are the optional check-in/check-out times.
 
-    Every stay has a ``location`` (filed under an area). Its
-    location, property and booking/contact details are never shareable; sharing
-    a stay shows only its area and its nights."""
+    Every stay has an ``area`` and, once an accommodation is chosen, a
+    ``location`` in that area. While it is undecided the stay is filed under its
+    area only: no placeholder location is created for it. A stay's area is its
+    own ``area_id``, which always equals the area of its location when it has
+    one (the same pattern as a visit or a route end). The location, property and
+    booking/contact details are never shareable; sharing a stay shows only its
+    area and its nights."""
 
     __tablename__ = "stays"
     __table_args__ = (CheckConstraint("check_out_date > check_in_date", name="ck_stay_check_out_after_check_in"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
+    area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False, index=True)
+    location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
     check_in_date: Mapped[date] = mapped_column(Date, nullable=False)
     check_out_date: Mapped[date] = mapped_column(Date, nullable=False)
     check_in_time: Mapped[time | None] = mapped_column(Time, nullable=True)
@@ -489,12 +494,8 @@ class Stay(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="stays")
-    location: Mapped[Location] = relationship(foreign_keys=[location_id])
-
-    @property
-    def area(self) -> Area:
-        """The stay's area is the area of its location."""
-        return self.location.area
+    area: Mapped[Area] = relationship(foreign_keys=[area_id])
+    location: Mapped[Location | None] = relationship(foreign_keys=[location_id])
 
 
 class Route(Base):

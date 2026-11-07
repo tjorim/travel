@@ -36,7 +36,10 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   a visit. The day-by-day agenda is a read-only view over stays, routes and
   visits, not a record.
 - **Stay** (*verblijf*): the nights slept at one accommodation. Every stay has
-  a location and takes its area from it, so it needs no area of its own.
+  an area and, once an accommodation is chosen, a location in it. Until then
+  (*accommodatie nog niet gekozen*) the stay is filed under its area alone: no
+  placeholder location is created for it. The stored area is the stay's own
+  `area_id`, always equal to the area of its location when it has one.
 - **Route** (*route*): how the trip gets from one area to another, by a travel
   mode (flight, train, bus, ferry, car, bike, walk or other). See below.
 - **Reisupdate**: what happened, with a private part and a shared part. It can
@@ -44,9 +47,15 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
 - **Photo** and **video**: files shared only as application-generated approved copies. Documents are always private.
 
 **Giving a place.** Wherever a record points at a place (a visit, each end of a
-route), the owner gives an area, a location, or both. A location settles its
-area, so giving only the location is enough; an area given with a location must
-be that location's own. The stored record always has an area.
+route, a stay), the owner gives an area, a location, or both. A location
+settles its area, so giving only the location is enough; an area given with a
+location must be that location's own. The stored record always has an area.
+For a stay the location is optional: `area_id` alone files it under that area
+and creates no location, a later `location` chooses the accommodation, and
+`location: null` returns it to the area (the area is kept). A location payload
+that names nothing but an `area_id` means the same as the area alone. Moving a
+location to another area, merging two locations, or merging two areas keeps the
+stored area of every stay in step.
 
 There is no record called "place". The word is only used for the search that
 suggests a location (*locaties zoeken*, which suggests and never saves) and
@@ -59,7 +68,8 @@ receives. In Dutch, *plaats* means a town, so it is not used for a location.
 Area ◄── Location            a location is filed under exactly one area
   ▲          ▲
   │          │
-  ├──────────┼── Stay        location (required); area comes from it
+  ├──────────┼── Stay        an area, and optionally a location in it
+  │          │                (area-only until an accommodation is chosen)
   ├── Visit                  an area or a location; the area is always set
   ├── Reisupdate             area (shared) and location (private), both optional
   └── Route                  each end is an area or a location; both areas are
@@ -155,7 +165,7 @@ depends on it.*
 
 | Excluded | Also hidden for that audience |
 |---|---|
-| Area | the locations filed under it; the visits, stays, routes and updates that use the area or one of those locations; and the photos of those updates |
+| Area | the locations filed under it; the visits, stays (including those filed under the area alone), routes and updates that use the area or one of those locations; and the photos of those updates |
 | Location | the visits, stays, routes and updates that use it, and the photos of those updates (not its area) |
 | Update | its photos |
 | Photo | nothing; if it is the trip cover, the audience gets no cover |

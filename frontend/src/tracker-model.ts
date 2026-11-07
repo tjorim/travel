@@ -197,8 +197,9 @@ export type Stay = {
   contact_details_html?: string | null;
   notes: string | null;
   notes_html?: string | null;
-  /** Every stay has a location; its area comes from it. */
-  location: Location;
+  /** The chosen accommodation; `null` while the stay is filed under its area alone. */
+  location: Location | null;
+  /** Every stay has an area: its own while undecided, else the area of its location. */
   area: Area;
   visibility: Visibility;
   /** How exactly visitors see the nights of a shared stay; null follows each audience's own date precision. */
@@ -947,6 +948,7 @@ export type AreaMergeResult = {
     label: string;
     locations: number;
     visits: number;
+    stays: number;
     routes: number;
     travel_updates: number;
     narrowed_audiences: string[];

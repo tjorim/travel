@@ -67,32 +67,8 @@ _IDENTIFYING = (
 
 
 def is_city_level(location: Location) -> bool:
-    """Whether a location names nothing but its area, like an undecided stay's."""
+    """Whether a location names nothing but its area (a legacy undecided-stay placeholder)."""
     return all(getattr(location, field) is None for field in _IDENTIFYING)
-
-
-def area_location(session: Session, trip_id: Identifier, area: Area) -> Location:
-    """The one location that means just "in this area", created on first use.
-
-    A stay whose accommodation is still undecided needs a location, and every
-    such stay in the same city shares this one instead of each adding its own
-    copy of the area's name."""
-    candidates = (
-        select(Location)
-        .where(
-            Location.trip_id == trip_id,
-            Location.area_id == area.id,
-            *(getattr(Location, field).is_(None) for field in _IDENTIFYING),
-        )
-        .order_by(Location.created_at)
-    )
-    for location in session.scalars(candidates):
-        if location.locality is None or location.locality.lower() == (area.label or "").lower():
-            return location
-    location = Location(trip_id=trip_id, area=area, locality=area.label, country_code=area.country_code)
-    session.add(location)
-    session.flush()
-    return location
 
 
 def location_from_input(session: Session, trip_id: Identifier, payload: LocationInput) -> Location:
@@ -147,3 +123,31 @@ def resolve_place(
             code="that_location_is_not_in_the_chosen_area",
         )
     return found.area, found
+
+
+def stay_place(
+    session: Session, trip_id: Identifier, area_id: Identifier | None, location: LocationInput | None
+) -> tuple[Area, Location | None]:
+    """The area and optional location of a stay.
+
+    A stay whose accommodation is undecided is filed under its area alone: no
+    placeholder location is created. A location payload that names nothing but
+    an area (``{"area_id": ...}``) means the same as ``area_id`` and so also
+    creates no location. Otherwise it resolves like a visit's place: the
+    location settles the area, and an area given with it must be its own."""
+    if location is not None and not location.model_dump(exclude={"area_id"}, exclude_defaults=True):
+        if area_id is not None and location.area_id is not None and area_id != location.area_id:
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="That location is not in the chosen area",
+                code="that_location_is_not_in_the_chosen_area",
+            )
+        location_area_id = location.area_id or area_id
+        if location_area_id is None:  # an empty location payload: rejected by the schema, kept safe here
+            raise ApiException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Say where this stay is",
+                code="say_where_this_stay_is",
+            )
+        return selected_area(session, trip_id, location_area_id), None
+    return resolve_place(session, trip_id, area_id, location)

@@ -181,25 +181,28 @@ def test_a_shared_stay_shows_only_its_area_and_nights_never_the_accommodation() 
     assert TestClient(app).get(f"/api/public/trips/{published.json()['slug']}").json()["stays"]
 
 
-def test_every_stay_has_a_location_but_the_accommodation_can_still_be_chosen_later() -> None:
+def test_a_stay_needs_an_area_but_the_accommodation_can_be_chosen_later() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     area = create_area(owner, trip["id"], label="Alishan")
     base = f"/api/trips/{trip['id']}/stays"
     nights = {"check_in_date": "2054-11-29", "check_out_date": "2054-11-30"}
 
-    # No location, or one that says nothing about where it is, is refused.
+    # No place at all, or a location that says nothing about where it is, is refused.
     assert owner.post(base, json=nights).status_code == 422
     assert owner.post(base, json={**nights, "location": {}}).status_code == 422
     assert owner.post(base, json={**nights, "location": {"notes": "somewhere"}}).status_code == 422
 
+    # A location that names nothing but its area means the same as the area: no location is created.
     planned = owner.post(base, json={**nights, "location": {"area_id": area["id"]}})
     assert planned.status_code == 201, planned.text
     assert planned.json()["property_name"] is None
-    assert planned.json()["location"]["area_id"] == area["id"]
+    assert planned.json()["location"] is None
+    assert planned.json()["area"]["id"] == area["id"]
     assert planned.json()["area"]["label"] == "Alishan"
     assert "chosen_area" not in planned.json()
     assert planned.json()["status"] == "planned"
+    assert owner.get(f"/api/trips/{trip['id']}/locations").json() == []
 
     chosen = owner.patch(
         f"{base}/{planned.json()['id']}",
@@ -215,28 +218,32 @@ def test_every_stay_has_a_location_but_the_accommodation_can_still_be_chosen_lat
     assert chosen.json()["location"]["locality"] == "Alishan"
     assert chosen.json()["website_url"] == "https://lodge.example.test/"
     assert chosen.json()["area"]["id"] == area["id"]
+    assert chosen.json()["location"]["area_id"] == area["id"]
 
-    # Clearing the location keeps the stay in its area, at the area's city-level location.
+    # Clearing the location returns the stay to its area alone and adds no placeholder location.
     cleared = owner.patch(f"{base}/{planned.json()['id']}", json={"location": None})
     assert cleared.status_code == 200, cleared.text
     assert cleared.json()["area"]["id"] == area["id"]
-    assert cleared.json()["location"]["id"] == planned.json()["location"]["id"]
+    assert cleared.json()["location"] is None
+    assert [item["id"] for item in owner.get(f"/api/trips/{trip['id']}/locations").json()] == [
+        chosen.json()["location"]["id"]
+    ]
 
 
-def test_undecided_stays_in_one_area_share_its_city_level_location() -> None:
+def test_undecided_stays_create_no_location_and_keep_their_area_consistent() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     tainan = create_area(owner, trip["id"], label="Tainan")
     chiayi = create_area(owner, trip["id"], label="Chiayi")
     base = f"/api/trips/{trip['id']}/stays"
+    locations = f"/api/trips/{trip['id']}/locations"
 
     first = owner.post(
         base, json={"area_id": tainan["id"], "check_in_date": "2054-12-01", "check_out_date": "2054-12-03"}
     )
     assert first.status_code == 201, first.text
     assert first.json()["area"]["id"] == tainan["id"]
-    assert first.json()["location"]["locality"] == "Tainan"
-    # A second undecided stay, whether it names the area directly or through a bare location, adds no copy.
+    assert first.json()["location"] is None
     second = owner.post(
         base, json={"area_id": tainan["id"], "check_in_date": "2054-12-05", "check_out_date": "2054-12-06"}
     )
@@ -244,31 +251,58 @@ def test_undecided_stays_in_one_area_share_its_city_level_location() -> None:
         base,
         json={"location": {"area_id": tainan["id"]}, "check_in_date": "2054-12-07", "check_out_date": "2054-12-08"},
     )
-    assert {second.json()["location"]["id"], third.json()["location"]["id"]} == {first.json()["location"]["id"]}
-    locations = owner.get(f"/api/trips/{trip['id']}/locations").json()
-    assert [item["locality"] for item in locations] == ["Tainan"]
+    assert [stay.json()["location"] for stay in (second, third)] == [None, None]
+    assert owner.get(locations).json() == []
+    assert len(owner.get(base).json()) == 3
 
-    # Both an area and a location, or neither, is refused.
+    # A location in the area, with or without the area named, files the stay under that area.
+    hotel = owner.post(locations, json={"display_name": "Hotel", "label": "Hotel", "area_id": tainan["id"]}).json()
+    for body in (
+        {"location": {"existing_location_id": hotel["id"]}},
+        {"area_id": tainan["id"], **{"location": {"existing_location_id": hotel["id"]}}},
+    ):
+        made = owner.post(base, json={**body, "check_in_date": "2054-12-09", "check_out_date": "2054-12-10"})
+        assert made.status_code == 201, made.text
+        assert (made.json()["location"]["id"], made.json()["area"]["id"]) == (hotel["id"], tainan["id"])
+
+    # An area and a location that disagree are refused, on create and on update.
+    disagree = {"area_id": chiayi["id"], "location": {"existing_location_id": hotel["id"]}}
+    refused = owner.post(base, json={**disagree, "check_in_date": "2054-12-01", "check_out_date": "2054-12-02"})
     assert (
-        owner.post(
-            base,
-            json={
-                "area_id": tainan["id"],
-                "location": {"locality": "Tainan"},
-                "check_in_date": "2054-12-01",
-                "check_out_date": "2054-12-02",
-            },
-        ).status_code
-        == 422
+        refused.status_code == 422 and refused.json()["errors"][0]["code"] == "that_location_is_not_in_the_chosen_area"
     )
-    assert owner.post(base, json={"check_in_date": "2054-12-01", "check_out_date": "2054-12-02"}).status_code == 422
+    refused = owner.patch(f"{base}/{second.json()['id']}", json=disagree)
+    assert (
+        refused.status_code == 422 and refused.json()["errors"][0]["code"] == "that_location_is_not_in_the_chosen_area"
+    )
+    refused = owner.patch(
+        f"{base}/{second.json()['id']}", json={"area_id": chiayi["id"], "location": {"area_id": tainan["id"]}}
+    )
+    assert (
+        refused.status_code == 422 and refused.json()["errors"][0]["code"] == "that_location_is_not_in_the_chosen_area"
+    )
+    assert owner.get(f"{base}/{second.json()['id']}").json()["area"]["id"] == tainan["id"]
 
-    # Moving a stay to another area moves it to that area's city-level location.
+    # Choosing the accommodation later settles the area; giving the area alone keeps it only when it is there.
+    chosen = owner.patch(f"{base}/{second.json()['id']}", json={"location": {"existing_location_id": hotel["id"]}})
+    assert chosen.json()["location"]["id"] == hotel["id"]
+    same_area = owner.patch(f"{base}/{second.json()['id']}", json={"area_id": tainan["id"]})
+    assert same_area.json()["location"]["id"] == hotel["id"]
+
+    # Moving a stay to another area leaves it undecided there: no placeholder is made.
     moved = owner.patch(f"{base}/{second.json()['id']}", json={"area_id": chiayi["id"]})
     assert moved.status_code == 200, moved.text
     assert moved.json()["area"]["id"] == chiayi["id"]
-    assert moved.json()["location"]["locality"] == "Chiayi"
+    assert moved.json()["location"] is None
+    assert [item["id"] for item in owner.get(locations).json()] == [hotel["id"]]
+
+    # A location can be removed while the area is changed in the same request.
+    again = owner.patch(f"{base}/{chosen.json()['id']}", json={"location": None, "area_id": tainan["id"]})
+    assert (again.json()["area"]["id"], again.json()["location"]) == (tainan["id"], None)
     assert owner.patch(f"{base}/{second.json()['id']}", json={"area_id": None}).status_code == 422
+
+    # Neither an area nor a location is refused.
+    assert owner.post(base, json={"check_in_date": "2054-12-01", "check_out_date": "2054-12-02"}).status_code == 422
 
 
 def test_a_stay_covers_at_least_one_night_and_uses_only_this_trips_areas() -> None:

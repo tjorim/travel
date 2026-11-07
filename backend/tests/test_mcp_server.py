@@ -920,7 +920,9 @@ def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backen
     assert "viewport_north" not in backend.list_locations(trip["id"])[0]
     # The full records remain one argument away.
     assert backend.list_routes(trip["id"], compact=False)[0]["notes"] == "Seat 12A"
-    assert backend.list_stays(trip["id"], compact=False)[0]["location"]["area_id"] == taipei["id"]
+    assert backend.list_stays(trip["id"], compact=False)[0]["area"]["id"] == taipei["id"]
+    assert backend.list_stays(trip["id"], compact=False)[0]["location"] is None
+    assert stay["location_id"] is None
 
     assert [area["label"] for area in backend.list_areas(trip["id"], query="TAIN")] == ["Tainan · concept"]
     assert backend.list_areas(trip["id"], query="Taipei") == [
@@ -1039,7 +1041,7 @@ def test_trip_overview_counts_records_and_flags_what_an_audience_would_miss_or_l
         "2054-12-05",
         None,
     )
-    assert overview["counts"]["stays"] == 1 and overview["counts"]["locations"] == 1
+    assert overview["counts"]["stays"] == 1 and overview["counts"]["locations"] == 0
     assert overview["visibility"]["visit"] == {"everyone": 1, "private": 1}
     public, family = overview["audiences"]
     assert (public["kind"], public["state"], public["live"], public["dates_precision"]) == (

@@ -40,6 +40,7 @@ class FieldChange:
     after_label: str | None = None
     visits: int = 0
     routes: int = 0
+    stays: int = 0
 
     def as_detail(self) -> dict[str, Any]:
         """The owner-facing description of the change; the audiences carry no scope."""
@@ -55,6 +56,7 @@ class FieldChange:
                 "after_label": self.after_label,
                 "visits": self.visits,
                 "routes": self.routes,
+                "stays": self.stays,
             }
         return detail
 
@@ -62,7 +64,7 @@ class FieldChange:
         """What the audit trail keeps: the field and audience ids, never the text itself."""
         entry: dict[str, Any] = {"field": self.field, "audiences": sorted(audience.id for audience in self.audiences)}
         if self.field == "area_id":
-            entry |= {"visits": self.visits, "routes": self.routes}
+            entry |= {"visits": self.visits, "routes": self.routes, "stays": self.stays}
         return entry
 
 

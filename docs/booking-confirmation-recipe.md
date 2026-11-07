@@ -65,8 +65,9 @@ call that changes who can see something, publishes, or deletes data needs
 **Stay** (`create_stay` payload, also used in `batch_create`):
 
 - **Where:** either `area_id` alone, while the accommodation is undecided (the
-  stay then uses the area's shared city-level location), or a `location` with a
-  name or an address, a city or an area. Give one or the other, not both.
+  stay is then filed under that area and no location is created), or a `location`
+  with a name or an address, a city or an area. A location settles the area; an
+  `area_id` given with it must be that location's own.
 - **Nights:** `check_in_date` and `check_out_date`. The check-out date is the
   departure morning; the stay covers the nights before it.
 - **Status:** see [Status](#status-idea-planned-or-confirmed). Defaults to `planned`.
@@ -235,7 +236,7 @@ stdio server, these calls ran as written and returned what is shown above:
 flight linked to the uploaded document), `get_stay`, `get_route`,
 `list_documents`. Also checked: an incomplete stay was refused and the batch
 kept nothing; a stay given only an `area_id` was created with a location from
-that area; an `idea` stay refused `set_visibility` even with `confirm=true`;
+that area (since #239 it is created with no location at all); an `idea` stay refused `set_visibility` even with `confirm=true`;
 `set_visibility` without `confirm=true` was refused; and the public preview of
 the copy listed all 13 routes visible to everyone, none of which showed the
 booking reference they carry (4 routes carry one).

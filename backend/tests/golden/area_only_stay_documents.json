@@ -1,0 +1,770 @@
+{
+ "link_custom": {
+  "cover": null,
+  "dates": null,
+  "media": [],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha",
+    "latitude": 25.04,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Beta",
+    "latitude": 23.0,
+    "longitude": 120.2,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Verblijf in Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   }
+  ],
+  "routes": [],
+  "schema_version": "travel/unlisted-trip@1",
+  "stays": [
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-03",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04-01",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Beta",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Beta"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-09",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Gamma",
+     "latitude": null,
+     "longitude": null,
+     "region": null
+    },
+    "starts_on": "2054-04-07",
+    "title": "Gamma"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-15",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Verblijf in Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "starts_on": "2054-04-13",
+    "title": "Delta"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Beta",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Beta"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [],
+  "visits": []
+ },
+ "link_without_beta": {
+  "cover": null,
+  "dates": null,
+  "media": [],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha",
+    "latitude": 25.04,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Verblijf in Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   }
+  ],
+  "routes": [],
+  "schema_version": "travel/unlisted-trip@1",
+  "stays": [
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-03",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04-01",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-09",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Gamma",
+     "latitude": null,
+     "longitude": null,
+     "region": null
+    },
+    "starts_on": "2054-04-07",
+    "title": "Gamma"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-15",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Verblijf in Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "starts_on": "2054-04-13",
+    "title": "Delta"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [],
+  "visits": []
+ },
+ "link_without_stay": {
+  "cover": null,
+  "dates": null,
+  "media": [],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha",
+    "latitude": 25.04,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Beta",
+    "latitude": 23.0,
+    "longitude": 120.2,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Verblijf in Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   }
+  ],
+  "routes": [],
+  "schema_version": "travel/unlisted-trip@1",
+  "stays": [
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Beta",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Beta"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-09",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Gamma",
+     "latitude": null,
+     "longitude": null,
+     "region": null
+    },
+    "starts_on": "2054-04-07",
+    "title": "Gamma"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-15",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Verblijf in Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "starts_on": "2054-04-13",
+    "title": "Delta"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [],
+  "visits": []
+ },
+ "link_year": {
+  "cover": null,
+  "dates": null,
+  "media": [],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha",
+    "latitude": 25.04,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Beta",
+    "latitude": 23.0,
+    "longitude": 120.2,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Verblijf in Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   }
+  ],
+  "routes": [],
+  "schema_version": "travel/unlisted-trip@1",
+  "stays": [
+   {
+    "date_precision": "year",
+    "ends_on": "2054",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "year",
+    "ends_on": "2054",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Beta",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054",
+    "title": "Beta"
+   },
+   {
+    "date_precision": "year",
+    "ends_on": "2054",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Gamma",
+     "latitude": null,
+     "longitude": null,
+     "region": null
+    },
+    "starts_on": "2054",
+    "title": "Gamma"
+   },
+   {
+    "date_precision": "year",
+    "ends_on": "2054",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "year",
+    "ends_on": "2054",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Verblijf in Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "starts_on": "2054",
+    "title": "Delta"
+   },
+   {
+    "date_precision": "year",
+    "ends_on": "2054",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "year",
+    "ends_on": "2054",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Beta",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054",
+    "title": "Beta"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [],
+  "visits": []
+ },
+ "public": {
+  "cover": null,
+  "dates": {
+   "date_precision": "month",
+   "ends_on": "2054-04",
+   "starts_on": "2054-04"
+  },
+  "media": [],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha",
+    "latitude": 25.04,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Beta",
+    "latitude": 23.0,
+    "longitude": 120.2,
+    "region": null
+   },
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Verblijf in Delta",
+    "latitude": 23.53,
+    "longitude": 120.8,
+    "region": null
+   }
+  ],
+  "routes": [],
+  "schema_version": "travel/public-trip@1",
+  "stays": [
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-03",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04-01",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Beta",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Beta"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-09",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Gamma",
+     "latitude": null,
+     "longitude": null,
+     "region": null
+    },
+    "starts_on": "2054-04-07",
+    "title": "Gamma"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   },
+   {
+    "date_precision": "day",
+    "ends_on": "2054-04-15",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Verblijf in Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Delta",
+     "latitude": 23.53,
+     "longitude": 120.8,
+     "region": null
+    },
+    "starts_on": "2054-04-13",
+    "title": "Delta"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha",
+     "latitude": 25.04,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [],
+  "visits": []
+ }
+}

@@ -403,6 +403,7 @@ class AreaMergeDuplicate(BaseModel):
     label: str | None
     locations: int
     visits: int
+    stays: int
     routes: int
     travel_updates: int
     narrowed_audiences: list[str]
@@ -691,9 +692,11 @@ STAY_STATUS = (
 class StayCreate(InputModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
     morning, so a stay covers the nights ``check_in_date`` up to, but not
-    including, ``check_out_date``. Every stay has a location. While the
-    accommodation is still being chosen, give only ``area_id``: the stay then
-    uses that area's shared city-level location instead of a new copy."""
+    including, ``check_out_date``. Every stay has an area and, optionally, a
+    location in it. While the accommodation is still being chosen, give only
+    ``area_id``: the stay is filed under that area alone and no location is
+    created. A ``location`` settles the area, so it needs no ``area_id``; when
+    both are given the location must be in that area."""
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
@@ -719,17 +722,14 @@ class StayCreate(InputModel):
             raise PydanticCustomError(
                 "say_where_this_stay_is_an_area_or_a_location", "Say where this stay is: an area, or a location"
             )
-        if self.location is not None and self.area_id is not None:
-            raise PydanticCustomError(
-                "give_an_area_or_a_location_not_both_a_location_names_its_own_area",
-                "Give an area or a location, not both; a location names its own area",
-            )
         return self
 
 
 class StayUpdate(InputModel):
-    """Change a stay. ``area_id`` alone moves it to that area and, unless its
-    location is already there, to the area's city-level location; setting
+    """Change a stay. ``area_id`` alone moves it to that area and keeps its
+    location only when that location is already there (otherwise the stay is
+    filed under the area alone); ``location`` sets the accommodation and its
+    area, and must agree with ``area_id`` when both are given; setting
     ``location`` to null keeps the area but forgets the accommodation."""
 
     non_nullable_fields = frozenset(["check_in_date", "check_out_date", "status"])
@@ -767,7 +767,9 @@ class StayResponse(BaseModel):
     booking_reference: str | None
     contact_details: str | None
     notes: str | None
-    location: LocationResponse
+    location: LocationResponse | None = Field(
+        description="The chosen accommodation; null while the stay is filed under its area alone."
+    )
     area: AreaResponse
     visibility: Visibility
     share_date_precision: DatePrecision | None = Field(description=PRECISION_OWN)

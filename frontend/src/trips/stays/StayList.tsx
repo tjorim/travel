@@ -34,6 +34,10 @@ export function StayList({
                 <span>
                   {[
                     stay.area?.label,
+                    // A considered stay without an exact location: text, not colour, and owner-only.
+                    !stay.location && stay.status !== "cancelled"
+                      ? m.owner_no_exact_location_yet()
+                      : null,
                     `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
                     m.owner_night_count({ count: nights }),
                     stayStateLabel(stay),

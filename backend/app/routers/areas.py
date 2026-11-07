@@ -188,9 +188,12 @@ def _area_references(session: Session, trip_id: Identifier, area_id: Identifier)
         ("bezoek", "bezoeken", count(Visit, Visit.area_id == area_id)),
         ("reisupdate", "reisupdates", count(TravelUpdate, TravelUpdate.area_id == area_id)),
         ("locatie", "locaties", count(Location, Location.area_id == area_id)),
+        ("verblijf", "verblijven", count(Stay, Stay.area_id == area_id)),
         ("route", "routes", count(Route, (Route.departure_area_id == area_id) | (Route.arrival_area_id == area_id))),
     )
-    counts = dict(zip(("visits", "travel_updates", "locations", "routes"), (row[2] for row in references), strict=True))
+    counts = dict(
+        zip(("visits", "travel_updates", "locations", "stays", "routes"), (row[2] for row in references), strict=True)
+    )
     return [
         f"{number} {singular if number == 1 else plural}" for singular, plural, number in references if number
     ], counts
@@ -223,6 +226,7 @@ def _area_referencing(session: Session, trip_id: Identifier, area_id: Identifier
     return {
         "locations": rows(Location, Location.area_id == area_id),
         "visits": rows(Visit, Visit.area_id == area_id),
+        "stays": rows(Stay, Stay.area_id == area_id),
         "routes": rows(Route, (Route.departure_area_id == area_id) | (Route.arrival_area_id == area_id)),
         "travel_updates": rows(TravelUpdate, TravelUpdate.area_id == area_id),
     }
@@ -233,11 +237,11 @@ def _moved_records(
 ) -> list[MovedRecord]:
     """Every record that reads its area from ``duplicate`` and so reads ``keep`` after the merge.
 
-    A stay follows its location, and an update follows its location too when it
-    has one; only a location-less update names its area directly."""
+    A stay has its own area (the one of its accommodation, when it has one), and
+    an update follows its location when it has one; only a location-less update
+    names its area directly."""
     moved_ids = [location.id for location in found["locations"]]
     to_keep = [Placement(area_before=duplicate, area_after=keep)]
-    stays = session.scalars(select(Stay).where(Stay.trip_id == trip_id, Stay.location_id.in_(moved_ids)))
     updates = session.scalars(
         select(TravelUpdate).where(
             TravelUpdate.trip_id == trip_id,
@@ -245,7 +249,7 @@ def _moved_records(
             | (TravelUpdate.location_id.is_(None) & (TravelUpdate.area_id == duplicate.id)),
         )
     )
-    moved = [MovedRecord("stays", stay, to_keep) for stay in stays]
+    moved = [MovedRecord("stays", stay, to_keep) for stay in found["stays"]]
     moved += [MovedRecord("visits", visit, to_keep) for visit in found["visits"]]
     moved += [MovedRecord("travel_updates", update, to_keep) for update in updates]
     moved += [MovedRecord("routes", route, to_keep) for route in found["routes"]]
@@ -256,8 +260,8 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
     """Preview, or with ``confirm`` apply, folding duplicate areas into one kept area.
 
     Every location, visit, route end and reisupdate filed under a duplicate
-    moves to the kept area in one transaction (stays follow their location),
-    and then the duplicates are deleted. The kept area keeps its own label,
+    moves to the kept area in one transaction (a stay, filed under an area
+    alone or at a location, moves with it), and then the duplicates are deleted. The kept area keeps its own label,
     point, time zone and visibility. Afterwards its locations sit together, so
     duplicates among them can be folded with ``merge_locations``.
 
@@ -337,7 +341,7 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
         raise merge_widening_refusal(summaries)
     make_private(session, trip, subject, sorted(private))
     for duplicate, found in moves:
-        for record in (*found["locations"], *found["visits"]):
+        for record in (*found["locations"], *found["visits"], *found["stays"]):
             record.area = keep
         for update in found["travel_updates"]:
             update.chosen_area = keep
@@ -359,7 +363,7 @@ def merge_areas(trip_id: Identifier, payload: MergeRequest, session: Session, su
             "merged": [
                 {
                     "id": summary.id,
-                    **summary.model_dump(include={"locations", "visits", "routes", "travel_updates"}),
+                    **summary.model_dump(include={"locations", "visits", "stays", "routes", "travel_updates"}),
                     # Audience ids and counts only: a link's label is the owner's own text.
                     **(
                         {"widened": [w.model_dump(exclude={"label"}) for w in summary.widened]}

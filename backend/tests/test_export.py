@@ -131,6 +131,7 @@ def build_rich_trip(owner: str = "owner-1") -> dict[str, str]:
         visit = Visit(trip_id=trip.id, position=1, area_id=area.id, title="Museum", notes="private visit note")
         stay = Stay(
             trip_id=trip.id,
+            area_id=area.id,
             location_id=location.id,
             check_in_date=date(2054, 5, 1),
             check_out_date=date(2054, 5, 3),
@@ -300,6 +301,7 @@ def test_export_contains_every_canonical_record_kind_with_relationships() -> Non
     assert document["locations"][0]["address_line1"] == "1 Synthetic Street"
     assert document["visits"][0]["notes"] == "private visit note"
     assert document["stays"][0]["location_id"] == ids["location"]
+    assert document["stays"][0]["area_id"] == ids["area"]
     assert document["stays"][0]["booking_reference"] == "SYNTH-123"
     assert document["routes"][0]["document_ids"] == [ids["document"]]
     assert document["routes"][0]["notes"] == "private route note"

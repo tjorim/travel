@@ -180,3 +180,18 @@ async function openLists(hasRoutes = true) {
   fireEvent.click(points);
   if (hasRoutes) fireEvent.click(await screen.findByRole("button", { name: /Route in woorden/ }));
 }
+
+it("lists the exact private point of every stay location, an idea stay's included", async () => {
+  const idea = {
+    id: "idea-hotel",
+    display_name: "Hotel Idea",
+    locality: "Taipei",
+    area_id: "taipei",
+    latitude: 25.047,
+    longitude: 121.51,
+  } as Location;
+  api.collection("/api/trips/trip/locations", [cafe, idea]);
+  renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
+  await openLists();
+  expect(await screen.findByRole("button", { name: "Hotel Idea" })).toBeTruthy();
+});

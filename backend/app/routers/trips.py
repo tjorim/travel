@@ -51,6 +51,7 @@ def trip_query():
         selectinload(Trip.travel_updates).selectinload(TravelUpdate.chosen_area),
         selectinload(Trip.travel_updates).selectinload(TravelUpdate.location).selectinload(Location.area),
         selectinload(Trip.travel_updates).selectinload(TravelUpdate.media_links),
+        selectinload(Trip.stays).selectinload(Stay.area),
         selectinload(Trip.stays).selectinload(Stay.location).selectinload(Location.area),
         selectinload(Trip.routes).selectinload(Route.departure_area),
         selectinload(Trip.routes).selectinload(Route.arrival_area),

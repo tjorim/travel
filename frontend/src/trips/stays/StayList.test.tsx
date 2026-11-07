@@ -75,3 +75,36 @@ it("offers no stepper without a handler and none while saving", () => {
       .disabled,
   ).toBe(true);
 });
+
+it("shows a stay without an accommodation by its area, with no placeholder name", () => {
+  render(
+    <StayList
+      stays={[
+        stay("a", {
+          property_name: null,
+          area: { id: "area-1", label: "Alishan" } as Stay["area"],
+        }),
+      ]}
+      onInspect={() => {}}
+    />,
+  );
+  expect(screen.getByText("Nog te kiezen in Alishan")).toBeTruthy();
+  expect(screen.getByText(/^Alishan · /)).toBeTruthy();
+});
+
+it("says which considered stays still lack an exact location, in text", () => {
+  const area = { id: "area-1", label: "Alishan" } as Stay["area"];
+  render(
+    <StayList
+      stays={[
+        stay("a", { status: "idea", area }),
+        stay("b", { status: "planned", area, location: { id: "loc" } as Stay["location"] }),
+        stay("c", { status: "cancelled", area }),
+      ]}
+      onInspect={() => {}}
+    />,
+  );
+  // Only the idea without a location says so: a stay with one, or a dropped one, does not.
+  expect(screen.getAllByText(/Nog geen exacte locatie/)).toHaveLength(1);
+  expect(screen.getByText(/^Alishan · Nog geen exacte locatie · /)).toBeTruthy();
+});
