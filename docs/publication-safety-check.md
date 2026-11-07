@@ -57,7 +57,7 @@ collection member, in the audience editor under *Delen* ("Sharing").
       **`everyone` records**: a preset never changes them, so every one still
       reaches the public view and every hidden link (a link can leave them out
       under *Left out of this audience*; the public view cannot, so change the
-      record's own visibility to *Privé* or *Aangepast*, which changes every
+      record's own visibility to *Privé* or *Zelf kiezen in Delen*, which changes every
       audience). Locations and loose photos keep their own visibility. A record
       you create later is *Privé* and joins nothing, but one you later set to
       *Iedereen* reaches this audience even though a preset was applied.
@@ -109,7 +109,7 @@ a member shows what that trip's "Family" link shows), and also:
       dates in the index as a stranger would, and add only the trips this
       audience should know exist: the index names every member.
 - [ ] Remember that `everyone` records reach every member and cannot be narrowed
-      per member. Make a record *Privé* or *Aangepast* if it must not reach the
+      per member. Make a record *Privé* or *Zelf kiezen in Delen* if it must not reach the
       collection.
 - [ ] A collection link is one capability: anyone who has it sees every member.
       Choose the shortest sensible lifetime, send it only through a private
