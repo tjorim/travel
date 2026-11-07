@@ -24,6 +24,7 @@ import { Markdown } from "./Markdown";
 import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "./TripMap";
 import { TripHeader, type TripCover } from "./TripHeader";
 import { groupStoryContext, type UpdateContext } from "./visitor-context";
+import { localDay, planByDay, type DayEntry, type PlanDay, type PlanRecords } from "./visitor-days";
 import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
 
 export type ProjectionItem = { id: string; [field: string]: unknown };
@@ -346,6 +347,265 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
         departsOn && <p>{departsOn}</p>
       )}
     </article>
+  );
+}
+
+function VisitCard({ item }: { item: ProjectionItem }) {
+  useLocale();
+  return (
+    <article>
+      <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
+      {tripDates(item) && <p>{tripDates(item)}</p>}
+      {visitTimes(item) && <p>{visitTimes(item)}</p>}
+      <Markdown under={3} html={text(item, "summary_html")} text={text(item, "summary")} />
+      {place(item.place) && <p>{place(item.place)}</p>}
+    </article>
+  );
+}
+
+function StayCard({
+  item,
+  navigationLink,
+}: {
+  item: ProjectionItem;
+  navigationLink: (item: ProjectionItem) => ReactNode;
+}) {
+  useLocale();
+  return (
+    <article>
+      <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
+      {tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}
+      {place(item.place) && <p>{place(item.place)}</p>}
+      {navigationLink(item)}
+    </article>
+  );
+}
+
+/** A local clock time for a delivered instant, or nothing when it is missing or unreadable. */
+function clock(value: string | null, timeZone: string | null): string | null {
+  if (!value || !dayjs(value).isValid()) return null;
+  try {
+    return dayjs(value)
+      .tz(timeZone ?? undefined)
+      .format("HH:mm");
+  } catch {
+    return dayjs(value).format("HH:mm");
+  }
+}
+
+/** A calendar day as the selected locale writes it; the year only when the plan spans more than one. */
+function dayText(date: string, withYear: boolean, format = "D MMM") {
+  const day = dayjs.utc(date).locale(selectedLocale());
+  return withYear ? `${day.format(format)} ${day.format("YYYY")}` : day.format(format);
+}
+
+function RouteEntry({
+  item,
+  date,
+  withYear,
+}: {
+  item: ProjectionItem;
+  date: string;
+  withYear: boolean;
+}) {
+  const departure = transportPlace(item.departure);
+  const arrival = transportPlace(item.arrival);
+  const mode = transportKinds()[text(item, "mode") ?? ""];
+  const carrier = [text(item, "carrier"), text(item, "service_reference")]
+    .filter(Boolean)
+    .join(" · ");
+  const status = transportStatuses()[text(item, "status") ?? ""];
+  const departsAt = clock(text(item, "departs_at"), text(item, "departure_timezone"));
+  const arrivesAt = clock(text(item, "arrives_at"), text(item, "arrival_timezone"));
+  // A route is listed once, on the day it leaves. A later arrival day is only said, never listed again.
+  const arrivalDay = text(item, "arrives_at")
+    ? localDay(text(item, "arrives_at")!, text(item, "arrival_timezone"))
+    : null;
+  const later = arrivalDay && arrivalDay !== date ? arrivalDay : null;
+  return (
+    <>
+      <span className="block font-bold">{routeHeading(item)}</span>
+      <span className="block text-travel-muted">
+        {[m.visitor_route(), mode, carrier || null, status].filter(Boolean).join(" · ")}
+      </span>
+      {(departure || arrival) && (
+        <span className="block">
+          {departure ?? m.visitor_departure_unknown()} → {arrival ?? m.visitor_arrival_unknown()}
+        </span>
+      )}
+      {(departsAt || arrivesAt) && (
+        <span className="block">
+          {departsAt ?? m.visitor_departure_time_unknown()} →{" "}
+          {arrivesAt ?? m.visitor_arrival_time_unknown()}
+          {later && ` (${m.visitor_route_arrives({ date: dayText(later, withYear) })})`}
+        </span>
+      )}
+    </>
+  );
+}
+
+function DayEntryRow({
+  entry,
+  date,
+  withYear,
+  navigationLink,
+}: {
+  entry: DayEntry;
+  date: string;
+  withYear: boolean;
+  navigationLink: (item: ProjectionItem) => ReactNode;
+}) {
+  const { item } = entry;
+  // The anchors the map and the update context link to; a stay's later days carry none.
+  const anchor =
+    entry.type === "visit"
+      ? `visit-${item.id}`
+      : entry.type === "route"
+        ? `route-${item.id}`
+        : entry.phase === "check-in"
+          ? `stay-${item.id}`
+          : undefined;
+  const area = text(item, "title") ?? m.visitor_stay();
+  return (
+    <li
+      id={anchor}
+      tabIndex={anchor ? -1 : undefined}
+      data-day-entry={entry.type === "stay" ? `stay-${entry.phase}` : entry.type}
+      className="min-w-0 scroll-mt-6 wrap-anywhere focus:outline-none [&_a]:font-bold [&_a]:text-travel-forest [&_a]:underline-offset-3 [&_p]:my-1 [&_p]:whitespace-pre-wrap"
+    >
+      {entry.type === "visit" && (
+        <>
+          <span className="block font-bold">{text(item, "title") ?? m.visitor_visit()}</span>
+          <span className="block text-travel-muted">
+            {[m.visitor_visit(), place(item.place)].filter(Boolean).join(" · ")}
+          </span>
+          {entry.until && (
+            <span className="block">
+              {m.visitor_visit_until({ date: dayText(entry.until, withYear) })}
+            </span>
+          )}
+          {visitTimes(item) && <span className="block">{visitTimes(item)}</span>}
+          <Markdown under={3} html={text(item, "summary_html")} text={text(item, "summary")} />
+        </>
+      )}
+      {entry.type === "route" && <RouteEntry item={item} date={date} withYear={withYear} />}
+      {entry.type === "stay" && entry.phase === "check-in" && (
+        <>
+          <span className="block font-bold">{m.visitor_day_stay({ place: area })}</span>
+          {place(item.place) && (
+            <span className="block text-travel-muted">{place(item.place)}</span>
+          )}
+          {navigationLink(item)}
+        </>
+      )}
+      {entry.type === "stay" && entry.phase === "night" && (
+        <span className="block text-travel-muted">{m.agenda_sleeping_in({ place: area })}</span>
+      )}
+      {entry.type === "stay" && entry.phase === "check-out" && (
+        <span className="block">{m.agenda_check_out({ place: area })}</span>
+      )}
+    </li>
+  );
+}
+
+/** Shared visits, stays and routes on the days the document delivers, with a stay shown across its nights. */
+function DayPlan({
+  days,
+  navigationLink,
+}: {
+  days: PlanDay[];
+  navigationLink: (item: ProjectionItem) => ReactNode;
+}) {
+  useLocale();
+  const withYear = new Set(days.map((day) => day.date.slice(0, 4))).size > 1;
+  return (
+    <section className="travel-card" aria-label={m.visitor_by_day()} data-day-plan="">
+      <h2 className="mb-4.5">{m.visitor_by_day()}</h2>
+      <ol className="m-0 grid list-none p-0">
+        {days.map((day) => (
+          <li
+            key={day.date}
+            data-day={day.date}
+            className="flex flex-col gap-x-4 gap-y-1.5 border-t border-travel-divider py-3 first:border-0 first:pt-0 last:pb-0 min-[30rem]:flex-row"
+          >
+            <h3 className="m-0 shrink-0 text-base leading-tight font-bold min-[30rem]:w-22">
+              <time
+                dateTime={day.date}
+                className="flex flex-wrap items-baseline gap-x-1.5 min-[30rem]:grid"
+              >
+                <span className="text-xs font-bold tracking-travel-eyebrow text-travel-muted uppercase">
+                  {dayText(day.date, false, "ddd")}
+                </span>{" "}
+                <span>{dayText(day.date, withYear)}</span>
+              </time>
+            </h3>
+            <ul className="m-0 grid min-w-0 flex-1 list-none gap-2.5 p-0 text-sm">
+              {day.entries.map((entry) => (
+                <DayEntryRow
+                  key={entry.key}
+                  entry={entry}
+                  date={day.date}
+                  withYear={withYear}
+                  navigationLink={navigationLink}
+                />
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** What has no day of its own: kept with its own precision, never placed on a day or put in an order. */
+function OtherPlans({
+  plan,
+  navigationLink,
+}: {
+  plan: PlanRecords;
+  navigationLink: (item: ProjectionItem) => ReactNode;
+}) {
+  useLocale();
+  const rows = [
+    ...plan.visits.map((item) => ({
+      item,
+      anchor: "visit",
+      kind: m.visitor_visit(),
+      body: <VisitCard item={item} />,
+    })),
+    ...plan.stays.map((item) => ({
+      item,
+      anchor: "stay",
+      kind: m.visitor_stay(),
+      body: <StayCard item={item} navigationLink={navigationLink} />,
+    })),
+    ...plan.routes.map((item) => ({
+      item,
+      anchor: "route",
+      kind: m.visitor_route(),
+      body: <RouteSummary item={item} />,
+    })),
+  ];
+  if (!rows.length) return null;
+  return (
+    <section className="travel-card" aria-label={m.visitor_other_plans()} data-other-plans="">
+      <h2 className="mb-1.5">{m.visitor_other_plans()}</h2>
+      <p className="mt-0 mb-4.5 text-sm text-travel-muted">{m.visitor_other_plans_hint()}</p>
+      <ul className="m-0 grid list-none gap-0 p-0 [&_a]:mt-2.5 [&_a]:inline-block [&_a]:font-bold [&_a]:text-travel-forest [&_a]:underline-offset-3 [&_a:focus-visible]:outline-3 [&_a:focus-visible]:outline-offset-3 [&_a:focus-visible]:outline-travel-focus [&_h3]:mb-1.75 [&_h3]:text-lg [&_p]:my-1.25 [&_p]:wrap-anywhere [&_p]:whitespace-pre-wrap">
+        {rows.map(({ item, anchor, kind, body }) => (
+          <li
+            className="border-t border-travel-divider py-4 first:border-0 first:pt-0 last:pb-0"
+            key={`${anchor}-${item.id}`}
+            id={`${anchor}-${item.id}`}
+          >
+            <p className="mb-1 text-xs font-bold tracking-travel-eyebrow text-travel-muted uppercase">
+              {kind}
+            </p>
+            {body}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -1495,13 +1755,22 @@ export function ProjectionView({
     if (focusId && projection.updates.some((item) => item.id === focusId)) openUpdate(focusId);
     // Only a different requested update re-aims the view, not each rendering of the same one.
   }, [focusId, projection]);
-  const detailSections = [
-    story.separate.visits,
-    projection.places,
-    story.separate.stays,
-    story.separate.routes,
-    projection.navigation.filter((item) => !displayed.has(item.id)),
-  ].filter((items) => items.length > 0).length;
+  // Days come only from what the document delivers; records already shown with a story update are not repeated.
+  const plan = planByDay(story.separate, projection);
+  const timeline = plan.days.length > 0;
+  const looseNavigation = projection.navigation.filter((item) => !displayed.has(item.id));
+  const otherPlans = plan.other.visits.length + plan.other.stays.length + plan.other.routes.length;
+  const detailSections = timeline
+    ? [plan.days, otherPlans ? [otherPlans] : [], projection.places, looseNavigation].filter(
+        (items) => items.length > 0,
+      ).length
+    : [
+        plan.other.visits,
+        projection.places,
+        plan.other.stays,
+        plan.other.routes,
+        looseNavigation,
+      ].filter((items) => items.length > 0).length;
   const header = (
     <TripHeader
       title={projection.title ?? m.shared_trip()}
@@ -1534,6 +1803,42 @@ export function ProjectionView({
       />
     </section>
   ) : null;
+
+  const areasSection = (
+    <ResourceSection
+      title={m.visitor_places()}
+      anchor="place"
+      items={projection.places}
+      render={(item) => (
+        <article>
+          <h3>{text(item, "label") ?? m.visitor_location()}</h3>
+          {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
+            <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>
+          )}
+          {navigationLink(item)}
+        </article>
+      )}
+    />
+  );
+  const navigationSection = looseNavigation.length > 0 && (
+    <ResourceSection
+      title={m.visitor_navigation()}
+      anchor="navigation"
+      items={looseNavigation}
+      render={(item) => (
+        <article>
+          <h3>{m.visitor_destination()}</h3>
+          {navigationLink(item)}
+        </article>
+      )}
+    />
+  );
+  const areasAndNavigation = (
+    <>
+      {areasSection}
+      {navigationSection}
+    </>
+  );
 
   return (
     <Tabs
@@ -1602,81 +1907,56 @@ export function ProjectionView({
         )}
       </div>
       <ViewPanel value="plan" sideBySide={sideBySide} className="grid gap-travel-grid-gap">
+        {plan.daysNotShared && (
+          <p
+            className="m-0 rounded-travel-media border border-travel-divider bg-travel-tint px-3.5 py-3 text-sm"
+            data-days-not-shown=""
+          >
+            {m.visitor_days_not_shown()}
+          </p>
+        )}
         <div
           className={cn(
             "grid min-w-0 items-start gap-travel-grid-gap",
-            detailSections > 1 && "min-[1100px]:grid-cols-2",
+            detailSections > 1 &&
+              (timeline ? "min-[1100px]:grid-cols-5" : "min-[1100px]:grid-cols-2"),
           )}
         >
-          <ResourceSection
-            title={m.visitor_visits()}
-            anchor="visit"
-            items={story.separate.visits}
-            render={(item) => (
-              <article>
-                <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
-                {tripDates(item) && <p>{tripDates(item)}</p>}
-                {visitTimes(item) && <p>{visitTimes(item)}</p>}
-                <Markdown
-                  under={3}
-                  html={text(item, "summary_html")}
-                  text={text(item, "summary")}
-                />
-                {place(item.place) && <p>{place(item.place)}</p>}
-              </article>
-            )}
-          />
-          <ResourceSection
-            title={m.visitor_places()}
-            anchor="place"
-            items={projection.places}
-            render={(item) => (
-              <article>
-                <h3>{text(item, "label") ?? m.visitor_location()}</h3>
-                {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
-                  <p>
-                    {[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}
-                  </p>
-                )}
-                {navigationLink(item)}
-              </article>
-            )}
-          />
-          <ResourceSection
-            title={m.visitor_stays()}
-            anchor="stay"
-            items={story.separate.stays}
-            render={(item) => (
-              <article>
-                <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
-                {tripDates(item) ? (
-                  <p>{tripDates(item)}</p>
-                ) : (
-                  precision(item) && <p>{precision(item)}</p>
-                )}
-                {place(item.place) && <p>{place(item.place)}</p>}
-                {navigationLink(item)}
-              </article>
-            )}
-          />
-          <ResourceSection
-            title={m.visitor_routes()}
-            anchor="route"
-            items={story.separate.routes}
-            render={(item) => <RouteSummary item={item} />}
-          />
-          {projection.navigation.some((item) => !displayed.has(item.id)) && (
-            <ResourceSection
-              title={m.visitor_navigation()}
-              anchor="navigation"
-              items={projection.navigation.filter((item) => !displayed.has(item.id))}
-              render={(item) => (
-                <article>
-                  <h3>{m.visitor_destination()}</h3>
-                  {navigationLink(item)}
-                </article>
-              )}
-            />
+          {timeline && (
+            <div className={cn("min-w-0", detailSections > 1 && "min-[1100px]:col-span-3")}>
+              <DayPlan days={plan.days} navigationLink={navigationLink} />
+            </div>
+          )}
+          {timeline ? (
+            detailSections > 1 && (
+              <div className="grid min-w-0 gap-travel-grid-gap min-[1100px]:col-span-2">
+                <OtherPlans plan={plan.other} navigationLink={navigationLink} />
+                {areasAndNavigation}
+              </div>
+            )
+          ) : (
+            <>
+              <ResourceSection
+                title={m.visitor_visits()}
+                anchor="visit"
+                items={plan.other.visits}
+                render={(item) => <VisitCard item={item} />}
+              />
+              {areasSection}
+              <ResourceSection
+                title={m.visitor_stays()}
+                anchor="stay"
+                items={plan.other.stays}
+                render={(item) => <StayCard item={item} navigationLink={navigationLink} />}
+              />
+              <ResourceSection
+                title={m.visitor_routes()}
+                anchor="route"
+                items={plan.other.routes}
+                render={(item) => <RouteSummary item={item} />}
+              />
+              {navigationSection}
+            </>
           )}
         </div>
       </ViewPanel>

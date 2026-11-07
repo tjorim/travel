@@ -788,12 +788,14 @@ it("shows a visit with its days, its place and a time only when it was shared", 
     },
   ];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
-  expect(screen.getByRole("heading", { name: "Bezoeken" })).toBeTruthy();
+  // Day-precision visits are placed on their day, the first one with its shared end day.
+  expect(screen.getByRole("heading", { name: "Per dag" })).toBeTruthy();
   expect(screen.getByText(/18:30–21:00 \(Taipei\)/)).toBeTruthy();
-  expect(screen.getByText("Taipei")).toBeTruthy();
+  expect(screen.getByText("Bezoek · Taipei")).toBeTruthy();
+  expect(screen.getByText(/^Tot 22 nov/)).toBeTruthy();
   expect(screen.queryByText(/Hidden/)).toBeNull();
   // Without a shared time nothing is invented.
-  expect(screen.getByText("Warme bron").closest("article")?.textContent).not.toMatch(/\d\d:\d\d/);
+  expect(screen.getByText("Warme bron").closest("li")?.textContent).not.toMatch(/\d\d:\d\d/);
 });
 
 it("reads a visit time in the viewer's own zone, with the day when it moves", () => {
