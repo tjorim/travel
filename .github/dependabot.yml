@@ -238,7 +238,7 @@ updates:
     assignees:
       - "tjorim"
     commit-message:
-      prefix: "deps(docker)"
+      prefix: "deps(compose)"
       include: "scope"
     labels:
       - "dependencies"
