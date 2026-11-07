@@ -230,7 +230,12 @@ that leaves `defaults` out keeps the audience's stored setting, so an older clie
 never widen an audience, and `defaults: null` removes it. A time (`share_time`) only
 shows on a full date, so a coarser effective precision hides it. The Sharing check
 states each audience's setting, how many visits and stays read at each precision, and
-how many are held coarser by their own setting. *Follow the audience's precision* sets
+how many are held coarser by their own setting. Before a trip starts (its start is after
+the server's current UTC date; with no start, a route departs after that date) it also
+warns, per audience, about the routes from today on that carry an exact time or a carrier
+(`future_transport_times`) and the dates from today on shown by day (`future_day_dates`),
+as counts only. It changes nothing, and it says nothing once the trip has started or ended
+([#231](decisions/36-privacy-sharing-offline-policy.md#future-transport-and-dates-warning-231)). *Follow the audience's precision* sets
 the own value of all visits and stays, or of one kind, to `null` in one step, after
 showing which live audiences will read finer dates and asking for an acknowledgement.
 

@@ -491,3 +491,25 @@ Safety rules this adds to the policy:
   ignore a stored `exclude` and deliver the whole baseline to those links, so revoke
   or edit every link and collection member that has exclusions before such a
   rollback.
+
+## Future transport and dates warning (#231)
+
+Decision (owner), 2026-11-06, issue #231: **warning only**. Before a trip has started, the
+Sharing check and the owner preview flag, for each audience (the public view and each
+active or draft hidden link), that it receives future transport with an exact schedule
+(routes departing today or later with a time or a carrier or service reference) and future
+dates shown by day (trip dates, visits, stays and reisupdates at day precision). They
+suggest private routes and month precision until the trip starts. Nothing is changed
+automatically, and there is no "reveal from the start date" setting.
+
+Safety rules this adds to the policy:
+
+- "Not started" uses the server's current UTC date. A trip is not started once its start is
+  after that date; with no start, a route departing after that date is needed. An ended trip
+  never counts. A visitor or owner in another time zone may see the boundary a day early or late.
+- The warning reads the rendered document of the audience, so it counts what that audience
+  receives, under the audience's own date cap and each record's own value. It never reads
+  private records. Collection members are not reviewed by the overview.
+- The warning carries counts only (`count`), never a title, label or owner text.
+- Route departure days are not limited by any audience's date setting, so a route with only a
+  day and no time or carrier is not counted (its day is shown in full). Tracked in #262.
