@@ -18,6 +18,7 @@ is "Export trip data (JSON)" in the trip's details dialog.
   "exported_at": "2054-05-01T09:00:00+00:00",
   "trip": {},
   "areas": [], "locations": [], "visits": [], "stays": [], "routes": [],
+  "alternative_groups": [],
   "travel_updates": [], "media_assets": [], "media_derivatives": [],
   "import_records": [], "documents": [], "tasks": [], "packing_lists": [],
   "publication": { "public_surface": null, "share_links": [] }
@@ -34,6 +35,16 @@ used by the API, so relationships are plain id references:
   associated documents and media assets by id.
 - `media_derivatives[].media_asset_id/travel_update_id`, `media_assets[].import_id`.
 - `packing_lists[]` nest their `bags` and `items`; `items[].bag_id` points at a bag.
+
+`alternative_groups[]` lists the owner's private groups of stays, visits or routes
+being compared (see [the domain model](domain-model.md#alternatives)): `id`,
+`kind` (`stay`, `visit` or `route`), `label`, `created_at`, `updated_at` and
+`members[]` as `{ "record_id", "chosen" }`, where `record_id` is the id of an
+entry in `stays`, `visits` or `routes` of that kind and at most one member is
+`chosen`. The section is new in this version of the export and was added without
+changing the schema version, because adding a section is compatible; an
+importer that ignores unknown keys loses only the grouping, and the records keep
+the statuses the choice gave them.
 
 A stay always has an `area_id`; its `location_id` is `null` while the
 accommodation is not chosen yet (the stay is filed under its area alone, with no

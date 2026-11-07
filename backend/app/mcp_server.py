@@ -52,6 +52,7 @@ from .config import settings
 from .database import SessionLocal
 from .models import DocumentKind, ImportProvider, McpAuditEvent, Visibility
 from .routers import (
+    alternatives,
     areas,
     collections,
     documents,
@@ -132,6 +133,16 @@ def _mcp_collection(value: Any) -> dict[str, Any]:
 
 def _collection_with_url(value: Any) -> dict[str, Any]:
     return {**_mcp_collection(value), "share_url": _share_url(value.token)}
+
+
+def _alternative_group(value: Any, compact: bool) -> dict[str, Any]:
+    """An alternative group; compact keeps each member to the fields of a compact list row."""
+    group = _model(value, schemas.AlternativeGroupResponse)
+    if compact:
+        for member in group["members"]:
+            for kind in ("stay", "visit", "route"):
+                member[kind] = _compact(kind, member[kind]) if member[kind] else None
+    return group
 
 
 def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, Any]]:
@@ -1872,6 +1883,109 @@ class TravelMcpBackend:
             needs_confirmation=True,
         )
 
+    # Alternative groups: stays, visits or routes being compared, and the one chosen ----
+    def list_alternative_groups(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+        """List the trip's alternative groups: private sets of stays, visits or routes being chosen between (kind says which), each with its members and the chosen one (chosen_id). Compact rows keep each member to ids, dates, status and labels; pass compact=false, or use get_alternative_group, to compare them in full. Groups are owner-only and never shared."""
+        return self._call(
+            "alternative_group.list",
+            "alternative_group",
+            None,
+            trip_id,
+            lambda s, sub: alternatives.list_alternative_groups(trip_id, s, sub),
+            lambda values: [_alternative_group(value, compact) for value in values],
+        )
+
+    def get_alternative_group(self, trip_id: str, group_id: str) -> dict[str, Any]:
+        """Read one alternative group with every member in full (dates, exact location, notes, status), for comparing them side by side."""
+        return self._call(
+            "alternative_group.get",
+            "alternative_group",
+            group_id,
+            trip_id,
+            lambda s, sub: alternatives.get_alternative_group(trip_id, group_id, s, sub),
+            lambda x: _alternative_group(x, False),
+        )
+
+    def suggest_alternative_groups(self, trip_id: str) -> list[dict[str, Any]]:
+        """Suggest alternative groups from ideas that are not grouped yet: stays whose nights overlap, multi-day visits that share a day, and routes between the same two areas on the same day. Nothing is stored and existing ideas are never grouped automatically: show a suggestion to the owner and, once they confirm it, pass its kind and member_ids to create_alternative_group."""
+        return self._call(
+            "alternative_group.suggest",
+            "alternative_group",
+            None,
+            trip_id,
+            lambda s, sub: alternatives.suggest_alternative_groups(trip_id, s, sub),
+            lambda values: [_model(value, schemas.AlternativeSuggestion) for value in values],
+        )
+
+    def create_alternative_group(self, trip_id: str, payload: schemas.AlternativeGroupCreate) -> dict[str, Any]:
+        """Group two or more stays, visits or routes (all of one kind) that are alternatives for each other. A record is in at most one group. Members may have any status; choosing one later settles the rest."""
+        return self._call(
+            "alternative_group.create",
+            "alternative_group",
+            None,
+            trip_id,
+            lambda s, sub: alternatives.create_alternative_group(trip_id, payload, s, sub),
+            lambda x: _alternative_group(x, True),
+        )
+
+    def update_alternative_group(
+        self, trip_id: str, group_id: str, payload: schemas.AlternativeGroupUpdate
+    ) -> dict[str, Any]:
+        """Rename a group (label null clears it) or add and remove members by record id. Removing a member only takes it out of the group; the record itself is untouched."""
+        return self._call(
+            "alternative_group.update",
+            "alternative_group",
+            group_id,
+            trip_id,
+            lambda s, sub: alternatives.update_alternative_group(trip_id, group_id, payload, s, sub),
+            lambda x: _alternative_group(x, True),
+        )
+
+    def delete_alternative_group(self, trip_id: str, group_id: str, confirm: bool = False) -> dict[str, str]:
+        """Dissolve an alternative group after explicit confirmation. The records and their statuses are untouched."""
+        return self._call(
+            "alternative_group.delete",
+            "alternative_group",
+            group_id,
+            trip_id,
+            lambda s, sub: alternatives.delete_alternative_group(trip_id, group_id, s, sub),
+            lambda _: {"status": "deleted"},
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def choose_alternative(
+        self, trip_id: str, group_id: str, payload: schemas.AlternativeChoose, confirm: bool = False
+    ) -> dict[str, Any]:
+        """Choose this one (kies deze): in one transaction the chosen member (member_id, a stay, visit or route id of the group) becomes planned, or keeps planned or confirmed, and every other member is cancelled and made private (others=cancel, undoable with undo_alternative_choice) or deleted for good (others=remove, not undoable). Review get_alternative_group with the owner first. The result names the cancelled and removed ids and the audit event_id."""
+        return self._call(
+            "alternative_group.choose",
+            "alternative_group",
+            group_id,
+            trip_id,
+            lambda s, sub: alternatives.choose_alternative(trip_id, group_id, payload, s, sub),
+            lambda x: _model(x, schemas.AlternativeChoiceResponse),
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
+    def undo_alternative_choice(
+        self, trip_id: str, group_id: str, event_id: str | None = None, confirm: bool = False
+    ) -> dict[str, Any]:
+        """Undo the group's latest choice: the members get back the status and visibility they had, and the earlier chosen member is chosen again. Refused when the choice removed records, when a newer choice replaced it (event_id, if given, must be the latest) or when a member was edited after the choice."""
+        return self._call(
+            "alternative_group.undo_choice",
+            "alternative_group",
+            group_id,
+            trip_id,
+            lambda s, sub: alternatives.undo_alternative_choice(
+                trip_id, group_id, s, sub, schemas.AlternativeUndo(event_id=event_id)
+            ),
+            lambda x: _alternative_group(x, True),
+            confirm=confirm,
+            needs_confirmation=True,
+        )
+
     # Remaining derivative, import, and owner-library lifecycle tools ----
     def list_media_derivatives(self, trip_id: str, media_id: str) -> list[dict[str, Any]]:
         """List metadata-stripped derivatives and their review state."""
@@ -2264,6 +2378,8 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
             "merge_locations",
             "merge_areas",
             "follow_audience_date_precision",
+            "choose_alternative",
+            "undo_alternative_choice",
         },
     }
     for name in _TOOL_NAMES
@@ -2343,8 +2459,9 @@ MCP_INSTRUCTIONS = (
     "task lists in it are display-only and never create trip tasks. A media caption is inline Markdown only (bold, "
     "italic, links), and a stay's contact_details is plain text whose phone numbers, email and web addresses become "
     "links. Give hotels and transport that are only being compared the status idea: ideas may overlap, cover no "
-    "night or journey and are never shared; use planned for the intended stay or route, then cancel or delete the "
-    "rejected alternatives."
+    "night or journey and are never shared; use planned for the intended stay or route. Group ideas that compete for "
+    "the same nights, days or journey with create_alternative_group (suggest_alternative_groups proposes them) and "
+    "settle a group with choose_alternative, which plans the chosen one and cancels or removes the rest."
 )
 
 

@@ -346,7 +346,7 @@ def test_export_never_contains_files_keys_capabilities_or_other_data() -> None:
     walk(document)
     assert set(document) == {
         "schema_version", "exported_at", "trip", "areas", "locations", "visits", "stays", "routes",
-        "travel_updates", "media_assets", "media_derivatives", "import_records", "documents", "tasks",
+        "alternative_groups", "travel_updates", "media_assets", "media_derivatives", "import_records", "documents", "tasks",
         "packing_lists", "publication",
     }  # fmt: skip
     assert set(document["publication"]) == {"public_surface", "share_links"}
