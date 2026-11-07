@@ -23,6 +23,12 @@ the tests cover it:
   kind. **No address, booking, note, document or travel-party detail is ever
   delivered**, and a preset adds no field to any list.
 - Only approved, metadata-stripped photo or video copies can be shared.
+- **A published public view's link preview is a delivery surface.** Chat apps
+  show the link's title, one-line summary and cover, built by the server from
+  the same public projection (never from a private field) and only from what
+  the public view shares; a hidden link's preview is always the generic Travel
+  card. See
+  [decision 103](decisions/103-live-browser-route-contract.md#link-previews).
 - A hidden link or collection link expires and can be revoked; a revoked,
   expired or unpublished audience delivers nothing, and responses are `no-store`.
 - Widening a live audience (a merge, removing a left-out record, letting
@@ -77,7 +83,9 @@ collection member, in the audience editor under *Delen* ("Sharing").
       location names, captions, route labels. None may contain an exact
       accommodation, home or meeting address, a booking or confirmation code, a
       ticket, a travel-party name or contact detail, or a live or near-real-time
-      location. An exclusion hides records, not words: a name you wrote yourself
+      location. The public view's title and summary are also what a chat app
+      shows when the link is pasted, so read them as a card, not only as a page.
+      An exclusion hides records, not words: a name you wrote yourself
       stays in the trip summary or another record's title. A shared stay shows
       only its area and nights, so check the area is not too specific, and a
       visit, stay or route grouped under an update of the same area and day does
@@ -86,8 +94,9 @@ collection member, in the audience editor under *Delen* ("Sharing").
       visible content and the caption. A photo of an update is also pinned on the
       map at that update's area, tying the two together. The cover is a photo
       like any other and also appears on the public index cards (`/` and
-      `/trips`) with its alt text and crop; the Sharing check lists an audience
-      that receives no cover.
+      `/trips`) with its alt text and crop, and it is the image of the public
+      view's chat link preview; the Sharing check lists an audience that
+      receives no cover.
 - [ ] **Check the places and lines.** A shared location (a monument, a hot
       spring) shows its public name, city and point, so it must not be a home, a
       hotel or a meeting point. Presets never share locations, so any shared
@@ -96,7 +105,9 @@ collection member, in the audience editor under *Delen* ("Sharing").
       those locations; the line must not pass close to a home or meeting point.
 - [ ] **Choose the audience's lifetime and channel.** For a named link choose
       the shortest sensible lifetime and send the capability only through a
-      private channel. The public view is open to anyone and may be indexed.
+      private channel. The public view is open to anyone and may be indexed; a
+      chat app that has already shown its link preview may keep the title,
+      summary and cover after you unpublish, and only that app can remove them.
 
 ## Also for a collection link
 

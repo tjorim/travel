@@ -50,6 +50,11 @@ services:
       TRAVEL_ENVIRONMENT: development
       TRAVEL_DATABASE_URL: postgresql+psycopg://travel:travel@postgres:5432/travel
       TRAVEL_MEDIA_STORAGE_ROOT: /var/lib/travel/media
+      # The API renders public.html with a trip's link-preview metadata (#245);
+      # the absolute image and page URLs come from the configured origin, never
+      # from the request's Host header.
+      TRAVEL_VISITOR_SHELL_DIR: /srv/travel-admin
+      TRAVEL_PUBLIC_APP_URL: https://localhost
       TRAVEL_OIDC_ISSUER_URL: https://auth.tjor.im/realms/travel
       TRAVEL_OIDC_JWKS_URL: https://auth.tjor.im/realms/travel/protocol/openid-connect/certs
     expose:
@@ -61,6 +66,7 @@ services:
         condition: service_completed_successfully
     volumes:
       - travel_media:/var/lib/travel/media
+      - ./frontend/dist:/srv/travel-admin:ro
     restart: unless-stopped
 
 volumes:

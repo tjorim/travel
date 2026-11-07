@@ -47,7 +47,8 @@ revoke or scope edit is checked again by the API.
 
 - The public projection API response uses `Cache-Control: no-store`, so an
   unpublish or scope change is checked on the next load. The public shell may
-  be cached as code, but must contain no trip data. Public page indexing is
+  be cached as code, but must contain no trip data; a published trip's link-preview
+  metadata ([below](#link-previews)) is the one exception and is never cached. Public page indexing is
   allowed only for a published page; unpublished pages must not expose cached
   content.
 - The unlisted HTML shell and every capability-dependent response, including
@@ -80,7 +81,9 @@ revoke or scope edit is checked again by the API.
   pages. Client navigation away from a share page clears its in-memory
   projection.
 - The visitor shell must not embed trip data, token metadata, owner
-  credentials, or owner API responses in HTML or JavaScript bundles. The API
+  credentials, or owner API responses in HTML or JavaScript bundles, except the
+  link-preview metadata a published public trip's own `/trips/{slug}` response
+  carries, which is limited to what the public projection already delivers. The API
   validates the public publication state or unlisted capability and applies
   the stored field and item allowlist on every request. No generated static
   trip artifact participates in live delivery.
@@ -91,13 +94,69 @@ the delivery behavior available now. The fresh-launch boundary and absence of
 archive migration or URL aliases are defined by #101. Any later work on old
 static archive content is tracked separately in #40.
 
+## Link previews
+
+Decision VD2 (2026-11-06, [#245](https://github.com/tjorim/travel/issues/245)):
+a published public trip shows a trip-specific preview, and a hidden link stays
+generic. Chat apps build a preview from the HTML they are served without running
+JavaScript, so `/trips/{slug}` must reach the API for its `<head>`.
+
+- **Delivery route.** `GET /api/public/trip-shell/{slug}` returns the built,
+  data-free `public.html` (`TRAVEL_VISITOR_SHELL_DIR`, the same `dist` the
+  proxy serves) with trip-specific metadata. The proxy sends `/trips/{slug}`
+  (one slug of 1–32 `A-Za-z0-9_-` characters, with or without a trailing
+  slash) there and keeps serving `public.html` as a static file for `/trips/`
+  and every other path (`Caddyfile.example`; production in `tjorim/apps`
+  [#219](https://github.com/tjorim/apps/issues/219)). The page, its bundle and
+  its API request are unchanged: the shell still embeds no trip data.
+- **What it may show.** It is built from `render_projection` of the live public
+  scope, so it is exactly what `GET /api/public/trips/{slug}` already
+  delivers, and nothing else. The title (`<title>`, `og:title`,
+  `twitter:title`, as "Title · Travel", cut to 70 characters) only if the scope
+  shares the title; the one-line plain-text summary (`description`,
+  `og:description`, `twitter:description`, cut to 200 characters) only if the
+  scope shares the summary; `og:url` as the page's public URL. The cover
+  (`og:image`, `twitter:image` with its alt text and, when known, size) is set
+  only when the public audience already receives that photo
+  (`projection._cover`), and its URL is the scoped public file route of that
+  copy, `/api/public/trips/{slug}/files/{local_id}`, never an owner route, a
+  canonical id, an object key, a hidden-link route or an unapproved or private
+  derivative. A field the scope does not share keeps the shell's generic
+  value; with no shared cover the generic brand image stays.
+- **Absolute URLs.** Chat apps need absolute URLs. They are built from the
+  configured `TRAVEL_PUBLIC_APP_URL`, never from the `Host` or forwarded
+  headers, which a caller controls.
+- **Everything else is generic and indistinguishable.** An unknown, malformed
+  (not 1–32 `A-Za-z0-9_-` characters), unpublished or revoked slug returns the
+  unchanged shell with the same status, headers and body, so the preview
+  confirms nothing the public API (`404`) does not already say. Malformed slugs
+  skip the database as the other public routes do. A missing shell file is a
+  `503` (`shell_unavailable`) and never a trip-specific page.
+- **Escaping.** Every value is HTML-escaped for an attribute or text, control
+  characters and newlines are folded to spaces, and the length limits above
+  apply. No private field, owner id, canonical id, date, place or document is
+  read.
+- **Caching.** Every response, trip-specific or generic, sends
+  `Cache-Control: no-store` (and `X-Content-Type-Options: nosniff`), with no
+  `ETag`, `Last-Modified` or cookie. The body depends on live publication state,
+  so a browser or shared cache must not reuse it: an unpublish, revoke or scope
+  change shows on the next fetch, like the projection API. `Vary` is not needed
+  because the output depends on the path only. A chat app's own preview cache is
+  outside our control; the safety check says so.
+- **Indexing.** The shell keeps `noindex, noarchive`; a preview does not make a
+  page indexable.
+- **Hidden links.** `/share/{token}` keeps the static `share.html`, generic
+  metadata, `noindex`, `no-referrer` and `no-store`. No link preview path reads
+  a token or a link's scope.
+
 ## Visitor shell build handoff
 
 The frontend build emits data-free `landing.html`, `public.html` and `share.html` beside the
 owner `index.html`. The VPS route owner in tjorim/apps#219 serves `landing.html`
-for `/`, `public.html` for `/trips/` and `/trips/{slug}`, and `share.html` for `/share/{token}`, with a direct reload
+for `/`, `public.html` for `/trips/` (a single `/trips/{slug}` is rendered from it by the API, see
+[Link previews](#link-previews)), and `share.html` for `/share/{token}`, with a direct reload
 returning the same shell. The built assets are under `/admin/assets/`; the
 visitor entry point neither registers the owner service worker nor reads its
 session. The unlisted shell must receive the protective response headers above
-even for an unknown token. The public shell starts with `noindex` because it
-contains no server-rendered publication state or trip content.
+even for an unknown token. The public shell starts with `noindex`, and keeps it when the API adds a
+published trip's link-preview metadata.

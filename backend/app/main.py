@@ -25,6 +25,7 @@ from .routers.collections import membership_router as collection_membership_rout
 from .routers.collections import router as collections_router
 from .routers.documents import router as documents_router
 from .routers.library import router as library_router
+from .routers.link_preview import router as link_preview_router
 from .routers.locations import router as locations_router
 from .routers.markdown import router as markdown_router
 from .routers.media import provider_tokens_router
@@ -85,6 +86,7 @@ app.include_router(collections_router, prefix="/api")
 app.include_router(collection_membership_router, prefix="/api")
 app.include_router(sharing_presets_router, prefix="/api")
 app.include_router(publication_delivery_router, prefix="/api")
+app.include_router(link_preview_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
 app.include_router(alternatives_router, prefix="/api")
 app.include_router(routes_router, prefix="/api")
