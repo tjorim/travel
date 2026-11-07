@@ -19,6 +19,7 @@ updates:
     labels:
       - "dependencies"
       - "platform:backend"
+      - "python"
     versioning-strategy: "increase"
     groups:
       # fastmcp pulls in mcp and mcp-types; cyclopts is its CLI dependency. Keep them moving together
@@ -93,6 +94,7 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
+      - "npm"
       - "platform:frontend"
     versioning-strategy: "increase"
     groups:
@@ -259,6 +261,7 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
+      - "github-actions"
     groups:
       codeql:
         patterns:
