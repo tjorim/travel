@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # This points to Vite's default local origin in development; deployment
     # must set it to the public Travel application origin.
     public_app_url: AnyHttpUrl = AnyHttpUrl("http://localhost:5173")
+    # Directory holding the built, data-free visitor shells (``frontend/dist``,
+    # mounted read-only). ``GET /api/public/trip-shell/{slug}`` serves its
+    # ``public.html`` with trip-specific link-preview metadata (#245).
+    visitor_shell_dir: str | None = None
     # Explicit per-owner delivery mapping prevents one owner's private task
     # title from being mailed to another owner's address.
     task_alert_recipients: dict[str, str] = Field(default_factory=dict)

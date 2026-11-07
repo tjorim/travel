@@ -189,6 +189,12 @@ The public index cards on `/` and `/trips` also show the nominated cover, only
 when the public projection receives it. They carry its scoped public file URL,
 approved alt text, dimensions and focal point; nomination never delivers a photo.
 
+A published public view's chat link preview (`/trips/{slug}`) is built from the
+same projection: the title and the one-line summary only if the scope shares
+them, and the cover only if the public audience receives it, as its scoped public
+file URL (see [decision 103](decisions/103-live-browser-route-contract.md#link-previews)).
+A hidden link's preview is always generic.
+
 ## Hidden links start from the public view
 
 Every audience starts from the **baseline**: the records set to `everyone`. A

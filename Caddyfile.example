@@ -60,6 +60,20 @@ localhost {
 		file_server
 	}
 
+	# A published trip's link preview (#245): chat apps read the HTML without
+	# running JavaScript, so the API renders public.html with that trip's shared
+	# title, summary and cover. Unknown, unpublished and revoked slugs get the
+	# same generic shell. The response is never cacheable, so an unpublish shows
+	# on the next fetch. The page needs the API for its content anyway, so there
+	# is no static fallback for this route.
+	@tripshell path_regexp tripslug ^/trips/([A-Za-z0-9_-]{1,32})/?$
+	handle @tripshell {
+		rewrite * /api/public/trip-shell/{re.tripslug.1}
+		reverse_proxy travel-api:8000 {
+			header_up X-Real-IP {http.request.remote.host}
+		}
+	}
+
 	handle /trips/* {
 		root * /srv/travel-admin
 		rewrite * /public.html
