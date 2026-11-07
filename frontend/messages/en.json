@@ -2610,8 +2610,6 @@
       }
     }
   ],
-  "preset_review_widened_heading": "Starts to receive",
-  "preset_review_narrowed_heading": "Stops receiving",
   "preset_review_precision_changed": "Dates shown to this audience change from {before} to {after}, at most.",
   "preset_review_precision_same": "Dates shown to this audience stay {after}, at most.",
   "preset_review_precision_none": "no limit",

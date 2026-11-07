@@ -305,6 +305,8 @@ export function ScopeEditor({
       <p>{m.assets_choose_what_visitors_can_see_everything_you_do_not_select_stays_private()}</p>
       {preset && (
         <PresetSection
+          // Another audience starts with nothing chosen.
+          key={JSON.stringify(preset.target)}
           preset={preset}
           scope={scope}
           setScope={setScope}

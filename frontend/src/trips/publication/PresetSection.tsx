@@ -194,7 +194,6 @@ export function PresetSection({
           }}
           onApplied={(audience, wasApplied, result) => {
             setOpen(null);
-            setChosen("");
             setNotice(
               textNotice(() =>
                 wasApplied

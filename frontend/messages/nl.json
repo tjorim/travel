@@ -2583,9 +2583,9 @@
       }
     }
   ],
-  "preset_exception_hide": "Verbergen",
+  "preset_exception_hide": "Verberg",
   "preset_exception_hide_named": "Verberg “{name}” voor dit publiek",
-  "preset_exception_show": "Tonen",
+  "preset_exception_show": "Toon",
   "preset_exception_show_named": "Toon “{name}” aan dit publiek",
   "preset_exception_unsaved": "Wijziging nog niet opgeslagen",
   "preset_exception_way_out_everyone": "Staat op Iedereen, dus de openbare pagina toont het altijd. Wijzig de eigen zichtbaarheid om het te verbergen; dat geldt voor elk publiek.",
@@ -2610,8 +2610,6 @@
       }
     }
   ],
-  "preset_review_widened_heading": "Krijgt er bij",
-  "preset_review_narrowed_heading": "Krijgt niet meer",
   "preset_review_precision_changed": "Datums voor dit publiek gaan van {before} naar {after}, hooguit.",
   "preset_review_precision_same": "Datums voor dit publiek blijven {after}, hooguit.",
   "preset_review_precision_none": "geen limiet",

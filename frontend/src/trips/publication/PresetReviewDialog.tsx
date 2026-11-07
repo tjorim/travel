@@ -276,19 +276,16 @@ export function PresetReviewDialog({
         {!review.applicable && !review.refusal && <p>{m.preset_review_not_applicable()}</p>}
         {nothing && <p className="m-0">{m.preset_review_nothing()}</p>}
         {review.applicable && !!comparison?.widened.length && (
-          <div className="grid gap-1.5">
-            <p className="m-0 font-semibold">{m.preset_review_adds({ counts: addedText })}</p>
-            <RecordList heading={m.preset_review_widened_heading()} records={comparison.widened} />
-          </div>
+          <RecordList
+            heading={m.preset_review_adds({ counts: addedText })}
+            records={comparison.widened}
+          />
         )}
         {review.applicable && !!comparison?.narrowed.length && (
-          <div className="grid gap-1.5">
-            <p className="m-0 font-semibold">{m.preset_review_removes({ counts: removedText })}</p>
-            <RecordList
-              heading={m.preset_review_narrowed_heading()}
-              records={comparison.narrowed}
-            />
-          </div>
+          <RecordList
+            heading={m.preset_review_removes({ counts: removedText })}
+            records={comparison.narrowed}
+          />
         )}
         {review.applicable && (
           <p className="m-0 text-sm">

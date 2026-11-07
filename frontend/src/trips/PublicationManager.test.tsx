@@ -920,6 +920,121 @@ it("starts a new link at months, and keeps the choice in the previewed scope", a
   });
 });
 
+it("starts a new link from the public page unless a preset is chosen, and sends the preset with the creation", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe link" }));
+  // The first choice is the public baseline, and a link that does not exist yet has nothing to review.
+  expect(screen.getByRole("radio", { name: "Zoals de openbare pagina" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  expect(screen.queryByRole("button", { name: "Voorinstelling bekijken" })).toBeNull();
+  fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Vrienden" } });
+  fireEvent.click(screen.getByRole("radio", { name: "Verhaal en route" }));
+  expect(screen.getByText(/wordt toegepast wanneer je het concept opslaat/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Concept opslaan" }));
+  await waitFor(() => expect(api.count("POST /api/trips/trip/share-links")).toBe(1));
+  expect(api.lastBody<{ preset?: string }>("POST /api/trips/trip/share-links")?.preset).toBe(
+    "story_and_route",
+  );
+});
+
+it("sends no preset for a new link that starts as the public page", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe link" }));
+  fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Vrienden" } });
+  fireEvent.click(screen.getByRole("button", { name: "Concept opslaan" }));
+  await waitFor(() => expect(api.count("POST /api/trips/trip/share-links")).toBe(1));
+  expect(api.lastBody("POST /api/trips/trip/share-links")).not.toHaveProperty("preset");
+});
+
+it("applies a preset to the public page and loads the scope the server answers with", async () => {
+  const review = {
+    schema_version: "travel/sharing-preset@1",
+    preset: "story_only",
+    audience: { id: "public", kind: "public", label: null, live: false },
+    applicable: true,
+    refusal: null,
+    changes: [{ kind: "travel_update", id: "u1", label: "Privé dagboek", action: "promote" }],
+    change_counts: { promote: 1 },
+    precision: { before: null, after: "month", changed: true, reads_coarser: {} },
+    comparison: {
+      before: {},
+      after: { travel_update: 1 },
+      added: { travel_update: 1 },
+      removed: {},
+      widened: [{ kind: "travel_update", id: "u1", label: "Privé dagboek" }],
+      narrowed: [],
+    },
+    left_as_is: [],
+    needs_decision: [],
+    replaces_exceptions: [],
+    requires_acknowledgement: false,
+    fingerprint: "fp",
+  };
+  api.on("POST", /\/public-projection\/preset\/review$/, () => review);
+  api.on("POST", /\/public-projection\/preset$/, () => {
+    status = {
+      ...status,
+      revision: 2,
+      scope: scope([{ kind: "travel_update", id: "u1" }]),
+      applied_preset: "story_only",
+      applied_preset_at: "2054-01-02T00:00:00Z",
+      preset_exceptions: { shown: [], hidden: [], count: 0 },
+    };
+    return { applied: true, review, audience: status };
+  });
+  renderWithOwner(<PublicationManager trip={trip} />);
+  await publicScope().findByText("Stad ↔ natuur");
+  fireEvent.click(publicScope().getByRole("radio", { name: "Alleen het verhaal" }));
+  fireEvent.click(publicScope().getByRole("button", { name: "Voorinstelling bekijken" }));
+  const dialog = await screen.findByRole("alertdialog", {
+    name: "“Alleen het verhaal” toepassen?",
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Voorinstelling toepassen" }));
+  await waitFor(() => expect(api.count("POST /api/trips/trip/public-projection/preset")).toBe(1));
+  expect(api.lastBody("POST /api/trips/trip/public-projection/preset")).toEqual({
+    preset: "story_only",
+    fingerprint: "fp",
+    confirm_widening: false,
+  });
+  expect(api.lastHeaders("POST /api/trips/trip/public-projection/preset")?.get("If-Match")).toBe(
+    '"1"',
+  );
+  // The label and the new revision come from the answer; the editor is not left dirty.
+  expect(await publicScope().findByText("Alleen het verhaal, geen uitzonderingen")).toBeTruthy();
+  fireEvent.click(publicScope().getByRole("checkbox", { name: "Samenvatting" }));
+  fireEvent.click(screen.getByRole("button", { name: "Keuze bewaren" }));
+  await waitFor(() => expect(api.count("PUT /api/trips/trip/public-projection")).toBe(1));
+  expect(api.lastHeaders("PUT /api/trips/trip/public-projection")?.get("If-Match")).toBe('"2"');
+});
+
+it("states the preset and its exceptions for each audience in the sharing check", async () => {
+  overview = {
+    trip_id: "trip",
+    counts: {},
+    visibility: {},
+    audiences: [
+      audience({ state: "published", live: true, preset: "story_and_route", preset_exceptions: 2 }),
+      audience({
+        kind: "share_link",
+        id: "l1",
+        label: "Familie",
+        state: "draft",
+        preset: "planned_trip",
+        preset_exceptions: 0,
+      }),
+      audience({ kind: "share_link", id: "l2", label: "Zonder", state: "draft" }),
+    ],
+    warnings: [],
+  };
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const check = within(await screen.findByRole("list", { name: "Controle voor het delen" }));
+  expect(check.getByText("Voorinstelling: Verhaal en route, met 2 uitzonderingen")).toBeTruthy();
+  expect(check.getByText("Voorinstelling: Geplande reis, geen uitzonderingen")).toBeTruthy();
+  expect(check.getAllByText(/^Voorinstelling:/)).toHaveLength(2);
+});
+
 it("states in the sharing check how each audience reads dates and which records are held coarser", async () => {
   overview = {
     trip_id: "trip",

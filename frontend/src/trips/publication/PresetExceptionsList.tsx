@@ -1,5 +1,5 @@
 import { Button } from "@/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
@@ -8,7 +8,7 @@ import { useSetVisibility } from "../visibility";
 import { GROUP_TITLES, isExcluded, setShown, updateItem, type CatalogItem } from "./catalog";
 import { presetName } from "./use-sharing-presets";
 
-type Action = "show" | "hide" | "pending" | "way_out" | null;
+type Action = "show" | "hide" | "way_out" | null;
 
 /**
  * What an audience receives differently from the preset it last applied, as the server counts it, with the controls
@@ -43,6 +43,12 @@ export function PresetExceptionsList({
   useLocale();
   const setVisibility = useSetVisibility(tripId);
   const [busy, setBusy] = useState(false);
+  // Rows the owner changed in this draft; they say so until the scope is saved and the server counts again.
+  const [touched, setTouched] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    if (!dirty) setTouched(new Set());
+  }, [dirty]);
+  const keyOf = (record: PresetRecordRef) => `${record.kind}:${record.id}`;
   const find = (record: PresetRecordRef) =>
     catalog.find((item) => item.kind === record.kind && item.id === record.id);
   const listed = (item: CatalogItem) =>
@@ -55,19 +61,17 @@ export function PresetExceptionsList({
   function actionFor(mode: "shown" | "hidden", record: PresetRecordRef): Action {
     const item = find(record);
     if (!item) return null;
-    if (mode === "hidden") {
-      if (receivedInDraft(item)) return dirty ? "pending" : null;
-      return "show";
-    }
+    if (mode === "hidden") return receivedInDraft(item) ? null : "show";
     if (listed(item)) return "hide";
-    if (item.visibility === "everyone")
-      return allowExclusions ? (isExcluded(scope, item) ? "pending" : "hide") : "way_out";
-    return dirty ? "pending" : null;
+    if (item.visibility !== "everyone") return null;
+    return allowExclusions ? (isExcluded(scope, item) ? null : "hide") : "way_out";
   }
 
   async function show(item: CatalogItem) {
+    const done = () => setTouched((current) => new Set(current).add(keyOf(item)));
     if (isExcluded(scope, item)) {
       setScope(setShown(scope, item, true));
+      done();
       return;
     }
     if (item.visibility === "private") {
@@ -83,16 +87,19 @@ export function PresetExceptionsList({
       }
     }
     setScope(updateItem(scope, item, true));
+    done();
   }
 
   function hide(item: CatalogItem) {
     setScope(listed(item) ? updateItem(scope, item, false) : setShown(scope, item, false));
+    setTouched((current) => new Set(current).add(keyOf(item)));
   }
 
   function row(record: PresetRecordRef, mode: "shown" | "hidden") {
     const item = find(record);
     const name = record.label || item?.label || m.preset_exception_untitled();
-    const action = actionFor(mode, record);
+    const changed = dirty && touched.has(keyOf(record));
+    const action = changed ? null : actionFor(mode, record);
     return (
       <li
         key={`${record.kind}-${record.id}`}
@@ -107,7 +114,7 @@ export function PresetExceptionsList({
             </small>
           )}
         </span>
-        {action === "pending" && (
+        {changed && (
           <small className="text-travel-muted" role="status">
             {m.preset_exception_unsaved()}
           </small>

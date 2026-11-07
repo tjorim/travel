@@ -1,10 +1,11 @@
 # Sharing Presets With Per-Record Exceptions
 
-Design note, 2026-11-07, issue #241. **Status: steps 1 and 2 of 4 implemented (planner
-and read-only review; apply, migration 022 and audit); the owner interface and the
-shorter check are not.** See
-[Step 1 implemented](#step-1-implemented-planner-and-read-only-review) and
-[Step 2 implemented](#step-2-implemented-apply-migration-and-audit) at the end. The owner decided on 2026-11-06 for presets with
+Design note, 2026-11-07, issue #241. **Status: steps 1 to 3 of 4 implemented (planner
+and read-only review; apply, migration 022 and audit; the owner interface); the
+shorter check is not.** See
+[Step 1 implemented](#step-1-implemented-planner-and-read-only-review),
+[Step 2 implemented](#step-2-implemented-apply-migration-and-audit) and
+[Step 3 implemented](#step-3-implemented-the-owner-interface) at the end. The owner decided on 2026-11-06 for presets with
 per-record exceptions and today's fine-grained controls under an Advanced view
 (option a of #241); this note designs the presets and does not reopen that.
 The Advanced view and the single date control shipped first (see the end of this
@@ -524,3 +525,66 @@ Shipped (Part of #241). The backend applies a reviewed preset; the owner interfa
   lists in the interface, the first choice "Same as the public page" on a new link, decision 36 and the shorter
   `publication-safety-check.md`. The `preset_changed_another_audience` guard reaches the client as an unhandled
   service error, as the review's does.
+
+
+## Step 3 implemented: the owner interface
+
+Shipped (Part of #241). Frontend only; the shorter safety check is step 4. No backend change was needed.
+
+- **Where.** `PresetSection` sits at the top of the audience editor (`ScopeEditor`), so the public page, every hidden link
+  and every collection member get it from one place; the editors' own controls (title, summary, *Dates shown to this
+  audience*, *Left out of this audience*, Advanced) stay below it unchanged. It is not rendered in the read-only copy of
+  the server's scope shown during a revision conflict.
+- **Picker.** The three presets as a `ChoiceGroup` with the selected preset's description under it, and **Review preset**.
+  Nothing is chosen at first, so the button is disabled until a choice is made. After an apply the choice is kept and the
+  button stays enabled (focus returns to it; a disabled control cannot take focus); another audience starts with
+  nothing chosen. The review reads the stored audience, so while the editor has unsaved edits the button is disabled and
+  says to save or discard first. This avoids a second source of truth: the apply rewrites the audience on the server and
+  the editor then loads the audience the server answers with.
+- **A new hidden link (answer 4).** The first choice is *Same as the public page*; choosing a preset sends `preset` with
+  the creation request (also for the draft a first preview creates). There is no review for a link that does not exist:
+  it has received nothing, and the help text says the preview and the Sharing check show the result before activation. A
+  new collection member is created empty and its scope editor opens at once, so it takes the picker with a normal review
+  (no create-time preset in the UI; the API still allows one).
+- **Review dialog.** `PresetReviewDialog` (a `DeleteConfirmation`, Base UI Alert Dialog) shows, from the server's review
+  and nothing recomputed in the client: whether the audience is live; the records it starts and stops receiving (counts per
+  kind in the heading, every record by name grouped by kind, folded when more than six); the date precision before and
+  after and the records that read coarser; the owner's choices that the preset resets (`replaces_exceptions`, with why);
+  what is left as it is, grouped by reason and way out with a sentence each; what needs a decision (the blocker's code
+  through the existing error messages, `share_time_is_on` in words); and, for a live audience that would see more, the
+  warning and the acknowledgement checkbox that enables *Apply*. A plan that would change nothing says so. The apply sends
+  the review's `fingerprint`, `confirm_widening` only when acknowledged, and the audience's current revision in
+  `If-Match` (read when the owner clicks, from the same ref the editor's Save uses).
+- **Errors.** `preset_preview_is_stale` replaces the review with the fresh one in the dialog, says so and resets the
+  acknowledgement; `preset_too_large` (at review or at apply) shows the counts and limits and leaves *Apply* disabled;
+  `preset_widening_needs_acknowledgement` (if the client's idea of "live" was out of date) turns the acknowledgement on; a
+  `412 scope_revision_conflict` offers *Reload the audience* with the current record the server sent, which the editor
+  then loads; anything else shows the operation's fallback message, with the dialog kept open. Escape and Cancel are
+  ignored while the apply is pending.
+- **Label and exceptions.** An audience that carries a preset shows "Story and route, with 2 exceptions" (or "no
+  exceptions") and when it was last applied, and `PresetExceptionsList` shows `preset_exceptions` in two lists (received but
+  not in the preset; in the preset but not received). Each record has the action that already exists, applied to the
+  editor's scope and saved with the editor's Save: **Show** unticks the link's exclusion, or lists the record for this audience
+  (promoting a private one to Custom first, exactly as the Advanced lists do), **Hide** unlists a listed record or leaves an
+  Everyone record out of a hidden link; an Everyone record on the public page has no per-audience way out, so the row
+  says to change its own visibility. A row the owner just changed says "Change not saved yet" until the scope is saved and
+  the server counts again. A short intro states that a record added later never joins a preset (answer 1); a record added since
+  shows up as an exception until it is chosen or left out. Records with no catalog entry (not shareable now) show their name
+  without an action.
+- **Sharing check and link list.** Each audience's entry gains a "Preset: …" line from `preset` and `preset_exceptions` of
+  the overview, and a link's row in the link list shows the same label. The rendered preview stays the confirmation step.
+- **Advanced stays.** Nothing was removed from Advanced or from the date control.
+- **The six answers in the interface.** 1: a help text and the exceptions list; 2: the review lists what a re-apply
+  resets, and re-applying is the same flow (choose the preset again); 3: the preset descriptions say approved photos travel
+  with the updates; 4: above; 5: the label comes from the owner responses and is display only; 6: the review lists the
+  `everyone` records of the public page as *left as it is* with the way out, and the exceptions list repeats it per record.
+- **Not done here.** The PWA words each preset itself (id to message), so it does not call `GET …/sharing-presets`; that
+  endpoint serves API and MCP clients. A preset id this client does not know (written by a newer application) is shown as
+  its id, with the exceptions list, rather than hidden. Decision 36 and the shorter `publication-safety-check.md` are step 4.
+- **Tests.** `PresetSection.test.tsx` (the review and apply, the acknowledgement, a stale review, too large at review and at
+  apply, the revision conflict, left-as-is and needs-decision, the unsaved-edits block, focus return, the exceptions and
+  their actions, the new-link picker), additions to `PublicationManager.test.tsx` (creation with and without a preset,
+  applying to the public page, the Sharing check lines) and `MemberScopeDialog.test.tsx` (a collection member), and
+  `e2e/sharing-presets.spec.ts` with axe (a draft link in both locales and themes at 390 px, an active link needing the
+  acknowledgement and the public page at 1440 px); `e2e/mock-api.ts` gains `mockSharingPresets`. Screenshots were checked
+  locally (not committed).
