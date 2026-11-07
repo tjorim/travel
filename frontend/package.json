@@ -34,7 +34,7 @@
     "@vitejs/plugin-react": "latest",
     "cn": "^0.5.1",
     "dayjs": "^1.11.23",
-    "lucide-react": "^1.66.0",
+    "lucide-react": "^1.68.0",
     "maplibre-gl": "6.16.0",
     "react": "latest",
     "react-day-picker": "^10.0.2",
