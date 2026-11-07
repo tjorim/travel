@@ -5,12 +5,14 @@ visitor see?" (per audience, from the same projection the visitor is served)
 in one read, and flags the easy-to-miss states: an active audience that
 receives nothing, shared trip dates, planning words such as "concept" in a
 visible label, shared records whose map point is withheld because their area
-is not shared, undated visits that duplicate a dated one, visits that restate a route, and locations that only repeat their area.
+is not shared, undated visits that duplicate a dated one, visits that restate a route, locations that only repeat their area,
+and, before a trip starts, future transport times and dates shown by day.
 """
 
 import math
 import re
 from collections import Counter
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -54,6 +56,63 @@ def _visible_texts(value: Any) -> list[str]:
     return found
 
 
+def not_started(trip: Trip, today: date) -> bool:
+    """Whether the trip has not started yet on ``today``.
+
+    The trip's ``starts_on`` must be after ``today``. A trip without a start counts as not started only when one
+    of its routes departs after ``today``. A trip whose end has passed has ended, so it never counts."""
+    if trip.ends_on is not None and trip.ends_on < today:
+        return False
+    if trip.starts_on is not None:
+        return trip.starts_on > today
+    return any(route.departs_on is not None and route.departs_on > today for route in trip.routes)
+
+
+def _on_or_after(value: str | None, today: date) -> bool:
+    """Whether a rendered date (ISO, at day precision) is today or later; the last day of a span counts."""
+    return value is not None and date.fromisoformat(value) >= today
+
+
+def future_counts(trip: Trip, document: dict[str, Any], today: date) -> dict[str, int]:
+    """What a rendered document shows of the future before a trip starts, counted in records.
+
+    Read from the rendered document, so it is exactly what the audience receives:
+
+    * ``transport``: routes that depart today or later and carry a departure time or a carrier or service
+      reference (a flight or train with an exact schedule);
+    * ``day_dates``: the trip dates, visits, stays and reisupdates shown by day whose date (or span end) is today
+      or later. Routes are not counted here: their departure day is not limited by a date precision.
+
+    Both are zero once the trip has started or ended."""
+    if not not_started(trip, today):
+        return {"transport": 0, "day_dates": 0}
+    transport = 0
+    for route in document["routes"]:
+        scheduled = route.get("departs_at") or route.get("carrier") or route.get("service_reference")
+        if scheduled and _on_or_after(route.get("departs_on"), today):
+            transport += 1
+    day_dates = 0
+    trip_dates = document["dates"]
+    if trip_dates and trip_dates["date_precision"] == "day":
+        ends = max(
+            (value for value in (trip_dates.get("starts_on"), trip_dates.get("ends_on")) if value),
+            default=None,
+        )
+        day_dates += int(_on_or_after(ends, today))
+    for visit in document["visits"]:
+        if visit.get("date_precision") == "day" and "starts_on" in visit:
+            ends = max((value for value in (visit.get("starts_on"), visit.get("ends_on")) if value), default=None)
+            day_dates += int(_on_or_after(ends, today))
+    for stay in document["stays"]:
+        if stay.get("date_precision") == "day":
+            ends = max((value for value in (stay.get("starts_on"), stay.get("ends_on")) if value), default=None)
+            day_dates += int(_on_or_after(ends, today))
+    for update in document["updates"]:
+        if update.get("date_precision") == "day":
+            day_dates += int(_on_or_after(update.get("story_date"), today))
+    return {"transport": transport, "day_dates": day_dates}
+
+
 def _audience(
     trip: Trip,
     *,
@@ -64,6 +123,7 @@ def _audience(
     live: bool,
     scope: dict,
     schema_version: str,
+    today: date,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     document = render_projection(trip, scope, schema_version)
     exclusions = scope_exclusions(trip, scope)
@@ -97,7 +157,7 @@ def _audience(
     name = "The public page" if kind == "public" else f"Link {label!r}"
     warnings: list[dict[str, Any]] = []
 
-    def warn(code: str, severity: str, message: str, text: str | None = None) -> None:
+    def warn(code: str, severity: str, message: str, text: str | None = None, count: int | None = None) -> None:
         warnings.append(
             {
                 "code": code,
@@ -106,6 +166,7 @@ def _audience(
                 "audience": label,
                 "audience_id": audience_id,
                 "text": text,
+                "count": count,
             }
         )
 
@@ -133,6 +194,24 @@ def _audience(
             "info",
             f"{name} shows the trip dates by {summary['dates_precision']}.",
             summary["dates_precision"],
+        )
+    # Counts only: no record title, label or owner text reaches the warning.
+    future = future_counts(trip, document, today)
+    if future["transport"]:
+        warn(
+            "future_transport_times",
+            "warning",
+            f"{name} receives the times or carrier of {future['transport']} routes before the trip starts. "
+            "Until you leave, leave those routes out of its records or set them to private.",
+            count=future["transport"],
+        )
+    if future["day_dates"]:
+        warn(
+            "future_day_dates",
+            "warning",
+            f"{name} shows {future['day_dates']} dated records by day before the trip starts. "
+            "Until you leave, set Dates shown to this audience to month.",
+            count=future["day_dates"],
         )
     for text in sorted(set(_visible_texts(document))):
         if match := PLANNING_MARKERS.search(text):
@@ -255,8 +334,12 @@ def _locations_repeating_areas(trip: Trip) -> list[dict[str, Any]]:
     return found
 
 
-def trip_overview(session: Session, trip: Trip) -> dict[str, Any]:
-    """Counts, per-audience delivery and review warnings for one owned trip. Changes nothing."""
+def trip_overview(session: Session, trip: Trip, today: date | None = None) -> dict[str, Any]:
+    """Counts, per-audience delivery and review warnings for one owned trip. Changes nothing.
+
+    ``today`` defaults to the server's current UTC date, which decides whether a trip has started (see
+    ``not_started``); a visitor in another time zone may see the boundary a day early or late."""
+    today = today or datetime.now(UTC).date()
     counts: dict[str, Any] = {f"{kind}s": len(records(trip)) for kind, records in COLLECTIONS.items()}
     counts["visits_undated"] = sum(1 for visit in trip.visits if visit.starts_on is None)
     counts["routes_undated"] = sum(1 for route in trip.routes if route.departs_on is None)
@@ -283,6 +366,7 @@ def trip_overview(session: Session, trip: Trip) -> dict[str, Any]:
         live=surface is not None and surface.state == SurfaceState.PUBLISHED,
         scope=surface.scope if surface is not None else {},
         schema_version="travel/public-trip@1",
+        today=today,
     )
     audiences.append(summary)
     warnings.extend(found)
@@ -301,6 +385,7 @@ def trip_overview(session: Session, trip: Trip) -> dict[str, Any]:
             live=link.state == LinkState.ACTIVE,
             scope=link.scope,
             schema_version="travel/unlisted-trip@1",
+            today=today,
         )
         audiences.append(summary)
         warnings.extend(found)

@@ -26,6 +26,7 @@ from ..models import (
     SurfaceState,
     Trip,
 )
+from ..overview import future_counts
 from ..projection import (
     ScopeError,
     prepare_scope,
@@ -41,6 +42,7 @@ from ..schemas import (
     CollectionIndexDocument,
     ExclusionReview,
     ExclusionReviewRequest,
+    FutureDisclosure,
     Identifier,
     ProjectionDocument,
     PublicProjectionStatusResponse,
@@ -245,6 +247,39 @@ def preview_public_file(
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
     return _file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS, request)
+
+
+@router.post("/public-projection/future-disclosure", response_model=FutureDisclosure)
+def review_public_future(
+    trip_id: Identifier, session: SessionDep, subject: SubjectDep, payload: ShareScopeInput | None = None
+) -> FutureDisclosure:
+    """What the candidate public view would show of a trip that has not started yet: transport and day dates.
+
+    The same scope the preview renders, counted from the same document, so the preview's review and the
+    delivered fields cannot disagree. Stores nothing and records no audit event."""
+    trip = owned_trip(session, trip_id, subject)
+    surface = session.get(PublicSurface, trip_id)
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
+    return _future_disclosure(trip, scope)
+
+
+@router.post("/share-links/{link_id}/future-disclosure", response_model=FutureDisclosure)
+def review_link_future(
+    trip_id: Identifier,
+    link_id: Identifier,
+    session: SessionDep,
+    subject: SubjectDep,
+    payload: ShareScopeInput | None = None,
+) -> FutureDisclosure:
+    """The same review as the public one, for a hidden link's candidate scope. Stores nothing."""
+    trip = owned_trip(session, trip_id, subject)
+    link = owned_link(session, trip_id, subject, link_id)
+    return _future_disclosure(trip, _preview_scope(session, trip_id, subject, payload, link.scope))
+
+
+def _future_disclosure(trip: Trip, scope: dict) -> FutureDisclosure:
+    document = render_projection(trip, scope, "travel/unlisted-trip@1")
+    return FutureDisclosure(**future_counts(trip, document, datetime.now(UTC).date()))
 
 
 @router.post("/public-projection/preview/files/{local_id}")
