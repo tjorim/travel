@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Area, Location, Route } from "../../tracker-model";
+import type { Area, Location } from "../../tracker-model";
 import { emptyPlace } from "../PlacePicker";
 import {
   areaPoint,
@@ -8,35 +8,8 @@ import {
   dayShift,
   editableCoordinates,
   parseCoordinates,
-  routeEntries,
   validCoordinates,
 } from "./model";
-
-const route = (id: string, fields: Partial<Route> = {}) =>
-  ({
-    id,
-    status: "idea",
-    departs_on: "2054-11-16",
-    departure_area: { id: "ams", label: "Amsterdam" },
-    arrival_area: { id: "tpe", label: "Taipei" },
-    ...fields,
-  }) as Route;
-
-it("lists ideas for the same journey together and leaves a lone idea or a booked route alone", () => {
-  const entries = routeEntries([
-    route("a"),
-    route("b"),
-    route("c", { status: "confirmed", departs_on: "2054-11-20" }),
-    route("d", { departure_area: { id: "x", label: "Rome" } as Route["departure_area"] }),
-  ]);
-  expect(entries.map((entry) => entry.routes.map((item) => item.id))).toEqual([
-    ["a", "b"],
-    ["c"],
-    ["d"],
-  ]);
-  expect(entries[0].journey).toContain("Amsterdam → Taipei");
-  expect(entries[1].journey).toBeUndefined();
-});
 
 it("reads a drawn line and explains why a text is not one", () => {
   expect(parseCoordinates("[[121.5,25],[121.6,25.1]]")).toEqual([

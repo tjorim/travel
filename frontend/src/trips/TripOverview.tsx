@@ -22,6 +22,7 @@ import {
   whereabouts,
   type Stay,
   timedRoutes,
+  type AlternativeGroup,
   type Route,
   type Trip,
   type TripTask,
@@ -44,6 +45,8 @@ export function tripBadges(
   stays: Stay[],
   routes: Route[],
   tasks: TripTask[],
+  /** The owner's stored alternative groups: a night they still choose between is not a missing stay. */
+  groups: AlternativeGroup[] = [],
 ): Badge[] {
   const badges: Badge[] = [];
   // Only scheduled routes are bookings; a drawn line between two areas is not.
@@ -68,15 +71,31 @@ export function tripBadges(
     const booked = nights.filter((night) =>
       stays.some((stay) => isConfirmed(stay.status) && stayCoversNight(stay, night)),
     ).length;
-    const missing = nights.filter(
-      (night) => !stays.some((stay) => stayCoversNight(stay, night)),
+    const open = nights.filter((night) => !stays.some((stay) => stayCoversNight(stay, night)));
+    // A night an undecided group still compares candidates for is being chosen, not forgotten.
+    const choosing = open.filter((night) =>
+      groups.some(
+        (group) =>
+          group.kind === "stay" &&
+          !group.chosen_id &&
+          group.members.some(
+            (member) =>
+              member.stay &&
+              member.stay.status === "idea" &&
+              member.stay.check_in_date <= night &&
+              night < member.stay.check_out_date,
+          ),
+      ),
     ).length;
+    const missing = open.length - choosing;
     badges.push({
       label: m.owner_nights(),
       value: m.owner_confirmed_nights({
         p0: booked,
         p1: nights.length,
-        p2: missing ? m.owner_without_a_stay({ p0: missing }) : "",
+        p2:
+          (missing ? m.owner_without_a_stay({ p0: missing }) : "") +
+          (choosing ? m.owner_nights_to_choose({ count: choosing }) : ""),
       }),
       done: booked === nights.length,
       section: "plan",
@@ -190,6 +209,7 @@ export function TripOverview({ trip, action }: { trip: Trip; action?: ReactNode 
   const routesQuery = useTripResource(trip.id, "routes");
   const visitsQuery = useTripResource(trip.id, "visits");
   const tasksQuery = useTripResource(trip.id, "trip-tasks");
+  const groupsQuery = useTripResource(trip.id, "alternative-groups");
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -203,9 +223,15 @@ export function TripOverview({ trip, action }: { trip: Trip; action?: ReactNode 
   const badges = useMemo(
     () =>
       staysQuery.data && routesQuery.data && tasksQuery.data
-        ? tripBadges(trip, staysQuery.data, routesQuery.data, tasksQuery.data)
+        ? tripBadges(
+            trip,
+            staysQuery.data,
+            routesQuery.data,
+            tasksQuery.data,
+            groupsQuery.data ?? [],
+          )
         : [],
-    [locale, trip, staysQuery.data, routesQuery.data, tasksQuery.data],
+    [locale, trip, staysQuery.data, routesQuery.data, tasksQuery.data, groupsQuery.data],
   );
 
   const today = tripDay(now, stays, routes);

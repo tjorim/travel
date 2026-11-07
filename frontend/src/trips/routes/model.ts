@@ -6,7 +6,6 @@ import {
   formatDay,
   locationName,
   localDate,
-  sameJourney,
   wallClock,
   type Area,
   type Location,
@@ -160,27 +159,6 @@ export const arrivalChosen = ({ value, fieldApi }: { value: PlaceValue } & FormC
     ? m.owner_choose_two_different_places_departure_and_arrival_are_the_same
     : undefined;
 };
-
-/** Ideas for the same journey are shown together as alternatives; a lone idea is listed like any route. */
-export function routeEntries(routes: Route[]): { routes: Route[]; journey?: string }[] {
-  const shown = new Set<string>();
-  return routes.flatMap((route) => {
-    const group =
-      route.status === "idea"
-        ? routes.filter((item) => item.status === "idea" && sameJourney(item, route))
-        : [route];
-    if (group.length < 2) return [{ routes: [route] }];
-    if (group.some((item) => shown.has(item.id))) return [];
-    group.forEach((item) => shown.add(item.id));
-    const places = `${areaName(route.departure_area)} → ${areaName(route.arrival_area)}`;
-    return [
-      {
-        routes: group,
-        journey: route.departs_on ? `${places} · ${formatDay(route.departs_on)}` : places,
-      },
-    ];
-  });
-}
 
 /** The times once booked, else the day alone. */
 export const routeTimes = (route: Route) =>

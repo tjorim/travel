@@ -8,6 +8,8 @@ import { m } from "../paraglide/messages.js";
 import { errorMessage } from "../query/api";
 import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/feedback";
 import { useTripResource } from "../query/owner-queries";
+import { AlternativesPanel } from "./alternatives/AlternativesPanel";
+import { groupedIds } from "./alternatives/model";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import {
   formatDay,
@@ -37,6 +39,7 @@ export function RouteManager({
   const locationsQuery = useTripResource(trip.id, "locations");
   const documentsQuery = useTripResource(trip.id, "documents");
   const routes = routesQuery.data ?? [];
+  const groupsQuery = useTripResource(trip.id, "alternative-groups");
   const areas = areasQuery.data ?? [];
   const locations = locationsQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
@@ -156,7 +159,7 @@ export function RouteManager({
   const { selected, editing, editingId } = dialog;
   // Once a route is chosen, the ideas for its journey are the rejected alternatives.
   const alternatives =
-    selected && routeInPlan(selected)
+    selected && routeInPlan(selected) && !groupedIds(groupsQuery.data ?? []).has(selected.id)
       ? routes.filter((other) => other.status === "idea" && sameJourney(other, selected))
       : [];
   const readError =
@@ -182,6 +185,7 @@ export function RouteManager({
             ? m.owner_loading_your_routes()
             : message}
       </p>
+      <AlternativesPanel tripId={trip.id} kind="route" records={routes} onOpen={dialog.inspect} />
       <RecordDialog
         open={editing || selected !== null}
         title={editing ? (editingId ? m.owner_edit_route() : m.owner_add_route()) : m.owner_route()}

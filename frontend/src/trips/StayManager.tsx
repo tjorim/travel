@@ -8,6 +8,8 @@ import { m } from "../paraglide/messages.js";
 import { errorMessage } from "../query/api";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { useTripResource } from "../query/owner-queries";
+import { AlternativesPanel } from "./alternatives/AlternativesPanel";
+import { groupedIds } from "./alternatives/model";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import {
   addDays,
@@ -46,6 +48,7 @@ export function StayManager({
   useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const stays = staysQuery.data ?? [];
+  const groupsQuery = useTripResource(trip.id, "alternative-groups");
   const stayDialog = useRecordDialog(stays);
   useDialogFocus(focusId, stayDialog.inspect);
   const [message, setMessage] = useFeedback<string>(
@@ -162,7 +165,9 @@ export function StayManager({
   const readError = staysQuery.error;
   // Once a stay is chosen, the ideas for its nights are the rejected alternatives.
   const alternatives =
-    selectedStay && stayInPlan(selectedStay)
+    selectedStay &&
+    stayInPlan(selectedStay) &&
+    !groupedIds(groupsQuery.data ?? []).has(selectedStay.id)
       ? stays.filter(
           (other) =>
             other.status === "idea" &&
@@ -189,6 +194,7 @@ export function StayManager({
             ? m.owner_loading_your_private_stays()
             : message}
       </p>
+      <AlternativesPanel tripId={trip.id} kind="stay" records={stays} onOpen={stayDialog.inspect} />
       {stays.length > 0 && (
         <StayList
           stays={stays}

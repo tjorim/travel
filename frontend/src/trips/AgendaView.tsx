@@ -227,11 +227,6 @@ export function AgendaView({
         type="button"
         disabled={!onOpenRecord}
         onClick={() => onOpenRecord?.(item.recordKind, item.recordId)}
-        aria-label={
-          item.phase === "night" || item.phase === "check-out"
-            ? undefined
-            : m.owner_open_3({ p0: item.kind, p1: item.title })
-        }
       >
         {item.time && <time>{item.time}</time>} <span>{item.text}</span>{" "}
         <small>

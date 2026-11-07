@@ -11,7 +11,6 @@ import {
   locationLine,
   overlaps,
   placeChanged,
-  stayEntries,
   stayPlaceFields,
 } from "./model";
 
@@ -28,22 +27,6 @@ const stay = (id: string, fields: Partial<Stay> = {}) =>
     share_date_precision: "month",
     ...fields,
   }) as Stay;
-
-it("groups ideas for the same dates and keeps a lone idea or a booked stay on its own", () => {
-  const entries = stayEntries([
-    stay("a"),
-    stay("b"),
-    stay("c", { status: "confirmed" }),
-    stay("d", { check_in_date: "2054-11-20", check_out_date: "2054-11-21" }),
-  ]);
-  expect(entries.map((entry) => entry.stays.map((item) => item.id))).toEqual([
-    ["a", "b"],
-    ["c"],
-    ["d"],
-  ]);
-  expect(entries[0].dates).toBeTruthy();
-  expect(entries[1].dates).toBeUndefined();
-});
 
 it("treats back-to-back stays as not overlapping", () => {
   expect(overlaps(stay("a"), "2054-11-17", "2054-11-19")).toBe(true);
