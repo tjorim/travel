@@ -1,7 +1,8 @@
 # Sharing Presets With Per-Record Exceptions
 
-Design note, 2026-11-07, issue #241. **Status: proposed, for the owner's review.**
-Nothing here is implemented. The owner decided on 2026-11-06 for presets with
+Design note, 2026-11-07, issue #241. **Status: step 1 of 4 implemented (planner and
+read-only review); applying, the interface and the shorter check are not.** See
+[Step 1 implemented](#step-1-implemented-planner-and-read-only-review) at the end. The owner decided on 2026-11-06 for presets with
 per-record exceptions and today's fine-grained controls under an Advanced view
 (option a of #241); this note designs the presets and does not reopen that.
 The Advanced view and the single date control shipped first (see the end of this
@@ -104,7 +105,7 @@ delivered.
 |---|---|---|---|
 | Reisupdates | all with text for visitors: title, text, date, area | same | same |
 | Photos and videos | approved copies **attached to the included updates** (they travel with them) | same | same |
-| Areas | none, so updates carry no map point (the Sharing check already counts these as *without a map point*) | all named areas: label, region, country, rounded point | same |
+| Areas | none, so updates carry no map point (the Sharing check already counts these as *without a map point*) | named areas that an included update or route uses (never an area no included record names): label, region, country, rounded point | same |
 | Routes | none | planned or booked routes (never ideas): mode, status, the two areas, schedule, carrier and service reference, drawn line | same |
 | Visits | none | none | planned and confirmed visits (never ideas or cancelled): title, text for visitors, area, days at the audience's precision |
 | Stays | none | none | planned and booked stays (never ideas): area and nights at the audience's precision |
@@ -389,3 +390,69 @@ delivering exactly what it did, writes nothing on open or on save unless the own
 edits that control, and the Sharing check's date lines still state the effective
 result without opening Advanced. Presets would later make this a non-issue for most
 owners: they set the cap, and leave `trip.dates` where it is.
+
+
+## Step 1 implemented: planner and read-only review
+
+Shipped (Part of #241). Nothing is applied: no migration, no scope or visibility write, no revision, no audit event.
+
+- `app/sharing_presets.py`: the three presets as code constants (`travel/sharing-preset@1`, ids `story_only`,
+  `story_and_route`, `planned_trip`, each extending the one before), `plan_preset(trip, audience, preset_id)` (pure) and
+  `review_preset(session, trip, audience, preset_id)`.
+- Review endpoints (owner-only, `POST`, body `{"preset": …}`): `…/public-projection/preset/review`,
+  `…/share-links/{link_id}/preset/review`, `/collections/{collection_id}/members/{member_id}/preset/review`; and
+  `GET …/sharing-presets` for the definitions. MCP: `list_sharing_presets`, `preview_sharing_preset(trip_id, preset,
+  audience)` with `audience` `public`, `link:<id>` or `collection:<member id>`, both read tools. They share one handler
+  (`routers/sharing_presets.py`). The apply of step 2 goes to `…/preset` with the review's `fingerprint`; the review has
+  its own path so that a read-only call can never write, instead of one endpoint that previews without `confirm`.
+- The "after" is rendered by `projection.delivered` from the planned scope with the planned `private → custom`
+  promotions made inside `session.begin_nested()`, which is always rolled back (and the touched records expired), so
+  `delivered` stays the one source of truth. While the plan is in place the review also renders every *other* audience
+  of the trip (drafts too) and fails with `preset_changed_another_audience` if any of them would receive something
+  different: "never changes another audience" is enforced, not only tested.
+- What the plan decides, concretely. *Managed kinds* (area, visit, stay, route, reisupdate) get an exact target, so a
+  record outside it is unlisted (custom) or, on a link or member, left out (`everyone`). Selection is by kind and status
+  (planned or confirmed for visits, stays and routes; a record the sharing gate refuses is never selected). *Unmanaged
+  kinds* (locations, loose photos) are never listed, unlisted or excluded: their own visibility decides, and the review
+  lists them under `left_as_is` with the way out. A photo is in the target only when it is an approved share copy
+  attached to an included update; it travels with the update through `delivered`, so a preset writes nothing for it.
+- An exclusion is made only when it hides no record the preset includes (`exclusions.closure`): an `everyone` area that
+  an included update names stays and is reported as `needed_by_included_records`. An exclusion the owner made by hand
+  is kept only while it hides nothing the preset includes, otherwise it is removed and listed under
+  `replaces_exceptions`, as is a `custom` target record that was not listed for this audience (`left_out_by_you`).
+  A cascade-hidden record gets no separate exclusion entry of its own, to keep the 500 cap for real choices.
+- `defaults.date_precision` becomes the coarser of the current value and `month`; a preset never makes dates finer. The
+  review counts the visits, stays and updates that would read coarser.
+- Refusal: a plan beyond 200 listed records or 500 exclusions is not applicable (`refusal.code` `preset_too_large`, with
+  counts and limits, `comparison` null); the review is a 200 because nothing failed, step 2 will answer the same plan
+  with an error. The limits are the constants `MAX_SCOPE_ITEMS` and `MAX_SCOPE_EXCLUSIONS` in `schemas.py`, shared with
+  the scope input.
+- Not swept in, with the code to show the owner: a record the preset's kind selects that the sharing gate refuses (the
+  blocker's code, for example an update without text or an unnamed area), a visit that already shows its times
+  (`share_time_is_on`) and an unapproved share copy attached to an included update.
+- A review of a public view that was never saved does not create it: it reads the default scope (dates by month) that a
+  new public view would hold.
+- Tests: `tests/test_sharing_presets.py` (each preset's target, never `everyone`, no other audience changes, precision,
+  `exclude` on a link versus the public view, caps, nothing written, owner-only, collection members, idempotence of the
+  plan, and a randomised property test that a preset adds only what it selects) and one MCP test.
+
+### The six answers, as built
+
+1. **New records do not join a preset.** The plan is computed from the records at review time and nothing is
+   remembered; a new record is `private`.
+2. **Re-applying resets exceptions**, and the review lists them first (`replaces_exceptions`).
+3. **Photos:** only approved share copies attached to included updates. Loose photos are unmanaged and keep their own
+   visibility.
+4. **A new hidden link** is untouched in this step; the optional picker whose first choice is "Same as the public
+   page" belongs to the interface step.
+5. **The last-applied label** (nullable columns, migration 020) is part of step 2; step 1 has no label and no migration.
+6. **The public view and `everyone` records outside the preset** are left as they are and listed with the way out
+   (`left_as_is`, `everyone_on_public_view`, `change_visibility`).
+
+### Left for the next steps
+
+Applying (writes, `If-Match` revisions, `409 preset_widening_needs_acknowledgement`, `preset_preview_is_stale`,
+`audience.preset_apply` audit, the label columns), the owner interface, decision 36 and the shorter
+`publication-safety-check.md`.
+
+**Review amendment, 2026-11-07:** areas are selected only when an included update, route, visit or stay names them, so a private place the owner keeps for themselves (a home town) is never swept in by the table's "all named areas"; an unused area adds nothing to a visitor's map.

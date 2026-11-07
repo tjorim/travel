@@ -293,6 +293,40 @@ made private or withdrawn, the visitor page shows a text-only header. The owner'
 trip response carries `cover_url`, the authenticated file route of the chosen copy, for
 the owner's screens only; no projection or visitor response includes it.
 
+## Sharing presets (review only so far)
+
+A preset is a named starting point for what **one** audience (the public view, a hidden link or a collection
+member) receives, instead of a choice per record ([#241](decisions/241-sharing-presets.md)). It is a template: the
+server plans it from the trip's records as they are now and writes it, once applying exists, through the
+mechanisms above (`custom` plus the audience's `items`, the audience's `exclude`, `defaults.date_precision`). It is
+never read at delivery: `projection.delivered` stays the one place that decides what an audience receives.
+
+| Preset (`travel/sharing-preset@1`) | Selects | Dates |
+|---|---|---|
+| `story_only` | reisupdates with text, and their approved photos | at most `month` |
+| `story_and_route` | the above, the named areas that the included records use, and planned or confirmed routes | at most `month` |
+| `planned_trip` | the above, planned or confirmed visits and stays | at most `month` |
+
+A preset never writes `everyone`, so no other audience gains anything. A private record it selects becomes `custom`
+and is listed for this audience only; a listed record it does not select is unlisted; on a hidden link or collection
+member an `everyone` record it does not select is left out, unless leaving it out would also hide a record the
+preset includes. The public view has no `exclude`, so its `everyone` records stay and the review lists them with the
+way out. Locations (and with them addresses) and loose gallery photos are never selected or changed; times, ideas,
+cancelled plans and anything that cannot be shared yet are not swept in and are listed as needing a decision.
+
+**Review (read-only, owner-only).** `POST /trips/{id}/public-projection/preset/review`,
+`POST /trips/{id}/share-links/{link_id}/preset/review` and
+`POST /collections/{collection_id}/members/{member_id}/preset/review` take `{"preset": …}`, and
+`GET /trips/{id}/sharing-presets` lists the definitions. MCP offers `list_sharing_presets` and
+`preview_sharing_preset(trip_id, preset, audience)` (`public`, `link:<id>` or `collection:<member id>`) through the
+same handlers. The review returns the planned `changes`, the records the audience receives before and after per
+kind (computed by `projection.delivered` inside a transaction that is always rolled back), who would newly receive
+or lose what (`widened`, `narrowed`; `requires_acknowledgement` for a live audience that would see more, the
+widening of [#27](decisions/27-merge-widening.md)), the date precision before and after, `left_as_is`,
+`needs_decision` and `replaces_exceptions`, and a `fingerprint` of the plan. A plan that would exceed the scope
+limits (200 listed records, 500 exclusions) is not applicable: `refusal.code` is `preset_too_large`. A review stores
+nothing, claims no revision and records no audit event, and no visitor response carries any of it.
+
 ## Behaviour to rely on
 
 - New records are `private`.
