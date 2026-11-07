@@ -65,6 +65,7 @@ function findOption(choices: Choice[], value: string): SearchSelectOption | null
 
 function SearchCombobox({
   ariaLabel,
+  placeholder,
   value,
   onChange,
   onBlur,
@@ -80,6 +81,7 @@ function SearchCombobox({
   name,
 }: {
   ariaLabel?: string;
+  placeholder?: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -136,6 +138,7 @@ function SearchCombobox({
         <Combobox.Input
           ref={inputRef}
           aria-label={ariaLabel}
+          placeholder={placeholder}
           // An explicit accessible name wins over the surrounding Field label.
           render={(props) => (
             <input {...props} aria-labelledby={ariaLabel ? undefined : props["aria-labelledby"]} />
@@ -237,6 +240,7 @@ export function SearchSelect({
 /** A bounded server search. The selected option stays visible outside the result window. */
 export function AsyncSearchSelect({
   ariaLabel,
+  placeholder,
   value,
   selectedOption,
   defaultOptions = [],
@@ -246,6 +250,7 @@ export function AsyncSearchSelect({
   isDisabled,
 }: {
   ariaLabel: string;
+  placeholder?: string;
   value: string;
   selectedOption?: SearchSelectOption | null;
   defaultOptions?: Choice[];
@@ -295,6 +300,7 @@ export function AsyncSearchSelect({
   return (
     <SearchCombobox
       ariaLabel={ariaLabel}
+      placeholder={placeholder}
       value={value}
       selectedOption={selectedOption}
       choices={query ? results : defaultOptions}

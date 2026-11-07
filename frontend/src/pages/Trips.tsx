@@ -45,6 +45,8 @@ export function Trips() {
 
   const day = today();
   const ordered = orderedTrips(trips, day);
+  // A lone trip gets a reading-width card rather than one cell of a wide grid that would leave most of the page empty.
+  const lone = trips.length === 1;
   const groups: { state: TripState[]; title: string }[] = [
     { state: ["active", "upcoming"], title: m.owner_now_and_soon() },
     { state: ["planned"], title: m.owner_still_to_plan() },
@@ -72,9 +74,14 @@ export function Trips() {
           return (
             <div className="grid gap-4" key={title}>
               <h3 className="m-0">{title}</h3>
-              <div className="travel-trip-grid">
+              <div className={lone ? "max-w-3xl" : "travel-trip-grid"}>
                 {shown.map((trip) => (
-                  <ListTripCard key={trip.id} trip={trip} state={tripState(trip, day)} />
+                  <ListTripCard
+                    key={trip.id}
+                    trip={trip}
+                    state={tripState(trip, day)}
+                    wide={lone}
+                  />
                 ))}
               </div>
             </div>

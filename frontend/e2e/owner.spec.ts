@@ -166,6 +166,29 @@ test("the workspace header states publication and keeps the tabs reachable on a 
   expect(capture!.y + capture!.height).toBeLessThanOrEqual(bar!.y);
 });
 
+test("a lone trip keeps a reading-width card on a wide screen", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, "/admin/trips", "en", "light");
+  await page.route("**/api/trips", (route) => route.fulfill({ json: [trips[2]] }));
+  await page.reload();
+  const card = page.getByRole("link", { name: /Iceland/ });
+  await expect(card).toBeVisible();
+  const box = await card.boundingBox();
+  // The card stops at a reading width instead of stretching across a wide empty page.
+  expect(box!.width).toBeLessThanOrEqual(768);
+});
+
+test("the overview's full summary link sits on the trip's heading row, not a row of its own", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, "/admin/trips/trip-active", "en", "light");
+  const link = await page.getByRole("link", { name: "Full summary" }).boundingBox();
+  const overview = await page.getByRole("region", { name: "Trip overview" }).boundingBox();
+  expect(link!.y).toBeLessThan(overview!.y + 80);
+  expect(link!.x + link!.width).toBeGreaterThan(overview!.x + overview!.width * 0.7);
+});
+
 test("the overview puts the map beside the trip context on a wide screen", async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1000 });
   await open(page, "/admin/trips/trip-active", "en", "light");
