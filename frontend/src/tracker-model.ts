@@ -486,6 +486,75 @@ export type ExclusionReview = ScopeExclusions & { baseline: ShareScopeItem[] };
 /** The 409 detail of a live audience's save that would show visitors records they do not receive now. */
 export type ExclusionWidening = { revealed: ShareScopeItem[]; counts: KindCounts };
 
+/** The sharing presets (#241): named starting points for what one audience receives. */
+export type SharingPresetId = "story_only" | "story_and_route" | "planned_trip";
+
+/** A record a preset review or exception names; `label` is the owner's own name for it and never reaches a visitor. */
+export type PresetRecordRef = { kind: ShareScopeKind; id: string; label: string | null };
+
+/** How an audience differs now from what its last-applied preset would select today. Computed on each read. */
+export type PresetExceptions = {
+  /** Received, but the preset would not select it. */
+  shown: PresetRecordRef[];
+  /** Selected by the preset, but not received. */
+  hidden: PresetRecordRef[];
+  count: number;
+};
+
+/** The label an audience carries after a preset was applied. It decides nothing about what is delivered. */
+export type PresetLabel = {
+  applied_preset?: string | null;
+  applied_preset_at?: string | null;
+  preset_exceptions?: PresetExceptions | null;
+};
+
+export type PresetChangeAction = "promote" | "list" | "unlist" | "exclude" | "remove_exclusion";
+
+export type SharingPresetReview = {
+  schema_version: "travel/sharing-preset@1";
+  preset: SharingPresetId;
+  audience: {
+    id: string;
+    kind: "public" | "link" | "collection_member";
+    label: string | null;
+    live: boolean;
+  };
+  applicable: boolean;
+  refusal: {
+    code: "preset_too_large";
+    items: number;
+    exclude: number;
+    max_items: number;
+    max_exclude: number;
+  } | null;
+  changes: (PresetRecordRef & { action: PresetChangeAction })[];
+  change_counts: Record<string, number>;
+  precision: {
+    before: DatePrecision | null;
+    after: DatePrecision;
+    changed: boolean;
+    reads_coarser: Record<string, number>;
+  };
+  comparison: {
+    before: Record<string, number>;
+    after: Record<string, number>;
+    added: Record<string, number>;
+    removed: Record<string, number>;
+    widened: PresetRecordRef[];
+    narrowed: PresetRecordRef[];
+  } | null;
+  left_as_is: (PresetRecordRef & {
+    reason: "everyone_on_public_view" | "needed_by_included_records" | "outside_preset";
+    way_out: "change_visibility" | "exclude" | "unlist";
+  })[];
+  needs_decision: (PresetRecordRef & { reason: string })[];
+  replaces_exceptions: (PresetRecordRef & { reason: "exclusion_removed" | "left_out_by_you" })[];
+  requires_acknowledgement: boolean;
+  fingerprint: string;
+};
+
+export type PresetApplyResult<T> = { applied: boolean; review: SharingPresetReview; audience: T };
+
 /** How the visits or stays an audience receives read their dates. */
 export type OverviewRecordPrecision = {
   by_precision: Partial<Record<DatePrecision, number>>;
@@ -533,6 +602,9 @@ export type OverviewAudience = {
   without_map_point: Record<"visits" | "stays" | "updates", number>;
   /** Whether the trip's chosen cover photo is among the photos this audience receives. */
   shows_cover: boolean;
+  /** The sharing preset last applied here, as a label only (#241), and how many records differ from it today. */
+  preset?: string | null;
+  preset_exceptions?: number;
 };
 
 export type OverviewWarning = {
@@ -580,7 +652,7 @@ export type PublicProjectionStatus = {
   scope: ShareScope;
   surface_state: "unpublished" | "published";
   slug: string | null;
-};
+} & PresetLabel;
 
 export type ShareLink = {
   revision: number;
@@ -596,7 +668,7 @@ export type ShareLink = {
   revoked_at: string | null;
   /** What this link leaves out of the public baseline and what that also hides. */
   exclusions?: ScopeExclusions;
-};
+} & PresetLabel;
 
 /** What an alternative group compares; all of its members are records of this kind. */
 export type AlternativeKind = "stay" | "visit" | "route";

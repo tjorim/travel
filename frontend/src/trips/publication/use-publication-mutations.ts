@@ -7,6 +7,7 @@ import type {
   PublicProjectionStatus,
   ShareLink,
   ShareScope,
+  SharingPresetId,
 } from "../../tracker-model";
 
 export type LinkAction = {
@@ -74,14 +75,21 @@ export function usePublicationMutations(tripId: string) {
       revision?: number;
       /** Accepts that removing exclusions from an active link shows its visitors more. */
       confirmWidening?: boolean;
+      /** A new link only: start from a sharing preset instead of the public baseline. */
+      preset?: SharingPresetId | null;
     },
     ShareLink
   >({
     fallback: m.assets_the_share_link_could_not_be_saved,
-    request: ({ id, label, scope, revision, confirmWidening }) => ({
+    request: ({ id, label, scope, revision, confirmWidening, preset }) => ({
       path: id ? `${linksPath}/${id}` : linksPath,
       method: id ? "PATCH" : "POST",
-      body: { label, scope, ...(id && confirmWidening ? { confirm_widening: true } : {}) },
+      body: {
+        label,
+        scope,
+        ...(id && confirmWidening ? { confirm_widening: true } : {}),
+        ...(!id && preset ? { preset } : {}),
+      },
       ...(id ? { headers: { "If-Match": `"${revision}"` } } : {}),
     }),
     invalidate: refreshLinks,

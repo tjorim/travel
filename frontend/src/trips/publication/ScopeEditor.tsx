@@ -14,6 +14,7 @@ import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useSetVisibility } from "../visibility";
 import { DATE_PRECISIONS, GROUP_TITLES, groupBy, updateItem, type CatalogItem } from "./catalog";
 import { ExclusionList } from "./ExclusionList";
+import { PresetSection, type ScopePreset } from "./PresetSection";
 
 function ScopeGroup({
   kind,
@@ -275,6 +276,7 @@ export function ScopeEditor({
   onError,
   disabled = false,
   allowExclusions = false,
+  preset,
 }: {
   scope: ShareScope;
   setScope: (scope: ShareScope) => void;
@@ -286,6 +288,8 @@ export function ScopeEditor({
   disabled?: boolean;
   /** A hidden link or collection member starts from the public baseline and may leave records out of it. The public page may not. */
   allowExclusions?: boolean;
+  /** The preset picker of a saved audience (or of a link about to be created). Absent where a preset makes no sense, such as the server's copy in a conflict. */
+  preset?: ScopePreset;
 }) {
   useLocale();
   const groups = groupBy(catalog.filter((item) => item.visibility !== "everyone"));
@@ -299,6 +303,18 @@ export function ScopeEditor({
     >
       <FieldLegend>{name}</FieldLegend>
       <p>{m.assets_choose_what_visitors_can_see_everything_you_do_not_select_stays_private()}</p>
+      {preset && (
+        <PresetSection
+          preset={preset}
+          scope={scope}
+          setScope={setScope}
+          catalog={catalog}
+          tripId={tripId}
+          allowExclusions={allowExclusions}
+          disabled={disabled}
+          onError={onError}
+        />
+      )}
       <div className="flex flex-wrap gap-x-3.5 gap-y-2">
         <Field className="contents">
           <FieldLabel className="scope-choice">

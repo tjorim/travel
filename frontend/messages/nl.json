@@ -2525,5 +2525,115 @@
   "owner_map_add_visit_here": "Bezoek hier toevoegen",
   "owner_map_add_stay_here": "Verblijf hier toevoegen",
   "owner_map_add_route_from_here": "Route vanaf hier toevoegen",
-  "owner_library_trip_documents_note": "Documenten die bij één reis horen, staan in het onderdeel Voorbereiden van die reis."
+  "owner_library_trip_documents_note": "Documenten die bij één reis horen, staan in het onderdeel Voorbereiden van die reis.",
+  "preset_heading": "Begin met een voorinstelling",
+  "preset_intro": "Een voorinstelling kiest in één keer wat dit publiek krijgt, in plaats van onderdeel per onderdeel. Je bekijkt het resultaat voordat het wordt toegepast, en de keuzes hieronder blijven beschikbaar als uitzonderingen. Een onderdeel dat je later toevoegt, hoort nooit vanzelf bij een voorinstelling: het blijft privé tot je het kiest.",
+  "preset_choose_label": "Voorinstelling",
+  "preset_none": "Zoals de openbare pagina",
+  "preset_none_help": "Een nieuwe link begint met wat de openbare pagina toont.",
+  "preset_story_only": "Alleen het verhaal",
+  "preset_story_only_help": "Je reisupdates met hun goedgekeurde foto’s. Geen plaatsen, routes, bezoeken of verblijven.",
+  "preset_story_and_route": "Verhaal en route",
+  "preset_story_and_route_help": "Het verhaal, de benoemde gebieden die het gebruikt en je geplande of geboekte routes.",
+  "preset_planned_trip": "Geplande reis",
+  "preset_planned_trip_help": "Voegt geplande of bevestigde bezoeken en verblijven toe, met datums hooguit per maand. Nooit een accommodatie, boeking, adres, notitie of document.",
+  "preset_new_link_chosen_help": "“{preset}” wordt toegepast wanneer je het concept opslaat en vervangt de selectie hieronder. De voorbeeldweergave en de controle voor het delen tonen het resultaat voordat je de link activeert.",
+  "preset_review_button": "Voorinstelling bekijken",
+  "preset_reviewing": "Bekijken…",
+  "preset_choose_first": "Kies een voorinstelling om te bekijken.",
+  "preset_save_first": "Sla je wijzigingen eerst op of maak ze ongedaan: de controle leest het opgeslagen publiek.",
+  "preset_review_failed": "De voorinstelling kon niet worden bekeken.",
+  "preset_apply_failed": "De voorinstelling kon niet worden toegepast.",
+  "preset_label_no_exceptions": "{preset}, geen uitzonderingen",
+  "preset_label_exceptions": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{preset}, met {count} uitzondering",
+        "countPlural=other": "{preset}, met {count} uitzonderingen"
+      }
+    }
+  ],
+  "preset_label_applied_on": "Laatst toegepast op {date}.",
+  "preset_applied_done": "“{preset}” toegepast.",
+  "preset_applied_nothing": "Dit publiek kreeg al precies wat “{preset}” kiest. Er is niets veranderd.",
+  "preset_check_line": "Voorinstelling: {label}",
+  "preset_exceptions_heading": "Anders dan de voorinstelling",
+  "preset_exceptions_intro": "Wat dit publiek anders krijgt dan wat “{preset}” vandaag zou kiezen. Een onderdeel dat je later toevoegt, staat hier tot je het kiest of weglaat.",
+  "preset_exceptions_none": "Geen uitzonderingen: dit publiek krijgt wat de voorinstelling kiest.",
+  "preset_exceptions_unsaved": "Geteld vanuit het opgeslagen publiek; ze worden bijgewerkt als je opslaat.",
+  "preset_exceptions_received": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Wel gekregen, maar niet in de voorinstelling ({count})",
+        "countPlural=other": "Wel gekregen, maar niet in de voorinstelling ({count})"
+      }
+    }
+  ],
+  "preset_exceptions_missing": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "In de voorinstelling, maar niet gekregen ({count})",
+        "countPlural=other": "In de voorinstelling, maar niet gekregen ({count})"
+      }
+    }
+  ],
+  "preset_exception_hide": "Verbergen",
+  "preset_exception_hide_named": "Verberg “{name}” voor dit publiek",
+  "preset_exception_show": "Tonen",
+  "preset_exception_show_named": "Toon “{name}” aan dit publiek",
+  "preset_exception_unsaved": "Wijziging nog niet opgeslagen",
+  "preset_exception_way_out_everyone": "Staat op Iedereen, dus de openbare pagina toont het altijd. Wijzig de eigen zichtbaarheid om het te verbergen; dat geldt voor elk publiek.",
+  "preset_exception_untitled": "Zonder titel",
+  "preset_review_title": "“{preset}” toepassen?",
+  "preset_review_description": "Dit verandert wat {audience} krijgt. Er wordt niets opgeslagen tot je het toepast.",
+  "preset_review_audience_public": "de pagina voor iedereen",
+  "preset_review_audience_link": "de link “{label}”",
+  "preset_review_audience_member": "de collectie “{label}”",
+  "preset_review_live": "Dit publiek is actief: mensen die het hebben, zien de wijziging zodra je ze toepast.",
+  "preset_review_draft": "Dit publiek levert nog niets, dus niemand ziet de wijziging tot je het deelt.",
+  "preset_review_nothing": "Dit publiek krijgt al precies wat de voorinstelling kiest.",
+  "preset_review_adds": "Krijgt er bij: {counts}",
+  "preset_review_removes": "Krijgt niet meer: {counts}",
+  "preset_review_records": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Toon het onderdeel ({count})",
+        "countPlural=other": "Toon de onderdelen ({count})"
+      }
+    }
+  ],
+  "preset_review_widened_heading": "Krijgt er bij",
+  "preset_review_narrowed_heading": "Krijgt niet meer",
+  "preset_review_precision_changed": "Datums voor dit publiek gaan van {before} naar {after}, hooguit.",
+  "preset_review_precision_same": "Datums voor dit publiek blijven {after}, hooguit.",
+  "preset_review_precision_none": "geen limiet",
+  "preset_review_reads_coarser": "Deze lezen nu minder precies: {counts}.",
+  "preset_review_replaces_heading": "Keuzes die je zelf maakte en die dit terugzet",
+  "preset_review_replaces_exclusion_removed": "weggelaten voor dit publiek",
+  "preset_review_replaces_left_out_by_you": "niet vermeld voor dit publiek",
+  "preset_review_left_heading": "Blijft zoals het is",
+  "preset_review_left_unlist": "Door jou voor dit publiek vermeld en niet in de voorinstelling. Haal het weg onder Geavanceerd, bij de onderdelen alleen voor dit publiek.",
+  "preset_review_left_exclude": "Staat op Iedereen en zit niet in de voorinstelling. Laat het weg onder “Weggelaten voor dit publiek” als dit publiek het niet moet krijgen.",
+  "preset_review_left_public": "Staat op Iedereen, en de openbare pagina toont dat altijd. Wijzig de eigen zichtbaarheid van het onderdeel om het te verbergen; dat geldt voor elk publiek.",
+  "preset_review_left_needed": "Verbergen zou ook een onderdeel verbergen dat de voorinstelling bevat, dus het blijft. Wijzig de eigen zichtbaarheid als je het overal weg wilt.",
+  "preset_review_decision_heading": "Niet opgenomen, jij beslist",
+  "preset_review_decision_share_time": "toont de tijd, en dat voegt een voorinstelling nooit toe",
+  "preset_review_decision_other": "kan nog niet worden gedeeld",
+  "preset_review_widening": "Mensen die dit publiek hebben, zien {counts} die ze nu niet zien.",
+  "preset_review_acknowledge": "Ik begrijp dat mensen met dit publiek meer zien",
+  "preset_review_apply": "Voorinstelling toepassen",
+  "preset_review_applying": "Toepassen…",
+  "preset_review_stale": "De onderdelen zijn veranderd sinds je deze controle opende. Dit is de nieuwe controle; bekijk hem voordat je toepast.",
+  "preset_review_conflict": "Dit publiek is ondertussen elders gewijzigd. Laad het opnieuw om de huidige keuzes te zien en bekijk de voorinstelling dan opnieuw.",
+  "preset_review_reload": "Publiek opnieuw laden",
+  "preset_review_too_large": "Deze voorinstelling is te groot voor één publiek: ze zou {items} onderdelen vermelden en {exclude} weglaten, terwijl de grenzen {max_items} en {max_exclude} zijn. Er is niets veranderd. Kies een kleinere voorinstelling, of laat enkele onderdelen privé.",
+  "preset_review_not_applicable": "Deze voorinstelling kan niet worden toegepast."
 }

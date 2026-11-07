@@ -4,7 +4,13 @@ import { m } from "../paraglide/messages.js";
 import { ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { useOwner, useOwnerMutation, type Owner } from "../query/owner-queries";
-import type { ProjectionDocument, ScopeExclusions, ShareLink, ShareScope } from "../tracker-model";
+import type {
+  PresetLabel,
+  ProjectionDocument,
+  ScopeExclusions,
+  ShareLink,
+  ShareScope,
+} from "../tracker-model";
 
 export type CollectionMember = {
   revision: number;
@@ -18,7 +24,7 @@ export type CollectionMember = {
   exclusions?: ScopeExclusions;
   created_at: string;
   updated_at: string;
-};
+} & PresetLabel;
 
 export type Collection = {
   id: string;

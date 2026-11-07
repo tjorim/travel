@@ -242,6 +242,12 @@ type DeleteConfirmationProps = {
   onConfirm: () => void;
   cancelLabel?: string;
   confirmDisabled?: boolean;
+  /** `danger` (the default) is for deleting or widening; `primary` for a reviewed change that narrows or only restates. */
+  confirmTone?: "danger" | "primary";
+  /** A wider sheet for a review with lists; the content scrolls inside it. */
+  wide?: boolean;
+  /** Where focus goes on closing when the caller knows better than the default of returning to the opener. */
+  returnFocus?: () => HTMLElement | null;
   /** Detail to review between the description and the buttons, such as what a change will alter. */
   children?: ReactNode;
 };
@@ -254,6 +260,9 @@ export function DeleteConfirmation({
   onConfirm,
   cancelLabel = m.cancel(),
   confirmDisabled = false,
+  confirmTone = "danger",
+  wide = false,
+  returnFocus,
   children,
 }: DeleteConfirmationProps) {
   useLocale();
@@ -263,13 +272,17 @@ export function DeleteConfirmation({
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className={backdrop} />
         <AlertDialog.Viewport className={viewport}>
-          <AlertDialog.Popup className={cn(popup, confirmation, "max-w-md")} initialFocus={cancel}>
+          <AlertDialog.Popup
+            className={cn(popup, confirmation, wide ? "max-w-2xl" : "max-w-md")}
+            initialFocus={cancel}
+            finalFocus={returnFocus ? () => returnFocus() : undefined}
+          >
             <AlertDialog.Title className="m-0">{title}</AlertDialog.Title>
             <AlertDialog.Description className="m-0">{description}</AlertDialog.Description>
             {children}
             <div className={buttonRow}>
               <Button
-                className={cn(compactButton, dangerButton)}
+                className={cn(compactButton, confirmTone === "danger" && dangerButton)}
                 type="button"
                 disabled={confirmDisabled}
                 onClick={onConfirm}

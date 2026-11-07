@@ -11,6 +11,7 @@ import type {
   TripOverview,
 } from "../../tracker-model";
 import { VisibilityControl } from "../visibility";
+import { presetLabelText } from "./PresetSection";
 import {
   DATE_PRECISIONS,
   GROUP_TITLES,
@@ -62,6 +63,17 @@ export function precisionLines(audience: OverviewAudience): string[] {
     lines.push(m.precision_check_kind({ kind: label(), breakdown }));
   }
   return lines;
+}
+
+/** The preset last applied to an audience and how many records differ from it today, if one was applied. */
+export function presetLines(audience: OverviewAudience): string[] {
+  return audience.preset
+    ? [
+        m.preset_check_line({
+          label: presetLabelText(audience.preset, audience.preset_exceptions ?? 0),
+        }),
+      ]
+    : [];
 }
 
 /** What a hidden link leaves out of the public baseline: how many records, and what that also hides. */
@@ -206,7 +218,11 @@ export function SharingReview({ overview }: { overview: TripOverview | undefined
                 ].join(", "),
               })}
               <ul className="m-0 mt-1 grid list-disc gap-0.5 pl-5 text-sm">
-                {[...exclusionLines(audience), ...precisionLines(audience)].map((line) => (
+                {[
+                  ...presetLines(audience),
+                  ...exclusionLines(audience),
+                  ...precisionLines(audience),
+                ].map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
