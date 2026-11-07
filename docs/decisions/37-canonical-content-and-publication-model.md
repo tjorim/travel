@@ -109,13 +109,20 @@ object keys or provider URLs.
     {"kind": "stay", "id": "opaque-id"},
     {"kind": "route", "id": "opaque-id"},
     {"kind": "media_derivative", "id": "opaque-id"}
+  ],
+  "exclude": [
+    {"kind": "visit", "id": "opaque-id"}
   ]
 }
 ```
 
 `defaults` is optional and additive (amended 2026-11-07, #236), so the schema keeps
 its version: a scope stored without it caps nothing and delivers exactly what it
-always did. `defaults.date_precision` (`day`, `month` or `year`) is the finest date
+always did. `exclude` is optional and additive in the same way (amended 2026-11-07,
+#237): on a hidden link or collection member it lists `everyone` records the audience
+does not receive, each removed with whatever depends on it; the public view never has
+it (see the [domain model](../domain-model.md#hidden-links-start-from-the-public-view)).
+`defaults.date_precision` (`day`, `month` or `year`) is the finest date
 this audience may read; it is combined with each record's own precision and the
 coarser value wins (see the [domain model](../domain-model.md#date-precision)).
 

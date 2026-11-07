@@ -958,7 +958,7 @@ class TravelMcpBackend:
     def set_public_projection_scope(
         self, trip_id: str, payload: schemas.ShareScopeInput, confirm: bool = False
     ) -> dict[str, Any]:
-        """Replace the live public scope after explicit owner confirmation. The scope may set defaults.date_precision (day, month or year): the finest date this audience may read, capping every record's own share_date_precision (the coarser wins; a record with none follows it). Leave defaults out to keep the audience's current setting; send defaults: null to remove the cap."""
+        """Replace the live public scope after explicit owner confirmation. The scope may set defaults.date_precision (day, month or year): the finest date this audience may read, capping every record's own share_date_precision (the coarser wins; a record with none follows it). Leave defaults out to keep the audience's current setting; send defaults: null to remove the cap. The public view is the baseline every hidden link starts from, so scope.exclude is refused here (422 scope_exclusion_not_allowed); exclude records on a hidden link instead."""
         return self._call(
             "public_projection.scope",
             "public_surface",
@@ -1016,7 +1016,7 @@ class TravelMcpBackend:
     def create_share_link(
         self, trip_id: str, payload: schemas.ShareLinkCreate, confirm: bool = False
     ) -> dict[str, Any]:
-        """Create a draft named share link after reviewing its audience scope. Unless the scope sets defaults.date_precision (day, month or year; the finest date this link may read, coarser wins over each record's own share_date_precision) the new link reads dates by month; send defaults: null for no cap."""
+        """Create a draft named share link after reviewing its audience scope. Unless the scope sets defaults.date_precision (day, month or year; the finest date this link may read, coarser wins over each record's own share_date_precision) the new link reads dates by month; send defaults: null for no cap. scope.exclude lists records set to everyone that this link must not receive, with whatever depends on them (see update_share_link)."""
         return self._call(
             "share_link.create",
             "share_link",
@@ -1042,7 +1042,7 @@ class TravelMcpBackend:
     def update_share_link(
         self, trip_id: str, link_id: str, payload: schemas.ShareLinkUpdate, confirm: bool = False
     ) -> dict[str, Any]:
-        """Update a named link's label or live scope after explicit owner confirmation. Leaving scope.defaults out keeps the link's current date precision; set defaults.date_precision or send defaults: null to change or remove it."""
+        """Update a named link's label or live scope after explicit owner confirmation. Leaving scope.defaults out keeps the link's current date precision; set defaults.date_precision or send defaults: null to change or remove it. scope.exclude lists records set to everyone that this link must not receive (see that field); leaving it out keeps them. Removing exclusions from an active link shows its visitors more, so it needs payload.confirm_widening=true (else 409 exclusion_widening_needs_acknowledgement lists the records)."""
         return self._call(
             "share_link.update",
             "share_link",
@@ -1063,6 +1063,23 @@ class TravelMcpBackend:
             trip_id,
             lambda s, sub: publication.preview_share_link(trip_id, link_id, s, sub, Response()),
             lambda x: _model(x, schemas.ProjectionDocument),
+        )
+
+    def preview_share_link_exclusions(
+        self,
+        trip_id: str,
+        exclude: list[schemas.ShareScopeItemInput] | None = None,
+        items: list[schemas.ShareScopeItemInput] | None = None,
+    ) -> dict[str, Any]:
+        """Preview share link exclusions before saving: which records a hidden link or collection member would not receive. exclude lists records (kind + id) to leave out of the public baseline, items is the audience's custom selection. Returns baseline (everything that can be excluded), excluded (each exclusion with hides and also_hides: the dependent records it hides too, since excluding an area or location hides what uses it and excluding an update hides its photos), also_hidden and stale. Stores nothing."""
+        payload = schemas.ExclusionReviewRequest(exclude=exclude or [], items=items or [])
+        return self._call(
+            "share_scope.exclusion_review",
+            "trip",
+            trip_id,
+            trip_id,
+            lambda s, sub: publication.review_exclusions(trip_id, payload, s, sub),
+            lambda x: _model(x, schemas.ExclusionReview),
         )
 
     def activate_share_link(
@@ -1180,15 +1197,22 @@ class TravelMcpBackend:
         )
 
     def update_collection_member(
-        self, collection_id: str, member_id: str, scope: schemas.ShareScopeInput, confirm: bool = False
+        self,
+        collection_id: str,
+        member_id: str,
+        scope: schemas.ShareScopeInput,
+        confirm: bool = False,
+        confirm_widening: bool = False,
     ) -> dict[str, Any]:
-        """Change what one member trip delivers; takes effect immediately on an active collection."""
+        """Change what one member trip delivers; takes effect immediately on an active collection. scope.exclude leaves records set to everyone out of this member (see that field); removing exclusions from an active collection needs confirm_widening=true (else 409 exclusion_widening_needs_acknowledgement lists the records)."""
         return self._call(
             "collection.member_scope",
             "collection",
             collection_id,
             None,
-            lambda s, sub: collections.set_collection_member_scope(collection_id, member_id, scope, s, sub),
+            lambda s, sub: collections.set_collection_member_scope(
+                collection_id, member_id, scope, s, sub, confirm_widening=confirm_widening
+            ),
             _mcp_collection,
             confirm=confirm,
             needs_confirmation=True,

@@ -13,6 +13,7 @@ from typing import Any
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
 from .errors import ServiceError
+from .exclusions import EXCLUDE_KEY, hidden_records, is_excludable, stored_exclusions
 from .markdown import markdown_text, render_inline, render_markdown
 from .models import Area, Location, MediaDerivative, MediaKind, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
@@ -122,13 +123,23 @@ def _chosen(scope: dict) -> dict[str, set[str]]:
     return chosen
 
 
-def delivered(trip: Trip, scope: dict) -> dict[str, list[Any]]:
-    """The records this audience receives, by kind, in display order."""
+def delivered(trip: Trip, scope: dict, *, with_exclusions: bool = True) -> dict[str, list[Any]]:
+    """The records this audience receives, by kind, in display order.
+
+    The one place that decides it: every document, file, navigation target, collection entry and
+    owner check reads this. ``with_exclusions=False`` is only for the owner's review of what the
+    scope's exclusions hide (see ``exclusion_review``); never for a visitor."""
     chosen = _chosen(scope)
     result = {
         kind: [item for item in COLLECTIONS[kind](trip) if is_delivered(kind, item, chosen[kind])]
         for kind in COLLECTIONS
     }
+    # An audience's exclusions, and the records that depend on them, come out before anything is derived from
+    # what is left: the update a photo travels with, the places a document may name.
+    hidden = hidden_records(trip, scope) if with_exclusions else None
+    if hidden:
+        for kind in ("area", "location", "visit", "stay", "route", "travel_update"):
+            result[kind] = [item for item in result[kind] if item.id not in hidden.ids(kind)]
     # A photo attached to a delivered reisupdate travels with it; approval
     # remains the gate, its own visibility only governs loose gallery photos.
     updates = {update.id for update in result["travel_update"]}
@@ -137,6 +148,7 @@ def delivered(trip: Trip, scope: dict) -> dict[str, list[Any]]:
         for item in trip.media_derivatives
         if sharing_blocker("media_derivative", item) is None
         and (item.travel_update_id in updates or is_delivered("media_derivative", item, chosen["media_derivative"]))
+        and not (hidden and item.id in hidden.ids("media_derivative"))
     ]
     result["visit"].sort(
         key=lambda item: (
@@ -190,6 +202,55 @@ def validate_scope(trip: Trip, scope: dict) -> None:
             )
         if blocker := sharing_blocker(kind, record):
             raise ScopeError(str(blocker), code=blocker.code)
+
+
+def prepare_scope(trip: Trip, scope: dict, stored: dict | None = None, *, allow_exclusions: bool = True) -> dict:
+    """Validate a submitted scope and return it as it is stored.
+
+    The listed ``custom`` records are checked by ``validate_scope``. The exclusions are then settled:
+
+    * the public view is the baseline and cannot exclude anything (``allow_exclusions=False``);
+    * an id that is not part of this trip is refused, unless the audience already stores it (a stale
+      entry for a record since deleted, which this write simply drops);
+    * an entry whose record the baseline no longer reaches (not ``everyone`` any more) is dropped;
+    * the rest is stored sorted, so the same set always has the same fingerprint, and ``exclude`` is
+      left out entirely when nothing is excluded, so every scope without exclusions is stored as before.
+    """
+    validate_scope(trip, scope)
+    entries = scope.get(EXCLUDE_KEY) or []
+    document = {key: value for key, value in scope.items() if key != EXCLUDE_KEY}
+    if not entries:
+        return document
+    if not allow_exclusions:
+        raise ScopeError(
+            "The public view is the baseline: it cannot exclude records. Exclude them on a hidden link instead",
+            code="scope_exclusion_not_allowed",
+        )
+    already = set(stored_exclusions(stored or {}))
+    kept: set[tuple[str, str]] = set()
+    for item in entries:
+        kind, record_id = item.get("kind"), item.get("id", "")
+        if kind not in COLLECTIONS:
+            raise ScopeError(f"Resource kind {kind} is not allowed in a share scope", code="scope_kind_invalid")
+        if (kind, record_id) in kept:
+            raise ScopeError(
+                f"{kind.replace('_', ' ').capitalize()} {record_id} is excluded more than once", code="scope_duplicate"
+            )
+        record = find_record(trip, kind, record_id)
+        if record is None:
+            if (kind, record_id) not in already:
+                raise ScopeError(
+                    f"{kind.replace('_', ' ').capitalize()} {record_id} is not part of this trip",
+                    code="scope_unavailable",
+                )
+            kept.add((kind, record_id))  # remembered only to catch a duplicate; dropped below
+            continue
+        kept.add((kind, record_id))
+        if is_excludable(trip, kind, record):
+            document.setdefault(EXCLUDE_KEY, []).append({"kind": kind, "id": record_id})
+    if EXCLUDE_KEY in document:
+        document[EXCLUDE_KEY].sort(key=lambda item: (item["kind"], item["id"]))
+    return document
 
 
 def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> dict[str, Any]:

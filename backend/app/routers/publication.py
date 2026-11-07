@@ -14,6 +14,7 @@ from ..auth import current_subject
 from ..capability import generate_token, verifier_for
 from ..database import get_session
 from ..errors import ApiException, service_exception
+from ..exclusion_review import exclusion_changes, exclusion_review, scope_exclusions, widening
 from ..media.ranges import media_response
 from ..models import (
     AuditEvent,
@@ -27,10 +28,10 @@ from ..models import (
 )
 from ..projection import (
     ScopeError,
+    prepare_scope,
     render_projection,
     scoped_file,
     scoped_navigation_url,
-    validate_scope,
 )
 from ..ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
 from ..request_limits import RateLimitExceeded
@@ -38,6 +39,8 @@ from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
     CollectionIndexDocument,
+    ExclusionReview,
+    ExclusionReviewRequest,
     Identifier,
     ProjectionDocument,
     PublicProjectionStatusResponse,
@@ -92,23 +95,35 @@ async def delivery_rate_limit_handler(request: Request, error: RateLimitExceeded
 
 
 def _apply_scope(
-    session: Session, trip_id: Identifier, subject: str, scope: ShareScopeInput, stored: dict | None = None
+    session: Session,
+    trip_id: Identifier,
+    subject: str,
+    scope: ShareScopeInput,
+    stored: dict | None = None,
+    *,
+    public: bool = False,
 ) -> dict:
     """Validate a submitted scope and return it as stored.
 
     ``stored`` is the audience's current scope; a new audience passes ``None`` and so starts with the
-    conservative default date precision (see ``ShareScopeInput.document``)."""
+    conservative default date precision (see ``ShareScopeInput.document``). The public view is the
+    baseline every other audience subtracts from, so it cannot exclude records (``public=True``)."""
     trip = owned_trip(session, trip_id, subject)
     scope_dict = scope.document(stored)
     try:
-        validate_scope(trip, scope_dict)
+        return prepare_scope(trip, scope_dict, stored, allow_exclusions=not public)
     except ScopeError as error:
         raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
-    return scope_dict
 
 
 def _preview_scope(
-    session: Session, trip_id: Identifier, subject: str, candidate: ShareScopeInput | None, saved: dict | None
+    session: Session,
+    trip_id: Identifier,
+    subject: str,
+    candidate: ShareScopeInput | None,
+    saved: dict | None,
+    *,
+    public: bool = False,
 ) -> dict:
     """The scope a preview renders: the owner's unsaved candidate, validated like a save, else the saved one.
 
@@ -116,7 +131,7 @@ def _preview_scope(
     """
     if candidate is None:
         return saved or {}
-    return _apply_scope(session, trip_id, subject, candidate, saved)
+    return _apply_scope(session, trip_id, subject, candidate, saved, public=public)
 
 
 def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurface:
@@ -183,7 +198,7 @@ def set_public_projection_scope(
     if_match: Annotated[str | None, Header()] = None,
 ) -> PublicProjectionStatusResponse:
     surface = _get_or_create_surface(session, trip_id)
-    scope = _apply_scope(session, trip_id, subject, payload, surface.scope)
+    scope = _apply_scope(session, trip_id, subject, payload, surface.scope, public=True)
     _claim_revision(session, surface, if_match)
     before = scope_fingerprint(surface.scope)
     surface.scope = scope
@@ -213,7 +228,7 @@ def preview_public_projection(
 ) -> dict:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None)
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     response.headers["Cache-Control"] = "no-store"
     return render_projection(trip, scope, "travel/public-trip@1")
 
@@ -244,7 +259,7 @@ def preview_public_candidate_file(
 ) -> Response:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None)
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
@@ -258,7 +273,7 @@ def preview_public_candidate_navigation(
 ) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None)
+    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     return _preview_navigation(trip, scope, local_id)
 
 
@@ -347,6 +362,46 @@ def _public_status(surface: PublicSurface) -> PublicProjectionStatusResponse:
 # scope changes no longer need it.
 
 EDITABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
+EXCLUSION_WIDENING_CODE = "exclusion_widening_needs_acknowledgement"
+
+
+def link_response(link: ShareLink, trip: Trip) -> ShareLinkResponse:
+    """The owner's view of a link, with what its exclusions leave out and also hide."""
+    response = ShareLinkResponse.model_validate(link)
+    response.exclusions = scope_exclusions(trip, link.scope)
+    return response
+
+
+def activation_response(link: ShareLink, trip: Trip) -> ShareLinkActivateResponse:
+    """The same for a link that was just activated or rotated, which also carries its capability."""
+    response = ShareLinkActivateResponse.model_validate(link)
+    response.exclusions = scope_exclusions(trip, link.scope)
+    return response
+
+
+def refuse_unacknowledged_widening(trip: Trip, before: dict, after: dict, *, live: bool, confirmed: bool) -> None:
+    """Refuse (409, nothing changes) a live audience's scope edit that removes exclusions without the owner's say-so.
+
+    Removing an exclusion shows the audience records it did not receive, so it is a widening like the ones in
+    decisions 27 and 36: the refusal lists them, and ``confirm_widening`` accepts them. A draft delivers nothing,
+    and narrowing never needs a confirmation."""
+    if not live or confirmed:
+        return
+    revealed = widening(trip, before, after)
+    if revealed.revealed:
+        raise ApiException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": EXCLUSION_WIDENING_CODE, **revealed.model_dump(mode="json")},
+            code=EXCLUSION_WIDENING_CODE,
+        )
+
+
+def scope_change_details(trip: Trip, before: dict, after: dict) -> dict:
+    """The audit entry of a live scope edit: fingerprints and, when exclusions changed, their ids and counts only."""
+    details: dict = {"scope_version_before": scope_fingerprint(before), "scope_version_after": scope_fingerprint(after)}
+    if changes := exclusion_changes(before, after):
+        details["exclusions"] = {**changes, "widened": widening(trip, before, after).counts}
+    return details
 
 
 def _expire_link(session: Session, link: ShareLink) -> None:
@@ -387,7 +442,7 @@ def owned_link(session: Session, trip_id: Identifier, subject: str, link_id: Ide
 @router.post("/share-links", response_model=ShareLinkResponse, status_code=status.HTTP_201_CREATED)
 def create_share_link(
     trip_id: Identifier, payload: ShareLinkCreate, session: SessionDep, subject: SubjectDep
-) -> ShareLink:
+) -> ShareLinkResponse:
     scope = _apply_scope(session, trip_id, subject, payload.scope, None)
     link = ShareLink(trip_id=trip_id, label=payload.label, series_id="", scope=scope, state=LinkState.DRAFT)
     session.add(link)
@@ -403,7 +458,7 @@ def create_share_link(
         details={"label": link.label, "scope_version": scope_fingerprint(scope)},
     )
     session.commit()
-    return link
+    return link_response(link, owned_trip(session, trip_id, subject))
 
 
 @router.get("/audit-events", response_model=list[AuditEventResponse])
@@ -415,18 +470,21 @@ def list_audit_events(trip_id: Identifier, session: SessionDep, subject: Subject
 
 
 @router.get("/share-links", response_model=list[ShareLinkResponse])
-def list_share_links(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[ShareLink]:
-    owned_trip(session, trip_id, subject)
+def list_share_links(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[ShareLinkResponse]:
+    trip = owned_trip(session, trip_id, subject)
     links = list(
         session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id).order_by(ShareLink.created_at.desc()))
     )
     _settle_expired(session, links)
-    return links
+    return [link_response(link, trip) for link in links]
 
 
 @router.get("/share-links/{link_id}", response_model=ShareLinkResponse)
-def get_share_link(trip_id: Identifier, link_id: Identifier, session: SessionDep, subject: SubjectDep) -> ShareLink:
-    return owned_link(session, trip_id, subject, link_id)
+def get_share_link(
+    trip_id: Identifier, link_id: Identifier, session: SessionDep, subject: SubjectDep
+) -> ShareLinkResponse:
+    link = owned_link(session, trip_id, subject, link_id)
+    return link_response(link, owned_trip(session, trip_id, subject))
 
 
 @router.patch("/share-links/{link_id}", response_model=ShareLinkResponse)
@@ -437,7 +495,7 @@ def update_share_link(
     session: SessionDep,
     subject: SubjectDep,
     if_match: Annotated[str | None, Header()] = None,
-) -> ShareLink:
+) -> ShareLinkResponse:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state not in EDITABLE_LINK_STATES:
         raise ApiException(
@@ -445,15 +503,23 @@ def update_share_link(
             detail="A revoked or expired link cannot be edited",
             code="a_revoked_or_expired_link_cannot_be_edited",
         )
+    trip = owned_trip(session, trip_id, subject)
+    new_scope = (
+        _apply_scope(session, trip_id, subject, payload.scope, link.scope) if payload.scope is not None else None
+    )
+    if new_scope is not None:
+        # Before the revision is claimed: a refused widening changes nothing, not even the revision.
+        refuse_unacknowledged_widening(
+            trip, link.scope, new_scope, live=link.state == LinkState.ACTIVE, confirmed=payload.confirm_widening
+        )
     _claim_revision(session, link, if_match)
     if payload.label is not None:
         link.label = payload.label
-    if payload.scope is not None:
-        before = scope_fingerprint(link.scope)
-        link.scope = _apply_scope(session, trip_id, subject, payload.scope, link.scope)
-        after = scope_fingerprint(link.scope)
+    if new_scope is not None:
+        previous = link.scope
+        link.scope = new_scope
         # A draft link delivers nothing yet; its activation records the scope.
-        if link.state == LinkState.ACTIVE and before != after:
+        if link.state == LinkState.ACTIVE and scope_fingerprint(previous) != scope_fingerprint(new_scope):
             record_audit_event(
                 session,
                 trip_id=trip_id,
@@ -461,10 +527,29 @@ def update_share_link(
                 kind=AuditEventKind.SHARE_LINK_SCOPE_CHANGE,
                 target_type=AuditTargetType.SHARE_LINK,
                 target_id=link.id,
-                details={"scope_version_before": before, "scope_version_after": after},
+                details=scope_change_details(trip, previous, new_scope),
             )
     session.commit()
-    return link
+    return link_response(link, trip)
+
+
+@router.post("/share-scope/exclusion-review", response_model=ExclusionReview)
+def review_exclusions(
+    trip_id: Identifier, payload: ExclusionReviewRequest, session: SessionDep, subject: SubjectDep
+) -> ExclusionReview:
+    """What these exclusions would hide from a hidden link or collection member, before anything is saved.
+
+    Lists the records the public baseline reaches (the ones an audience may exclude), each exclusion that
+    applies with the records it also hides (an excluded area hides the locations in it and the visits, stays,
+    routes and updates that use it; an excluded update hides its photos), and how many stored entries are
+    stale. ``items`` is the audience's own custom selection, so the counts are what its visitors would lose.
+    Stores nothing and records no audit event."""
+    trip = owned_trip(session, trip_id, subject)
+    scope = {
+        "items": [item.model_dump(mode="json") for item in payload.items],
+        "exclude": [item.model_dump(mode="json") for item in payload.exclude],
+    }
+    return exclusion_review(trip, scope)
 
 
 @router.post("/share-links/{link_id}/preview", response_model=ProjectionDocument)
@@ -594,7 +679,7 @@ def activate_share_link(
         details=details,
     )
     session.commit()
-    return ShareLinkActivateResponse.model_validate(link)
+    return activation_response(link, owned_trip(session, trip_id, subject))
 
 
 @router.post("/share-links/{link_id}/revoke", response_model=ShareLinkResponse)
@@ -604,7 +689,7 @@ def revoke_share_link(
     session: SessionDep,
     subject: SubjectDep,
     payload: AuditReasonInput = AuditReasonInput(),
-) -> ShareLink:
+) -> ShareLinkResponse:
     link = owned_link(session, trip_id, subject, link_id)
     if link.state != LinkState.ACTIVE:
         raise ApiException(
@@ -628,7 +713,7 @@ def revoke_share_link(
         details=details,
     )
     session.commit()
-    return link
+    return link_response(link, owned_trip(session, trip_id, subject))
 
 
 @router.post("/share-links/{link_id}/rotate", response_model=ShareLinkActivateResponse)
@@ -677,7 +762,7 @@ def rotate_share_link(
         details=details,
     )
     session.commit()
-    return ShareLinkActivateResponse.model_validate(new_link)
+    return activation_response(new_link, owned_trip(session, trip_id, subject))
 
 
 _PATH_PATTERNS = {

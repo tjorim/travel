@@ -146,6 +146,23 @@ the coarser value always wins, with `month` when neither is set (see
 `follow_audience_date_precision`) sets visits' and stays' own value to `null` in bulk,
 previewing first which live audiences would read finer dates.
 
+A hidden link or collection member starts from the public baseline (every record set to
+`everyone`) and can leave individual `everyone` records out of it with `exclude` in its share scope
+(`{"kind", "id"}` entries, next to the `custom` `items`). It is optional and additive: a scope stored
+without it delivers exactly what it did before, a save that leaves it out keeps the stored list, and
+`[]` or `null` clears it. Excluding a record also hides, for that audience only, everything that
+depends on it: an area hides the locations in it and the visits, stays, routes and updates that use
+it; a location hides what uses it; an update hides its photos; an excluded cover photo leaves the
+audience without a cover. `POST /trips/{trip_id}/share-scope/exclusion-review` (MCP
+`preview_share_link_exclusions`) lists the records an audience may exclude and what each exclusion
+also hides, storing nothing; the link and collection member responses carry the same `exclusions`
+summary, and the overview reports `excluded` and `excluded_also_hides` per link. The public view
+refuses `exclude` (422 `scope_exclusion_not_allowed`). Removing an exclusion from an active link or
+collection member shows its visitors more, so the save is refused with 409
+`exclusion_widening_needs_acknowledgement` until `confirm_widening` is sent (a field of the
+share-link update, a query parameter of `PUT /collections/{id}/members/{member_id}`, an MCP
+argument). The change is audited with record ids and counts only.
+
 `GET /api/health` checks database connectivity. FastAPI publishes the full
 OpenAPI description at `/openapi.json` and interactive development docs at
 `/docs`; production routing may choose not to expose the latter.

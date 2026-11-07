@@ -1297,6 +1297,10 @@ class OverviewAudience(BaseModel):
     # audience alone allows by their own setting. Keys are "visits" and "stays".
     record_precision: dict[str, OverviewRecordPrecision] = Field(default_factory=dict)
     scope_items: int
+    # Hidden links and collection members only: how many `everyone` records it leaves out, and how many other
+    # records it hides with them (by kind).
+    excluded: int = 0
+    excluded_also_hides: dict[str, int] = Field(default_factory=dict)
     delivered: dict[str, int]
     without_map_point: dict[str, int]
     shows_cover: bool = False
@@ -1380,6 +1384,21 @@ class ShareScopeInput(InputModel):
     # Absent keeps what the audience has (a new audience reads by month); null removes every audience-level setting.
     defaults: ShareScopeDefaultsInput | None = None
     items: list[ShareScopeItemInput] = Field(default_factory=list, max_length=200)
+    # Absent keeps the audience's stored exclusions (an older client that does not know the field can never widen an
+    # audience); null or [] removes them all, which widens a live audience and needs confirm_widening.
+    exclude: list[ShareScopeItemInput] | None = Field(
+        default=None,
+        max_length=500,
+        description="Records set to everyone (the public baseline) that this hidden link or collection member does "
+        "NOT receive, on top of its custom `items`. Each is removed from this audience only, together with the "
+        "records that depend on it: an excluded area or location also hides the locations in it and the visits, "
+        "stays, routes and updates that use it; an excluded update hides its photos; an excluded cover photo "
+        "leaves this audience without a cover. Adding an exclusion narrows the audience; removing one on a live "
+        "link or collection widens it and needs confirm_widening. The public view is the baseline and cannot "
+        "exclude anything (422 scope_exclusion_not_allowed). An id not on this trip is refused; a record that is "
+        "no longer set to everyone is dropped by the write. Absent keeps the stored exclusions; null or [] clears "
+        "them. The response's `exclusions` names what each one also hides.",
+    )
 
     def document(self, stored: dict | None = None) -> dict:
         """The scope as stored: ``defaults`` is kept only when it sets something.
@@ -1387,7 +1406,14 @@ class ShareScopeInput(InputModel):
         When this payload leaves ``defaults`` out, the audience's stored ``defaults`` carry over, so a client that
         does not know the setting (an older app or script) can never silently widen an audience. A new audience
         (``stored`` is ``None``) starts at the conservative ``month``; send ``defaults: null`` to set no cap."""
-        document = self.model_dump(exclude={"defaults"})
+        document = self.model_dump(exclude={"defaults", "exclude"})
+        chosen_exclusions: list[dict] = (
+            [item.model_dump(mode="json") for item in self.exclude or []]
+            if "exclude" in self.model_fields_set
+            else list((stored or {}).get("exclude") or [])
+        )
+        if chosen_exclusions:
+            document["exclude"] = chosen_exclusions
         if "defaults" in self.model_fields_set:
             chosen = self.defaults.model_dump(mode="json", exclude_none=True) if self.defaults is not None else {}
         elif stored is None:
@@ -1397,6 +1423,75 @@ class ShareScopeInput(InputModel):
         if chosen:
             document["defaults"] = chosen
         return document
+
+
+class ExclusionRef(BaseModel):
+    kind: ShareScopeKind
+    id: str
+
+
+KIND_COUNTS = (
+    "How many records of each kind (area, location, visit, stay, route, travel_update, media_derivative), "
+    "only kinds with at least one."
+)
+
+
+class ExcludedRecord(ExclusionRef):
+    """One record an audience excludes, and the records that depend on it, hidden from this audience as well."""
+
+    received: bool = Field(
+        description="Whether this audience would receive the record without the exclusion. False for a record "
+        "that cannot be shared right now (for example a cancelled visit); the exclusion still holds if it can again."
+    )
+    hides: dict[str, int] = Field(
+        description="What the exclusion also hides from this audience: "
+        + KIND_COUNTS
+        + " Only records the audience would otherwise receive are counted."
+    )
+    also_hides: list[ExclusionRef] = Field(description="The same records, by kind and id.")
+
+
+class ScopeExclusions(BaseModel):
+    """What a hidden link or collection member leaves out of the public baseline, and what that also hides."""
+
+    excluded: list[ExcludedRecord] = Field(default_factory=list, description="The exclusions that apply.")
+    also_hidden: dict[str, int] = Field(
+        default_factory=dict,
+        description="All records hidden only because they depend on an exclusion, taken together: " + KIND_COUNTS,
+    )
+    stale: int = Field(
+        default=0,
+        description="Stored exclusions that no longer apply (the record was deleted or is no longer set to "
+        "everyone). They are ignored and dropped by the next write.",
+    )
+
+
+class ExclusionReview(ScopeExclusions):
+    """A scope's exclusions plus every record the public baseline reaches, which an audience may exclude."""
+
+    baseline: list[ExclusionRef] = Field(
+        description="Records an exclusion can name: those set to everyone that can be shared, and photos that "
+        "travel with a shared update."
+    )
+
+
+class ExclusionReviewRequest(InputModel):
+    """Which exclusions to review. Nothing is stored."""
+
+    exclude: list[ShareScopeItemInput] = Field(default_factory=list, max_length=500)
+    items: list[ShareScopeItemInput] = Field(
+        default_factory=list,
+        max_length=200,
+        description="The audience's custom selection, so that what an exclusion also hides counts the records "
+        "this audience would really receive.",
+    )
+
+
+class ExclusionWidening(BaseModel):
+    """The records that removing exclusions from a scope would newly show its audience."""
+
+    revealed: list[ExclusionRef] = Field(default_factory=list)
+    counts: dict[str, int] = Field(default_factory=dict, description=KIND_COUNTS)
 
 
 def _both_precision_kinds() -> list[Literal["visit", "stay"]]:
@@ -1511,11 +1606,19 @@ class ShareLinkCreate(InputModel):
     scope: ShareScopeInput = Field(default_factory=ShareScopeInput)
 
 
+CONFIRM_EXCLUSION_WIDENING = (
+    "Set to true to accept that removing exclusions from a live (active) audience shows its visitors records they "
+    "did not receive. Without it such a change is refused with 409 exclusion_widening_needs_acknowledgement, which "
+    "lists the records, and nothing changes. Drafts need no acknowledgement. Not stored."
+)
+
+
 class ShareLinkUpdate(InputModel):
-    non_nullable_fields = frozenset(["label", "scope"])
+    non_nullable_fields = frozenset(["label", "scope", "confirm_widening"])
 
     label: str | None = Field(default=None, min_length=1, max_length=120)
     scope: ShareScopeInput | None = None
+    confirm_widening: bool = Field(default=False, description=CONFIRM_EXCLUSION_WIDENING)
 
 
 class ShareLinkActivateRequest(InputModel):
@@ -1537,6 +1640,8 @@ class ShareLinkResponse(BaseModel):
     created_at: datetime
     activated_at: datetime | None
     revoked_at: datetime | None
+    # What this link leaves out of the public baseline and what that also hides. Filled in by the owner endpoints.
+    exclusions: ScopeExclusions = Field(default_factory=ScopeExclusions)
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -1555,6 +1660,7 @@ class McpShareLinkResponse(BaseModel):
     created_at: datetime
     activated_at: datetime | None
     revoked_at: datetime | None
+    exclusions: ScopeExclusions = Field(default_factory=ScopeExclusions)
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -1595,6 +1701,7 @@ class CollectionMemberResponse(BaseModel):
     scope: dict
     # How many records this member delivers today; 0 means the audience sees at most the trip header.
     delivered_records: int
+    exclusions: ScopeExclusions = Field(default_factory=ScopeExclusions)
     created_at: datetime
     updated_at: datetime
 

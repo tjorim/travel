@@ -11,7 +11,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -22,8 +22,9 @@ from ..auth import current_subject
 from ..capability import generate_token, verifier_for
 from ..database import get_session
 from ..errors import ApiException, service_exception
+from ..exclusion_review import exclusion_changes, scope_exclusions, widening
 from ..models import Collection, CollectionAuditEvent, CollectionMember, LinkState, Trip
-from ..projection import ScopeError, delivered, render_projection, scoped_navigation_url, validate_scope
+from ..projection import ScopeError, delivered, prepare_scope, render_projection, scoped_navigation_url
 from ..ratelimit import shared_delivery_limit
 from ..schemas import (
     AuditReasonInput,
@@ -50,6 +51,7 @@ from .publication import (
     _reject_malformed_token,
     aware_utc,
     delivery_router,
+    refuse_unacknowledged_widening,
 )
 from .trips import owned_trip, trip_query
 
@@ -121,6 +123,7 @@ def _member_response(member: CollectionMember, trip: Trip) -> CollectionMemberRe
         trip_title=trip.title,
         scope=member.scope,
         delivered_records=sum(len(records) for records in delivered(trip, member.scope).values()),
+        exclusions=scope_exclusions(trip, member.scope),
         created_at=member.created_at,
         updated_at=member.updated_at,
     )
@@ -153,10 +156,9 @@ def _scope_for(
     trip = owned_trip(session, trip_id, subject)
     scope_dict = scope.document(stored)
     try:
-        validate_scope(trip, scope_dict)
+        return trip, prepare_scope(trip, scope_dict, stored)
     except ScopeError as error:
         raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
-    return trip, scope_dict
 
 
 @router.post("", response_model=CollectionResponse, status_code=status.HTTP_201_CREATED)
@@ -343,6 +345,14 @@ def set_collection_member_scope(
     session: SessionDep,
     subject: SubjectDep,
     if_match: Annotated[str | None, Header()] = None,
+    confirm_widening: Annotated[
+        bool,
+        Query(
+            description="Accept that removing exclusions from an active collection shows its visitors records they "
+            "did not receive. Without it such a change is refused with 409 exclusion_widening_needs_acknowledgement, "
+            "which lists the records, and nothing changes. Not stored."
+        ),
+    ] = False,
 ) -> CollectionResponse:
     collection = owned_collection(session, subject, collection_id)
     if collection.state not in EDITABLE_STATES:
@@ -352,13 +362,20 @@ def set_collection_member_scope(
             code="a_revoked_or_expired_collection_cannot_be_edited",
         )
     member = _owned_member(session, collection, member_id)
-    _, scope = _scope_for(session, subject, member.trip_id, payload, member.scope)
+    trip, scope = _scope_for(session, subject, member.trip_id, payload, member.scope)
+    live = collection.state == LinkState.ACTIVE
+    # Before the revision is claimed: a refused widening changes nothing, not even the revision.
+    refuse_unacknowledged_widening(trip, member.scope, scope, live=live, confirmed=confirm_widening)
     _claim_member_revision(session, member, if_match)
-    before = scope_fingerprint(member.scope)
+    previous = member.scope
+    before = scope_fingerprint(previous)
     member.scope = scope
     after = scope_fingerprint(scope)
     # A draft collection delivers nothing yet; its activation records the scopes.
-    if collection.state == LinkState.ACTIVE and before != after:
+    if live and before != after:
+        details: dict = {"member_id": member.id, "scope_version_before": before, "scope_version_after": after}
+        if changes := exclusion_changes(previous, scope):
+            details["exclusions"] = {**changes, "widened": widening(trip, previous, scope).counts}
         record_collection_event(
             session,
             owner_subject=subject,
@@ -366,7 +383,7 @@ def set_collection_member_scope(
             collection_id=collection.id,
             trip_id=member.trip_id,
             kind="collection.member_scope_change",
-            details={"member_id": member.id, "scope_version_before": before, "scope_version_after": after},
+            details=details,
         )
     session.commit()
     return collection_response(session, collection)

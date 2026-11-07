@@ -32,7 +32,10 @@ kept record and the moved stays, visits, routes and updates that show it (see
 `records` chosen to be made private that the merge no longer newly shows to anyone; the 409
 `precision_widening_needs_acknowledgement` lists the live `audiences` that would read finer dates
 when visits and stays follow the audience's date precision, with counts per kind (see
-`decisions/36-privacy-sharing-offline-policy.md`).
+`decisions/36-privacy-sharing-offline-policy.md`); the 409
+`exclusion_widening_needs_acknowledgement` lists the `revealed` records (kind and id) and their
+`counts` per kind when saving would remove exclusions from an active hidden link or collection
+member; the 422 `scope_exclusion_not_allowed` refuses `exclude` on the public view.
 None reaches a visitor.
 Resource dependency conflicts include per-kind counts and their total `count`.
 Upload size failures include the numeric MB limit as `max_length`.

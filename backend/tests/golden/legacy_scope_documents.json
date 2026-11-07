@@ -1,0 +1,508 @@
+{
+ "link": {
+  "cover": "media_derivative-ID",
+  "dates": null,
+  "media": [
+   {
+    "alt_text": null,
+    "caption": "Photo",
+    "caption_html": "Photo",
+    "focal_x": null,
+    "focal_y": null,
+    "height": 30,
+    "id": "media_derivative-ID",
+    "image": {
+     "id": "media_derivative-ID"
+    },
+    "update": "update-ID",
+    "width": 40
+   },
+   {
+    "alt_text": null,
+    "caption": "Cover",
+    "caption_html": "Cover",
+    "focal_x": null,
+    "focal_y": null,
+    "height": 30,
+    "id": "media_derivative-ID",
+    "image": {
+     "id": "media_derivative-ID"
+    },
+    "width": 40
+   }
+  ],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha Town",
+    "latitude": 25.0,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "area-ID",
+    "label": "Beta City",
+    "latitude": 23.0,
+    "longitude": 120.2,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Alpha Hotel",
+    "latitude": 25.04,
+    "longitude": 121.51,
+    "region": null
+   }
+  ],
+  "routes": [
+   {
+    "arrival": {
+     "country_code": null,
+     "label": "Beta City",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "carrier": null,
+    "departure": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "id": "route-ID",
+    "label": "Rail",
+    "mode": "train",
+    "service_reference": null,
+    "status": "planned"
+   }
+  ],
+  "schema_version": "travel/unlisted-trip@1",
+  "stays": [
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Alpha Hotel",
+     "latitude": 25.04,
+     "longitude": 121.51,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha Town"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [
+   {
+    "body": "A safe note.",
+    "body_html": "<p>A safe note.</p>\n",
+    "date_precision": "day",
+    "id": "update-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "story_date": "2054-04-04",
+    "title": "Update A"
+   }
+  ],
+  "visits": [
+   {
+    "date_precision": "month",
+    "ends_on": null,
+    "id": "visit-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "summary": null,
+    "summary_html": null,
+    "title": "Visit A"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": null,
+    "id": "visit-ID",
+    "place": {
+     "country_code": null,
+     "label": "Beta City",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "summary": null,
+    "summary_html": null,
+    "title": "Custom visit"
+   }
+  ]
+ },
+ "member": {
+  "cover": "media_derivative-ID",
+  "dates": null,
+  "media": [
+   {
+    "alt_text": null,
+    "caption": "Photo",
+    "caption_html": "Photo",
+    "focal_x": null,
+    "focal_y": null,
+    "height": 30,
+    "id": "media_derivative-ID",
+    "image": {
+     "id": "media_derivative-ID"
+    },
+    "update": "update-ID",
+    "width": 40
+   },
+   {
+    "alt_text": null,
+    "caption": "Cover",
+    "caption_html": "Cover",
+    "focal_x": null,
+    "focal_y": null,
+    "height": 30,
+    "id": "media_derivative-ID",
+    "image": {
+     "id": "media_derivative-ID"
+    },
+    "width": 40
+   }
+  ],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha Town",
+    "latitude": 25.0,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "area-ID",
+    "label": "Beta City",
+    "latitude": 23.0,
+    "longitude": 120.2,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Alpha Hotel",
+    "latitude": 25.04,
+    "longitude": 121.51,
+    "region": null
+   }
+  ],
+  "routes": [
+   {
+    "arrival": {
+     "country_code": null,
+     "label": "Beta City",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "carrier": null,
+    "departure": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "id": "route-ID",
+    "label": "Rail",
+    "mode": "train",
+    "service_reference": null,
+    "status": "planned"
+   }
+  ],
+  "schema_version": "travel/unlisted-trip@1",
+  "stays": [
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Alpha Hotel",
+     "latitude": 25.04,
+     "longitude": 121.51,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha Town"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [
+   {
+    "body": "A safe note.",
+    "body_html": "<p>A safe note.</p>\n",
+    "date_precision": "day",
+    "id": "update-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "story_date": "2054-04-04",
+    "title": "Update A"
+   }
+  ],
+  "visits": [
+   {
+    "date_precision": "month",
+    "ends_on": null,
+    "id": "visit-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "summary": null,
+    "summary_html": null,
+    "title": "Visit A"
+   },
+   {
+    "date_precision": "month",
+    "ends_on": null,
+    "id": "visit-ID",
+    "place": {
+     "country_code": null,
+     "label": "Beta City",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "summary": null,
+    "summary_html": null,
+    "title": "Custom visit"
+   }
+  ]
+ },
+ "public": {
+  "cover": "media_derivative-ID",
+  "dates": null,
+  "media": [
+   {
+    "alt_text": null,
+    "caption": "Photo",
+    "caption_html": "Photo",
+    "focal_x": null,
+    "focal_y": null,
+    "height": 30,
+    "id": "media_derivative-ID",
+    "image": {
+     "id": "media_derivative-ID"
+    },
+    "update": "update-ID",
+    "width": 40
+   },
+   {
+    "alt_text": null,
+    "caption": "Cover",
+    "caption_html": "Cover",
+    "focal_x": null,
+    "focal_y": null,
+    "height": 30,
+    "id": "media_derivative-ID",
+    "image": {
+     "id": "media_derivative-ID"
+    },
+    "width": 40
+   }
+  ],
+  "navigation": [
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "area-ID"
+   },
+   {
+    "id": "location-ID"
+   }
+  ],
+  "places": [
+   {
+    "country_code": "TW",
+    "id": "area-ID",
+    "label": "Alpha Town",
+    "latitude": 25.0,
+    "longitude": 121.5,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "area-ID",
+    "label": "Beta City",
+    "latitude": 23.0,
+    "longitude": 120.2,
+    "region": null
+   },
+   {
+    "country_code": null,
+    "id": "location-ID",
+    "label": "Alpha Hotel",
+    "latitude": 25.04,
+    "longitude": 121.51,
+    "region": null
+   }
+  ],
+  "routes": [
+   {
+    "arrival": {
+     "country_code": null,
+     "label": "Beta City",
+     "latitude": 23.0,
+     "longitude": 120.2,
+     "region": null
+    },
+    "carrier": null,
+    "departure": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "id": "route-ID",
+    "label": "Rail",
+    "mode": "train",
+    "service_reference": null,
+    "status": "planned"
+   }
+  ],
+  "schema_version": "travel/public-trip@1",
+  "stays": [
+   {
+    "date_precision": "month",
+    "ends_on": "2054-04",
+    "id": "stay-ID",
+    "location": {
+     "country_code": null,
+     "id": "location-ID",
+     "label": "Alpha Hotel",
+     "latitude": 25.04,
+     "longitude": 121.51,
+     "region": null
+    },
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "title": "Alpha Town"
+   }
+  ],
+  "summary": "A private trip.",
+  "summary_html": "<p>A private trip.</p>\n",
+  "summary_text": "A private trip.",
+  "title": "Exampleland 2054",
+  "updates": [
+   {
+    "body": "A safe note.",
+    "body_html": "<p>A safe note.</p>\n",
+    "date_precision": "day",
+    "id": "update-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "story_date": "2054-04-04",
+    "title": "Update A"
+   }
+  ],
+  "visits": [
+   {
+    "date_precision": "month",
+    "ends_on": null,
+    "id": "visit-ID",
+    "place": {
+     "country_code": "TW",
+     "label": "Alpha Town",
+     "latitude": 25.0,
+     "longitude": 121.5,
+     "region": null
+    },
+    "starts_on": "2054-04",
+    "summary": null,
+    "summary_html": null,
+    "title": "Visit A"
+   }
+  ]
+ }
+}

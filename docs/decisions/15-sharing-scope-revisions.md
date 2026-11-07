@@ -24,3 +24,16 @@ server selection without resetting the guarded form. Keep My Draft adopts the
 current revision for a subsequent explicit save; Use Server Selection resets
 the editor to the server value. A later concurrent edit can produce another
 conflict rather than being overwritten silently.
+
+## Removing an exclusion from a live audience (#237)
+
+A hidden link or collection member may exclude `everyone` records
+([domain model](../domain-model.md#hidden-links-start-from-the-public-view)). The
+revision rules above apply unchanged. Adding an exclusion narrows the audience and
+needs nothing. Removing one from an *active* audience shows its visitors more, so
+the write is refused with 409 `exclusion_widening_needs_acknowledgement` (detail
+`revealed` and `counts`) until it repeats with `confirm_widening`. The refusal is
+decided before the revision is claimed, so it changes nothing, the revision
+included; a stale `If-Match` on the repeat still returns 412 with the current record.
+Drafts need no acknowledgement. The PWA shows the existing widening confirmation
+and, after the owner accepts, resends the save with the same revision.
