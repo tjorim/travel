@@ -33,7 +33,7 @@ import json
 from collections import Counter
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Literal
 
 from fastapi import status
@@ -190,6 +190,11 @@ def _preset(preset_id: str) -> SharingPreset:
     return preset
 
 
+def record_date(kind: str, record: Any) -> date | None:
+    """The day that tells two records of one name apart (a stay's check-in), for the interface to format."""
+    return record.check_in_date if kind == "stay" else None
+
+
 def record_label(kind: str, record: Any) -> str | None:
     """The owner's own name for a record, for an owner-only review. It is never written to the audit trail."""
     if kind in {"area", "location"}:
@@ -197,7 +202,7 @@ def record_label(kind: str, record: Any) -> str | None:
     if kind == "visit":
         return record.title or record.area.label
     if kind == "stay":
-        return f"{record.area.label} {record.check_in_date.isoformat()}"
+        return record.area.label
     if kind == "route":
         return record.label or record.mode.value
     if kind == "travel_update":
@@ -495,7 +500,11 @@ def build_review(session: Session, trip: Trip, audience: PresetAudience, plan: P
     recorded, and no other audience is touched: that is checked while the plan is applied, and a plan that would
     change what another audience receives fails instead of being reviewed."""
     index = _index(trip)
-    ref_of = lambda ref: PresetRecordRef(kind=ref[0], id=ref[1], label=record_label(ref[0], index[ref]))  # noqa: E731
+
+    def ref_of(ref: Ref) -> PresetRecordRef:
+        return PresetRecordRef(
+            kind=ref[0], id=ref[1], label=record_label(ref[0], index[ref]), day=record_date(ref[0], index[ref])
+        )
 
     before = _received(trip, audience.scope)
     comparison: PresetComparison | None = None
@@ -645,7 +654,12 @@ def preset_exceptions(trip: Trip, scope: dict, preset_id: str | None) -> PresetE
     target, _ = compute_target(trip, preset)
     received = _received(trip, scope)
     index = _index(trip)
-    ref_of = lambda ref: PresetRecordRef(kind=ref[0], id=ref[1], label=record_label(ref[0], index[ref]))  # noqa: E731
+
+    def ref_of(ref: Ref) -> PresetRecordRef:
+        return PresetRecordRef(
+            kind=ref[0], id=ref[1], label=record_label(ref[0], index[ref]), day=record_date(ref[0], index[ref])
+        )
+
     shown = [(kind, i) for kind in KIND_ORDER if kind in MANAGED_KINDS for i in sorted(received[kind] - target[kind])]
     hidden = [(kind, i) for kind in KIND_ORDER if kind in MANAGED_KINDS for i in sorted(target[kind] - received[kind])]
     return PresetExceptions(

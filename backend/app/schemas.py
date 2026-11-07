@@ -1622,6 +1622,9 @@ class PresetRecordRef(BaseModel):
     kind: ShareScopeKind
     id: str
     label: str | None = Field(description="The owner's own name for the record. Owner-only; never audited.")
+    day: date | None = Field(
+        default=None, description="A stay's check-in day, so the interface can format it for the reader's locale."
+    )
 
 
 class PresetExceptions(BaseModel):

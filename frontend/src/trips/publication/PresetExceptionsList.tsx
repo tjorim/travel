@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { PresetExceptions, PresetRecordRef, ShareScope } from "../../tracker-model";
+import {
+  presetRecordName,
+  type PresetExceptions,
+  type PresetRecordRef,
+  type ShareScope,
+} from "../../tracker-model";
 import { useSetVisibility } from "../visibility";
 import { GROUP_TITLES, isExcluded, setShown, updateItem, type CatalogItem } from "./catalog";
 import { presetName } from "./use-sharing-presets";
@@ -97,7 +102,10 @@ export function PresetExceptionsList({
 
   function row(record: PresetRecordRef, mode: "shown" | "hidden") {
     const item = find(record);
-    const name = record.label || item?.label || m.preset_exception_untitled();
+    const name = presetRecordName(
+      { ...record, label: record.label || item?.label || null },
+      m.preset_exception_untitled(),
+    );
     const changed = dirty && touched.has(keyOf(record));
     const action = changed ? null : actionFor(mode, record);
     return (
