@@ -146,8 +146,10 @@ def test_a_shared_stay_shows_only_its_area_and_nights_never_the_accommodation() 
             "notes": "Ask for the quiet room.",
         },
     ).json()
-    assert (stay["visibility"], stay["share_date_precision"], stay["area"]["label"]) == ("private", "month", "Taipei")
+    assert (stay["visibility"], stay["share_date_precision"], stay["area"]["label"]) == ("private", None, "Taipei")
     assert owner.patch(f"{trips_path}/stays/{stay['id']}", json={"share_date_precision": "day"}).status_code == 200
+    # No audience-level cap: the stay's own precision decides.
+    assert owner.put(f"{trips_path}/public-projection", json={"defaults": None}).status_code == 200
     assert owner.put(f"{trips_path}/visibility/stay/{stay['id']}", json={"visibility": "everyone"}).status_code == 200
     published = owner.post(f"{trips_path}/public-projection/publish")
     assert published.status_code == 200, published.text

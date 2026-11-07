@@ -146,9 +146,12 @@ def collection_response(session: Session, collection: Collection) -> CollectionR
     )
 
 
-def _scope_for(session: Session, subject: str, trip_id: Identifier, scope: ShareScopeInput) -> tuple[Trip, dict]:
+def _scope_for(
+    session: Session, subject: str, trip_id: Identifier, scope: ShareScopeInput, stored: dict | None = None
+) -> tuple[Trip, dict]:
+    """The member's trip and the scope to store; ``stored`` is its current scope, ``None`` for a new member."""
     trip = owned_trip(session, trip_id, subject)
-    scope_dict = scope.model_dump()
+    scope_dict = scope.document(stored)
     try:
         validate_scope(trip, scope_dict)
     except ScopeError as error:
@@ -349,7 +352,7 @@ def set_collection_member_scope(
             code="a_revoked_or_expired_collection_cannot_be_edited",
         )
     member = _owned_member(session, collection, member_id)
-    _, scope = _scope_for(session, subject, member.trip_id, payload)
+    _, scope = _scope_for(session, subject, member.trip_id, payload, member.scope)
     _claim_member_revision(session, member, if_match)
     before = scope_fingerprint(member.scope)
     member.scope = scope
@@ -402,7 +405,7 @@ def _member_preview_scope(
 
     Nothing is stored and no audit event is recorded."""
     if candidate is not None:
-        return _scope_for(session, subject, member.trip_id, candidate)
+        return _scope_for(session, subject, member.trip_id, candidate, member.scope)
     return owned_trip(session, member.trip_id, subject), member.scope
 
 

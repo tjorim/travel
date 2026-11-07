@@ -67,6 +67,9 @@ from .routers import (
     trips,
     visits,
 )
+from .routers import (
+    precision as precision_routes,
+)
 from .routers import visibility as visibility_routes
 from .secrets import get_secret_store
 from .storage import get_storage
@@ -151,8 +154,17 @@ _COMPACT_FIELDS = {
         "start_time",
         "end_time",
         "visibility",
+        "share_date_precision",
     ),
-    "stay": ("id", "check_in_date", "check_out_date", "status", "property_name", "visibility"),
+    "stay": (
+        "id",
+        "check_in_date",
+        "check_out_date",
+        "status",
+        "property_name",
+        "visibility",
+        "share_date_precision",
+    ),
     "route": (
         "id",
         "mode",
@@ -626,7 +638,7 @@ class TravelMcpBackend:
         )
 
     def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
-        """Create a visit: an area, or a location in one, with optional days, times, kind and notes. The visit status (idea, planned, confirmed or cancelled) is owner-only and never shared: keep planning state there, not in a title or area label, and cancel a rejected idea instead of deleting it. A cancelled visit can never be shared. Times stay private unless share_time is set. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
+        """Create a visit: an area, or a location in one, with optional days, times, kind and notes. The visit status (idea, planned, confirmed or cancelled) is owner-only and never shared: keep planning state there, not in a title or area label, and cancel a rejected idea instead of deleting it. A cancelled visit can never be shared. Times stay private unless share_time is set. share_date_precision (day, month, year or null) caps how precisely visitors read the days; null, the default, follows each audience's own date precision and the coarser of the two applies. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
         return self._call(
             "visit.create",
             "visit",
@@ -637,7 +649,7 @@ class TravelMcpBackend:
         )
 
     def update_visit(self, trip_id: str, visit_id: str, payload: schemas.VisitUpdate) -> dict[str, Any]:
-        """Edit or reorder a visit."""
+        """Edit or reorder a visit. share_date_precision: null follows the audience's date precision, day/month/year caps this visit's days; omit it to keep the value."""
         return self._call(
             "visit.update",
             "visit",
@@ -900,6 +912,26 @@ class TravelMcpBackend:
             needs_confirmation=True,
         )
 
+    def follow_audience_date_precision(
+        self,
+        trip_id: str,
+        kinds: list[Literal["visit", "stay"]] | None = None,
+        confirm: bool = False,
+        confirm_widening: bool = False,
+    ) -> dict[str, Any]:
+        """Let visits and stays follow each audience's date precision: set share_date_precision to null on every visit and/or stay (kinds, both by default) that has its own value, so the trip's audiences decide how precisely dates read (an audience sets defaults.date_precision in its share scope; with none it reads by month; the coarser of record and audience always wins). Use it instead of editing dozens of records one by one. Without confirm=true it only previews: changed counts the records that would follow the audience, and audiences lists each live audience (public, link:<id> or collection:<id>) whose view changes, with the visits and stays that would read finer (widened) or coarser (narrowed). When a live audience would read finer dates, confirm=true alone is refused with a JSON review (code precision_widening_needs_acknowledgement). Show it to the owner; repeat with confirm=true and confirm_widening=true only after they accept. The change is recorded in the audit trail with audience ids and counts."""
+        payload = schemas.FollowAudiencePrecisionRequest(
+            kinds=kinds or ["visit", "stay"], confirm=confirm, confirm_widening=confirm_widening
+        )
+        return self._call(
+            "date_precision.follow_audience" if confirm else "date_precision.follow_audience_preview",
+            "trip",
+            trip_id,
+            trip_id,
+            lambda s, sub: precision_routes.follow_audience_precision(trip_id, payload, s, sub),
+            lambda x: _model(x, schemas.FollowAudiencePrecisionResult),
+        )
+
     # Publication, previews, share capabilities -------------------------
     def get_public_projection_status(self, trip_id: str) -> dict[str, Any]:
         """Read the public-surface state and current explicit scope."""
@@ -926,7 +958,7 @@ class TravelMcpBackend:
     def set_public_projection_scope(
         self, trip_id: str, payload: schemas.ShareScopeInput, confirm: bool = False
     ) -> dict[str, Any]:
-        """Replace the live public scope after explicit owner confirmation."""
+        """Replace the live public scope after explicit owner confirmation. The scope may set defaults.date_precision (day, month or year): the finest date this audience may read, capping every record's own share_date_precision (the coarser wins; a record with none follows it). Leave defaults out to keep the audience's current setting; send defaults: null to remove the cap."""
         return self._call(
             "public_projection.scope",
             "public_surface",
@@ -984,7 +1016,7 @@ class TravelMcpBackend:
     def create_share_link(
         self, trip_id: str, payload: schemas.ShareLinkCreate, confirm: bool = False
     ) -> dict[str, Any]:
-        """Create a draft named share link after reviewing its audience scope."""
+        """Create a draft named share link after reviewing its audience scope. Unless the scope sets defaults.date_precision (day, month or year; the finest date this link may read, coarser wins over each record's own share_date_precision) the new link reads dates by month; send defaults: null for no cap."""
         return self._call(
             "share_link.create",
             "share_link",
@@ -1010,7 +1042,7 @@ class TravelMcpBackend:
     def update_share_link(
         self, trip_id: str, link_id: str, payload: schemas.ShareLinkUpdate, confirm: bool = False
     ) -> dict[str, Any]:
-        """Update a named link's label or live scope after explicit owner confirmation."""
+        """Update a named link's label or live scope after explicit owner confirmation. Leaving scope.defaults out keeps the link's current date precision; set defaults.date_precision or send defaults: null to change or remove it."""
         return self._call(
             "share_link.update",
             "share_link",
@@ -1435,7 +1467,7 @@ class TravelMcpBackend:
         )
 
     def update_stay(self, trip_id: str, stay_id: str, payload: schemas.StayUpdate) -> dict[str, Any]:
-        """Update a private stay; set check_in_time/check_out_time to null to clear unverified times. Move the chosen candidate from idea to planned or confirmed and cancel or delete the rejected alternatives."""
+        """Update a private stay; set check_in_time/check_out_time to null to clear unverified times. Move the chosen candidate from idea to planned or confirmed and cancel or delete the rejected alternatives. share_date_precision: null follows the audience's date precision, day/month/year caps the stay's nights; omit it to keep the value."""
         return self._call(
             "stay.update",
             "stay",
@@ -2180,6 +2212,7 @@ MCP_TOOL_CAPABILITIES: dict[str, dict[str, Literal["read", "write"] | bool]] = {
             "complete_media_import_session",
             "merge_locations",
             "merge_areas",
+            "follow_audience_date_precision",
         },
     }
     for name in _TOOL_NAMES

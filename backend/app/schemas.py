@@ -675,6 +675,13 @@ ROUTE_STATUS = (
     "planned: the intended route; confirmed: reserved or confirmed (booked means the same); cancelled."
 )
 
+PRECISION_OWN = (
+    "How precisely a visitor may read this record's dates: day, month or year. null (the default) follows the "
+    "audience: each public view and hidden link sets its own date precision in its share scope "
+    "(defaults.date_precision). The coarser of the two always applies, so a visitor never gets a finer date than "
+    "either allows; with neither set the date reads by month."
+)
+
 STAY_STATUS = (
     "idea: a candidate being compared, which may overlap other stays, covers no night and cannot be shared; "
     "planned: the intended stay; confirmed: reserved or confirmed (booked means the same); cancelled."
@@ -700,7 +707,7 @@ class StayCreate(InputModel):
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000, description=CONTACT)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
-    share_date_precision: DatePrecision = DatePrecision.MONTH
+    share_date_precision: DatePrecision | None = Field(default=None, description=PRECISION_OWN)
 
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
@@ -725,7 +732,7 @@ class StayUpdate(InputModel):
     location is already there, to the area's city-level location; setting
     ``location`` to null keeps the area but forgets the accommodation."""
 
-    non_nullable_fields = frozenset(["check_in_date", "check_out_date", "status", "share_date_precision"])
+    non_nullable_fields = frozenset(["check_in_date", "check_out_date", "status"])
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
@@ -739,7 +746,9 @@ class StayUpdate(InputModel):
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000, description=CONTACT)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
-    share_date_precision: DatePrecision | None = None
+    share_date_precision: DatePrecision | None = Field(
+        default=None, description=PRECISION_OWN + " Send null to follow the audience; omit to keep the value."
+    )
 
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
@@ -761,7 +770,7 @@ class StayResponse(BaseModel):
     location: LocationResponse
     area: AreaResponse
     visibility: Visibility
-    share_date_precision: DatePrecision
+    share_date_precision: DatePrecision | None = Field(description=PRECISION_OWN)
     model_config = ConfigDict(from_attributes=True)
 
     @computed_field(description=_html_of("notes"))
@@ -816,7 +825,7 @@ class VisitCreate(InputModel):
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     share_time: bool = False
-    share_date_precision: DatePrecision = DatePrecision.MONTH
+    share_date_precision: DatePrecision | None = Field(default=None, description=PRECISION_OWN)
 
     @model_validator(mode="after")
     def valid_visit(self):
@@ -827,7 +836,7 @@ class VisitCreate(InputModel):
 
 
 class VisitUpdate(InputModel):
-    non_nullable_fields = frozenset(["status", "share_time", "share_date_precision"])
+    non_nullable_fields = frozenset(["status", "share_time"])
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
@@ -842,7 +851,9 @@ class VisitUpdate(InputModel):
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
     summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     share_time: bool | None = None
-    share_date_precision: DatePrecision | None = None
+    share_date_precision: DatePrecision | None = Field(
+        default=None, description=PRECISION_OWN + " Send null to follow the audience; omit to keep the value."
+    )
 
 
 class RouteReference(BaseModel):
@@ -877,7 +888,7 @@ class VisitResponse(BaseModel):
     summary: str | None
     visibility: Visibility
     share_time: bool
-    share_date_precision: DatePrecision
+    share_date_precision: DatePrecision | None = Field(description=PRECISION_OWN)
     # Routes this visit probably restates (same day and area, and it is about the journey): a
     # non-blocking hint that the journey belongs in Routes. Filled in by the visits endpoints.
     possible_route_duplicates: list[RouteReference] = []
@@ -1260,6 +1271,15 @@ class TripResponse(BaseModel):
         return _html(self.summary)
 
 
+class OverviewRecordPrecision(BaseModel):
+    """How the records of one kind an audience receives read their dates."""
+
+    by_precision: dict[DatePrecision, int]
+    limited_by_record: int
+    # Records that follow an audience which sets nothing, so they read by the month default.
+    default_applied: int
+
+
 class OverviewAudience(BaseModel):
     """What one audience (the public page or a draft/active link) receives right now."""
 
@@ -1271,6 +1291,11 @@ class OverviewAudience(BaseModel):
     shares_title: bool
     shares_summary: bool
     dates_precision: DatePrecision | None
+    # The audience's own cap on every date (null: it sets none, so each record's own value applies).
+    date_precision: DatePrecision | None = None
+    # For visits and stays it delivers: how many read at each precision, and how many are held coarser than the
+    # audience alone allows by their own setting. Keys are "visits" and "stays".
+    record_precision: dict[str, OverviewRecordPrecision] = Field(default_factory=dict)
     scope_items: int
     delivered: dict[str, int]
     without_map_point: dict[str, int]
@@ -1325,6 +1350,17 @@ class ShareScopeTripInput(InputModel):
     dates: DatePrecision | None = None
 
 
+class ShareScopeDefaultsInput(InputModel):
+    """Settings that apply to everything this audience receives."""
+
+    date_precision: DatePrecision | None = Field(
+        default=None,
+        description="The finest date a visitor of this audience may read: day, month or year. It caps every "
+        "record's date (and the trip dates) on top of the record's own setting, and the coarser of the two "
+        "wins. null or absent sets no cap, so each record's own value applies (month when it has none).",
+    )
+
+
 class ShareScopeItemInput(InputModel):
     """One record, with visibility ``custom``, that this audience includes."""
 
@@ -1341,7 +1377,76 @@ class ShareScopeInput(InputModel):
 
     schema_version: Literal["travel/share-scope@1"] = "travel/share-scope@1"
     trip: ShareScopeTripInput = Field(default_factory=ShareScopeTripInput)
+    # Absent keeps what the audience has (a new audience reads by month); null removes every audience-level setting.
+    defaults: ShareScopeDefaultsInput | None = None
     items: list[ShareScopeItemInput] = Field(default_factory=list, max_length=200)
+
+    def document(self, stored: dict | None = None) -> dict:
+        """The scope as stored: ``defaults`` is kept only when it sets something.
+
+        When this payload leaves ``defaults`` out, the audience's stored ``defaults`` carry over, so a client that
+        does not know the setting (an older app or script) can never silently widen an audience. A new audience
+        (``stored`` is ``None``) starts at the conservative ``month``; send ``defaults: null`` to set no cap."""
+        document = self.model_dump(exclude={"defaults"})
+        if "defaults" in self.model_fields_set:
+            chosen = self.defaults.model_dump(mode="json", exclude_none=True) if self.defaults is not None else {}
+        elif stored is None:
+            chosen = {"date_precision": DatePrecision.MONTH.value}
+        else:
+            chosen = stored.get("defaults") or {}
+        if chosen:
+            document["defaults"] = chosen
+        return document
+
+
+def _both_precision_kinds() -> list[Literal["visit", "stay"]]:
+    return ["visit", "stay"]
+
+
+class FollowAudiencePrecisionRequest(InputModel):
+    """Let visits and stays follow each audience's date precision instead of their own setting.
+
+    Every selected record that has its own ``share_date_precision`` is set to null. Without ``confirm`` it only
+    previews."""
+
+    non_nullable_fields = frozenset(["kinds", "confirm", "confirm_widening"])
+
+    kinds: list[Literal["visit", "stay"]] = Field(
+        default_factory=_both_precision_kinds,
+        min_length=1,
+        max_length=2,
+        description="Which records follow the audience: visit, stay or both (the default).",
+    )
+    confirm: bool = False
+    confirm_widening: bool = Field(
+        default=False,
+        description=(
+            "Set to true, together with confirm, to accept that a live audience starts to read finer dates: a record "
+            "held to a coarser precision by its own setting then follows an audience that allows more. Without it "
+            "such a confirmed change is refused with 409 and nothing changes. Not stored."
+        ),
+    )
+
+
+class PrecisionCounts(BaseModel):
+    visits: int = 0
+    stays: int = 0
+
+
+class FollowAudienceAudience(BaseModel):
+    """A live audience whose dates change: the records it receives that read finer, or coarser, afterwards."""
+
+    audience: str = Field(description="`public`, `link:<id>` or `collection:<id>`.")
+    label: str | None = Field(description="The owner's link or collection label; null for the public page.")
+    widened: PrecisionCounts
+    narrowed: PrecisionCounts
+
+
+class FollowAudiencePrecisionResult(BaseModel):
+    applied: bool
+    # The records that follow the audience afterwards, and that had their own value before.
+    changed: PrecisionCounts
+    audiences: list[FollowAudienceAudience]
 
 
 class ProjectionDocument(BaseModel):

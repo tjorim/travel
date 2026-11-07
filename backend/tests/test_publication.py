@@ -76,6 +76,8 @@ def scope(*items: dict, title: bool = True, summary: bool = True) -> dict:
     return {
         "schema_version": "travel/share-scope@1",
         "trip": {"title": title, "summary": summary},
+        # No audience-level date precision: each record's own value decides, as before audiences could set one.
+        "defaults": None,
         "items": list(items),
     }
 
@@ -425,6 +427,8 @@ def test_the_private_part_of_an_update_never_reaches_visitors(tmp_path: Path) ->
         ).status_code
         == 200
     )
+    # No audience-level date cap: the update's own day precision decides.
+    assert owner.put(f"/api/trips/{trip['id']}/public-projection", json=scope()).status_code == 200
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
 
     delivered = TestClient(app).get(f"/api/public/trips/{slug}")

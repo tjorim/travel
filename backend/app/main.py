@@ -32,6 +32,7 @@ from .routers.packing import router as packing_router
 from .routers.packing import sources_router as packing_sources_router
 from .routers.packing import templates_router as packing_templates_router
 from .routers.places import router as places_router
+from .routers.precision import router as precision_router
 from .routers.publication import delivery_rate_limit_handler
 from .routers.publication import delivery_router as publication_delivery_router
 from .routers.publication import router as publication_router
@@ -76,6 +77,7 @@ app.add_middleware(RequestTimingMiddleware)
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")
 app.include_router(visits_router, prefix="/api")
+app.include_router(precision_router, prefix="/api")
 app.include_router(publication_router, prefix="/api")
 app.include_router(collections_router, prefix="/api")
 app.include_router(collection_membership_router, prefix="/api")

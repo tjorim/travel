@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session
 
 from .access import COLLECTIONS
 from .models import DocumentAsset, LinkState, Location, MediaAsset, PublicSurface, ShareLink, SurfaceState, Trip
+from .precision import audience_precision, precision_summary
+from .projection import delivered as delivered_records
 from .projection import render_projection
 from .route_overlap import area_name, overlapping_routes, route_title
 
@@ -31,6 +33,7 @@ PLANNING_MARKERS = re.compile(
 _VISIBLE_TEXT = ("title", "label", "summary")
 _DELIVERED = ("visits", "places", "stays", "routes", "updates", "media")
 # Kinds whose visitor entry carries the area point a map places it at.
+_PRECISION_KEYS = {"visit": "visits", "stay": "stays"}
 _MAPPED = {"visits": "visit", "stays": "stay", "updates": "reisupdate"}
 
 
@@ -76,6 +79,11 @@ def _audience(
         "shares_title": document["title"] is not None,
         "shares_summary": document["summary"] is not None,
         "dates_precision": document["dates"]["date_precision"] if document["dates"] else None,
+        "date_precision": audience_precision(scope),
+        "record_precision": {
+            _PRECISION_KEYS[kind]: value
+            for kind, value in precision_summary(delivered_records(trip, scope), scope).items()
+        },
         "scope_items": len(scope.get("items", [])),
         "delivered": delivered,
         "without_map_point": unmapped,

@@ -174,7 +174,7 @@ def update_visit(
     visit = owned_visit(trip, visit_id)
     _update_place(session, trip, visit, payload)
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "position"})
-    for required in ("status", "share_time", "share_date_precision"):
+    for required in ("status", "share_time"):
         if required in values and values[required] is None:
             raise ApiException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
