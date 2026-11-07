@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, insert, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
@@ -173,7 +173,8 @@ def _seed(engine) -> dict:
         # A placeholder two stays share, a placeholder nothing uses, and one in another area.
         orphan = Location(trip_id=trip.id, area_id=other.id, locality="Tainan", country_code="TW")
         session.add(orphan)
-        session.add(PublicSurface(trip_id=trip.id, scope={"items": scope_items}))
+        # A Core insert names only the columns given: the model also has columns that later revisions add.
+        session.execute(insert(PublicSurface).values(trip_id=trip.id, scope={"items": scope_items}))
         session.flush()
         locations["orphan"] = orphan.id
         for index, name in enumerate(CASES):

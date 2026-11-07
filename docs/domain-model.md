@@ -342,11 +342,11 @@ made private or withdrawn, the visitor page shows a text-only header. The owner'
 trip response carries `cover_url`, the authenticated file route of the chosen copy, for
 the owner's screens only; no projection or visitor response includes it.
 
-## Sharing presets (review only so far)
+## Sharing presets
 
 A preset is a named starting point for what **one** audience (the public view, a hidden link or a collection
 member) receives, instead of a choice per record ([#241](decisions/241-sharing-presets.md)). It is a template: the
-server plans it from the trip's records as they are now and writes it, once applying exists, through the
+server plans it from the trip's records as they are now and writes it through the
 mechanisms above (`custom` plus the audience's `items`, the audience's `exclude`, `defaults.date_precision`). It is
 never read at delivery: `projection.delivered` stays the one place that decides what an audience receives.
 
@@ -375,6 +375,38 @@ widening of [#27](decisions/27-merge-widening.md)), the date precision before an
 `needs_decision` and `replaces_exceptions`, and a `fingerprint` of the plan. A plan that would exceed the scope
 limits (200 listed records, 500 exclusions) is not applicable: `refusal.code` is `preset_too_large`. A review stores
 nothing, claims no revision and records no audit event, and no visitor response carries any of it.
+
+**Apply (owner-only).** `POST …/public-projection/preset`, `POST …/share-links/{link_id}/preset` and
+`POST /collections/{collection_id}/members/{member_id}/preset` take `{"preset", "fingerprint", "confirm_widening"}`
+and `If-Match` (the audience's revision, as for a manual scope edit: a stale one is `412 scope_revision_conflict`
+with the current owner record; absent stays an unconditional write that still advances the revision). The server
+plans again and refuses, storing nothing and not claiming the revision, when the `fingerprint` of the review no
+longer matches (`409 preset_preview_is_stale`, with a fresh review), when the plan is beyond the scope limits
+(`409 preset_too_large`), or when a **live** audience (published public view, active link, active collection) would
+newly receive records and `confirm_widening` is absent (`409 preset_widening_needs_acknowledgement`, with `counts`
+and the `widened` records). A draft link, draft collection or unpublished page delivers nothing yet and needs no
+acknowledgement; narrowing never does. Otherwise it writes in one transaction: private records in the target become
+`custom` and are listed, the scope is validated by `prepare_scope` exactly like a manual edit, and the label is set.
+It asserts that it never writes `everyone` and that no other audience's output changes, and rolls back if either
+would break. The same plan on an audience that already matches and carries the label writes nothing
+(`applied: false`, no revision, no audit event). MCP: `apply_sharing_preset` (confirm, then `confirm_widening`).
+A new hidden link or collection member can start from a preset: `preset` in the creation request applies it in the
+same transaction, after creation, through the same code; the new audience has received nothing, so it needs no
+fingerprint or acknowledgement.
+
+**The label and the exceptions.** `applied_preset` and `applied_preset_at` (nullable columns on the public view,
+hidden links and collection members, migration 022) say which preset was last applied; they are a **display label**
+that projection, delivery, files, navigation and `access.receivers` never read, so a manual edit keeps the label and
+a rollback loses nothing but the label. The owner-only audience responses add `preset_exceptions`, computed on each
+read and never stored: `shown` (records the audience receives that the preset would not select) and `hidden`
+(records the preset would select that it does not receive, including records created since), `count` in total, for
+areas, visits, stays, routes and updates. A visitor response carries neither. Re-applying resets the exceptions
+(the review lists them first as `replaces_exceptions`). Each apply writes one audit event
+(`audience.preset_apply`, or `collection.member_preset_apply` for a member) with the preset and audience ids, the
+counts per kind of widened, narrowed, left-as-is, needs-decision and replaced records, the precision before and
+after, whether a widening was acknowledged and the scope fingerprints, never a title, label or note; the per-record
+visibility events are not written for the promotions. Rotating a link keeps its label; the Sharing check's audience
+entry carries `preset` and `preset_exceptions` (a count).
 
 ## Behaviour to rely on
 

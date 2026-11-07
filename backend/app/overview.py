@@ -26,6 +26,7 @@ from .precision import audience_precision, precision_summary
 from .projection import delivered as delivered_records
 from .projection import render_projection
 from .route_overlap import area_name, overlapping_routes, route_title
+from .sharing_presets import preset_exceptions
 
 # Words that mark a record as still being planned. Harmless for the owner, but
 # once shared they tell every visitor the trip is not settled.
@@ -124,8 +125,10 @@ def _audience(
     scope: dict,
     schema_version: str,
     today: date,
+    applied_preset: str | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     document = render_projection(trip, scope, schema_version)
+    exceptions = preset_exceptions(trip, scope, applied_preset)
     exclusions = scope_exclusions(trip, scope)
     delivered = {key: len(document[key]) for key in _DELIVERED}
     unmapped = {
@@ -153,6 +156,8 @@ def _audience(
         "delivered": delivered,
         "without_map_point": unmapped,
         "shows_cover": document["cover"] is not None,
+        "preset": applied_preset,
+        "preset_exceptions": exceptions.count if exceptions is not None else 0,
     }
     name = "The public page" if kind == "public" else f"Link {label!r}"
     warnings: list[dict[str, Any]] = []
@@ -367,6 +372,7 @@ def trip_overview(session: Session, trip: Trip, today: date | None = None) -> di
         scope=surface.scope if surface is not None else {},
         schema_version="travel/public-trip@1",
         today=today,
+        applied_preset=surface.applied_preset if surface is not None else None,
     )
     audiences.append(summary)
     warnings.extend(found)
@@ -386,6 +392,7 @@ def trip_overview(session: Session, trip: Trip, today: date | None = None) -> di
             scope=link.scope,
             schema_version="travel/unlisted-trip@1",
             today=today,
+            applied_preset=link.applied_preset,
         )
         audiences.append(summary)
         warnings.extend(found)

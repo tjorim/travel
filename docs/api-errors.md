@@ -38,7 +38,12 @@ when visits and stays follow the audience's date precision, with counts per kind
 member; the 422 `scope_exclusion_not_allowed` refuses `exclude` on the public view. A sharing
 preset review (`.../preset/review`, [#241](decisions/241-sharing-presets.md)) is a 200 even when the plan cannot
 be applied: `refusal.code` `preset_too_large` carries the counts and the limits, and `comparison` is then null.
-None reaches a visitor.
+Applying one (`.../preset`) answers the same plan with errors that store nothing and claim no revision: the 409
+`preset_preview_is_stale` carries a fresh `review`, the 409 `preset_too_large` the `items`, `exclude` and their
+`max_items` and `max_exclude`, and the 409 `preset_widening_needs_acknowledgement` the `audience`, the `counts` per kind
+and the `widened` records a live audience would newly receive (`confirm_widening` accepts them); the 422
+`preset_must_not_write_everyone` and the internal `preset_changed_another_audience` (an unhandled service error, like
+the review's) are guards that roll the apply back and are not expected. None reaches a visitor.
 Resource dependency conflicts include per-kind counts and their total `count`.
 Upload size failures include the numeric MB limit as `max_length`.
 

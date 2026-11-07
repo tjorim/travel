@@ -68,7 +68,9 @@ coordinates and notes), visits, stays (with booking details), routes (with
 geometry), travel updates (including `private_notes` and `share_id`), tasks,
 packing lists, and publication settings as owner data: the public page state,
 revision, slug and scope, and each share link's label, state, revision, scope
-and expiry. Media assets and derivatives and documents are **metadata only**,
+and expiry; the public page and each link also carry `applied_preset` and
+`applied_preset_at`, the sharing preset last applied (a display label only; null
+when none was). Media assets and derivatives and documents are **metadata only**,
 for live (not soft-deleted) rows: kind, capture time, raw EXIF metadata, review
 and processing state, caption, and for each file `sha256`, `byte_size`,
 `content_type` and `state`. Import records keep provider, provider item id and

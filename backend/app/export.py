@@ -99,10 +99,12 @@ PACKING_ITEM = (
     "cabin_only", "checked_only", "notes", "weight_g",
 )  # fmt: skip
 ALTERNATIVE_GROUP = ("id", "kind", "label", "created_at", "updated_at")
-PUBLIC_SURFACE = ("slug", "state", "revision", "scope", "created_at", "updated_at")
+PUBLIC_SURFACE = (
+    "slug", "state", "revision", "scope", "applied_preset", "applied_preset_at", "created_at", "updated_at",
+)  # fmt: skip
 SHARE_LINK = (
-    "id", "label", "series_id", "state", "revision", "scope", "expires_at", "created_at", "updated_at",
-    "activated_at", "revoked_at",
+    "id", "label", "series_id", "state", "revision", "scope", "applied_preset", "applied_preset_at", "expires_at",
+    "created_at", "updated_at", "activated_at", "revoked_at",
 )  # fmt: skip
 # Checksum metadata only; the bucket and object key never leave the server.
 FILE_METADATA = {"sha256": "sha256", "byte_size": "byte_size", "content_type": "content_type", "state": "state"}

@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, insert, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
@@ -77,7 +77,8 @@ def _seed(engine) -> dict[str, str]:
                 "check_out": date(2054, 4, 3),
             },
         )
-        session.add(PublicSurface(trip_id=trip.id, scope={"items": []}))
+        # Core inserts name only the columns given: the models also have columns that later revisions add.
+        session.execute(insert(PublicSurface).values(trip_id=trip.id, scope={"items": []}))
         session.commit()
         return {"trip": trip.id, "stay_year": stay_id, **{key: record.id for key, record in records.items()}}
 
@@ -104,8 +105,10 @@ def test_upgrade_keeps_every_explicit_value_and_the_downgrade_never_widens(datab
     # After the upgrade a record can follow the audience, and an audience can cap its dates.
     with Session(engine) as session:
         session.get(Visit, ids["visit_month"]).share_date_precision = None
-        session.add(
-            ShareLink(trip_id=ids["trip"], label="Family", series_id="", scope={"defaults": {"date_precision": "year"}})
+        session.execute(
+            insert(ShareLink).values(
+                trip_id=ids["trip"], label="Family", series_id="", scope={"defaults": {"date_precision": "year"}}
+            )
         )
         session.commit()
     assert _precision(engine, "visits", ids["visit_month"]) is None

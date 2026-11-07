@@ -1761,6 +1761,63 @@ def test_sharing_presets_are_reviewed_over_mcp_without_storing_anything(backend:
         assert len(list(session.scalars(select(AuditEvent)))) == audited
 
 
+def test_a_sharing_preset_is_applied_over_mcp_with_the_same_rules_as_the_application(backend: TravelMcpBackend) -> None:
+    trip_id = backend.create_trip(schemas.TripCreate(title="Presets"))["id"]
+    area = backend.save_area(trip_id, schemas.AreaInput(label="Taipei", latitude=25.03, longitude=121.56))
+    update = backend.create_travel_update(
+        trip_id,
+        schemas.TravelUpdateCreate(
+            occurred_at=datetime(2054, 4, 4, 10, tzinfo=UTC), title="Arrived", body="Safe words.", area_id=area["id"]
+        ),
+    )
+    link = backend.create_share_link(trip_id, schemas.ShareLinkCreate(label="Friends"), confirm=True)
+    backend.activate_share_link(trip_id, link["id"], schemas.ShareLinkActivateRequest(), confirm=True)
+    audience = f"link:{link['id']}"
+
+    # A write tool: it needs the owner's confirmation, and the manifest says so.
+    assert MCP_TOOL_CAPABILITIES["apply_sharing_preset"] == {"effect": "write", "requires_confirmation": True}
+    review = backend.preview_sharing_preset(trip_id, "story_only", audience=audience)
+    assert review["requires_acknowledgement"] is True
+    with pytest.raises(ValueError, match="confirm"):
+        backend.apply_sharing_preset(trip_id, "story_only", review["fingerprint"], audience=audience)
+    with TestingSessionLocal() as session:
+        assert session.get(TravelUpdate, update["id"]).visibility == Visibility.PRIVATE
+
+    # The active link would newly receive the update: the same refusal as the application API, with the review.
+    with pytest.raises(ValueError, match="preset_widening_needs_acknowledgement") as refused:
+        backend.apply_sharing_preset(trip_id, "story_only", review["fingerprint"], audience=audience, confirm=True)
+    assert json.loads(str(refused.value))["counts"] == {"travel_update": 1}
+    with pytest.raises(ValueError, match="preset_preview_is_stale") as stale:
+        backend.apply_sharing_preset(trip_id, "story_only", "0" * 16, audience=audience, confirm=True)
+    assert json.loads(str(stale.value))["review"]["fingerprint"] == review["fingerprint"]
+
+    result = backend.apply_sharing_preset(
+        trip_id, "story_only", review["fingerprint"], audience=audience, confirm=True, confirm_widening=True
+    )
+    assert result["applied"] is True and result["review"]["preset"] == "story_only"
+    # Custom for this link only (never everyone), labelled, and the link is shown without its capability token.
+    with TestingSessionLocal() as session:
+        assert session.get(TravelUpdate, update["id"]).visibility == Visibility.CUSTOM
+    assert result["audience"]["applied_preset"] == "story_only" and "token" not in result["audience"]
+    assert result["audience"]["preset_exceptions"]["count"] == 0
+    assert backend.get_share_link(trip_id, link["id"])["applied_preset"] == "story_only"
+    again = backend.preview_sharing_preset(trip_id, "story_only", audience=audience)
+    unchanged = backend.apply_sharing_preset(
+        trip_id, "story_only", again["fingerprint"], audience=audience, confirm=True
+    )
+    assert unchanged["applied"] is False
+    with TestingSessionLocal() as session:
+        (event,) = session.scalars(select(AuditEvent).where(AuditEvent.kind == AuditEventKind.AUDIENCE_PRESET_APPLY))
+        assert event.details["widening_acknowledged"] is True and "Arrived" not in json.dumps(event.details)
+
+    created = backend.create_share_link(
+        trip_id, schemas.ShareLinkCreate(label="Family", preset="story_only"), confirm=True
+    )
+    assert (
+        created["applied_preset"] == "story_only" and created["scope"]["items"] == result["audience"]["scope"]["items"]
+    )
+
+
 def test_link_exclusions_work_over_mcp_like_the_application(backend: TravelMcpBackend) -> None:
     trip_id = backend.create_trip(schemas.TripCreate(title="Exclusions"))["id"]
     area = backend.save_area(trip_id, schemas.AreaInput(label="Taipei", latitude=25.03, longitude=121.56))

@@ -20,40 +20,52 @@ does, so a preset writes nothing for them.
 Nothing here reads a preset back at delivery time: ``projection.delivered`` stays the one function that decides
 what an audience receives. ``review_preset`` applies the plan inside a nested transaction that is always rolled
 back, renders the "after" through ``delivered`` and returns the difference. It persists nothing, claims no
-revision and records no audit event. Applying a plan is a later step.
+revision and records no audit event.
+
+``apply_preset`` (step 2) writes the same plan in the caller's transaction, using only the writes that exist: the
+visibility of a promoted record, the audience's scope (validated by ``prepare_scope`` like a manual edit), its
+revision, and the display label ``applied_preset`` / ``applied_preset_at``. That label is never read back by
+delivery; only the owner's responses show it, with the exceptions computed by ``preset_exceptions``.
 """
 
 import hashlib
 import json
 from collections import Counter
-from collections.abc import Iterable
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
 from typing import Any, Literal
 
-from sqlalchemy import select
+from fastapi import status
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
-from .access import COLLECTIONS, sharing_blocker
-from .errors import ServiceError
+from .access import COLLECTIONS, set_visibility, sharing_blocker
+from .audit import record_audit_event, record_collection_event, scope_fingerprint
+from .errors import ApiException, ServiceError, service_exception
 from .exclusions import KIND_ORDER, closure, is_excludable, stored_exclusions
 from .models import (
+    AuditEventKind,
+    AuditTargetType,
     Collection,
     CollectionMember,
     DerivativePurpose,
     LinkState,
     PublicSurface,
     ShareLink,
+    SurfaceState,
     Trip,
     Visibility,
 )
 from .precision import audience_precision, coarser, effective_precision, is_finer, own_value
-from .projection import delivered
+from .projection import ScopeError, delivered, prepare_scope
 from .schemas import (
     MAX_SCOPE_EXCLUSIONS,
     MAX_SCOPE_ITEMS,
     PresetAudienceInfo,
     PresetChange,
     PresetComparison,
+    PresetExceptions,
     PresetLeftAsIs,
     PresetNeedsDecision,
     PresetPrecisionReview,
@@ -470,14 +482,18 @@ def _fingerprint(plan: PresetPlan, before: dict) -> str:
 
 
 def review_preset(session: Session, trip: Trip, audience: PresetAudience, preset_id: str) -> SharingPresetReview:
-    """Plan a preset for one audience and compare what it receives before and after. Writes nothing.
+    """Plan a preset for one audience and review it. Writes nothing; see ``build_review``."""
+    return build_review(session, trip, audience, plan_preset(trip, audience, preset_id))
+
+
+def build_review(session: Session, trip: Trip, audience: PresetAudience, plan: PresetPlan) -> SharingPresetReview:
+    """Compare what the audience receives before and after a plan. Writes nothing.
 
     The planned visibility changes are made inside a nested transaction that is always rolled back, and the "after"
     is rendered by ``projection.delivered`` from the planned scope, which is never stored. Only that one function says
     what an audience receives, so the review cannot disagree with delivery. No revision is claimed, no audit event is
     recorded, and no other audience is touched: that is checked while the plan is applied, and a plan that would
     change what another audience receives fails instead of being reviewed."""
-    plan = plan_preset(trip, audience, preset_id)
     index = _index(trip)
     ref_of = lambda ref: PresetRecordRef(kind=ref[0], id=ref[1], label=record_label(ref[0], index[ref]))  # noqa: E731
 
@@ -567,3 +583,240 @@ def _left_as_is(plan: PresetPlan, shown: dict[str, list[Any]], ref_of) -> list[P
                 reason, way_out = "outside_preset", "exclude"
             found.append(PresetLeftAsIs(reason=reason, way_out=way_out, **ref_of(ref).model_dump()))
     return found
+
+
+# --- the audiences a preset is applied to ----------------------------------------------------------------
+
+
+PRESET_WIDENING_CODE = "preset_widening_needs_acknowledgement"
+PRESET_STALE_CODE = "preset_preview_is_stale"
+PRESET_TOO_LARGE_CODE = "preset_too_large"
+# Records whose visibility a preset can change; it may only ever write ``custom`` (never ``everyone``).
+Holder = PublicSurface | ShareLink | CollectionMember
+
+
+def expired(expires_at: datetime | None) -> bool:
+    if expires_at is None:
+        return False
+    return (expires_at if expires_at.tzinfo is not None else expires_at.replace(tzinfo=UTC)) <= datetime.now(UTC)
+
+
+def audience_of(holder: Holder) -> PresetAudience:
+    """The audience a stored public view, link or collection member is, with its current scope and rules."""
+    if isinstance(holder, PublicSurface):
+        return PresetAudience(
+            id="public",
+            kind="public",
+            label=None,
+            scope=holder.scope,
+            live=holder.state == SurfaceState.PUBLISHED,
+            can_exclude=False,
+        )
+    if isinstance(holder, ShareLink):
+        return PresetAudience(
+            id=f"link:{holder.id}",
+            kind="link",
+            label=holder.label,
+            scope=holder.scope,
+            live=holder.state == LinkState.ACTIVE and not expired(holder.expires_at),
+            can_exclude=True,
+        )
+    collection = holder.collection
+    return PresetAudience(
+        id=f"collection:{holder.id}",
+        kind="collection_member",
+        label=collection.label,
+        scope=holder.scope,
+        live=collection.state == LinkState.ACTIVE and not expired(collection.expires_at),
+        can_exclude=True,
+    )
+
+
+def preset_exceptions(trip: Trip, scope: dict, preset_id: str | None) -> PresetExceptions | None:
+    """How the audience differs from what its last-applied preset would select today, or ``None`` without a label.
+
+    Only the kinds a preset decides about are compared (areas, visits, stays, routes, updates); a location or a loose
+    photo is the owner's own choice and never an exception. The result is computed, not stored, so a manual edit, a
+    record created later and a deleted record are all reflected. A label from a newer application that this one does
+    not know has no exceptions to compute."""
+    preset = PRESETS.get(preset_id) if preset_id else None
+    if preset is None:
+        return None
+    target, _ = compute_target(trip, preset)
+    received = _received(trip, scope)
+    index = _index(trip)
+    ref_of = lambda ref: PresetRecordRef(kind=ref[0], id=ref[1], label=record_label(ref[0], index[ref]))  # noqa: E731
+    shown = [(kind, i) for kind in KIND_ORDER if kind in MANAGED_KINDS for i in sorted(received[kind] - target[kind])]
+    hidden = [(kind, i) for kind in KIND_ORDER if kind in MANAGED_KINDS for i in sorted(target[kind] - received[kind])]
+    return PresetExceptions(
+        shown=[ref_of(ref) for ref in shown], hidden=[ref_of(ref) for ref in hidden], count=len(shown) + len(hidden)
+    )
+
+
+def exceptions_of(trip: Trip, holder: Holder) -> PresetExceptions | None:
+    """The exceptions of a stored audience for the owner's responses: ``None`` when it carries no preset label."""
+    if not holder.applied_preset:
+        return None
+    return preset_exceptions(trip, holder.scope, holder.applied_preset)
+
+
+# --- applying a preset ------------------------------------------------------------------------------------
+
+
+def _refuse(code: str, detail: dict[str, Any], session: Session) -> ApiException:
+    """A 409 that stores nothing: the caller's transaction (and the revision it claimed) is rolled back."""
+    session.rollback()
+    return ApiException(status_code=status.HTTP_409_CONFLICT, detail={"code": code, **detail}, code=code)
+
+
+def _never_everyone(plan: PresetPlan, index: dict[Ref, Any]) -> None:
+    """A preset only turns private records into custom ones and lists custom ones: it never writes ``everyone``."""
+    for change in plan.changes:
+        record = index.get((change.kind, change.id))
+        if record is None:
+            raise ServiceError("A sharing preset names a record that is not on the trip", code="preset_unknown_record")
+        if change.action == "promote" and record.visibility != Visibility.PRIVATE:
+            raise ServiceError("A sharing preset promotes only private records", code="preset_must_not_write_everyone")
+        if change.action in {"list", "unlist"} and record.visibility != Visibility.CUSTOM:
+            raise ServiceError("A sharing preset lists only custom records", code="preset_must_not_write_everyone")
+    for item in plan.scope_after.get("items", []):
+        record = index.get((item["kind"], item["id"]))
+        if record is not None and record.visibility == Visibility.EVERYONE:
+            raise ServiceError("A sharing preset never lists an everyone record", code="preset_must_not_write_everyone")
+
+
+def _written_everyone(session: Session) -> bool:
+    """Whether the session is about to write ``everyone`` onto any record."""
+    return any(
+        getattr(record, "visibility", None) == Visibility.EVERYONE
+        and "visibility" in inspect(record).attrs
+        and inspect(record).attrs.visibility.history.has_changes()
+        for record in session.dirty
+    )
+
+
+def _kind_counts(refs: Iterable[PresetRecordRef]) -> dict[str, int]:
+    return _counts([(ref.kind, ref.id) for ref in refs])
+
+
+def apply_preset(
+    session: Session,
+    trip: Trip,
+    subject: str,
+    holder: Holder,
+    preset_id: str,
+    *,
+    fingerprint: str | None,
+    confirm_widening: bool,
+    claim: Callable[[], None] | None,
+    new: bool = False,
+) -> tuple[SharingPresetReview, bool]:
+    """Write a reviewed preset for one audience in the caller's transaction; the caller commits.
+
+    ``claim`` advances the audience's revision atomically (``If-Match``, 412 when stale) and runs first, so the row is
+    locked while the plan is read and checked. Every refusal below rolls the transaction back, so a refused apply
+    changes nothing, not even the revision. In order: the review's ``fingerprint`` must still match the plan
+    (409 ``preset_preview_is_stale`` with a fresh review), a plan beyond the scope limits is refused
+    (409 ``preset_too_large``), and a live audience that would newly receive records needs ``confirm_widening``
+    (409 ``preset_widening_needs_acknowledgement``, the widening of decisions 27 and 36).
+
+    A ``new`` audience (a link or collection member created with a preset) has received nothing yet: it carries no
+    fingerprint, claims no revision and needs no acknowledgement.
+
+    The writes are the ones the owner has by hand: private records in the target become ``custom`` and are listed,
+    the scope is validated by ``prepare_scope`` like a manual edit, and the display label is set. The same plan on an
+    unchanged audience that already carries this label writes nothing. Returns the applied review and whether
+    anything was written."""
+    if claim is not None:
+        claim()
+    audience = audience_of(holder)
+    if new:
+        audience = replace(audience, live=False)
+    plan = plan_preset(trip, audience, preset_id)
+    review = build_review(session, trip, audience, plan)
+    if not new and review.fingerprint != fingerprint:
+        raise _refuse(PRESET_STALE_CODE, {"review": review.model_dump(mode="json")}, session)
+    if plan.refusal is not None:
+        raise _refuse(PRESET_TOO_LARGE_CODE, plan.refusal.model_dump(exclude={"code"}), session)
+    acknowledged = review.requires_acknowledgement and confirm_widening
+    if review.requires_acknowledgement and not confirm_widening:
+        assert review.comparison is not None  # a plan that widens has a comparison
+        raise _refuse(
+            PRESET_WIDENING_CODE,
+            {
+                "audience": review.audience.id,
+                "counts": review.comparison.added,
+                "widened": [ref.model_dump(mode="json") for ref in review.comparison.widened],
+            },
+            session,
+        )
+    if not new and not plan.changes and not review.precision.changed and holder.applied_preset == preset_id:
+        session.rollback()  # nothing to write: give the claimed revision back
+        return review, False
+
+    index = _index(trip)
+    others = _other_audiences(session, trip.id, audience)
+    others_before = {name: _received(trip, scope) for name, scope in others}
+    try:
+        _never_everyone(plan, index)
+        for ref in plan.promoted():
+            set_visibility(trip, ref[0], ref[1], Visibility.CUSTOM)
+        if _written_everyone(session):  # before the flush resets what the session knows it changed
+            session.rollback()
+            raise ServiceError("A sharing preset never writes everyone", code="preset_must_not_write_everyone")
+        session.flush()
+        scope = prepare_scope(trip, plan.scope_after, audience.scope, allow_exclusions=audience.can_exclude)
+    except (ScopeError, ServiceError) as error:
+        session.rollback()
+        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+    holder.scope = scope
+    holder.applied_preset = preset_id
+    holder.applied_preset_at = datetime.now(UTC)
+    session.flush()
+    if {name: _received(trip, scope) for name, scope in others} != others_before:
+        session.rollback()
+        raise ServiceError(
+            "A sharing preset must not change what another audience receives", code="preset_changed_another_audience"
+        )
+
+    comparison = review.comparison
+    assert comparison is not None
+    details: dict[str, Any] = {
+        "preset": preset_id,
+        "audience": audience.id,
+        "on_creation": new,
+        "live": audience.live,
+        "widening_acknowledged": acknowledged,
+        "changes": review.change_counts,
+        "widened": comparison.added,
+        "narrowed": comparison.removed,
+        "left_as_is": _kind_counts(review.left_as_is),
+        "needs_decision": _kind_counts(review.needs_decision),
+        "replaced_exceptions": _kind_counts(review.replaces_exceptions),
+        "precision": {"before": review.precision.before, "after": review.precision.after},
+        "scope_version_before": scope_fingerprint(audience.scope),
+        "scope_version_after": scope_fingerprint(scope),
+    }
+    if isinstance(holder, CollectionMember):
+        record_collection_event(
+            session,
+            owner_subject=subject,
+            actor_subject=subject,
+            collection_id=holder.collection_id,
+            trip_id=holder.trip_id,
+            kind="collection.member_preset_apply",
+            details={"member_id": holder.id, **details},
+        )
+    else:
+        record_audit_event(
+            session,
+            trip_id=trip.id,
+            actor_subject=subject,
+            kind=AuditEventKind.AUDIENCE_PRESET_APPLY,
+            target_type=AuditTargetType.PUBLIC_SURFACE
+            if isinstance(holder, PublicSurface)
+            else AuditTargetType.SHARE_LINK,
+            target_id=holder.trip_id if isinstance(holder, PublicSurface) else holder.id,
+            details=details,
+        )
+    return review, True
