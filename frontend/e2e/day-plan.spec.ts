@@ -145,6 +145,19 @@ const monthTrip = {
     starts_on: item.starts_on.slice(0, 7),
     ends_on: item.ends_on.slice(0, 7),
   })),
+  // Routes follow the audience's month setting too: the month only, and no departure times.
+  routes: dayTrip.routes.map(
+    ({
+      departs_at: _at,
+      arrives_at: _arrives,
+      departure_timezone: _dz,
+      arrival_timezone: _az,
+      ...item
+    }) =>
+      item.departs_on
+        ? { ...item, departs_on: item.departs_on.slice(0, 7), date_precision: "month" }
+        : item,
+  ),
 };
 
 async function open(
@@ -280,6 +293,11 @@ for (const locale of ["nl", "en"] as const) {
         await expect(page.locator("#visit-visit-harbour")).toContainText(
           locale === "en" ? "October 2054" : "oktober 2054",
         );
+        // A route shows the month it leaves, never a day, and no departure time.
+        await expect(page.locator("#route-route-sleeper")).toContainText(
+          locale === "en" ? "November 2054" : "november 2054",
+        );
+        await expect(page.locator("#route-route-sleeper")).not.toContainText(/\b20\b|22:30/);
         const html = await page.content();
         for (const value of PRIVATE) expect(html).not.toContain(value);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);

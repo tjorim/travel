@@ -385,6 +385,19 @@ def test_the_review_counts_dates_that_would_read_coarser(world: World) -> None:
     story = review(world, f"link:{link['id']}", "story_only").json()
     assert story["precision"]["reads_coarser"] == {"travel_update": 3}
 
+    # A dated route follows the audience too (#262): by day now, by month afterwards. An undated one reads no date.
+    for name in ("R1", "R2"):
+        kind, record_id = world.ids[name]
+        world.owner.patch(f"{world.base}/{kind}s/{record_id}", json={"departs_on": "2054-04-04"})
+    dated = review(world, f"link:{link['id']}", "story_and_route").json()
+    assert dated["precision"]["reads_coarser"] == {"route": 2, "travel_update": 3}
+    # With no cap a route reads by day as well, so the month preset narrows it there too.
+    open_link = world.link(defaults=None)
+    assert review(world, f"link:{open_link['id']}", "story_and_route").json()["precision"]["reads_coarser"] == {
+        "route": 2,
+        "travel_update": 3,
+    }
+
 
 def test_a_previewed_audience_with_no_cap_is_capped_at_month_afterwards(world: World) -> None:
     link = world.link(defaults=None)

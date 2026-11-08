@@ -605,7 +605,7 @@ export type OverviewAudience = {
   dates_precision: DatePrecision | null;
   /** The audience's own cap on every date; null when it sets none. */
   date_precision: DatePrecision | null;
-  record_precision: Partial<Record<"visits" | "stays", OverviewRecordPrecision>>;
+  record_precision: Partial<Record<"visits" | "stays" | "routes", OverviewRecordPrecision>>;
   scope_items: number;
   /** Hidden links: how many records set to Everyone it leaves out, and what else that hides, by kind. */
   excluded?: number;
@@ -630,7 +630,8 @@ export type OverviewWarning = {
     | "location_repeats_area"
     | "visit_restates_route"
     | "future_transport_times"
-    | "future_day_dates";
+    | "future_day_dates"
+    | "route_dates_follow_audience";
   severity: "warning" | "info";
   /** English, for API and MCP clients; the PWA words each code itself. */
   message: string;

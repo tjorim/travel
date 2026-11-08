@@ -105,7 +105,7 @@ it("lists a route once, on the day it departs, even when it arrives the next day
 });
 
 it("shows no timeline when the only dated records are routes", () => {
-  // A route's day is shared as entered whatever the audience's precision, so it alone never makes a day audience.
+  // A route alone never makes a day audience: the audience's day comes from a visit or stay.
   const records = { ...none, routes: [route("r", { departs_on: "2054-11-02" })] };
   const plan = planByDay(records);
   expect(plan.days).toEqual([]);
@@ -155,6 +155,46 @@ it("keeps month- and year-precision records, undated visits and dayless routes o
   expect(plan.other.stays).toEqual([monthStay]);
   expect(plan.other.routes).toEqual([dayless]);
   expect(plan.daysNotShared).toBe(false);
+});
+
+it("places a route on a day only when it receives a day, and keeps a month or year route in the other plans", () => {
+  const month = route("month", { departs_on: "2054-11", date_precision: "month" });
+  const year = route("year", { departs_on: "2054", date_precision: "year" });
+  // A route that says it is coarser never reads a day from a string that happens to look like one.
+  const lying = route("lying", { departs_on: "2054-11-05", date_precision: "month" });
+  const day = route("day", { departs_on: "2054-11-05", date_precision: "day" });
+  const legacy = route("legacy", { departs_on: "2054-11-05" });
+  const plan = planByDay({
+    visits: [visit("v", "2054-11-05")],
+    stays: [],
+    routes: [month, year, lying, day, legacy],
+  });
+  expect(dates(plan.days)).toEqual(["2054-11-05"]);
+  expect(plan.days[0].entries.map((entry) => entry.key)).toEqual([
+    "route-day",
+    "route-legacy",
+    "visit-v",
+  ]);
+  expect(plan.other.routes).toEqual([month, year, lying]);
+  expect(planByDay({ ...none, routes: [month, year] }).other.routes).toEqual([month, year]);
+});
+
+it("never reads a day from a month route's departure instant", () => {
+  const plan = planByDay({
+    visits: [visit("v", "2054-11-02")],
+    stays: [],
+    routes: [
+      route("m", {
+        departs_on: "2054-11",
+        date_precision: "month",
+        departs_at: "2054-11-02T09:00:00Z",
+        departure_timezone: "Asia/Taipei",
+      }),
+    ],
+  });
+  expect(dates(plan.days)).toEqual(["2054-11-02"]);
+  expect(plan.days[0].entries.map((entry) => entry.type)).toEqual(["visit"]);
+  expect(plan.other.routes.map((item) => item.id)).toEqual(["m"]);
 });
 
 it("never places a record whose precision is coarser than a day, whatever its string says", () => {

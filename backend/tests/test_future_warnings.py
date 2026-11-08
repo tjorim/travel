@@ -103,7 +103,7 @@ def test_a_trip_without_a_start_is_not_started_only_when_a_route_departs_after_t
     assert _codes(_overview(trip["id"], BEFORE_START)) == {}
     record = _route(owner, trip["id"], "2054-04-02", carrier="EVA Air")
     share(owner, trip["id"], "route", record["id"], "everyone")
-    assert _codes(_overview(trip["id"], BEFORE_START), None) == {FUTURE_TRANSPORT: 1}
+    assert _codes(_overview(trip["id"], BEFORE_START), None) == {FUTURE_TRANSPORT: 1, FUTURE_DAY_DATES: 1}
     # Once that departure has passed, nothing is future any more.
     assert _codes(_overview(trip["id"], date(2054, 4, 3)), None) == {}
 
@@ -119,8 +119,8 @@ def test_a_timed_route_departing_today_or_later_warns_and_one_that_already_left_
     later = _route(owner, trip["id"], "2054-04-02")
     for record in (left, today_route, later):
         share(owner, trip["id"], "route", record["id"], "everyone")
-    # Routes that left before today are not future; the other two are: a count of two.
-    assert _codes(_overview(trip["id"], BEFORE_START), None) == {FUTURE_TRANSPORT: 2}
+    # Routes that left before today are not future; the other two are: a count of two, and their days too.
+    assert _codes(_overview(trip["id"], BEFORE_START), None) == {FUTURE_TRANSPORT: 2, FUTURE_DAY_DATES: 2}
 
 
 def test_a_route_only_the_owner_keeps_private_is_not_warned() -> None:
@@ -135,14 +135,18 @@ def test_a_route_with_a_carrier_but_no_time_counts_as_an_exact_schedule() -> Non
     trip = _trip(owner)
     record = _route(owner, trip["id"], "2054-04-02", timed=False, service_reference="EX101")
     share(owner, trip["id"], "route", record["id"], "everyone")
-    assert _codes(_overview(trip["id"], BEFORE_START), None) == {FUTURE_TRANSPORT: 1}
+    assert _codes(_overview(trip["id"], BEFORE_START), None) == {FUTURE_TRANSPORT: 1, FUTURE_DAY_DATES: 1}
 
 
-def test_a_route_with_neither_times_nor_a_carrier_is_not_counted_as_transport() -> None:
+def test_a_route_with_neither_times_nor_a_carrier_is_not_transport_but_its_day_is_a_day_date() -> None:
     owner = client_for("owner-1")
     trip = _trip(owner)
     record = _route(owner, trip["id"], "2054-04-02", timed=False)
     share(owner, trip["id"], "route", record["id"], "everyone")
+    # Its day is shown by day like a visit's (#262), so it counts there, and only there.
+    assert _codes(_overview(trip["id"], BEFORE_START), None) == {FUTURE_DAY_DATES: 1}
+    # A month cap shows it by month: nothing is shown by day any more.
+    _public_scope(owner, trip["id"], defaults={"date_precision": "month"})
     assert _codes(_overview(trip["id"], BEFORE_START), None) == {}
 
 
@@ -254,13 +258,13 @@ def test_a_draft_and_an_active_link_each_get_their_own_warning() -> None:
     overview = owner.get(f"/api/trips/{trip['id']}/overview").json()
     draft = next(entry for entry in overview["audiences"] if entry["id"] == link["id"])
     assert draft["state"] == "draft" and draft["live"] is False
-    assert _codes(overview, link["id"]) == {FUTURE_TRANSPORT: 1}
+    assert _codes(overview, link["id"]) == {FUTURE_TRANSPORT: 1, FUTURE_DAY_DATES: 1}
 
     activate(owner, trip["id"], link["id"])
     overview = owner.get(f"/api/trips/{trip['id']}/overview").json()
     active = next(entry for entry in overview["audiences"] if entry["id"] == link["id"])
     assert active["state"] == "active" and active["live"] is True
-    assert _codes(overview, link["id"]) == {FUTURE_TRANSPORT: 1}
+    assert _codes(overview, link["id"]) == {FUTURE_TRANSPORT: 1, FUTURE_DAY_DATES: 1}
     warning = next(w for w in overview["warnings"] if w["audience_id"] == link["id"])
     assert warning["audience"] == "Family" and warning["severity"] == "warning"
 
@@ -275,7 +279,8 @@ def test_the_warning_payload_carries_counts_and_no_owner_text() -> None:
 
     overview = owner.get(f"/api/trips/{trip['id']}/overview").json()
     future = [w for w in overview["warnings"] if w["code"] in (FUTURE_TRANSPORT, FUTURE_DAY_DATES)]
-    assert {w["code"]: w["count"] for w in future} == {FUTURE_TRANSPORT: 1, FUTURE_DAY_DATES: 1}
+    # The route's day and the visit's day each count as one dated record.
+    assert {w["code"]: w["count"] for w in future} == {FUTURE_TRANSPORT: 1, FUTURE_DAY_DATES: 2}
     for warning in future:
         assert warning["text"] is None and warning["kind"] is None and warning["id"] is None
     serialised = str(future)
@@ -297,7 +302,7 @@ def test_the_preview_review_counts_the_candidate_scope_not_the_saved_one() -> No
     share(owner, trip["id"], "route", route["id"], "custom")
     preview = owner.post(f"/api/trips/{trip['id']}/share-links/{link['id']}/future-disclosure", json=candidate)
     assert preview.status_code == 200, preview.text
-    assert preview.json() == {"transport": 1, "day_dates": 0}
+    assert preview.json() == {"transport": 1, "day_dates": 1}
     # Still nothing saved: the overview of the saved link is unchanged.
     assert _codes(owner.get(f"/api/trips/{trip['id']}/overview").json(), link["id"]) == {}
 
@@ -307,14 +312,25 @@ def test_the_public_preview_review_counts_the_candidate_and_is_zero_once_started
     trip = _trip(owner)
     route = _route(owner, trip["id"], "2054-04-02")
     share(owner, trip["id"], "route", route["id"], "everyone")
-    response = owner.post(f"/api/trips/{trip['id']}/public-projection/future-disclosure", json={"items": []})
+    # No cap: the route keeps its day and its times. A candidate without a setting would start at month.
+    response = owner.post(
+        f"/api/trips/{trip['id']}/public-projection/future-disclosure", json={"items": [], "defaults": None}
+    )
     assert response.status_code == 200, response.text
-    assert response.json() == {"transport": 1, "day_dates": 0}
+    assert response.json() == {"transport": 1, "day_dates": 1}
+    month = owner.post(
+        f"/api/trips/{trip['id']}/public-projection/future-disclosure",
+        json={"items": [], "defaults": {"date_precision": "month"}},
+    )
+    # By month the route shows no day and no time, so the candidate discloses nothing of its schedule.
+    assert month.json() == {"transport": 0, "day_dates": 0}
 
     started = _trip(owner, starts_on="2020-01-01", ends_on="2099-12-31")
     started_route = _route(owner, started["id"], "2054-04-02")
     share(owner, started["id"], "route", started_route["id"], "everyone")
-    response = owner.post(f"/api/trips/{started['id']}/public-projection/future-disclosure", json={"items": []})
+    response = owner.post(
+        f"/api/trips/{started['id']}/public-projection/future-disclosure", json={"items": [], "defaults": None}
+    )
     assert response.json() == {"transport": 0, "day_dates": 0}
 
 

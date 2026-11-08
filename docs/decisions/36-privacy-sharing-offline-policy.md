@@ -194,7 +194,7 @@ happen to have similar audiences.
 | Routes | Exact locations at either end, schedule, carrier/service reference, booking reference, travel class, notes, linked documents and the drawn line. | Not included. | Not included. | Mode, status, the two areas, the drawn line, the schedule and time zones, carrier and service reference. A location appears on the map only when that location is itself shared, which suits public infrastructure such as airports and stations. Booking reference, class, notes and documents never. Without a drawn line, a straight line joins the two area points, or the two shared locations. |
 | Documents | Owner-wide library or trip-specific file, preview, filename and metadata. | Never included. | Never included. | Never shared, including links and metadata. |
 | Media | Original file, import provenance, EXIF/XMP/IPTC, face/person tags and exact capture data. | Not included. | Not included. | An explicitly selected derivative with all metadata stripped and owner-approved visible content, caption and alt text. |
-| Routes | An approximate line the owner drew, with its travel mode. The application takes no raw location data: it has no track upload, timestamps, points, speed or elevation. | Not included. | Not included. | The line, its mode and its date at the chosen precision, when the owner shares it. |
+| Routes | An approximate line the owner drew, with its travel mode. The application takes no raw location data: it has no track upload, timestamps, points, speed or elevation. | Not included. | Not included. | The line, its mode and its date at the chosen precision (the audience's date setting, since #262), when the owner shares it. |
 | Private journal | The private notes of a reisupdate and all its metadata. | Never included. | Never included. | Never. The shared text of a reisupdate is a separate field written for visitors. |
 | Navigation and external-map links | Exact destination, route, provider URL and map viewport. | Not included. | Not included. | A shared place offers directions: to a shared location's point, or a city/region link for an area. Never an address. |
 
@@ -511,8 +511,36 @@ Safety rules this adds to the policy:
   receives, under the audience's own date cap and each record's own value. It never reads
   private records. Collection members are not reviewed by the overview.
 - The warning carries counts only (`count`), never a title, label or owner text.
-- Route departure days are not limited by any audience's date setting, so a route with only a
-  day and no time or carrier is not counted (its day is shown in full). Tracked in #262.
+- Route departure days follow the audience's date setting since #262 (see the next section), so the
+  day-dates count includes a route shown by day, exactly like a visit or stay. A route shown only by
+  month or year still counts as transport (the time or carrier warning) while any part of that
+  month or year is ahead.
+
+## Routes follow the audience's date setting (#262)
+
+Amended 2026-11-08, issue #262 (the owner chose option (a) on 2026-11-08). The route row of the
+table above has always said a route's date is shown "at the chosen precision", but until now a route
+was delivered with its departure day in full whatever the audience's *Dates shown to this audience*
+setting said. It now follows it:
+
+- A route has no date setting of its own. Its `departs_on` is delivered at the audience's cap
+  (`YYYY-MM-DD`, `YYYY-MM` or `YYYY`) with a `date_precision` beside it. An audience that sets no cap
+  keeps the full day, so a scope stored before date settings existed, and any audience without a cap,
+  delivers the same day it always did. (A visit or stay with no cap reads by month; a route does not,
+  so the rollout narrows only audiences that chose a month or year cap.)
+- A departure or arrival time is an exact instant and would give the day away, so
+  `departs_at`, `arrives_at` and the two time zones are delivered only to an audience that reads days.
+  Carrier and service reference are unchanged.
+- The visitor plan places a route on a day only when it receives a day. A route shown by month or year
+  stays under *Other plans* with its month or year.
+- Order is unchanged and follows the existing rule for visits and stays: the document keeps the stored
+  order (day, then time, undated last) and carries no position, rank or sort key.
+- **Rollout.** This changes what existing audiences receive, so it is called out before it matters:
+  the Sharing check names every audience with a month or year cap that receives dated routes
+  (`route_dates_follow_audience`), the audience editor says that routes follow the date setting, and the
+  changelog marks it as a visible behaviour change. Nothing is changed in storage.
+- The Sharing check's future-day warning (#231) counts route days like visit and stay days, and its
+  suggestion (set *Dates shown to this audience* to month) is what the route then shows.
 
 ## Sharing presets are templates over the allowlists (#241)
 

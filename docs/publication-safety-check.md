@@ -74,9 +74,10 @@ collection member, in the audience editor under *Delen* ("Sharing").
       cover or map points. Before the trip starts they warn about future
       routes with an exact time or carrier and about dates shown by day: set
       those routes to *Privé* and the dates to month until you leave. A route's
-      departure day is shown in full whatever the date setting and is counted
-      only with a time or a carrier ([#262](https://github.com/tjorim/travel/issues/262)),
-      so read such routes in the preview.
+      departure day follows the audience's date setting like every other date
+      (by month it shows the month and no departure times), and its day counts
+      in the dates-by-day warning, so the suggested month setting is what the
+      route then shows.
 - [ ] **Open the rendered preview and read every item as a stranger.** The
       shared words are yours and no rule can read them: titles, summaries, stage
       summaries, the text written for visitors in a *reisupdate*, public

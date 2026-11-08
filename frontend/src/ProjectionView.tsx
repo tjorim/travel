@@ -313,8 +313,8 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
   const arrival = transportPlace(item.arrival);
   const departsAt = transportTime(item, "departure");
   const arrivesAt = transportTime(item, "arrival");
-  // A route with a day but no times yet.
-  const departsOn = storyDate({ ...item, date_precision: "day" }, "departs_on");
+  // A route with a day (or only its month or year, as far as the audience may read) but no times.
+  const departsOn = storyDate(item, "departs_on");
   const mode = transportKinds()[text(item, "mode") ?? ""];
   const carrier = [text(item, "carrier"), text(item, "service_reference")]
     .filter(Boolean)
@@ -1341,7 +1341,7 @@ function UpdateContextBlock({
           [mode, status].filter(Boolean).join(" · ") || null,
           [transportTime(item, "departure"), transportTime(item, "arrival")].some(Boolean)
             ? `${transportTime(item, "departure") ?? m.visitor_departure_time_unknown()} → ${transportTime(item, "arrival") ?? m.visitor_arrival_time_unknown()}`
-            : storyDate({ ...item, date_precision: "day" }, "departs_on"),
+            : storyDate(item, "departs_on"),
         ],
       };
     }),
@@ -1575,8 +1575,7 @@ export function ProjectionView({
           to: line.to ?? transportPlace(route.arrival) ?? undefined,
           dates:
             [
-              transportTime(route, "departure") ??
-                storyDate({ ...route, date_precision: "day" }, "departs_on"),
+              transportTime(route, "departure") ?? storyDate(route, "departs_on"),
               transportTime(route, "arrival"),
             ]
               .filter(Boolean)

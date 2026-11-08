@@ -472,6 +472,34 @@ it("shows a shared route's day while it has no times", () => {
   expect(container.textContent).not.toContain("Vertrektijd onbekend");
 });
 
+it.each([
+  ["month", "2054-12", "december 2054", "5 december 2054"],
+  ["year", "2054", "2054", "december 2054"],
+])(
+  "shows a route shared only by %s as that %s, not as a full day",
+  (precisionValue, departsOn, shown, notShown) => {
+    const data = projection();
+    data.routes = [
+      {
+        id: "north",
+        mode: "train",
+        label: "Naar het noorden",
+        departure: { label: "Kaohsiung" },
+        arrival: { label: "Taipei" },
+        departs_on: departsOn,
+        date_precision: precisionValue,
+      },
+    ];
+    const { container } = render(
+      <ProjectionView projection={data} audience="public" identifier="safe-slug" />,
+    );
+    expect(container.textContent).toContain(shown);
+    if (precisionValue === "month") expect(container.textContent).not.toContain(notShown);
+    expect(container.textContent).not.toContain("Vertrektijd onbekend");
+    expect(container.querySelector("[data-day-entry='route']")).toBeNull();
+  },
+);
+
 it("does not invent values for omitted fields and keeps audience links separate", () => {
   const data = projection("travel/unlisted-trip@1");
   data.summary = null;

@@ -44,7 +44,11 @@ export function precisionLines(audience: OverviewAudience): string[] {
       ? m.precision_check_audience({ precision: PRECISION_NAMES[audience.date_precision]() })
       : m.precision_check_audience_unset(),
   ];
-  const kinds = [["visits", m.owner_visits] as const, ["stays", m.owner_stays] as const];
+  const kinds = [
+    ["visits", m.owner_visits] as const,
+    ["stays", m.owner_stays] as const,
+    ["routes", m.owner_routes] as const,
+  ];
   for (const [kind, label] of kinds) {
     const summary: OverviewRecordPrecision | undefined = audience.record_precision?.[kind];
     const parts = (["day", "month", "year"] as const)
@@ -164,6 +168,15 @@ function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): st
     case "future_transport_times":
     case "future_day_dates":
       return futureWarningText(warning.code, name, warning.count ?? 0);
+    case "route_dates_follow_audience":
+      return (
+        warning.text === "year"
+          ? m.assets_route_dates_follow_year
+          : m.assets_route_dates_follow_month
+      )({
+        p0: name,
+        p1: m.assets_count_routes({ count: warning.count ?? 0 }),
+      });
     case "undated_visit_duplicates_dated":
       return m.assets_visit_has_no_date_but_its_area_already_has_a_dated_visit_give_it_a_date_({
         p0: warning.text ?? "",

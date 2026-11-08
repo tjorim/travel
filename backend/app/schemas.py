@@ -1685,7 +1685,7 @@ class PresetPrecisionReview(BaseModel):
     changed: bool
     reads_coarser: dict[str, int] = Field(
         description="Records the audience receives both before and after whose date would read coarser, "
-        "by `visit`, `stay` and `travel_update`. A preset never makes a date finer."
+        "by `visit`, `stay`, `route` and `travel_update`. A preset never makes a date finer."
     )
 
 
