@@ -486,7 +486,8 @@ def summary_numbers(document: dict, selected: list[str]) -> dict[str, int]:
     """
     areas = [item for item in document["places"] if item["id"].startswith("area-")]
     days = {
-        item["story_date"] for item in document["updates"]
+        item["story_date"]
+        for item in document["updates"]
         if item.get("date_precision") == "day" and item.get("story_date")
     }
     intervals = sorted(

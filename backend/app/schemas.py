@@ -1323,7 +1323,9 @@ class OverviewAudience(BaseModel):
     dates_precision: DatePrecision | None
     # The audience's own cap on every date (null: it sets none, so each record's own value applies).
     date_precision: DatePrecision | None = None
-    numbers: dict[str, int] = Field(default_factory=dict, description="Selected figures derived only from the audience projection.")
+    numbers: dict[str, int] = Field(
+        default_factory=dict, description="Selected figures derived only from the audience projection."
+    )
     # For visits and stays it delivers: how many read at each precision, and how many are held coarser than the
     # audience alone allows by their own setting. Keys are "visits" and "stays".
     record_precision: dict[str, OverviewRecordPrecision] = Field(default_factory=dict)
@@ -1429,7 +1431,8 @@ class ShareScopeInput(InputModel):
     # Absent keeps what the audience has (a new audience reads by month); null removes every audience-level setting.
     defaults: ShareScopeDefaultsInput | None = None
     numbers: list[Literal["days", "areas", "countries", "nights"]] | None = Field(
-        default=None, max_length=4,
+        default=None,
+        max_length=4,
         description="Opt-in visitor figures from the finished projection only: days with day-precise shared updates, "
         "explicit shared areas, countries in those areas and the union of day-precise shared stay nights. "
         "Never trip totals. Omitted preserves the stored choice; null or [] clears it. Presets preserve it.",
@@ -1778,7 +1781,8 @@ class SharingPresetReview(BaseModel):
 
 class ProjectionDocument(BaseModel):
     numbers: dict[Literal["days", "areas", "countries", "nights"], int] | None = Field(
-        default=None, exclude_if=lambda value: value is None,
+        default=None,
+        exclude_if=lambda value: value is None,
         description="Only owner-selected figures derived from this exact document; absent for legacy scopes.",
     )
     schema_version: str
