@@ -18,6 +18,7 @@ const audience = {
     visits: { by_precision: { month: 12 }, limited_by_record: 0, default_applied: 0 },
     stays: { by_precision: { day: 2, month: 3 }, limited_by_record: 3, default_applied: 0 },
   },
+  numbers: { days: 0, areas: 2 },
   scope_items: 0,
   delivered: { visits: 12, places: 0, stays: 5, routes: 0, updates: 0, media: 0 },
   without_map_point: { visits: 0, stays: 0, updates: 0 },
@@ -100,6 +101,14 @@ for (const locale of ["nl", "en"] as const) {
       const control = scope.getByRole("combobox", {
         name: message(locale, "precision_audience_label"),
       });
+      await expect(
+        check.getByRole("region", { name: message(locale, "numbers_heading") }),
+      ).toBeVisible();
+      const days = scope.getByRole("checkbox", { name: message(locale, "numbers_days") });
+      await days.check();
+      await expect(days).toBeChecked();
+      await days.uncheck();
+      await expect(days).not.toBeChecked();
       await expect(control).toBeVisible();
       await expect(control).toHaveValue(message(locale, "precision_audience_month"));
       await expect(scope.getByText(message(locale, "precision_audience_help"))).toBeVisible();

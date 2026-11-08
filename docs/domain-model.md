@@ -202,6 +202,33 @@ them, and the cover only if the public audience receives it, as its scoped publi
 file URL (see [decision 103](decisions/103-live-browser-route-contract.md#link-previews)).
 A hidden link's preview is always generic.
 
+## Audience-selected visitor numbers (#246)
+
+The scope's optional `numbers` list allows only `days`, `areas`, `countries`,
+`nights`. No selection is the default, including existing scopes. Omitted on
+update preserves the stored selection (older clients); `null` or `[]` clears
+it. Presets preserve this independent presentation choice and still cap dates.
+The server adds `numbers` to the visitor document only when selected, with
+only the selected keys and integer values (including zero). No migration.
+
+This is an additional **derived allowlist**, computed after all per-kind
+renderers, from the finished audience document alone:
+
+| Figure | Allowed projected input | Meaning |
+| --- | --- | --- |
+| `days` | `updates[].story_date`, `date_precision` | Distinct dates with shared updates at day precision; not elapsed trip days |
+| `areas` | `places[].id` with the `area-` prefix | Count of explicit shared area records; excludes locations and embedded place mentions |
+| `countries` | Those same areas' `country_code` | Distinct nonempty country codes; no geocoding, inferred borders or private areas |
+| `nights` | `stays[].starts_on`, `ends_on`, `date_precision` | Union of day-precise half-open check-in/check-out date intervals; overlapping nights counted once |
+
+Month/year dates contribute no days or nights. Times, routes, distances,
+trip duration, hidden operational stays and private/unshared records are never
+inputs. A zero means no qualifying projected dates/areas, not a claim about
+the whole trip. Labels and explanatory copy say these are partial figures.
+The Sharing check uses the same document's numbers; all standalone shells,
+collection member views and owner previews share the same strip renderer.
+The owner chooses figures with existing Base UI Field/Checkbox adapters.
+
 ## Hidden links start from the public view
 
 Every audience starts from the **baseline**: the records set to `everyone`. A

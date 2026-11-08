@@ -162,6 +162,7 @@ def _audience(
         "shares_title": document["title"] is not None,
         "shares_summary": document["summary"] is not None,
         "dates_precision": document["dates"]["date_precision"] if document["dates"] else None,
+        "numbers": document.get("numbers", {}),
         "date_precision": audience_precision(scope),
         "record_precision": {
             _PRECISION_KEYS[kind]: value

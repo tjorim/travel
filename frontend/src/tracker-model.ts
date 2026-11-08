@@ -445,12 +445,16 @@ export type ShareScopeItem = { kind: ShareScopeKind; id: string };
 
 export type DatePrecision = "day" | "month" | "year";
 
+export type VisitorNumber = "days" | "areas" | "countries" | "nights";
+export type VisitorNumbers = Partial<Record<VisitorNumber, number>>;
+
 /**
  * What one audience receives of the trip. `defaults.date_precision` caps every date it shows, on top of each
  * record's own setting (the coarser wins). Absent keeps the audience's stored setting; `date_precision: null`
  * removes the cap, so each record's own value applies.
  */
 export type ShareScope = {
+  numbers?: VisitorNumber[] | null;
   schema_version: "travel/share-scope@1";
   trip: { title: boolean; summary: boolean; dates: DatePrecision | null };
   defaults?: { date_precision: DatePrecision | null } | null;
@@ -607,6 +611,7 @@ export type OverviewAudience = {
   dates_precision: DatePrecision | null;
   /** The audience's own cap on every date; null when it sets none. */
   date_precision: DatePrecision | null;
+  numbers?: VisitorNumbers;
   record_precision: Partial<Record<"visits" | "stays" | "routes", OverviewRecordPrecision>>;
   scope_items: number;
   /** Hidden links: how many records set to Everyone it leaves out, and what else that hides, by kind. */

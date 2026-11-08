@@ -1,3 +1,4 @@
+import { VisitorNumbers } from "../../VisitorNumbers";
 import { Collapsible } from "@/ui/collapsible";
 
 import { useLocale } from "../../locale";
@@ -230,6 +231,7 @@ export function SharingReview({ overview }: { overview: TripOverview | undefined
                   m.assets_count_media({ count: delivered.media }),
                 ].join(", "),
               })}
+              <VisitorNumbers numbers={audience.numbers} />
               <ul className="m-0 mt-1 grid list-disc gap-0.5 pl-5 text-sm">
                 {[
                   ...presetLines(audience),

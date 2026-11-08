@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { message } from "./messages";
 import { choosePreferences, mockApi } from "./mock-api";
 
 // Synthetic content only. The authored bodies hold `##` headings, which the server renders as h5.
@@ -28,6 +29,7 @@ const trip = (schema: string) => ({
   summary_html: "<h5>Overview heading</h5><p>Three weeks.</p>",
   summary_text: "Three weeks.",
   dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
+  numbers: { days: 1, areas: 2, countries: 1, nights: 0 },
   cover: null,
   visits: [{ id: "visit-1", title: "Harbour", place: area("Keelung", 25.13, 121.74) }],
   places: [],
@@ -107,6 +109,10 @@ async function open(
   );
   await choosePreferences(page, locale, theme);
   await page.goto(path);
+  await expect(
+    page.getByRole("region", { name: message(locale, "numbers_heading") }),
+  ).toBeVisible();
+  await expect(page.getByText(message(locale, "numbers_nights"), { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }
 

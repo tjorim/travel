@@ -1,3 +1,5 @@
+import { numberLabels } from "../../VisitorNumbers";
+import type { VisitorNumber } from "../../tracker-model";
 import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
 import { useState } from "react";
@@ -342,6 +344,30 @@ export function ScopeEditor({
           </FieldLabel>
         </Field>
       </div>
+      <FieldSet className="grid gap-2">
+        <FieldLegend>{m.numbers_heading()}</FieldLegend>
+        <p className="m-0 text-sm">{m.numbers_help()}</p>
+        <div className="flex flex-wrap gap-3">
+          {(Object.keys(numberLabels) as VisitorNumber[]).map((key) => (
+            <Field key={key} className="contents">
+              <FieldLabel className="scope-choice">
+                <TravelCheckbox
+                  checked={(scope.numbers ?? []).includes(key)}
+                  onCheckedChange={(checked) =>
+                    setScope({
+                      ...scope,
+                      numbers: checked
+                        ? [...(scope.numbers ?? []), key]
+                        : (scope.numbers ?? []).filter((value) => value !== key),
+                    })
+                  }
+                />
+                {numberLabels[key]()}
+              </FieldLabel>
+            </Field>
+          ))}
+        </div>
+      </FieldSet>
       <AudiencePrecision scope={scope} setScope={setScope} />
       {allowExclusions ? (
         <>

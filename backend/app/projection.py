@@ -440,6 +440,8 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
             # A shared place is also a destination someone may navigate to.
             if kind in {"area", "location"} and _navigation_target(item) is not None:
                 projection["navigation"].append({"id": identifier})
+    if scope.get("numbers"):
+        projection["numbers"] = summary_numbers(projection, scope["numbers"])
     return projection
 
 
@@ -472,3 +474,36 @@ def scoped_file(trip: Trip, scope: dict, identifier: str) -> tuple[str, Any] | N
             if local_id(kind, item) + "-poster" == identifier and item.poster_object is not None:
                 return kind, item.poster_object
     return None
+
+
+def summary_numbers(document: dict, selected: list[str]) -> dict[str, int]:
+    """Derive figures ONLY from the finished audience document, never ORM records.
+
+    Days are distinct full dates of updates, not elapsed trip duration. Areas
+    are explicit area records (not locations or embedded place mentions).
+    Nights are the union of half-open day-precise shared stay intervals, so
+    overlapping stays cannot double count a night. Coarse dates contribute none.
+    """
+    areas = [item for item in document["places"] if item["id"].startswith("area-")]
+    days = {
+        item["story_date"]
+        for item in document["updates"]
+        if item.get("date_precision") == "day" and item.get("story_date")
+    }
+    intervals = sorted(
+        (date.fromisoformat(item["starts_on"]), date.fromisoformat(item["ends_on"]))
+        for item in document["stays"]
+        if item.get("date_precision") == "day" and item.get("starts_on") and item.get("ends_on")
+    )
+    nights = 0
+    covered_until = date.min
+    for start, end in intervals:
+        nights += max(0, (end - max(start, covered_until)).days)
+        covered_until = max(covered_until, end)
+    values = {
+        "days": len(days),
+        "areas": len(areas),
+        "countries": len({item["country_code"] for item in areas if item.get("country_code")}),
+        "nights": nights,
+    }
+    return {key: value for key, value in values.items() if key in selected}

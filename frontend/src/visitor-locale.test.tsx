@@ -17,6 +17,7 @@ const token = "fictional-capability-for-locale-tests";
 function projection(): Projection {
   return {
     schema_version: "travel/unlisted-trip@1",
+    numbers: { days: 1, areas: 2, countries: 1, nights: 0 },
     title: "Authored reis",
     summary: "**Authored** tekst",
     summary_html: "<p><strong>Authored</strong> tekst</p>",
@@ -231,29 +232,36 @@ it("sets a long authored trip title in a smaller, looser heading than a short on
   }
 });
 
-it("uses the same translated projection in owner previews without visitor resource requests", async () => {
-  act(() => changeLocale("en"));
-  const data = projection();
-  data.media = [];
-  data.places = [];
-  data.routes = [];
-  const fetcher = vi.fn();
-  serveApi(fetcher);
-  render(
-    <RenderedPreview
-      projection={data}
-      audience="share"
-      tripId="private-trip"
-      linkId="private-link"
-      scope={previewScope}
-      session={{ accessToken: "owner", expiresAt: Date.now() + 60000 }}
-    />,
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Choose an update" }));
-  expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
-  expect(screen.getByText("April 2054 – May 2054")).toBeTruthy();
-  expect(fetcher).not.toHaveBeenCalled();
-});
+it.each(["nl", "en"] as const)(
+  "uses translated numbers in owner previews without visitor resource requests (%s)",
+  async (locale) => {
+    act(() => changeLocale(locale));
+    const data = projection();
+    data.media = [];
+    data.places = [];
+    data.routes = [];
+    const fetcher = vi.fn();
+    serveApi(fetcher);
+    render(
+      <RenderedPreview
+        projection={data}
+        audience="share"
+        tripId="private-trip"
+        linkId="private-link"
+        scope={previewScope}
+        session={{ accessToken: "owner", expiresAt: Date.now() + 60000 }}
+      />,
+    );
+    expect(screen.getByRole("region", { name: m.numbers_heading() })).toBeTruthy();
+    expect(screen.getByText(m.numbers_nights())).toBeTruthy();
+    if (locale === "en") {
+      fireEvent.click(screen.getByRole("button", { name: "Choose an update" }));
+      expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
+      expect(screen.getByText("April 2054 – May 2054")).toBeTruthy();
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  },
+);
 
 it.each(["/", "/trips/"])(
   "translates public cards at %s without changing slug paths",

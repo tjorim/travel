@@ -1614,3 +1614,27 @@ def test_grouped_area_and_day_context_leaves_private_values_out_of_public_and_un
         assert document["routes"][0]["departs_on"] == "2054-04-04"
         for value in (*private, "CANARY-UPDATE-NOTE", "property_name", "booking_reference", "contact_details"):
             assert value not in response.text
+
+
+def test_visitor_numbers_use_same_document_for_checks_previews_public_and_hidden_links() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    root = f"/api/trips/{trip['id']}"
+    shown = add_update(owner, trip["id"], "Synthetic update")
+    selected = {**scope(item("travel_update", shown["id"])), "numbers": ["days", "countries"]}
+    saved = owner.put(f"{root}/public-projection", json=selected)
+    assert saved.status_code == 200, saved.text
+    preview = owner.post(f"{root}/public-projection/preview").json()
+    assert preview["numbers"] == {"days": 1, "countries": 0}
+    assert owner.get(f"{root}/overview").json()["audiences"][0]["numbers"] == preview["numbers"]
+    slug = owner.post(f"{root}/public-projection/publish").json()["slug"]
+    link = owner.post(f"{root}/share-links", json={"label": "Synthetic", "scope": selected}).json()
+    token = activate(owner, trip["id"], link["id"])["token"]
+    visitor = TestClient(app)
+    for path in [f"/api/public/trips/{slug}", f"/api/shared/{token}"]:
+        assert visitor.get(path).json()["numbers"] == preview["numbers"]
+    # Old clients preserve the selection, explicit clearing removes the strip.
+    assert owner.put(f"{root}/public-projection", json=scope(item("travel_update", shown["id"]))).status_code == 200
+    assert visitor.get(f"/api/public/trips/{slug}").json()["numbers"] == preview["numbers"]
+    assert owner.put(f"{root}/public-projection", json={**selected, "numbers": []}).status_code == 200
+    assert "numbers" not in visitor.get(f"/api/public/trips/{slug}").json()
