@@ -2640,5 +2640,11 @@
   "owner_suggest_flight_line": "Vluchtlijn voorstellen",
   "owner_flight_arc_local": "Berekend op dit apparaat met de twee gebiedspunten. Geen routedienst ontvangt ze. Vervangt de conceptlijn; bekijk en bewerk die voordat je opslaat.",
   "owner_flight_arc_review": "De vluchtlijn staat klaar om te bekijken. Die wordt pas bewaard als je de route opslaat.",
-  "owner_flight_arc_unavailable": "Er kon geen vluchtlijn worden voorgesteld. Kies twee gebieden met verschillende, niet tegenoverliggende kaartpunten. Je lijn is ongewijzigd."
+  "owner_flight_arc_unavailable": "Er kon geen vluchtlijn worden voorgesteld. Kies twee gebieden met verschillende, niet tegenoverliggende kaartpunten. Je lijn is ongewijzigd.",
+  "numbers_heading": "Cijfers voor bezoekers",
+  "numbers_days": "Dagen met gedeelde reisupdates",
+  "numbers_areas": "Gedeelde gebieden",
+  "numbers_countries": "Landen in gedeelde gebieden",
+  "numbers_nights": "Nachten in gedeelde verblijven",
+  "numbers_help": "Alleen gedeelde gegevens voor dit publiek tellen mee. Dagen tellen unieke reisupdatedatums; overlappende verblijven tellen één keer. Maand- en jaardatums voegen geen dagen of nachten toe. Dit zijn geen reistotalen."
 }

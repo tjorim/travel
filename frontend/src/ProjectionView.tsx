@@ -1,3 +1,5 @@
+import { VisitorNumbers } from "./VisitorNumbers";
+import type { VisitorNumbers as Numbers } from "./tracker-model";
 import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
@@ -30,6 +32,7 @@ import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tr
 export type ProjectionItem = { id: string; [field: string]: unknown };
 
 export type Projection = {
+  numbers?: Numbers;
   schema_version: string;
   title: string | null;
   /** Markdown source; `summary_html` is its sanitized rendering and `summary_text` a one-line preview. */
@@ -1771,14 +1774,17 @@ export function ProjectionView({
         looseNavigation,
       ].filter((items) => items.length > 0).length;
   const header = (
-    <TripHeader
-      title={projection.title ?? m.shared_trip()}
-      eyebrow={previewResources ? m.assets_travel_preview() : "Travel"}
-      level={previewResources ? "h2" : "h1"}
-      dates={dates}
-      destinations={tripDestinations(projection)}
-      cover={cover}
-    />
+    <>
+      <TripHeader
+        title={projection.title ?? m.shared_trip()}
+        eyebrow={previewResources ? m.assets_travel_preview() : "Travel"}
+        level={previewResources ? "h2" : "h1"}
+        dates={dates}
+        destinations={tripDestinations(projection)}
+        cover={cover}
+      />
+      <VisitorNumbers numbers={projection.numbers} />
+    </>
   );
   if (empty && !projection.summary && !dates)
     return (

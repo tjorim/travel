@@ -84,6 +84,7 @@ export function cloneScope(scope: Partial<ShareScope> | null | undefined): Share
       summary: scope?.trip?.summary ?? true,
       dates: scope?.trip?.dates ?? null,
     },
+    ...(scope?.numbers !== undefined ? { numbers: [...(scope.numbers ?? [])] } : {}),
     // Absent stays absent: the server then keeps the audience's stored setting.
     ...(scope?.defaults !== undefined
       ? { defaults: scope.defaults && { date_precision: scope.defaults.date_precision ?? null } }

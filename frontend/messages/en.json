@@ -2640,5 +2640,11 @@
   "owner_suggest_flight_line": "Suggest a flight line",
   "owner_flight_arc_local": "Calculated on this device from the two area points. No routing service receives them. Replaces the draft line; review and edit it before saving.",
   "owner_flight_arc_review": "The flight line is ready to review. It is only stored when you save the route.",
-  "owner_flight_arc_unavailable": "No flight line could be suggested. Choose two areas with different, non-opposite map points. Your line is unchanged."
+  "owner_flight_arc_unavailable": "No flight line could be suggested. Choose two areas with different, non-opposite map points. Your line is unchanged.",
+  "numbers_heading": "Visitor numbers",
+  "numbers_days": "Days with shared updates",
+  "numbers_areas": "Shared areas",
+  "numbers_countries": "Countries in shared areas",
+  "numbers_nights": "Nights in shared stays",
+  "numbers_help": "Only this audience’s shared records count. Days count distinct update dates; nights count overlapping stays once. Month and year dates add no days or nights. These are not trip totals."
 }

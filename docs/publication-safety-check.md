@@ -71,7 +71,9 @@ collection member, in the audience editor under *Delen* ("Sharing").
       date precision per audience (and what a record held to a coarser value
       does), the records a link leaves out and what that also hides (an area,
       location or update hides what uses it), and whether the audience gets a
-      cover or map points. Before the trip starts they warn about future
+      cover or map points. Check the selected visitor numbers too: these count
+      only shared areas, update days and day-precise stay nights, never trip
+      totals; month/year dates contribute no days or nights. Before the trip starts they warn about future
       routes with an exact time or carrier and about dates shown by day: set
       those routes to *Privé* and the dates to month until you leave. A route's
       departure day follows the audience's date setting like every other date
