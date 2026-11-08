@@ -2636,5 +2636,9 @@
   "preset_review_conflict": "Dit publiek is ondertussen elders gewijzigd. Laad het opnieuw om de huidige keuzes te zien en bekijk de voorinstelling dan opnieuw.",
   "preset_review_reload": "Publiek opnieuw laden",
   "preset_review_too_large": "Deze voorinstelling is te groot voor één publiek: ze zou {items} onderdelen vermelden en {exclude} weglaten, terwijl de grenzen {max_items} en {max_exclude} zijn. Er is niets veranderd. Kies een kleinere voorinstelling, of laat enkele onderdelen privé.",
-  "preset_review_not_applicable": "Deze voorinstelling kan niet worden toegepast."
+  "preset_review_not_applicable": "Deze voorinstelling kan niet worden toegepast.",
+  "owner_suggest_flight_line": "Vluchtlijn voorstellen",
+  "owner_flight_arc_local": "Berekend op dit apparaat met de twee gebiedspunten. Geen routedienst ontvangt ze. Vervangt de conceptlijn; bekijk en bewerk die voordat je opslaat.",
+  "owner_flight_arc_review": "De vluchtlijn staat klaar om te bekijken. Die wordt pas bewaard als je de route opslaat.",
+  "owner_flight_arc_unavailable": "Er kon geen vluchtlijn worden voorgesteld. Kies twee gebieden met verschillende, niet tegenoverliggende kaartpunten. Je lijn is ongewijzigd."
 }

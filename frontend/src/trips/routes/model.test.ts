@@ -4,6 +4,7 @@ import type { Area, Location } from "../../tracker-model";
 import { emptyPlace } from "../PlacePicker";
 import {
   areaPoint,
+  resolvedAreaPoint,
   blank,
   dayShift,
   editableCoordinates,
@@ -68,4 +69,32 @@ it("suggests the shared point of a public location, else the area's", () => {
     { label: "Taipei", coordinates: [121.5, 25] },
   ]);
   expect(areaPoint(place("area:none"), areas, locations)).toEqual([]);
+});
+
+it("resolves flight ends to area points even for public locations, never location coordinates", () => {
+  const areas = [{ id: "a", label: "Area", longitude: 4.12, latitude: 51.23 }] as Area[];
+  for (const visibility of ["everyone", "private", "custom"] as const) {
+    const locations = [
+      { id: "l", area_id: "a", visibility, longitude: 99, latitude: 88 },
+    ] as Location[];
+    expect(resolvedAreaPoint({ ...emptyPlace(), choice: "location:l" }, areas, locations)).toEqual([
+      { label: "Area", coordinates: [4.12, 51.23] },
+    ]);
+    expect(resolvedAreaPoint({ ...emptyPlace(), choice: "location:l" }, [], locations)).toEqual([]);
+  }
+});
+
+it("rounds new area candidates as area creation does and ignores stale candidates for saved choices", () => {
+  const value = {
+    ...emptyPlace(),
+    choice: "new",
+    newAreaId: "__new__",
+    newAreaCandidate: {
+      label: "New area",
+      longitude: 4.123456,
+      latitude: 51.234567,
+    },
+  } as Parameters<typeof resolvedAreaPoint>[0];
+  expect(resolvedAreaPoint(value, [], [])[0].coordinates).toEqual([4.12, 51.23]);
+  expect(resolvedAreaPoint({ ...value, choice: "area:missing" }, [], [])).toEqual([]);
 });

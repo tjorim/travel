@@ -1,3 +1,4 @@
+import { routeLineGeometry } from "./route-line-geometry";
 import { mapErrorReporter } from "./map-errors";
 import { mapMessages, useMapMessages } from "./map-messages";
 import { textNotice, useFeedback } from "./query/feedback";
@@ -9,7 +10,7 @@ import { Button } from "@/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/ui/toggle-group";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
-import type { FeatureCollection, LineString, Point } from "geojson";
+import type { FeatureCollection, LineString, MultiLineString, Point } from "geojson";
 import type { FilterSpecification, GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -394,12 +395,12 @@ export function TripMap({
         created.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
         created.on("load", () => {
           if (!instance || disposed) return;
-          const routeData: FeatureCollection<LineString> = {
+          const routeData: FeatureCollection<LineString | MultiLineString> = {
             type: "FeatureCollection",
             features: lines.map((line) => ({
               type: "Feature",
               properties: { id: line.id, transport: line.transport ?? "other" },
-              geometry: { type: "LineString", coordinates: line.coordinates },
+              geometry: routeLineGeometry(line.coordinates),
             })),
           };
           const pointData: FeatureCollection<Point> = {

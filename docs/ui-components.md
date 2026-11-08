@@ -646,3 +646,12 @@ editor's scope through the controls that already exist (tick, untick, exclusion)
 and no custom control. Visible button text starts with the accessible name's words (WCAG 2.5.3),
 which the Dutch copy had to be changed for ("Verberg", "Toon").
 
+
+## Local flight line suggestion (#242)
+
+Checked the `base-nova/button.json` registry and the owned Base UI Button
+adapter (`src/ui/button.ts`): the existing command button already fits.
+Reuses the existing shadcn/Base UI Button adapter and the existing route-line
+editor. This is a button command with explanatory text and a status region;
+no new primitive or custom control is needed. Only the draft changes, so the
+record dialog's existing Save and discard guard remain the review boundary.
