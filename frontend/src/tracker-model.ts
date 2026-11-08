@@ -197,6 +197,8 @@ export type Stay = {
   contact_details_html?: string | null;
   notes: string | null;
   notes_html?: string | null;
+  /** Ids of the trip documents attached to this stay, such as its booking confirmation. Owner-only. */
+  document_asset_ids: string[];
   /** The chosen accommodation; `null` while the stay is filed under its area alone. */
   location: Location | null;
   /** Every stay has an area: its own while undecided, else the area of its location. */

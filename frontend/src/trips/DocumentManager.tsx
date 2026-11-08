@@ -55,10 +55,11 @@ export function DocumentManager({
       path: `${tripPath(trip.id, "documents")}/${document.id}`,
       method: "DELETE",
     }),
-    // A route drops the link to a deleted document on the server.
+    // Routes and stays drop links to a deleted document on the server.
     invalidate: (subject) => [
       ownerKeys.tripResource(subject, trip.id, "documents"),
       ownerKeys.tripResource(subject, trip.id, "routes"),
+      ownerKeys.tripResource(subject, trip.id, "stays"),
     ],
   });
   const uploadRecord = useRecordForm<UploadValues>({

@@ -30,6 +30,8 @@ export type StayValues = {
   bookingReference: string;
   contactDetails: string;
   notes: string;
+  /** The trip documents attached to the stay (owner-only). */
+  documentAssetIds: string[];
   /** Empty follows each audience's own date precision. */
   shareDatePrecision: DatePrecision | "";
 };
@@ -52,6 +54,7 @@ export const blankStay = (trip: Trip): StayValues => {
     bookingReference: "",
     contactDetails: "",
     notes: "",
+    documentAssetIds: [],
     shareDatePrecision: "",
   };
 };
@@ -105,6 +108,7 @@ export const fromStay = (stay: Stay): StayValues => ({
   bookingReference: stay.booking_reference ?? "",
   contactDetails: stay.contact_details ?? "",
   notes: stay.notes ?? "",
+  documentAssetIds: [...stay.document_asset_ids],
   shareDatePrecision: stay.share_date_precision ?? "",
 });
 
@@ -119,6 +123,7 @@ export const stayFields = {
   booking_reference: "bookingReference",
   contact_details: "contactDetails",
   notes: "notes",
+  document_asset_ids: "documentAssetIds",
   share_date_precision: "shareDatePrecision",
 };
 export const PLACE_FIELDS = [

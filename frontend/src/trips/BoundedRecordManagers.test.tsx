@@ -10,7 +10,7 @@ import {
   selectedOption,
   testToken,
 } from "../query/test-utils";
-import type { Area, Location, Stay, Trip } from "../tracker-model";
+import type { Area, DocumentAsset, Location, Stay, Trip } from "../tracker-model";
 import { AreaManager } from "./AreaManager";
 import { StayManager } from "./StayManager";
 
@@ -66,7 +66,9 @@ const stay = (id: string, name: string): Stay => ({
   area: area,
   visibility: "private",
   share_date_precision: "month",
+  document_asset_ids: [],
 });
+const ticket = { id: "d1", title: "Hotelbevestiging" } as DocumentAsset;
 
 let api: FakeApi;
 beforeEach(() => {
@@ -91,6 +93,7 @@ const confirmDelete = () =>
 
 it("opens an area in detail before its editor, prefilled", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/locations", [])
     .collection("/api/trips/trip/stays", [], createdStay)
@@ -116,6 +119,7 @@ it("opens an area in detail before its editor, prefilled", async () => {
 
 it("lists what belongs to an area in its detail, so areas need no separate overview", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/locations", [{ ...savedLocation, label: "Vliegveld" }])
     .collection("/api/trips/trip/stays", [], createdStay)
@@ -136,6 +140,7 @@ it("lists what belongs to an area in its detail, so areas need no separate overv
 
 it("deletes an unused area", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/locations", [])
     .collection("/api/trips/trip/stays", [], createdStay)
@@ -161,6 +166,7 @@ it("deletes an unused area", async () => {
 
 it("shows an edited area at once and adds a new one to the list", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/locations", [])
     .collection("/api/trips/trip/stays", [], createdStay)
@@ -196,6 +202,7 @@ it("shows an edited area at once and adds a new one to the list", async () => {
 
 it("asks for both area coordinates or neither", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [])
     .collection("/api/trips/trip/locations", [])
     .collection("/api/trips/trip/stays", [], createdStay)
@@ -219,6 +226,7 @@ it("asks for both area coordinates or neither", async () => {
 
 it("turns a place lookup into an editable, rounded area", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [])
     .collection("/api/trips/trip/locations", [])
     .collection("/api/trips/trip/stays", [], createdStay)
@@ -266,6 +274,7 @@ it("turns a place lookup into an editable, rounded area", async () => {
 
 it("keeps an exact looked-up stay place private until the stay is saved", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -313,6 +322,7 @@ it("keeps an exact looked-up stay place private until the stay is saved", async 
 
 it("reuses a saved location for a new stay instead of copying its address", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", [savedLocation]);
@@ -336,6 +346,7 @@ it("reuses a saved location for a new stay instead of copying its address", asyn
 
 it("keeps a stay's saved location when a hotel detail is corrected", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [
       { ...stay("s1", "Airport hotel"), location: savedLocation },
@@ -356,6 +367,7 @@ it("keeps a stay's saved location when a hotel detail is corrected", async () =>
 
 it("opens a stay in private detail before editing, prefilled", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
     .collection("/api/trips/trip/locations", []);
@@ -377,6 +389,7 @@ it("opens a stay in private detail before editing, prefilled", async () => {
 
 it("shows an edited stay and removes a deleted one without a reload", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel"), stay("s2", "Hostel")])
     .collection("/api/trips/trip/locations", []);
@@ -407,6 +420,7 @@ it("lists a stored group of ideas as alternatives, never groups ideas by itself,
   });
   const ideas = [idea("i1", "Hotel A"), idea("i2", "Hotel B")];
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [...ideas, stay("s1", "Hotel C")])
     .collection("/api/trips/trip/locations", [])
@@ -443,6 +457,7 @@ it("lists a stored group of ideas as alternatives, never groups ideas by itself,
 it("offers to cancel the rejected ideas once a stay for the same nights is chosen", async () => {
   const idea = (id: string, name: string): Stay => ({ ...stay(id, name), status: "idea" });
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [
       idea("i1", "Hotel A"),
@@ -465,6 +480,7 @@ it("offers to cancel the rejected ideas once a stay for the same nights is chose
 
 it("creates a stay idea without warning about overlapping stays", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -488,6 +504,7 @@ it("creates a stay idea without warning about overlapping stays", async () => {
 
 it("rewrites a stay's place only when a place field changed", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
     .collection("/api/trips/trip/locations", []);
@@ -505,6 +522,7 @@ it("rewrites a stay's place only when a place field changed", async () => {
 
 it("keeps check-out after check-in and moves it along with the first night", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -528,6 +546,7 @@ it("keeps check-out after check-in and moves it along with the first night", asy
 
 it("sets who sees a stay from its own detail, with the same control as everywhere", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
     .collection("/api/trips/trip/locations", []);
@@ -545,6 +564,7 @@ it("sets who sees a stay from its own detail, with the same control as everywher
 
 it("lets the owner choose how precisely visitors see a stay's nights", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -565,6 +585,7 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
 
 it("lets a stay follow the audience's date precision, sending null", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -584,6 +605,7 @@ it("lets a stay follow the audience's date precision, sending null", async () =>
 
 it("refuses a stay with neither an area nor an accommodation, then files it under its area alone", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -604,6 +626,7 @@ it("refuses a stay with neither an area nor an accommodation, then files it unde
 
 it("accepts a typed address without choosing an area, deriving the area from its city", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -624,6 +647,7 @@ it("accepts a typed address without choosing an area, deriving the area from its
 
 it("chooses the accommodation later and can go back to not having one", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [{ ...stay("s1", "Hotel"), property_name: null }])
     .collection("/api/trips/trip/locations", [savedLocation]);
@@ -650,6 +674,7 @@ it("chooses the accommodation later and can go back to not having one", async ()
 
 it("adds an exact location to an area-only stay by searching for its property name", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel Idea")])
     .collection("/api/trips/trip/locations", []);
@@ -687,6 +712,7 @@ it("adds an exact location to an area-only stay by searching for its property na
 
 it("returns a stay with an accommodation to its area alone", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [
       { ...stay("s1", "Airport hotel"), location: savedLocation },
@@ -706,6 +732,7 @@ it("returns a stay with an accommodation to its area alone", async () => {
 
 it("warns, without blocking, when a stay's nights overlap another stay", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
     .collection("/api/trips/trip/locations", []);
@@ -720,6 +747,7 @@ it("warns, without blocking, when a stay's nights overlap another stay", async (
 
 it("names the location a stay is already linked to when editing it", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/stays", [{ ...stay("s1", "Hotel"), location: savedLocation }])
     .collection("/api/trips/trip/locations", []);
@@ -731,6 +759,7 @@ it("names the location a stay is already linked to when editing it", async () =>
 
 it("reports a refused area delete inside the dialog, where the owner is looking", async () => {
   api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
     .collection("/api/trips/trip/areas", [area])
     .collection("/api/trips/trip/locations", [])
     .collection("/api/trips/trip/stays", [], createdStay)
@@ -758,4 +787,66 @@ it("reports a refused area delete inside the dialog, where the owner is looking"
   expect(reason.getAttribute("role")).toBe("alert");
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   expect((await screen.findByRole("dialog")).contains(reason)).toBe(true);
+});
+
+it("links a hotel confirmation to a stay, shows it in the detail and detaches it again", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], {
+      update: (row, body) => ({ ...row, ...body }),
+    })
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
+  expect(screen.queryByText("Gekoppelde documenten")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  // Nothing is linked yet: the picker is the same list of checkboxes a route has.
+  const confirmation = await screen.findByRole("checkbox", { name: "Hotelbevestiging" });
+  expect(confirmation.getAttribute("aria-checked")).toBe("false");
+  fireEvent.click(confirmation);
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf opslaan" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("PATCH /api/trips/trip/stays/s1")).toMatchObject({
+    document_asset_ids: ["d1"],
+  });
+  // The place is not rewritten by an attachment alone.
+  expect(api.lastBody("PATCH /api/trips/trip/stays/s1")).not.toHaveProperty("location");
+
+  fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
+  expect(await screen.findByText("Gekoppelde documenten")).toBeTruthy();
+  expect(screen.getByText("Hotelbevestiging")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Hotelbevestiging" }));
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf opslaan" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.lastBody("PATCH /api/trips/trip/stays/s1")).toMatchObject({ document_asset_ids: [] });
+});
+
+it("sends the documents chosen for a new stay", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/documents", [ticket])
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuw verblijf" }));
+  await chooseArea("Taipei");
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Hotelbevestiging" }));
+  fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
+  await waitFor(() => expect(api.count("POST /api/trips/trip/stays")).toBe(1));
+  expect(api.lastBody("POST /api/trips/trip/stays")).toMatchObject({ document_asset_ids: ["d1"] });
+});
+
+it("offers no document picker for a stay when the trip has no document", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/documents", [])
+    .collection("/api/trips/trip/areas", [area])
+    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection("/api/trips/trip/locations", []);
+  renderWithOwner(<StayManager trip={trip} areas={[area]} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Hotel/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  await screen.findByRole("heading", { name: "Verblijf bewerken" });
+  expect(screen.queryByText("Gekoppelde documenten")).toBeNull();
 });

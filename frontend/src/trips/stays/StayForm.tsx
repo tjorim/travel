@@ -1,5 +1,6 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
 import { DateField, TimeField } from "../../forms/DateTimeFields";
+import { DocumentLinksField } from "../../forms/DocumentLinksField";
 import { Button } from "@/ui/button";
 import { RecordForm, requiredText, SelectField, TextField } from "../../forms/fields";
 import { MarkdownField } from "../../forms/MarkdownField";
@@ -11,6 +12,7 @@ import {
   addDays,
   areaName,
   daysBetween,
+  type DocumentAsset,
   type PlaceSearchResult,
   type Stay,
 } from "../../tracker-model";
@@ -33,6 +35,7 @@ export function StayForm({
   record,
   editingId,
   stays,
+  documents,
   currentPlace,
   areaRequired,
 }: {
@@ -40,6 +43,8 @@ export function StayForm({
   record: ReturnType<typeof useRecordForm<StayValues>>;
   editingId: string | null | undefined;
   stays: Stay[];
+  /** The trip's documents, to attach a booking confirmation to the stay. */
+  documents: DocumentAsset[];
   /** The linked location's one-line name while editing, else empty. */
   currentPlace: string;
   /** The area is required until an accommodation is chosen. */
@@ -307,6 +312,15 @@ export function StayForm({
       <record.form.Field name="notes">
         {(field) => (
           <MarkdownField field={field} label={m.owner_notes()} optional maxLength={4000} rows={3} />
+        )}
+      </record.form.Field>
+      <record.form.Field name="documentAssetIds">
+        {(field) => (
+          <DocumentLinksField
+            documents={documents}
+            value={field.state.value}
+            onChange={field.handleChange}
+          />
         )}
       </record.form.Field>
     </RecordForm>

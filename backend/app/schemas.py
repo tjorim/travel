@@ -694,6 +694,20 @@ STAY_STATUS = (
 )
 
 
+STAY_DOCUMENTS = (
+    "Ids of this trip's documents to attach, such as the booking confirmation (at most 12, each once). "
+    "Owner-only: a document is never delivered to a visitor, whatever the stay's visibility. "
+    "On an update, omit to keep the attachments; send the full list to replace them, [] to detach all."
+)
+STAY_DOCUMENTS_READ = "Ids of the documents attached to this stay. Owner-only; never delivered to a visitor."
+
+
+def require_unique_document_ids(values: list[str]) -> list[str]:
+    if len(values) != len(set(values)):
+        raise PydanticCustomError("a_document_can_only_be_attached_once", "A document can only be attached once")
+    return values
+
+
 class StayCreate(InputModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
     morning, so a stay covers the nights ``check_in_date`` up to, but not
@@ -715,11 +729,17 @@ class StayCreate(InputModel):
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000, description=CONTACT)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
+    document_asset_ids: list[Identifier] = Field(default_factory=list, max_length=12, description=STAY_DOCUMENTS)
     share_date_precision: DatePrecision | None = Field(default=None, description=PRECISION_OWN)
 
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
     _booked = _legacy_booked
+
+    @field_validator("document_asset_ids")
+    @classmethod
+    def require_unique_documents(cls, values: list[str]) -> list[str]:
+        return require_unique_document_ids(values)
 
     @model_validator(mode="after")
     def says_where(self):
@@ -737,7 +757,7 @@ class StayUpdate(InputModel):
     area, and must agree with ``area_id`` when both are given; setting
     ``location`` to null keeps the area but forgets the accommodation."""
 
-    non_nullable_fields = frozenset(["check_in_date", "check_out_date", "status"])
+    non_nullable_fields = frozenset(["check_in_date", "check_out_date", "status", "document_asset_ids"])
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
@@ -751,6 +771,7 @@ class StayUpdate(InputModel):
     booking_reference: str | None = Field(default=None, max_length=255)
     contact_details: str | None = Field(default=None, max_length=2000, description=CONTACT)
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
+    document_asset_ids: list[Identifier] | None = Field(default=None, max_length=12, description=STAY_DOCUMENTS)
     share_date_precision: DatePrecision | None = Field(
         default=None, description=PRECISION_OWN + " Send null to follow the audience; omit to keep the value."
     )
@@ -758,6 +779,11 @@ class StayUpdate(InputModel):
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
     _booked = _legacy_booked
+
+    @field_validator("document_asset_ids")
+    @classmethod
+    def require_unique_documents(cls, values: list[str] | None) -> list[str] | None:
+        return None if values is None else require_unique_document_ids(values)
 
 
 class StayResponse(BaseModel):
@@ -772,6 +798,7 @@ class StayResponse(BaseModel):
     booking_reference: str | None
     contact_details: str | None
     notes: str | None
+    document_asset_ids: list[str] = Field(description=STAY_DOCUMENTS_READ)
     location: LocationResponse | None = Field(
         description="The chosen accommodation; null while the stay is filed under its area alone."
     )
@@ -1181,9 +1208,7 @@ class RouteCreate(InputModel):
     @field_validator("document_asset_ids")
     @classmethod
     def require_unique_documents(cls, values: list[str]) -> list[str]:
-        if len(values) != len(set(values)):
-            raise PydanticCustomError("a_document_can_only_be_attached_once", "A document can only be attached once")
-        return values
+        return require_unique_document_ids(values)
 
 
 class RouteUpdate(InputModel):
@@ -1215,9 +1240,7 @@ class RouteUpdate(InputModel):
     @field_validator("document_asset_ids")
     @classmethod
     def require_unique_documents(cls, values: list[str] | None) -> list[str] | None:
-        if values is not None and len(values) != len(set(values)):
-            raise PydanticCustomError("a_document_can_only_be_attached_once", "A document can only be attached once")
-        return values
+        return None if values is None else require_unique_document_ids(values)
 
 
 class RouteResponse(BaseModel):

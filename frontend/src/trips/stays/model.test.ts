@@ -25,6 +25,7 @@ const stay = (id: string, fields: Partial<Stay> = {}) =>
     location: null,
     area: { id: "area-1", label: "Taipei" },
     share_date_precision: "month",
+    document_asset_ids: [],
     ...fields,
   }) as Stay;
 
@@ -48,6 +49,16 @@ it("round-trips a stay into editor values and notices an edited place field", ()
   expect(placeChanged(values, { ...values })).toBe(false);
   expect(placeChanged({ ...values, locality: "Taipei" }, values)).toBe(true);
   expect(placeChanged({ ...values, notes: "x" }, values)).toBe(false);
+});
+
+it("reads the attached documents into editor values without sharing the stay's list", () => {
+  const attached = stay("a", { document_asset_ids: ["d1", "d2"] });
+  const values = fromStay(attached);
+  expect(values.documentAssetIds).toEqual(["d1", "d2"]);
+  expect(values.documentAssetIds).not.toBe(attached.document_asset_ids);
+  expect(blankStay({ starts_on: "2054-11-16" } as Trip).documentAssetIds).toEqual([]);
+  // Attaching a confirmation never counts as editing the stay's place.
+  expect(placeChanged({ ...values, documentAssetIds: [] }, values)).toBe(false);
 });
 
 it("validates the check-out day and website address", () => {

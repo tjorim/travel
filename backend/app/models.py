@@ -517,6 +517,34 @@ class Stay(Base):
     alternative_membership: Mapped[AlternativeGroupMember | None] = relationship(
         back_populates="stay", cascade="all, delete-orphan", uselist=False
     )
+    # Owner-only: the booking confirmations attached to this stay. Never delivered to a visitor.
+    document_links: Mapped[list[StayDocumentAsset]] = relationship(
+        back_populates="stay", cascade="all, delete-orphan", order_by="StayDocumentAsset.created_at"
+    )
+
+    @property
+    def document_asset_ids(self) -> list[str]:
+        return [link.document_asset_id for link in self.document_links]
+
+
+class StayDocumentAsset(Base):
+    """An owner-only, explicit attachment of a document to a stay.
+
+    The twin of :class:`RouteDocumentAsset`: attaching a booking confirmation gives
+    the owner a private reference and never makes the document eligible for
+    projection, whatever the stay's visibility.
+    """
+
+    __tablename__ = "stay_document_assets"
+
+    stay_id: Mapped[str] = mapped_column(ForeignKey("stays.id", ondelete="CASCADE"), primary_key=True)
+    document_asset_id: Mapped[str] = mapped_column(
+        ForeignKey("document_assets.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    stay: Mapped[Stay] = relationship(back_populates="document_links")
+    document_asset: Mapped[DocumentAsset] = relationship()
 
 
 class Route(Base):

@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { ownerKeys } from "../query/keys";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import {
   renderWithOwner,
@@ -93,8 +94,12 @@ it("lists a new upload straight away", async () => {
   expect(screen.queryByLabelText("Titel")).toBeNull();
 });
 
-it("removes a deleted document from the screen", async () => {
-  renderWithOwner(<DocumentManager trip={trip} />);
+it("removes a deleted document and refreshes cached stay links before another edit", async () => {
+  const { client } = renderWithOwner(<DocumentManager trip={trip} />);
+  const staysKey = ownerKeys.tripResource("owner-1", trip.id, "stays");
+  client.setQueryData(staysKey, [{ id: "stay-1", document_asset_ids: ["d1"] }]);
+  // The stays screen is unmounted while the owner deletes a document.
+  const loadStays = vi.fn(async () => [{ id: "stay-1", document_asset_ids: [] }]);
   await openDocument("Vliegticket");
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   fireEvent.click(
@@ -107,6 +112,11 @@ it("removes a deleted document from the screen", async () => {
     await screen.findByRole("button", { name: "Document Hotelbevestiging bekijken" }),
   ).toBeTruthy();
   expect(await screen.findByText("Privédocument verwijderd.")).toBeTruthy();
+  // Returning within the cache's 30-second freshness window must reload the
+  // server's detached links, otherwise the next save resubmits the deleted id.
+  const stays = await client.fetchQuery({ queryKey: staysKey, queryFn: loadStays });
+  expect(loadStays).toHaveBeenCalledOnce();
+  expect(stays[0].document_asset_ids).toEqual([]);
   // Nothing stays open after a delete.
   expect(screen.queryByText("Geredigeerde afgeleiden")).toBeNull();
 });

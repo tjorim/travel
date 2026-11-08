@@ -8,6 +8,7 @@ import {
   TextField,
   TimeZoneField,
 } from "../../forms/fields";
+import { DocumentLinksField } from "../../forms/DocumentLinksField";
 import { MarkdownField } from "../../forms/MarkdownField";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
@@ -18,8 +19,7 @@ import {
   type DocumentAsset,
   type Location,
 } from "../../tracker-model";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { FieldLegend, FieldSet } from "@/ui/field";
 import { ROUTE_STATUS_LABELS } from "../labels";
 import { PlacePicker } from "../PlacePicker";
 import { RouteGeometryEditor } from "../RouteGeometryEditor";
@@ -232,35 +232,15 @@ export function RouteForm({
               />
             )}
           </record.form.Field>
-          {documents.length > 0 && (
-            <record.form.Field name="documentAssetIds">
-              {(input) => (
-                <FieldSet className="grid gap-2">
-                  <FieldLegend>
-                    {m.owner_linked_documents()}{" "}
-                    <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
-                  </FieldLegend>
-                  {documents.map((document) => (
-                    <Field className="contents" key={document.id}>
-                      <FieldLabel className="flex items-center gap-2 rounded-lg border border-travel-divider bg-travel-surface px-2.75 py-2.5 font-semibold">
-                        <TravelCheckbox
-                          checked={input.state.value.includes(document.id)}
-                          onCheckedChange={() =>
-                            input.handleChange(
-                              input.state.value.includes(document.id)
-                                ? input.state.value.filter((id) => id !== document.id)
-                                : [...input.state.value, document.id],
-                            )
-                          }
-                        />
-                        {document.title}
-                      </FieldLabel>
-                    </Field>
-                  ))}
-                </FieldSet>
-              )}
-            </record.form.Field>
-          )}
+          <record.form.Field name="documentAssetIds">
+            {(input) => (
+              <DocumentLinksField
+                documents={documents}
+                value={input.state.value}
+                onChange={input.handleChange}
+              />
+            )}
+          </record.form.Field>
         </Collapsible.Panel>
       </Collapsible.Root>
       <record.form.Field

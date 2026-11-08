@@ -1541,7 +1541,7 @@ class TravelMcpBackend:
 
     # Stays and preparation ----------------------
     def list_stays(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
-        """List owner-only accommodation records. A stay with status idea is a candidate under comparison, not part of the plan. Compact rows name the area and the location by id (location_id is null while the accommodation is not chosen yet); pass compact=false, or use get_stay, for booking and contact details."""
+        """List owner-only accommodation records. A stay with status idea is a candidate under comparison, not part of the plan. Compact rows name the area and the location by id (location_id is null while the accommodation is not chosen yet); pass compact=false, or use get_stay, for booking and contact details and the attached documents (document_asset_ids)."""
         return self._call(
             "stay.list",
             "stay",
@@ -1552,7 +1552,7 @@ class TravelMcpBackend:
         )
 
     def create_stay(self, trip_id: str, payload: schemas.StayCreate) -> dict[str, Any]:
-        """Add a hotel or other accommodation stay (verblijf toevoegen), private, with check-in and check-out dates; omit local times until verified. A stay has an area and an optional location: while the accommodation is undecided give only area_id, and the stay is filed under that area with no location (nothing is created for it). A location settles the area; an area given with it must be its own. notes is Markdown; contact_details is plain text whose phone numbers, email and web addresses are linked."""
+        """Add a hotel or other accommodation stay (verblijf toevoegen), private, with check-in and check-out dates; omit local times until verified. A stay has an area and an optional location: while the accommodation is undecided give only area_id, and the stay is filed under that area with no location (nothing is created for it). A location settles the area; an area given with it must be its own. notes is Markdown; contact_details is plain text whose phone numbers, email and web addresses are linked. To keep a booking confirmation with its stay, upload it with upload_document and pass the document's id in document_asset_ids (owner-only; a document is never shared)."""
         return self._call(
             "stay.create",
             "stay",
@@ -1563,7 +1563,7 @@ class TravelMcpBackend:
         )
 
     def update_stay(self, trip_id: str, stay_id: str, payload: schemas.StayUpdate) -> dict[str, Any]:
-        """Update a private stay; set check_in_time/check_out_time to null to clear unverified times. Choose the accommodation later with a location; set location to null to return to "accommodation not chosen yet" (the area is kept); area_id alone moves the stay to that area and keeps its location only when it is already there. Move the chosen candidate from idea to planned or confirmed and cancel or delete the rejected alternatives. share_date_precision: null follows the audience's date precision, day/month/year caps the stay's nights; omit it to keep the value."""
+        """Update a private stay; set check_in_time/check_out_time to null to clear unverified times. Choose the accommodation later with a location; set location to null to return to "accommodation not chosen yet" (the area is kept); area_id alone moves the stay to that area and keeps its location only when it is already there. Move the chosen candidate from idea to planned or confirmed and cancel or delete the rejected alternatives. share_date_precision: null follows the audience's date precision, day/month/year caps the stay's nights; omit it to keep the value. document_asset_ids replaces the attached documents (the full list; [] detaches all); omit it to keep them."""
         return self._call(
             "stay.update",
             "stay",
@@ -2168,7 +2168,7 @@ class TravelMcpBackend:
         )
 
     def get_stay(self, trip_id: str, stay_id: str) -> dict[str, Any]:
-        """Read one owner-only accommodation record."""
+        """Read one owner-only accommodation record, including the ids of its attached documents (document_asset_ids)."""
         return self._call(
             "stay.get",
             "stay",
