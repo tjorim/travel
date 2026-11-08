@@ -97,7 +97,7 @@ export async function apiFailure(response: Response, fallback: ErrorFallback): P
 export type OwnerRequest = {
   headers?: Record<string, string>;
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
-  /** JSON-serialised, except a `FormData` upload, which is sent as multipart. */
+  /** JSON-serialised, except FormData (multipart) and Blob/File (binary). */
   body?: unknown;
   signal?: AbortSignal;
   cache?: RequestCache;
@@ -156,6 +156,7 @@ export async function ownerRequest<T>(
   fallback: ErrorFallback,
   { method = "GET", body, signal, cache, credentials, headers }: OwnerRequest = {},
 ): Promise<T> {
+  const binary = typeof Blob !== "undefined" && body instanceof Blob;
   const multipart = typeof FormData !== "undefined" && body instanceof FormData;
   const response = await authenticatedSend(
     session,
@@ -165,10 +166,12 @@ export async function ownerRequest<T>(
       // A multipart body carries its own boundary in the Content-Type the browser sets.
       headers: {
         ...authorization(session),
-        ...(!multipart ? { "Content-Type": "application/json" } : {}),
+        ...(!multipart
+          ? { "Content-Type": binary ? "application/octet-stream" : "application/json" }
+          : {}),
         ...headers,
       },
-      ...(body === undefined ? {} : { body: multipart ? body : JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: multipart || binary ? body : JSON.stringify(body) }),
       ...(cache ? { cache } : {}),
       ...(credentials ? { credentials } : {}),
     },

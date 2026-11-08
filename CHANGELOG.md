@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Import finished GPX, GeoJSON, Dawarich and phone Timeline files into reviewed approximate route drafts (Closes #243). Raw data stays in bounded request memory; only a selected two-decimal line can enter the normal route editor.
+
 - Add opt-in visitor numbers per audience (Closes #246): days with shared updates, shared areas, countries in those areas and nights covered by day-precise shared stays. Figures are derived only from the completed audience projection, respect exclusions and precision caps, and appear in the Sharing check, owner preview and public/unlisted shells. Presets preserve the selection; existing audiences show no strip.
 
 - Suggest a local great-circle flight line in the owner route editor (#242, local portion only). The explicit action uses only resolved area points, rounds to three decimals and caps the suggestion at 91 points. Review and edit before saving through the existing route API; failure and discarding leave the stored route unchanged. No routing provider or request is added; calculation works offline. Dateline lines render as split segments on owner and visitor maps. Both locales; provider choice remains open in #242.

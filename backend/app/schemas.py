@@ -1123,8 +1123,8 @@ class TripTaskAlertResponse(BaseModel):
 
 
 class GeoJsonLineString(InputModel):
-    """A reviewed GeoJSON line, entered by the owner rather than computed
-    from a raw recording. Coordinates are longitude, latitude pairs."""
+    """A reviewed approximate GeoJSON line, drawn or seeded from a finished-file
+    draft. Coordinates are longitude, latitude pairs; raw tracks are never stored."""
 
     type: Literal["LineString"] = "LineString"
     coordinates: list[tuple[float, float]] = Field(min_length=2, max_length=10_000)

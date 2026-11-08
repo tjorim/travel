@@ -1,6 +1,6 @@
 # Object storage contract
 
-Trip media, documents, derivatives, tracks and owner-library files are stored
+Trip media, documents, derivatives and owner-library files are stored
 as objects in `TRAVEL_MEDIA_STORAGE_ROOT` (`app/storage.py`), with one
 `stored_objects` or `owner_stored_objects` row each. In production the root is
 the private `travel_media` volume, and the apps backup captures it together
@@ -87,3 +87,7 @@ uploads (+13676 KiB). These include multipart parsing and database recording.
 The fresh-process regression also checks staging, durable copying and checksum
 verification at 150 MiB, with RSS growth and traced allocations limited to
 8 MiB per concurrent upload. No proxy or VPS memory-limit change is required.
+
+Finished-file route imports (#243) deliberately bypass object storage: binary
+request bodies are bounded in request memory, never multipart spools, staged
+files or stored objects. Only the reviewed approximate line can be saved.

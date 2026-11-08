@@ -52,8 +52,9 @@ allowlist, never a client-side mask of an exact record.
 
 Locations with an address, stays, media uploads and device-scoped offline copies
 are in scope. They remain owner-only until shared deliberately. The product
-stores no recorded GPS data, live or finished: how the owner travels is an
-approximate route drawn by hand, with a travel mode, and no exact or
+stores no recorded GPS data, live or finished (finished-file import may only
+seed a reviewed two-decimal approximate route; see decision 243): how the owner
+travels is an approximate route reviewed by the owner, with a travel mode, and no exact or
 near-real-time location is published automatically.
 
 All canonical files live on the backed-up VPS in application-controlled object
@@ -262,6 +263,7 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#243](https://github.com/tjorim/travel/issues/243) Import a selected portion of a finished file into a transient two-decimal route draft; raw bytes/points are never stored. See [decision 243](docs/decisions/243-finished-track-import.md).
 - [x] [#495](https://github.com/tjorim/travel-private/issues/495) Applied the refreshed
       design to the owner home, trip list and trip workspace (state grouping,
       owner cover, publication state, wide-screen overview columns).
