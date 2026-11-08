@@ -1,3 +1,4 @@
+import { FinishedTrackImport } from "./FinishedTrackImport";
 import { FlightLineSuggestion } from "./FlightLineSuggestion";
 import { Collapsible } from "@/ui/collapsible";
 
@@ -266,6 +267,10 @@ export function RouteForm({
                 )
               }
             </record.form.Subscribe>
+            <FinishedTrackImport
+              tripId={tripId}
+              onChange={(points) => input.handleChange(JSON.stringify(points))}
+            />
             <RouteGeometryEditor
               coordinates={editableCoordinates(input.state.value)}
               onChange={(coordinates) =>

@@ -147,11 +147,14 @@ follows from it. The rest is optional and stays with the owner:
 | Schedule with time zones (both times or neither) | no | yes |
 | Carrier and service number | no | yes |
 | Booking reference, class, notes, documents | no | never |
-| A hand-drawn approximate line with movable points | no | yes |
+| A reviewed approximate line with movable points (drawn or imported) | no | yes |
 
 Without a drawn line the maps draw a straight one between the two areas (or
-between the two locations when those are shared). A route is not derived from
-anything recorded: the application stores no GPS tracks, live or finished.
+between the two locations when those are shared). The application stores no GPS tracks, live or finished. An owner may import
+a finished file solely to draft a selected portion as an approximate line,
+rounded to two decimals and capped at 500 points, then review/edit and save
+through the normal route editor. Raw data lives only in request memory; no
+visits, places, days or times are inferred. See [decision 243](decisions/243-finished-track-import.md).
 
 ## Words
 

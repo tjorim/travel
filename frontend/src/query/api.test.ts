@@ -227,3 +227,30 @@ it("does not replay a second 401 or discard storage when renewal fails", async (
   expect(sessionStorage.getItem("travel-tracker-session")).toBe("preserved");
   sessionStorage.removeItem("travel-tracker-session");
 });
+
+it("sends binary imports without JSON encoding or putting file bytes in the URL", async () => {
+  const raw = "synthetic-file-private-marker";
+  let received: Request | undefined;
+  let body = "";
+  server.use(
+    http.post("/api/trips/example/route-line-import", async ({ request }) => {
+      received = request;
+      body = await request.text();
+      return HttpResponse.json({
+        coordinates: [
+          [1, 2],
+          [3, 4],
+        ],
+      });
+    }),
+  );
+  await ownerRequest(session, "/api/trips/example/route-line-import", () => "fallback", {
+    method: "POST",
+    body: new Blob([raw]),
+    headers: { "Content-Type": "application/octet-stream" },
+    cache: "no-store",
+  });
+  expect(body).toBe(raw);
+  expect(received!.headers.get("content-type")).toBe("application/octet-stream");
+  expect(received!.url).not.toContain(raw);
+});

@@ -105,7 +105,9 @@ collection member, in the audience editor under *Delen* ("Sharing").
       hotel or a meeting point. Presets never share locations, so any shared
       one is your own choice. A route is drawn with your line or a straight line
       between its two areas and shows stations or airports only when you share
-      those locations; the line must not pass close to a home or meeting point.
+      those locations; the line must not pass close to a home or meeting point. This includes a line
+      seeded from a finished file: only the reviewed approximate line may be
+      shared, never raw GPS points or metadata (decision 243).
 - [ ] **Choose the audience's lifetime and channel.** For a named link choose
       the shortest sensible lifetime and send the capability only through a
       private channel. The public view is open to anyone and may be indexed; a

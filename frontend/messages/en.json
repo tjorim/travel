@@ -2646,5 +2646,17 @@
   "numbers_areas": "Shared areas",
   "numbers_countries": "Countries in shared areas",
   "numbers_nights": "Nights in shared stays",
-  "numbers_help": "Only this audience’s shared records count. Days count distinct update dates; nights count overlapping stays once. Month and year dates add no days or nights. These are not trip totals."
+  "numbers_help": "Only this audience’s shared records count. Days count distinct update dates; nights count overlapping stays once. Month and year dates add no days or nights. These are not trip totals.",
+  "owner_track_title": "Import finished track",
+  "owner_track_privacy": "Choose GPX, GeoJSON, Dawarich or phone Timeline JSON (max 2 MiB). Only the selected portion becomes an approximate draft rounded to two decimals, at most 500 points. File order is used, including connections between segments. No times, places or visits are imported. Raw data is discarded after processing. Choose the travel mode above; review before applying and saving.",
+  "owner_track_file": "Finished file",
+  "owner_track_start": "Start (% of points in file order)",
+  "owner_track_end": "End (% of points in file order)",
+  "owner_track_preview": "Preview approximate line",
+  "owner_track_apply": "Use draft in route editor",
+  "owner_track_cancel": "Discard import",
+  "owner_track_error": "Cannot import this file. Check the format, portion and size (2 MiB), or wait a minute before retrying. Your route is unchanged.",
+  "owner_track_loading": "Processing file…",
+  "owner_track_draft_heading": "Edit imported draft",
+  "owner_track_draft_map": "Map editor for imported draft"
 }

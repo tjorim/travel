@@ -4,15 +4,15 @@ A route always runs between two areas. The departure day, the exact locations,
 the schedule, the booking details and a hand-drawn line are all optional. A day
 comes first and a time is an optional second step: a route can be "on 5
 December" before a train is chosen, and keeps that day when it gets its times.
-The application takes no raw location data: there is no track upload, location
-session or append-points endpoint.
+Finished-file imports only produce a transient approximate draft; there is no
+location session or append-points endpoint.
 """
 
 from datetime import UTC, date, datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -21,7 +21,9 @@ from ..database import get_session
 from ..document.service import trip_documents
 from ..errors import ApiException
 from ..models import Area, Location, Route, RouteDocumentAsset, RouteStatus, Trip, Visibility
-from ..schemas import Identifier, RouteCreate, RouteResponse, RouteUpdate
+from ..request_limits import RequestRateLimiter
+from ..schemas import GeoJsonLineString, Identifier, RouteCreate, RouteResponse, RouteUpdate
+from ..track_import import MAX_BYTES, approximate_line
 from .placement import resolve_place, selected_area
 from .trips import owned_trip
 
@@ -298,3 +300,44 @@ def delete_route(trip_id: Identifier, route_id: Identifier, session: SessionDep,
     session.delete(owned_route(owned_trip(session, trip_id, subject), route_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+track_import_limiter = RequestRateLimiter("6/minute; 30/hour")
+
+
+@router.post("/route-line-import", response_model=GeoJsonLineString)
+async def import_route_line(
+    trip_id: Identifier,
+    request: Request,
+    response: Response,
+    session: SessionDep,
+    subject: SubjectDep,
+    start: int = 0,
+    end: int = 100,
+) -> GeoJsonLineString:
+    owned_trip(session, trip_id, subject)
+    track_import_limiter.check(request, scope="finished-track-import")
+    response.headers["Cache-Control"] = "no-store"
+    # No UploadFile/Form dependency: multipart can spool sensitive bytes before admission.
+    if request.headers.get("content-type") != "application/octet-stream":
+        raise ApiException(
+            415, "Use a binary file body", code="track_import_invalid", headers={"Cache-Control": "no-store"}
+        )
+    data = bytearray()
+    try:
+        async for chunk in request.stream():
+            if len(data) + len(chunk) > MAX_BYTES:
+                raise ApiException(
+                    413, "File too large", code="track_import_invalid", headers={"Cache-Control": "no-store"}
+                )
+            data.extend(chunk)
+        try:
+            return approximate_line(data, start, end)
+        except SyntaxError, ValueError, OverflowError, TypeError, KeyError, IndexError, AttributeError, RecursionError:
+            pass
+        # Raise outside the parser exception context: even traceback diagnostics contain no parser fragment.
+        raise ApiException(
+            422, "Cannot import this file", code="track_import_invalid", headers={"Cache-Control": "no-store"}
+        )
+    finally:
+        data.clear()

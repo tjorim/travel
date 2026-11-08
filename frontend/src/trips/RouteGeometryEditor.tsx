@@ -5,7 +5,7 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { themeColor, useTheme } from "../appearance";
 import { Button } from "@/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "cn";
 import type { FeatureCollection, LineString, MultiLineString } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
@@ -77,12 +77,17 @@ export function RouteGeometryEditor({
   onChange,
   suggestions = [],
   mode = "edit",
+  heading,
+  mapLabel,
 }: {
   coordinates: RouteCoordinate[];
   onChange: (coordinates: RouteCoordinate[]) => void;
   suggestions?: RouteSuggestion[];
   mode?: "edit" | "preview";
+  heading?: string;
+  mapLabel?: string;
 }) {
+  const titleId = useId();
   const locale = useLocale();
   const preview = mode === "preview";
   const theme = useTheme();
@@ -390,10 +395,10 @@ export function RouteGeometryEditor({
   }
 
   return (
-    <section className="grid gap-2.5" aria-labelledby="route-geometry-title">
+    <section className="grid gap-2.5" aria-labelledby={titleId}>
       <div>
-        <h3 className="m-0 text-base" id="route-geometry-title">
-          {preview ? m.owner_route_preview() : m.owner_draw_route_on_map()}
+        <h3 className="m-0 text-base" id={titleId}>
+          {heading ?? (preview ? m.owner_route_preview() : m.owner_draw_route_on_map())}
         </h3>
         <p className="mt-1 mb-0 text-sm leading-normal text-travel-muted">
           {preview
@@ -403,7 +408,9 @@ export function RouteGeometryEditor({
       </div>
       <div
         role="region"
-        aria-label={preview ? m.owner_map_preview_of_route() : m.owner_map_editor_for_route()}
+        aria-label={
+          mapLabel ?? (preview ? m.owner_map_preview_of_route() : m.owner_map_editor_for_route())
+        }
         className={cn(
           "relative h-route-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
           preview && "h-route-preview-canvas",

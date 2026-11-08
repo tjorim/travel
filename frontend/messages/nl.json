@@ -2646,5 +2646,17 @@
   "numbers_areas": "Gedeelde gebieden",
   "numbers_countries": "Landen in gedeelde gebieden",
   "numbers_nights": "Nachten in gedeelde verblijven",
-  "numbers_help": "Alleen gedeelde gegevens voor dit publiek tellen mee. Dagen tellen unieke reisupdatedatums; overlappende verblijven tellen één keer. Maand- en jaardatums voegen geen dagen of nachten toe. Dit zijn geen reistotalen."
+  "numbers_help": "Alleen gedeelde gegevens voor dit publiek tellen mee. Dagen tellen unieke reisupdatedatums; overlappende verblijven tellen één keer. Maand- en jaardatums voegen geen dagen of nachten toe. Dit zijn geen reistotalen.",
+  "owner_track_title": "Afgerond spoor importeren",
+  "owner_track_privacy": "Kies GPX, GeoJSON, Dawarich of Timeline JSON van je telefoon (max. 2 MiB). Alleen het gekozen deel wordt een globale conceptlijn, afgerond op twee decimalen, met maximaal 500 punten. De bestandsvolgorde geldt, ook tussen segmenten. Tijden, locaties en bezoeken worden niet geïmporteerd. Brondata wordt na verwerking weggegooid. Kies hierboven het vervoermiddel; controleer vóór toepassen en opslaan.",
+  "owner_track_file": "Afgerond bestand",
+  "owner_track_start": "Begin (% van punten in bestandsvolgorde)",
+  "owner_track_end": "Einde (% van punten in bestandsvolgorde)",
+  "owner_track_preview": "Globale lijn bekijken",
+  "owner_track_apply": "Concept in route-editor gebruiken",
+  "owner_track_cancel": "Import weggooien",
+  "owner_track_error": "Dit bestand kan niet worden geïmporteerd. Controleer formaat, deel en grootte (2 MiB), of wacht een minuut en probeer opnieuw. Je route is ongewijzigd.",
+  "owner_track_loading": "Bestand verwerken…",
+  "owner_track_draft_heading": "Geïmporteerd concept bewerken",
+  "owner_track_draft_map": "Kaarteditor voor geïmporteerd concept"
 }

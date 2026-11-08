@@ -655,3 +655,11 @@ Reuses the existing shadcn/Base UI Button adapter and the existing route-line
 editor. This is a button command with explanatory text and a status region;
 no new primitive or custom control is needed. Only the draft changes, so the
 record dialog's existing Save and discard guard remain the review boundary.
+
+## Finished-track review (#243)
+
+Reuses Base UI Input (native file and number types), Field/Fieldset, Button
+and the existing MapLibre editor. The base-nova input/field/button registry
+and Base UI Input support these controls; no new primitive is needed. The
+inline file-portion/draft composition stays custom because registry forms do
+not implement transient binary requests, abort or explicit apply-before-save.
