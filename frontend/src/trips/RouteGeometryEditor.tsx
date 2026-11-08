@@ -1,3 +1,4 @@
+import { routeLineGeometry } from "../route-line-geometry";
 import { mapMessages, useMapMessages } from "../map-messages";
 import { textNotice, useFeedback } from "../query/feedback";
 import { useLocale } from "../locale";
@@ -6,7 +7,7 @@ import { themeColor, useTheme } from "../appearance";
 import { Button } from "@/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
-import type { FeatureCollection, LineString } from "geojson";
+import type { FeatureCollection, LineString, MultiLineString } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -21,12 +22,14 @@ const LONG_PRESS_SLOP_PX = 8;
 const GESTURE_GUARD_MS = 700;
 const MARKER_RADIUS_PX = 18;
 const roundedCoordinate = (value: number) => Math.round(value * 1_000) / 1_000;
-const lineData = (coordinates: RouteCoordinate[]): FeatureCollection<LineString> => ({
+const lineData = (
+  coordinates: RouteCoordinate[],
+): FeatureCollection<LineString | MultiLineString> => ({
   type: "FeatureCollection",
   features:
     coordinates.length < 2
       ? []
-      : [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } }],
+      : [{ type: "Feature", properties: {}, geometry: routeLineGeometry(coordinates) }],
 });
 const sameCoordinates = (left: RouteCoordinate[], right: RouteCoordinate[]) =>
   left.length === right.length &&

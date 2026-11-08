@@ -212,7 +212,17 @@ export const areaPoint = (
       ];
     }
   }
+  return resolvedAreaPoint(value, areas, locations);
+};
+
+/** Flight suggestions always use the area's point, even for a public location. */
+export const resolvedAreaPoint = (
+  value: PlaceValue,
+  areas: Area[],
+  locations: Location[],
+): { label: string; coordinates: RouteCoordinate }[] => {
   if (
+    value.choice === "new" &&
     value.newAreaId === "__new__" &&
     value.newAreaCandidate?.latitude != null &&
     value.newAreaCandidate.longitude != null
@@ -220,7 +230,11 @@ export const areaPoint = (
     return [
       {
         label: areaName(value.newAreaCandidate),
-        coordinates: [value.newAreaCandidate.longitude, value.newAreaCandidate.latitude],
+        // Mirror area creation: provider candidates become approximate area points.
+        coordinates: [
+          Math.round(value.newAreaCandidate.longitude * 100) / 100,
+          Math.round(value.newAreaCandidate.latitude * 100) / 100,
+        ],
       },
     ];
   }

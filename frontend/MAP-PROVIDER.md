@@ -80,3 +80,13 @@ MapLibre is loaded lazily as its own chunk, so pages without map data do not
 download it. On 4 October 2026, with `maplibre-gl` 6.11.2, that chunk built to
 about 1,063 KB (286 KB gzipped) before the style and tiles. Recheck this whenever the pinned
 MapLibre version or provider changes.
+
+## Local flight line suggestions (#242)
+
+The owner's explicit flight-line action calculates a great-circle arc on the
+device from the two resolved **area** points. It never uses a location's own
+coordinates, even for a public location, and calls no routing service. New area
+candidates use the same two-decimal approximation as area creation. The reviewed
+line uses the normal route save and publication rules. Suggestions also work
+offline; map tiles still follow the provider and offline behaviour above.
+Road, ferry, walking and bike suggestions await the provider decision in #242.

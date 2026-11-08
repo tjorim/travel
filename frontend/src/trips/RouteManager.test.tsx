@@ -561,3 +561,66 @@ it("says which schedule fields a shared route reveals, in both languages", async
     );
   }
 });
+
+it("reviews a local flight arc offline using area points, edits it, and saves only on request", async () => {
+  const privateLocation = { ...savedLocation, latitude: 88, longitude: 99 };
+  const localFlight = route("local", "Local flight", {
+    mode: "flight",
+    departure_location: privateLocation,
+    geometry: line.geometry,
+  });
+  seed([localFlight], [privateLocation]);
+  renderWithOwner(<RouteManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Route Local flight bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  fireEvent.click(screen.getByText("Geavanceerd: coördinaten als JSON plakken"));
+  const input = screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)") as HTMLTextAreaElement;
+  expect(input.value).toBe(JSON.stringify(line.geometry!.coordinates));
+  // Local calculation has no online dependency and sends no request.
+  vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  const before = [...api.requests];
+  fireEvent.click(screen.getByRole("button", { name: "Vluchtlijn voorstellen" }));
+  expect(api.requests).toEqual(before);
+  const points = JSON.parse(input.value);
+  expect(points[0]).toEqual([taipei.longitude, taipei.latitude]);
+  expect(points.at(-1)).toEqual([tainan.longitude, tainan.latitude]);
+  expect(points).not.toContainEqual([99, 88]);
+  act(() => changeLocale("en"));
+  expect(screen.getByText(/The flight line is ready to review/)).toBeTruthy();
+  expect(input.value).toBe(JSON.stringify(points));
+  fireEvent.click(screen.getByRole("button", { name: "Remove last point" }));
+  expect(JSON.parse(input.value)).toEqual(points.slice(0, -1));
+  vi.restoreAllMocks();
+  api.failNext = { status: 503, body: { detail: "Private provider diagnostics" } };
+  fireEvent.click(screen.getByRole("button", { name: "Save route" }));
+  await screen.findByText(/The route could not be saved/);
+  expect(screen.queryByText("Private provider diagnostics")).toBeNull();
+  expect(api.rows("/api/trips/trip/routes")[0].geometry).toEqual(line.geometry);
+  expect(JSON.parse(input.value)).toEqual(points.slice(0, -1));
+  fireEvent.click(screen.getByRole("button", { name: "Save route" }));
+  await waitFor(() => expect(api.count("PATCH /api/trips/trip/routes/local")).toBe(2));
+  expect(api.lastBody("PATCH /api/trips/trip/routes/local")).toMatchObject({
+    geometry: { type: "LineString", coordinates: points.slice(0, -1) },
+  });
+});
+
+it("keeps a line on failed flight suggestion and discards a successful suggestion without saving", async () => {
+  seed([route("local", "Local flight", { mode: "flight", geometry: line.geometry })]);
+  renderWithOwner(<RouteManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Route Local flight bekijken" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  fireEvent.click(screen.getByText("Geavanceerd: coördinaten als JSON plakken"));
+  const input = screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)") as HTMLTextAreaElement;
+  chooseOption("Aankomst", "Taipei (heel gebied)");
+  fireEvent.click(screen.getByRole("button", { name: "Vluchtlijn voorstellen" }));
+  expect(screen.getByText(/Er kon geen vluchtlijn/)).toBeTruthy();
+  expect(input.value).toBe(JSON.stringify(line.geometry!.coordinates));
+  chooseOption("Aankomst", "Tainan (heel gebied)");
+  fireEvent.click(screen.getByRole("button", { name: "Vluchtlijn voorstellen" }));
+  fireEvent.click(screen.getByRole("button", { name: "Route bewerken sluiten" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Wijzigingen verwerpen" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.count("PATCH /api/trips/trip/routes/local")).toBe(0);
+  fireEvent.click(screen.getByRole("button", { name: "Route Local flight bekijken" }));
+  expect(screen.getByText("2 algemene punten in deze route.")).toBeTruthy();
+});

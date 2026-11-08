@@ -1,3 +1,4 @@
+import { FlightLineSuggestion } from "./FlightLineSuggestion";
 import { Collapsible } from "@/ui/collapsible";
 
 import { DateField, DateTimeField } from "../../forms/DateTimeFields";
@@ -253,6 +254,18 @@ export function RouteForm({
               {m.owner_line_on_the_map()}{" "}
               <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
             </FieldLegend>
+            <record.form.Subscribe selector={(state) => state.values}>
+              {(values) =>
+                values.mode === "flight" && (
+                  <FlightLineSuggestion
+                    values={values}
+                    areas={areas}
+                    locations={locations}
+                    onChange={(coordinates) => input.handleChange(JSON.stringify(coordinates))}
+                  />
+                )
+              }
+            </record.form.Subscribe>
             <RouteGeometryEditor
               coordinates={editableCoordinates(input.state.value)}
               onChange={(coordinates) =>
