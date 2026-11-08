@@ -18,8 +18,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
+from ..document.service import trip_documents
 from ..errors import ApiException
-from ..models import Area, DocumentAsset, Location, Route, RouteDocumentAsset, RouteStatus, Trip, Visibility
+from ..models import Area, Location, Route, RouteDocumentAsset, RouteStatus, Trip, Visibility
 from ..schemas import Identifier, RouteCreate, RouteResponse, RouteUpdate
 from .placement import resolve_place, selected_area
 from .trips import owned_trip
@@ -139,29 +140,8 @@ def settle_departure_day(route: Route, requested: date | None, given: bool) -> N
 def document_links_from_ids(
     session: Session, trip_id: Identifier, document_asset_ids: list[str]
 ) -> list[RouteDocumentAsset]:
-    """Resolve attachments inside the already-authorized trip boundary.
-
-    A client can only attach non-deleted documents owned by this trip.
-    """
-    if not document_asset_ids:
-        return []
-    assets = list(
-        session.scalars(
-            select(DocumentAsset).where(
-                DocumentAsset.trip_id == trip_id,
-                DocumentAsset.id.in_(document_asset_ids),
-                DocumentAsset.deleted_at.is_(None),
-            )
-        )
-    )
-    if len(assets) != len(document_asset_ids):
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="One or more documents are unavailable for this trip",
-            code="one_or_more_documents_are_unavailable_for_this_trip",
-        )
-    by_id = {asset.id: asset for asset in assets}
-    return [RouteDocumentAsset(document_asset=by_id[asset_id]) for asset_id in document_asset_ids]
+    """Resolve attachments inside the already-authorized trip boundary."""
+    return [RouteDocumentAsset(document_asset=asset) for asset in trip_documents(session, trip_id, document_asset_ids)]
 
 
 @router.get("/routes", response_model=list[RouteResponse])

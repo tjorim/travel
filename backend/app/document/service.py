@@ -1,9 +1,11 @@
 """Copy-verify-record handling for private trip documents."""
 
+from fastapi import status
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..errors import ApiException
 from ..media.service import MediaImportError, _object_is_referenced, _purge_pending_objects, store_uploaded_object
 from ..models import DocumentAsset, DocumentKind, ObjectState, StoredObject
 from ..schemas import DocumentTitle
@@ -12,6 +14,33 @@ from ..storage import ObjectStorage, StagedUpload
 
 class DocumentError(MediaImportError):
     """A rejected document upload."""
+
+
+def trip_documents(session: Session, trip_id: str, document_asset_ids: list[str]) -> list[DocumentAsset]:
+    """Resolve documents to attach to one record of an already-authorized trip, in the order given.
+
+    A client can only attach non-deleted documents owned by this trip; any other id refuses the whole list.
+    Routes and stays share this check, so a document can never be linked across trips.
+    """
+    if not document_asset_ids:
+        return []
+    assets = list(
+        session.scalars(
+            select(DocumentAsset).where(
+                DocumentAsset.trip_id == trip_id,
+                DocumentAsset.id.in_(document_asset_ids),
+                DocumentAsset.deleted_at.is_(None),
+            )
+        )
+    )
+    if len(assets) != len(document_asset_ids):
+        raise ApiException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="One or more documents are unavailable for this trip",
+            code="one_or_more_documents_are_unavailable_for_this_trip",
+        )
+    by_id = {asset.id: asset for asset in assets}
+    return [by_id[asset_id] for asset_id in document_asset_ids]
 
 
 def direct_upload(

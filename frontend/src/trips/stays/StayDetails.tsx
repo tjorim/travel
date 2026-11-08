@@ -7,6 +7,7 @@ import { areaName, stayLabel, type Stay } from "../../tracker-model";
 import { VisibilityControl } from "../visibility";
 import { RecordActions } from "../RecordActions";
 import { IdeaNote } from "../IdeaNote";
+import { LinkedDocuments } from "../LinkedDocuments";
 
 /** The read-only view of one stay, with its visibility, overlapping ideas and edit/delete actions. */
 export function StayDetails({
@@ -55,6 +56,7 @@ export function StayDetails({
         )}
         <Markdown html={selected.notes_html} text={selected.notes} />
       </div>
+      <LinkedDocuments tripId={tripId} ids={selected.document_asset_ids} />
       {selected.status === "idea" ? (
         <IdeaNote kind="stay" />
       ) : (

@@ -39,7 +39,14 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   an area and, once an accommodation is chosen, a location in it. Until then
   (*accommodatie nog niet gekozen*) the stay is filed under its area alone: no
   placeholder location is created for it. The stored area is the stay's own
-  `area_id`, always equal to the area of its location when it has one.
+  `area_id`, always equal to the area of its location when it has one. A stay
+  can attach trip documents by id (`document_asset_ids`, a `StayDocumentAsset`
+  link, at most 12), such as its booking confirmation, exactly as a route
+  does ([#257](https://github.com/tjorim/travel/issues/257)). The link is
+  owner-only: it names a document the trip already holds, deleting the stay
+  removes only the link, and deleting the document detaches it from the stay,
+  as for a route. A document is never delivered to a visitor, whatever the
+  stay's visibility.
 - **Route** (*route*): how the trip gets from one area to another, by a travel
   mode (flight, train, bus, ferry, car, bike, walk or other). See below.
 - **Alternative group** (*alternatieven*): the owner's own set of two or more
@@ -178,7 +185,7 @@ outside the allowlist can be selected.
 | Area | label, region, country, generalized point | time zone |
 | Location | its public name, city, country, point, and directions; its address only if the owner also chooses that | address (unless chosen), postal code, notes, provider ids, display name |
 | Reisupdate | title, the text written for visitors, the date at its precision (never finer than the audience allows), its area | private notes, location, attached originals, exact time |
-| Stay | its area and its nights, at the date precision chosen for it and its audience | property, location, booking, contact, notes |
+| Stay | its area and its nights, at the date precision chosen for it and its audience | property, location, booking, contact, notes, documents |
 | Visit | title (else the shared location's name or the area's), the text for visitors, its area, the days at the precision chosen for it and its audience; the times only if the owner also chooses that (and only with full dates) | notes, the exact location (unless shared), the times (unless chosen) |
 | Route | mode, status, its two areas, name, its departure day at the audience's date precision, the departure and arrival times (only to an audience that reads days), carrier, service reference, the drawn line | booking reference, class, notes, documents, the exact locations (unless shared) |
 | Photo | an approved, metadata-stripped copy, with caption and alt text | the original and its EXIF |

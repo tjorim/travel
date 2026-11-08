@@ -36,6 +36,7 @@ const stay = (id: string, name: string, fields: Partial<Stay> = {}): Stay => ({
   area,
   visibility: "private",
   share_date_precision: null,
+  document_asset_ids: [],
   ...fields,
 });
 const hotels = [

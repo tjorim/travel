@@ -30,6 +30,7 @@ const stay = {
   area,
   visibility: "private",
   share_date_precision: null,
+  document_asset_ids: [],
 };
 
 async function openOwner(page: Page, locale: (typeof locales)[number], theme: "light" | "dark") {

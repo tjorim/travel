@@ -31,8 +31,9 @@ used by the API, so relationships are plain id references:
 - `locations[].area_id`, `visits[].area_id/location_id`, `stays[].area_id/location_id`,
   `routes[].departure_/arrival_ area_id and location_id`,
   `travel_updates[].area_id/location_id`.
-- `routes[].document_ids` and `travel_updates[].media_asset_ids` list the
-  associated documents and media assets by id.
+- `stays[].document_ids`, `routes[].document_ids` and
+  `travel_updates[].media_asset_ids` list the associated documents and media
+  assets by id.
 - `media_derivatives[].media_asset_id/travel_update_id`, `media_assets[].import_id`.
 - `packing_lists[]` nest their `bags` and `items`; `items[].bag_id` points at a bag.
 
@@ -52,6 +53,13 @@ placeholder location). When both are present the location lies in that area.
 `stays[].area_id` was added without changing the schema version, because adding
 a field is compatible; a consumer that assumed `stays[].location_id` is never
 `null` must now handle `null` and can read the area from `stays[].area_id`.
+
+`stays[].document_ids` (the documents attached to a stay, such as its booking
+confirmation; [#257](https://github.com/tjorim/travel/issues/257)) was added
+without changing the schema version, because adding a field is compatible; a
+consumer that ignores unknown keys loses only the attachments. It is always
+present (an empty list for a stay without documents), orders the ids by when
+they were attached, and omits soft-deleted documents, like `routes[].document_ids`.
 
 Each record lists its columns explicitly in `backend/app/export.py`. A column
 added to a model later is **not** exported until reviewed and added there.

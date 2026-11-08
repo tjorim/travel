@@ -30,6 +30,7 @@ const undecided = {
   area,
   visibility: "private",
   share_date_precision: null,
+  document_asset_ids: [],
 };
 
 for (const locale of ["nl", "en"] as const) {

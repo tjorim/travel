@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
+from ..document.service import trip_documents
 from ..errors import ApiException
-from ..models import Location, Stay, StayStatus, Trip, Visibility
+from ..models import Location, Stay, StayDocumentAsset, StayStatus, Trip, Visibility
 from ..schemas import Identifier, StayCreate, StayResponse, StayUpdate
 from .placement import selected_area, stay_place
 from .trips import owned_trip
@@ -22,7 +23,11 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 
 def _stay_query():
-    return select(Stay).options(selectinload(Stay.area), selectinload(Stay.location).selectinload(Location.area))
+    return select(Stay).options(
+        selectinload(Stay.area),
+        selectinload(Stay.location).selectinload(Location.area),
+        selectinload(Stay.document_links),
+    )
 
 
 def owned_stay(trip: Trip, stay_id: Identifier) -> Stay:
@@ -30,6 +35,13 @@ def owned_stay(trip: Trip, stay_id: Identifier) -> Stay:
     if stay is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found", code="not_found")
     return stay
+
+
+def document_links_from_ids(
+    session: Session, trip_id: Identifier, document_asset_ids: list[str]
+) -> list[StayDocumentAsset]:
+    """Resolve attachments inside the already-authorized trip boundary, exactly as a route does."""
+    return [StayDocumentAsset(document_asset=asset) for asset in trip_documents(session, trip_id, document_asset_ids)]
 
 
 def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
@@ -55,8 +67,9 @@ def create_stay(trip_id: Identifier, payload: StayCreate, session: SessionDep, s
         trip=trip,
         area=area,
         location=location,
+        document_links=document_links_from_ids(session, trip.id, payload.document_asset_ids),
         website_url=str(payload.website_url) if payload.website_url is not None else None,
-        **payload.model_dump(exclude={"area_id", "location", "website_url"}),
+        **payload.model_dump(exclude={"area_id", "location", "website_url", "document_asset_ids"}),
     )
     session.add(stay)
     session.commit()
@@ -102,7 +115,9 @@ def update_stay(
     trip = owned_trip(session, trip_id, subject)
     stay = owned_stay(trip, stay_id)
     _update_place(session, trip, stay, payload)
-    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"})
+    if "document_asset_ids" in payload.model_fields_set:
+        stay.document_links = document_links_from_ids(session, trip.id, payload.document_asset_ids or [])
+    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "document_asset_ids"})
     for required in ("check_in_date", "check_out_date", "status"):
         if required in values and values[required] is None:
             raise ApiException(

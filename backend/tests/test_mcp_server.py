@@ -28,6 +28,7 @@ from app.config import Settings, settings
 from app.database import Base
 from app.mcp_server import (
     MCP_TOOL_CAPABILITIES,
+    BatchCreate,
     OutageAwareJWTVerifier,
     ResponseValidationError,
     ToolFailureMiddleware,
@@ -38,7 +39,18 @@ from app.mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
-from app.models import AuditEvent, AuditEventKind, McpAuditEvent, TravelUpdate, Trip, Visibility
+from app.models import (
+    AuditEvent,
+    AuditEventKind,
+    DocumentAsset,
+    DocumentKind,
+    McpAuditEvent,
+    ObjectState,
+    StoredObject,
+    TravelUpdate,
+    Trip,
+    Visibility,
+)
 from app.routers import trips as trips_router
 from app.task_alerts import process_due_task_alerts
 
@@ -1884,3 +1896,76 @@ def test_link_exclusions_work_over_mcp_like_the_application(backend: TravelMcpBa
         collection["id"], member["id"], schemas.ShareScopeInput(exclude=[]), confirm=True, confirm_widening=True
     )
     assert cleared["members"][0]["exclusions"]["excluded"] == []
+
+
+def _document(trip_id: str, title: str) -> str:
+    """A stored trip document, as the upload tool leaves it."""
+    with TestingSessionLocal() as session:
+        stored = StoredObject(
+            trip_id=trip_id,
+            object_key=f"documents/{title}",
+            sha256=title.encode().hex().ljust(64, "0"),
+            byte_size=10,
+            content_type="text/plain",
+            state=ObjectState.AVAILABLE,
+        )
+        session.add(stored)
+        session.flush()
+        asset = DocumentAsset(
+            trip_id=trip_id, original_object_id=stored.id, document_kind=DocumentKind.BOOKING, title=title
+        )
+        session.add(asset)
+        session.commit()
+        return asset.id
+
+
+def test_stay_tools_attach_documents_through_the_shared_handlers(backend: TravelMcpBackend) -> None:
+    trip = backend.create_trip(schemas.TripCreate(title="Exampleland 2054"))
+    other = backend.create_trip(schemas.TripCreate(title="Elsewhere 2054"))
+    area = backend.save_area(trip["id"], schemas.AreaInput(label="Taipei"))
+    confirmation, voucher = _document(trip["id"], "confirmation"), _document(trip["id"], "voucher")
+    foreign = _document(other["id"], "foreign")
+
+    stay = backend.create_stay(
+        trip["id"],
+        schemas.StayCreate(
+            area_id=area["id"],
+            check_in_date="2054-11-17",
+            check_out_date="2054-11-18",
+            document_asset_ids=[confirmation],
+        ),
+    )
+    assert stay["document_asset_ids"] == [confirmation]
+    assert backend.get_stay(trip["id"], stay["id"])["document_asset_ids"] == [confirmation]
+    assert backend.list_stays(trip["id"], compact=False)[0]["document_asset_ids"] == [confirmation]
+    assert "document_asset_ids" not in backend.list_stays(trip["id"])[0]  # compact rows stay small, like routes
+
+    kept = backend.update_stay(trip["id"], stay["id"], schemas.StayUpdate(notes="Quiet room"))
+    assert kept["document_asset_ids"] == [confirmation]
+    both = backend.update_stay(trip["id"], stay["id"], schemas.StayUpdate(document_asset_ids=[confirmation, voucher]))
+    assert sorted(both["document_asset_ids"]) == sorted([confirmation, voucher])
+    assert (
+        backend.update_stay(trip["id"], stay["id"], schemas.StayUpdate(document_asset_ids=[]))["document_asset_ids"]
+        == []
+    )
+
+    # The application's ownership check applies: another trip's document is refused and nothing is stored.
+    with pytest.raises(Exception, match="unavailable"):
+        backend.update_stay(trip["id"], stay["id"], schemas.StayUpdate(document_asset_ids=[foreign]))
+    assert backend.get_stay(trip["id"], stay["id"])["document_asset_ids"] == []
+
+    batch = backend.batch_create(
+        trip["id"],
+        BatchCreate(
+            stays=[
+                schemas.StayCreate(
+                    area_id=area["id"],
+                    check_in_date="2054-11-18",
+                    check_out_date="2054-11-19",
+                    document_asset_ids=[voucher],
+                )
+            ]
+        ),
+    )
+    assert batch["stays"][0]["id"]
+    assert [row["document_asset_ids"] for row in backend.list_stays(trip["id"], compact=False)].count([voucher]) == 1

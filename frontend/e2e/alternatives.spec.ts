@@ -29,6 +29,7 @@ const idea = (id: string, name: string, notes: string | null) => ({
   area,
   visibility: "private",
   share_date_precision: null,
+  document_asset_ids: [],
 });
 const stays = [
   idea("stay-a", "Hotel Aurora", "Quiet street"),

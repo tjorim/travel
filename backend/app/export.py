@@ -34,6 +34,7 @@ from .models import (
     RouteDocumentAsset,
     ShareLink,
     Stay,
+    StayDocumentAsset,
     StoredObject,
     TravelUpdate,
     TravelUpdateMediaAsset,
@@ -191,6 +192,19 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
         for (row,) in _batched(session, owned(Route).order_by(Route.created_at, Route.id)):
             yield _record(row, ROUTE) | {"document_ids": documents.get(row.id, [])}
 
+    def stays() -> Iterator[dict[str, Any]]:
+        documents = {}
+        for link in session.scalars(
+            select(StayDocumentAsset)
+            .join(Stay, Stay.id == StayDocumentAsset.stay_id)
+            .join(DocumentAsset, DocumentAsset.id == StayDocumentAsset.document_asset_id)
+            .where(Stay.trip_id == trip_id, DocumentAsset.deleted_at.is_(None))
+            .order_by(StayDocumentAsset.created_at, StayDocumentAsset.document_asset_id)
+        ):
+            documents.setdefault(link.stay_id, []).append(link.document_asset_id)
+        for (row,) in _batched(session, owned(Stay).order_by(Stay.check_in_date, Stay.id)):
+            yield _record(row, STAY) | {"document_ids": documents.get(row.id, [])}
+
     def media_assets() -> Iterator[dict[str, Any]]:
         statement = (
             select(MediaAsset, StoredObject)
@@ -269,7 +283,7 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
     yield _array("areas", plain(Area, AREA, Area.created_at))
     yield _array("locations", plain(Location, LOCATION, Location.created_at))
     yield _array("visits", plain(Visit, VISIT, Visit.position))
-    yield _array("stays", plain(Stay, STAY, Stay.check_in_date))
+    yield _array("stays", stays())
     yield _array("routes", routes())
     yield _array("alternative_groups", alternative_groups())
     yield _array("travel_updates", updates())

@@ -1,16 +1,24 @@
 from collections.abc import Generator
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from test_publication import share
 
 from app.auth import current_subject
 from app.database import Base, get_session
 from app.main import app
+from app.models import StayDocumentAsset
+from app.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+@event.listens_for(engine, "connect")
+def enable_foreign_keys(dbapi_connection: object, _: object) -> None:
+    dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
 
 def override_session() -> Generator[Session]:
@@ -21,9 +29,11 @@ def override_session() -> Generator[Session]:
         session.close()
 
 
-def client_for(subject: str) -> TestClient:
+def client_for(subject: str, tmp_path=None) -> TestClient:
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[current_subject] = lambda: subject
+    if tmp_path is not None:
+        app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
     return TestClient(app)
 
 
@@ -439,3 +449,175 @@ def test_booked_is_accepted_as_confirmed_for_stays_and_routes() -> None:
     assert owner.patch(route_path, json={"status": "planned"}).json()["status"] == "planned"
     assert owner.patch(route_path, json={"status": "booked"}).json()["status"] == "confirmed"
     assert owner.patch(route_path, json={"status": "paid"}).status_code == 422
+
+
+def upload_document(client: TestClient, trip_id: str, title: str = "Hotel confirmation") -> dict:
+    response = client.post(
+        f"/api/trips/{trip_id}/documents/uploads",
+        data={"title": title, "document_kind": "booking"},
+        files={"file": ("confirmation.txt", f"private confirmation {title}".encode(), "text/plain")},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def stay_payload(area_id: str, **overrides) -> dict:
+    return {"area_id": area_id, "check_in_date": "2054-04-01", "check_out_date": "2054-04-05", **overrides}
+
+
+def test_stay_documents_are_explicit_owner_only_references_like_a_routes(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    area = create_area(owner, trip["id"])
+    first, second = upload_document(owner, trip["id"], "First"), upload_document(owner, trip["id"], "Second")
+
+    plain = owner.post(f"{trips_path}/stays", json=stay_payload(area["id"])).json()
+    assert plain["document_asset_ids"] == []
+
+    stay = owner.post(f"{trips_path}/stays", json=stay_payload(area["id"], document_asset_ids=[first["id"]])).json()
+    assert stay["document_asset_ids"] == [first["id"]]
+    assert owner.get(f"{trips_path}/stays/{stay['id']}").json()["document_asset_ids"] == [first["id"]]
+    listed = {item["id"]: item["document_asset_ids"] for item in owner.get(f"{trips_path}/stays").json()}
+    assert listed == {plain["id"]: [], stay["id"]: [first["id"]]}
+
+    # Omitting the field keeps the links; the full list replaces them; an empty list detaches them all.
+    kept = owner.patch(f"{trips_path}/stays/{stay['id']}", json={"notes": "Quiet room"})
+    assert kept.json()["document_asset_ids"] == [first["id"]]
+    replaced = owner.patch(f"{trips_path}/stays/{stay['id']}", json={"document_asset_ids": [second["id"], first["id"]]})
+    assert replaced.status_code == 200, replaced.text
+    assert sorted(replaced.json()["document_asset_ids"]) == sorted([first["id"], second["id"]])
+    same = owner.patch(f"{trips_path}/stays/{stay['id']}", json={"document_asset_ids": [first["id"]]})
+    assert same.json()["document_asset_ids"] == [first["id"]]
+    cleared = owner.patch(f"{trips_path}/stays/{stay['id']}", json={"document_asset_ids": []})
+    assert cleared.json()["document_asset_ids"] == []
+    assert owner.get(f"{trips_path}/documents/{first['id']}").status_code == 200  # detaching never deletes a document
+
+    # Null is not a list, a document attaches once, and at most twelve attach.
+    assert owner.patch(f"{trips_path}/stays/{stay['id']}", json={"document_asset_ids": None}).status_code == 422
+    twice = owner.patch(f"{trips_path}/stays/{stay['id']}", json={"document_asset_ids": [first["id"]] * 2})
+    assert twice.status_code == 422
+    too_many = owner.post(f"{trips_path}/stays", json=stay_payload(area["id"], document_asset_ids=["a"] * 13))
+    assert too_many.status_code == 422
+
+
+def test_a_stay_refuses_missing_foreign_and_unknown_documents(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    other_trip = create_trip(owner, "Elsewhere 2054")
+    area = create_area(owner, trip["id"])
+    mine = upload_document(owner, trip["id"])
+    elsewhere = upload_document(owner, other_trip["id"], "Elsewhere")
+    stranger_trip = create_trip(client_for("owner-2", tmp_path), "Not yours")
+    foreign = upload_document(client_for("owner-2", tmp_path), stranger_trip["id"], "Foreign")
+    owner = client_for("owner-1", tmp_path)
+    trips_path = f"/api/trips/{trip['id']}"
+    stay = owner.post(f"{trips_path}/stays", json=stay_payload(area["id"], document_asset_ids=[mine["id"]])).json()
+
+    for bad in ("missing-document", elsewhere["id"], foreign["id"]):
+        created = owner.post(f"{trips_path}/stays", json=stay_payload(area["id"], document_asset_ids=[mine["id"], bad]))
+        assert created.status_code == 422, bad
+        assert created.json()["errors"][0]["code"] == "one_or_more_documents_are_unavailable_for_this_trip"
+        changed = owner.patch(f"{trips_path}/stays/{stay['id']}", json={"document_asset_ids": [bad]})
+        assert changed.status_code == 422, bad
+        assert foreign["id"] not in changed.text and elsewhere["id"] not in changed.text
+    # Nothing was stored by a refused request.
+    assert owner.get(f"{trips_path}/stays/{stay['id']}").json()["document_asset_ids"] == [mine["id"]]
+    assert len(owner.get(f"{trips_path}/stays").json()) == 1
+
+    # Another owner can neither read the links nor attach to this stay.
+    stranger = client_for("owner-2", tmp_path)
+    assert stranger.get(f"{trips_path}/stays/{stay['id']}").status_code == 404
+    assert stranger.patch(f"{trips_path}/stays/{stay['id']}", json={"document_asset_ids": []}).status_code == 404
+
+
+def test_deleting_a_stay_or_a_document_removes_only_the_link(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    area = create_area(owner, trip["id"])
+    first, second = upload_document(owner, trip["id"], "First"), upload_document(owner, trip["id"], "Second")
+    shared = owner.post(
+        f"{trips_path}/stays", json=stay_payload(area["id"], document_asset_ids=[first["id"], second["id"]])
+    ).json()
+    doomed = owner.post(f"{trips_path}/stays", json=stay_payload(area["id"], document_asset_ids=[first["id"]])).json()
+
+    def link_count() -> int:
+        with TestingSessionLocal() as session:
+            return session.scalar(select(func.count()).select_from(StayDocumentAsset))
+
+    assert link_count() == 3
+    # Deleting a document is handled as for a route: it goes, and so do its links; the stays stay.
+    assert owner.delete(f"{trips_path}/documents/{second['id']}").status_code == 204
+    assert owner.get(f"{trips_path}/stays/{shared['id']}").json()["document_asset_ids"] == [first["id"]]
+    assert link_count() == 2
+
+    # Deleting a stay removes its links and leaves the document and the other stay's link.
+    assert owner.delete(f"{trips_path}/stays/{doomed['id']}").status_code == 204
+    assert link_count() == 1
+    assert owner.get(f"{trips_path}/documents/{first['id']}").status_code == 200
+    assert owner.get(f"{trips_path}/stays/{shared['id']}").json()["document_asset_ids"] == [first["id"]]
+
+    # Deleting the trip takes everything with it.
+    assert owner.delete(f"{trips_path}").status_code == 204
+    assert link_count() == 0
+
+
+def test_a_document_on_a_shared_stay_never_reaches_any_visitor_response(tmp_path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip = create_trip(owner)
+    trips_path = f"/api/trips/{trip['id']}"
+    area = create_area(owner, trip["id"])
+    document = upload_document(owner, trip["id"], "CANARY-DOCUMENT-TITLE")
+    stay = owner.post(
+        f"{trips_path}/stays",
+        json=stay_payload(area["id"], document_asset_ids=[document["id"]], booking_reference="CANARY-BOOKING"),
+    ).json()
+    item = share(owner, trip["id"], "stay", stay["id"], "custom")
+    scoped = owner.put(
+        f"{trips_path}/public-projection",
+        json={"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": [item]},
+    )
+    assert scoped.status_code == 200, scoped.text
+    published = owner.post(f"{trips_path}/public-projection/publish")
+    assert published.status_code == 200, published.text
+    link = owner.post(f"{trips_path}/share-links", json={"label": "Family", "scope": scoped.json()["scope"]}).json()
+    active = owner.post(f"{trips_path}/share-links/{link['id']}/activate", json={"expires_in_days": 30}).json()
+
+    collection = owner.post("/api/collections", json={"label": "Family", "title": "Shared"}).json()
+    member = owner.post(
+        f"/api/collections/{collection['id']}/members", json={"trip_id": trip["id"], "scope": scoped.json()["scope"]}
+    )
+    assert member.status_code == 201, member.text
+    activated = owner.post(f"/api/collections/{collection['id']}/activate", json={"expires_in_days": 30}).json()
+
+    anonymous = TestClient(app)
+    slug, token = published.json()["slug"], active["token"]
+    (listed,) = anonymous.get(f"/api/shared/{activated['token']}").json()["trips"]
+    responses = [
+        anonymous.get(f"/api/public/trips/{slug}"),
+        anonymous.get(f"/api/shared/{token}"),
+        anonymous.get(f"/api/shared/{activated['token']}"),
+        anonymous.get(f"/api/shared/{activated['token']}/trips/{listed['id']}"),
+    ]
+    # The owner's own previews of both audiences are no different.
+    responses += [
+        owner.post(f"{trips_path}/public-projection/preview"),
+        owner.post(f"{trips_path}/share-links/{link['id']}/preview"),
+    ]
+    for response in responses:
+        assert response.status_code == 200, (response.url, response.text)
+        assert document["id"] not in response.text, response.url
+        for private in ("CANARY-DOCUMENT-TITLE", "document_asset_ids", "confirmation.txt", "CANARY-BOOKING"):
+            assert private not in response.text, (response.url, private)
+    # The stay itself is delivered, so the check proves absence rather than an empty view.
+    (delivered,) = responses[0].json()["stays"]
+    assert delivered["title"] == "Taipei"
+
+    # A document is reachable only by the owner, never through a visitor file route, whatever its links.
+    for path in (
+        f"/api/public/trips/{slug}/files/{document['id']}",
+        f"/api/shared/{token}/files/{document['id']}",
+        f"/api/public/trips/{slug}/navigation/{document['id']}",
+    ):
+        assert anonymous.get(path).status_code == 404, path

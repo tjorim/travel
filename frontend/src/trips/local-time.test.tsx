@@ -44,6 +44,7 @@ function stay(label: string, check_in_date: string, check_out_date: string): Sta
     area: city(label),
     visibility: "private",
     share_date_precision: "month",
+    document_asset_ids: [],
   };
 }
 

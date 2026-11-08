@@ -54,6 +54,7 @@ export function StayManager({
   const stays = staysQuery.data ?? [];
   const groupsQuery = useTripResource(trip.id, "alternative-groups");
   const locationsQuery = useTripResource(trip.id, "locations");
+  const documentsQuery = useTripResource(trip.id, "documents");
   const stayDialog = useRecordDialog(stays);
   useDialogFocus(focusId, stayDialog.inspect);
   const [message, setMessage] = useFeedback<string>(
@@ -123,6 +124,7 @@ export function StayManager({
           booking_reference: values.bookingReference.trim() || null,
           contact_details: values.contactDetails.trim() || null,
           notes: values.notes.trim() || null,
+          document_asset_ids: values.documentAssetIds,
           share_date_precision: values.shareDatePrecision || null,
           ...(!id || changed ? stayPlaceFields(values) : {}),
         },
@@ -178,7 +180,7 @@ export function StayManager({
   }
 
   const { selected: selectedStay, editing: editingStay, editingId: editingStayId } = stayDialog;
-  const readError = staysQuery.error;
+  const readError = staysQuery.error ?? documentsQuery.error;
   // Once a stay is chosen, the ideas for its nights are the rejected alternatives.
   const alternatives =
     selectedStay &&
@@ -248,6 +250,7 @@ export function StayManager({
             record={stayRecord}
             editingId={editingStayId}
             stays={stays}
+            documents={documentsQuery.data ?? []}
             currentPlace={currentPlace}
             areaRequired={areaRequired}
           />

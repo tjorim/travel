@@ -4,7 +4,8 @@ Use this recipe to turn a hotel, flight or train confirmation into a draft stay
 or route. You give the confirmation to your own AI assistant, which is connected
 to Travel's MCP server. The assistant drafts the records through the batch
 create and document tools; you review them in the app. The original
-confirmation is kept as a private trip document.
+confirmation is kept as a private trip document, linked to the stay or route it
+confirms.
 
 Travel has no paste box or upload form for confirmations and no inbound email
 address. Booking intake is manual entry plus this recipe (decision D1 in
@@ -72,8 +73,11 @@ call that changes who can see something, publishes, or deletes data needs
   departure morning; the stay covers the nights before it.
 - **Status:** see [Status](#status-idea-planned-or-confirmed). Defaults to `planned`.
 - **Optional:** `check_in_time` and `check_out_time` (only when the confirmation
-  states them), `property_name`, `booking_reference`, `contact_details`, `notes`
-  and `website_url` (https only).
+  states them), `property_name`, `booking_reference`, `contact_details`, `notes`,
+  `website_url` (https only), and `document_asset_ids`, which takes the id of the
+  uploaded confirmation (at most 12, each once; ids must belong to this trip).
+  In `update_stay`, omit it to keep the links, send the full list to replace
+  them, or `[]` to detach all.
 
 **Route** (`create_route` payload, also used in `batch_create`):
 
@@ -97,7 +101,7 @@ Give a time only when the confirmation states it. "Thursday, no train yet" is
 
 | Record | Shared with visitors, when the record is shared | Owner-only |
 |---|---|---|
-| Stay | Its area and its nights | Property name, location, booking reference, contact details, notes |
+| Stay | Its area and its nights | Property name, location, booking reference, contact details, notes, documents |
 | Route | Mode, status, its two areas, label, schedule, carrier, service reference, drawn line | Booking reference, travel class, notes, documents, exact locations unless shared |
 | Document | Never | Everything |
 
@@ -132,9 +136,9 @@ it is unsure.
 3. **Keep booking details owner-only.** Put the reference, contact details,
    notes and class in their own fields, never in shared text.
 4. **Keep the original.** Upload the confirmation as a `booking` document before
-   creating records, so a route can link it. A stay cannot link a document yet
-   ([#257](https://github.com/tjorim/travel/issues/257)); its confirmation sits in
-   the trip's documents.
+   creating records, so the stay or route it confirms can link it with
+   `document_asset_ids`. A hotel confirmation belongs to its stay as a flight
+   confirmation belongs to its route.
 
 ## Worked example
 
@@ -192,7 +196,8 @@ Booking reference: ABC123
        "status": "confirmed", "property_name": "Hotel Sample Riverside",
        "booking_reference": "ABC123",
        "contact_details": "Front desk: +00 00 000 0000",
-       "notes": "Synthetic example: double room, 2 guests."}],
+       "notes": "Synthetic example: double room, 2 guests.",
+       "document_asset_ids": ["<document_id>"]}],
      "routes": [{
        "mode": "flight", "status": "confirmed", "label": "SMP901 Taipei to Kaohsiung",
        "departure_area_id": "<taipei_area_id>", "arrival_area_id": "<kaohsiung_area_id>",
@@ -208,7 +213,8 @@ Booking reference: ABC123
 **What came back when this ran** (abbreviated)
 
 - The stay: `status` `confirmed`, `visibility` `private`, area Kaohsiung, with a
-  new location, nights 2026-12-04 to 2026-12-06.
+  new location, nights 2026-12-04 to 2026-12-06, and `document_asset_ids`
+  holding the document id.
 - The route: `status` `confirmed`, `visibility` `private`, `departs_on`
   `2026-12-04`, `departs_at` `2026-12-04T00:15:00Z` (08:15 in Taipei), and
   `document_asset_ids` holding the document id.
@@ -216,7 +222,7 @@ Booking reference: ABC123
 **What you check in the app**
 
 - **Plan > Stays:** Hotel Sample Riverside, 4 to 6 December, check-in 15:00,
-  check-out 11:00, confirmed, private.
+  check-out 11:00, confirmed, private. Open it to check the linked confirmation.
 - **Plan > Routes:** SMP901 from Taipei to Kaohsiung on 4 December, 08:15 to
   09:20 local time, confirmed, private. Open it to check the linked confirmation.
 - **Prepare > Documents:** "Sample Riverside and SMP901 confirmation", a booking
@@ -240,6 +246,12 @@ that area (since #239 it is created with no location at all); an `idea` stay ref
 `set_visibility` without `confirm=true` was refused; and the public preview of
 the copy listed all 13 routes visible to everyone, none of which showed the
 booking reference they carry (4 routes carry one).
+
+Linking a stay to its document ([#257](https://github.com/tjorim/travel/issues/257))
+came after that run. The stay payload, update, read-back, export and the
+guarantee that no visitor response mentions an attached document are covered by
+the backend test suite; the worked example above was not re-run through the
+stdio server since.
 
 Not checked: attached files other than the text confirmation (PDFs and
 screenshots are uploaded with their own content type), the app screens named

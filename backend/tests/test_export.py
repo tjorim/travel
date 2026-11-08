@@ -43,6 +43,7 @@ from app.models import (
     RouteMode,
     ShareLink,
     Stay,
+    StayDocumentAsset,
     StoredObject,
     SurfaceState,
     TravelUpdate,
@@ -195,7 +196,12 @@ def build_rich_trip(owner: str = "owner-1") -> dict[str, str]:
         )
         session.add(document)
         session.flush()
-        session.add(RouteDocumentAsset(route_id=route.id, document_asset_id=document.id))
+        session.add_all(
+            [
+                RouteDocumentAsset(route_id=route.id, document_asset_id=document.id),
+                StayDocumentAsset(stay_id=stay.id, document_asset_id=document.id),
+            ]
+        )
 
         # Soft-deleted records are not live content.
         gone_object = _stored(session, trip.id, "canary-object-key/gone.bin", sha="d")
@@ -304,6 +310,7 @@ def test_export_contains_every_canonical_record_kind_with_relationships() -> Non
     assert document["stays"][0]["area_id"] == ids["area"]
     assert document["stays"][0]["booking_reference"] == "SYNTH-123"
     assert document["routes"][0]["document_ids"] == [ids["document"]]
+    assert document["stays"][0]["document_ids"] == [ids["document"]]
     assert document["routes"][0]["notes"] == "private route note"
     assert document["travel_updates"][0]["private_notes"] == "private update note"
     assert document["travel_updates"][0]["media_asset_ids"] == [ids["asset"]]

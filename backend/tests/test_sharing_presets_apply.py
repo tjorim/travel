@@ -969,6 +969,12 @@ def plant_private_values(world: World) -> None:
         )
     for name in ("V1", "V2", "V3", "V4"):
         change(f"visits/{world.ids[name][1]}", {"notes": "CANARY-VISIT-NOTE"})
+    document = world.owner.post(
+        f"{base}/documents/uploads",
+        data={"title": "CANARY-DOCUMENT-TITLE", "document_kind": "booking"},
+        files={"file": ("CANARY-DOCUMENT.txt", b"private booking details", "text/plain")},
+    )
+    assert document.status_code == 201, document.text
     for name in ("ST1", "ST2"):
         change(
             f"stays/{world.ids[name][1]}",
@@ -977,14 +983,9 @@ def plant_private_values(world: World) -> None:
                 "booking_reference": "CANARY-BOOKING",
                 "contact_details": "CANARY-CONTACT",
                 "notes": "CANARY-STAY-NOTE",
+                "document_asset_ids": [document.json()["id"]],
             },
         )
-    document = world.owner.post(
-        f"{base}/documents/uploads",
-        data={"title": "CANARY-DOCUMENT-TITLE", "document_kind": "booking"},
-        files={"file": ("CANARY-DOCUMENT.txt", b"private booking details", "text/plain")},
-    )
-    assert document.status_code == 201, document.text
     for name in ("R1", "R2"):
         change(
             f"routes/{world.ids[name][1]}",
