@@ -182,7 +182,7 @@ importers:
         specifier: latest
         version: 6.2.1(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
       cn:
-        specifier: ^0.5.1
+        specifier: ^0.5.2
         version: 0.5.2
       dayjs:
         specifier: ^1.11.23
