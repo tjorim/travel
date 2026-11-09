@@ -12,6 +12,9 @@ RUN apt-get update \
 COPY --from=uv /uv /usr/local/bin/uv
 
 WORKDIR /app
+# Resolve the local test-only client source; it is not installed in production.
+COPY python-travel/pyproject.toml python-travel/README.md /python-travel/
+COPY python-travel/src /python-travel/src
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 

@@ -34,3 +34,9 @@ __pycache__/
 
 # Personal-instance archive retained on disk, outside public source.
 /dist/
+
+# Standalone Python client build/test artifacts.
+python-travel/.venv/
+python-travel/.pytest_cache/
+python-travel/.ruff_cache/
+python-travel/dist/

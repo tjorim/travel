@@ -1,12 +1,14 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, status
+from fastapi import Depends, FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from fastmcp.utilities.lifespan import combine_lifespans
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .auth import current_subject
 from .database import SessionLocal
 from .errors import ApiException, http_error_handler, validation_error_handler
 from .mcp_server import (
@@ -144,3 +146,13 @@ def health() -> dict[str, str]:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable", code="database_unavailable"
         ) from error
     return {"status": "ok"}
+
+
+@app.get("/api/identity", tags=["owner"])
+def owner_identity(subject: Annotated[str, Depends(current_subject)]) -> dict[str, object]:
+    """Authenticated ordinary API identity, never part of visitor projections."""
+    return {
+        "subject": subject,
+        "contract_version": 1,
+        "capabilities": ["trip-tasks:read-write", "packing:read-write"],
+    }

@@ -24,6 +24,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      python-client: ${{ steps.filter.outputs.python-client }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: filter
@@ -32,6 +33,10 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'python-travel/**'
+              - '.github/workflows/ci.yml'
+            python-client:
+              - 'python-travel/**'
               - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
@@ -94,6 +99,36 @@ jobs:
           uv run alembic upgrade head
           uv run alembic check
           uv run alembic downgrade base
+
+  python-client:
+    name: Python client (${{ matrix.python }})
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.python-client == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ['3.14', '3.15']
+    defaults:
+      run:
+        working-directory: python-travel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv sync --frozen --python ${{ matrix.python }}
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run ty check src
+      - run: uv run pytest
+      - run: uv build
+      - name: Install wheel independently
+        run: |
+          uv venv /tmp/travel-client-smoke --python ${{ matrix.python }}
+          uv pip install --python /tmp/travel-client-smoke/bin/python dist/*.whl
+          /tmp/travel-client-smoke/bin/python -c 'from travel_client import TravelClient'
+          uv run python -m py_compile examples/list_tasks.py
 
   frontend:
     name: Frontend
@@ -229,6 +264,7 @@ jobs:
     needs:
       - changes
       - backend
+      - python-client
       - frontend
       - frontend-e2e
       - dependency-audit

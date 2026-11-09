@@ -1,4 +1,4 @@
-"""Audit both lockfiles; keep low/moderate findings visible without blocking CI."""
+"""Audit application and client lockfiles; keep low/moderate findings visible without blocking CI."""
 
 import datetime
 import json
@@ -57,33 +57,46 @@ def main():
         datetime.date.fromisoformat(entry["expires"])
     with tempfile.TemporaryDirectory() as directory:
         directory = Path(directory)
-        requirements = directory / "requirements.txt"
-        subprocess.run(
-            ["uv", "export", "--frozen", "--all-groups", "--no-emit-project", "--output-file", str(requirements)],
-            cwd=ROOT / "backend",
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        backend = run_report(
-            [
-                "uv",
-                "tool",
-                "run",
-                "pip-audit==2.10.1",
-                "--require-hashes",
-                "--no-deps",
-                "--disable-pip",
-                "--strict",
-                "-r",
-                str(requirements),
-                "--format",
-                "json",
-                "--output",
-                str(directory / "backend.json"),
-            ],
-            directory / "backend.json",
-            ROOT,
-        )
+        python_reports = {}
+        for component in ("backend", "python-travel"):
+            requirements = directory / "requirements.txt"
+            subprocess.run(
+                [
+                    "uv",
+                    "export",
+                    "--frozen",
+                    "--all-groups",
+                    "--no-emit-project",
+                    "--no-emit-package",
+                    "python-travel",
+                    "--output-file",
+                    str(requirements),
+                ],
+                cwd=ROOT / component,
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            report = run_report(
+                [
+                    "uv",
+                    "tool",
+                    "run",
+                    "pip-audit==2.10.1",
+                    "--require-hashes",
+                    "--no-deps",
+                    "--disable-pip",
+                    "--strict",
+                    "-r",
+                    str(requirements),
+                    "--format",
+                    "json",
+                    "--output",
+                    str(directory / f"{component}.json"),
+                ],
+                directory / f"{component}.json",
+                ROOT,
+            )
+            python_reports[component] = report
         # pnpm has no output-file flag; retain stdout as the full report.
         result = subprocess.run(["pnpm", "audit", "--json"], cwd=ROOT / "frontend", capture_output=True, text=True)
         if result.returncode not in (0, 1):
@@ -92,9 +105,9 @@ def main():
         if "error" in frontend or "advisories" not in frontend:
             raise RuntimeError(f"Invalid pnpm audit response: {frontend}")
         # Preserve raw reports even if severity enrichment fails.
-        print(json.dumps({"backend": backend, "frontend": frontend}, indent=2))
+        print(json.dumps({**python_reports, "frontend": frontend}, indent=2))
         findings = []
-        for dependency in backend["dependencies"]:
+        for dependency in (dependency for report in python_reports.values() for dependency in report["dependencies"]):
             if dependency.get("skip_reason"):
                 raise RuntimeError(f"Unaudited dependency: {dependency}")
             for vulnerability in dependency["vulns"]:
