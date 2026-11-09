@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add supported PDF structure tagging with WeasyPrint (#321): semantic headings, document reading order and approved-photo alternatives, with an exact-resource fetch allowlist and existing privacy/resource limits. Dutch/English synthetic long/photo outputs pass veraPDF machine checks; screen-reader review and full accessibility acceptance remain open.
+
 - License Travel under Apache License 2.0, including the separately packaged Python client and Home Assistant integration.
 
 - Prepare the first HACS integration release 0.2.0 (#329): reproducible ZIP packaging, local Travel brand icon, archive-layout regression coverage and corrected release/version and delayed-location guidance. Publication and HACS release download/update verification remain pending; production OAuth remains apps#333.

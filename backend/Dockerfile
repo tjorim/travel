@@ -22,6 +22,10 @@ FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5eb
 
 FROM python:3.15-slim
 
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 # Only ffprobe ships: it verifies worker output. Encoding happens in the apps media worker.

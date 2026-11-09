@@ -1,24 +1,24 @@
-"""Isolated ReportLab worker. No network, HTML, external fonts or user file paths."""
+"""Isolated tagged PDF worker. Generated markup and approved local resources only."""
 
 import json
+import os
 import resource
 import sys
+from html import escape
 from pathlib import Path
-from typing import Any
-from xml.sax.saxutils import escape
 
-# Limits are installed before loading the PDF/image libraries (Linux production).
 if __name__ == "__main__":
+    # Fontconfig caches belong to the same disposable export directory.
+    os.environ["XDG_CACHE_HOME"] = str(Path(sys.argv[1]).parent / "font-cache")
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_CPU, (25, 25))
     resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 1024 * 1024, 64 * 1024 * 1024))
 
 from PIL import Image as PillowImage  # noqa: E402
 from reportlab import __file__ as reportlab_file  # noqa: E402
-from reportlab.lib.styles import ParagraphStyle  # noqa: E402
-from reportlab.pdfbase import pdfmetrics  # noqa: E402
-from reportlab.pdfbase.ttfonts import TTFont  # noqa: E402
-from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer  # noqa: E402
+from weasyprint import HTML  # noqa: E402
+from weasyprint.text.fonts import FontConfiguration  # noqa: E402
+from weasyprint.urls import URLFetcher, URLFetcherResponse  # noqa: E402
 
 LABELS = {
     "en": {
@@ -170,38 +170,39 @@ VALUE_LABELS = {
 }
 
 
-class TripDocument(SimpleDocTemplate):
-    """Reader bookmarks and language metadata; this is not a tagged PDF/UA tree."""
-
-    def afterFlowable(self, flowable):
-        if isinstance(flowable, Paragraph) and flowable.style.name in {"Title", "Heading"}:
-            self.heading_number = getattr(self, "heading_number", 0) + 1
-            key = f"heading-{self.heading_number}"
-            self.canv.bookmarkPage(key)
-            self.canv.addOutlineEntry(flowable.getPlainText(), key, level=0)
-
-
 def render(source: Path, output: Path) -> None:
+    """Render a bounded snapshot as tagged PDF using only approved local resources."""
     payload = json.loads(source.read_text(encoding="utf-8"))
     data, photos, request = payload["data"], payload["photos"], payload["request"]
     labels = LABELS[request["locale"]]
     font_dir = Path(reportlab_file).parent / "fonts"
-    pdfmetrics.registerFont(TTFont("Travel", str(font_dir / "Vera.ttf")))
-    pdfmetrics.registerFont(TTFont("TravelBold", str(font_dir / "VeraBd.ttf")))
-    normal = ParagraphStyle("Body", fontName="Travel", fontSize=10, leading=15, spaceAfter=8)
-    heading = ParagraphStyle(
-        "Heading", parent=normal, fontName="TravelBold", fontSize=16, leading=21, spaceBefore=14, keepWithNext=True
-    )
-    title = ParagraphStyle("Title", parent=heading, fontSize=24, leading=29)
-    story: list[Any] = []
+    resources = {
+        "https://travel.invalid/regular.ttf": (font_dir / "Vera.ttf", "font/ttf"),
+        "https://travel.invalid/bold.ttf": (font_dir / "VeraBd.ttf", "font/ttf"),
+    }
+
+    class LocalResources(URLFetcher):
+        """Resolve only the fonts and photo copies explicitly allowed for this snapshot."""
+
+        def fetch(self, url, headers=None):
+            """Reject unapproved URLs without network access or filesystem traversal."""
+            # Never delegate: no network, data URLs, redirects or arbitrary paths.
+            if url not in resources:
+                raise ValueError("PDF resource is not approved")
+            path, mime = resources[url]
+            return URLFetcherResponse(url, body=path.read_bytes(), headers={"Content-Type": mime})
+
+    normal, heading, title = "p", "h2", "h1"
+    story: list[str] = []
     fields = AUDIENCE_FIELDS if request["view"] == "audience" else FIELDS
 
     def text(value, style=normal):
+        """Append escaped authored text with a semantic HTML element."""
         if value is not None and value != "":
-            # Escape ALL markup, including Markdown HTML and remote <img> tags.
-            story.append(Paragraph(escape(str(value)).replace("\n", "<br/>"), style))
+            story.append(f"<{style}>{escape(str(value)).replace(chr(10), '<br>')}</{style}>")
 
     def field(record, key, style=normal):
+        """Render one allowlisted field with a localized label and value."""
         value = record.get(key)
         if value is None or value == "":
             return
@@ -222,7 +223,7 @@ def render(source: Path, output: Path) -> None:
         text(labels["story"], heading)
         for update in data["updates"]:
             for key in fields:
-                field(update, key, heading if key == "title" else normal)
+                field(update, key, "h3" if key == "title" else normal)
             for key in ("place", "location"):
                 text((update.get(key) or {}).get("label"))
         if photos:
@@ -239,38 +240,51 @@ def render(source: Path, output: Path) -> None:
                 image.convert("RGB").save(normalized, "JPEG", quality=85)
                 width, height = image.size
             scale = min(460 / width, 420 / height, 1)
-            story.append(Image(str(normalized), width=width * scale, height=height * scale))
+            url = f"https://travel.invalid/photo-{len(resources)}.jpg"
+            resources[url] = (normalized, "image/jpeg")
+            alt = escape(str(media.get("alt_text") or ""), quote=True)
+            story.append('<div class="photo">')
+            story.append(f'<img src="{url}" alt="{alt}" style="width:{width * scale}pt;height:{height * scale}pt">')
             text(media.get("alt_text"))
             text(media.get("caption"))
-            story.append(Spacer(1, 12))
+            story.append("</div>")
+
     if request["content"] in ("itinerary", "both"):
         text(labels["itinerary"], heading)
         for section in ("visits", "stays", "routes", "places"):
             if data[section]:
-                text(labels[section], heading)
+                text(labels[section], "h3")
             for record in data[section]:
                 for key in fields:
                     field(record, key)
                 for key in ("place", "location", "departure", "arrival", "departure_location", "arrival_location"):
                     text((record.get(key) or {}).get("label"))
-                story.append(Spacer(1, 10))
 
-    def page(canvas, doc):
-        canvas.setFont("Travel", 9)
-        canvas.drawRightString(540, 30, str(doc.page))
-        if request["view"] == "private":
-            canvas.drawString(48, 30, "PRIVÉ" if request["locale"] == "nl" else "PRIVATE")
-
-    TripDocument(
-        str(output),
-        title=data.get("title") or labels["untitled"],
-        author="",
-        lang=request["locale"],
-        leftMargin=48,
-        rightMargin=48,
-        topMargin=40,
-        bottomMargin=48,
-    ).build(story, onFirstPage=page, onLaterPages=page)
+    private = "PRIVÉ" if request["locale"] == "nl" else "PRIVATE"
+    footer = private if request["view"] == "private" else ""
+    css = """
+        @font-face { font-family: Travel; src: url(https://travel.invalid/regular.ttf) }
+        @font-face { font-family: Travel; font-weight: bold; src: url(https://travel.invalid/bold.ttf) }
+        @page { size: A4; margin: 40pt 48pt 48pt;
+          @bottom-right { content: counter(page); font: 9pt Travel }
+          @bottom-left { content: "FOOTER"; font: 9pt Travel }
+        }
+        body { font: 10pt/1.5 Travel }
+        p { margin: 0 0 8pt; overflow-wrap: anywhere }
+        h1, h2, h3 { font-weight: bold; break-after: avoid; overflow-wrap: anywhere }
+        h1 { font-size: 24pt } h2 { font-size: 16pt } h3 { font-size: 12pt }
+        .photo { break-inside: avoid }
+        img { display: block; max-width: 100%; object-fit: contain; margin: 8pt 0 }
+    """.replace("FOOTER", footer)
+    document = (
+        f'<html lang="{request["locale"]}"><head><meta charset="utf-8">'
+        f"<title>{escape(data.get('title') or labels['untitled'])}</title>"
+        f"<style>{css}</style></head><body>{''.join(story)}</body></html>"
+    )
+    # Use the supported accessibility profile; human validation is still required.
+    HTML(string=document, url_fetcher=LocalResources(fail_on_errors=True, allowed_protocols=[])).write_pdf(
+        output, pdf_variant="pdf/ua-1", font_config=FontConfiguration()
+    )
 
 
 if __name__ == "__main__":
