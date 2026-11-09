@@ -592,7 +592,7 @@ class TravelMcpBackend:
             # The domain handlers commit each record. Inside a batch a commit
             # only flushes, so ``_call`` commits everything at the end, or the
             # closing session rolls all of it back when one record is refused.
-            session.commit = session.flush  # ty: ignore[invalid-assignment]
+            session.commit = session.flush
             created: dict[str, list[dict[str, Any]]] = {}
             try:
                 for field, kind, create, model_type in steps:
