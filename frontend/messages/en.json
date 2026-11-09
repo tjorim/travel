@@ -2658,5 +2658,14 @@
   "owner_track_error": "Cannot import this file. Check the format, portion and size (2 MiB), or wait a minute before retrying. Your route is unchanged.",
   "owner_track_loading": "Processing file…",
   "owner_track_draft_heading": "Edit imported draft",
-  "owner_track_draft_map": "Map editor for imported draft"
+  "owner_track_draft_map": "Map editor for imported draft",
+  "feed_heading": "Atom feed",
+  "feed_warning": "Hosted feed readers keep copies of fetched text. Revoking stops new fetches but cannot delete existing copies. The feed contains update text only, without photos.",
+  "feed_ack": "I understand that readers keep copies",
+  "feed_enable": "Enable feed",
+  "feed_rotate": "Rotate feed token",
+  "feed_revoke": "Revoke feed",
+  "feed_error": "The feed could not be changed.",
+  "feed_expiry": "Feed expires: {date}",
+  "feed_url": "Feed URL"
 }

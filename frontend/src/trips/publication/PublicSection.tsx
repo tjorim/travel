@@ -61,6 +61,11 @@ export function PublicSection({
           </code>
         </p>
       )}
+      {slug && (
+        <p>
+          <a href={`/api/public/trips/${slug}/feed.atom`}>{m.feed_heading()}</a>
+        </p>
+      )}
       <RecordForm
         record={record}
         submitLabel={m.assets_save_selection()}

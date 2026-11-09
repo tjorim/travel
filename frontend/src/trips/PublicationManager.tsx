@@ -459,6 +459,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         onToggle={toggle}
       />
       <LinkList
+        tripId={trip.id}
         series={linkSeries}
         hasLinks={links.length > 0}
         loading={linksQuery.isPending}

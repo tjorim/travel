@@ -39,3 +39,15 @@ procedure must reapply current deletion, publication and revocation state before
 serving restored data, so a restore cannot reactivate old capabilities. Existing
 object-storage write, purge and locking rules remain unchanged. VPS deployment
 configuration and backup/restore operations belong to `tjorim/apps`.
+
+## Atom capabilities (#247)
+
+A hidden-link feed starts disabled and has its own independently generated
+256-bit token, keyed verifier and optional expiry. The recoverable-token and
+backup policy above applies to it too. Owner link management lists its URL and
+expiry. Enabling or rotating requires explicit acknowledgement of hosted-reader
+copies; revocation does not. The API permits 1–90 days (30 by default) or an
+explicit null expiry; the PWA offers a bounded 1–90 day choice. Feed revocation,
+rotation or expiry stops feed delivery independently. Parent revocation, expiry
+or page-token rotation stops the old feed as well; a rotated page starts with
+its feed disabled. No page token is ever embedded in feed content or URLs.

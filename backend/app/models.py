@@ -186,6 +186,9 @@ class AuditEventKind(StrEnum):
     SHARE_LINK_ACTIVATE = "share_link.activate"
     SHARE_LINK_REVOKE = "share_link.revoke"
     SHARE_LINK_ROTATE = "share_link.rotate"
+    FEED_ENABLE = "feed.enable"
+    FEED_ROTATE = "feed.rotate"
+    FEED_REVOKE = "feed.revoke"
     SHARE_LINK_EXPIRE = "share_link.expire"
     # Merging duplicate locations or areas can narrow what an audience
     # receives, so it is recorded with the other audience-affecting changes.
@@ -946,6 +949,9 @@ class ShareLink(Base):
     # audience receives (projection, files, navigation, `access.receivers`) ever reads it.
     applied_preset: Mapped[str | None] = mapped_column(String(32), nullable=True)
     applied_preset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    feed_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    feed_verifier: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    feed_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     token: Mapped[str | None] = mapped_column(String(128), nullable=True)
     token_verifier: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

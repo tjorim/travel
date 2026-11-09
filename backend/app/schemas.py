@@ -1882,7 +1882,13 @@ class ShareLinkActivateRequest(InputModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class FeedEnableRequest(ShareLinkActivateRequest):
+    acknowledge_copies: bool = False
+
+
 class ShareLinkResponse(BaseModel):
+    feed_token: str | None = None
+    feed_expires_at: datetime | None = None
     revision: int
     id: str
     series_id: str

@@ -2658,5 +2658,14 @@
   "owner_track_error": "Dit bestand kan niet worden geïmporteerd. Controleer formaat, deel en grootte (2 MiB), of wacht een minuut en probeer opnieuw. Je route is ongewijzigd.",
   "owner_track_loading": "Bestand verwerken…",
   "owner_track_draft_heading": "Geïmporteerd concept bewerken",
-  "owner_track_draft_map": "Kaarteditor voor geïmporteerd concept"
+  "owner_track_draft_map": "Kaarteditor voor geïmporteerd concept",
+  "feed_heading": "Atomfeed",
+  "feed_warning": "Online feedlezers bewaren kopieën van opgehaalde tekst. Intrekken stopt nieuwe verzoeken maar verwijdert bestaande kopieën niet. De feed bevat alleen updatetekst, zonder foto’s.",
+  "feed_ack": "Ik begrijp dat lezers kopieën bewaren",
+  "feed_enable": "Feed inschakelen",
+  "feed_rotate": "Feedtoken vervangen",
+  "feed_revoke": "Feed intrekken",
+  "feed_error": "De feed kon niet worden gewijzigd.",
+  "feed_expiry": "Feed verloopt: {date}",
+  "feed_url": "Feed-URL"
 }
