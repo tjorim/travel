@@ -268,6 +268,8 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#318](https://github.com/tjorim/travel/issues/318) Add the separately packaged async Python owner client, typed task/packing CRUD, safe bounded transport, HA authentication guidance and API contract/package CI. Dedicated HA OAuth provisioning is tracked in [apps#333](https://github.com/tjorim/apps/issues/333); #319 starts after this implementation merges.
+
 - [x] [#243](https://github.com/tjorim/travel/issues/243) Import a selected portion of a finished file into a transient two-decimal route draft; raw bytes/points are never stored. See [decision 243](docs/decisions/243-finished-track-import.md).
 - [x] [#495](https://github.com/tjorim/travel-private/issues/495) Applied the refreshed
       design to the owner home, trip list and trip workspace (state grouping,

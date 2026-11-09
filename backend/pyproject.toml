@@ -32,6 +32,7 @@ dependencies = [
 [dependency-groups]
 dev = [
   "pytest==9.2.0",
+  "python-travel",
   "ruff==0.17.3",
   "ty==0.0.95",
 ]
@@ -72,3 +73,6 @@ invalid-argument-type = "ignore"
 invalid-return-type = "ignore"
 invalid-method-override = "ignore"
 no-matching-overload = "ignore"
+
+[tool.uv.sources]
+python-travel = { path = "../python-travel" }

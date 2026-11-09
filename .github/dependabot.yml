@@ -1,5 +1,18 @@
 version: 2
 updates:
+  - package-ecosystem: "uv"
+    directory: "/python-travel"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "18:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 10
+    assignees: ["tjorim"]
+    commit-message:
+      prefix: "deps(python-client)"
+    labels: ["dependencies", "python"]
+
   # Monitor uv-managed backend dependencies.
   - package-ecosystem: "uv"
     allow:
