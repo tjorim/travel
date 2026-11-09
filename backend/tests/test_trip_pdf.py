@@ -119,6 +119,17 @@ def test_explicit_private_acknowledgement_and_audience_required():
             PdfRequest(content="both", locale="nl", **payload)
 
 
+@pytest.mark.parametrize("audience", ["bad\x00text", "\ud800", "\udfff"])
+def test_pdf_rejects_unsafe_audience_before_database_lookup(audience):
+    ids = build_rich_trip()
+    response = client_for("owner-1").post(
+        f"/api/trips/{ids['trip']}/export/pdf",
+        content=json.dumps({"content": "story", "view": "audience", "locale": "en", "audience": audience}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+
+
 def test_preflight_rejects_large_trip_before_relationship_load(monkeypatch):
     ids = build_rich_trip()
     with TestingSessionLocal() as session:

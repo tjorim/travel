@@ -14,7 +14,7 @@ from typing import Any, Literal
 import anyio
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 from sqlalchemy import String, cast, event, func, select
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from .access import sharing_blocker
 from .export import ROUTE, STAY, TRAVEL_UPDATE, VISIT, _default, _record
 from .models import Base, Collection, CollectionMember, MediaKind, PublicSurface, ShareLink, Trip
 from .projection import local_id, render_projection, scoped_file
+from .schemas import InputModel
 from .storage import ObjectStorage
 
 MAX_ROWS = 1500
@@ -48,8 +49,7 @@ class EphemeralPdfResponse(StreamingResponse):
                 await anyio.to_thread.run_sync(self.cleanup)
 
 
-class PdfRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class PdfRequest(InputModel):
     content: Literal["story", "itinerary", "both"]
     view: Literal["audience", "private"]
     locale: Literal["nl", "en"]
