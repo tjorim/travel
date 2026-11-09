@@ -20,7 +20,7 @@ permissions:
 jobs:
   changes:
     name: Detect changed components
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -53,7 +53,7 @@ jobs:
     name: Backend
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: backend
@@ -111,7 +111,7 @@ jobs:
     name: Python client (${{ matrix.python }})
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.python-client == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         python: ['3.14', '3.15']
@@ -141,7 +141,7 @@ jobs:
     name: Home Assistant
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.home-assistant == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: home-assistant
@@ -162,7 +162,7 @@ jobs:
     name: Frontend
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: frontend
@@ -204,7 +204,7 @@ jobs:
     name: Frontend end-to-end shard ${{ matrix.shard }}/3
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: frontend
@@ -256,7 +256,7 @@ jobs:
     name: Frontend end-to-end
     needs: [changes, frontend-e2e-shard]
     if: always() && (github.event_name == 'push' || needs.changes.outputs.frontend == 'true')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Require every shard to have passed
         env:
@@ -266,7 +266,7 @@ jobs:
   dependency-audit:
     name: Dependency audit
     timeout-minutes: 10
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -298,7 +298,7 @@ jobs:
       - frontend
       - frontend-e2e
       - dependency-audit
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Require every job to have passed or been skipped
         env:
@@ -309,7 +309,7 @@ jobs:
     name: HACS repository validation
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.home-assistant == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
