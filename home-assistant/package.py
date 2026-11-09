@@ -16,7 +16,10 @@ def build(target: Path | None = None):
         for path in sorted(SOURCE.rglob("*")):
             if (
                 path.is_file()
-                and (path.suffix in {".py", ".json"} or path.relative_to(SOURCE).as_posix() == "brand/icon.png")
+                and (
+                    path.suffix in {".py", ".json"}
+                    or path.relative_to(SOURCE).as_posix() in {"brand/icon.png", "LICENSE"}
+                )
                 and "__pycache__" not in path.parts
             ):
                 info = ZipInfo(path.relative_to(SOURCE).as_posix(), date_time=(1980, 1, 1, 0, 0, 0))

@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- License Travel under Apache License 2.0, including the separately packaged Python client and Home Assistant integration.
+
 - Prepare the first HACS integration release 0.2.0 (#329): reproducible ZIP packaging, local Travel brand icon, archive-layout regression coverage and corrected release/version and delayed-location guidance. Publication and HACS release download/update verification remain pending; production OAuth remains apps#333.
 
 - Add per-audience location delay (#332): zero, 15/30 minutes, 1/2/24 hours, applied before precision. Deliver only the latest eligible observation with its actual time and delay; freshness follows the delayed cutoff while source inactivity still hides delivery at 24 hours. Add indexed bounded selection, bilingual owner checks/previews and visitor polling. Revocation, deletion and owner-only track/export boundaries remain in force.

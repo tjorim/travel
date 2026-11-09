@@ -24,10 +24,11 @@ def test_release_archive(tmp_path):
             "live_location.py",
             "translations/en.json",
             "brand/icon.png",
+            "LICENSE",
         } <= set(names)
         assert all(not name.startswith(("/", "custom_components/")) and ".." not in name.split("/") for name in names)
         assert all(
-            (name.endswith((".py", ".json")) or name == "brand/icon.png") and "__pycache__" not in name
+            (name.endswith((".py", ".json")) or name in {"brand/icon.png", "LICENSE"}) and "__pycache__" not in name
             for name in names
         )
         assert json.loads(archive.read("manifest.json")) == json.loads((package.SOURCE / "manifest.json").read_text())
