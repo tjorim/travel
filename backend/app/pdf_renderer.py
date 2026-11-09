@@ -171,6 +171,7 @@ VALUE_LABELS = {
 
 
 def render(source: Path, output: Path) -> None:
+    """Render a bounded snapshot as tagged PDF using only approved local resources."""
     payload = json.loads(source.read_text(encoding="utf-8"))
     data, photos, request = payload["data"], payload["photos"], payload["request"]
     labels = LABELS[request["locale"]]
@@ -181,7 +182,10 @@ def render(source: Path, output: Path) -> None:
     }
 
     class LocalResources(URLFetcher):
+        """Resolve only the fonts and photo copies explicitly allowed for this snapshot."""
+
         def fetch(self, url, headers=None):
+            """Reject unapproved URLs without network access or filesystem traversal."""
             # Never delegate: no network, data URLs, redirects or arbitrary paths.
             if url not in resources:
                 raise ValueError("PDF resource is not approved")
@@ -193,10 +197,12 @@ def render(source: Path, output: Path) -> None:
     fields = AUDIENCE_FIELDS if request["view"] == "audience" else FIELDS
 
     def text(value, style=normal):
+        """Append escaped authored text with a semantic HTML element."""
         if value is not None and value != "":
             story.append(f"<{style}>{escape(str(value)).replace(chr(10), '<br>')}</{style}>")
 
     def field(record, key, style=normal):
+        """Render one allowlisted field with a localized label and value."""
         value = record.get(key)
         if value is None or value == "":
             return
