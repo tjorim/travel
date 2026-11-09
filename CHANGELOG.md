@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Prepare the first HACS integration release 0.2.0 (#329): reproducible ZIP packaging, local Travel brand icon, archive-layout regression coverage and corrected release/version and delayed-location guidance. Publication and HACS release download/update verification remain pending; production OAuth remains apps#333.
+
 - Add per-audience location delay (#332): zero, 15/30 minutes, 1/2/24 hours, applied before precision. Deliver only the latest eligible observation with its actual time and delay; freshness follows the delayed cutoff while source inactivity still hides delivery at 24 hours. Add indexed bounded selection, bilingual owner checks/previews and visitor polling. Revocation, deletion and owner-only track/export boundaries remain in force.
 
 - Add optional Home Assistant live location with retained exact owner-only tracks (#244). Sources start disabled, bind to an owner/trip/entity through existing OAuth, validate and bound fresh single-point pushes, and retain history until explicit owner deletion. The owner can inspect/export/delete tracks and choose current-only delivered precision separately for public and selected hidden links. Visitor positions become stale at one hour and disappear at 24 hours; fresh input resumes only still-enabled audiences. No content inference, visitor history, PDF/Atom/trip-export locations or new credential scheme. Add guarded bilingual owner controls, HA source lifecycle cleanup and privacy/backup guidance; production OAuth remains apps#333.

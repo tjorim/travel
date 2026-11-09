@@ -25,7 +25,7 @@ name. Do not disable HA dependency installation for ordinary installation.
 
 For HACS, add `tjorim/travel` as a custom Integration repository after an integration
 release with `travel.zip` exists. Build it with `uv run python package.py` here;
-attach `dist/travel.zip` to a GitHub release tagged `ha-v0.2.0`. The archive contains
+attach `dist/travel.zip` to a GitHub release tagged `v0.2.0`. The archive contains
 only the integration directory contents, as required by `hacs.json`. Do not mark
 a release available until its archive and dependency install have been tested.
 First release tagging/HACS verification is tracked in [#329](https://github.com/tjorim/travel/issues/329).
@@ -157,12 +157,16 @@ start collection. In HA's Travel options, select the location trip and then its
 enabled source. Task-trip selection is independent. A different entity needs a
 new Travel source; a person changing its underlying device keeps its identity.
 
-Choose delivered precision independently for the public trip and each hidden
-link in Travel. Saving affects active audiences immediately; connecting HA never
+Choose delivered precision and delay independently for the public trip and each
+hidden link in Travel. Saving affects active audiences immediately; connecting HA never
 publishes anything. Existing link/public activation, expiry and revocation still
-apply. Only current location is delivered. At one hour it is stale; at 24 hours
-without fresh accepted data it disappears. Fresh data resumes still-enabled
-audiences, while exact private tracks remain until explicit deletion.
+apply. Each audience receives only the latest eligible observation, never a
+track: delay is zero, 15/30 minutes, 1/2 hours or 24 hours, applied before precision.
+Freshness is relative to the delayed cutoff (stale after one hour, omitted after
+24 hours); independently, 24 hours without fresh source observations hides
+delivery. Review the actual delivered observation, precision and delay in Travel
+before sharing. Fresh data resumes still-enabled audiences, while exact private
+tracks remain until explicit deletion. See [decision 244](../docs/decisions/244-live-location-tracks.md).
 
 The integration coalesces source events and sends at most every 45 seconds.
 Unavailable/missing GPS and observations older than five minutes are skipped.
@@ -184,3 +188,44 @@ those copies. Never put location attributes in debug logs or automations that
 forward them unintentionally. Production unattended OAuth still depends on
 [apps#333](https://github.com/tjorim/apps/issues/333); access-token revocation takes
 effect according to the existing OAuth token lifetime, not a new credential scheme.
+
+## Release preparation (#329)
+
+The first release is **0.2.0**, matching the current manifest, not the original
+issue's 0.1.0 proposal. Use the HACS-compatible tag **v0.2.0**: `ha-v0.2.0` is
+not a recognized AwesomeVersion version and cannot be reliably compared for updates.
+This repository's GitHub releases are integration releases; the application and
+Python client remain independently versioned. No release or tag is created by CI.
+
+Run the locked checks above, then build outside Git:
+
+```sh
+uv run python package.py --output /tmp/travel-ha-release/travel.zip
+sha256sum /tmp/travel-ha-release/travel.zip
+```
+
+The ZIP uses sorted paths, fixed timestamps and permissions and includes the
+local brand icon rendered from `frontend/public/icon.svg` (ImageMagick:
+`convert -background none frontend/public/icon.svg -resize 256x256 -strip custom_components/travel/brand/icon.png`).
+Compare hashes with the same Python/zlib toolchain; source mtimes do not affect it.
+Extract ZIP contents directly into a clean HA config's `custom_components/travel/`.
+Install the minimum HA from `hacs.json` in a separate Python 3.14 environment,
+then let HA's requirement manager install the manifest dependency (no local-client
+override or skip-pip). Verify imports of config flow, to-do, live location,
+application credentials and diagnostics, and the installed client's task/packing
+and `live_sessions`/`push_position` methods. Check its `direct_url.json` against
+the manifest's immutable archive. HA 2026.10.4 is the locked/tested baseline,
+including its Python >=3.14.2 requirement.
+
+Before publishing, recheck remote tags and releases; never replace an existing
+tag or asset. Attach the verified `travel.zip` and its SHA-256 to the release at
+the reviewed source commit. After publication, verify HACS custom-repository
+download/reinstall, installed manifest/brand asset, restart and update discovery
+against that real release; pre-release repository validation cannot prove these.
+Keep #329 open until those checks finish. Production OAuth verification remains
+[apps#333](https://github.com/tjorim/apps/issues/333), not a release claim.
+
+Primary references: [HACS repository versions and ZIP releases](https://www.hacs.xyz/docs/publish/start/),
+[HACS validation](https://www.hacs.xyz/docs/publish/action/),
+[HA local brand assets](https://contributors.home-assistant.io/core/integrations/brands/),
+[HA 2026.10.4 metadata](https://github.com/home-assistant/core/blob/2026.10.4/pyproject.toml).
