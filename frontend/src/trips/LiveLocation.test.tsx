@@ -67,12 +67,16 @@ it("keeps a new source draft when an earlier list toggle finishes", async () => 
     current: null,
     stale: false,
   };
+  let reads = 0;
   let finish!: () => void;
   const pending = new Promise<void>((resolve) => {
     finish = resolve;
   });
   server.use(
-    http.get("*/api/trips/trip-one/live-location", () => HttpResponse.json([row])),
+    http.get("*/api/trips/trip-one/live-location", () => {
+      reads += 1;
+      return HttpResponse.json([row]);
+    }),
     http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
     http.put("*/api/trips/trip-one/live-location/source-one", async () => {
       await pending;
@@ -86,7 +90,9 @@ it("keeps a new source draft when an earlier list toggle finishes", async () => 
   fireEvent.click(await screen.findByRole("button", { name: m.live_start() }));
   fireEvent.click(screen.getByRole("button", { name: m.live_add() }));
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "person.draft" } });
+  const readsBeforeCompletion = reads;
   finish();
+  await waitFor(() => expect(reads).toBeGreaterThan(readsBeforeCompletion));
   await waitFor(() =>
     expect(screen.getByRole("dialog").querySelector('button[type="submit"]')).not.toBeDisabled(),
   );
