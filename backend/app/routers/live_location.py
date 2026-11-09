@@ -54,7 +54,7 @@ class Position(BaseModel):
 
 
 def owned(session: Session, trip_id: str, session_id: str, subject: str, *, lock: bool = False) -> LiveSession:
-    owned_trip(session, trip_id, subject)
+    owned_trip(session, trip_id, subject, load_relations=False)
     query = select(LiveSession).where(LiveSession.id == session_id, LiveSession.trip_id == trip_id)
     result = session.scalar(query.with_for_update() if lock else query)
     if result is None:
@@ -85,7 +85,7 @@ def session_data(session: Session, row: LiveSession) -> dict:
 
 @router.get("")
 def list_sessions(trip_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response) -> list[dict]:
-    owned_trip(session, trip_id, subject)
+    owned_trip(session, trip_id, subject, load_relations=False)
     response.headers["Cache-Control"] = "no-store, private"
     return [
         session_data(session, row) for row in session.scalars(select(LiveSession).where(LiveSession.trip_id == trip_id))
@@ -94,7 +94,7 @@ def list_sessions(trip_id: Identifier, session: SessionDep, subject: SubjectDep,
 
 @router.post("", status_code=201)
 def create_session(trip_id: Identifier, data: Create, session: SessionDep, subject: SubjectDep) -> dict:
-    owned_trip(session, trip_id, subject)
+    owned_trip(session, trip_id, subject, load_relations=False)
     session.execute(select(Trip.id).where(Trip.id == trip_id).with_for_update())
     # Bound per-trip configuration, without a global in-memory owner registry.
     if len(list(session.scalars(select(LiveSession.id).where(LiveSession.trip_id == trip_id).limit(20)))) >= 20:

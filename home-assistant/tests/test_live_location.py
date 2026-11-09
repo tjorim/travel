@@ -20,12 +20,13 @@ async def test_selected_source_changes_stop_unload_and_no_backlog(hass, entity):
     unsub = Mock()
     with (
         patch("custom_components.travel.live_location.async_track_state_change_event", return_value=unsub) as listen,
-        patch("custom_components.travel.live_location.async_track_time_interval", return_value=Mock()),
+        patch("custom_components.travel.live_location.async_track_time_interval", return_value=Mock()) as timer,
     ):
         # Avoid spawning background tasks: exercise the same send callback explicitly.
         with patch.object(forwarder, "tick"):
             await forwarder.start()
         listen.assert_called_once()
+        assert timer.call_args.args[2] == timedelta(seconds=45)
         assert listen.call_args.args[1] == [entity]
         hass.states.async_set(
             entity, "home", {"latitude": 12.345678, "longitude": 45.678912, "source": "device_tracker.one"}

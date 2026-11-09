@@ -268,6 +268,8 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#244](https://github.com/tjorim/travel/issues/244) Add opt-in HA exact private tracks, owner management and current-only audience precision/freshness. Production OAuth remains apps#333.
+
 - [x] [#319](https://github.com/tjorim/travel/issues/319) Add the independently packaged HA task/packing integration, OAuth owner selection/reauth, safe refresh/lifecycle handling, privacy documentation and HA CI. Production OAuth provisioning/verification remains [apps#333](https://github.com/tjorim/apps/issues/333).
 - [x] [#318](https://github.com/tjorim/travel/issues/318) Add the separately packaged async Python owner client, typed task/packing CRUD, safe bounded transport, HA authentication guidance and API contract/package CI. Dedicated HA OAuth provisioning is tracked in [apps#333](https://github.com/tjorim/apps/issues/333); #319 starts after this implementation merges.
 
@@ -632,7 +634,6 @@ Polarsteps-like features require a fresh product and privacy decision.
   actually owns doing the work, per `AGENTS.md`. Update this plan when an
   issue's relative order changes.
 
-- [x] [#244](https://github.com/tjorim/travel/issues/244) Add opt-in HA exact private tracks, owner management and current-only audience precision/freshness. Production OAuth remains apps#333.
 
 ## Live location exception (#244, 2026-11-09)
 

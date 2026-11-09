@@ -59,16 +59,21 @@ export function LiveLocation({ tripId }: { tripId: string }) {
   });
   const change = useMutation({
     mutationFn: async (action: {
+      kind: "create" | "configure" | "toggle" | "delete";
       path: string;
       method: "POST" | "PUT" | "DELETE";
       body?: unknown;
-    }) => request(action.path, action),
-    onSuccess: () => {
-      setCreating(false);
-      setSource("");
-      setEditing(null);
-      setDraft(null);
-      setDeleting(null);
+    }) => request(action.path, { method: action.method, body: action.body }),
+    onSuccess: (_, action) => {
+      if (action.kind === "create") {
+        setCreating(false);
+        setSource("");
+      } else if (action.kind === "configure") {
+        setEditing(null);
+        setDraft(null);
+      } else if (action.kind === "delete") {
+        setDeleting(null);
+      }
       void cache.invalidateQueries({ queryKey: key });
     },
   });
@@ -146,6 +151,7 @@ export function LiveLocation({ tripId }: { tripId: string }) {
                 disabled={change.isPending}
                 onClick={() =>
                   change.mutate({
+                    kind: "toggle",
                     path: `/${row.id}`,
                     method: "PUT",
                     body: { enabled: !row.enabled, audiences: row.audiences },
@@ -205,7 +211,7 @@ export function LiveLocation({ tripId }: { tripId: string }) {
             className="grid gap-3"
             onSubmit={(event) => {
               event.preventDefault();
-              change.mutate({ path: "", method: "POST", body: { source } });
+              change.mutate({ kind: "create", path: "", method: "POST", body: { source } });
             }}
           >
             <Field>
@@ -255,6 +261,7 @@ export function LiveLocation({ tripId }: { tripId: string }) {
                 disabled={change.isPending || links.isPending || links.isError}
                 onClick={() =>
                   change.mutate({
+                    kind: "configure",
                     path: `/${draft.id}`,
                     method: "PUT",
                     body: { enabled: draft.enabled, audiences: draft.audiences },
@@ -294,11 +301,12 @@ export function LiveLocation({ tripId }: { tripId: string }) {
         {deleting && (
           <DeleteConfirmation
             title={deleting.session ? m.live_revoke() : m.live_delete_tracks()}
-            description={m.live_delete_warning()}
+            description={change.isError ? m.live_failed() : m.live_delete_warning()}
             confirmDisabled={change.isPending}
             onCancel={() => setDeleting(null)}
             onConfirm={() =>
               change.mutate({
+                kind: "delete",
                 path: `/${deleting.id}${deleting.session ? "" : "/tracks"}`,
                 method: "DELETE",
               })

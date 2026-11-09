@@ -41,7 +41,7 @@ class LocationForwarder:
             return
         self.unsubscribers = [
             async_track_state_change_event(self.hass, [self.source], self.changed),
-            async_track_time_interval(self.hass, self.tick, timedelta(seconds=30)),
+            async_track_time_interval(self.hass, self.tick, timedelta(seconds=45)),
         ]
         # Fresh current state only; never enumerate HA history or replay a queue.
         self.dirty = True

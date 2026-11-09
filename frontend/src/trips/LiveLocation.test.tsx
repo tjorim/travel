@@ -57,3 +57,68 @@ it("keeps source setup disabled and precision opt-in, with guarded edits and del
   fireEvent.click(screen.getByRole("button", { name: m.owner_delete() }));
   await waitFor(() => expect(writes).toContain("delete"));
 });
+
+it("keeps a new source draft when an earlier list toggle finishes", async () => {
+  const row = {
+    id: "source-one",
+    source: "person.synthetic",
+    enabled: false,
+    audiences: {},
+    current: null,
+    stale: false,
+  };
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  server.use(
+    http.get("*/api/trips/trip-one/live-location", () => HttpResponse.json([row])),
+    http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
+    http.put("*/api/trips/trip-one/live-location/source-one", async () => {
+      await pending;
+      return HttpResponse.json(row);
+    }),
+  );
+  renderRoutesWithOwner(createRootRoute({ component: () => <LiveLocation tripId="trip-one" /> }), [
+    "/",
+  ]);
+  fireEvent.click(await screen.findByRole("button", { name: m.live_title() }));
+  fireEvent.click(await screen.findByRole("button", { name: m.live_start() }));
+  fireEvent.click(screen.getByRole("button", { name: m.live_add() }));
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "person.draft" } });
+  finish();
+  await waitFor(() =>
+    expect(screen.getByRole("dialog").querySelector('button[type="submit"]')).not.toBeDisabled(),
+  );
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  expect(screen.getByRole("textbox")).toHaveValue("person.draft");
+});
+
+it("shows deletion failure inside the confirmation dialog", async () => {
+  server.use(
+    http.get("*/api/trips/trip-one/live-location", () =>
+      HttpResponse.json([
+        {
+          id: "source-one",
+          source: "person.synthetic",
+          enabled: false,
+          audiences: {},
+          current: null,
+          stale: false,
+        },
+      ]),
+    ),
+    http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
+    http.delete(
+      "*/api/trips/trip-one/live-location/source-one/tracks",
+      () => new HttpResponse(null, { status: 500 }),
+    ),
+  );
+  renderRoutesWithOwner(createRootRoute({ component: () => <LiveLocation tripId="trip-one" /> }), [
+    "/",
+  ]);
+  fireEvent.click(await screen.findByRole("button", { name: m.live_title() }));
+  fireEvent.click(await screen.findByRole("button", { name: m.live_delete_tracks() }));
+  fireEvent.click(screen.getByRole("button", { name: m.owner_delete() }));
+  await waitFor(() => expect(screen.getByRole("alertdialog")).toHaveTextContent(m.live_failed()));
+});

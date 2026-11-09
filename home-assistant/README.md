@@ -3,8 +3,9 @@
 Owner-only native to-do lists for explicitly selected Travel trips. Travel remains
 the source of truth. Each trip has a task entity and one entity per packing list.
 Five-minute polling discovers list changes; confirmed writes refresh immediately.
-No GPS/location access, person tracking, occupancy/security actions, Daynest
-cross-posting or visitor credentials are implemented. #244 remains gated.
+Location forwarding is optional and off by default (#244, see below). No
+occupancy/security actions, Daynest cross-posting or visitor credentials are
+implemented.
 
 ## Installation and OAuth dependency
 
@@ -163,10 +164,10 @@ apply. Only current location is delivered. At one hour it is stale; at 24 hours
 without fresh accepted data it disappears. Fresh data resumes still-enabled
 audiences, while exact private tracks remain until explicit deletion.
 
-The integration coalesces source events and sends at most every 30 seconds.
+The integration coalesces source events and sends at most every 45 seconds.
 Unavailable/missing GPS and observations older than five minutes are skipped.
 It has no history queue and never retries a failed position. A later fresh event
-may send the current state. Control state is rechecked every 30 seconds; disabling
+may send the current state. Control state is rechecked every 45 seconds; disabling
 or deleting the Travel source removes listeners. Clear the location trip in HA
 options to stop forwarding; reloading, unloading or disabling the HA entry cancels
 its in-flight work. Stop the source in Travel to stop server acceptance and
