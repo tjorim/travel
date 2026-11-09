@@ -1,0 +1,93 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Travel",
+        "data": {
+          "origin": "Travel origin"
+        }
+      },
+      "trips": {
+        "title": "Select trips",
+        "data": {
+          "trips": "Trips"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Travel again"
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to Travel.",
+      "invalid_origin": "Enter an HTTPS origin without a path.",
+      "invalid_auth": "Authentication failed.",
+      "owner_changed": "Sign in as the original Travel owner.",
+      "authentication": "Sign in to Travel again.",
+      "write_failed": "Travel could not confirm the change. Refresh before trying again.",
+      "refresh_failed": "The change was confirmed, but refresh failed. Refresh before trying again.",
+      "unsupported_date": "Only calendar due dates on trip tasks are supported.",
+      "missing_item": "The item is no longer in this list."
+    },
+    "abort": {
+      "cannot_connect": "Unable to connect to Travel.",
+      "invalid_origin": "Enter an HTTPS origin without a path.",
+      "invalid_auth": "Authentication failed.",
+      "owner_changed": "Sign in as the original Travel owner.",
+      "authentication": "Sign in to Travel again.",
+      "write_failed": "Travel could not confirm the change. Refresh before trying again.",
+      "refresh_failed": "The change was confirmed, but refresh failed. Refresh before trying again.",
+      "unsupported_date": "Only calendar due dates on trip tasks are supported.",
+      "missing_item": "The item is no longer in this list.",
+      "already_configured": "This Travel owner is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Select trips",
+        "data": {
+          "trips": "Trips"
+        }
+      }
+    },
+    "abort": {
+      "cannot_connect": "Unable to connect to Travel.",
+      "invalid_auth": "Authentication failed."
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Unable to connect to Travel."
+    },
+    "invalid_origin": {
+      "message": "Enter an HTTPS origin without a path."
+    },
+    "invalid_auth": {
+      "message": "Authentication failed."
+    },
+    "owner_changed": {
+      "message": "Sign in as the original Travel owner."
+    },
+    "authentication": {
+      "message": "Sign in to Travel again."
+    },
+    "write_failed": {
+      "message": "Travel could not confirm the change. Refresh before trying again."
+    },
+    "refresh_failed": {
+      "message": "The change was confirmed, but refresh failed. Refresh before trying again."
+    },
+    "unsupported_date": {
+      "message": "Only calendar due dates on trip tasks are supported."
+    },
+    "missing_item": {
+      "message": "The item is no longer in this list."
+    },
+    "unsupported_contract": {
+      "message": "This Travel API contract is not supported."
+    },
+    "unsupported_create_status": {
+      "message": "Create the task first, then mark it complete."
+    }
+  }
+}

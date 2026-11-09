@@ -1,0 +1,93 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Travel verbinden",
+        "data": {
+          "origin": "Travel-oorsprong"
+        }
+      },
+      "trips": {
+        "title": "Reizen selecteren",
+        "data": {
+          "trips": "Reizen"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Opnieuw aanmelden bij Travel"
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken met Travel.",
+      "invalid_origin": "Voer een HTTPS-oorsprong zonder pad in.",
+      "invalid_auth": "Aanmelden mislukt.",
+      "owner_changed": "Meld je aan als de oorspronkelijke Travel-eigenaar.",
+      "authentication": "Meld je opnieuw aan bij Travel.",
+      "write_failed": "Travel kon de wijziging niet bevestigen. Vernieuw voordat je opnieuw probeert.",
+      "refresh_failed": "De wijziging is bevestigd, maar vernieuwen is mislukt. Vernieuw voordat je opnieuw probeert.",
+      "unsupported_date": "Alleen kalenderdatums voor reistaken worden ondersteund.",
+      "missing_item": "Het item staat niet meer in deze lijst."
+    },
+    "abort": {
+      "cannot_connect": "Kan geen verbinding maken met Travel.",
+      "invalid_origin": "Voer een HTTPS-oorsprong zonder pad in.",
+      "invalid_auth": "Aanmelden mislukt.",
+      "owner_changed": "Meld je aan als de oorspronkelijke Travel-eigenaar.",
+      "authentication": "Meld je opnieuw aan bij Travel.",
+      "write_failed": "Travel kon de wijziging niet bevestigen. Vernieuw voordat je opnieuw probeert.",
+      "refresh_failed": "De wijziging is bevestigd, maar vernieuwen is mislukt. Vernieuw voordat je opnieuw probeert.",
+      "unsupported_date": "Alleen kalenderdatums voor reistaken worden ondersteund.",
+      "missing_item": "Het item staat niet meer in deze lijst.",
+      "already_configured": "Deze Travel-eigenaar is al ingesteld."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Reizen selecteren",
+        "data": {
+          "trips": "Reizen"
+        }
+      }
+    },
+    "abort": {
+      "cannot_connect": "Kan geen verbinding maken met Travel.",
+      "invalid_auth": "Aanmelden mislukt."
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Kan geen verbinding maken met Travel."
+    },
+    "invalid_origin": {
+      "message": "Voer een HTTPS-oorsprong zonder pad in."
+    },
+    "invalid_auth": {
+      "message": "Aanmelden mislukt."
+    },
+    "owner_changed": {
+      "message": "Meld je aan als de oorspronkelijke Travel-eigenaar."
+    },
+    "authentication": {
+      "message": "Meld je opnieuw aan bij Travel."
+    },
+    "write_failed": {
+      "message": "Travel kon de wijziging niet bevestigen. Vernieuw voordat je opnieuw probeert."
+    },
+    "refresh_failed": {
+      "message": "De wijziging is bevestigd, maar vernieuwen is mislukt. Vernieuw voordat je opnieuw probeert."
+    },
+    "unsupported_date": {
+      "message": "Alleen kalenderdatums voor reistaken worden ondersteund."
+    },
+    "missing_item": {
+      "message": "Het item staat niet meer in deze lijst."
+    },
+    "unsupported_contract": {
+      "message": "Dit Travel-API-contract wordt niet ondersteund."
+    },
+    "unsupported_create_status": {
+      "message": "Maak eerst de taak aan en voltooi deze daarna."
+    }
+  }
+}

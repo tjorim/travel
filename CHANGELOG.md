@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add the separately releasable HACS Travel integration (#319): application-credentials OAuth, explicit owner trip selection, native task/packing to-do entities, confirmed-write refresh, stable identities, safe errors/diagnostics, synthetic HA lifecycle/client tests and release packaging. Production Keycloak rollout remains apps#333; no live location or visitor routes are added.
+
 - Add the separately installable async `python-travel` owner client (#318), typed task/packing operations, authenticated API identity, bounded non-retrying transport and shared/owned aiohttp sessions. Include HA OAuth/reauth guidance (infrastructure tracked in tjorim/apps#333), synthetic API contracts and package CI; no visitor, publication or live-location access.
 
 - Add owner-only trip PDFs (Closes #248): explicit story/itinerary/both and saved-audience/private choices, Dutch/English output, approved photo copies, a private-output acknowledgement, and portable-copy warnings. Audience data uses the existing visitor projection with precision and exclusions; originals and arbitrary URLs are never fetched. Generation is ephemeral and bounded by preflight, photo, process memory/time/output and concurrency limits, streams private/no-store, and records a payload-free audit. Embedded Unicode fonts, page flow and reader bookmarks support printable long stories; PDFs are not tagged PDF/UA. Both locales/themes and narrow dirty-editor/focus behaviour are covered by focused axe/Playwright checks.

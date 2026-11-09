@@ -40,3 +40,9 @@ python-travel/.venv/
 python-travel/.pytest_cache/
 python-travel/.ruff_cache/
 python-travel/dist/
+
+# Home Assistant development and release artifacts.
+home-assistant/.venv/
+home-assistant/.pytest_cache/
+home-assistant/.ruff_cache/
+home-assistant/dist/

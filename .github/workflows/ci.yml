@@ -25,6 +25,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       python-client: ${{ steps.filter.outputs.python-client }}
+      home-assistant: ${{ steps.filter.outputs.home-assistant }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: filter
@@ -34,6 +35,12 @@ jobs:
             backend:
               - 'backend/**'
               - 'python-travel/**'
+              - '.github/workflows/ci.yml'
+            home-assistant:
+              - 'custom_components/travel/**'
+              - 'home-assistant/**'
+              - 'python-travel/**'
+              - 'hacs.json'
               - '.github/workflows/ci.yml'
             python-client:
               - 'python-travel/**'
@@ -129,6 +136,27 @@ jobs:
           uv pip install --python /tmp/travel-client-smoke/bin/python dist/*.whl
           /tmp/travel-client-smoke/bin/python -c 'from travel_client import TravelClient'
           uv run python -m py_compile examples/list_tasks.py
+
+  home-assistant:
+    name: Home Assistant
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.home-assistant == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: home-assistant
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv sync --frozen
+      - run: uv run ruff check ../custom_components/travel tests package.py
+      - run: uv run ruff format --check ../custom_components/travel tests package.py
+      - run: uv run ty check ../custom_components/travel
+      - run: uv run pytest
+      - run: uv run python package.py
 
   frontend:
     name: Frontend
@@ -265,6 +293,7 @@ jobs:
       - changes
       - backend
       - python-client
+      - home-assistant
       - frontend
       - frontend-e2e
       - dependency-audit

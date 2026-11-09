@@ -1,0 +1,3 @@
+"""Integration constants."""
+
+DOMAIN = "travel"
