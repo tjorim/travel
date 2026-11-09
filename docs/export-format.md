@@ -169,7 +169,7 @@ and rendering share a 30-second deadline (an in-flight PostgreSQL statement
 may add up to five seconds), with a
 separate worker constrained to 25 CPU seconds, 512 MiB address space and a
 64 MiB output file. Preflight bounds parent allocations; the worker hard
-memory limit also bounds image decoding and ReportLab's buffered document.
+memory limit also bounds image decoding and the PDF layout and font buffers.
 The deadline is checked before each snapshot query and staged chunk; a query
 already in flight is bounded by its statement timeout.
 
@@ -187,29 +187,66 @@ counts as a request; audit failure prevents delivery.
 
 ### Dependency and layout review
 
-ReportLab **5.1.0** is pinned in `pyproject.toml` and `uv.lock` (BSD-licensed
-Python package; Pillow was already a runtime dependency, charset-normalizer is
-locked transitively). Its [Platypus flowables](https://docs.reportlab.com/reportlab/userguide/ch5_platypus/)
-split long paragraphs across pages and scale local images. Its
-[paragraph API](https://docs.reportlab.com/reportlab/userguide/ch6_paragraphs/)
-accepts XML and remote image sources, so **all authored text is escaped** and
-images are passed separately from server-controlled local paths. No HTML/CSS
-browser, shell command, font URL or arbitrary URL fetching is involved.
-[Embedded TrueType fonts](https://docs.reportlab.com/reportlab/userguide/ch3_fonts/)
-use the package's bundled Bitstream Vera regular/bold files: Dutch/English
-Latin accents work without an OS font installation. Other scripts and emoji
-are not guaranteed. The production Docker image was built and the packaged
-fonts/rendering checked as its unprivileged user; no Dockerfile font package
-is needed.
+WeasyPrint **70.0** is pinned with its transitive dependencies in `uv.lock`.
+Its supported [PDF/UA profile](https://doc.courtbouillon.org/weasyprint/stable/common_use_cases.html#pdf-ua-universal-accessibility)
+derives reading order from generated HTML order. We use `pdf_variant="pdf/ua-1"`,
+semantic H1 (trip), H2 (story/photos/itinerary), H3 (updates/itinerary sections),
+paragraphs and image `alt` attributes; the library owns the structure tree,
+page-fragment tagging, bookmarks and decorative page-footer artifacts.
+No hand-written PDF objects or post-processing tag repair is involved.
+[ReportLab tagging](https://docs.reportlab.com/pdf-accessibility/) requires
+commercial PLUS; migrating layout to WeasyPrint avoids that runtime/license
+requirement. ReportLab **5.1.0** remains only to supply its bundled Bitstream
+Vera regular/bold fonts, preserving Dutch/English Latin accents without OS font
+selection. Other scripts and emoji remain unsupported guarantees.
 
-PDFs provide selectable text, title/language metadata, page numbers, headings,
-reader bookmarks and visible photo descriptions. They are **not tagged
-PDF/UA**, and visible descriptions are not structural image alternative text.
-Do not describe them as fully accessible; the accessible application remains
-available. Synthetic long-text, portrait/landscape-photo samples are generated
-outside Git and reviewed using Poppler rasterization and text extraction.
+WeasyPrint is BSD-3-Clause. Its locked layout dependencies include pydyf,
+tinyhtml5, tinycss2, cssselect2, Pyphen and fonttools (including Brotli/Zopfli);
+Pillow and cffi were already present. These are redistributable open-source
+packages (BSD/MIT/Apache; Pyphen dictionaries have their own bundled licenses).
+The Docker runtime adds Pango/PangoFT2 and their Debian dependencies, including
+Fontconfig/FreeType/HarfBuzz; no browser engine, office suite or JVM ships.
+See the official [installation guidance](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation).
+The larger layout/font runtime remains inside the existing process memory,
+CPU, wall-time, output-size and admission bounds. Fontconfig caches use the same
+disposable export directory. The production image was built and rendered as
+its unprivileged user with networking disabled; its sample also passes veraPDF.
+A representative 21-page render used 0.55 seconds and about 63 MiB peak RSS
+on the development host. A 462,000-character story with 60 synthetic copies
+rendered in 7.8 seconds at about 121 MiB peak RSS under unchanged limits. These
+are sample measurements, not production latency guarantees; over-budget output fails
+with the same fixed localized operation fallback.
 
-Full structural tagging is tracked in [#321](https://github.com/tjorim/travel/issues/321).
+Only application-generated HTML/CSS is rendered. **All authored text and image
+alternatives are escaped**, including Markdown, URLs and HTML. A custom
+`URLFetcher` serves only exact internal identifiers for the two bundled fonts
+and normalized approved photos from memory; it never calls a default fetcher.
+Network, arbitrary file, data and redirected URLs are rejected. The internal
+`https://travel.invalid/` names are lookup keys, never network requests.
+Image decoding/downsampling, projection allowlists, photo-copy gates and
+subprocess/temporary-directory handling are unchanged.
+
+### Accessibility evidence and remaining acceptance (#321)
+
+Synthetic Dutch and English 21-page long-story/12-photo samples were checked
+with **veraPDF 1.30.3**, explicitly selecting `--flavour ua1`: both passed all
+106 machine-verifiable rules with zero failed checks. Structure regression
+tests independently inspect heading order, tagged figures and exact escaped
+image alternatives with pypdf; text extraction verifies accents, pagination
+and literal hostile markup. These are structural checks, not screen-reader
+or human conformance evidence. Poppler-rendered title/long-text and photo
+pages were visually inspected; synthetic artifacts remain outside Git.
+
+**Do not claim full PDF/UA conformance or full accessibility.** The library's
+profile metadata is a generation target, not a human audit. No screen-reader
+PDF review was completed in this environment: Orca is installed, but there is
+no supported accessible desktop PDF viewer available for the required manual
+heading navigation, continuous reading across page breaks, image alternative
+and caption checks. Visible photo descriptions are retained and may repeat
+an image alternative. Authored alternatives still need human quality review.
+The existing bilingual UI warning remains accurate. [#321](https://github.com/tjorim/travel/issues/321)
+stays open for that manual review on these synthetic long/photo samples,
+recording viewer/screen-reader versions and observations before acceptance.
 
 ## Live location exception (#244, 2026-11-09)
 

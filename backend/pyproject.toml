@@ -27,10 +27,12 @@ dependencies = [
   "sqlalchemy==2.1.6",
   "timezonefinder==9.2.0",
   "uvicorn[standard]==0.54.0",
+  "weasyprint==70.0",
 ]
 
 [dependency-groups]
 dev = [
+  "pypdf==6.12.2",
   "pytest==9.2.0",
   "python-travel",
   "ruff==0.17.3",

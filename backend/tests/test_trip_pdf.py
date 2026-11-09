@@ -184,8 +184,6 @@ def test_foreign_audience_not_found():
 
 
 def test_renderer_independent_audience_allowlist_and_markup_escape(tmp_path, monkeypatch):
-    from reportlab.platypus import Paragraph
-
     from app import pdf_renderer
 
     data = {
@@ -206,9 +204,13 @@ def test_renderer_independent_audience_allowlist_and_markup_escape(tmp_path, mon
         json.dumps({"data": data, "photos": {}, "request": {"view": "audience", "locale": "en", "content": "both"}})
     )
     collected = []
-    monkeypatch.setattr(pdf_renderer.TripDocument, "build", lambda self, story, **kwargs: collected.extend(story))
+    monkeypatch.setattr(
+        pdf_renderer.HTML, "write_pdf", lambda self, *args, **kwargs: collected.append(self.etree_element)
+    )
     pdf_renderer.render(source, tmp_path / "unused.pdf")
-    rendered = " ".join(item.text for item in collected if isinstance(item, Paragraph))
+    from xml.etree.ElementTree import tostring
+
+    rendered = tostring(collected[0], encoding="unicode")
     for canary in ("PRIVATE-CANARY", "OWNER-CANARY", "NOTES-CANARY", "BOOKING-CANARY"):
         assert canary not in rendered
     assert "Visible" in rendered
@@ -354,3 +356,87 @@ def test_collection_member_uses_its_own_scope_and_owner_boundary():
         with pytest.raises(HTTPException) as error:
             pdf_data(session, trip, payload)
         assert error.value.status_code == 404
+
+
+@pytest.mark.parametrize("locale", ["nl", "en"])
+def test_tagged_long_story_photos_and_resource_boundary(tmp_path, monkeypatch, locale):
+    import socket
+
+    from PIL import Image
+    from pypdf import PdfReader
+    from weasyprint import HTML
+
+    from app import pdf_renderer
+
+    photo = tmp_path / "approved"
+    Image.new("RGB", (300, 500), "blue").save(photo, format="PNG")
+    alt = 'Café & <sky> "quoted"'
+    data = {
+        "title": "Synthetic café",
+        "summary": '<img src="file:///etc/passwd"> <img src="https://attacker.invalid/x">',
+        "dates": {},
+        "updates": [{"title": "Chapter", "body": "BEGIN-STORY " + "Long café vóór story. " * 1500 + " END-STORY"}],
+        "media": [{"id": "copy", "alt_text": alt, "caption": "Caption"}],
+        "visits": [{"title": "Visit"}],
+        "stays": [],
+        "routes": [],
+        "places": [],
+    }
+    source = tmp_path / "input.json"
+    source.write_text(
+        json.dumps(
+            {
+                "data": data,
+                "photos": {"copy": str(photo)},
+                "request": {
+                    "view": "audience",
+                    "locale": locale,
+                    "content": "both",
+                },
+            }
+        )
+    )
+    original = HTML.write_pdf
+
+    def checked_write(self, *args, **kwargs):
+        for url in (
+            "file:///etc/passwd",
+            "https://attacker.invalid/x",
+            "data:image/png;base64,AA",
+            "https://travel.invalid/regular.ttf?x",
+        ):
+            with pytest.raises(ValueError, match="not approved"):
+                self.url_fetcher.fetch(url)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(HTML, "write_pdf", checked_write)
+    monkeypatch.setattr(socket, "create_connection", lambda *a, **kw: pytest.fail("Network access"))
+    output = tmp_path / "trip.pdf"
+    pdf_renderer.render(source, output)
+    reader = PdfReader(output)
+    root = reader.trailer["/Root"]
+    assert root["/Lang"] == locale
+    assert root["/MarkInfo"]["/Marked"]
+    assert len(reader.pages) > 3
+    elements = []
+
+    def walk(node):
+        if isinstance(node, list):
+            for child in node:
+                walk(child)
+        elif hasattr(node, "get_object"):
+            node = node.get_object()
+            if isinstance(node, dict):
+                if "/S" in node:
+                    elements.append(node)
+                if "/K" in node:
+                    walk(node["/K"])
+
+    walk(root["/StructTreeRoot"])
+    tags = [node["/S"] for node in elements]
+    assert tags.index("/H1") < tags.index("/H2") < tags.index("/H3") < tags.index("/Figure")
+    assert [node["/Alt"] for node in elements if node["/S"] == "/Figure"] == [alt]
+    text = "".join(page.extract_text() for page in reader.pages)
+    assert "file:///etc/passwd" in text and "Caption" in text and "vóór" in text
+    assert text.index("BEGIN-STORY") < text.index("END-STORY") < text.index("Caption")
+    assert root.get("/Names") is None  # No attachments or authored links.
