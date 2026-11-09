@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add optional Home Assistant live location with retained exact owner-only tracks (#244). Sources start disabled, bind to an owner/trip/entity through existing OAuth, validate and bound fresh single-point pushes, and retain history until explicit owner deletion. The owner can inspect/export/delete tracks and choose current-only delivered precision separately for public and selected hidden links. Visitor positions become stale at one hour and disappear at 24 hours; fresh input resumes only still-enabled audiences. No content inference, visitor history, PDF/Atom/trip-export locations or new credential scheme. Add guarded bilingual owner controls, HA source lifecycle cleanup and privacy/backup guidance; production OAuth remains apps#333.
+
 - Add the separately releasable HACS Travel integration (#319): application-credentials OAuth, explicit owner trip selection, native task/packing to-do entities, confirmed-write refresh, stable identities, safe errors/diagnostics, synthetic HA lifecycle/client tests and release packaging. Production Keycloak rollout remains apps#333; no live location or visitor routes are added.
 
 - Add the separately installable async `python-travel` owner client (#318), typed task/packing operations, authenticated API identity, bounded non-retrying transport and shared/owned aiohttp sessions. Include HA OAuth/reauth guidance (infrastructure tracked in tjorim/apps#333), synthetic API contracts and package CI; no visitor, publication or live-location access.

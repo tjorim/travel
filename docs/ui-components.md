@@ -671,3 +671,12 @@ adapters. The registry's form primitives cover these controls; no new custom
 primitive is needed. A labelled read-only URL input supports selection/copy
 without a clipboard permission dependency. Local acknowledgement and expiry
 state survives locale changes and does not touch the scope editor's dirty state.
+
+## Live location controls (#244)
+
+Reuses the reviewed Base UI Button/Input, Field, Collapsible, ChoiceGroup,
+RecordDialog and DeleteConfirmation adapters. The base-nova registry and Base UI
+controls already cover these interactions; no custom primitive or composition was
+added. Source and precision edits use guarded dialogs; destructive track/source
+operations use Alert Dialog and retain focus return. Live current-position text is
+an ordinary semantic section with selected-locale number/date formatting.

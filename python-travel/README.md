@@ -11,7 +11,7 @@ uv run ruff format --check .
 uv run ty check src
 uv build
 uv venv /tmp/travel-client-smoke
-uv pip install --python /tmp/travel-client-smoke/bin/python dist/python_travel-0.1.0-py3-none-any.whl
+uv pip install --python /tmp/travel-client-smoke/bin/python dist/python_travel-0.2.0-py3-none-any.whl
 /tmp/travel-client-smoke/bin/python -c 'from travel_client import TravelClient'
 ```
 
@@ -96,7 +96,7 @@ omits its caching, SSE, integration keys and password/client-credential machiner
 
 ## Compatibility and releases
 
-0.1.0 targets the owner API contract shipped with #318. `identity()` returns
+0.2.0 targets the owner API contract shipped with #318. `identity()` returns
 contract version 1 and the supported task/packing capability names. Unknown additive
 fields are accepted; missing/invalid required fields raise a safe protocol error.
 During 0.x, breaking library or wire-contract changes increment the minor version;
@@ -105,3 +105,16 @@ Commit `uv.lock`; CI uses frozen installs on HA Python 3.14 and backend 3.15,
 builds sdist/wheel and installs the wheel in an isolated environment. Release checks
 are the commands above plus backend contract tests. Public PyPI publication/tagging
 requires a separate release action; this change does not publish the package.
+
+## Optional selected-source location
+
+After explicit owner setup in Travel, `scope.live_sessions()` lists the trip's
+owner-only source bindings. Send a single fresh point with
+`await scope.push_position(session_id, observed_at=aware_datetime, latitude=12.345678,
+longitude=45.678912)`. Travel validates the owner/trip/source session, enable state,
+coordinate bounds, ordering, freshness and rate. The response's `accepted` is false
+for an identical retry; no duplicate point is stored. The client never retries or
+queues location writes, and never logs their payload. Discard a failed observation
+and wait for fresh source data. OAuth credentials keep their existing owner powers;
+selecting a trip/session is not a narrower credential grant. Track retention,
+precision, deletion and backup semantics are defined in decision 244.

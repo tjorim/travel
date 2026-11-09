@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from travel_client import AuthenticationError, TravelError
 
 from .const import DOMAIN
+from .live_location import LocationForwarder
 
 
 class TravelCoordinator(DataUpdateCoordinator):
@@ -24,6 +25,7 @@ class TravelCoordinator(DataUpdateCoordinator):
         )
         self.entry = entry
         self.client = client
+        self.location = LocationForwarder(hass, entry, client)
         self.scopes = {}
 
     def unique_id(self, key):

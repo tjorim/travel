@@ -46,7 +46,15 @@
       "init": {
         "title": "Select trips",
         "data": {
-          "trips": "Trips"
+          "trips": "Trips",
+          "location_trip": "Live location trip (optional)"
+        }
+      },
+      "location": {
+        "title": "Live location",
+        "description": "Select a source enabled in Travel. Exact locations remain as private tracks until you delete them. Configure sharing separately in Travel. Leave empty to stop.",
+        "data": {
+          "location_session": "Source"
         }
       }
     },

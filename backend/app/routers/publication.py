@@ -928,7 +928,12 @@ def get_public_trip(request: Request, slug: str, session: SessionDep, response: 
     # A public intermediary cache would otherwise keep serving a withdrawn
     # projection without asking the API again.
     response.headers["Cache-Control"] = "no-store"
-    return render_projection(trip, surface.scope, "travel/public-trip@1")
+    from .live_location import current_for_audience
+
+    document = render_projection(trip, surface.scope, "travel/public-trip@1")
+    if positions := current_for_audience(session, trip.id, "public"):
+        document["current_locations"] = positions
+    return document
 
 
 @delivery_router.get(
@@ -1018,7 +1023,12 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
         raise not_found
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
-    return render_projection(trip, link.scope, "travel/unlisted-trip@1")
+    from .live_location import current_for_audience
+
+    document = render_projection(trip, link.scope, "travel/unlisted-trip@1")
+    if positions := current_for_audience(session, trip.id, link.id):
+        document["current_locations"] = positions
+    return document
 
 
 @delivery_router.get(

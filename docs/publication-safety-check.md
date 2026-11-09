@@ -176,3 +176,14 @@ field or file route, so there is nothing to check for them.
   acknowledgement and carries a warning in the file.
 - [ ] Treat downloads as permanent recipient copies: unpublishing, expiry and
   revocation cannot recall them. Store private PDFs outside source and Git.
+
+## Live location exception (#244, 2026-11-09)
+
+The owner explicitly approved exact live-track storage and current-only audience
+sharing. Earlier blanket no-GPS-history/live-location statements are superseded
+only by [decision 244](decisions/244-live-location-tracks.md).
+Tracks stay owner-only until explicit deletion; freshness expiry preserves them.
+Review each enabled audience and its delivered precision before sharing. Live
+coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
+owner track export is a separate deliberate download. Database and HA backups
+may retain deleted history until their independent retention expires.

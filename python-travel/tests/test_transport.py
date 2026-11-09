@@ -213,3 +213,37 @@ def test_retry_after_date_and_invalid():
     assert _retry_after("invalid") is None
     assert _retry_after("nan") is None
     assert _retry_after(None) is None
+
+
+def test_selected_live_source_push_contract_no_retries():
+    from datetime import UTC, datetime
+
+    async def check():
+        requests = []
+
+        async def handler(request):
+            requests.append((request.method, request.path))
+            if request.path.endswith("/live-location"):
+                return web.json_response(
+                    [{"id": "source-one", "source": "person.synthetic", "enabled": True, "audiences": {}}]
+                )
+            if request.path.endswith("/positions"):
+                body = await request.json()
+                assert set(body) == {"observed_at", "latitude", "longitude"}
+                assert body["latitude"] == 12.345678
+                return web.json_response({"accepted": True})
+            return web.json_response({"id": "trip-one", "title": "Synthetic"})
+
+        async with serve(handler) as origin, TravelClient(origin, token) as client:
+            scope = await client.select_trip("trip-one")
+            assert (await scope.live_sessions())[0].source == "person.synthetic"
+            assert (
+                await scope.push_position(
+                    "source-one", observed_at=datetime.now(UTC), latitude=12.345678, longitude=45.678912
+                )
+            ).accepted
+            with pytest.raises(ValueError):
+                await scope.push_position("../wrong", observed_at=datetime.now(UTC), latitude=12, longitude=45)
+            assert len(requests) == 3
+
+    run(check)

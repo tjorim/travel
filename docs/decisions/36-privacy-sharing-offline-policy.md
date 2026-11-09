@@ -194,7 +194,7 @@ happen to have similar audiences.
 | Routes | Exact locations at either end, schedule, carrier/service reference, booking reference, travel class, notes, linked documents and the drawn line. | Not included. | Not included. | Mode, status, the two areas, the drawn line, the schedule and time zones, carrier and service reference. A location appears on the map only when that location is itself shared, which suits public infrastructure such as airports and stations. Booking reference, class, notes and documents never. Without a drawn line, a straight line joins the two area points, or the two shared locations. |
 | Documents | Owner-wide library or trip-specific file, preview, filename and metadata. | Never included. | Never included. | Never shared, including links and metadata. |
 | Media | Original file, import provenance, EXIF/XMP/IPTC, face/person tags and exact capture data. | Not included. | Not included. | An explicitly selected derivative with all metadata stripped and owner-approved visible content, caption and alt text. |
-| Routes | An approximate line the owner reviewed, with its travel mode. A finished-file import may seed a reviewed two-decimal approximate draft only (decision 243). Raw bytes/points and timestamps, accuracy, speed and elevation exist only in request memory, never storage, logs, exports or third-party requests; there is no live capture or inferred visit/day/place. | Not included. | Not included. | The line, its mode and its date at the chosen precision (the audience's date setting, since #262), when the owner shares it. |
+| Routes | An approximate line the owner reviewed, with its travel mode. A finished-file import may seed a reviewed two-decimal approximate draft only (decision 243). Raw bytes/points and timestamps, accuracy, speed and elevation exist only in request memory, never storage, logs, exports or third-party requests; live capture exists only through separately selected decision 244 sessions; no visit/day/place is inferred. | Not included. | Not included. | The line, its mode and its date at the chosen precision (the audience's date setting, since #262), when the owner shares it. |
 | Private journal | The private notes of a reisupdate and all its metadata. | Never included. | Never included. | Never. The shared text of a reisupdate is a separate field written for visitors. |
 | Navigation and external-map links | Exact destination, route, provider URL and map viewport. | Not included. | Not included. | A shared place offers directions: to a shared location's point, or a city/region link for an area. Never an address. |
 
@@ -202,8 +202,8 @@ An owner can revise or remove a projection without changing the canonical
 record. Sharing an item never changes its default or makes later items shared.
 No projection may contain an owner subject, internal database ID, booking or
 confirmation code, precise address, travel-party contact detail, emergency
-information, raw document/media metadata, exact location, or live/near-real-
-time position. A flight or other service reference is permitted only in the
+information or raw document/media metadata. Exact or live positions are prohibited
+except the explicitly enabled current-only audience projection of decision 244. A flight or other service reference is permitted only in the
 selected route summary described above; it is not a booking credential.
 
 ## Server authorization and projection contract
@@ -640,3 +640,14 @@ private/no-store download, not a static public or unlisted origin, and not a
 managed encrypted offline pin. No capability, original file or permanent
 server artifact is created. A recipient's downloaded copy cannot be revoked;
 the owner reviews it before sharing. See [the export contract](../export-format.md#on-demand-pdf-248).
+
+## Live location exception (#244, 2026-11-09)
+
+The owner explicitly approved exact live-track storage and current-only audience
+sharing. Earlier blanket no-GPS-history/live-location statements are superseded
+only by [decision 244](244-live-location-tracks.md).
+Tracks stay owner-only until explicit deletion; freshness expiry preserves them.
+Review each enabled audience and its delivered precision before sharing. Live
+coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
+owner track export is a separate deliberate download. Database and HA backups
+may retain deleted history until their independent retention expires.

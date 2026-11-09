@@ -1395,3 +1395,32 @@ class MediaWorkerJob(Base):
     next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     error_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LiveSession(Base):
+    """Explicit owner/source/trip binding; never traversed by story projections."""
+
+    __tablename__ = "live_sessions"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), index=True)
+    source: Mapped[str] = mapped_column(String(128))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    watermark: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    current_id: Mapped[str | None] = mapped_column(String(32))
+    audiences: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class LivePoint(Base):
+    __tablename__ = "live_points"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid.uuid7().hex)
+    session_id: Mapped[str] = mapped_column(ForeignKey("live_sessions.id", ondelete="CASCADE"))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    __table_args__ = (
+        UniqueConstraint("session_id", "observed_at"),
+        Index("ix_live_points_session_id_id", "session_id", "id"),
+        CheckConstraint("latitude >= -90 AND latitude <= 90"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180"),
+    )

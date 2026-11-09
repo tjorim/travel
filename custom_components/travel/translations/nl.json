@@ -46,7 +46,15 @@
       "init": {
         "title": "Reizen selecteren",
         "data": {
-          "trips": "Reizen"
+          "trips": "Reizen",
+          "location_trip": "Reis voor live locatie (optioneel)"
+        }
+      },
+      "location": {
+        "title": "Live locatie",
+        "description": "Kies een in Travel ingeschakelde bron. Exacte locaties blijven als privétracks bewaard tot je ze verwijdert. Delen stel je apart in Travel in. Laat leeg om te stoppen.",
+        "data": {
+          "location_session": "Bron"
         }
       }
     },
