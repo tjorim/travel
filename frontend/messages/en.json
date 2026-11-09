@@ -2689,7 +2689,7 @@
   "pdf_link_audience": "Share link: {name}",
   "live_title": "Live location and private tracks",
   "live_privacy": "Exact tracks stay private until you delete them. Database backups, HA history and HA backups may keep older copies until their separate retention expires. Exported copies cannot be revoked.",
-  "live_freshness": "Current location is stale after one hour and hidden from visitors after 24 hours without fresh data. Fresh data resumes only enabled audiences. Tracks remain stored.",
+  "live_freshness": "Delay is independent per audience. A point is stale more than one hour behind its delayed cutoff and hidden more than 24 hours behind it. Delivery always stops 24 hours after the latest accepted observation, even with a delay. Tracks remain stored.",
   "live_failed": "Unable to complete the location operation. Refresh before retrying.",
   "live_off": "Off",
   "live_loading": "Loading…",
@@ -2700,8 +2700,8 @@
   "live_exact": "Exact",
   "live_enabled": "Collection enabled",
   "live_stale": "Stale",
-  "live_current": "Current",
-  "live_configure": "Configure audience precision",
+  "live_current": "Observed location",
+  "live_configure": "Configure audience precision and delay",
   "live_stop": "Stop collection and delivery",
   "live_start": "Start collection",
   "live_inspect": "Inspect private tracks",
@@ -2710,7 +2710,11 @@
   "live_revoke": "Revoke and delete source",
   "live_audience_warning": "Saving changes affects active audiences immediately. Only current location is shared. Grid rounding is approximate and does not guarantee anonymity. Hidden-link holders may save or forward positions. Connect this enabled source in HA options; changing the entity requires a new source.",
   "live_public": "Public trip",
-  "live_save": "Save precision choices",
+  "live_save": "Save audience choices",
   "live_next": "Next points",
-  "live_delete_warning": "This permanently deletes these tracks from the running database and clears current location. Source revocation also stops new data. Backups and downloaded copies may still contain deleted data."
+  "live_delete_warning": "This permanently deletes these tracks from the running database and clears current location. Source revocation also stops new data. Backups and downloaded copies may still contain deleted data.",
+  "live_delay_label": "Delay for {audience}",
+  "live_delay_value": "Intentional delay: {minutes} minutes",
+  "live_hidden": "Hidden link",
+  "live_waiting": "No point can be delivered. Waiting for an eligible observation within the delay and freshness limits; stopped sources remain hidden."
 }

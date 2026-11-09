@@ -1,6 +1,5 @@
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { LiveLocation } from "./LiveLocation";
 import { HomeLink } from "./HomeLink";
 import { PublicationManager } from "./PublicationManager";
 import type { SectionProps } from "./workspace-sections";
@@ -12,7 +11,6 @@ export default function SharingSection({ trip }: SectionProps) {
     <>
       <HomeLink to="/sharing">{m.sharing_overview()}</HomeLink>
       <PublicationManager trip={trip} />
-      <LiveLocation tripId={trip.id} />
     </>
   );
 }

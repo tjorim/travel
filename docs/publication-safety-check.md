@@ -187,3 +187,18 @@ Review each enabled audience and its delivered precision before sharing. Live
 coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
 owner track export is a separate deliberate download. Database and HA backups
 may retain deleted history until their independent retention expires.
+
+## Per-audience delayed delivery (#332)
+
+Review each audience's precision, intentional delay and actual delivered observation
+in the Sharing check and owner preview. No eligible point means waiting, not sharing
+a newer point. Delays default to zero; presets are 15/30 minutes, 1/2/24 hours.
+The server selects the latest accepted observation at or before server time minus
+delay, then rounds it. Stale means strictly over one hour behind that cutoff;
+hidden means strictly over 24 hours. Independently, 24 hours since the latest
+accepted observation always stops delivery, including for a 24-hour delay.
+Disable, revoke, expiry and deletion apply immediately on the next request.
+Visitors see observation time and delay; no-store polling rechecks every 30 seconds.
+Tracks stay private and excluded from Atom/PDF/ordinary exports. See
+[decision 244](decisions/244-live-location-tracks.md#per-audience-delayed-delivery-332-2026-11-09)
+for boundaries, storage and source-inactivity semantics.

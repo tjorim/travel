@@ -40,10 +40,12 @@ def test_lifecycle_precision_expiry_retention(monkeypatch):
                 "observed_at": clock.isoformat(),
                 "stale": False,
                 "precision": "1km",
+                "delay_seconds": 0,
+                "expires_at": (clock + timedelta(hours=24)).isoformat(),
             }
         ]
         assert not live.current_for_audience(session, trip, "other")
-    clock += timedelta(hours=1)
+    clock += timedelta(hours=1, microseconds=1)
     with TestingSessionLocal() as session:
         assert live.current_for_audience(session, trip, "public")[0]["stale"]
     clock += timedelta(hours=23)
@@ -177,3 +179,120 @@ def test_failed_request_rate_limit_and_session_bound():
         assert client.post(path + "/positions", json={}).status_code == 429
     finally:
         live.ingestion_limiter.reset()
+
+
+def test_delays_cutoffs_audiences_sparse_tracks_and_inactivity(monkeypatch):
+    clock = datetime(2026, 11, 9, tzinfo=UTC)
+    monkeypatch.setattr(live, "now", lambda: clock)
+    client, trip, root, sid, path = start()
+    first = clock
+    assert client.post(path + "/positions", json=payload(clock)).status_code == 200
+    for delay in [0, 900, 1800, 3600, 7200, 86400]:
+        response = client.put(path, json={"enabled": True, "audiences": {"public": "1km"}, "delays": {"public": delay}})
+        assert response.status_code == 200
+        assert response.json()["delays"] == {"public": delay}
+        with TestingSessionLocal() as session:
+            assert bool(live.current_for_audience(session, trip, "public")) == (delay == 0)
+    # Keep the source active while the day-old point becomes eligible.
+    clock = first + timedelta(hours=23)
+    assert client.post(path + "/positions", json={**payload(clock), "latitude": 66.123456}).status_code == 200
+    clock = first + timedelta(hours=24) - timedelta(microseconds=1)
+    with TestingSessionLocal() as session:
+        assert not live.current_for_audience(session, trip, "public")
+    clock += timedelta(microseconds=1)
+    with TestingSessionLocal() as session:
+        result = live.current_for_audience(session, trip, "public")
+        assert result[0]["observed_at"] == first.isoformat()
+        assert result[0]["latitude"] == 12.35 and not result[0]["stale"]
+        assert "66.123456" not in str(result) and "session_id" not in str(result)
+        assert not live.current_for_audience(session, trip, "other")
+    # Omitted delays preserve the configured delay.
+    assert client.put(path, json={"enabled": True, "audiences": {"public": "10km"}}).json()["delays"] == {
+        "public": 86400
+    }
+    clock = first + timedelta(hours=25)
+    with TestingSessionLocal() as session:
+        assert not live.current_for_audience(session, trip, "public")[0]["stale"]
+    clock += timedelta(microseconds=1)
+    with TestingSessionLocal() as session:
+        assert live.current_for_audience(session, trip, "public")[0]["stale"]
+    clock = first + timedelta(hours=47)
+    with TestingSessionLocal() as session:
+        assert not live.current_for_audience(session, trip, "public")  # latest observation is 24h old
+    assert client.post(path + "/positions", json=payload(clock)).status_code == 200
+    with TestingSessionLocal() as session:
+        assert (
+            live.current_for_audience(session, trip, "public")[0]["observed_at"]
+            == (first + timedelta(hours=23)).isoformat()
+        )
+    assert client.delete(path + "/tracks").status_code == 204
+    with TestingSessionLocal() as session:
+        assert not live.current_for_audience(session, trip, "public")
+    for delays in [{"public": -1}, {"public": 1}, {"other": 900}, {"public": "900"}]:
+        assert (
+            client.put(path, json={"enabled": True, "audiences": {"public": "exact"}, "delays": delays}).status_code
+            == 422
+        )
+
+
+def test_delayed_public_and_links_revoke_disable_and_clock_order(monkeypatch):
+    clock = datetime.now(UTC)
+    monkeypatch.setattr(live, "now", lambda: clock)
+    client, trip, root, sid, path = start()
+    base = f"/api/trips/{trip}"
+    links = [client.post(base + "/share-links", json={"label": label}).json() for label in ["One", "Two"]]
+    tokens = [client.post(base + f"/share-links/{link['id']}/activate", json={}).json()["token"] for link in links]
+    audiences = {"public": "10km", links[0]["id"]: "1km", links[1]["id"]: "exact"}
+    delays = {"public": 1800, links[0]["id"]: 900, links[1]["id"]: 0}
+    assert client.put(path, json={"enabled": True, "audiences": audiences, "delays": delays}).status_code == 200
+    first = clock
+    # Accepted future skew must not leak ahead of server time, even at zero delay.
+    assert client.post(path + "/positions", json=payload(clock + timedelta(seconds=30))).status_code == 200
+    public = client.post(base + "/public-projection/publish").json()
+    urls = [f"/api/public/trips/{public['slug']}", *[f"/api/shared/{token}" for token in tokens]]
+    assert all("current_locations" not in client.get(url).json() for url in urls)
+    clock += timedelta(seconds=30)
+    assert client.get(urls[2]).json()["current_locations"][0]["latitude"] == 12.345678
+    clock = first + timedelta(seconds=930)
+    assert client.post(path + "/positions", json={**payload(clock), "latitude": 66.123456}).status_code == 200
+    assert client.get(urls[1]).json()["current_locations"][0]["latitude"] == 12.35
+    assert "current_locations" not in client.get(urls[0]).json()
+    clock = first + timedelta(seconds=1830)
+    response = client.get(urls[0])
+    assert response.json()["current_locations"][0]["latitude"] == 12.3
+    assert response.headers["cache-control"] == "no-store"
+    preview = client.post(base + "/public-projection/preview").json()["current_locations"][0]
+    assert preview["latitude"] == 12.3 and preview["delay_seconds"] == 1800
+    preview = client.post(base + f"/share-links/{links[0]['id']}/preview").json()["current_locations"][0]
+    assert preview["latitude"] == 66.12 and preview["delay_seconds"] == 900
+    assert client.post(base + f"/share-links/{links[0]['id']}/revoke").status_code == 200
+    assert client.get(urls[1]).status_code == 404
+    assert client.put(path, json={"enabled": False, "audiences": audiences}).status_code == 200
+    assert all("current_locations" not in client.get(url).json() for url in [urls[0], urls[2]])
+    assert client.put(path, json={"enabled": True, "audiences": audiences}).status_code == 200
+    assert "current_locations" not in client.get(urls[0]).json()
+    assert client.post(path + "/positions", json=payload(clock)).status_code == 200
+    assert client.get(urls[1]).status_code == 404
+
+
+def test_sparse_delay_freshness_exact_24h_boundary(monkeypatch):
+    clock = datetime(2026, 11, 9, tzinfo=UTC)
+    monkeypatch.setattr(live, "now", lambda: clock)
+    client, trip, root, sid, path = start()
+    first = clock
+    assert client.post(path + "/positions", json=payload(clock)).status_code == 200
+    assert (
+        client.put(path, json={"enabled": True, "audiences": {"public": "1km"}, "delays": {"public": 7200}}).status_code
+        == 200
+    )
+    clock = first + timedelta(hours=26)
+    assert client.post(path + "/positions", json={**payload(clock), "latitude": 66.123456}).status_code == 200
+    with TestingSessionLocal() as session:
+        point = live.current_for_audience(session, trip, "public")[0]
+        assert point["observed_at"] == first.isoformat() and point["stale"]
+    clock += timedelta(microseconds=1)
+    with TestingSessionLocal() as session:
+        assert not live.current_for_audience(session, trip, "public")
+    clock = first + timedelta(hours=28)
+    with TestingSessionLocal() as session:
+        assert live.current_for_audience(session, trip, "public")[0]["latitude"] == 66.12

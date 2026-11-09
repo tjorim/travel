@@ -49,8 +49,13 @@ it("keeps source setup disabled and precision opt-in, with guarded edits and del
   fireEvent.click(
     await screen.findAllByRole("radio", { name: m.live_1km() }).then((rows) => rows[0]),
   );
+  fireEvent.click(screen.getByRole("radio", { name: m.live_delay_value({ minutes: "30" }) }));
   fireEvent.click(screen.getByRole("button", { name: m.live_save() }));
-  await waitFor(() => expect(writes).toEqual([{ enabled: false, audiences: { public: "1km" } }]));
+  await waitFor(() =>
+    expect(writes).toEqual([
+      { enabled: false, audiences: { public: "1km" }, delays: { public: 1800 } },
+    ]),
+  );
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   fireEvent.click(screen.getByRole("button", { name: m.live_delete_tracks() }));
   expect(screen.getByRole("alertdialog")).toHaveTextContent(m.live_delete_warning());

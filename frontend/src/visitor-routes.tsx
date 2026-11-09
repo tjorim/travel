@@ -476,7 +476,10 @@ function VisitorPage({
         : memberId
           ? `/api/shared/${encodeURIComponent(identifier)}/trips/${encodeURIComponent(memberId)}`
           : `/api/shared/${encodeURIComponent(identifier)}`;
-    async function load() {
+    let loading = false;
+    async function load(refresh = false) {
+      if (loading) return;
+      loading = true;
       try {
         const response = await fetch(path, {
           method: "GET",
@@ -487,6 +490,7 @@ function VisitorPage({
           referrerPolicy: "no-referrer",
           signal: controller.signal,
         });
+        if (controller.signal.aborted) return;
         if (response.status === 404 || response.status === 403) {
           // A missing member says nothing about the collection, which may still be valid.
           if (audience === "share" && !memberId) setStorageFailed(!forgetSharedTrip(identifier));
@@ -498,12 +502,14 @@ function VisitorPage({
           const data: unknown = await response.json();
           if (!controller.signal.aborted) {
             if (audience === "share" && !memberId && isCollectionIndex(data)) {
-              const remembered = rememberSharedTrip(identifier, { title: data.title });
-              setStorageFailed(!remembered);
-              setSaved(remembered ? "saved" : null);
+              if (!refresh) {
+                const remembered = rememberSharedTrip(identifier, { title: data.title });
+                setStorageFailed(!remembered);
+                setSaved(remembered ? "saved" : null);
+              }
               setState({ kind: "collection", index: data });
             } else if (isProjection(data, audience)) {
-              if (audience === "share" && !memberId) {
+              if (!refresh && audience === "share" && !memberId) {
                 const remembered = rememberSharedTrip(identifier, data);
                 setStorageFailed(!remembered);
                 setSaved(remembered ? "saved" : null);
@@ -517,10 +523,17 @@ function VisitorPage({
       } catch (failure) {
         if (!controller.signal.aborted)
           setState({ kind: "error", ...(failure instanceof ApiError ? { failure } : {}) });
+      } finally {
+        loading = false;
       }
     }
     void load();
-    return () => controller.abort();
+    // Re-evaluate delayed cutoffs and scope revocation without new ingestion.
+    const timer = window.setInterval(() => void load(true), 30000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
   }, [audience, identifier, memberId, attempt]);
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);

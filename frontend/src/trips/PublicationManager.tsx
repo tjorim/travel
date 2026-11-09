@@ -393,7 +393,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
           onClose={() => setRevealedLink(null)}
         />
       )}
-      <SharingReview overview={overviewQuery.data} />
+      <SharingReview overview={overviewQuery.data} tripId={trip.id} />
       <div className="manager-subsection">
         <div className="capture-heading">
           <div>

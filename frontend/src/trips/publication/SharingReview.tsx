@@ -1,3 +1,4 @@
+import { LiveLocation } from "../LiveLocation";
 import { VisitorNumbers } from "../../VisitorNumbers";
 import { Collapsible } from "@/ui/collapsible";
 
@@ -188,7 +189,13 @@ function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): st
 }
 
 /** What to check before sharing, from the same projection visitors receive. */
-export function SharingReview({ overview }: { overview: TripOverview | undefined }) {
+export function SharingReview({
+  overview,
+  tripId,
+}: {
+  overview: TripOverview | undefined;
+  tripId?: string;
+}) {
   useLocale();
   if (!overview) return null;
   const warnings = [...overview.warnings].sort((a, b) =>
@@ -204,6 +211,7 @@ export function SharingReview({ overview }: { overview: TripOverview | undefined
           </p>
         </div>
       </div>
+      {tripId && <LiveLocation tripId={tripId} />}
       <ul
         className="m-0 grid gap-1.5 pl-5 leading-normal text-travel-positive"
         aria-label={m.assets_sharing_check()}
