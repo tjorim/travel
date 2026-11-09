@@ -9,6 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..atom import atom_document
 from ..audit import SYSTEM_ACTOR, record_audit_event, scope_fingerprint
 from ..auth import current_subject
 from ..capability import generate_token, verifier_for
@@ -42,6 +43,7 @@ from ..schemas import (
     CollectionIndexDocument,
     ExclusionReview,
     ExclusionReviewRequest,
+    FeedEnableRequest,
     FutureDisclosure,
     Identifier,
     ProjectionDocument,
@@ -88,7 +90,11 @@ async def delivery_rate_limit_handler(request: Request, error: RateLimitExceeded
     An unlisted-link response carries the same privacy headers as its 404, so a throttled probe stays
     uncacheable and unindexable and says nothing about whether the token exists.
     """
-    headers = UNLISTED_HEADERS if request.url.path.startswith("/api/shared/") else {"Cache-Control": "no-store"}
+    headers = (
+        UNLISTED_HEADERS
+        if request.url.path.startswith("/api/shared/") or request.url.path.endswith("/feed.atom")
+        else {"Cache-Control": "no-store"}
+    )
     descriptor = {"code": "rate_limited", "params": {}, "path": []}
     return JSONResponse(
         {"detail": "Too many requests", "errors": [descriptor]},
@@ -1058,3 +1064,94 @@ def get_shared_file(token: str, local_id: str, session: SessionDep, storage: Sto
     if trip is None:
         raise not_found
     return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
+
+
+@router.post("/share-links/{link_id}/feed/{action}", response_model=ShareLinkResponse)
+def manage_feed(
+    trip_id: Identifier,
+    link_id: Identifier,
+    action: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    payload: FeedEnableRequest,
+) -> ShareLinkResponse:
+    link = owned_link(session, trip_id, subject, link_id)
+    session.refresh(link, with_for_update=True)
+    if action not in {"enable", "rotate", "revoke"}:
+        raise ApiException(404, "Not found", code="not_found")
+    if action != "revoke" and (
+        link.state != LinkState.ACTIVE or (link.expires_at and aware_utc(link.expires_at) <= datetime.now(UTC))
+    ):
+        raise ApiException(409, "Link is not active", code="invalid_state")
+    if (action == "enable" and link.feed_token) or (action != "enable" and not link.feed_token):
+        raise ApiException(409, "Feed state conflict", code="invalid_state")
+    if action != "revoke" and not payload.acknowledge_copies:
+        raise ApiException(422, "Acknowledgement required", code="invalid_input")
+    token = generate_token() if action != "revoke" else None
+    link.feed_token = token
+    link.feed_verifier = verifier_for(token) if token else None
+    link.feed_expires_at = (
+        datetime.now(UTC) + timedelta(days=payload.expires_in_days)
+        if token and payload.expires_in_days is not None
+        else None
+    )
+    record_audit_event(
+        session,
+        trip_id=trip_id,
+        actor_subject=subject,
+        kind=AuditEventKind(f"feed.{action}"),
+        target_type=AuditTargetType.SHARE_LINK,
+        target_id=link.id,
+        details={},
+    )
+    session.commit()
+    return link_response(link, owned_trip(session, trip_id, subject))
+
+
+@delivery_router.get("/public/trips/{slug}/feed.atom", dependencies=[Depends(public_delivery_limit)])
+def public_feed(request: Request, slug: str, session: SessionDep) -> Response:
+    try:
+        document = get_public_trip(request, slug, session, Response())
+    except ApiException as exc:
+        exc.headers = {**(exc.headers or {}), **UNLISTED_HEADERS}
+        raise
+    return Response(
+        atom_document(document, f"urn:travel:public:{slug}"),
+        media_type="application/atom+xml",
+        headers=UNLISTED_HEADERS,
+    )
+
+
+@delivery_router.get("/shared/{token}/feed.atom", dependencies=[Depends(shared_delivery_limit)])
+def link_feed(request: Request, token: str, session: SessionDep) -> Response:
+    from ..authlimit import failed_authentication
+
+    retry = failed_authentication.retry_after(request)
+    if retry is not None:
+        raise ApiException(
+            429, "Too many requests", headers={**UNLISTED_HEADERS, "Retry-After": str(retry)}, code="rate_limited"
+        )
+    link = (
+        None
+        if _malformed_path(request, {"token"})
+        else session.scalar(select(ShareLink).where(ShareLink.feed_verifier == verifier_for(token)))
+    )
+    now = datetime.now(UTC)
+    if (
+        link is None
+        or link.state != LinkState.ACTIVE
+        or (link.expires_at is not None and aware_utc(link.expires_at) <= now)
+        or (link.feed_expires_at is not None and aware_utc(link.feed_expires_at) <= now)
+    ):
+        failed_authentication.record_failure(request)
+        raise ApiException(404, "Link not found", headers=UNLISTED_HEADERS, code="not_found")
+    trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
+    if trip is None:
+        raise ApiException(404, "Link not found", headers=UNLISTED_HEADERS, code="not_found")
+    document = render_projection(trip, link.scope, "travel/unlisted-trip@1")
+    # A token-free, audience-local identity: no page token or canonical trip id.
+    return Response(
+        atom_document(document, f"urn:travel:feed:{verifier_for(token)}"),
+        media_type="application/atom+xml",
+        headers=UNLISTED_HEADERS,
+    )

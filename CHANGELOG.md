@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add text-only public Atom feeds and opt-in independent hidden-link feed capabilities with expiry, revocation, translated copy warnings and audit events (#247).
+
 - Import finished GPX, GeoJSON, Dawarich and phone Timeline files into reviewed approximate route drafts (Closes #243). Raw data stays in bounded request memory; only a selected two-decimal line can enter the normal route editor.
 
 - Add opt-in visitor numbers per audience (Closes #246): days with shared updates, shared areas, countries in those areas and nights covered by day-precise shared stays. Figures are derived only from the completed audience projection, respect exclusions and precision caps, and appear in the Sharing check, owner preview and public/unlisted shells. Presets preserve the selection; existing audiences show no strip.

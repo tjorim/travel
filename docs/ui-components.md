@@ -663,3 +663,11 @@ and the existing MapLibre editor. The base-nova input/field/button registry
 and Base UI Input support these controls; no new primitive is needed. The
 inline file-portion/draft composition stays custom because registry forms do
 not implement transient binary requests, abort or explicit apply-before-save.
+
+## Atom feed management (#247)
+
+`FeedControls` composes existing Base UI Button, Input, Field and TravelCheckbox
+adapters. The registry's form primitives cover these controls; no new custom
+primitive is needed. A labelled read-only URL input supports selection/copy
+without a clipboard permission dependency. Local acknowledgement and expiry
+state survives locale changes and does not touch the scope editor's dirty state.

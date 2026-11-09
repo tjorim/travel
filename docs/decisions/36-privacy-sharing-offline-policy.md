@@ -600,3 +600,31 @@ Answers to the open questions of the design note (taken under the owner's delega
 The [publication safety check](../publication-safety-check.md) now starts from the
 audience's preset and exceptions list: 7 items per audience (4 more for a collection link)
 instead of 18 (24 with the collection section).
+
+## Atom feeds (#247, supersedes the no-named-link-feed position)
+
+Published public views expose `/api/public/trips/{slug}/feed.atom`. Hidden
+links may separately opt in to `/api/shared/{feed-token}/feed.atom`. Each fetch
+re-evaluates the current projection and exclusions. The feed serializes only
+update title, authored body as escaped Atom `type="text"` (never HTML), literal
+story date at its projected precision and the projected area's label. It has
+no photos, location coordinates, operational records, page links or page tokens.
+Feed/entry identifiers use public slug or a feed-local verifier namespace and
+projection-local update IDs, never canonical record IDs. The generic author
+and fallback title are `Travel`.
+
+Atom requires an RFC3339 `updated` timestamp even where a story date is hidden
+or month-only. It denotes representation retrieval time, never story time; no
+`published` date is fabricated. Readers may therefore show retrieval time and
+may consider an unchanged feed refreshed. Coarse dates remain literal content.
+This favours privacy over precise reader chronology. XML-invalid controls are
+removed, and authored markup is displayed as text without loading remote media.
+
+Both feeds use no-store, noindex/noarchive and no-referrer response headers.
+Hidden feed failures retain those headers, use the shared delivery limit and
+count failed capabilities under the existing failed-authentication limiter.
+Enable, rotate and revoke produce owner-only audit events with IDs only, under
+the existing retention policy. Container access logging is disabled so bearer
+URLs do not reach Uvicorn logs; proxies must also keep capability routes out of
+access logs. The owner warning explains that hosted readers retain fetched
+copies: revocation prevents future fetches but cannot erase those copies.

@@ -153,3 +153,15 @@ field or file route, so there is nothing to check for them.
    search-engine webmaster tools.
 4. Treat any exposed booking code, ticket or document as compromised and
    follow its provider's procedure (rebook, cancel or reissue).
+
+## Atom feeds (#247)
+
+- [ ] Review update title, authored text, date precision and area label in the
+  audience's projection, including every hidden-link exclusion. Feeds contain
+  only these story fields, no photos or operational data.
+- [ ] Before enabling a hidden feed, acknowledge that hosted readers keep
+  copies; revoke/rotate/expiry stop new fetches but cannot erase old copies.
+- [ ] Copy the independently listed feed URL, never place a page token in it.
+  Check its expiry separately from the parent link; revoke unused feeds.
+- [ ] Keep API and proxy capability paths and response bodies out of logs.
+  Feed responses and failed probes must stay no-store/noindex/no-referrer.

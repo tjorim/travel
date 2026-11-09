@@ -1,3 +1,4 @@
+import { FeedControls } from "./FeedControls";
 import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
 
@@ -11,6 +12,7 @@ export type LinkSeries = { id: string; current: ShareLink; history: ShareLink[] 
 
 /** The hidden share links, each series as its current link with earlier versions folded away. */
 export function LinkList({
+  tripId,
   series,
   hasLinks,
   loading,
@@ -18,6 +20,7 @@ export function LinkList({
   onSelect,
   onNew,
 }: {
+  tripId?: string;
   series: LinkSeries[];
   hasLinks: boolean;
   loading: boolean;
@@ -60,6 +63,7 @@ export function LinkList({
                     ` · ${presetLabelText(current.applied_preset, current.preset_exceptions?.count ?? 0)}`}
                 </span>
               </Button>
+              {tripId && <FeedControls tripId={tripId} link={current} />}
               {history.length > 0 && (
                 <Collapsible.Root className="border-l-2 border-travel-divider pl-3">
                   <Collapsible.Trigger className="bg-transparent p-0 text-left text-sm font-bold text-travel-muted">

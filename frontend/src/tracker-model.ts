@@ -675,6 +675,8 @@ export type PublicProjectionStatus = {
 } & PresetLabel;
 
 export type ShareLink = {
+  feed_token?: string | null;
+  feed_expires_at?: string | null;
   revision: number;
   id: string;
   series_id: string;
@@ -1099,6 +1101,9 @@ export type AuditEventKind =
   | "share_link.activate"
   | "share_link.revoke"
   | "share_link.rotate"
+  | "feed.enable"
+  | "feed.rotate"
+  | "feed.revoke"
   | "share_link.expire"
   | "location.merge"
   | "area.merge"
