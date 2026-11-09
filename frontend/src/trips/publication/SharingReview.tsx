@@ -196,6 +196,15 @@ export function SharingReview({
   overview: TripOverview | undefined;
   tripId?: string;
 }) {
+  return (
+    <>
+      {tripId && <LiveLocation tripId={tripId} />}
+      <SharingReviewContent overview={overview} />
+    </>
+  );
+}
+
+function SharingReviewContent({ overview }: { overview: TripOverview | undefined }) {
   useLocale();
   if (!overview) return null;
   const warnings = [...overview.warnings].sort((a, b) =>
@@ -211,7 +220,6 @@ export function SharingReview({
           </p>
         </div>
       </div>
-      {tripId && <LiveLocation tripId={tripId} />}
       <ul
         className="m-0 grid gap-1.5 pl-5 leading-normal text-travel-positive"
         aria-label={m.assets_sharing_check()}

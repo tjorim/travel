@@ -54,7 +54,8 @@ needed. Request/audit/diagnostic logging must omit coordinates and source states
 The owner authorized application implementation before infrastructure, superseding
 #332's initial “do not implement yet” wording. Each public/hidden-link audience
 keeps its own precision and delay: zero (legacy/default), 15 or 30 minutes, 1 or
-2 hours, or 24 hours. Omitting delays on configuration preserves saved delays.
+2 hours, or 24 hours. Omitting delays on configuration preserves saved delays. A partial delay map
+updates only the supplied audience keys; explicitly send zero to remove a delay.
 Removing an audience immediately stops its delivery; collection audiences remain
 excluded. Review precision, delay and the actual delivered observation in the
 Sharing check and owner preview before enabling an audience. A waiting state
@@ -62,7 +63,7 @@ means no observation meets the current delay/freshness gates.
 
 At each request, server time minus delay defines the cutoff. Select only the
 latest accepted point observed at or before that cutoff, using the existing
-unique `(session_id, observed_at)` index, a reverse ordered query and LIMIT 1;
+unique `(session_id, observed_at)` index, a query in reverse order and LIMIT 1;
 never load a track or deliver newer points/history. Round only that selected
 point to the audience precision. Even accepted future clock skew is withheld
 until eligible. Visitor labels show the actual observation timestamp and delay.

@@ -129,7 +129,7 @@ def configure(
     row.enabled = data.enabled
     row.audiences = data.audiences
     if data.delays is not None:
-        row.delays = data.delays
+        row.delays = {**(row.delays or {}), **data.delays}
     session.commit()
     return session_data(session, row)
 

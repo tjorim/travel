@@ -245,6 +245,13 @@ def test_delayed_public_and_links_revoke_disable_and_clock_order(monkeypatch):
     audiences = {"public": "10km", links[0]["id"]: "1km", links[1]["id"]: "exact"}
     delays = {"public": 1800, links[0]["id"]: 900, links[1]["id"]: 0}
     assert client.put(path, json={"enabled": True, "audiences": audiences, "delays": delays}).status_code == 200
+    # Partial maps must never remove another audience's privacy delay.
+    changed = client.put(path, json={"enabled": True, "audiences": audiences, "delays": {"public": 7200}})
+    assert changed.status_code == 200
+    assert changed.json()["delays"] == {**delays, "public": 7200}
+    assert (
+        client.put(path, json={"enabled": True, "audiences": audiences, "delays": {"public": 1800}}).status_code == 200
+    )
     first = clock
     # Accepted future skew must not leak ahead of server time, even at zero delay.
     assert client.post(path + "/positions", json=payload(clock + timedelta(seconds=30))).status_code == 200
