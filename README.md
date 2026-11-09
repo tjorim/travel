@@ -130,3 +130,8 @@ service from apps#252 (for example `http://translation-proxy:5000`). See
 See [UI dependency and component maintenance](docs/ui-maintenance.md) for package updates, component provenance, upstream review commands and validation.
 
 Toolchain versions and coordinated rollout: [Node and pnpm toolchain](docs/toolchain.md).
+
+## License
+
+Travel is licensed under the [Apache License 2.0](LICENSE). Third-party dependencies
+and bundled assets retain their respective licenses.
