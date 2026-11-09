@@ -81,6 +81,11 @@ styles, identifiers, formatting patterns and protocol examples are excluded.
 The retired static archive archive is excluded and never published.
 
 Generated `paraglide/` output is ignored and must compile from a clean checkout.
+Paraglide v3 uses groups of 100 physical messages per module in Vite development
+and tests. This bounds fresh-document requests for reloads and session-renewal
+callbacks; individual virtual messages otherwise produce thousands of requests.
+Production retains virtual modules for static-import rewriting and tree-shaking;
+check the existing bundle budgets when changing either output mode.
 Test fixtures/helpers and styling/type infrastructure contain no production copy.
 Static Dutch entry titles/descriptions are intentional no-JS fallback metadata;
 runtime metadata changes in place. The manifest keeps `Travel`, `/admin/` start

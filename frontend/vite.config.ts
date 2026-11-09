@@ -70,7 +70,7 @@ function devSession(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: "/admin/",
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   test: {
@@ -99,6 +99,12 @@ export default defineConfig({
       outdir: "./src/paraglide",
       strategy: ["custom-travel", "baseLocale"],
       emitTsDeclarations: true,
+      // Reloads and the sign-in callback load the catalog in a fresh document.
+      // Group dev messages to avoid thousands of requests; keep v3's virtual
+      // modules in production for static-import rewriting and tree-shaking.
+      ...(command === "serve"
+        ? { outputStructure: "message-modules" as const, messageModuleSize: 100 }
+        : {}),
     }),
     react(),
     tailwindcss(),
@@ -127,4 +133,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
