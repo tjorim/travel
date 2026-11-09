@@ -268,6 +268,7 @@ Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
 
+- [x] [#332](https://github.com/tjorim/travel/issues/332) Add independent audience delay, indexed historical selection, delayed freshness and unchanged 24-hour source inactivity; bilingual review/visitor labels and no-store polling. Application follow-ups precede apps#333; next #329, then #321.
 - [x] [#244](https://github.com/tjorim/travel/issues/244) Add opt-in HA exact private tracks, owner management and current-only audience precision/freshness. Production OAuth remains apps#333.
 
 - [x] [#319](https://github.com/tjorim/travel/issues/319) Add the independently packaged HA task/packing integration, OAuth owner selection/reauth, safe refresh/lifecycle handling, privacy documentation and HA CI. Production OAuth provisioning/verification remains [apps#333](https://github.com/tjorim/apps/issues/333).

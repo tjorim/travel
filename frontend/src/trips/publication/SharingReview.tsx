@@ -1,3 +1,4 @@
+import { LiveLocation } from "../LiveLocation";
 import { VisitorNumbers } from "../../VisitorNumbers";
 import { Collapsible } from "@/ui/collapsible";
 
@@ -188,7 +189,22 @@ function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): st
 }
 
 /** What to check before sharing, from the same projection visitors receive. */
-export function SharingReview({ overview }: { overview: TripOverview | undefined }) {
+export function SharingReview({
+  overview,
+  tripId,
+}: {
+  overview: TripOverview | undefined;
+  tripId?: string;
+}) {
+  return (
+    <>
+      {tripId && <LiveLocation tripId={tripId} />}
+      <SharingReviewContent overview={overview} />
+    </>
+  );
+}
+
+function SharingReviewContent({ overview }: { overview: TripOverview | undefined }) {
   useLocale();
   if (!overview) return null;
   const warnings = [...overview.warnings].sort((a, b) =>

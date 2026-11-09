@@ -12,6 +12,7 @@ import { Field, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { Alert } from "@/ui/alert";
+import { CurrentLocations, type CurrentLocation } from "../CurrentLocations";
 import { saveFile } from "./save-file";
 
 type Precision = "off" | "exact" | "1km" | "10km";
@@ -21,6 +22,8 @@ type Session = {
   source: string;
   enabled: boolean;
   audiences: Record<string, Exclude<Precision, "off">>;
+  delays?: Record<string, number>;
+  previews?: Record<string, CurrentLocation[]>;
   current: Point | null;
   stale: boolean;
 };
@@ -98,6 +101,29 @@ export function LiveLocation({ tripId }: { tripId: string }) {
     else audiences[audience] = precision;
     setDraft({ ...draft, audiences });
   };
+  const audienceControls = (audience: string, label: string) => (
+    <div key={audience} className="grid gap-2">
+      <ChoiceGroup
+        label={label}
+        value={draft?.audiences[audience] ?? "off"}
+        choices={choices}
+        onChange={(value) => editPrecision(audience, value)}
+      />
+      {draft?.audiences[audience] && (
+        <ChoiceGroup
+          label={m.live_delay_label({ audience: label })}
+          value={String(draft.delays?.[audience] ?? 0)}
+          choices={[0, 900, 1800, 3600, 7200, 86400].map((seconds) => ({
+            value: String(seconds),
+            label: m.live_delay_value({ minutes: formatNumber(seconds / 60) }),
+          }))}
+          onChange={(value) =>
+            setDraft({ ...draft, delays: { ...draft.delays, [audience]: Number(value) } })
+          }
+        />
+      )}
+    </div>
+  );
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} className="grid gap-3">
       <Collapsible.Trigger render={<Button type="button" />}>{m.live_title()}</Collapsible.Trigger>
@@ -134,6 +160,25 @@ export function LiveLocation({ tripId }: { tripId: string }) {
                 · {row.stale ? m.live_stale() : m.live_current()}
               </p>
             )}
+            {Object.entries(row.audiences).map(([audience, precision]) => (
+              <div key={audience} className="grid gap-2">
+                <p>
+                  {audience === "public"
+                    ? m.live_public()
+                    : (links.data?.find((link) => link.id === audience)?.label ??
+                      m.live_hidden())}{" "}
+                  · {choices.find((choice) => choice.value === precision)?.label} ·{" "}
+                  {m.live_delay_value({
+                    minutes: formatNumber((row.delays?.[audience] ?? 0) / 60),
+                  })}
+                </p>
+                {row.previews?.[audience]?.length ? (
+                  <CurrentLocations positions={row.previews[audience]} />
+                ) : (
+                  <p>{m.live_waiting()}</p>
+                )}
+              </div>
+            ))}
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -241,21 +286,8 @@ export function LiveLocation({ tripId }: { tripId: string }) {
           {draft && (
             <div className="grid gap-3">
               <p>{m.live_audience_warning()}</p>
-              <ChoiceGroup
-                label={m.live_public()}
-                value={draft.audiences.public ?? "off"}
-                choices={choices}
-                onChange={(value) => editPrecision("public", value)}
-              />
-              {links.data?.map((link) => (
-                <ChoiceGroup
-                  key={link.id}
-                  label={link.label}
-                  value={draft.audiences[link.id] ?? "off"}
-                  choices={choices}
-                  onChange={(value) => editPrecision(link.id, value)}
-                />
-              ))}
+              {audienceControls("public", m.live_public())}
+              {links.data?.map((link) => audienceControls(link.id, link.label))}
               <Button
                 type="button"
                 disabled={change.isPending || links.isPending || links.isError}
@@ -264,7 +296,16 @@ export function LiveLocation({ tripId }: { tripId: string }) {
                     kind: "configure",
                     path: `/${draft.id}`,
                     method: "PUT",
-                    body: { enabled: draft.enabled, audiences: draft.audiences },
+                    body: {
+                      enabled: draft.enabled,
+                      audiences: draft.audiences,
+                      delays: Object.fromEntries(
+                        Object.keys(draft.audiences).map((audience) => [
+                          audience,
+                          draft.delays?.[audience] ?? 0,
+                        ]),
+                      ),
+                    },
                   })
                 }
               >

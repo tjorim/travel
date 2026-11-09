@@ -44,6 +44,7 @@ class Configure(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     enabled: bool
     audiences: dict[str, Precision] = Field(default_factory=dict, max_length=100)
+    delays: dict[str, Literal[0, 900, 1800, 3600, 7200, 86400]] | None = Field(default=None, max_length=100)
 
 
 class Position(BaseModel):
@@ -78,8 +79,12 @@ def session_data(session: Session, row: LiveSession) -> dict:
         "source": row.source,
         "enabled": row.enabled,
         "audiences": row.audiences,
+        "delays": row.delays,
+        "previews": {
+            audience: current_for_audience(session, row.trip_id, audience, rows=[row]) for audience in row.audiences
+        },
         "current": point_data(point) if point else None,
-        "stale": bool(point and now() - aware(point.observed_at) >= timedelta(hours=1)),
+        "stale": bool(point and now() - aware(point.observed_at) > timedelta(hours=1)),
     }
 
 
@@ -110,6 +115,8 @@ def configure(
     trip_id: Identifier, session_id: Identifier, data: Configure, session: SessionDep, subject: SubjectDep
 ) -> dict:
     row = owned(session, trip_id, session_id, subject, lock=True)
+    if data.delays is not None and data.delays.keys() - data.audiences.keys():
+        raise ApiException(422, "Invalid delay audience", code="invalid_input")
     for audience in data.audiences:
         if (
             audience != "public"
@@ -121,6 +128,8 @@ def configure(
         row.current_id = None
     row.enabled = data.enabled
     row.audiences = data.audiences
+    if data.delays is not None:
+        row.delays = {**(row.delays or {}), **data.delays}
     session.commit()
     return session_data(session, row)
 
@@ -242,18 +251,37 @@ def delete_session(trip_id: Identifier, session_id: Identifier, session: Session
     session.commit()
 
 
-def current_for_audience(session: Session, trip_id: str, audience: str) -> list[dict]:
-    """Called ONLY after the normal active public/link gates, never by exports."""
+def current_for_audience(
+    session: Session, trip_id: str, audience: str, *, rows: list[LiveSession] | None = None
+) -> list[dict]:
+    """Visitor callers enforce active scope gates; owner previews are private. Never used by exports."""
     result = []
-    for row in session.scalars(
-        select(LiveSession).where(LiveSession.trip_id == trip_id, LiveSession.enabled.is_(True))
+    clock = now()
+    for row in (
+        rows
+        if rows is not None
+        else session.scalars(select(LiveSession).where(LiveSession.trip_id == trip_id, LiveSession.enabled.is_(True)))
     ):
         precision = row.audiences.get(audience)
         point = session.get(LivePoint, row.current_id) if row.current_id else None
-        if precision not in {"exact", "1km", "10km"} or point is None:
+        if not row.enabled or precision not in {"exact", "1km", "10km"} or point is None:
             continue
-        age = now() - aware(point.observed_at)
-        if age >= timedelta(hours=24):
+        source_expires = aware(point.observed_at) + timedelta(hours=24)
+        if clock >= source_expires:
+            continue
+        delay = row.delays.get(audience, 0)
+        cutoff = clock - timedelta(seconds=delay)
+        # The unique (session_id, observed_at) index supports this bounded reverse scan.
+        point = session.scalar(
+            select(LivePoint)
+            .where(LivePoint.session_id == row.id, LivePoint.observed_at <= cutoff)
+            .order_by(LivePoint.observed_at.desc())
+            .limit(1)
+        )
+        if point is None:
+            continue
+        age = cutoff - aware(point.observed_at)
+        if age > timedelta(hours=24):
             continue
         digits = {"exact": None, "1km": 2, "10km": 1}[precision]
         result.append(
@@ -261,7 +289,11 @@ def current_for_audience(session: Session, trip_id: str, audience: str) -> list[
                 "latitude": round(point.latitude, digits) if digits is not None else point.latitude,
                 "longitude": round(point.longitude, digits) if digits is not None else point.longitude,
                 "observed_at": aware(point.observed_at).isoformat(),
-                "stale": age >= timedelta(hours=1),
+                "stale": age > timedelta(hours=1),
+                "delay_seconds": delay,
+                "expires_at": min(
+                    source_expires, aware(point.observed_at) + timedelta(seconds=delay, hours=24, milliseconds=1)
+                ).isoformat(),
                 "precision": precision,
             }
         )

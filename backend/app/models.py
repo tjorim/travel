@@ -1409,6 +1409,7 @@ class LiveSession(Base):
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     current_id: Mapped[str | None] = mapped_column(String(32))
     audiences: Mapped[dict] = mapped_column(JSON, default=dict)
+    delays: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class LivePoint(Base):

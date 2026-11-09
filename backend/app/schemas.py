@@ -1780,6 +1780,8 @@ class SharingPresetReview(BaseModel):
 
 
 class CurrentLocation(BaseModel):
+    delay_seconds: int
+    expires_at: datetime
     latitude: float
     longitude: float
     observed_at: datetime

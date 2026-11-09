@@ -242,7 +242,12 @@ def preview_public_projection(
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     response.headers["Cache-Control"] = "no-store"
-    return render_projection(trip, scope, "travel/public-trip@1")
+    from .live_location import current_for_audience
+
+    document = render_projection(trip, scope, "travel/public-trip@1")
+    if positions := current_for_audience(session, trip_id, "public"):
+        document["current_locations"] = positions
+    return document
 
 
 @router.get("/public-projection/preview/files/{local_id}")
@@ -628,7 +633,12 @@ def preview_share_link(
     link = owned_link(session, trip_id, subject, link_id)
     scope = _preview_scope(session, trip_id, subject, payload, link.scope)
     response.headers["Cache-Control"] = "no-store"
-    return render_projection(trip, scope, "travel/unlisted-trip@1")
+    from .live_location import current_for_audience
+
+    document = render_projection(trip, scope, "travel/unlisted-trip@1")
+    if positions := current_for_audience(session, trip_id, link_id):
+        document["current_locations"] = positions
+    return document
 
 
 @router.get("/share-links/{link_id}/preview/files/{local_id}")

@@ -2689,7 +2689,7 @@
   "pdf_link_audience": "Deellink: {name}",
   "live_title": "Live locatie en privétracks",
   "live_privacy": "Exacte tracks blijven privé tot je ze verwijdert. Databaseback-ups, HA-geschiedenis en HA-back-ups kunnen oudere kopieën bewaren tot hun eigen bewaartermijn verstrijkt. Geëxporteerde kopieën kun je niet intrekken.",
-  "live_freshness": "De huidige locatie is verouderd na één uur en verdwijnt voor bezoekers na 24 uur zonder verse gegevens. Verse gegevens hervatten alleen ingeschakelde doelgroepen. Tracks blijven bewaard.",
+  "live_freshness": "Vertraging geldt afzonderlijk per publiek. Een punt is verouderd als het meer dan één uur achter de vertraagde grens ligt en wordt verborgen na meer dan 24 uur. Delen stopt altijd 24 uur na de laatste aanvaarde waarneming, ook met vertraging. Tracks blijven bewaard.",
   "live_failed": "De locatiebewerking is niet gelukt. Vernieuw voordat je opnieuw probeert.",
   "live_off": "Uit",
   "live_loading": "Laden…",
@@ -2700,8 +2700,8 @@
   "live_exact": "Exact",
   "live_enabled": "Verzamelen ingeschakeld",
   "live_stale": "Verouderd",
-  "live_current": "Actueel",
-  "live_configure": "Precisie per doelgroep instellen",
+  "live_current": "Waargenomen locatie",
+  "live_configure": "Precisie en vertraging per publiek instellen",
   "live_stop": "Verzamelen en delen stoppen",
   "live_start": "Verzamelen starten",
   "live_inspect": "Privétracks bekijken",
@@ -2710,7 +2710,11 @@
   "live_revoke": "Bron intrekken en verwijderen",
   "live_audience_warning": "Opgeslagen wijzigingen gelden meteen voor actieve doelgroepen. Alleen de huidige locatie wordt gedeeld. Afronding is bij benadering en garandeert geen anonimiteit. Houders van verborgen links kunnen posities bewaren of doorsturen. Koppel deze ingeschakelde bron via de HA-opties; maak voor een andere entiteit een nieuwe bron.",
   "live_public": "Openbare reis",
-  "live_save": "Precisiekeuzes opslaan",
+  "live_save": "Publiekskeuzes opslaan",
   "live_next": "Volgende punten",
-  "live_delete_warning": "Dit verwijdert deze tracks definitief uit de actieve database en wist de huidige locatie. Het intrekken van een bron stopt ook nieuwe gegevens. Back-ups en gedownloade kopieën kunnen verwijderde gegevens nog bevatten."
+  "live_delete_warning": "Dit verwijdert deze tracks definitief uit de actieve database en wist de huidige locatie. Het intrekken van een bron stopt ook nieuwe gegevens. Back-ups en gedownloade kopieën kunnen verwijderde gegevens nog bevatten.",
+  "live_delay_label": "Vertraging voor {audience}",
+  "live_delay_value": "Bewuste vertraging: {minutes} minuten",
+  "live_hidden": "Verborgen link",
+  "live_waiting": "Er kan geen punt worden gedeeld. Wachten op een geschikte waarneming binnen de vertraging en versheidsgrenzen; gestopte bronnen blijven verborgen."
 }

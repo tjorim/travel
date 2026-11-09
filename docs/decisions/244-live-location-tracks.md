@@ -29,7 +29,7 @@ source identifiers, accuracy, entity names and tracks never accompany it.
 Underlying publication/link activation, expiry and revocation remain mandatory.
 
 Age is computed from the validated observation timestamp against server time.
-Current becomes stale at one hour and disappears from visitor delivery at 24 hours
+The original zero-delay policy became stale at one hour and disappeared at 24 hours
 without a fresh accepted point, evaluated using server time. Fresh accepted input
 resumes only still-enabled audiences. Expiry never deletes tracks or re-enables a
 revoked link. Live responses use no-store; recipients may retain copies.
@@ -48,3 +48,38 @@ scheme. Selection binds owner/source/trip in server storage; it does not narrow
 the OAuth token's existing owner powers. Dedicated production HA OAuth provisioning
 remains [apps#333](https://github.com/tjorim/apps/issues/333). No VPS polling job is
 needed. Request/audit/diagnostic logging must omit coordinates and source states.
+
+## Per-audience delayed delivery (#332, 2026-11-09)
+
+The owner authorized application implementation before infrastructure, superseding
+#332's initial “do not implement yet” wording. Each public/hidden-link audience
+keeps its own precision and delay: zero (legacy/default), 15 or 30 minutes, 1 or
+2 hours, or 24 hours. Omitting delays on configuration preserves saved delays. A partial delay map
+updates only the supplied audience keys; explicitly send zero to remove a delay.
+Removing an audience immediately stops its delivery; collection audiences remain
+excluded. Review precision, delay and the actual delivered observation in the
+Sharing check and owner preview before enabling an audience. A waiting state
+means no observation meets the current delay/freshness gates.
+
+At each request, server time minus delay defines the cutoff. Select only the
+latest accepted point observed at or before that cutoff, using the existing
+unique `(session_id, observed_at)` index, a query in reverse order and LIMIT 1;
+never load a track or deliver newer points/history. Round only that selected
+point to the audience precision. Even accepted future clock skew is withheld
+until eligible. Visitor labels show the actual observation timestamp and delay.
+A point is stale strictly more than one hour behind the delayed cutoff, and
+omitted strictly more than 24 hours behind it (equal boundaries remain eligible).
+Independently, delivery stops when the latest accepted observation is at least
+24 hours old, irrespective of delay. Thus a 24-hour delay works while a source
+is active, but a stopped source still disappears at 24 hours. This preserves the
+original source-inactivity privacy promise. The response includes a delivery
+expiry so open views also drop expired points; visitor pages refresh no-store
+every 30 seconds, including when no eligible point is available yet. Refresh
+failures clear the displayed projection rather than retaining old delivery.
+
+Disable/revoke/expiry/deletion gates remain immediate on the next request,
+independent of delay. Restart requires fresh input; deleting tracks leaves no
+eligible point and preserves the replay watermark. Retained tracks remain
+owner-only, excluded from Atom, PDFs and ordinary trip exports. There are no new
+GPS sources, coordinate logs, background jobs or infrastructure requirements;
+production OAuth provisioning remains apps#333.
