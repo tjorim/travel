@@ -71,6 +71,11 @@ control, while less-authorized viewers receive at most a city-level link.
 
 ## Delivery backlog
 
+Owner-requested follow-up order (2026-11-09): after
+[#248](https://github.com/tjorim/travel/issues/248), implement
+[#318](https://github.com/tjorim/travel/issues/318) then
+[#319](https://github.com/tjorim/travel/issues/319). PDF tagging (#321) remains Later.
+
 Each open delivery issue has one checkbox. The change that closes an issue must
 tick its checkbox and move its delivered result to `Recently completed`; both
 take effect when that change is merged.
@@ -584,6 +589,8 @@ Polarsteps-like features require a fresh product and privacy decision.
       preparation workflow. ([#9](https://github.com/tjorim/travel-private/issues/9))
 
 ## Later
+- [ ] [#321](https://github.com/tjorim/travel/issues/321) Evaluate and validate
+      structural PDF accessibility beyond #248’s selectable text and bookmarks.
 - [ ] [#281](https://github.com/tjorim/travel-private/issues/281) Plan Dutch and English
       interface translations with Paraglide/Inlang, following Bordertax,
       Champagnefestival and Worktime. Record locale selection, unsaved-editor

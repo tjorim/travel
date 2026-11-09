@@ -628,3 +628,15 @@ the existing retention policy. Container access logging is disabled so bearer
 URLs do not reach Uvicorn logs; proxies must also keep capability routes out of
 access logs. The owner warning explains that hosted readers retain fetched
 copies: revocation prevents future fetches but cannot erase those copies.
+
+## Owner-requested PDF downloads (#248)
+
+The owner may explicitly generate a portable story/itinerary PDF from a saved
+public, named-link or collection-member scope, including a hidden/expired
+scope as an owner preview, or acknowledge a full private view. Audience output
+uses the existing projection and approved photo-copy gates. Private output
+warns about booking/contact details and private notes. This is an authenticated
+private/no-store download, not a static public or unlisted origin, and not a
+managed encrypted offline pin. No capability, original file or permanent
+server artifact is created. A recipient's downloaded copy cannot be revoked;
+the owner reviews it before sharing. See [the export contract](../export-format.md#on-demand-pdf-248).

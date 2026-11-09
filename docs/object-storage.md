@@ -91,3 +91,9 @@ verification at 150 MiB, with RSS growth and traced allocations limited to
 Finished-file route imports (#243) deliberately bypass object storage: binary
 request bodies are bounded in request memory, never multipart spools, staged
 files or stored objects. Only the reviewed approximate line can be saved.
+
+Trip PDF exports (#248) are ephemeral request output, not stored objects.
+Approved photo copies are read into a bounded, automatically removed private
+temporary directory; originals are never used. There is no keep/save-to-server
+action and no object row, key or backup contract change. See
+[PDF limits and cleanup](export-format.md#on-demand-pdf-248).

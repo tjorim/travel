@@ -1,3 +1,5 @@
+import { saveFile } from "./save-file";
+import { TripPdfExport } from "./TripPdfExport";
 import { useMutation } from "@tanstack/react-query";
 
 import { useLocale } from "../locale";
@@ -8,15 +10,6 @@ import { useOwner } from "../query/owner-queries";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Spinner } from "@/ui/spinner";
-
-function saveJson(blob: Blob, filename: string): void {
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = filename;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-}
 
 /**
  * Downloads one trip's canonical records as private JSON through the normal
@@ -40,7 +33,7 @@ export function TripExport({
         m.owner_trip_export_failed,
         { cache: "no-store" },
       );
-      saveJson(new Blob([blob], { type: "application/json" }), `trip-${tripId}-export.json`);
+      saveFile(new Blob([blob], { type: "application/json" }), `trip-${tripId}-export.json`);
     },
     onSuccess: () => onNotice(textNotice(() => m.owner_trip_export_downloaded())),
   });
@@ -67,6 +60,7 @@ export function TripExport({
           {errorMessage(exportTrip.error, m.owner_trip_export_failed)}
         </Alert>
       )}
+      <TripPdfExport tripId={tripId} />
     </div>
   );
 }

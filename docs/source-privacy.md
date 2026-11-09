@@ -13,3 +13,7 @@ itineraries, booking documents, credentials or authenticated production
 screenshots into Git. Keep local databases, uploads and backups ignored or
 outside the source tree. Synthetic UI assets and examples can be committed
 after review.
+
+Downloaded trip PDFs may contain private notes and booking/contact details.
+Keep them and rendering-review evidence outside Git; PDF layout QA uses only
+synthetic content in an external temporary directory.

@@ -503,3 +503,11 @@ discovery (`search_tools`, decision 196) like the other owner tools.
 
 - Nothing yet turns a location the owner already has into a named location
   automatically; the owner names it in *Locaties*.
+
+## Trip PDF output
+
+The owner can request an ephemeral story, itinerary or combined PDF (#248),
+using a saved audience's existing projection or an explicitly acknowledged
+private view. This creates no canonical record or stored object and changes
+no audience scope. See [the export contract](export-format.md#on-demand-pdf-248)
+for included content, privacy boundaries, budgets and accessibility limits.
