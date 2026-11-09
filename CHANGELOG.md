@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Add owner-only trip PDFs (Closes #248): explicit story/itinerary/both and saved-audience/private choices, Dutch/English output, approved photo copies, a private-output acknowledgement, and portable-copy warnings. Audience data uses the existing visitor projection with precision and exclusions; originals and arbitrary URLs are never fetched. Generation is ephemeral and bounded by preflight, photo, process memory/time/output and concurrency limits, streams private/no-store, and records a payload-free audit. Embedded Unicode fonts, page flow and reader bookmarks support printable long stories; PDFs are not tagged PDF/UA. Both locales/themes and narrow dirty-editor/focus behaviour are covered by focused axe/Playwright checks.
+
 - Add text-only public Atom feeds and opt-in independent hidden-link feed capabilities with expiry, revocation, translated copy warnings and audit events (#247).
 
 - Import finished GPX, GeoJSON, Dawarich and phone Timeline files into reviewed approximate route drafts (Closes #243). Raw data stays in bounded request memory; only a selected two-decimal line can enter the normal route editor.

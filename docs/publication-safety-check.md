@@ -165,3 +165,14 @@ field or file route, so there is nothing to check for them.
   Check its expiry separately from the parent link; revoke unused feeds.
 - [ ] Keep API and proxy capability paths and response bodies out of logs.
   Feed responses and failed probes must stay no-store/noindex/no-referrer.
+
+## PDF copies (#248)
+
+- [ ] Choose the intended audience and review the resulting PDF, including its
+  saved scope's exclusions, date precision, authored text and every photo.
+  Export uses saved settings, including for hidden or expired audiences.
+- [ ] Use the full private view only when its booking/contact details and
+  private notes are appropriate for the recipient. It requires a separate
+  acknowledgement and carries a warning in the file.
+- [ ] Treat downloads as permanent recipient copies: unpublishing, expiry and
+  revocation cannot recall them. Store private PDFs outside source and Git.

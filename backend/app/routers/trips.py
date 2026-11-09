@@ -1,9 +1,10 @@
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session, object_session, selectinload
 
 from ..access import receivers, set_cover, set_visibility
@@ -14,6 +15,7 @@ from ..errors import ApiException, ServiceError, service_exception
 from ..export import EXPORT_SCHEMA_VERSION, record_export, stream_trip_export
 from ..models import (
     Location,
+    McpAuditEvent,
     MediaAsset,
     MediaDerivative,
     ObjectState,
@@ -35,6 +37,16 @@ from ..schemas import (
     TripOverviewResponse,
     TripResponse,
     TripUpdate,
+)
+from ..storage import ObjectStorage, get_storage
+from ..trip_pdf import (
+    EphemeralPdfResponse,
+    PdfRequest,
+    _slots,
+    check_budget,
+    generate_pdf,
+    snapshot_budget,
+    temporary_pdf,
 )
 from .placement import location_from_input, selected_area
 
@@ -157,6 +169,78 @@ def export_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -
             "Content-Disposition": f'attachment; filename="trip-{trip_id}-export.json"',
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.post("/{trip_id}/export/pdf", response_class=StreamingResponse)
+def export_trip_pdf(
+    trip_id: Identifier,
+    payload: PdfRequest,
+    session: SessionDep,
+    subject: SubjectDep,
+    storage: Annotated[ObjectStorage, Depends(get_storage)],
+) -> StreamingResponse:
+    owned_trip(session, trip_id, subject, load_relations=False)
+    temporary = temporary_pdf()
+    try:
+        with Session(bind=session.get_bind()) as snapshot:
+            if snapshot.get_bind().dialect.name == "postgresql":
+                snapshot.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+            with snapshot_budget(snapshot) as deadline:
+                if snapshot.get_bind().dialect.name == "postgresql":
+                    snapshot.execute(text("SET LOCAL statement_timeout = '5000ms'"))
+                owned_trip(snapshot, trip_id, subject, load_relations=False)
+                check_budget(snapshot, trip_id)
+                trip = owned_trip(snapshot, trip_id, subject, load_relations=False)
+                output = generate_pdf(snapshot, trip, payload, storage, Path(temporary.name), deadline=deadline)
+        session.add(
+            McpAuditEvent(
+                owner_subject=subject,
+                action="trip.export_pdf",
+                resource_type="trip",
+                resource_id=trip_id,
+                trip_id=trip_id,
+                result="success",
+                details={"transport": "http"},
+            )
+        )
+        session.commit()
+    except BaseException:
+        try:
+            temporary.cleanup()
+        finally:
+            _slots.release()
+        raise
+
+    closed = False
+
+    def close():
+        nonlocal closed
+        if not closed:
+            closed = True
+            try:
+                temporary.cleanup()
+            finally:
+                _slots.release()
+
+    def chunks():
+        try:
+            with output.open("rb") as source:
+                while chunk := source.read(64 * 1024):
+                    yield chunk
+        finally:
+            close()
+
+    return EphemeralPdfResponse(
+        chunks(),
+        cleanup=close,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="trip-{trip_id}.pdf"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+            "X-Robots-Tag": "noindex, noarchive",
         },
     )
 

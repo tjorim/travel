@@ -121,3 +121,92 @@ must ignore unknown keys.
 No MCP tool is added: MCP tool results are fully buffered JSON, which defeats
 the streaming bound, and `get_trip` and the list tools already give assistants
 equivalent per-kind reads. A files export is a possible follow-up.
+
+## On-demand PDF (#248)
+
+`POST /api/trips/{trip_id}/export/pdf` is owner-only, with a JSON body:
+
+```json
+{"content":"both","view":"audience","audience":"public","locale":"nl"}
+```
+
+`content` is explicitly `story`, `itinerary` or `both`; `locale` is `nl` or
+`en`. `view` is `audience` with `audience: "public"` or a trip-owned share-link
+id or `collection:<member_id>` for a trip-owned collection member, or `private` with `confirm_private: true` and no audience. The UI offers
+these choices under **Export as PDF** in trip details, without defaulting to
+private output. It exports **saved** data, preserving any unsaved editor draft.
+A hidden, expired or revoked audience can still be selected by its owner: this
+is a preview of its saved scope, not a claim that its visitor URL is live.
+Collection-member scopes are checked against both the trip and collection owner.
+
+Audience input is the exact `render_projection` document used by the visitor
+view/preview: visibility, exclusions, dependent-photo gating and date precision
+are applied before PDF layout. The PDF is a text/photo rendition, not a copy of
+the interactive map or navigation controls. A separate display-field allowlist
+also rejects private/unknown fields at the renderer boundary. Photos resolve
+only projection-local image ids through `scoped_file`; no original, video,
+poster, document, remote image, link destination or authored URL is fetched.
+Markdown is printed as escaped source text, never executable PDF layout markup.
+
+Private output includes all story updates and their private notes, approved
+share-photo copies (including private ones), and itinerary visits, stays,
+routes and location details, including booking/contact information and notes.
+It does not embed originals, videos or document files, or include unrelated
+packing lists, tasks, emergency/library records or publication credentials.
+The private choice requires acknowledgement and the file repeats its warning.
+Either view produces a portable copy that later revocation cannot erase.
+
+Generation uses a repeatable-read snapshot on PostgreSQL. Before ORM relations
+load, database aggregates cap the trip at **1500 trip-owned rows** and
+**500,000 stored characters**, including metadata, scopes and audit rows; this
+conservative whole-trip limit applies even to a smaller content selection.
+Photo limits are **60 copies**, **10 MiB per encoded photo**, **64 MiB total**
+and **20 million pixels per decoded image**. Copies are staged in 64 KiB chunks;
+the renderer downsamples each to at most 1600×1600. There are **two active
+exports per API process**, including delivery; saturation returns 503 with
+`Retry-After: 5`. PostgreSQL statements have a 5-second timeout. Snapshot queries, preparation
+and rendering share a 30-second deadline (an in-flight PostgreSQL statement
+may add up to five seconds), with a
+separate worker constrained to 25 CPU seconds, 512 MiB address space and a
+64 MiB output file. Preflight bounds parent allocations; the worker hard
+memory limit also bounds image decoding and ReportLab's buffered document.
+The deadline is checked before each snapshot query and staged chunk; a query
+already in flight is bounded by its statement timeout.
+
+The finished PDF streams in 64 KiB chunks with `Cache-Control: private,
+no-store`. It is generated into an automatically removed private temporary
+directory, never an object-storage row/key, query-cache entry or permanent
+server artifact. Cleanup releases admission on rendering, database or audit
+failure, completed delivery and disconnect. Temporary disk needs include
+encoded copies, normalized images and output, bounded by the limits above;
+process termination relies on the host's temporary-directory housekeeping.
+A successful generation writes a payload-free `McpAuditEvent` with
+`action: trip.export_pdf`, trip/resource id, `result: success`, and only
+`{"transport":"http"}` as details before starting delivery. Disconnect still
+counts as a request; audit failure prevents delivery.
+
+### Dependency and layout review
+
+ReportLab **5.1.0** is pinned in `pyproject.toml` and `uv.lock` (BSD-licensed
+Python package; Pillow was already a runtime dependency, charset-normalizer is
+locked transitively). Its [Platypus flowables](https://docs.reportlab.com/reportlab/userguide/ch5_platypus/)
+split long paragraphs across pages and scale local images. Its
+[paragraph API](https://docs.reportlab.com/reportlab/userguide/ch6_paragraphs/)
+accepts XML and remote image sources, so **all authored text is escaped** and
+images are passed separately from server-controlled local paths. No HTML/CSS
+browser, shell command, font URL or arbitrary URL fetching is involved.
+[Embedded TrueType fonts](https://docs.reportlab.com/reportlab/userguide/ch3_fonts/)
+use the package's bundled Bitstream Vera regular/bold files: Dutch/English
+Latin accents work without an OS font installation. Other scripts and emoji
+are not guaranteed. The production Docker image was built and the packaged
+fonts/rendering checked as its unprivileged user; no Dockerfile font package
+is needed.
+
+PDFs provide selectable text, title/language metadata, page numbers, headings,
+reader bookmarks and visible photo descriptions. They are **not tagged
+PDF/UA**, and visible descriptions are not structural image alternative text.
+Do not describe them as fully accessible; the accessible application remains
+available. Synthetic long-text, portrait/landscape-photo samples are generated
+outside Git and reviewed using Poppler rasterization and text extraction.
+
+Full structural tagging is tracked in [#321](https://github.com/tjorim/travel/issues/321).
