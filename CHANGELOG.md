@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Group Paraglide v3 development message modules to keep owner reloads and session-renewal callbacks responsive under CI load (#308); retain virtual message modules and tree-shaking in production.
+
 - Add supported PDF structure tagging with WeasyPrint (#321): semantic headings, document reading order and approved-photo alternatives, with an exact-resource fetch allowlist and existing privacy/resource limits. Dutch/English synthetic long/photo outputs pass veraPDF machine checks; screen-reader review and full accessibility acceptance remain open.
 
 - License Travel under Apache License 2.0, including the separately packaged Python client and Home Assistant integration.
