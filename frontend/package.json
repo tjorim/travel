@@ -58,7 +58,7 @@
     "@types/react-dom": "latest",
     "fake-indexeddb": "^6.2.7",
     "happy-dom": "^21.0.4",
-    "msw": "^3.0.3",
+    "msw": "^3.0.4",
     "oxc-parser": "^0.157.0",
     "oxfmt": "^0.76.0",
     "oxlint": "^1.91.0",

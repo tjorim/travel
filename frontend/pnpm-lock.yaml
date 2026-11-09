@@ -255,7 +255,7 @@ importers:
         specifier: ^21.0.4
         version: 21.0.4
       msw:
-        specifier: ^3.0.3
+        specifier: ^3.0.4
         version: 3.0.4(@types/node@26.6.6)(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
       oxc-parser:
         specifier: ^0.157.0
