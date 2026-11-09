@@ -28,6 +28,7 @@ from .routers.collections import router as collections_router
 from .routers.documents import router as documents_router
 from .routers.library import router as library_router
 from .routers.link_preview import router as link_preview_router
+from .routers.live_location import router as live_location_router
 from .routers.locations import router as locations_router
 from .routers.markdown import router as markdown_router
 from .routers.media import provider_tokens_router
@@ -79,6 +80,7 @@ app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty:
 # Outermost, so its timing covers everything below it (apps#246).
 app.add_middleware(RequestTimingMiddleware)
 
+app.include_router(live_location_router, prefix="/api")
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")
 app.include_router(visits_router, prefix="/api")
@@ -154,5 +156,5 @@ def owner_identity(subject: Annotated[str, Depends(current_subject)]) -> dict[st
     return {
         "subject": subject,
         "contract_version": 1,
-        "capabilities": ["trip-tasks:read-write", "packing:read-write"],
+        "capabilities": ["trip-tasks:read-write", "packing:read-write", "live-location:write"],
     }

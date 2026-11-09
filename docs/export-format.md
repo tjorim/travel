@@ -210,3 +210,14 @@ available. Synthetic long-text, portrait/landscape-photo samples are generated
 outside Git and reviewed using Poppler rasterization and text extraction.
 
 Full structural tagging is tracked in [#321](https://github.com/tjorim/travel/issues/321).
+
+## Live location exception (#244, 2026-11-09)
+
+The owner explicitly approved exact live-track storage and current-only audience
+sharing. Earlier blanket no-GPS-history/live-location statements are superseded
+only by [decision 244](decisions/244-live-location-tracks.md).
+Tracks stay owner-only until explicit deletion; freshness expiry preserves them.
+Review each enabled audience and its delivered precision before sharing. Live
+coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
+owner track export is a separate deliberate download. Database and HA backups
+may retain deleted history until their independent retention expires.

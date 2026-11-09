@@ -150,7 +150,8 @@ follows from it. The rest is optional and stays with the owner:
 | A reviewed approximate line with movable points (drawn or imported) | no | yes |
 
 Without a drawn line the maps draw a straight one between the two areas (or
-between the two locations when those are shared). The application stores no GPS tracks, live or finished. An owner may import
+between the two locations when those are shared). Routes store no GPS tracks. Separately, the explicitly approved live-location
+sessions retain owner-only exact tracks (decision 244). An owner may import
 a finished file solely to draft a selected portion as an approximate line,
 rounded to two decimals and capped at 500 points, then review/edit and save
 through the normal route editor. Raw data lives only in request memory; no
@@ -511,3 +512,14 @@ using a saved audience's existing projection or an explicitly acknowledged
 private view. This creates no canonical record or stored object and changes
 no audience scope. See [the export contract](export-format.md#on-demand-pdf-248)
 for included content, privacy boundaries, budgets and accessibility limits.
+
+## Live location exception (#244, 2026-11-09)
+
+The owner explicitly approved exact live-track storage and current-only audience
+sharing. Earlier blanket no-GPS-history/live-location statements are superseded
+only by [decision 244](decisions/244-live-location-tracks.md).
+Tracks stay owner-only until explicit deletion; freshness expiry preserves them.
+Review each enabled audience and its delivered precision before sharing. Live
+coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
+owner track export is a separate deliberate download. Database and HA backups
+may retain deleted history until their independent retention expires.

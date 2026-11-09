@@ -1,3 +1,4 @@
+import type { CurrentLocation } from "./CurrentLocations";
 import { VisitorNumbers } from "./VisitorNumbers";
 import type { VisitorNumbers as Numbers } from "./tracker-model";
 import { Spinner } from "@/ui/spinner";
@@ -12,6 +13,8 @@ import { ChevronLeftIcon, ChevronRightIcon, ImagesIcon, XIcon } from "lucide-rea
 import { Field, FieldLabel } from "@/ui/field";
 import { Switch } from "@/ui/switch";
 import {
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -29,9 +32,12 @@ import { groupStoryContext, type UpdateContext } from "./visitor-context";
 import { localDay, planByDay, type DayEntry, type PlanDay, type PlanRecords } from "./visitor-days";
 import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
 
+const CurrentLocations = lazy(() => import("./CurrentLocations"));
+
 export type ProjectionItem = { id: string; [field: string]: unknown };
 
 export type Projection = {
+  current_locations?: CurrentLocation[] | null;
   numbers?: Numbers;
   schema_version: string;
   title: string | null;
@@ -1784,6 +1790,11 @@ export function ProjectionView({
         cover={cover}
       />
       <VisitorNumbers numbers={projection.numbers} />
+      {!!projection.current_locations?.length && (
+        <Suspense fallback={null}>
+          <CurrentLocations positions={projection.current_locations} />
+        </Suspense>
+      )}
     </>
   );
   if (empty && !projection.summary && !dates)

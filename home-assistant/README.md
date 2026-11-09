@@ -3,20 +3,21 @@
 Owner-only native to-do lists for explicitly selected Travel trips. Travel remains
 the source of truth. Each trip has a task entity and one entity per packing list.
 Five-minute polling discovers list changes; confirmed writes refresh immediately.
-No GPS/location access, person tracking, occupancy/security actions, Daynest
-cross-posting or visitor credentials are implemented. #244 remains gated.
+Location forwarding is optional and off by default (#244, see below). No
+occupancy/security actions, Daynest cross-posting or visitor credentials are
+implemented.
 
 ## Installation and OAuth dependency
 
 Requires HA 2026.10.4 or newer and Python >=3.14.2. The custom integration is
-versioned independently in `custom_components/travel/manifest.json` (0.1.0).
+versioned independently in `custom_components/travel/manifest.json` (0.2.0).
 Production unattended authorization is **not yet verified/deployed**: provisioning
 and end-to-end login/refresh/revocation checks are tracked in
 [tjorim/apps#333](https://github.com/tjorim/apps/issues/333).
 
 For development, copy `custom_components/travel` into HA's config directory and
-restart HA. The manifest installs the separately packaged python-travel 0.1.0
-from the immutable #323 source archive, with its `python-travel` subdirectory.
+restart HA. The manifest installs the separately packaged python-travel 0.2.0
+from the immutable source archive pinned in the manifest, with its `python-travel` subdirectory.
 This uses HTTPS, needs no Git executable, and does not claim a PyPI publication.
 HA must have outbound access to GitHub and the dependency index. Development tests
 use the local sibling package through uv; they never download an unpublished PyPI
@@ -24,7 +25,7 @@ name. Do not disable HA dependency installation for ordinary installation.
 
 For HACS, add `tjorim/travel` as a custom Integration repository after an integration
 release with `travel.zip` exists. Build it with `uv run python package.py` here;
-attach `dist/travel.zip` to a GitHub release tagged `ha-v0.1.0`. The archive contains
+attach `dist/travel.zip` to a GitHub release tagged `ha-v0.2.0`. The archive contains
 only the integration directory contents, as required by `hacs.json`. Do not mark
 a release available until its archive and dependency install have been tested.
 First release tagging/HACS verification is tracked in [#329](https://github.com/tjorim/travel/issues/329).
@@ -146,3 +147,40 @@ Primary APIs checked 2026-11-09:
 [coordinator](https://contributors.home-assistant.io/core/integrations/fetching-data/),
 and HA core's `config_entry_oauth2_flow.py`. Daynest's integration split and native
 to-do platform were consulted; Travel adds no Daynest integration-key/SSE features.
+
+## Optional live location (#244)
+
+Tasks and packing work with location disabled (the default). No Dawarich or HA
+history access is needed. In Travel's trip sharing tab, open **Live location and
+private tracks**, add the exact `person.*` or `device_tracker.*` entity ID and
+start collection. In HA's Travel options, select the location trip and then its
+enabled source. Task-trip selection is independent. A different entity needs a
+new Travel source; a person changing its underlying device keeps its identity.
+
+Choose delivered precision independently for the public trip and each hidden
+link in Travel. Saving affects active audiences immediately; connecting HA never
+publishes anything. Existing link/public activation, expiry and revocation still
+apply. Only current location is delivered. At one hour it is stale; at 24 hours
+without fresh accepted data it disappears. Fresh data resumes still-enabled
+audiences, while exact private tracks remain until explicit deletion.
+
+The integration coalesces source events and sends at most every 45 seconds.
+Unavailable/missing GPS and observations older than five minutes are skipped.
+It has no history queue and never retries a failed position. A later fresh event
+may send the current state. Control state is rechecked every 45 seconds; disabling
+or deleting the Travel source removes listeners. Clear the location trip in HA
+options to stop forwarding; reloading, unloading or disabling the HA entry cancels
+its in-flight work. Stop the source in Travel to stop server acceptance and
+visitor delivery immediately, including any request already on the wire. Re-enable
+in Travel and reload HA to reconnect a stopped source.
+
+Travel keeps exact tracks in its database, with owner inspection, explicit
+private JSONL export and deletion. Ordinary trip JSON/PDF/Atom outputs contain no
+tracks or live locations. Deletion clears the current position; stopping preserves
+tracks. Travel backups can retain older data until backup rotation, and a restore
+can restore deleted data. Configure HA recorder exclusions for selected entities
+and review HA history/backup retention separately; this integration cannot remove
+those copies. Never put location attributes in debug logs or automations that
+forward them unintentionally. Production unattended OAuth still depends on
+[apps#333](https://github.com/tjorim/apps/issues/333); access-token revocation takes
+effect according to the existing OAuth token lifetime, not a new credential scheme.

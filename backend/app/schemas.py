@@ -1779,7 +1779,16 @@ class SharingPresetReview(BaseModel):
     )
 
 
+class CurrentLocation(BaseModel):
+    latitude: float
+    longitude: float
+    observed_at: datetime
+    stale: bool
+    precision: Literal["exact", "1km", "10km"]
+
+
 class ProjectionDocument(BaseModel):
+    current_locations: list[CurrentLocation] | None = Field(default=None, exclude_if=lambda value: value is None)
     numbers: dict[Literal["days", "areas", "countries", "nights"], int] | None = Field(
         default=None,
         exclude_if=lambda value: value is None,

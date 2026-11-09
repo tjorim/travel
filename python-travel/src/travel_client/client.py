@@ -16,11 +16,13 @@ from pydantic import TypeAdapter, ValidationError
 from .errors import AuthenticationError, ProtocolError, RateLimitError, TransportError, TravelError
 from .models import (
     Identity,
+    LiveSession,
     Operation,
     PackingItem,
     PackingItemFields,
     PackingItemUpdate,
     PackingList,
+    PositionResult,
     Task,
     TaskFields,
     TaskUpdate,
@@ -191,6 +193,25 @@ class SelectedTrip:
 
     async def _request(self, method: Operation, suffix: str, model: type[T], payload: object = None) -> T:
         return await self._client._request(method, f"trips/{self.trip_id}/{suffix}", model, payload)
+
+    async def live_sessions(self) -> list[LiveSession]:
+        return await self._request("GET", "live-location", list[LiveSession])
+
+    async def push_position(
+        self, session_id: str, *, observed_at: datetime, latitude: float, longitude: float
+    ) -> PositionResult:
+        if observed_at.tzinfo is None or not math.isfinite(latitude) or not math.isfinite(longitude):
+            raise ValueError("Invalid position")
+        return await self._request(
+            "POST",
+            "live-location/" + _id(session_id) + "/positions",
+            PositionResult,
+            {
+                "observed_at": observed_at.isoformat(),
+                "latitude": latitude,
+                "longitude": longitude,
+            },
+        )
 
     async def tasks(self) -> list[Task]:
         return await self._request("GET", "trip-tasks", list[Task])

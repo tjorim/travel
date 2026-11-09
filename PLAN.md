@@ -52,8 +52,8 @@ allowlist, never a client-side mask of an exact record.
 
 Locations with an address, stays, media uploads and device-scoped offline copies
 are in scope. They remain owner-only until shared deliberately. The product
-stores no recorded GPS data, live or finished (finished-file import may only
-seed a reviewed two-decimal approximate route; see decision 243): how the owner
+stores exact owner-only live tracks only under decision 244; finished-file import may only
+seed a reviewed two-decimal approximate route (decision 243). How the owner
 travels is an approximate route reviewed by the owner, with a travel mode, and no exact or
 near-real-time location is published automatically.
 
@@ -218,7 +218,7 @@ It uses test content only; production content begins with the fresh launch.
 - Link scopes and server-enforced redaction protect items and sensitive fields;
   a client never receives hidden locations, links, files or metadata.
 - Locations, exact stays, automatic owner-only media uploads and selected offline
-  copies are included. Recorded GPS tracks, continuous and live, are excluded;
+  copies are included. Exact live tracks are included only through the opt-in decision 244;
   routes are drawn by hand.
 - Google Photos Picker import is included; GoPro Cloud import is included when
   beta access is granted, with direct device upload as the enduring fallback.
@@ -262,11 +262,13 @@ decision rather than inventing a release to hold it.
 
 ## Confirmed out of scope through v3
 
-Collaborative editing, end-to-end encryption, continuous/live GPS tracking,
+Collaborative editing, end-to-end encryption, GPS tracking beyond decision 244,
 public default sharing, generic external automation, and further social
 Polarsteps-like features require a fresh product and privacy decision.
 
 ## Recently completed
+
+- [x] [#244](https://github.com/tjorim/travel/issues/244) Add opt-in HA exact private tracks, owner management and current-only audience precision/freshness. Production OAuth remains apps#333.
 
 - [x] [#319](https://github.com/tjorim/travel/issues/319) Add the independently packaged HA task/packing integration, OAuth owner selection/reauth, safe refresh/lifecycle handling, privacy documentation and HA CI. Production OAuth provisioning/verification remains [apps#333](https://github.com/tjorim/apps/issues/333).
 - [x] [#318](https://github.com/tjorim/travel/issues/318) Add the separately packaged async Python owner client, typed task/packing CRUD, safe bounded transport, HA authentication guidance and API contract/package CI. Dedicated HA OAuth provisioning is tracked in [apps#333](https://github.com/tjorim/apps/issues/333); #319 starts after this implementation merges.
@@ -631,3 +633,15 @@ Polarsteps-like features require a fresh product and privacy decision.
   `tjorim/travel` (application) or `tjorim/apps` (shared VPS infrastructure)
   actually owns doing the work, per `AGENTS.md`. Update this plan when an
   issue's relative order changes.
+
+
+## Live location exception (#244, 2026-11-09)
+
+The owner explicitly approved exact live-track storage and current-only audience
+sharing. Earlier blanket no-GPS-history/live-location statements are superseded
+only by [decision 244](docs/decisions/244-live-location-tracks.md).
+Tracks stay owner-only until explicit deletion; freshness expiry preserves them.
+Review each enabled audience and its delivered precision before sharing. Live
+coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
+owner track export is a separate deliberate download. Database and HA backups
+may retain deleted history until their independent retention expires.

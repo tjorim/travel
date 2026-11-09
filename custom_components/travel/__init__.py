@@ -28,6 +28,7 @@ async def async_setup_entry(hass, entry: TravelEntry) -> bool:
     coordinator = TravelCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+    await coordinator.location.start()
     registry = entity_registry.async_get(hass)
     valid = {coordinator.unique_id(key) for key in coordinator.data}
     for entity in entity_registry.async_entries_for_config_entry(registry, entry.entry_id):
@@ -44,6 +45,7 @@ async def async_reload(hass, entry):
 
 async def async_unload_entry(hass, entry: TravelEntry) -> bool:
     if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        await entry.runtime_data.location.shutdown()
         await entry.runtime_data.async_shutdown()
         return True
     return False

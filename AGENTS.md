@@ -105,7 +105,8 @@ under `lock_object_deletion`, and no dot-entries. The apps backup depends on
 these rules; keep new file-backed features inside them.
 
 Tracker endpoints must enforce ownership from the authenticated subject and
-must not expose it through published-trip responses. Do not add GPS capture,
+must not expose it through published-trip responses. GPS capture is approved only
+for decision 244. Do not add further GPS capture,
 precise addresses, media uploads, or automatic archive migration without an
 explicit product/privacy decision.
 
@@ -174,3 +175,14 @@ source audit coverage.
 Follow [docs/ui-maintenance.md](docs/ui-maintenance.md) for Base UI/runtime updates and the pinned shadcn CLI, registry comparisons and review records. Run `pnpm ui:check` from `frontend/` after changing shared UI. Dependabot does not update owned component source; preserve the documented customisations and validate interactions and bundle budgets.
 
 Application UI imports use `@/ui/<component>`. Direct Base UI subpath imports belong in inventoried UI adapters or exact documented composition exceptions. `pnpm ui:check` enforces the policy; `pnpm ui:test` tests it. Keep styles and application behaviour when aligning imports.
+
+## Live location exception (#244, 2026-11-09)
+
+The owner explicitly approved exact live-track storage and current-only audience
+sharing. Earlier blanket no-GPS-history/live-location statements are superseded
+only by [decision 244](docs/decisions/244-live-location-tracks.md).
+Tracks stay owner-only until explicit deletion; freshness expiry preserves them.
+Review each enabled audience and its delivered precision before sharing. Live
+coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
+owner track export is a separate deliberate download. Database and HA backups
+may retain deleted history until their independent retention expires.

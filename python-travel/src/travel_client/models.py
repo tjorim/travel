@@ -100,3 +100,14 @@ class PackingItemUpdate(PackingItemFields, total=False):
 
 
 Operation = Literal["GET", "POST", "PATCH", "DELETE"]
+
+
+class LiveSession(WireModel):
+    id: str
+    source: str
+    enabled: bool
+    audiences: dict[str, Literal["exact", "1km", "10km"]]
+
+
+class PositionResult(WireModel):
+    accepted: bool

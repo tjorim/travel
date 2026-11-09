@@ -17,7 +17,7 @@ def build():
                 archive.write(path, path.relative_to(SOURCE))
     with ZipFile(target) as archive:
         manifest = json.loads(archive.read("manifest.json"))
-        assert manifest["version"] == "0.1.0"
+        assert manifest["version"] == "0.2.0"
         assert "config_flow.py" in archive.namelist()
     return target
 
