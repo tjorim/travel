@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { RouterProvider } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 
@@ -59,6 +59,10 @@ const routeComponents = {
 const workspaceRouteComponents = { ...routeComponents, Trips, TripWorkspace };
 
 afterEach(() => {
+  // Vitest globals are off, so Testing Library does not unmount for us. Without this the workspace
+  // test leaves the real route tree mounted and fetching when the worker's DOM is torn down, and
+  // React's scheduler then throws "window is not defined" as an unhandled error (flaky in CI).
+  cleanup();
   sessionStorage.clear();
 });
 

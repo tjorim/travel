@@ -10,7 +10,8 @@ implemented.
 ## Installation and OAuth dependency
 
 Requires HA 2026.10.4 or newer and Python >=3.14.2. The custom integration is
-versioned independently in `custom_components/travel/manifest.json` (0.2.0).
+released together with the application as CalVer (`YYYY.M.MICRO`, currently 2026.11.1) in
+`custom_components/travel/manifest.json`; the separately packaged python-travel client keeps its own SemVer (0.2.0).
 Production unattended authorization is **not yet verified/deployed**: provisioning
 and end-to-end login/refresh/revocation checks are tracked in
 [tjorim/apps#333](https://github.com/tjorim/apps/issues/333).
@@ -25,7 +26,7 @@ name. Do not disable HA dependency installation for ordinary installation.
 
 For HACS, add `tjorim/travel` as a custom Integration repository after an integration
 release with `travel.zip` exists. Build it with `uv run python package.py` here;
-attach `dist/travel.zip` to a GitHub release tagged `v0.2.0`. The archive contains
+attach `dist/travel.zip` to a GitHub release tagged `vYYYY.M.MICRO` (for example `v2026.11.1`). The archive contains
 only the integration directory contents, as required by `hacs.json`. Do not mark
 a release available until its archive and dependency install have been tested.
 First release tagging/HACS verification is tracked in [#329](https://github.com/tjorim/travel/issues/329).
@@ -190,11 +191,13 @@ effect according to the existing OAuth token lifetime, not a new credential sche
 
 ## Release preparation (#329)
 
-The first release is **0.2.0**, matching the current manifest, not the original
-issue's 0.1.0 proposal. Use the HACS-compatible tag **v0.2.0**: `ha-v0.2.0` is
-not a recognized AwesomeVersion version and cannot be reliably compared for updates.
-This repository's GitHub releases are integration releases; the application and
-Python client remain independently versioned. No release or tag is created by CI.
+The first release was **0.2.0**. Releases now use CalVer, `YYYY.M.MICRO` (`MICRO` is a
+counter that resets each month; the next after 2026.11.1 is 2026.11.2 or 2026.12.1), with
+the HACS-compatible tag **vYYYY.M.MICRO**: `ha-vX` is not a recognized AwesomeVersion
+version and cannot be reliably compared for updates, and CalVer sorts above 0.2.0 so
+HACS offers it as an update. The application, the MCP server and the integration manifest
+share that version; the python-travel client keeps its own SemVer and is pinned by the
+manifest to an immutable source archive. No release or tag is created by CI.
 
 Run the locked checks above, then build outside Git:
 
