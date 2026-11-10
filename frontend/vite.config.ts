@@ -1,3 +1,4 @@
+import { redact } from "@tanstack/redact/vite";
 import type { ServerResponse } from "node:http";
 import { availableParallelism } from "node:os";
 import type { Plugin } from "vite";
@@ -106,6 +107,8 @@ export default defineConfig(({ command }) => ({
         ? { outputStructure: "message-modules" as const, messageModuleSize: 100 }
         : {}),
     }),
+    // Unit tests retain native React; browser E2E tests cover the Redact runtime.
+    ...(process.env.VITEST ? [] : [redact({ preset: "full", environments: ["client"] })]),
     react(),
     tailwindcss(),
     visitorRoutes(),

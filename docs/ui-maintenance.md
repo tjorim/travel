@@ -196,3 +196,34 @@ pnpm 12.16.1; CI must read the package declaration rather than keeping a second
 hard-coded pnpm version. Frontend Node setup reads `.node-version`. Keep tool
 changes in reviewable PRs and preserve runtime-version/bundle investigations as
 separate work.
+
+## Redact runtime (2026-11-09)
+
+The browser build uses pinned `@tanstack/redact` 0.3.1 with the full preset,
+registered before the React plugin. Keep React, React DOM and their types installed
+for library peers and TypeScript. No application imports need changing.
+Vitest stays on native React. Redact aliases application imports, but CommonJS
+entries in testing-library, Lucide and react-error-boundary can still load native
+React and cause invalid hook calls. Browser E2E tests exercise Redact instead;
+keep this distinction when interpreting unit test coverage.
+
+Redact renders synchronously. Review input responsiveness, portals, focus return,
+external stores and calendar/map interactions when upgrading it. Renovate groups
+Redact separately and disables automerge.
+
+Rollback: remove the Redact plugin call/import from Vite and remove its dev
+dependency with pnpm.
+
+Implementation validation uses base `cb7224bb52ffce0cbf4de39cc25d3ef1c5f7f516`. `pnpm build` passed with Redact;
+TypeScript runs in that command. Unit tests deliberately use native React as
+explained above. No INP trace or Firefox/WebKit compatibility claim is made.
+
+Native unit run: 763 tests passed; 18 suites initially failed to import generated
+Paraglide modules after another compiler changed the output. Rerunning those
+suites sequentially passed all 94 tests. Keep translation compilers and dev
+servers stopped while running the unit/build commands.
+
+Focused Chromium map/smoke suite: all 48 checks passed, including both locales,
+themes, narrow accessibility, account popovers and lazy-view recovery. These
+specs use dev source URLs to inject import failures; run them against their
+normal dev config, not a production preview.
