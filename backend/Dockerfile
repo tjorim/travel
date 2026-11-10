@@ -30,9 +30,13 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 # Only ffprobe ships: it verifies worker output. Encoding happens in the apps media worker.
 COPY --from=ffmpeg /ffprobe /usr/local/bin/ffprobe
+COPY VERSION ./VERSION
 COPY backend/app ./app
 COPY backend/alembic.ini ./alembic.ini
 COPY backend/alembic ./alembic
+
+ARG APP_COMMIT=unknown
+ENV APP_COMMIT=${APP_COMMIT}
 
 ENV PATH="/app/.venv/bin:$PATH"
 
