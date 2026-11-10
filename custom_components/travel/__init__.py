@@ -7,14 +7,14 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from travel_client import TravelClient
 
 from .coordinator import TravelCoordinator
+from .oidc import implementation, validated_config
 
 PLATFORMS = [Platform.TODO]
 type TravelEntry = ConfigEntry[TravelCoordinator]
 
 
 async def async_client_for_entry(hass, entry: TravelEntry):
-    implementation = await config_entry_oauth2_flow.async_get_config_entry_implementation(hass, entry)
-    oauth = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
+    oauth = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation(hass, validated_config(entry.data)))
 
     async def token():
         await oauth.async_ensure_token_valid()

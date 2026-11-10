@@ -4,6 +4,7 @@ from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from conftest import OIDC
 from custom_components.travel.config_flow import TravelFlow, TravelOptions
 from custom_components.travel.coordinator import TravelCoordinator
 from custom_components.travel.diagnostics import async_get_config_entry_diagnostics
@@ -85,12 +86,7 @@ async def test_identity_rotation_owner_and_diagnostics(hass, api):
 
 async def test_setup_dynamic_removal_options_and_unload(hass, api):
     state, _client, entry = api
-    with (
-        patch(
-            "custom_components.travel.config_entry_oauth2_flow.async_get_config_entry_implementation", new=AsyncMock()
-        ),
-        patch("custom_components.travel.config_entry_oauth2_flow.OAuth2Session") as oauth,
-    ):
+    with patch("custom_components.travel.config_entry_oauth2_flow.OAuth2Session") as oauth:
         oauth.return_value.async_ensure_token_valid = AsyncMock()
         oauth.return_value.token = {"access_token": "synthetic-token"}
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -125,6 +121,7 @@ async def test_config_selection_and_cross_owner_reauth(hass, api):
     flow.hass = hass
     flow.context = {"source": "user"}
     flow.origin = entry.data["origin"]
+    flow.oidc = OIDC
     with (
         patch.object(flow, "async_set_unique_id", new=AsyncMock()),
         patch.object(flow, "_abort_if_unique_id_configured"),
@@ -143,35 +140,53 @@ async def test_config_selection_and_cross_owner_reauth(hass, api):
         update.assert_called_once()
 
 
-async def test_application_credentials_pkce_and_validation(hass):
-    from custom_components.travel.application_credentials import async_get_auth_implementation
-    from homeassistant.components.application_credentials import ClientCredential
+async def test_public_pkce_client_and_endpoint_validation(hass):
+    from custom_components.travel.oidc import implementation, validated_config
 
-    implementation = await async_get_auth_implementation(
-        hass,
-        "realm",
-        ClientCredential("synthetic-client", "synthetic-secret", "https://auth.example.test/realms/travel"),
-    )
-    assert implementation.extra_authorize_data["code_challenge_method"] == "S256"
-    assert implementation.extra_token_resolve_data["code_verifier"]
-    assert implementation.client_secret == "synthetic-secret"
-    for issuer in (
-        "http://auth.example.test/realms/travel",
-        "https://u:p@auth.example.test/realms/travel",
-        "https://auth.example.test/not-a-realm",
+    config = validated_config(OIDC)
+    impl = implementation(hass, config)
+    assert impl.client_id == "travel-home-assistant"
+    assert not impl.client_secret
+    assert impl.extra_authorize_data["code_challenge_method"] == "S256"
+    assert impl.extra_token_resolve_data["code_verifier"]
+    for override in (
+        {"authorization_url": "http://auth.example.test/realms/travel/protocol/openid-connect/auth"},
+        {"authorization_url": "https://u:p@auth.example.test/realms/travel/protocol/openid-connect/auth"},
+        {"authorization_url": "https://auth.example.test/auth?next=https://evil.test"},
+        {"token_url": "https://evil.example.test/token"},
+        {"client_id": ""},
     ):
         with pytest.raises(ValueError):
-            await async_get_auth_implementation(hass, "realm", ClientCredential("c", "s", issuer))
+            validated_config({**OIDC, **override})
+    with pytest.raises(TypeError):
+        validated_config({**OIDC, "token_url": None})
+    with pytest.raises(TypeError):
+        validated_config(["not", "an", "object"])
+
+
+async def test_flow_sends_user_to_keycloak_without_application_credentials(hass, api):
+    state, _client, entry = api
+    flow = TravelFlow()
+    flow.hass = hass
+    flow.context = {"source": "user"}
+    with patch.object(flow, "async_step_auth", new=AsyncMock(return_value={"type": "external"})) as auth:
+        result = await flow.async_step_user({"origin": entry.data["origin"] + "/"})
+    assert result == {"type": "external"}
+    auth.assert_awaited_once()
+    assert flow.oidc == OIDC
+    assert flow.flow_impl.client_id == "travel-home-assistant"
+    for bad in ({"authorization_url": "http://insecure.example.test/auth"}, "not json"):
+        state["oidc"] = {**OIDC, **bad} if isinstance(bad, dict) else bad
+        result = await flow.async_step_user({"origin": entry.data["origin"]})
+        assert result["errors"] == {"base": "cannot_connect"}
+    state["oidc"], state["oidc_status"] = OIDC, 404
+    result = await flow.async_step_user({"origin": entry.data["origin"]})
+    assert result["errors"] == {"base": "cannot_connect"}
 
 
 async def test_options_reload_deselect_restart_identity(hass, api):
     _state, _client, entry = api
-    with (
-        patch(
-            "custom_components.travel.config_entry_oauth2_flow.async_get_config_entry_implementation", new=AsyncMock()
-        ),
-        patch("custom_components.travel.config_entry_oauth2_flow.OAuth2Session") as oauth,
-    ):
+    with patch("custom_components.travel.config_entry_oauth2_flow.OAuth2Session") as oauth:
         oauth.return_value.async_ensure_token_valid = AsyncMock()
         oauth.return_value.token = {"access_token": "synthetic-token"}
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -228,12 +243,15 @@ async def test_user_origin_and_reauth_steps(hass, api):
     flow.context = {"source": "user"}
     result = await flow.async_step_user({"origin": "https://user:secret@example.test/private"})
     assert result["errors"] == {"base": "invalid_origin"}
-    with patch.object(flow, "async_step_pick_implementation", new=AsyncMock(return_value={"type": "form"})) as pick:
+    with patch.object(flow, "async_step_auth", new=AsyncMock(return_value={"type": "external"})) as auth:
         await flow.async_step_user({"origin": api[2].data["origin"] + "/"})
         assert flow.origin == api[2].data["origin"]
-        pick.assert_awaited_once()
+        auth.assert_awaited_once()
     result = await flow.async_step_reauth(api[2].data)
     assert result["step_id"] == "reauth_confirm"
-    with patch.object(flow, "async_step_pick_implementation", new=AsyncMock()) as pick:
+    with patch.object(flow, "async_step_auth", new=AsyncMock(return_value={"type": "external"})) as auth:
         await flow.async_step_reauth_confirm({})
-        pick.assert_awaited_once()
+        auth.assert_awaited_once()
+    api[0]["oidc_status"] = 500
+    result = await flow.async_step_reauth_confirm({})
+    assert result["reason"] == "cannot_connect"

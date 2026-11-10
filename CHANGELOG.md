@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+- Remove the Home Assistant "Add application credentials" step: the integration now reads the Keycloak endpoints and a public PKCE client ID (no secret) from a new unauthenticated `GET /api/auth/oidc-config` (the provider's OIDC discovery document, cached, as in Worktime and Champagnefestival), accepts only same-host HTTPS endpoints, and re-fetches them on reauthentication. The apps#333 Keycloak client must be public (`travel-home-assistant`) instead of confidential; the integration was unreleased, so no entry migration is included.
+
 - Remove the Dependabot configuration to stop scheduled dependency update PRs.
 
 - Group Paraglide v3 development message modules to keep owner reloads and session-renewal callbacks responsive under CI load (#308); retain virtual message modules and tree-shaking in production.

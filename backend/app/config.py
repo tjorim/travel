@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     oidc_issuer_url: str | None = None
     oidc_jwks_url: str | None = None
     oidc_audience: str = "travel-api"
+    # Public PKCE client the Home Assistant integration signs in with. It is
+    # advertised by GET /api/auth/oidc-config; it carries no secret.
+    oidc_home_assistant_client_id: str = "travel-home-assistant"
     # Local-development-only shortcut that skips OIDC/JWKS verification: a
     # request whose bearer token equals this value is the fixed development
     # owner (app.auth.DEV_BYPASS_SUBJECT). Empty by default; startup refuses

@@ -8,6 +8,12 @@ from travel_client import TravelClient
 
 pytest_plugins = ["pytest_homeassistant_custom_component"]
 
+OIDC = {
+    "authorization_url": "https://auth.example.test/realms/travel/protocol/openid-connect/auth",
+    "token_url": "https://auth.example.test/realms/travel/protocol/openid-connect/token",
+    "client_id": "travel-home-assistant",
+}
+
 
 @pytest.fixture(autouse=True)
 def custom(enable_custom_integrations):
@@ -17,6 +23,8 @@ def custom(enable_custom_integrations):
 @pytest.fixture
 async def api(hass, aiohttp_server, socket_enabled):
     state = {"owner": "owner-one", "status": 200, "packing": True, "writes": [], "requests": []}
+    state["oidc"] = OIDC
+    state["oidc_status"] = 200
     task = {
         "id": "task-one",
         "title": "Synthetic task",
@@ -49,6 +57,8 @@ async def api(hass, aiohttp_server, socket_enabled):
 
     async def handler(request):
         path = request.path
+        if path == "/api/auth/oidc-config":
+            return web.json_response(state["oidc"], status=state["oidc_status"])
         state["requests"].append((request.method, path, request.headers.get("Authorization")))
         if state["status"] != 200:
             return web.json_response({"detail": "never expose this private text"}, status=state["status"])
@@ -110,6 +120,7 @@ async def api(hass, aiohttp_server, socket_enabled):
             "origin": origin,
             "owner": "owner-one",
             "trips": ["trip-one"],
+            **OIDC,
             "auth_implementation": "travel",
             "token": {"access_token": "synthetic-token", "expires_at": 9999999999},
         },
