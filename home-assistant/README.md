@@ -197,7 +197,7 @@ counter that resets each month; the next after 2026.11.1 is 2026.11.2 or 2026.12
 the HACS-compatible tag **vYYYY.M.MICRO**: `ha-vX` is not a recognized AwesomeVersion
 version and cannot be reliably compared for updates, and CalVer sorts above 0.2.0 so
 HACS offers it as an update. The application, the MCP server and the integration manifest
-share that version, and so does the python-travel client, which `release-draft.yml` publishes to
+share that version, and so does the python-travel client, which `release.yml` publishes to
 PyPI before drafting the archive (the manifest pins it exactly). No release or tag is created by CI.
 
 Run the locked checks above, then build outside Git:

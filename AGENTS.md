@@ -125,7 +125,7 @@ Releases use CalVer, `YYYY.M.MICRO` (`MICRO` counts releases within a month), ta
 version strings, the Home Assistant manifest and diagnostics, `frontend/package.json`, the integration
 README) are derived from it and checked by CI. `python-travel` (PyPI) uses the same CalVer: its `pyproject.toml`,
 the three `uv.lock` entries and the `python-travel==` pin in the manifest are in `release.config.json`, and
-`release-draft.yml` publishes it to PyPI (environment `pypi`, trusted publishing) before drafting the HACS archive.
+`release.yml` publishes it to PyPI (environment `pypi`, trusted publishing) before drafting the HACS archive.
 
 1. Add entries under `## [Unreleased]` in `CHANGELOG.md` while working (`### Added`, `### Changed`,
    `### Fixed`, `### Removed`). Put backend, infrastructure, CI and dependency changes under `### Internal`:
@@ -134,7 +134,7 @@ the three `uv.lock` entries and the `python-travel==` pin in the manifest are in
    prints what an app should show as JSON.
 2. `node scripts/release.mjs bump` writes the next version everywhere and turns `[Unreleased]` into the
    dated release section. Review the diff, open the release PR and merge it.
-3. Tag the merge commit `vYYYY.M.MICRO` and push the tag. `release-draft.yml` re-checks the tag against
+3. Tag the merge commit `vYYYY.M.MICRO` and push the tag. `release.yml` re-checks the tag against
    `VERSION` and the changelog, builds and validates `travel.zip`, and attaches it to a **draft** GitHub
    release with the changelog section as notes.
 4. Download and test the attached archive and dependency installation (see `home-assistant/README.md`),
