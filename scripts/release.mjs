@@ -96,6 +96,13 @@ function scanTarget(root, target) {
   return { text, matches };
 }
 
+function trimBlankLines(lines) {
+  let [from, to] = [0, lines.length];
+  while (from < to && lines[from].trim() === "") from++;
+  while (to > from && lines[to - 1].trim() === "") to--;
+  return lines.slice(from, to);
+}
+
 /** First line index after `start` that ends the section: next heading, rule or link reference. */
 function sectionEnd(lines, start) {
   for (let i = start + 1; i < lines.length; i++) {
@@ -175,6 +182,21 @@ export function parseChangelog(text) {
   return result;
 }
 
+/** Same-named `###` blocks (stacked "Unreleased" blocks that were never merged) become one. */
+function mergeCategories(categories) {
+  const merged = new Map();
+  for (const c of categories) {
+    const existing = merged.get(c.name);
+    if (existing) {
+      existing.entries.push(...c.entries);
+      existing.prose.push(...c.prose);
+    } else {
+      merged.set(c.name, { ...c, entries: [...c.entries], prose: [...c.prose] });
+    }
+  }
+  return [...merged.values()];
+}
+
 function filterCategories(categories, config, { audience, platform } = {}) {
   if (platform && !(config.platforms ?? []).some((p) => sameName(p, platform))) {
     throw new Error(
@@ -182,7 +204,7 @@ function filterCategories(categories, config, { audience, platform } = {}) {
     );
   }
   const isPlatformScope = (scope) => (config.platforms ?? []).some((p) => sameName(p, scope));
-  return categories
+  return mergeCategories(categories)
     .filter((c) => !(audience === "app" && c.name && sameName(c.name, INTERNAL_CATEGORY)))
     .map((c) => ({
       ...c,
@@ -210,7 +232,14 @@ function renderMarkdown(categories) {
 function checkUnreleased(parsed, config) {
   const errors = [];
   const allowed = config.categories ?? DEFAULT_CATEGORIES;
+  const seen = new Set();
   for (const c of parsed.unreleased?.categories ?? []) {
+    if (c.name !== null && seen.has(c.name)) {
+      errors.push(
+        `${config.changelog}: [Unreleased] has "### ${c.name}" more than once; merge them`,
+      );
+    }
+    seen.add(c.name);
     if (c.name === null && c.entries.length) {
       errors.push(`${config.changelog}: [Unreleased] has entries outside a "###" category`);
     } else if (c.name !== null && !allowed.some((a) => a === c.name)) {
@@ -309,13 +338,22 @@ export function bump(root, { version, date, allowEmpty = false } = {}) {
   const lines = readFileSync(join(root, config.changelog), "utf8").split("\n");
   const unreleased = lines.findIndex((l) => UNRELEASED_RE.test(l));
   if (unreleased < 0) throw new Error(`${config.changelog}: missing "## [Unreleased]"`);
-  const body = lines
-    .slice(unreleased + 1, sectionEnd(lines, unreleased))
-    .join("\n")
-    .trim();
-  if (!body && !allowEmpty)
+  const end = sectionEnd(lines, unreleased);
+  // A `### Planned` list describes future work, so it stays under [Unreleased] when released.
+  let body = lines.slice(unreleased + 1, end);
+  const plannedStart = body.findIndex((l) => /^### Planned\s*$/.test(l));
+  let planned = [];
+  if (plannedStart >= 0) {
+    const after = body.findIndex((l, i) => i > plannedStart && /^### /.test(l));
+    const plannedEnd = after < 0 ? body.length : after;
+    planned = body.slice(plannedStart, plannedEnd);
+    body = [...body.slice(0, plannedStart), ...body.slice(plannedEnd)];
+  }
+  if (!body.join("\n").trim() && !allowEmpty)
     throw new Error("[Unreleased] is empty — nothing to release (--allow-empty overrides)");
-  lines.splice(unreleased + 1, 0, "", `## [${next}] - ${today}`);
+  const kept = planned.length ? ["", ...trimBlankLines(planned), ""] : [""];
+  const moved = body[0]?.trim() === "" ? body : ["", ...body];
+  lines.splice(unreleased + 1, end - unreleased - 1, ...kept, `## [${next}] - ${today}`, ...moved);
 
   const base = config.repo ? `https://github.com/${config.repo}` : null;
   const unreleasedRef = lines.findIndex((l) => l.startsWith("[Unreleased]:"));

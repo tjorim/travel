@@ -313,4 +313,88 @@ describe("audiences and platforms", () => {
     assert.match(errors[1], /scope "\*\*Andriod:\*\*"/);
     assert.match(errors[2], /scope "\*\*Ios:\*\*"/); // released "### Addd" is history, not validated
   });
+
+  it("merges same-named categories on export and rejects them in [Unreleased]", () => {
+    const stacked = `## [Unreleased]
+
+### Fixed
+
+- One
+
+### Added
+
+- Two
+
+### Fixed
+
+- Three
+
+## [2026.11.1] - 2026-11-10
+
+### Fixed
+
+- Old A
+
+### Added
+
+- Old B
+
+### Fixed
+
+- Old C
+
+[Unreleased]: https://github.com/tjorim/example/compare/v2026.11.1...HEAD
+[2026.11.1]: https://github.com/tjorim/example/releases/tag/v2026.11.1
+`;
+    write("CHANGELOG.md", stacked);
+    write("package.json", '{ "version": "2026.11.1" }\n');
+    write("app.py", 'App(version="2026.11.1")\n');
+    const [release] = exportChangelog(root).releases;
+    assert.deepEqual(
+      release.categories.map((c) => [c.name, c.entries.map((e) => e.text)]),
+      [
+        ["Fixed", ["Old A", "Old C"]],
+        ["Added", ["Old B"]],
+      ],
+    );
+    assert.deepEqual(check(root), [
+      'CHANGELOG.md: [Unreleased] has "### Fixed" more than once; merge them',
+    ]);
+  });
+
+  it("leaves a ### Planned list under [Unreleased] when cutting a release", () => {
+    write(
+      "CHANGELOG.md",
+      `## [Unreleased]
+
+### Planned
+
+- Calendar export
+- Team carousel
+
+### Fixed
+
+- Shipped fix
+
+## [2026.11.1] - 2026-11-10
+
+### Added
+
+- First
+
+[Unreleased]: https://github.com/tjorim/example/compare/v2026.11.1...HEAD
+[2026.11.1]: https://github.com/tjorim/example/releases/tag/v2026.11.1
+`,
+    );
+    bump(root, { date: "2026-11-20" });
+    const changelog = read("CHANGELOG.md");
+    assert.match(
+      changelog,
+      /## \[Unreleased\]\n\n### Planned\n\n- Calendar export\n- Team carousel\n\n## \[2026\.11\.2\] - 2026-11-20\n\n### Fixed\n\n- Shipped fix\n\n## \[2026\.11\.1\]/,
+    );
+    assert.deepEqual(check(root), []);
+    // Only Planned left: nothing to release.
+    write("CHANGELOG.md", changelog.replace("### Fixed\n\n- Shipped fix\n\n", ""));
+    assert.throws(() => bump(root, { date: "2026-11-21" }), /nothing to release/);
+  });
 });
