@@ -12,8 +12,8 @@
     "format:check": "oxfmt --check",
     "test": "pnpm paraglide:compile && vitest run",
     "preview": "vite preview",
-    "bundle": "node scripts/bundle-report.mjs",
-    "bundle:check": "node scripts/bundle-report.mjs --check",
+    "bundle": "node scripts/bundle-budget.mjs",
+    "bundle:check": "node scripts/bundle-budget.mjs --check",
     "e2e": "playwright test",
     "e2e:offline": "pnpm build && playwright test -c playwright.offline.config.ts",
     "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy custom-travel baseLocale --emit-ts-declarations",
@@ -24,7 +24,9 @@
     "ui:diff": "node scripts/ui-maintenance.mjs diff",
     "ui:record": "node scripts/ui-maintenance.mjs record",
     "ui:test": "node --test scripts/ui-maintenance.verify.mjs scripts/ui-imports.verify.mjs",
-    "ui:usage": "node scripts/ui-imports.mjs"
+    "ui:usage": "node scripts/ui-imports.mjs",
+    "bundle:report": "node scripts/bundle-budget.mjs",
+    "bundle:test": "node --test scripts/bundle-budget.verify.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
