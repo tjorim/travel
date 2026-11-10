@@ -150,8 +150,11 @@ def test_lifespan_and_other_scopes_pass_through() -> None:
         assert client.get("/items/1").status_code == 200
 
 
-def test_the_travel_api_reports_server_timing() -> None:
+def test_the_travel_api_reports_server_timing(monkeypatch) -> None:
+    monkeypatch.setattr("app.main.APP_COMMIT", "d" * 40)
     response = TestClient(travel_app).get("/api/health")
 
     assert response.status_code == 200
     assert queries(response) >= 0
+    assert response.json()["version"]
+    assert response.json()["commit"] == "d" * 40

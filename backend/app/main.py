@@ -50,6 +50,7 @@ from .routers.translation import router as translation_router
 from .routers.trips import router as trips_router
 from .routers.visibility import router as visibility_router
 from .routers.visits import router as visits_router
+from .version import APP_COMMIT, APP_VERSION
 
 if mcp_http_enabled():
     _mcp, _mcp_app = create_mcp_http_app()
@@ -149,7 +150,7 @@ def health() -> dict[str, str]:
         raise ApiException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable", code="database_unavailable"
         ) from error
-    return {"status": "ok"}
+    return {"status": "ok", "version": APP_VERSION, "commit": APP_COMMIT}
 
 
 @app.get("/api/identity", tags=["owner"])
