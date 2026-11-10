@@ -43,7 +43,7 @@ must not be confused with Python client or application releases.
    There is no Application credentials step: HA reads the realm's authorization/token
    endpoints and the public client ID from the unauthenticated
    `GET <origin>/api/auth/oidc-config`, which the backend takes from the configured
-   `TRAVEL_OIDC_ISSUER_URL`'s standard OIDC discovery document (any OIDC provider). HA only accepts plain HTTPS endpoints on a single host, rejects
+   `TRAVEL_OIDC_ISSUER_URL`'s standard OIDC discovery document (any OIDC provider). HA only accepts plain HTTPS endpoints on a single host (plain HTTP only when both are on a loopback host: `localhost`, `127.0.0.1` or `::1`, for local development), rejects
    redirects, and never forwards a Travel bearer token to the issuer. Because the origin
    names the issuer, enter only an origin you operate. Then explicitly select trips. OAuth
    requests `openid offline_access`; ordinary Travel API audience comes from the
