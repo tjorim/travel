@@ -1,6 +1,6 @@
 [project]
 name = "python-travel"
-version = "2026.11.1"
+version = "2026.11.2"
 description = "Async owner API client for Travel"
 readme = "README.md"
 license = "Apache-2.0"

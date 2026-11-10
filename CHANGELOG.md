@@ -14,6 +14,8 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ## [Unreleased]
 
+## [2026.11.2] - 2026-11-10
+
 ### Internal
 
 - Publish `python-travel` to PyPI with the app's CalVer from `release.yml` (trusted publishing, environment `pypi`) and pin it by version in the Home Assistant manifest instead of a source-archive URL; `release.mjs` keeps its version, lockfiles and the pin in step with `VERSION`.
@@ -104,6 +106,7 @@ Tasks, packing content, entity names, OAuth credentials and locations are privat
   protected by the VPS-managed credential.
   ([#5](https://github.com/tjorim/travel-private/issues/5))
 
-[Unreleased]: https://github.com/tjorim/travel/compare/v2026.11.1...HEAD
+[Unreleased]: https://github.com/tjorim/travel/compare/v2026.11.2...HEAD
+[2026.11.2]: https://github.com/tjorim/travel/compare/v2026.11.1...v2026.11.2
 [2026.11.1]: https://github.com/tjorim/travel/compare/v0.2.0...v2026.11.1
 [0.2.0]: https://github.com/tjorim/travel/releases/tag/v0.2.0

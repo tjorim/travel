@@ -73,7 +73,7 @@ async def test_identity_rotation_owner_and_diagnostics(hass, api):
     assert uid == coordinator.unique_id(("trip-one", "tasks"))
     assert uid == TravelCoordinator(hass, api[2], api[1]).unique_id(("trip-one", "tasks"))
     assert await async_get_config_entry_diagnostics(hass, api[2]) == {
-        "integration_version": "2026.11.1",
+        "integration_version": "2026.11.2",
         "last_update_success": True,
     }
     api[0]["owner"] = "another-owner"

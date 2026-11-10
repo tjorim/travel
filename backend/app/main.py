@@ -71,7 +71,7 @@ _lifespan = (
 app = FastAPI(
     title="Travel tracker API",
     description="Private-by-default trip and reisupdate tracking API.",
-    version="2026.11.1",
+    version="2026.11.2",
     lifespan=_lifespan,
 )
 app.add_middleware(RateLimitHeadersMiddleware)

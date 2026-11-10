@@ -2203,7 +2203,7 @@ wheels = [
 
 [[package]]
 name = "python-travel"
-version = "2026.11.1"
+version = "2026.11.2"
 source = { directory = "../python-travel" }
 dependencies = [
     { name = "aiohttp" },
