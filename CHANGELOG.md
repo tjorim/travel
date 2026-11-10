@@ -16,6 +16,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Internal
 
+- Report the built source commit alongside the app version in the health response; VPS builds receive the full commit from the shared deployment tooling (tjorim/apps#345).
 - Build, validate and attach the HACS archive to tag-triggered draft releases; retain manual testing before publication (#350).
 - Consolidate the accumulated 2026.11.1 release notes into categorized, scoped summaries and preserve the original development history separately (#349).
 
