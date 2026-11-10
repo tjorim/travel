@@ -16,6 +16,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Internal
 
+- Build, validate and attach the HACS archive to tag-triggered draft releases; retain manual testing before publication (#350).
 - Consolidate the accumulated 2026.11.1 release notes into categorized, scoped summaries and preserve the original development history separately (#349).
 
 ## [2026.11.1] - 2026-11-10

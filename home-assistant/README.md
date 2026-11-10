@@ -25,8 +25,10 @@ use the local sibling package through uv; they never download an unpublished PyP
 name. Do not disable HA dependency installation for ordinary installation.
 
 For HACS, add `tjorim/travel` as a custom Integration repository after an integration
-release with `travel.zip` exists. Build it with `uv run python package.py` here;
-attach `dist/travel.zip` to a GitHub release tagged `vYYYY.M.MICRO` (for example `v2026.11.1`). The archive contains
+release with `travel.zip` exists. Pushing a `vYYYY.M.MICRO` tag (for example
+`v2026.11.1`) runs the release workflow, which builds `dist/travel.zip`, checks the
+archived manifest version against the tag and attaches it to the draft release.
+For a local build, run `uv run python package.py` here. The archive contains
 only the integration directory contents, as required by `hacs.json`. Do not mark
 a release available until its archive and dependency install have been tested.
 First release tagging/HACS verification is tracked in [#329](https://github.com/tjorim/travel/issues/329).
@@ -220,8 +222,8 @@ the manifest's immutable archive. HA 2026.10.4 is the locked/tested baseline,
 including its Python >=3.14.2 requirement.
 
 Before publishing, recheck remote tags and releases; never replace an existing
-tag or asset. Attach the verified `travel.zip` and its SHA-256 to the release at
-the reviewed source commit. After publication, verify HACS custom-repository
+tag or asset. Download and test the workflow-attached `travel.zip` from the draft
+at the reviewed source commit, and record its SHA-256 before publishing. After publication, verify HACS custom-repository
 download/reinstall, installed manifest/brand asset, restart and update discovery
 against that real release; pre-release repository validation cannot prove these.
 Keep #329 open until those checks finish. Production OAuth verification remains

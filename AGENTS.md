@@ -133,8 +133,10 @@ README) are derived from it and checked by CI. `python-travel` keeps its own Sem
 2. `node scripts/release.mjs bump` writes the next version everywhere and turns `[Unreleased]` into the
    dated release section. Review the diff, open the release PR and merge it.
 3. Tag the merge commit `vYYYY.M.MICRO` and push the tag. `release-draft.yml` re-checks the tag against
-   `VERSION` and the changelog and creates a **draft** GitHub release with the changelog section as notes.
-4. Build and attach `dist/travel.zip` (see `home-assistant/README.md`), then publish the draft.
+   `VERSION` and the changelog, builds and validates `travel.zip`, and attaches it to a **draft** GitHub
+   release with the changelog section as notes.
+4. Download and test the attached archive and dependency installation (see `home-assistant/README.md`),
+   then publish the draft.
 
 `node scripts/release.mjs check` runs in CI on every pull request.
 
