@@ -2568,7 +2568,7 @@ def create_mcp_server(factory: sessionmaker[Session] = SessionLocal) -> FastMCP:
         )
     server = FastMCP(
         "travel",
-        version="0.1.0",
+        version="2026.11.1",
         instructions=MCP_INSTRUCTIONS,
         auth=auth,
         transforms=[

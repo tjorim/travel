@@ -4,6 +4,8 @@ All notable changes to the travel hub are documented here.
 
 ## Unreleased
 
+## 2026.11.1 - 2026-11-10
+
 - Allow plain HTTP Home Assistant sign-in endpoints on loopback hosts only (`localhost`, `127.0.0.1`, `::1`) for local development (#344); both endpoints must still share one scheme and host, and all other HTTP, credentials, queries and fragments stay rejected.
 
 - Remove the Home Assistant "Add application credentials" step: the integration now reads the Keycloak endpoints and a public PKCE client ID (no secret) from a new unauthenticated `GET /api/auth/oidc-config` (the provider's OIDC discovery document, cached, as in Worktime and Champagnefestival), accepts only same-host HTTPS endpoints, and re-fetches them on reauthentication. The apps#333 Keycloak client must be public (`travel-home-assistant`) instead of confidential; the integration was unreleased, so no entry migration is included.
