@@ -12,28 +12,38 @@ CONF_TOKEN_URL = "token_url"
 CONF_CLIENT_ID = "client_id"
 
 
-def _https_url(value: object) -> str:
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _endpoint_url(value: object) -> str:
     if not isinstance(value, str):
         raise TypeError("Sign-in endpoints must be URLs")
     url = urlsplit(value)
-    if url.scheme != "https" or not url.hostname or url.username or url.password or url.query or url.fragment:
-        raise ValueError("Sign-in endpoints must be plain HTTPS URLs")
+    if url.username or url.password or url.query or url.fragment:
+        raise ValueError("Sign-in endpoints must be plain URLs")
+    host = (url.hostname or "").lower()
+    if not host or url.scheme not in ("https", "http"):
+        raise ValueError("Sign-in endpoints must be HTTPS URLs")
+    if url.scheme == "http" and host not in LOOPBACK_HOSTS:
+        raise ValueError("Plain HTTP sign-in endpoints are only allowed on loopback hosts")
     return value
 
 
 def validated_config(config: object) -> dict[str, str]:
     """Return a trusted-shape config, or raise ValueError (TypeError if a value has the wrong type).
 
-    Both endpoints must be HTTPS and on one host so that a token request never
-    goes to a different server than the sign-in page.
+    Both endpoints must be HTTPS (HTTP only on a loopback host, for local
+    development) and on one host so that a token request never goes to a
+    different server than the sign-in page.
     """
     if not isinstance(config, Mapping):
         raise TypeError("Sign-in configuration must be an object")
-    authorization_url = _https_url(config.get(CONF_AUTHORIZATION_URL))
-    token_url = _https_url(config.get(CONF_TOKEN_URL))
+    authorization_url = _endpoint_url(config.get(CONF_AUTHORIZATION_URL))
+    token_url = _endpoint_url(config.get(CONF_TOKEN_URL))
     client_id = config.get(CONF_CLIENT_ID)
-    if urlsplit(authorization_url).netloc.lower() != urlsplit(token_url).netloc.lower():
-        raise ValueError("Sign-in endpoints must share one host")
+    authorization, token = urlsplit(authorization_url), urlsplit(token_url)
+    if authorization.scheme != token.scheme or authorization.netloc.lower() != token.netloc.lower():
+        raise ValueError("Sign-in endpoints must share one scheme and host")
     if not isinstance(client_id, str) or not client_id.strip():
         raise ValueError("Missing client ID")
     return {CONF_AUTHORIZATION_URL: authorization_url, CONF_TOKEN_URL: token_url, CONF_CLIENT_ID: client_id}

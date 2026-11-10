@@ -149,12 +149,26 @@ async def test_public_pkce_client_and_endpoint_validation(hass):
     assert not impl.client_secret
     assert impl.extra_authorize_data["code_challenge_method"] == "S256"
     assert impl.extra_token_resolve_data["code_verifier"]
+    for host in ("localhost:8080", "127.0.0.1:8080", "[::1]:8080", "LOCALHOST"):
+        local = {
+            **OIDC,
+            "authorization_url": f"http://{host}/realms/travel/protocol/openid-connect/auth",
+            "token_url": f"http://{host}/realms/travel/protocol/openid-connect/token",
+        }
+        assert validated_config(local)["token_url"] == local["token_url"]
     for override in (
         {"authorization_url": "http://auth.example.test/realms/travel/protocol/openid-connect/auth"},
         {"authorization_url": "https://u:p@auth.example.test/realms/travel/protocol/openid-connect/auth"},
         {"authorization_url": "https://auth.example.test/auth?next=https://evil.test"},
         {"token_url": "https://evil.example.test/token"},
         {"client_id": ""},
+        {"authorization_url": "http://localhost.evil.test/auth", "token_url": "http://localhost.evil.test/token"},
+        {"authorization_url": "http://localhost:8080/auth", "token_url": "http://127.0.0.1:8080/token"},
+        {"authorization_url": "http://localhost:8080/auth", "token_url": "https://localhost:8080/token"},
+        {"authorization_url": "http://u:p@localhost:8080/auth", "token_url": "http://localhost:8080/token"},
+        {"authorization_url": "http://localhost:8080/auth?x=1", "token_url": "http://localhost:8080/token"},
+        {"authorization_url": "http://localhost:8080/auth#f", "token_url": "http://localhost:8080/token"},
+        {"authorization_url": "ftp://localhost/auth", "token_url": "ftp://localhost/token"},
     ):
         with pytest.raises(ValueError):
             validated_config({**OIDC, **override})
