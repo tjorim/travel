@@ -1,8 +1,9 @@
-"""Application credentials OAuth and explicit scope selection."""
+"""Public-client OAuth against the Travel origin's Keycloak realm and explicit scope selection."""
 
 import hashlib
 import logging
 
+import aiohttp
 import probatio as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
@@ -11,6 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from travel_client import AuthenticationError, TravelClient, TravelError
 
 from .const import DOMAIN
+from .oidc import async_fetch_config, implementation
 
 
 def trip_schema(trips, selected=(), *, location=False, location_trip=""):
@@ -45,6 +47,15 @@ class TravelFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMA
     def extra_authorize_data(self):
         return {"scope": "openid offline_access"}
 
+    async def _async_start_auth(self, origin):
+        """Read the origin's sign-in endpoints and send the user to Keycloak."""
+        try:
+            self.oidc = await async_fetch_config(async_get_clientsession(self.hass), origin)
+        except aiohttp.ClientError, TimeoutError, TypeError, ValueError:
+            return None
+        self.flow_impl = implementation(self.hass, self.oidc)
+        return await self.async_step_auth()
+
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input:
@@ -55,9 +66,12 @@ class TravelFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMA
 
                 TravelClient(user_input["origin"], unused_token, session=async_get_clientsession(self.hass))
                 self.origin = user_input["origin"].rstrip("/")
-                return await self.async_step_pick_implementation()
             except ValueError:
                 errors["base"] = "invalid_origin"
+            else:
+                if (result := await self._async_start_auth(self.origin)) is not None:
+                    return result
+                errors["base"] = "cannot_connect"
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema({vol.Required("origin"): str}), errors=errors
         )
@@ -68,7 +82,9 @@ class TravelFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMA
 
     async def async_step_reauth_confirm(self, user_input=None):
         if user_input is not None:
-            return await self.async_step_pick_implementation()
+            if (result := await self._async_start_auth(self.origin)) is not None:
+                return result
+            return self.async_abort(reason="cannot_connect")
         return self.async_show_form(step_id="reauth_confirm")
 
     async def async_oauth_create_entry(self, data):
@@ -87,10 +103,10 @@ class TravelFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMA
             entry = self._get_reauth_entry()
             if identity.subject != entry.data["owner"]:
                 return self.async_abort(reason="owner_changed")
-            return self.async_update_reload_and_abort(entry, data_updates=data)
+            return self.async_update_reload_and_abort(entry, data_updates={**data, **self.oidc})
         await self.async_set_unique_id(hashlib.sha256(f"{self.origin}\0{identity.subject}".encode()).hexdigest())
         self._abort_if_unique_id_configured()
-        self.pending = {**data, "origin": self.origin, "owner": identity.subject}
+        self.pending = {**data, **self.oidc, "origin": self.origin, "owner": identity.subject}
         self.trips = trips
         return await self.async_step_trips()
 

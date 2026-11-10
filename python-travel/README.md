@@ -72,8 +72,8 @@ credential-logging trace callbacks; the client supplies the API bearer header.
 
 Use HA's `OAuth2Session.async_ensure_token_valid()` in the supplier, then return
 `oauth_session.token["access_token"]`. Obtain the initial grant through the HA
-OAuth2 config flow with a dedicated Keycloak confidential client and exact HA
-callback URI. Request ordinary Travel API audience, `openid` and, when provisioned
+OAuth2 config flow with a dedicated public Keycloak PKCE client (no secret) and exact HA
+callback URI, discovered from `GET /api/auth/oidc-config`. Request ordinary Travel API audience, `openid` and, when provisioned
 and consented, `offline_access`; store refresh tokens only in HA config entries.
 Unattended refresh uses the existing Keycloak token endpoint refresh-token grant.
 Revoked/expired refresh grants require interactive HA reauth; do not retry writes.

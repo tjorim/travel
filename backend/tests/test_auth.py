@@ -261,3 +261,62 @@ def test_concurrent_cold_authentication_shares_one_fetch(jwks_endpoint):
         subjects = list(pool.map(lambda _: authenticate(), range(24)))
     assert subjects == ["travel-account-id"] * 24
     assert state["fetches"] == 1
+
+
+def test_oidc_config_returns_discovered_endpoints_without_authentication(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.routers import auth as auth_router
+
+    calls: list[str] = []
+    document: dict[str, object] = {
+        "issuer": "https://auth.example.test/realms/travel",
+        "authorization_endpoint": "https://auth.example.test/realms/travel/protocol/openid-connect/auth",
+        "token_endpoint": "https://auth.example.test/realms/travel/protocol/openid-connect/token",
+        "end_session_endpoint": "https://auth.example.test/realms/travel/protocol/openid-connect/logout",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(200, json=document)
+
+    transport = httpx.MockTransport(handler)
+    monkeypatch.setattr(auth_router, "_http_client", lambda: httpx.AsyncClient(transport=transport))
+    monkeypatch.setattr(auth_router, "_config_cache", {})
+    monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel/")
+    client = TestClient(app)
+    expected = {
+        "issuer": "https://auth.example.test/realms/travel",
+        "authorization_url": "https://auth.example.test/realms/travel/protocol/openid-connect/auth",
+        "token_url": "https://auth.example.test/realms/travel/protocol/openid-connect/token",
+        "end_session_url": "https://auth.example.test/realms/travel/protocol/openid-connect/logout",
+        "client_id": "travel-home-assistant",
+    }
+    assert client.get("/api/auth/oidc-config").json() == expected
+    assert client.get("/api/auth/oidc-config").json() == expected
+    assert calls == ["https://auth.example.test/realms/travel/.well-known/openid-configuration"]
+
+
+def test_oidc_config_reports_unconfigured_and_failed_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.routers import auth as auth_router
+
+    client = TestClient(app)
+    monkeypatch.setattr(settings, "oidc_issuer_url", None)
+    assert client.get("/api/auth/oidc-config").status_code == 503
+
+    responses = iter([httpx.Response(500), httpx.Response(200, json={"issuer": "x"})])
+    transport = httpx.MockTransport(lambda request: next(responses))
+    monkeypatch.setattr(auth_router, "_http_client", lambda: httpx.AsyncClient(transport=transport))
+    monkeypatch.setattr(auth_router, "_config_cache", {})
+    monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
+    for _ in range(2):
+        response = client.get("/api/auth/oidc-config")
+        assert response.status_code == 503
+        assert response.json()["errors"][0]["code"] == "oidc_discovery_failed"
+    assert auth_router._config_cache == {}

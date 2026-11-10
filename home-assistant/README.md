@@ -33,29 +33,28 @@ Client PyPI publication is optional future release work; changing to a PyPI pin
 requires publishing and verifying the package first. Integration release tags
 must not be confused with Python client or application releases.
 
-1. Provision a dedicated confidential Keycloak authorization-code client per
-   apps#333, API audience mapper, owner consent and offline sessions. Disable
-   password/service-account grants and allow exactly HA's callback (normally
-   `https://my.home-assistant.io/redirect/oauth`); inspect the actual HA authorize
-   request for your installation. The integration uses HA LocalOAuth2ImplementationWithPkce with
-   a client secret and S256 PKCE; apps#333 must verify the deployed policy.
-2. In HA Settings → Devices & services → Application credentials, add Travel.
-   Set **Name** to the exact HTTPS realm issuer URL, for example
-   `https://auth.example.test/realms/travel`; enter the dedicated client ID/secret.
-   This explicit trusted realm supplies the authorization/token endpoints; there
-   is no automatic discovery or forwarding of a Travel bearer token to an issuer.
-3. Add Travel, enter its HTTPS origin without a path, sign in interactively, and
-   explicitly select trips. OAuth requests `openid offline_access`; ordinary
-   Travel API audience comes from the provisioned Keycloak mapper.
-4. Configure changes the selection, including selecting none. Removed entities
+1. Provision a dedicated **public** Keycloak authorization-code client with PKCE (S256, no
+   client secret) per apps#333, API audience mapper, owner consent and offline sessions.
+   Its client ID is `travel-home-assistant` unless the backend sets
+   `TRAVEL_OIDC_HOME_ASSISTANT_CLIENT_ID`. Disable password/service-account grants and allow
+   exactly HA's callback (normally `https://my.home-assistant.io/redirect/oauth`); inspect
+   the actual HA authorize request for your installation.
+2. Add Travel, enter its HTTPS origin without a path and sign in interactively on Keycloak.
+   There is no Application credentials step: HA reads the realm's authorization/token
+   endpoints and the public client ID from the unauthenticated
+   `GET <origin>/api/auth/oidc-config`, which the backend takes from the configured
+   `TRAVEL_OIDC_ISSUER_URL`'s standard OIDC discovery document (any OIDC provider). HA only accepts plain HTTPS endpoints on a single host, rejects
+   redirects, and never forwards a Travel bearer token to the issuer. Because the origin
+   names the issuer, enter only an origin you operate. Then explicitly select trips. OAuth
+   requests `openid offline_access`; ordinary Travel API audience comes from the
+   provisioned Keycloak mapper.
+3. Configure changes the selection, including selecting none. Removed entities
    are removed from the registry on reload; removed packing lists disappear on
    refresh. Unloading cancels polling/listeners. Restart preserves identity.
-5. Revoked/expired refresh grants or API 401 require interactive reauthentication.
-   Sign in as the original owner; another subject is rejected. Updating HA's
-   application credentials and reauth rotates credentials without changing entity
-   IDs. Change of origin/owner requires a separate integration entry. Revoke the
-   Keycloak offline session when removing the integration; delete unused HA
-   application credentials separately.
+4. Revoked/expired refresh grants or API 401 require interactive reauthentication,
+   which fetches the endpoints again. Sign in as the original owner; another subject is
+   rejected. Change of origin/owner requires a separate integration entry. Revoke the
+   Keycloak offline session when removing the integration; HA stores no client secret.
 
 ## Supported semantics and failures
 
@@ -87,7 +86,7 @@ records. Avoid HTTP debug/trace logging in HA and dependencies.
 
 HA recorder/history, logbook, dashboards, browser caches, third-party cards and
 backups may retain entity names or item content. Restrict HA access, encrypt and
-restrict backups (including `.storage`, OAuth tokens and application credentials),
+restrict backups (including `.storage` and OAuth tokens),
 and apply retention policies. Recorder exclusion does not remove existing history
 or protect config-entry backups. Exclude these entities where appropriate:
 
@@ -142,7 +141,7 @@ Tests use HA fixtures and the actual client over a synthetic local aiohttp API,
 with no production session. API/client FastAPI contracts remain in
 `backend/tests/test_python_client.py`. UI/browser testing is not required here.
 Primary APIs checked 2026-11-09:
-[HA OAuth/application credentials](https://contributors.home-assistant.io/core/integrations/oauth2/),
+[HA OAuth](https://contributors.home-assistant.io/core/integrations/oauth2/),
 [to-do entity](https://contributors.home-assistant.io/core/entities/todo/),
 [coordinator](https://contributors.home-assistant.io/core/integrations/fetching-data/),
 and HA core's `config_entry_oauth2_flow.py`. Daynest's integration split and native
@@ -212,7 +211,7 @@ Extract ZIP contents directly into a clean HA config's `custom_components/travel
 Install the minimum HA from `hacs.json` in a separate Python 3.14 environment,
 then let HA's requirement manager install the manifest dependency (no local-client
 override or skip-pip). Verify imports of config flow, to-do, live location,
-application credentials and diagnostics, and the installed client's task/packing
+OAuth discovery and diagnostics, and the installed client's task/packing
 and `live_sessions`/`push_position` methods. Check its `direct_url.json` against
 the manifest's immutable archive. HA 2026.10.4 is the locked/tested baseline,
 including its Python >=3.14.2 requirement.

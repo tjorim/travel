@@ -181,7 +181,10 @@ and `preview_sharing_preset` (read) and `apply_sharing_preset` (write, `confirm`
 writes no `everyone`, changes no other audience and adds no field to any allowlist; see
 [the domain model](../docs/domain-model.md#sharing-presets).
 
-`GET /api/health` checks database connectivity. FastAPI publishes the full
+`GET /api/health` checks database connectivity. `GET /api/auth/oidc-config` is unauthenticated, like Worktime's and Champagnefestival's. It returns the issuer,
+authorization, token and end-session URLs from the provider's `/.well-known/openid-configuration` (cached per
+issuer, failures not cached) plus the public Home Assistant client ID. It returns 503 when `TRAVEL_OIDC_ISSUER_URL`
+is unset (`oidc_validation_is_not_configured`) or discovery fails (`oidc_discovery_failed`). FastAPI publishes the full
 OpenAPI description at `/openapi.json` and interactive development docs at
 `/docs`; production routing may choose not to expose the latter.
 
@@ -410,6 +413,7 @@ Production credential injection and key backup are tracked in
 | `TRAVEL_OIDC_ISSUER_URL` | Required issuer for production bearer-token validation. |
 | `TRAVEL_OIDC_JWKS_URL` | Required JWKS endpoint for production bearer-token validation. |
 | `TRAVEL_OIDC_AUDIENCE` | Expected API audience; defaults to `travel-api`. |
+| `TRAVEL_OIDC_HOME_ASSISTANT_CLIENT_ID` | Public PKCE client ID the Home Assistant integration signs in with; defaults to `travel-home-assistant`. |
 | `TRAVEL_MCP_BASE_URL` | Canonical public MCP resource URL (for example `https://travel.example.test/mcp`); advertised as the protected resource and, by default, the only audience MCP accepts. Unset for local stdio use. |
 | `TRAVEL_MCP_AUDIENCE` | Optional MCP audience when it must differ from the resource URL; never equal to `TRAVEL_OIDC_AUDIENCE`. |
 | `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |

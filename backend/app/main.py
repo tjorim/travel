@@ -23,6 +23,7 @@ from .request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
 from .request_timing import RequestTimingMiddleware
 from .routers.alternatives import router as alternatives_router
 from .routers.areas import router as areas_router
+from .routers.auth import router as auth_router
 from .routers.collections import membership_router as collection_membership_router
 from .routers.collections import router as collections_router
 from .routers.documents import router as documents_router
@@ -81,6 +82,7 @@ app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty:
 app.add_middleware(RequestTimingMiddleware)
 
 app.include_router(live_location_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 app.include_router(trips_router, prefix="/api")
 app.include_router(visibility_router, prefix="/api")
 app.include_router(visits_router, prefix="/api")
