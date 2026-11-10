@@ -11,7 +11,7 @@ uv run ruff format --check .
 uv run ty check src
 uv build
 uv venv /tmp/travel-client-smoke
-uv pip install --python /tmp/travel-client-smoke/bin/python dist/python_travel-0.2.0-py3-none-any.whl
+uv pip install --python /tmp/travel-client-smoke/bin/python dist/python_travel-*-py3-none-any.whl
 /tmp/travel-client-smoke/bin/python -c 'from travel_client import TravelClient'
 ```
 

@@ -11,6 +11,6 @@
   "iot_class": "cloud_polling",
   "integration_type": "service",
   "requirements": [
-    "python-travel @ https://github.com/tjorim/travel/archive/6a90a301d27c59e8136629e4596f07318a2a7a80.zip#subdirectory=python-travel"
+    "python-travel==2026.11.1"
   ]
 }

@@ -1432,7 +1432,7 @@ wheels = [
 
 [[package]]
 name = "python-travel"
-version = "0.2.0"
+version = "2026.11.1"
 source = { directory = "../python-travel" }
 dependencies = [
     { name = "aiohttp" },

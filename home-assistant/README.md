@@ -11,18 +11,18 @@ implemented.
 
 Requires HA 2026.10.4 or newer and Python >=3.14.2. The custom integration is
 released together with the application as CalVer (`YYYY.M.MICRO`, currently 2026.11.1) in
-`custom_components/travel/manifest.json`; the separately packaged python-travel client keeps its own SemVer (0.2.0).
+`custom_components/travel/manifest.json`; the separately packaged python-travel client uses the same CalVer and is published to PyPI.
 Production unattended authorization is **not yet verified/deployed**: provisioning
 and end-to-end login/refresh/revocation checks are tracked in
 [tjorim/apps#333](https://github.com/tjorim/apps/issues/333).
 
 For development, copy `custom_components/travel` into HA's config directory and
-restart HA. The manifest installs the separately packaged python-travel 0.2.0
-from the immutable source archive pinned in the manifest, with its `python-travel` subdirectory.
-This uses HTTPS, needs no Git executable, and does not claim a PyPI publication.
-HA must have outbound access to GitHub and the dependency index. Development tests
-use the local sibling package through uv; they never download an unpublished PyPI
-name. Do not disable HA dependency installation for ordinary installation.
+restart HA. The manifest installs the separately packaged python-travel from PyPI at
+the exact version pinned in the manifest (`python-travel==<release version>`). A checkout
+of `main` between releases pins the last released version, so install the integration from
+a release archive unless you also publish or locally install that client version. HA must
+have outbound access to the Python package index. Development tests use the local sibling
+package through uv. Do not disable HA dependency installation for ordinary installation.
 
 For HACS, add `tjorim/travel` as a custom Integration repository after an integration
 release with `travel.zip` exists. Pushing a `vYYYY.M.MICRO` tag (for example
@@ -32,9 +32,8 @@ For a local build, run `uv run python package.py` here. The archive contains
 only the integration directory contents, as required by `hacs.json`. Do not mark
 a release available until its archive and dependency install have been tested.
 First release tagging/HACS verification is tracked in [#329](https://github.com/tjorim/travel/issues/329).
-Client PyPI publication is optional future release work; changing to a PyPI pin
-requires publishing and verifying the package first. Integration release tags
-must not be confused with Python client or application releases.
+The tag also publishes the python-travel client to PyPI, so the archive's manifest pin resolves.
+Releases before 2026.11.2 pinned an immutable source archive instead.
 
 1. Provision a dedicated **public** Keycloak authorization-code client with PKCE (S256, no
    client secret) per apps#333, API audience mapper, owner consent and offline sessions.
@@ -198,8 +197,8 @@ counter that resets each month; the next after 2026.11.1 is 2026.11.2 or 2026.12
 the HACS-compatible tag **vYYYY.M.MICRO**: `ha-vX` is not a recognized AwesomeVersion
 version and cannot be reliably compared for updates, and CalVer sorts above 0.2.0 so
 HACS offers it as an update. The application, the MCP server and the integration manifest
-share that version; the python-travel client keeps its own SemVer and is pinned by the
-manifest to an immutable source archive. No release or tag is created by CI.
+share that version, and so does the python-travel client, which `release.yml` publishes to
+PyPI before drafting the archive (the manifest pins it exactly). No release or tag is created by CI.
 
 Run the locked checks above, then build outside Git:
 
