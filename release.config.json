@@ -15,11 +15,28 @@
     },
     {
       "file": "custom_components/travel/manifest.json",
-      "pattern": "\"version\": \"([^\"]+)\""
+      "pattern": "(?:\"version\": \"|python-travel==)([^\"]+)\"",
+      "expect": 2
     },
     {
       "file": "frontend/package.json",
       "pattern": "\"version\": \"([^\"]+)\""
+    },
+    {
+      "file": "python-travel/pyproject.toml",
+      "pattern": "\\nversion = \"([^\"]+)\""
+    },
+    {
+      "file": "home-assistant/uv.lock",
+      "pattern": "name = \"python-travel\"\\nversion = \"([^\"]+)\""
+    },
+    {
+      "file": "backend/uv.lock",
+      "pattern": "name = \"python-travel\"\\nversion = \"([^\"]+)\""
+    },
+    {
+      "file": "python-travel/uv.lock",
+      "pattern": "name = \"python-travel\"\\nversion = \"([^\"]+)\""
     },
     {
       "file": "home-assistant/README.md",

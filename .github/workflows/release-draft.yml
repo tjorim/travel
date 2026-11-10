@@ -13,8 +13,65 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The Home Assistant manifest pins python-travel==<tag version>, so the client must be on PyPI
+  # before the HACS archive is drafted. Re-running a tag skips an upload that already exists.
+  publish-client:
+    name: Publish python-travel to PyPI
+    runs-on: ubuntu-26.04
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: python-travel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.node-version
+          package-manager-cache: false
+
+      # Includes python-travel/pyproject.toml, the lockfiles and the manifest pin.
+      - name: Validate tag, versions and changelog
+        working-directory: .
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node scripts/release.mjs check --tag "$TAG"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run ty check src
+      - run: uv run pytest
+      - run: uv build
+
+      - name: Check if this version is already on PyPI
+        id: check-published
+        run: |
+          set -euo pipefail
+          VERSION=$(tr -d '[:space:]' < ../VERSION)
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/python-travel/${VERSION}/json")
+          if [[ "${STATUS}" == "200" ]]; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "python-travel ${VERSION} is already on PyPI; skipping publish."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to PyPI
+        if: steps.check-published.outputs.already_published == 'false'
+        run: uv publish --trusted-publishing always
+
   draft:
     name: Validate and draft release
+    needs: publish-client
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

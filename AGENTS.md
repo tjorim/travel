@@ -123,7 +123,9 @@ routes, describe visual checks, and note the manual checks run.
 Releases use CalVer, `YYYY.M.MICRO` (`MICRO` counts releases within a month), tagged `vYYYY.M.MICRO`.
 `VERSION` is the single source of truth; the files listed in `release.config.json` (backend and MCP
 version strings, the Home Assistant manifest and diagnostics, `frontend/package.json`, the integration
-README) are derived from it and checked by CI. `python-travel` keeps its own SemVer.
+README) are derived from it and checked by CI. `python-travel` (PyPI) uses the same CalVer: its `pyproject.toml`,
+the three `uv.lock` entries and the `python-travel==` pin in the manifest are in `release.config.json`, and
+`release-draft.yml` publishes it to PyPI (environment `pypi`, trusted publishing) before drafting the HACS archive.
 
 1. Add entries under `## [Unreleased]` in `CHANGELOG.md` while working (`### Added`, `### Changed`,
    `### Fixed`, `### Removed`). Put backend, infrastructure, CI and dependency changes under `### Internal`:

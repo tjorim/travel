@@ -16,6 +16,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Internal
 
+- Publish `python-travel` to PyPI with the app's CalVer from `release-draft.yml` (trusted publishing, environment `pypi`) and pin it by version in the Home Assistant manifest instead of a source-archive URL; `release.mjs` keeps its version, lockfiles and the pin in step with `VERSION`.
 - Build, validate and attach the HACS archive to tag-triggered draft releases; retain manual testing before publication (#350).
 - Consolidate the accumulated 2026.11.1 release notes into categorized, scoped summaries and preserve the original development history separately (#349).
 
