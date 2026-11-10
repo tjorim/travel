@@ -118,6 +118,23 @@ Reference a relevant GitHub issue for substantive work and update `PLAN.md`
 when its order changes. Pull requests should state the affected public/private
 routes, describe visual checks, and note the manual checks run.
 
+## Releases
+
+Releases use CalVer, `YYYY.M.MICRO` (`MICRO` counts releases within a month), tagged `vYYYY.M.MICRO`.
+`VERSION` is the single source of truth; the files listed in `release.config.json` (backend and MCP
+version strings, the Home Assistant manifest and diagnostics, `frontend/package.json`, the integration
+README) are derived from it and checked by CI. `python-travel` keeps its own SemVer.
+
+1. Add entries under `## [Unreleased]` in `CHANGELOG.md` while working (`### Added`, `### Changed`,
+   `### Fixed`, `### Removed`).
+2. `node scripts/release.mjs bump` writes the next version everywhere and turns `[Unreleased]` into the
+   dated release section. Review the diff, open the release PR and merge it.
+3. Tag the merge commit `vYYYY.M.MICRO` and push the tag. `release-draft.yml` re-checks the tag against
+   `VERSION` and the changelog and creates a **draft** GitHub release with the changelog section as notes.
+4. Build and attach `dist/travel.zip` (see `home-assistant/README.md`), then publish the draft.
+
+`node scripts/release.mjs check` runs in CI on every pull request.
+
 ## Deferred work and repo scope
 
 If a gap fits inside the change already in progress — same repository,

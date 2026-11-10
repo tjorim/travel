@@ -1,0 +1,12 @@
+{
+  "repo": "tjorim/travel",
+  "targets": [
+    { "file": "backend/app/main.py", "pattern": "version=\"([^\"]+)\"," },
+    { "file": "backend/app/mcp_server.py", "pattern": "version=\"([^\"]+)\"," },
+    { "file": "custom_components/travel/diagnostics.py", "pattern": "\"integration_version\": \"([^\"]+)\"" },
+    { "file": "custom_components/travel/manifest.json", "pattern": "\"version\": \"([^\"]+)\"" },
+    { "file": "frontend/package.json", "pattern": "\"version\": \"([^\"]+)\"" },
+    { "file": "home-assistant/README.md", "pattern": "currently (\\d{4}\\.\\d+\\.\\d+)" },
+    { "file": "home-assistant/tests/test_travel.py", "pattern": "\"integration_version\": \"([^\"]+)\"" }
+  ]
+}

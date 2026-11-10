@@ -2,9 +2,15 @@
 
 All notable changes to the travel hub are documented here.
 
-## Unreleased
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and releases use CalVer
+(`YYYY.M.MICRO`). `VERSION` is the single source of truth: `node scripts/release.mjs bump` writes it
+everywhere and turns `[Unreleased]` into the next release, and `node scripts/release.mjs check` (run by CI
+and before a release tag) verifies the two agree. Entries from before 2026.11.1 are one accumulated
+section; group new entries under `### Added`, `### Changed`, `### Fixed` or `### Removed`.
 
-## 2026.11.1 - 2026-11-10
+## [Unreleased]
+
+## [2026.11.1] - 2026-11-10
 
 - Allow plain HTTP Home Assistant sign-in endpoints on loopback hosts only (`localhost`, `127.0.0.1`, `::1`) for local development (#344); both endpoints must still share one scheme and host, and all other HTTP, credentials, queries and fragments stay rejected.
 
@@ -1586,3 +1592,6 @@ All notable changes to the travel hub are documented here.
 - Deployed `travel.tjor.im`; its public route is live and private routes are
   protected by the VPS-managed credential.
   ([#5](https://github.com/tjorim/travel-private/issues/5))
+
+[Unreleased]: https://github.com/tjorim/travel/compare/v2026.11.1...HEAD
+[2026.11.1]: https://github.com/tjorim/travel/compare/v0.2.0...v2026.11.1
