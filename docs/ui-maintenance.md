@@ -265,3 +265,5 @@ Native React passed the original case; the Redact case failed before this fix.
 The new unit regression fails before the change; all seven focused unit tests
 and all 16 create-in-place Chromium cases pass afterwards, without weakening
 the focus assertions.
+
+See [Redact compatibility checks](redact-compatibility.md) for repeatable runtime/browser commands, recorded results and unresolved coverage.
