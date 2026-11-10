@@ -3,7 +3,15 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import { bump, check, compareVersions, nextVersion, notes } from "./release.mjs";
+import {
+  bump,
+  check,
+  compareVersions,
+  exportChangelog,
+  nextVersion,
+  notes,
+  parseBody,
+} from "./release.mjs";
 
 const CHANGELOG = `# Changelog
 
@@ -158,5 +166,151 @@ describe("notes", () => {
     assert.ok(out.length < 600);
     assert.match(out, /_Notes truncated — see CHANGELOG\.md/);
     assert.doesNotMatch(out, /Entry 4[0-9]/);
+  });
+});
+
+const AUDIENCE_CHANGELOG = `# Changelog
+
+## [Unreleased]
+
+### Fixed
+
+- **Android:** Sign-in survives a token refresh failure
+
+## [2026.11.1] - 2026-11-10
+
+### Added
+
+- Calendar export
+- **Android:** Widget for today's schedule
+- **Web:** Keyboard navigation in the month grid
+  that wraps onto a second line
+
+### Fixed
+
+- Timer starts at zero
+
+### Internal
+
+- **Backend:** Stable error codes on every router
+- Python 3.15 in containers
+
+## [2026.9.3] - 2026-09-29
+
+### Internal
+
+- Dependency updates
+
+## 2026-01-01
+
+- Legacy heading that is not a release
+
+[Unreleased]: https://github.com/tjorim/example/compare/v2026.11.1...HEAD
+[2026.11.1]: https://github.com/tjorim/example/compare/v2026.9.3...v2026.11.1
+`;
+
+describe("audiences and platforms", () => {
+  beforeEach(() => {
+    write("CHANGELOG.md", AUDIENCE_CHANGELOG);
+    write(
+      "release.config.json",
+      JSON.stringify({
+        repo: "tjorim/example",
+        scopes: ["Android", "Web", "Backend"],
+        platforms: ["Android", "Web"],
+        targets: [
+          { file: "package.json", pattern: '"version": "([^"]+)"' },
+          { file: "app.py", pattern: 'App\\(version="([^"]+)"' },
+        ],
+      }),
+    );
+  });
+
+  it("parses bullets with scopes, wrapped lines and category prose", () => {
+    const categories = parseBody([
+      "- Plain",
+      "- **Web:** Wrapped",
+      "  second line",
+      "",
+      "### Fixed",
+      "",
+      "- **Backend**: colon outside the bold",
+      "",
+      "Some prose.",
+    ]);
+    assert.deepEqual(categories[0], {
+      name: null,
+      entries: [
+        { scope: null, text: "Plain" },
+        { scope: "Web", text: "Wrapped\nsecond line" },
+      ],
+      prose: [],
+    });
+    assert.deepEqual(categories[1].entries, [{ scope: "Backend", text: "colon outside the bold" }]);
+    assert.deepEqual(categories[1].prose, ["Some prose."]);
+  });
+
+  it("exports every release newest first, skipping non-release headings", () => {
+    const data = exportChangelog(root);
+    assert.deepEqual(
+      data.releases.map((r) => r.version),
+      ["2026.11.1", "2026.9.3"],
+    );
+    assert.equal(data.unreleased.categories[0].entries[0].scope, "Android");
+  });
+
+  it("hides Internal for the app audience and drops releases left empty", () => {
+    const data = exportChangelog(root, { audience: "app" });
+    assert.deepEqual(
+      data.releases.map((r) => r.version),
+      ["2026.11.1"],
+    );
+    assert.deepEqual(
+      data.releases[0].categories.map((c) => c.name),
+      ["Added", "Fixed"],
+    );
+  });
+
+  it("keeps unscoped and matching entries for one platform", () => {
+    const android = exportChangelog(root, { audience: "app", platform: "android" });
+    const added = android.releases[0].categories[0].entries.map((e) => e.text);
+    assert.deepEqual(added, ["Calendar export", "Widget for today's schedule"]);
+    const web = exportChangelog(root, { audience: "app", platform: "Web" });
+    assert.deepEqual(
+      web.releases[0].categories[0].entries.map((e) => e.text),
+      ["Calendar export", "Keyboard navigation in the month grid\nthat wraps onto a second line"],
+    );
+    assert.equal(web.unreleased, null); // the only unreleased entry is Android's
+  });
+
+  it("limits releases and rejects an unconfigured platform", () => {
+    assert.equal(exportChangelog(root, { limit: 1 }).releases.length, 1);
+    assert.throws(() => exportChangelog(root, { platform: "ios" }), /unknown platform "ios"/);
+  });
+
+  it("re-renders filtered notes as Markdown and leaves unfiltered notes untouched", () => {
+    assert.equal(
+      notes(root, "2026.11.1", { audience: "app", platform: "Android" }),
+      "### Added\n\n- Calendar export\n- **Android:** Widget for today's schedule\n\n### Fixed\n\n- Timer starts at zero",
+    );
+    assert.match(notes(root, "2026.11.1"), /### Internal\n\n- \*\*Backend:\*\* Stable error codes/);
+  });
+
+  it("validates categories and scopes in [Unreleased] only", () => {
+    write("package.json", '{ "version": "2026.11.1" }\n');
+    write("app.py", 'App(version="2026.11.1")\n');
+    assert.deepEqual(check(root), []);
+    write(
+      "CHANGELOG.md",
+      AUDIENCE_CHANGELOG.replace(
+        "### Fixed\n\n- **Android:** Sign-in survives a token refresh failure",
+        "### Fix\n\n- **Andriod:** typo\n\n### Added\n\n- **Ios:** not configured",
+      ).replace("### Added\n\n- Calendar export", "### Addd\n\n- Calendar export"),
+    );
+    const errors = check(root);
+    assert.equal(errors.length, 3);
+    assert.match(errors[0], /unknown category "### Fix"/);
+    assert.match(errors[1], /scope "\*\*Andriod:\*\*"/);
+    assert.match(errors[2], /scope "\*\*Ios:\*\*"/); // released "### Addd" is history, not validated
   });
 });

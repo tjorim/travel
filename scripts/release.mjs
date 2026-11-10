@@ -8,19 +8,33 @@
 //     "changelog": "CHANGELOG.md",          // default
 //     "targets": [                          // files that must carry the version
 //       { "file": "package.json", "pattern": "\"version\": \"([^\"]+)\"" }
-//     ]
+//     ],
+//     "scopes": ["Web", "Android", "Backend"],  // optional: allowed `**Scope:**` bullet prefixes
+//     "platforms": ["Web", "Android"],          // optional: scopes that are one client's own
+//     "categories": ["Added", ...]              // optional: replaces the allowed `###` headings
 //   }
 //
 // Each target `pattern` is a regular expression with exactly one capture group around
 // the version. It must match `expect` times (default 1), so a pattern that silently stops
 // matching fails loudly instead of leaving a file behind.
 //
+// CHANGELOG.md is the hand-edited source. Beyond Keep a Changelog's headings it has two
+// conventions for deciding who sees an entry:
+//   - audience: entries under `### Internal` (backend, infra, CI, dependencies) are for
+//     maintainers; `--audience app` leaves them out of what an app shows its users.
+//   - platform: a bullet that starts with `**Android:**` (any scope listed in "platforms")
+//     belongs to that client only; unprefixed bullets apply to every client.
+// Only `[Unreleased]` is validated against "scopes"/"categories": released sections are history.
+//
 // Commands:
 //   check [--tag vX.Y.Z]           VERSION, every target and the CHANGELOG agree
 //   next [--date YYYY-MM-DD]       print the next CalVer (YYYY.M.MICRO)
 //   bump [version] [--date D]      write the version everywhere and cut the CHANGELOG
 //                                  ([Unreleased] becomes the dated release section)
-//   notes [version] [--max-chars N]  print one version's CHANGELOG body (for release notes)
+//   notes [version] [--audience app] [--platform P] [--max-chars N]
+//                                  print one version's CHANGELOG body (for release notes)
+//   export [--audience app] [--platform P] [--limit N]
+//                                  print the CHANGELOG as JSON for an in-app "what's new" view
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -31,6 +45,19 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const UNRELEASED_RE = /^## \[Unreleased\]\s*$/;
 const REF_RE = /^\[[^\]]+\]:\s+\S+/;
 const DEFAULT_MAX_NOTES_CHARS = 120_000; // GitHub rejects release bodies over 125,000
+const DEFAULT_CATEGORIES = [
+  "Added",
+  "Changed",
+  "Deprecated",
+  "Removed",
+  "Fixed",
+  "Security",
+  "Internal",
+  "Planned",
+];
+const INTERNAL_CATEGORY = "internal";
+const SCOPE_RE = /^\*\*([^*]+?)(?::\*\*|\*\*:)\s*/;
+const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const sectionRe = (version) =>
@@ -77,6 +104,131 @@ function sectionEnd(lines, start) {
   return lines.length;
 }
 
+/**
+ * Split a section body into `###` categories, each with bullet entries and any other prose.
+ * Bullets before the first `###` land in a category named null. A bullet is its first line
+ * plus indented or directly following lines, so wrapped and nested text stays together.
+ */
+export function parseBody(bodyLines) {
+  const categories = [];
+  let category = null;
+  let bullet = null;
+  let blanks = 0;
+  const open = (name) => {
+    category = { name, entries: [], prose: [] };
+    categories.push(category);
+  };
+  const flush = () => {
+    if (!bullet) return;
+    const text = bullet
+      .map((line, i) => (i === 0 ? line.replace(/^[-*]\s+/, "") : line.replace(/^ {1,2}/, "")))
+      .join("\n")
+      .trimEnd();
+    const match = SCOPE_RE.exec(text);
+    category.entries.push({
+      scope: match ? match[1].trim() : null,
+      text: match ? text.slice(match[0].length) : text,
+    });
+    bullet = null;
+  };
+
+  for (const line of bodyLines) {
+    const heading = /^### (.+?)\s*$/.exec(line);
+    if (heading) {
+      flush();
+      blanks = 0;
+      open(heading[1]);
+      continue;
+    }
+    if (line.trim() === "") {
+      blanks++;
+      continue;
+    }
+    if (!category) open(null);
+    if (/^[-*]\s/.test(line)) {
+      flush();
+      bullet = [line];
+    } else if (bullet && (/^\s/.test(line) || blanks === 0)) {
+      bullet.push(...Array(blanks).fill(""), line);
+    } else {
+      flush();
+      category.prose.push(...(category.prose.length ? Array(blanks).fill("") : []), line);
+    }
+    blanks = 0;
+  }
+  flush();
+  return categories.filter((c) => c.entries.length || c.prose.length);
+}
+
+/** Every `## [x] - date` release plus `[Unreleased]`, newest first, as parsed categories. */
+export function parseChangelog(text) {
+  const lines = text.split("\n");
+  const result = { unreleased: null, releases: [] };
+  lines.forEach((line, i) => {
+    const release = /^## \[([^\]]+)\](?: - (\d{4}-\d{2}-\d{2}))?/.exec(line);
+    if (!release) return;
+    const categories = parseBody(lines.slice(i + 1, sectionEnd(lines, i)));
+    if (release[1] === "Unreleased") result.unreleased = { categories };
+    else if (release[2])
+      result.releases.push({ version: release[1], date: release[2], categories });
+  });
+  return result;
+}
+
+function filterCategories(categories, config, { audience, platform } = {}) {
+  if (platform && !(config.platforms ?? []).some((p) => sameName(p, platform))) {
+    throw new Error(
+      `unknown platform "${platform}" (configured: ${(config.platforms ?? []).join(", ") || "none"})`,
+    );
+  }
+  const isPlatformScope = (scope) => (config.platforms ?? []).some((p) => sameName(p, scope));
+  return categories
+    .filter((c) => !(audience === "app" && c.name && sameName(c.name, INTERNAL_CATEGORY)))
+    .map((c) => ({
+      ...c,
+      entries: c.entries.filter(
+        (e) => !platform || !e.scope || !isPlatformScope(e.scope) || sameName(e.scope, platform),
+      ),
+    }))
+    .filter((c) => c.entries.length || c.prose.length);
+}
+
+function renderMarkdown(categories) {
+  return categories
+    .map((c) => {
+      const entries = c.entries.map(
+        (e) => `- ${e.scope ? `**${e.scope}:** ` : ""}${e.text.replaceAll("\n", "\n  ")}`,
+      );
+      return [c.name ? `### ${c.name}` : null, entries.join("\n"), c.prose.join("\n")]
+        .filter(Boolean)
+        .join("\n\n");
+    })
+    .join("\n\n");
+}
+
+/** Problems in `[Unreleased]` that would make the next release's notes wrong. */
+function checkUnreleased(parsed, config) {
+  const errors = [];
+  const allowed = config.categories ?? DEFAULT_CATEGORIES;
+  for (const c of parsed.unreleased?.categories ?? []) {
+    if (c.name === null && c.entries.length) {
+      errors.push(`${config.changelog}: [Unreleased] has entries outside a "###" category`);
+    } else if (c.name !== null && !allowed.some((a) => a === c.name)) {
+      errors.push(
+        `${config.changelog}: [Unreleased] has unknown category "### ${c.name}" (allowed: ${allowed.join(", ")})`,
+      );
+    }
+    for (const e of c.entries) {
+      if (e.scope && config.scopes && !config.scopes.includes(e.scope)) {
+        errors.push(
+          `${config.changelog}: [Unreleased] scope "**${e.scope}:**" is not one of ${config.scopes.join(", ")}`,
+        );
+      }
+    }
+  }
+  return errors;
+}
+
 export function check(root, { tag } = {}) {
   const config = readConfig(root);
   const errors = [];
@@ -109,7 +261,9 @@ export function check(root, { tag } = {}) {
     }
   }
 
-  const lines = readFileSync(join(root, config.changelog), "utf8").split("\n");
+  const changelogText = readFileSync(join(root, config.changelog), "utf8");
+  const lines = changelogText.split("\n");
+  errors.push(...checkUnreleased(parseChangelog(changelogText), config));
   if (!lines.some((l) => UNRELEASED_RE.test(l)))
     errors.push(`${config.changelog}: missing "## [Unreleased]"`);
   if (!lines.some((l) => sectionRe(version).test(l))) {
@@ -180,20 +334,46 @@ export function bump(root, { version, date, allowEmpty = false } = {}) {
   return { from: current, to: next, date: today };
 }
 
-export function notes(root, version, { maxChars = DEFAULT_MAX_NOTES_CHARS } = {}) {
+export function notes(
+  root,
+  version,
+  { maxChars = DEFAULT_MAX_NOTES_CHARS, audience, platform } = {},
+) {
   const config = readConfig(root);
   const v = version ?? readVersion(root, config);
   const lines = readFileSync(join(root, config.changelog), "utf8").split("\n");
   const start = lines.findIndex((l) => sectionRe(v).test(l));
   if (start < 0) throw new Error(`${config.changelog}: no section for ${v}`);
-  const body = lines
-    .slice(start + 1, sectionEnd(lines, start))
-    .join("\n")
-    .trim();
+  const sectionLines = lines.slice(start + 1, sectionEnd(lines, start));
+  // Unfiltered notes keep the author's exact Markdown; filtered ones are re-rendered.
+  const body =
+    audience || platform
+      ? renderMarkdown(filterCategories(parseBody(sectionLines), config, { audience, platform }))
+      : sectionLines.join("\n").trim();
   if (body.length <= maxChars) return body;
   const cut = body.slice(0, maxChars);
   const boundary = cut.lastIndexOf("\n\n");
   return `${cut.slice(0, boundary > 0 ? boundary : maxChars)}\n\n_Notes truncated — see ${config.changelog} for the full list._`;
+}
+
+/** The changelog as data for an app's "what's new" view: newest release first. */
+export function exportChangelog(root, { audience, platform, limit } = {}) {
+  const config = readConfig(root);
+  const parsed = parseChangelog(readFileSync(join(root, config.changelog), "utf8"));
+  const shape = (categories) =>
+    filterCategories(categories, config, { audience, platform }).map((c) => ({
+      name: c.name,
+      entries: c.entries,
+      ...(c.prose.length ? { prose: c.prose.join("\n") } : {}),
+    }));
+  const releases = parsed.releases
+    .map((r) => ({ version: r.version, date: r.date, categories: shape(r.categories) }))
+    .filter((r) => r.categories.length);
+  const unreleased = shape(parsed.unreleased?.categories ?? []);
+  return {
+    unreleased: unreleased.length ? { categories: unreleased } : null,
+    releases: limit ? releases.slice(0, limit) : releases,
+  };
 }
 
 function parseArgs(argv) {
@@ -239,10 +419,24 @@ function main(argv) {
       );
     } else if (command === "notes") {
       const maxChars = flags["max-chars"] ? Number(flags["max-chars"]) : undefined;
-      console.log(notes(root, positional[0], { maxChars }));
+      console.log(
+        notes(root, positional[0], {
+          maxChars,
+          audience: flags.audience,
+          platform: flags.platform,
+        }),
+      );
+    } else if (command === "export") {
+      const limit = flags.limit ? Number(flags.limit) : undefined;
+      const data = exportChangelog(root, {
+        audience: flags.audience,
+        platform: flags.platform,
+        limit,
+      });
+      console.log(JSON.stringify(data, null, 2));
     } else {
       console.error(
-        "usage: release.mjs check [--tag vX] | next [--date D] | bump [version] [--date D] [--allow-empty] | notes [version] [--max-chars N]",
+        "usage: release.mjs check [--tag vX] | next [--date D] | bump [version] [--date D] [--allow-empty] | notes [version] [--audience app] [--platform P] [--max-chars N] | export [--audience app] [--platform P] [--limit N]",
       );
       process.exitCode = 2;
     }

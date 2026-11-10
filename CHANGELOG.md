@@ -8,6 +8,10 @@ everywhere and turns `[Unreleased]` into the next release, and `node scripts/rel
 and before a release tag) verifies the two agree. Entries from before 2026.11.1 are one accumulated
 section; group new entries under `### Added`, `### Changed`, `### Fixed` or `### Removed`.
 
+Entries under `### Internal` (backend, infrastructure, CI, dependencies) are left out of what the apps
+show their users. Start a bullet with a scope such as `**Web:**` to limit it to one client or area; the
+allowed scopes are listed in `release.config.json`, and `check` validates `[Unreleased]`.
+
 ## [Unreleased]
 
 ## [2026.11.1] - 2026-11-10
@@ -1571,6 +1575,21 @@ section; group new entries under `### Added`, `### Changed`, `### Fixed` or `###
   stray bullets. Colourless `border` utilities use the divider colour, and the phone navigation stays above
   page content.
 
+## [0.2.0] - 2026-11-09
+
+First HACS release of the separately versioned Travel integration. Requires Home Assistant 2026.10.4+ and Python >=3.14.2. Add `tjorim/travel` as a custom Integration repository in HACS and install this release, then restart Home Assistant.
+
+### Added
+
+- Native owner-only trip task and packing to-do entities, explicit trip selection, OAuth application credentials, refresh after confirmed writes, and safe diagnostics/errors.
+- Optional live location forwarding, off by default, from explicitly selected HA entities to owner-configured Travel sources. No history queue or write retries. Travel retains exact private tracks until explicit deletion.
+- Audience sharing is configured separately in Travel: review each public/hidden-link audience's precision, delay and actual delivered point. Only the latest eligible point is delivered, never a visitor track. Delays are zero, 15/30 minutes, 1/2/24 hours; source inactivity hides delivery at 24 hours. Stopping preserves private tracks; deleting clears current delivery. Locations/tracks stay out of PDF, Atom and ordinary trip exports.
+- Reproducible `travel.zip`, local Travel icon, and immutable HTTPS python-travel 0.2.0 source dependency; no Git executable or public PyPI publication required. HA needs outbound GitHub/package-index access.
+
+Production unattended OAuth is **not verified or claimed deployed**. Dedicated Keycloak client provisioning and end-to-end login/refresh/revocation verification remain tracked in [tjorim/apps#333](https://github.com/tjorim/apps/issues/333).
+
+Tasks, packing content, entity names, OAuth credentials and locations are private. Restrict HA users, dashboards, recorder/history/logbook and encrypted backups; recorder exclusion does not erase old history or protect config-entry backups. HA and Travel backups can retain deleted data until their separate retention expires. Review the [installation/privacy guide](https://github.com/tjorim/travel/blob/v0.2.0/home-assistant/README.md) and [location decision](https://github.com/tjorim/travel/blob/v0.2.0/docs/decisions/244-live-location-tracks.md) before enabling forwarding or sharing.
+
 ## 2026-09-21
 
 ### Added
@@ -1595,3 +1614,4 @@ section; group new entries under `### Added`, `### Changed`, `### Fixed` or `###
 
 [Unreleased]: https://github.com/tjorim/travel/compare/v2026.11.1...HEAD
 [2026.11.1]: https://github.com/tjorim/travel/compare/v0.2.0...v2026.11.1
+[0.2.0]: https://github.com/tjorim/travel/releases/tag/v0.2.0
