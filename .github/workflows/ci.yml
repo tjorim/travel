@@ -296,7 +296,7 @@ jobs:
         with:
           node-version-file: frontend/.node-version
       - name: Test release script
-        run: node --test scripts/
+        run: node --test scripts/release.verify.mjs
       - name: Check VERSION, versioned files and CHANGELOG agree
         run: node scripts/release.mjs check
 
