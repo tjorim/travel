@@ -10,7 +10,7 @@ implemented.
 ## Installation and OAuth dependency
 
 Requires HA 2026.10.4 or newer and Python >=3.14.2. The custom integration is
-released together with the application as CalVer (`YYYY.M.MICRO`, currently 2026.11.1) in
+released together with the application as CalVer (`YYYY.M.MICRO`, currently 2026.11.2) in
 `custom_components/travel/manifest.json`; the separately packaged python-travel client uses the same CalVer and is published to PyPI.
 Production unattended authorization is **not yet verified/deployed**: provisioning
 and end-to-end login/refresh/revocation checks are tracked in

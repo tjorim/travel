@@ -1,7 +1,7 @@
 {
   "domain": "travel",
   "name": "Travel",
-  "version": "2026.11.1",
+  "version": "2026.11.2",
   "codeowners": [
     "@tjorim"
   ],
@@ -11,6 +11,6 @@
   "iot_class": "cloud_polling",
   "integration_type": "service",
   "requirements": [
-    "python-travel==2026.11.1"
+    "python-travel==2026.11.2"
   ]
 }
