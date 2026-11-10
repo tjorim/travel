@@ -198,7 +198,7 @@ jobs:
       - name: Build
         run: pnpm build
       - name: Check bundle budgets
-        run: pnpm bundle:check
+        run: pnpm bundle:test && pnpm bundle:check
 
   frontend-e2e-shard:
     name: Frontend end-to-end shard ${{ matrix.shard }}/3
