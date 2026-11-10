@@ -14,6 +14,10 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ## [Unreleased]
 
+### Internal
+
+- Align the release workflow with the shared job graph used by every app: `validate`, `library-checks`, `publish-library`, `package-hacs`, `draft`. The HACS archive is built and checked in its own job, and the library tests run before the PyPI approval instead of after it.
+
 ## [2026.11.2] - 2026-11-10
 
 ### Internal
