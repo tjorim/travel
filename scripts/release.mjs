@@ -51,7 +51,8 @@ export function compareVersions(a, b) {
 export function nextVersion(current, today) {
   const [year, month] = today.split("-").map(Number);
   const parsed = parseVersion(current);
-  if (parsed && parsed[0] === year && parsed[1] === month) return `${year}.${month}.${parsed[2] + 1}`;
+  if (parsed && parsed[0] === year && parsed[1] === month)
+    return `${year}.${month}.${parsed[2] + 1}`;
   return `${year}.${month}.1`;
 }
 
@@ -85,7 +86,9 @@ export function check(root, { tag } = {}) {
     return [`${config.versionFile}: "${version}" is not CalVer (YYYY.M.MICRO, e.g. 2026.11.1)`];
   }
   if (tag !== undefined && tag !== `v${version}`) {
-    errors.push(`tag "${tag}" does not match ${config.versionFile} "${version}" (expected v${version})`);
+    errors.push(
+      `tag "${tag}" does not match ${config.versionFile} "${version}" (expected v${version})`,
+    );
   }
 
   for (const target of config.targets) {
@@ -99,13 +102,16 @@ export function check(root, { tag } = {}) {
     }
     for (const match of matches) {
       if (match[1] !== version) {
-        errors.push(`${target.file}: version "${match[1]}" does not match ${config.versionFile} "${version}"`);
+        errors.push(
+          `${target.file}: version "${match[1]}" does not match ${config.versionFile} "${version}"`,
+        );
       }
     }
   }
 
   const lines = readFileSync(join(root, config.changelog), "utf8").split("\n");
-  if (!lines.some((l) => UNRELEASED_RE.test(l))) errors.push(`${config.changelog}: missing "## [Unreleased]"`);
+  if (!lines.some((l) => UNRELEASED_RE.test(l)))
+    errors.push(`${config.changelog}: missing "## [Unreleased]"`);
   if (!lines.some((l) => sectionRe(version).test(l))) {
     errors.push(`${config.changelog}: missing "## [${version}] - YYYY-MM-DD"`);
   }
@@ -134,7 +140,9 @@ export function bump(root, { version, date, allowEmpty = false } = {}) {
     const expected = target.expect ?? 1;
     const { text, matches } = scanTarget(root, target);
     if (matches.length !== expected) {
-      throw new Error(`${target.file}: expected ${expected} match(es) of /${target.pattern}/, found ${matches.length}`);
+      throw new Error(
+        `${target.file}: expected ${expected} match(es) of /${target.pattern}/, found ${matches.length}`,
+      );
     }
     let out = text;
     for (const match of [...matches].reverse()) {
@@ -147,14 +155,21 @@ export function bump(root, { version, date, allowEmpty = false } = {}) {
   const lines = readFileSync(join(root, config.changelog), "utf8").split("\n");
   const unreleased = lines.findIndex((l) => UNRELEASED_RE.test(l));
   if (unreleased < 0) throw new Error(`${config.changelog}: missing "## [Unreleased]"`);
-  const body = lines.slice(unreleased + 1, sectionEnd(lines, unreleased)).join("\n").trim();
-  if (!body && !allowEmpty) throw new Error("[Unreleased] is empty — nothing to release (--allow-empty overrides)");
+  const body = lines
+    .slice(unreleased + 1, sectionEnd(lines, unreleased))
+    .join("\n")
+    .trim();
+  if (!body && !allowEmpty)
+    throw new Error("[Unreleased] is empty — nothing to release (--allow-empty overrides)");
   lines.splice(unreleased + 1, 0, "", `## [${next}] - ${today}`);
 
   const base = config.repo ? `https://github.com/${config.repo}` : null;
   const unreleasedRef = lines.findIndex((l) => l.startsWith("[Unreleased]:"));
   if (base) {
-    const refs = [`[Unreleased]: ${base}/compare/v${next}...HEAD`, `[${next}]: ${base}/compare/v${current}...v${next}`];
+    const refs = [
+      `[Unreleased]: ${base}/compare/v${next}...HEAD`,
+      `[${next}]: ${base}/compare/v${current}...v${next}`,
+    ];
     if (unreleasedRef >= 0) lines.splice(unreleasedRef, 1, ...refs);
     else lines.push(...(lines.at(-1) === "" ? [] : [""]), ...refs, "");
   }
@@ -171,7 +186,10 @@ export function notes(root, version, { maxChars = DEFAULT_MAX_NOTES_CHARS } = {}
   const lines = readFileSync(join(root, config.changelog), "utf8").split("\n");
   const start = lines.findIndex((l) => sectionRe(v).test(l));
   if (start < 0) throw new Error(`${config.changelog}: no section for ${v}`);
-  const body = lines.slice(start + 1, sectionEnd(lines, start)).join("\n").trim();
+  const body = lines
+    .slice(start + 1, sectionEnd(lines, start))
+    .join("\n")
+    .trim();
   if (body.length <= maxChars) return body;
   const cut = body.slice(0, maxChars);
   const boundary = cut.lastIndexOf("\n\n");
@@ -191,7 +209,9 @@ function parseArgs(argv) {
 }
 
 function main(argv) {
-  const root = resolve(process.env.RELEASE_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), ".."));
+  const root = resolve(
+    process.env.RELEASE_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), ".."),
+  );
   const [command, ...rest] = argv;
   const { flags, positional } = parseArgs(rest);
   const fail = (message) => {
@@ -205,15 +225,25 @@ function main(argv) {
       else console.log(`release metadata consistent (${readVersion(root, readConfig(root))})`);
     } else if (command === "next") {
       const config = readConfig(root);
-      console.log(nextVersion(readVersion(root, config), flags.date ?? new Date().toISOString().slice(0, 10)));
+      console.log(
+        nextVersion(readVersion(root, config), flags.date ?? new Date().toISOString().slice(0, 10)),
+      );
     } else if (command === "bump") {
-      const result = bump(root, { version: positional[0], date: flags.date, allowEmpty: flags.allowEmpty });
-      console.log(`bumped ${result.from} -> ${result.to} (${result.date}); review the diff, then run check`);
+      const result = bump(root, {
+        version: positional[0],
+        date: flags.date,
+        allowEmpty: flags.allowEmpty,
+      });
+      console.log(
+        `bumped ${result.from} -> ${result.to} (${result.date}); review the diff, then run check`,
+      );
     } else if (command === "notes") {
       const maxChars = flags["max-chars"] ? Number(flags["max-chars"]) : undefined;
       console.log(notes(root, positional[0], { maxChars }));
     } else {
-      console.error("usage: release.mjs check [--tag vX] | next [--date D] | bump [version] [--date D] [--allow-empty] | notes [version] [--max-chars N]");
+      console.error(
+        "usage: release.mjs check [--tag vX] | next [--date D] | bump [version] [--date D] [--allow-empty] | notes [version] [--max-chars N]",
+      );
       process.exitCode = 2;
     }
   } catch (error) {
@@ -221,4 +251,5 @@ function main(argv) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main(process.argv.slice(2));
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href)
+  main(process.argv.slice(2));

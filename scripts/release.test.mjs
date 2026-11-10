@@ -80,7 +80,9 @@ describe("check", () => {
 
   it("reports a drifted target", () => {
     write("package.json", '{ "version": "2026.9.3" }\n');
-    assert.deepEqual(check(root), ['package.json: version "2026.9.3" does not match VERSION "2026.11.1"']);
+    assert.deepEqual(check(root), [
+      'package.json: version "2026.9.3" does not match VERSION "2026.11.1"',
+    ]);
   });
 
   it("reports a pattern that stopped matching", () => {
@@ -108,7 +110,10 @@ describe("bump", () => {
     assert.match(read("app.py"), /App\(version="2026\.11\.2"\)/);
     assert.match(read("app.py"), /Thing\(version="9\.9\.9"\)/); // untouched
     const changelog = read("CHANGELOG.md");
-    assert.match(changelog, /## \[Unreleased\]\n\n## \[2026\.11\.2\] - 2026-11-20\n\n### Fixed\n\n- Something new/);
+    assert.match(
+      changelog,
+      /## \[Unreleased\]\n\n## \[2026\.11\.2\] - 2026-11-20\n\n### Fixed\n\n- Something new/,
+    );
     assert.match(changelog, /\[Unreleased\]: .*\/compare\/v2026\.11\.2\.\.\.HEAD/);
     assert.match(changelog, /\[2026\.11\.2\]: .*\/compare\/v2026\.11\.1\.\.\.v2026\.11\.2/);
     assert.deepEqual(check(root), []);
@@ -145,7 +150,9 @@ describe("notes", () => {
   });
 
   it("truncates oversized notes at a paragraph boundary and says so", () => {
-    const bullets = Array.from({ length: 50 }, (_, i) => `- Entry ${i} ${"x".repeat(40)}`).join("\n\n");
+    const bullets = Array.from({ length: 50 }, (_, i) => `- Entry ${i} ${"x".repeat(40)}`).join(
+      "\n\n",
+    );
     write("CHANGELOG.md", `## [Unreleased]\n\n## [2026.11.1] - 2026-11-10\n\n${bullets}\n`);
     const out = notes(root, "2026.11.1", { maxChars: 500 });
     assert.ok(out.length < 600);
