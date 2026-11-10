@@ -111,7 +111,14 @@ export function useInPlaceCreate(
       if (!origin) return null;
       const row = id ? agendaRow(kind, id) : null;
       if (row?.isConnected) return row;
-      const fallback = origin.returnTo?.isConnected ? origin.returnTo : agendaToggle();
+      // A controlled popup can recreate its trigger while keeping the same ID.
+      // Resolve the live control rather than focusing a disconnected DOM snapshot.
+      const currentOrigin = origin.returnTo?.isConnected
+        ? origin.returnTo
+        : origin.returnTo?.id
+          ? document.getElementById(origin.returnTo.id)
+          : null;
+      const fallback = currentOrigin ?? agendaToggle();
       // The refreshed list can render a moment after the dialog closes: move on to the row once it appears,
       // unless the owner has already gone elsewhere.
       if (id) focusRowWhenPresent(kind, id, fallback);

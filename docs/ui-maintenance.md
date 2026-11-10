@@ -255,3 +255,13 @@ configuration and report/check commands. See [the shared contract](bundle-budget
 Existing ceilings are preserved; previously unguarded measurements use about
 5% headroom. The JSON config is the source of truth for limits. CI runs
 `pnpm bundle:test && pnpm bundle:check` after building.
+
+## In-place creation focus return (2026-11-10)
+
+The Redact browser run exposed a stale DOM reference: a day menu trigger can be
+recreated with the same ID while its record dialog is open. Focus restoration
+now resolves that live control before falling back to the agenda toggle.
+Native React passed the original case; the Redact case failed before this fix.
+The new unit regression fails before the change; all seven focused unit tests
+and all 16 create-in-place Chromium cases pass afterwards, without weakening
+the focus assertions.
