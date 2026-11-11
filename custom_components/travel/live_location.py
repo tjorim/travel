@@ -1,6 +1,7 @@
 """Optional selected-source forwarding. No queue, replay, or coordinate logging."""
 
 import asyncio
+import contextlib
 import math
 from datetime import timedelta
 
@@ -104,7 +105,5 @@ class LocationForwarder:
         self.stop()
         if self.task is not None and not self.task.done():
             self.task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.task
-            except asyncio.CancelledError:
-                pass

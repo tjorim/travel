@@ -22,5 +22,9 @@ dev = ["pytest==9.2.0", "ruff==0.17.4", "ty==0.0.99"]
 target-version = "py314"
 line-length = 120
 
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]  # line length is enforced by `ruff format`
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
