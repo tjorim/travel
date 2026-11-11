@@ -115,7 +115,7 @@ Run generation, tests and builds sequentially to avoid translation-file races.
 ```sh
 pnpm lint
 pnpm format:check
-pnpm check
+pnpm typecheck
 pnpm test --maxWorkers=2
 pnpm build
 pnpm bundle:check

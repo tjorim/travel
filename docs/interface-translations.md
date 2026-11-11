@@ -30,7 +30,7 @@ From `frontend/`, using `.node-version` and the pnpm version in `package.json`:
 pnpm install --frozen-lockfile
 pnpm locale:audit
 pnpm locale:audit --all > /tmp/travel-interface-literals.txt
-pnpm check
+pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm test --maxWorkers=2

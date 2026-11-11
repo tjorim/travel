@@ -16,6 +16,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Internal
 
+- Check the formatting of workflows, scripts and the root JSON files in CI (`pnpm format:repo:check`), and use the same frontend script names as the other apps (`typecheck` replaces `check`; `lint` and `format` cover the whole frontend).
 - Align the release workflow with the shared job graph used by every app: `validate`, `library-checks`, `publish-library`, `package-hacs`, `draft`. The HACS archive is built and checked in its own job, and the library tests run before the PyPI approval instead of after it.
 
 ## [2026.11.2] - 2026-11-10
