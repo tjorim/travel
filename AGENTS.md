@@ -187,7 +187,7 @@ from `src/locale.tsx` and the configured `dayjs.ts`; preserve ISO dates, timezon
 and numeric input/payload values. Store message functions/descriptors for async
 feedback and serializable message codes in browser history; never store a translated UI snapshot. Unknown API errors
 use a translated operation fallback, never server prose or submitted input. New
-application copy must pass `pnpm locale:audit`, `pnpm check` and `pnpm test` in
+application copy must pass `pnpm locale:audit`, `pnpm typecheck` and `pnpm test` in
 addition to lint/format/build. Review both locales/themes, narrow layouts, accessible
 names, and dirty editor/upload/focus preservation. See
 `docs/interface-translations.md` for the repeatable audit and exclusions, and

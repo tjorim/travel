@@ -7,25 +7,14 @@
   ],
   "packageRules": [
     {
-      "description": [
-        "Review the map renderer and its scoped dependencies together"
-      ],
-      "matchDatasources": [
-        "npm"
-      ],
-      "matchPackageNames": [
-        "maplibre-gl",
-        "@maplibre/*"
-      ],
+      "description": ["Review the map renderer and its scoped dependencies together"],
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["maplibre-gl", "@maplibre/*"],
       "groupName": "maplibre"
     },
     {
-      "description": [
-        "Transitive packages that would otherwise get one PR each"
-      ],
-      "matchDatasources": [
-        "npm"
-      ],
+      "description": ["Transitive packages that would otherwise get one PR each"],
+      "matchDatasources": ["npm"],
       "matchPackageNames": [
         "baseline-browser-mapping",
         "enhanced-resolve",
@@ -35,57 +24,28 @@
       "groupName": "transitive"
     },
     {
-      "description": [
-        "timezonefinder ships its data as a separate package"
-      ],
-      "matchDatasources": [
-        "pypi"
-      ],
-      "matchPackageNames": [
-        "timezonefinder",
-        "timezonefinder-data"
-      ],
+      "description": ["timezonefinder ships its data as a separate package"],
+      "matchDatasources": ["pypi"],
+      "matchPackageNames": ["timezonefinder", "timezonefinder-data"],
       "groupName": "timezonefinder"
     },
     {
-      "description": [
-        "frontend/**"
-      ],
-      "matchDatasources": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "frontend/**"
-      ],
-      "addLabels": [
-        "platform:frontend"
-      ]
+      "description": ["frontend/**"],
+      "matchDatasources": ["npm"],
+      "matchFileNames": ["frontend/**"],
+      "addLabels": ["platform:frontend"]
     },
     {
-      "description": [
-        "backend/**"
-      ],
-      "matchDatasources": [
-        "pypi"
-      ],
-      "matchFileNames": [
-        "backend/**"
-      ],
-      "addLabels": [
-        "platform:backend"
-      ],
+      "description": ["backend/**"],
+      "matchDatasources": ["pypi"],
+      "matchFileNames": ["backend/**"],
+      "addLabels": ["platform:backend"],
       "commitMessagePrefix": "deps(backend):"
     },
     {
-      "description": [
-        "Review Redact runtime updates separately while its API is pre-1.0"
-      ],
-      "matchDatasources": [
-        "npm"
-      ],
-      "matchPackageNames": [
-        "@tanstack/redact"
-      ],
+      "description": ["Review Redact runtime updates separately while its API is pre-1.0"],
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["@tanstack/redact"],
       "groupName": "redact",
       "automerge": false
     }

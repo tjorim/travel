@@ -1,6 +1,7 @@
 """Native lists; item content is exposed only through HA's to-do API."""
 
 from datetime import datetime
+from functools import partial
 
 from homeassistant.components.todo import TodoItem, TodoItemStatus, TodoListEntity, TodoListEntityFeature
 from homeassistant.exceptions import HomeAssistantError
@@ -100,9 +101,9 @@ class TravelTodo(CoordinatorEntity[TravelCoordinator], TodoListEntity):
         if self.key[1] == "tasks":
             if fields.pop("completed", False):
                 raise HomeAssistantError(translation_domain=DOMAIN, translation_key="unsupported_create_status")
-            operation = lambda: scope.create_task(**fields)
+            operation = partial(scope.create_task, **fields)
         else:
-            operation = lambda: scope.create_packing_item(self.key[1], **fields)
+            operation = partial(scope.create_packing_item, self.key[1], **fields)
         await self.coordinator.write(operation)
 
     async def async_update_todo_item(self, item):

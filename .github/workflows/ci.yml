@@ -7,7 +7,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 7 * * 1'
+    - cron: "0 7 * * 1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-26.04
     strategy:
       matrix:
-        python: ['3.14', '3.15']
+        python: ["3.14", "3.15"]
     defaults:
       run:
         working-directory: python-travel
@@ -192,7 +192,7 @@ jobs:
       - name: Audit interface strings and catalogues
         run: pnpm locale:audit
       - name: Check generated message types
-        run: pnpm check
+        run: pnpm typecheck
       - name: Test frontend regressions
         run: pnpm test --maxWorkers=2
       - name: Build
@@ -303,6 +303,29 @@ jobs:
       - name: Check VERSION, versioned files and CHANGELOG agree
         run: node scripts/release.mjs check
 
+  repo-format:
+    name: Repository formatting
+    timeout-minutes: 10
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.node-version
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frontend tooling
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting of workflows, scripts and root JSON
+        working-directory: frontend
+        run: pnpm run format:repo:check
+
   gate:
     name: CI gate
     if: always()
@@ -316,6 +339,7 @@ jobs:
       - frontend-e2e
       - dependency-audit
       - release-metadata
+      - repo-format
     runs-on: ubuntu-26.04
     steps:
       - name: Require every job to have passed or been skipped
@@ -338,4 +362,4 @@ jobs:
           CATEGORY: integration
           REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           REPOSITORY_REF: ${{ github.event.pull_request.head.sha || github.sha }}
-          INPUT_COMMENT: 'false'
+          INPUT_COMMENT: "false"

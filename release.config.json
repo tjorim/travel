@@ -47,14 +47,6 @@
       "pattern": "\"integration_version\": \"([^\"]+)\""
     }
   ],
-  "scopes": [
-    "Web",
-    "Backend",
-    "MCP",
-    "Home Assistant",
-    "Python client"
-  ],
-  "platforms": [
-    "Web"
-  ]
+  "scopes": ["Web", "Backend", "MCP", "Home Assistant", "Python client"],
+  "platforms": ["Web"]
 }
