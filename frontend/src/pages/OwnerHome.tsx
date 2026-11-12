@@ -26,6 +26,7 @@ import {
   daysBetween,
   formatDay,
   formatInstant,
+  formatUpdateInstant,
   routeInPlan,
   stayCoversNight,
   type Stay,
@@ -337,7 +338,7 @@ export function OwnerHome() {
                 >
                   <strong>{update.title}</strong>
                   <span>
-                    {update.trip.title} · {formatInstant(update.occurred_at)}
+                    {update.trip.title} · {formatUpdateInstant(update)}
                   </span>
                 </Link>
               ))}

@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { formatInstant } from "../tracker-model";
+import { formatUpdateInstant } from "../tracker-model";
 import { FirstSteps } from "./FirstSteps";
 import { OwnerTripMap } from "./OwnerTripMap";
 import { TripOverview } from "./TripOverview";
@@ -69,7 +69,7 @@ export function WorkspaceOverview({
                   >
                     <strong>{update.title}</strong>
                     <span className="text-sm font-medium text-travel-muted">
-                      {formatInstant(update.occurred_at)}
+                      {formatUpdateInstant(update)}
                     </span>
                   </li>
                 ))}

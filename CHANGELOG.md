@@ -22,6 +22,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Fixed
 
+- A travel update is now dated by the calendar day of its area's time zone instead of the UTC day of its instant, so an update written at 07:00 in Taipei is shown on that day to visitors (and in the days figure, "N days later", the PDF and the export's `local_date`) instead of the day before, and the owner's lists read the same day. An area without a time zone keeps the UTC day; changing an area's time zone moves the day of its updates (#357).
 - **Web:** Counts of days until departure, overdue tasks, route points, photos and intentional delay minutes now read "1 day", "1 overdue task", "1 point", "1 photo/media" and "1 minute" in both languages instead of a plural noun.
 
 ### Removed

@@ -1,7 +1,7 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
-import type { MediaAsset, Trip } from "../../tracker-model";
+import { formatUpdateInstant, type MediaAsset, type Trip } from "../../tracker-model";
 import { visibilityLabel } from "../visibility";
 import {
   MediaPreview,
@@ -9,7 +9,6 @@ import {
   RecordHeading,
   RecordLink,
   Section,
-  timestamp,
   type OwnerSession,
 } from "./shared";
 import { DetailList } from "./DetailList";
@@ -39,7 +38,7 @@ export function UpdatesBlock({
                 {update.title}
               </RecordHeading>
               <p>
-                {timestamp(update.occurred_at)} · {placeLabel(update.location)} ·{" "}
+                {formatUpdateInstant(update)} · {placeLabel(update.location)} ·{" "}
                 {visibilityLabel(update.visibility)}
               </p>
               <p className="markdown-label">{m.owner_for_visitors()}</p>

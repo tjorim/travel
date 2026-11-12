@@ -42,6 +42,7 @@ from .models import (
     TripTask,
     Visit,
 )
+from .update_day import local_day
 
 logger = logging.getLogger("travel.export")
 
@@ -176,8 +177,18 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
             .order_by(TravelUpdateMediaAsset.created_at, TravelUpdateMediaAsset.media_asset_id)
         ):
             links.setdefault(link.travel_update_id, []).append(link.media_asset_id)
+        # The local day each update belongs to, so a reader of the file needs no zone logic: the zone of the
+        # update's area (its location's area wins), as everywhere else (see ``update_day``).
+        zones = dict(session.execute(select(Area.id, Area.timezone).where(Area.trip_id == trip_id)).all())
+        location_areas = dict(
+            session.execute(select(Location.id, Location.area_id).where(Location.trip_id == trip_id)).all()
+        )
         for (row,) in _batched(session, owned(TravelUpdate).order_by(TravelUpdate.occurred_at, TravelUpdate.id)):
-            yield _record(row, TRAVEL_UPDATE) | {"media_asset_ids": links.get(row.id, [])}
+            area_id = location_areas.get(row.location_id) if row.location_id else row.area_id
+            yield _record(row, TRAVEL_UPDATE) | {
+                "local_date": local_day(row.occurred_at, zones.get(area_id)),
+                "media_asset_ids": links.get(row.id, []),
+            }
 
     def routes() -> Iterator[dict[str, Any]]:
         documents = {}

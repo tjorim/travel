@@ -6,8 +6,11 @@ import {
   areaName,
   captureInputValue,
   formatCapture,
+  formatUpdateInstant,
   openBlobInNewTab,
   presetRecordName,
+  updateDateLabel,
+  type TravelUpdate,
 } from "./tracker-model";
 
 afterEach(() => {
@@ -79,4 +82,25 @@ it("names a preset record by its label and, for a stay, its check-in day in the 
   expect(presetRecordName(stay, "Untitled")).toMatch(/^Alpha Town · 1 \p{L}+ 2054$/u);
   expect(presetRecordName({ kind: "visit", id: "v1", label: "Market" }, "Untitled")).toBe("Market");
   expect(presetRecordName({ kind: "visit", id: "v2", label: null }, "Untitled")).toBe("Untitled");
+});
+
+it.each([
+  // Shortly after local midnight in UTC+8, and shortly before it in UTC-8: the day the visitor is given.
+  ["Asia/Taipei", "2054-11-19T23:00:00Z", "20 nov 2054, 07:00"],
+  ["America/Los_Angeles", "2054-11-20T07:30:00Z", "19 nov 2054, 23:30"],
+  // Daylight saving time: PDT in July is UTC-7.
+  ["America/Los_Angeles", "2054-07-01T06:30:00Z", "30 jun 2054, 23:30"],
+])("reads an update in %s on the day of its area (%s)", (timezone, occurred_at, expected) => {
+  const area = { timezone } as TravelUpdate["area"];
+  expect(formatUpdateInstant({ occurred_at, area })).toBe(expected);
+  expect(updateDateLabel({ occurred_at, area, date_precision: "day" })).toBe(expected);
+});
+
+it("labels an update by month and year in the area's zone, and survives an unknown zone", () => {
+  const area = { timezone: "Asia/Taipei" } as TravelUpdate["area"];
+  const occurred_at = "2054-11-30T20:00:00Z";
+  expect(updateDateLabel({ occurred_at, area, date_precision: "month" })).toBe("december 2054");
+  expect(updateDateLabel({ occurred_at, area, date_precision: "year" })).toBe("2054");
+  const unknown = { timezone: "Not/AZone" } as TravelUpdate["area"];
+  expect(() => formatUpdateInstant({ occurred_at, area: unknown })).not.toThrow();
 });
