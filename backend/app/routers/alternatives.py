@@ -28,14 +28,12 @@ from ..models import (
     AuditEvent,
     AuditEventKind,
     AuditTargetType,
+    PlanningStatus,
     Route,
-    RouteStatus,
     Stay,
-    StayStatus,
     Trip,
     Visibility,
     Visit,
-    VisitStatus,
 )
 from ..schemas import (
     AlternativeChoiceResponse,
@@ -62,11 +60,6 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 
 Record = Stay | Visit | Route
 
-_STATUS = {
-    AlternativeGroupKind.STAY: StayStatus,
-    AlternativeGroupKind.VISIT: VisitStatus,
-    AlternativeGroupKind.ROUTE: RouteStatus,
-}
 _COLUMN = {
     AlternativeGroupKind.STAY: "stay_id",
     AlternativeGroupKind.VISIT: "visit_id",
@@ -83,10 +76,6 @@ def records_of(trip: Trip, kind: AlternativeGroupKind) -> dict[str, Record]:
         AlternativeGroupKind.ROUTE: trip.routes,
     }[kind]
     return {record.id: record for record in source}
-
-
-def _status_of(kind: AlternativeGroupKind, value: str):
-    return _STATUS[kind](value)
 
 
 def _not_found(detail: str = "Alternative group not found") -> ApiException:
@@ -173,7 +162,7 @@ def suggest_groups(trip: Trip) -> list[Suggestion]:
     stays = [
         (stay, stay.check_in_date, stay.check_out_date)
         for stay in trip.stays
-        if stay.status == StayStatus.IDEA and stay.alternative_membership is None
+        if stay.status == PlanningStatus.IDEA and stay.alternative_membership is None
     ]
     for cluster in _clusters(stays, inclusive=False):
         if len(cluster) > 1:
@@ -189,7 +178,7 @@ def suggest_groups(trip: Trip) -> list[Suggestion]:
     visits = [
         (visit, visit.starts_on, visit.ends_on)
         for visit in trip.visits
-        if visit.status == VisitStatus.IDEA
+        if visit.status == PlanningStatus.IDEA
         and visit.alternative_membership is None
         and visit.starts_on is not None
         and visit.ends_on is not None
@@ -208,7 +197,7 @@ def suggest_groups(trip: Trip) -> list[Suggestion]:
             )
     journeys: dict[tuple[str, str, date | None], list[Route]] = {}
     for route in trip.routes:
-        if route.status == RouteStatus.IDEA and route.alternative_membership is None:
+        if route.status == PlanningStatus.IDEA and route.alternative_membership is None:
             journeys.setdefault((route.departure_area_id, route.arrival_area_id, route.departs_on), []).append(route)
     for (_, _, day), routes in journeys.items():
         if len(routes) > 1:
@@ -275,8 +264,8 @@ def choose(
     session.flush()
     target.chosen = True
 
-    planned = _status_of(kind, "planned")
-    cancelled = _status_of(kind, "cancelled")
+    planned = PlanningStatus.PLANNED
+    cancelled = PlanningStatus.CANCELLED
     chosen_record = members[member_id]
     if chosen_record.status.value in ("idea", "cancelled"):
         chosen_record.status = planned
@@ -376,7 +365,7 @@ def undo_choice(
             )
     for entry in details["before"]:
         record = records[entry["id"]]
-        record.status = _status_of(kind, entry["status"])
+        record.status = PlanningStatus(entry["status"])
         if record.visibility.value != entry["visibility"]:
             choose_visibility(session, trip, subject, kind.value, record.id, Visibility(entry["visibility"]))
     for member in group.members:

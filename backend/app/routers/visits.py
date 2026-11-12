@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, service_exception
-from ..models import Location, Trip, Visibility, Visit, VisitStatus
+from ..models import Location, PlanningStatus, Trip, Visibility, Visit
 from ..route_overlap import overlapping_routes, route_title
 from ..schemas import (
     Identifier,
@@ -193,7 +193,7 @@ def update_visit(
         raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
     for field, value in values.items():
         setattr(visit, field, value)
-    if visit.status == VisitStatus.CANCELLED:
+    if visit.status == PlanningStatus.CANCELLED:
         # A dropped visit is never offered to an audience, so cancelling also takes it off any.
         visit.visibility = Visibility.PRIVATE
     if payload.position is not None and payload.position != visit.position:

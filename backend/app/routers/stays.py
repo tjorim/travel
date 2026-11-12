@@ -11,7 +11,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..document.service import trip_documents
 from ..errors import ApiException
-from ..models import Location, Stay, StayDocumentAsset, StayStatus, Trip, Visibility
+from ..models import Location, PlanningStatus, Stay, StayDocumentAsset, Trip, Visibility
 from ..schemas import Identifier, StayCreate, StayResponse, StayUpdate
 from .placement import selected_area, stay_place
 from .trips import owned_trip
@@ -133,7 +133,7 @@ def update_stay(
     )
     for field, value in values.items():
         setattr(stay, field, value)
-    if stay.status == StayStatus.IDEA:
+    if stay.status == PlanningStatus.IDEA:
         # A candidate is never offered to an audience, so going back to an idea also takes it off any.
         stay.visibility = Visibility.PRIVATE
     session.commit()

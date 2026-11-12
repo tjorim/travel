@@ -128,7 +128,14 @@ class DatePrecision(StrEnum):
     YEAR = "year"
 
 
-class StayStatus(StrEnum):
+class PlanningStatus(StrEnum):
+    """How settled a stay, route or visit is: an idea (a candidate being compared), planned,
+    confirmed, or cancelled (dropped).
+
+    Owner-only planning state, kept here instead of in a title or area label (which visitors
+    see). It is never shared. Areas carry no status of their own: an area is as settled as the
+    visits in it."""
+
     IDEA = "idea"
     PLANNED = "planned"
     CONFIRMED = "confirmed"
@@ -148,13 +155,6 @@ class RouteMode(StrEnum):
     OTHER = "other"
 
 
-class RouteStatus(StrEnum):
-    IDEA = "idea"
-    PLANNED = "planned"
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
-
-
 class Visibility(StrEnum):
     """Who receives a shareable record: nobody, every audience, or only the
     audiences whose scope selects it. It is the source of truth for that
@@ -171,19 +171,6 @@ class VisitKind(StrEnum):
 
     FREE = "free"
     WORK = "work"
-
-
-class VisitStatus(StrEnum):
-    """How settled a visit is: an idea, planned, confirmed, or cancelled (dropped).
-
-    Owner-only planning state, kept here instead of in a title or area label
-    (which visitors see). It is never shared. Areas carry no status of their
-    own: an area is as settled as the visits in it."""
-
-    IDEA = "idea"
-    PLANNED = "planned"
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
 
 
 class TaskAlertKind(StrEnum):
@@ -505,8 +492,8 @@ class Stay(Base):
     check_out_date: Mapped[date] = mapped_column(Date, nullable=False)
     check_in_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     check_out_time: Mapped[time | None] = mapped_column(Time, nullable=True)
-    status: Mapped[StayStatus] = mapped_column(
-        _enum_column(StayStatus, "travel_stay_status"), default=StayStatus.PLANNED
+    status: Mapped[PlanningStatus] = mapped_column(
+        _enum_column(PlanningStatus, "travel_planning_status"), default=PlanningStatus.PLANNED
     )
     property_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     website_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
@@ -590,8 +577,8 @@ class Route(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     mode: Mapped[RouteMode] = mapped_column(_enum_column(RouteMode, "travel_route_mode"), default=RouteMode.OTHER)
-    status: Mapped[RouteStatus] = mapped_column(
-        _enum_column(RouteStatus, "travel_route_status"), default=RouteStatus.PLANNED
+    status: Mapped[PlanningStatus] = mapped_column(
+        _enum_column(PlanningStatus, "travel_planning_status"), default=PlanningStatus.PLANNED
     )
     # A name for the route; without one it is shown as "<from> → <to>".
     label: Mapped[str | None] = mapped_column(String(160), nullable=True)
@@ -692,8 +679,8 @@ class Visit(Base):
     title: Mapped[str | None] = mapped_column(String(160), nullable=True)
     kind: Mapped[VisitKind | None] = mapped_column(_enum_column(VisitKind, "travel_visit_kind"), nullable=True)
     # Owner-only planning state; never part of a shared visit.
-    status: Mapped[VisitStatus] = mapped_column(
-        _enum_column(VisitStatus, "travel_visit_status"), default=VisitStatus.PLANNED, nullable=False
+    status: Mapped[PlanningStatus] = mapped_column(
+        _enum_column(PlanningStatus, "travel_planning_status"), default=PlanningStatus.PLANNED, nullable=False
     )
     starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     # Inclusive last day of a multi-day visit such as "18-20 nov".

@@ -2,7 +2,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
 import { formatDayRange, stayLabel, type Stay, type Trip, areaName } from "../../tracker-model";
-import { STAY_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
 
@@ -21,7 +21,7 @@ export function StaysBlock({ trip, stays }: { trip: Trip; stays: Stay[] }) {
               </RecordHeading>
               <p>
                 {formatDayRange(stay.check_in_date, stay.check_out_date)} ·{" "}
-                {STAY_STATUS_LABELS[stay.status]}
+                {PLANNING_STATUS_LABELS[stay.status]}
               </p>
               {(stay.check_in_time || stay.check_out_time) && (
                 <p>

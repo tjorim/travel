@@ -188,7 +188,7 @@ export type Stay = {
   check_in_time: string | null;
   check_out_time: string | null;
   /** An `idea` is a candidate under comparison: it may overlap others, covers no night and is never shared. */
-  status: "idea" | "planned" | "confirmed" | "cancelled";
+  status: PlanningStatus;
   property_name: string | null;
   website_url: string | null;
   booking_reference: string | null;
@@ -217,7 +217,7 @@ export type Route = {
   id: string;
   mode: RouteMode;
   /** An `idea` is a candidate under comparison: it covers no journey and is never shared. */
-  status: "idea" | "planned" | "confirmed" | "cancelled";
+  status: PlanningStatus;
   label: string | null;
   departure_area: Area;
   arrival_area: Area;
@@ -255,8 +255,8 @@ export const routeTitle = (
 /** What kind of days a visit is: free days, or working ones. */
 export type VisitKind = "free" | "work";
 
-/** How settled a visit is. Owner-only: never shared, so planning state lives here, not in a label. */
-export type VisitStatus = "idea" | "planned" | "confirmed" | "cancelled";
+/** How settled a stay, route or visit is. Owner-only: never shared, so planning state lives here, not in a label. */
+export type PlanningStatus = "idea" | "planned" | "confirmed" | "cancelled";
 
 /**
  * A stop on the trip: at an area, or at a location in one, and optionally when. The times are local
@@ -269,7 +269,7 @@ export type Visit = {
   location: Location | null;
   title: string | null;
   kind: VisitKind | null;
-  status: VisitStatus;
+  status: PlanningStatus;
   starts_on: string | null;
   ends_on: string | null;
   start_time: string | null;

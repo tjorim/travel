@@ -20,7 +20,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..document.service import trip_documents
 from ..errors import ApiException
-from ..models import Area, Location, Route, RouteDocumentAsset, RouteStatus, Trip, Visibility
+from ..models import Area, Location, PlanningStatus, Route, RouteDocumentAsset, Trip, Visibility
 from ..request_limits import RequestRateLimiter
 from ..schemas import GeoJsonLineString, Identifier, RouteCreate, RouteResponse, RouteUpdate
 from ..track_import import MAX_BYTES, approximate_line
@@ -287,7 +287,7 @@ def update_route(
             validate_route_times(departs_at, arrives_at)
     for field, value in values.items():
         setattr(route, field, value)
-    if route.status == RouteStatus.IDEA:
+    if route.status == PlanningStatus.IDEA:
         # A candidate is never offered to an audience, so going back to an idea also takes it off any.
         route.visibility = Visibility.PRIVATE
     settle_departure_day(route, payload.departs_on, "departs_on" in payload.model_fields_set)

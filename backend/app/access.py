@@ -26,17 +26,15 @@ from .models import (
     Location,
     MediaDerivative,
     MediaKind,
+    PlanningStatus,
     PublicSurface,
     Route,
-    RouteStatus,
     ShareLink,
     Stay,
-    StayStatus,
     TravelUpdate,
     Trip,
     Visibility,
     Visit,
-    VisitStatus,
 )
 
 # Scope kind -> where a trip keeps that kind of record.
@@ -102,17 +100,17 @@ def sharing_blocker(kind: str, record: Any) -> SharingBlocker | None:
         return SharingBlocker(
             "Give this location a public name before sharing it", "give_this_location_a_public_name_before_sharing_it"
         )
-    if kind == "stay" and record.status == StayStatus.IDEA:
+    if kind == "stay" and record.status == PlanningStatus.IDEA:
         return SharingBlocker(
             "A stay idea is only a candidate: make it planned before sharing it",
             "a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it",
         )
-    if kind == "route" and record.status == RouteStatus.IDEA:
+    if kind == "route" and record.status == PlanningStatus.IDEA:
         return SharingBlocker(
             "A route idea is only a candidate: make it planned before sharing it",
             "a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it",
         )
-    if kind == "visit" and record.status == VisitStatus.CANCELLED:
+    if kind == "visit" and record.status == PlanningStatus.CANCELLED:
         # The visit status itself is never shared, so a dropped visit would otherwise read as a plan.
         return SharingBlocker(
             "A cancelled visit is no longer planned: it cannot be shared",

@@ -12,7 +12,7 @@ import {
   type Trip,
   areaName,
 } from "../../tracker-model";
-import { ROUTE_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
 
@@ -39,7 +39,7 @@ export function RoutesBlock({ trip, routes }: { trip: Trip; routes: Route[] }) {
             <p>
               {[
                 ROUTE_MODE_LABELS[route.mode],
-                ROUTE_STATUS_LABELS[route.status],
+                PLANNING_STATUS_LABELS[route.status],
                 route.departs_at && route.arrives_at
                   ? `${endpointTime(route.departs_at, route.departure_timezone)} → ${endpointTime(route.arrives_at, route.arrival_timezone)}`
                   : route.departs_on

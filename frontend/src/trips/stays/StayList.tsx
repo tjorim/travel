@@ -3,7 +3,7 @@ import { Button } from "@/ui/button";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { daysBetween, formatDay, stayLabel, type Stay } from "../../tracker-model";
-import { STAY_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import { visibilityLabel } from "../visibility";
 
 /** The saved stays. Alternatives the owner confirmed are compared in the alternatives panel above. */
@@ -37,7 +37,7 @@ export function StayList({
                     : null,
                   `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
                   m.owner_night_count({ count: nights }),
-                  STAY_STATUS_LABELS[stay.status],
+                  PLANNING_STATUS_LABELS[stay.status],
                   visibilityLabel(stay.visibility),
                 ]
                   .filter(Boolean)

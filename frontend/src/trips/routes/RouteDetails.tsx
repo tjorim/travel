@@ -4,7 +4,7 @@ import { useLocale } from "../../locale";
 import { Markdown } from "../../Markdown";
 import { m } from "../../paraglide/messages.js";
 import { ROUTE_MODE_LABELS, routeTitle, type Route } from "../../tracker-model";
-import { ROUTE_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import { RouteGeometryEditor } from "../RouteGeometryEditor";
 import { VisibilityControl } from "../visibility";
 import { routeTimes } from "./model";
@@ -38,7 +38,7 @@ export function RouteDetails({
         <p>
           {[
             ROUTE_MODE_LABELS[selected.mode],
-            ROUTE_STATUS_LABELS[selected.status],
+            PLANNING_STATUS_LABELS[selected.status],
             routeTimes(selected),
           ]
             .filter(Boolean)
