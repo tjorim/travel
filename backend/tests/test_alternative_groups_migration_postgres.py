@@ -24,8 +24,8 @@ from app.models import (
     AuditEvent,
     AuditEventKind,
     AuditTargetType,
+    PlanningStatus,
     Stay,
-    StayStatus,
     Trip,
 )
 
@@ -68,7 +68,7 @@ def _seed(engine) -> dict[str, str]:
                 area_id=area.id,
                 check_in_date=date(2054, 4, 1),
                 check_out_date=date(2054, 4, 4),
-                status=StayStatus.IDEA,
+                status=PlanningStatus.IDEA,
             )
             for _ in range(3)
         ]

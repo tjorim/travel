@@ -10,7 +10,7 @@ import { renderWithOwner, testToken } from "./query/test-utils";
 import { useFeedback, textNotice } from "./query/feedback";
 import { m } from "./paraglide/messages.js";
 import { bytesLabel, ROUTE_MODE_LABELS } from "./tracker-model";
-import { VISIT_STATUS_LABELS } from "./trips/labels";
+import { PLANNING_STATUS_LABELS } from "./trips/labels";
 import { completeSignIn } from "./auth";
 import { mapMessages } from "./map-messages";
 
@@ -97,7 +97,7 @@ it("renders retained success notices, enums and plural messages in the current l
     expect(screen.getByText(locale === "en" ? "Trip saved." : "Reis opgeslagen.")).toBeTruthy();
     expect(ROUTE_MODE_LABELS.flight).toBe(locale === "en" ? "Flight" : "Vlucht");
     expect(bytesLabel(1536)).toBe(locale === "en" ? "1.5 kB" : "1,5 kB");
-    expect(VISIT_STATUS_LABELS.planned).toBe(locale === "en" ? "Planned" : "Gepland");
+    expect(PLANNING_STATUS_LABELS.planned).toBe(locale === "en" ? "Planned" : "Gepland");
     expect(mapMessages()["NavigationControl.ZoomIn"]).toBe(
       locale === "en" ? "Zoom in" : "Inzoomen",
     );

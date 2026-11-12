@@ -16,7 +16,7 @@ import {
   type PlaceSearchResult,
   type Stay,
 } from "../../tracker-model";
-import { STAY_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import { PlaceSearchField } from "../PlaceSearchField";
 import { recordPrecisionOptions } from "../record-precision";
 import {
@@ -80,7 +80,7 @@ export function StayForm({
       <record.form.Field name="status">
         {(field) => (
           <SelectField field={field} label={m.owner_status()}>
-            {Object.entries(STAY_STATUS_LABELS).map(([value, label]) => (
+            {Object.entries(PLANNING_STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>

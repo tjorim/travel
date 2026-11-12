@@ -34,14 +34,12 @@ from .models import (
     ImportSessionState,
     LinkState,
     MediaKind,
+    PlanningStatus,
     RouteMode,
-    RouteStatus,
-    StayStatus,
     SurfaceState,
     TaskAlertKind,
     Visibility,
     VisitKind,
-    VisitStatus,
 )
 
 # The most records one audience's scope may list (`items`) or leave out (`exclude`).
@@ -719,7 +717,7 @@ class StayCreate(InputModel):
     check_out_date: date
     check_in_time: LocalTime | None = None
     check_out_time: LocalTime | None = None
-    status: StayStatus = Field(default=StayStatus.PLANNED, description=STAY_STATUS)
+    status: PlanningStatus = Field(default=PlanningStatus.PLANNED, description=STAY_STATUS)
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
@@ -760,7 +758,7 @@ class StayUpdate(InputModel):
     check_out_date: date | None = None
     check_in_time: LocalTime | None = None
     check_out_time: LocalTime | None = None
-    status: StayStatus | None = Field(default=None, description=STAY_STATUS)
+    status: PlanningStatus | None = Field(default=None, description=STAY_STATUS)
     property_name: str | None = Field(default=None, min_length=1, max_length=160)
     website_url: HttpUrl | None = None
     booking_reference: str | None = Field(default=None, max_length=255)
@@ -786,7 +784,7 @@ class StayResponse(BaseModel):
     check_out_date: date
     check_in_time: time | None
     check_out_time: time | None
-    status: StayStatus
+    status: PlanningStatus
     property_name: str | None
     website_url: str | None
     booking_reference: str | None
@@ -845,7 +843,7 @@ class VisitCreate(InputModel):
     position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
-    status: VisitStatus = VisitStatus.PLANNED
+    status: PlanningStatus = PlanningStatus.PLANNED
     starts_on: date | None = None
     ends_on: date | None = None
     start_time: LocalTime | None = None
@@ -871,7 +869,7 @@ class VisitUpdate(InputModel):
     position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
-    status: VisitStatus | None = None
+    status: PlanningStatus | None = None
     starts_on: date | None = None
     ends_on: date | None = None
     start_time: LocalTime | None = None
@@ -907,7 +905,7 @@ class VisitResponse(BaseModel):
     location: LocationResponse | None
     title: str | None
     kind: VisitKind | None
-    status: VisitStatus
+    status: PlanningStatus
     starts_on: date | None
     ends_on: date | None
     start_time: time | None
@@ -1165,7 +1163,7 @@ class RouteCreate(InputModel):
     day), booking details and a drawn line."""
 
     mode: RouteMode
-    status: RouteStatus = Field(default=RouteStatus.PLANNED, description=ROUTE_STATUS)
+    status: PlanningStatus = Field(default=PlanningStatus.PLANNED, description=ROUTE_STATUS)
     label: str | None = Field(default=None, min_length=1, max_length=160)
     departure_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     arrival_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
@@ -1208,7 +1206,7 @@ class RouteUpdate(InputModel):
     non_nullable_fields = frozenset(["mode", "status", "document_asset_ids"])
 
     mode: RouteMode | None = None
-    status: RouteStatus | None = Field(default=None, description=ROUTE_STATUS)
+    status: PlanningStatus | None = Field(default=None, description=ROUTE_STATUS)
     label: str | None = Field(default=None, min_length=1, max_length=160)
     departure_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     arrival_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
@@ -1238,7 +1236,7 @@ class RouteUpdate(InputModel):
 class RouteResponse(BaseModel):
     id: str
     mode: RouteMode
-    status: RouteStatus
+    status: PlanningStatus
     label: str | None
     departure_area: AreaResponse
     arrival_area: AreaResponse
@@ -1925,7 +1923,7 @@ class ProjectionRouteMap(ProjectionRecord):
 class ProjectionRoute(ProjectionRecord):
     id: str
     mode: RouteMode
-    status: RouteStatus
+    status: PlanningStatus
     label: str | None
     departure: ProjectionArea | None
     arrival: ProjectionArea | None

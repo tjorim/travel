@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from app.models import Area, DatePrecision, Stay, StayStatus, TravelUpdate, Trip, Visibility
+from app.models import Area, DatePrecision, PlanningStatus, Stay, TravelUpdate, Trip, Visibility
 from app.projection import render_projection, summary_numbers
 from app.schemas import ShareScopeInput
 from app.sharing_presets import PresetAudience, plan_preset
@@ -35,7 +35,7 @@ def fixture():
             check_in_date=date(2054, 4, start),
             check_out_date=date(2054, 4, end),
             share_date_precision=DatePrecision.DAY,
-            status=StayStatus.PLANNED,
+            status=PlanningStatus.PLANNED,
             visibility=Visibility.EVERYONE,
         )
     return trip

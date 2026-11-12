@@ -8,10 +8,10 @@ import {
   type Trip,
   type Visit,
   type VisitKind,
-  type VisitStatus,
+  type PlanningStatus,
   areaName,
 } from "../../tracker-model";
-import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS, clock, visitWhen } from "../labels";
+import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS, clock, visitWhen } from "../labels";
 import type { CreatePrefill } from "../create-request";
 import { emptyPlace, placeOfPrefill, placeOfVisit, type PlaceValue } from "../PlacePicker";
 import type { FormContext } from "../../forms/form-context";
@@ -57,7 +57,7 @@ export type Values = {
   place: PlaceValue;
   title: string;
   kind: VisitKind | "";
-  status: VisitStatus;
+  status: PlanningStatus;
   startsOn: string;
   endsOn: string;
   startTime: string;
@@ -126,7 +126,7 @@ export const lastDay = ({ value, fieldApi }: { value: string } & FormContext) =>
 /** "Gepland" is the default, so any other status is called out. */
 export const dayLine = (visit: Visit) => {
   const tags = [
-    visit.status !== "planned" ? VISIT_STATUS_LABELS[visit.status] : "",
+    visit.status !== "planned" ? PLANNING_STATUS_LABELS[visit.status] : "",
     visit.kind ? VISIT_KIND_LABELS[visit.kind] : "",
   ]
     .filter(Boolean)

@@ -3,7 +3,7 @@ import { Button } from "@/ui/button";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { ROUTE_MODE_LABELS, routeTitle, type Route } from "../../tracker-model";
-import { ROUTE_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import { visibilityLabel } from "../visibility";
 import { routeShift, routeTimes } from "./model";
 
@@ -31,7 +31,7 @@ export function RouteList({
               {[
                 ROUTE_MODE_LABELS[route.mode],
                 [routeTimes(route), routeShift(route)].filter(Boolean).join(""),
-                ROUTE_STATUS_LABELS[route.status],
+                PLANNING_STATUS_LABELS[route.status],
                 route.carrier,
                 route.geometry ? m.owner_with_line() : null,
                 visibilityLabel(route.visibility),

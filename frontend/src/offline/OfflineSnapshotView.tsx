@@ -3,7 +3,7 @@ import { m } from "../paraglide/messages.js";
 import { Markdown } from "../Markdown";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
 import { formatDay, type Visit } from "../tracker-model";
-import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../trips/labels";
+import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS } from "../trips/labels";
 import type { OfflineResourceKind } from "./offline-store";
 
 /** Legacy emergency snapshots stored this schema-owned enum as a Dutch display label. */
@@ -64,7 +64,7 @@ export function OfflineSnapshotView({ kind, text }: { kind: OfflineResourceKind;
     return (
       <div className="grid gap-3">
         <p>
-          {visit.kind && VISIT_KIND_LABELS[visit.kind]} · {VISIT_STATUS_LABELS[visit.status]}
+          {visit.kind && VISIT_KIND_LABELS[visit.kind]} · {PLANNING_STATUS_LABELS[visit.status]}
         </p>
         {visit.starts_on && (
           <p>

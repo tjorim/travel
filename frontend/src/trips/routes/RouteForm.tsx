@@ -22,7 +22,7 @@ import {
   type Location,
 } from "../../tracker-model";
 import { FieldLegend, FieldSet } from "@/ui/field";
-import { ROUTE_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import { PlacePicker } from "../PlacePicker";
 import { RouteGeometryEditor } from "../RouteGeometryEditor";
 import {
@@ -77,7 +77,7 @@ export function RouteForm({
         <record.form.Field name="status">
           {(input) => (
             <SelectField field={input} label={m.owner_status()}>
-              {Object.entries(ROUTE_STATUS_LABELS).map(([value, label]) => (
+              {Object.entries(PLANNING_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

@@ -3,11 +3,9 @@ import {
   formatDayRange,
   type DocumentAsset,
   type MediaAsset,
-  type Route,
-  type Stay,
+  type PlanningStatus,
   type Visit,
   type VisitKind,
-  type VisitStatus,
 } from "../tracker-model";
 
 // Label tables and formatters that read-only views share with the editors. They live apart from the managers so a
@@ -37,7 +35,7 @@ export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = {
   },
 };
 
-export const ROUTE_STATUS_LABELS: Record<Route["status"], string> = {
+export const PLANNING_STATUS_LABELS: Record<PlanningStatus, string> = {
   get idea() {
     return m.owner_idea();
   },
@@ -51,40 +49,13 @@ export const ROUTE_STATUS_LABELS: Record<Route["status"], string> = {
     return m.owner_cancelled();
   },
 };
+
 export const VISIT_KIND_LABELS: Record<VisitKind, string> = {
   get free() {
     return m.owner_leisure();
   },
   get work() {
     return m.owner_work();
-  },
-};
-export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
-  get idea() {
-    return m.owner_idea();
-  },
-  get planned() {
-    return m.owner_planned();
-  },
-  get confirmed() {
-    return m.owner_confirmed();
-  },
-  get cancelled() {
-    return m.owner_cancelled();
-  },
-};
-export const STAY_STATUS_LABELS: Record<Stay["status"], string> = {
-  get idea() {
-    return m.owner_idea();
-  },
-  get planned() {
-    return m.owner_planned();
-  },
-  get confirmed() {
-    return m.owner_confirmed();
-  },
-  get cancelled() {
-    return m.owner_cancelled();
   },
 };
 

@@ -91,7 +91,6 @@ Source review clean-up, found at commit `def2173` and tracked by [#373](https://
 
 ### Independent tidy-ups
 
-- [ ] [#359](https://github.com/tjorim/travel/issues/359) Remove compatibility shims and unused values.
 - [ ] [#371](https://github.com/tjorim/travel/issues/371) Prune and regroup the message catalogue.
 - [ ] [#370](https://github.com/tjorim/travel/issues/370) Separate visitor, owner and shared frontend source.
 - [ ] [#372](https://github.com/tjorim/travel/issues/372) Refresh this plan and outdated docstrings.

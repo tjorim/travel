@@ -5,7 +5,7 @@ import { MarkdownField } from "../../forms/MarkdownField";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { VISIT_KIND_LABELS, VISIT_STATUS_LABELS } from "../labels";
+import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS } from "../labels";
 import { PlacePicker } from "../PlacePicker";
 import { recordPrecisionOptions } from "../record-precision";
 import { VisitRouteHint } from "../VisitRouteHint";
@@ -104,7 +104,7 @@ export function VisitForm({
         <record.form.Field name="status">
           {(field) => (
             <SelectField field={field} label={m.owner_status()}>
-              {Object.entries(VISIT_STATUS_LABELS).map(([value, label]) => (
+              {Object.entries(PLANNING_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

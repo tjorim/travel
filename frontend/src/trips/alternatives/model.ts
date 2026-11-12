@@ -12,7 +12,7 @@ import {
   type Stay,
   type Visit,
 } from "../../tracker-model";
-import { ROUTE_STATUS_LABELS, STAY_STATUS_LABELS, VISIT_STATUS_LABELS, visitWhen } from "../labels";
+import { PLANNING_STATUS_LABELS, visitWhen } from "../labels";
 import { routeShift, routeTimes } from "../routes/model";
 import { locationLine } from "../stays/model";
 import { visitPlace } from "../visits/model";
@@ -77,17 +77,17 @@ export function recordDetail(kind: AlternativeKind, record: AlternativeRecord): 
       stay.area.label ? areaName(stay.area) : null,
       `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
       m.owner_night_count({ count: daysBetween(stay.check_in_date, stay.check_out_date) }),
-      STAY_STATUS_LABELS[stay.status],
+      PLANNING_STATUS_LABELS[stay.status],
     );
   } else if (kind === "visit") {
     const visit = record as Visit;
-    parts.push(visitWhen(visit), visitPlace(visit), VISIT_STATUS_LABELS[visit.status]);
+    parts.push(visitWhen(visit), visitPlace(visit), PLANNING_STATUS_LABELS[visit.status]);
   } else {
     const route = record as Route;
     parts.push(
       [routeTimes(route), routeShift(route)].filter(Boolean).join(""),
       route.carrier,
-      ROUTE_STATUS_LABELS[route.status],
+      PLANNING_STATUS_LABELS[route.status],
     );
   }
   return parts.filter(Boolean).join(" · ");
@@ -122,7 +122,7 @@ const stayRows = (stays: Stay[]) =>
       m.owner_compare_nights(),
       (stay) => String(daysBetween(stay.check_in_date, stay.check_out_date)),
     ],
-    [m.owner_compare_status(), (stay) => STAY_STATUS_LABELS[stay.status]],
+    [m.owner_compare_status(), (stay) => PLANNING_STATUS_LABELS[stay.status]],
     [m.owner_compare_website(), (stay) => stay.website_url],
     [m.owner_compare_notes(), (stay) => stay.notes],
   ]);
@@ -133,7 +133,7 @@ const visitRows = (visits: Visit[]) =>
     [m.owner_compare_area(), (visit) => areaName(visit.area)],
     [m.owner_compare_exact_location(), visitPlace],
     [m.owner_compare_dates(), visitWhen],
-    [m.owner_compare_status(), (visit) => VISIT_STATUS_LABELS[visit.status]],
+    [m.owner_compare_status(), (visit) => PLANNING_STATUS_LABELS[visit.status]],
     [m.owner_compare_notes(), (visit) => visit.notes],
   ]);
 
@@ -142,7 +142,7 @@ const routeRows = (routes: Route[]) =>
     [m.owner_compare_name(), routeTitle],
     [m.owner_compare_dates(), routeTimes],
     [m.owner_compare_carrier(), (route) => route.carrier],
-    [m.owner_compare_status(), (route) => ROUTE_STATUS_LABELS[route.status]],
+    [m.owner_compare_status(), (route) => PLANNING_STATUS_LABELS[route.status]],
     [m.owner_compare_notes(), (route) => route.notes],
   ]);
 
