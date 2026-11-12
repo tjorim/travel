@@ -46,7 +46,7 @@ export function RoutesBlock({ trip, routes }: { trip: Trip; routes: Route[] }) {
                     ? formatDay(route.departs_on)
                     : null,
                 route.geometry
-                  ? m.owner_line_with_points({ p0: route.geometry.coordinates.length })
+                  ? m.owner_line_with_points({ count: route.geometry.coordinates.length })
                   : null,
               ]
                 .filter(Boolean)

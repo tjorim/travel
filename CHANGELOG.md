@@ -19,8 +19,13 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 - **Web:** A stay, a visit and a route with the same planning status now carry the same label in the owner lists, agenda and dialogs; a planned stay no longer reads "Suggested" or "Still to choose". A stay still being considered without a linked location says "Location not linked yet", and a confirmed stay no longer does.
 - **Web:** Visitors see a place's country by name in their language (for example "Taipei · Taiwan") instead of the two-letter code.
 
+### Fixed
+
+- **Web:** Counts of days until departure, overdue tasks, route points, photos and intentional delay minutes now read "1 day", "1 overdue task", "1 point", "1 photo/media" and "1 minute" in both languages instead of a plural noun.
+
 ### Internal
 
+- **Web:** Remove 30 interface messages no source referenced, and make `pnpm locale:audit` fail on an unused message key and on a one-word connective or joined sentence fragment (part of #371). The few fragments still in use, and any computed message lookup, are listed with reasons in `scripts/locale-audit-exclusions.mjs`.
 - Lint the Home Assistant integration and both Python packages with the same ruff rule set as the backend (`E, F, I, UP, B, C4, SIM`); two `lambda` assignments and one `try`/`except`/`pass` were rewritten to satisfy it.
 - Check the formatting of workflows, scripts and the root JSON files in CI (`pnpm format:repo:check`), and use the same frontend script names as the other apps (`typecheck` replaces `check`; `lint` and `format` cover the whole frontend).
 - Align the release workflow with the shared job graph used by every app: `validate`, `library-checks`, `publish-library`, `package-hacs`, `draft`. The HACS archive is built and checked in its own job, and the library tests run before the PyPI approval instead of after it.

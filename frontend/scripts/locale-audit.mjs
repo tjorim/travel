@@ -4,7 +4,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSync } from "oxc-parser";
 import { projectErrors } from "./check-message-parity.mjs";
-import { diagnosticCallees, excludedFiles, exclusions } from "./locale-audit-exclusions.mjs";
+import * as config from "./locale-audit-exclusions.mjs";
+
+const { diagnosticCallees, excludedFiles, exclusions } = config;
+// Optional per-project allowlists; a project without them is checked without exceptions.
+const computedMessageKeys = config.computedMessageKeys ?? {};
+const fragmentMessages = config.fragmentMessages ?? {};
 
 const copyAttribute =
   /^(?:aria-label|aria-description|title|label|ariaLabel|placeholder|alt|description)$/;
@@ -190,6 +195,59 @@ export function literalMessageArguments(source, file = "source.tsx") {
   });
   return lines;
 }
+
+/** Words that only join two parts of a sentence; a message holding just one cannot be translated on its own. */
+const connectives = new Set(
+  (
+    "of on in at to for and or with by from the a an as per into onto than " +
+    "van op bij naar voor en met tot"
+  ).split(" "),
+);
+/** Keys named nowhere in the sources. Sources are tokenised, so a key in a string, a property or `m.key` counts. */
+export function unusedMessageKeys(keys, sources, computed = {}) {
+  const used = new Set();
+  for (const source of sources)
+    for (const token of source.match(/[A-Za-z_]\w*/g) ?? []) used.add(token);
+  return keys.filter((key) => !used.has(key) && !(key in computed));
+}
+/**
+ * One-word sentence parts: a connective ("of", "van") or a word joined onto other text with a leading or
+ * trailing separator or space ("· on"). A label ending in a colon is whole. Messages with interpolations and whole-word labels are not fragments.
+ */
+export function fragmentMessageKeys(catalogue, allowed = {}) {
+  const fragments = [];
+  for (const [key, message] of Object.entries(catalogue)) {
+    if (typeof message !== "string" || key in allowed || /\{\w+\}/.test(message)) continue;
+    const word = message.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "");
+    if (!word || /[\s\p{P}]/u.test(word)) continue;
+    const joined = message !== message.trim() || /^[·,;:–—-]|[·,;–—-]$/.test(message);
+    if (connectives.has(word.toLowerCase()) || joined) fragments.push(key);
+  }
+  return fragments;
+}
+function loadCatalogues(root) {
+  const settings = JSON.parse(
+    fs.readFileSync(path.join(root, "project.inlang/settings.json"), "utf8"),
+  );
+  const pattern = settings["plugin.inlang.messageFormat"].pathPattern;
+  return Object.fromEntries(
+    settings.locales.map((locale) => [
+      locale,
+      JSON.parse(fs.readFileSync(path.join(root, pattern.replace("{locale}", locale)), "utf8")),
+    ]),
+  );
+}
+/** Files whose text may reference a message key by name: application, end-to-end and script sources. */
+function referenceFiles(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory())
+      return /^(?:paraglide|node_modules|dist|test-results|playwright-report)$/.test(entry.name)
+        ? []
+        : referenceFiles(file);
+    return /\.(?:tsx?|m?js|cjs)$/.test(file) ? [file] : [];
+  });
+}
 function files(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(directory, entry.name);
@@ -204,6 +262,22 @@ function main() {
   const root = fileURLToPath(new URL("../", import.meta.url));
   const all = process.argv.includes("--all");
   const { errors, locales } = projectErrors(root);
+  const catalogues = loadCatalogues(root);
+  const keys = Object.keys(Object.values(catalogues)[0]);
+  const referenceSources = ["src", "e2e", "scripts"]
+    .map((directory) => path.join(root, directory))
+    .filter((directory) => fs.existsSync(directory))
+    .flatMap(referenceFiles)
+    .map((file) => fs.readFileSync(file, "utf8"));
+  for (const key of unusedMessageKeys(keys, referenceSources, computedMessageKeys))
+    errors.push(
+      `${key}: unused message key; delete it or list a computed lookup in computedMessageKeys`,
+    );
+  for (const [locale, catalogue] of Object.entries(catalogues))
+    for (const key of fragmentMessageKeys(catalogue, fragmentMessages))
+      errors.push(
+        `${locale}: ${key}: one-word connective or sentence fragment; write a whole message`,
+      );
   const sources = files(path.join(root, "src"));
   const reviewed = sources.filter((file) => {
     const relative = path.relative(path.join(root, "src"), file).split(path.sep).join("/");

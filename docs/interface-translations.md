@@ -54,6 +54,26 @@ the full regression suite. Negative TypeScript assertions ensure generated
 message keys and interpolation inputs remain typed. Plural regression tests
 cover every plural message at 0, 1 and multiple, including authored interpolation.
 
+The audit also reads the catalogue itself. A key that no source names fails as
+unused: `src/` (without generated `paraglide/`), `e2e/` and `scripts/` are
+tokenised, so `m.key`, a quoted key and a property all count as references. Delete
+the message when it is dead. A message read through a computed lookup (`m[name]`)
+cannot be seen by name; list it in `computedMessageKeys` in
+`scripts/locale-audit-exclusions.mjs` with the reason. Prefer a map of direct `m.key`
+references, which needs no entry. A one-word connective (`of`, `on`, `van`, `op`,
+...) or a word joined to other text by a leading or trailing separator or space
+(`· on`) fails as a sentence fragment: write a whole message with interpolation
+instead. A label ending in a colon is a whole label. The few fragments that still
+ship are listed in `fragmentMessages` in the same file, each with a reason; that
+list only shrinks and is never extended for new copy. Both lists are optional, so a
+project sharing the script without them is checked without exceptions.
+
+Messages that show a count take plural variants (`input count` plus
+`local countPlural = count: plural`) with a `one` and an `other` branch in every
+locale, so "1 day" never reads "1 days". Name parameters after what they hold
+(`{name}`, `{count}`, `{visits}`), not by position (`{p0}`); the plural regression
+test covers every plural message at 0, 1 and several.
+
 The scanner is a review aid. The `--all` output includes single-word enum values,
 CSS, selectors, ISO/Day.js patterns, URL/path fragments and other protocol literals.
 Review it against the [source inventory](decisions/281-interface-translations.md),

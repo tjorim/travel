@@ -353,7 +353,16 @@
   "owner_booking_reference": "Booking reference:",
   "owner_contact": "Contact",
   "owner_no_stays_captured": "No stays captured.",
-  "owner_line_with_points": "line with {p0} points",
+  "owner_line_with_points": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "line with {count} point",
+        "countPlural=other": "line with {count} points"
+      }
+    }
+  ],
   "owner_no_routes_captured": "No routes captured.",
   "owner_completed_on": "Completed on {p0}",
   "owner_due": "Due {p0}",
@@ -892,8 +901,6 @@
   "owner_unknown_departure": "Unknown departure",
   "owner_unknown_arrival": "Unknown arrival",
   "owner_use_as_point": "Use as point",
-  "owner_points_on_the_map": "Points on the map",
-  "owner_route_in_words": "Route in words",
   "owner_the_area_point_could_not_be_saved": "The area point could not be saved.",
   "owner_invalid_offline_map_copy": "Invalid offline map copy.",
   "owner_derived_from_private_locations": "Derived from private locations",
@@ -901,7 +908,16 @@
   "owner_open_location": "Open location",
   "owner_visit_2": "Visit: {p0}",
   "owner_update": "Update: {p0}{p1}",
-  "owner_photos_media": " · {p0} photos/media",
+  "owner_photos_media": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": " · {count} photo/media",
+        "countPlural=other": " · {count} photos/media"
+      }
+    }
+  ],
   "owner_open_route": "Open route",
   "owner_map_and_route_data_are_no_longer_available_offline": "Map and route data are no longer available offline.",
   "owner_map_and_route": "{p0} · map and route",
@@ -1218,8 +1234,6 @@
   "assets_import": "Import",
   "assets_provider_import_is_not_available_on_this_server_yet_you_can_upload_media": "Provider import is not available on this server yet. You can upload media from this device.",
   "assets_connect_in_settings_first": "Connect in Settings first",
-  "assets_choose_in": "Choose in",
-  "assets_selection": "selection",
   "assets_first_choose_only_the_media_you_want_to_copy_to_this_private_trip": "First choose only the media you want to copy to this private trip.",
   "assets_open_selection": "Open selection",
   "assets_import_selection": "Import selection",
@@ -1229,7 +1243,6 @@
   "assets_use_capture_time": "Use capture time",
   "assets_choose_a_time_yourself": "Choose a time yourself",
   "assets_gps_choice": "GPS choice",
-  "assets_location_from": "Location from",
   "assets_no_gps_available_no_place_will_be_suggested": "No GPS available; no place will be suggested.",
   "assets_the_gps_metadata_conflicts_choose_at_most_one_option_nothing_will_be_mer": "The GPS metadata conflicts. Choose at most one option; nothing will be merged.",
   "assets_suggest_area_and_visit": "Suggest area and visit",
@@ -1237,7 +1250,6 @@
   "assets_new_area_possible": "New area possible: {p0} ({p1})",
   "assets_unknown_timezone": "unknown timezone",
   "assets_new_visit_possible": "New visit possible",
-  "assets_this_suggestion_has_not_been_saved": ". This suggestion has not been saved.",
   "assets_open_as_a_new_travel_update": "Open as a new travel update",
   "assets_link_to": "Link to",
   "assets_choose_existing_travel_update": "Choose existing travel update",
@@ -1279,12 +1291,9 @@
   "assets_no_title": "no title",
   "assets_no_summary": "no summary",
   "assets_no_travel_dates": "no travel dates",
-  "assets_of": "of",
-  "assets_selected": "selected",
   "assets_select_all": "Select all",
   "assets_select_none": "Select none",
   "assets_currently_private_selecting_includes_this_for_this_audience": "· currently private; selecting includes this for this audience",
-  "assets_for_everyone_always_appears_here": "for everyone always appears here;",
   "assets_choose_what_visitors_can_see_everything_you_do_not_select_stays_private": "Choose what visitors can see. Everything you do not select stays private.",
   "assets_trip_title": "Trip title",
   "assets_how_precise_can_the_travel_dates_be": "How precise can the travel dates be?",
@@ -1305,7 +1314,6 @@
   "assets_what_each_active_or_draft_audience_currently_receives_and_what_you_shoul": "What each active or draft audience currently receives, and what you should review.",
   "assets_for_everyone": "For everyone",
   "assets_not_shared": "not shared",
-  "assets_media": "media",
   "assets_nothing_to_review": "Nothing to review.",
   "assets_there_are_no_items_to_share_yet_create_a_travel_update_area_or_visit_for": "There are no items to share yet. Create a travel update, area or visit, for example.",
   "assets_the_public_scope_could_not_be_saved": "The public scope could not be saved.",
@@ -1326,8 +1334,6 @@
   "assets_preview_of": "Preview of {p0}",
   "assets_the_link_could_not_be_created": "The link could not be created.",
   "assets_the_link_is_active_and_can_be_copied_again_later": "The link is active and can be copied again later.",
-  "assets_share_link": "Share link “",
-  "assets_revoke": "” revoke?",
   "assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h": "Anyone with the current secure link will no longer be able to open the hidden page.",
   "assets_revoke_link": "Revoke link",
   "assets_share_link_revoked": "Share link revoked.",
@@ -1366,7 +1372,6 @@
   "assets_hidden_share_links": "Hidden share links",
   "assets_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated": "Each link has its own live scope and can later be revoked or rotated.",
   "assets_new_link": "New link",
-  "assets_expires": "· expires",
   "assets_previous": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -1444,7 +1449,6 @@
   "assets_no_offline_packing_list_saved_for_this_trip_reconnect_to_save_one": "No offline packing list saved for this trip. Reconnect to save one.",
   "assets_loading_offline_packing_lists": "Loading offline packing lists…",
   "assets_loading_packing_lists": "Loading packing lists…",
-  "assets_only_for_you": "Only for you ·",
   "assets_add_bag": "Add bag",
   "assets_add_item": "Add item",
   "assets_reuse_list": "Reuse list",
@@ -1459,21 +1463,14 @@
   "assets_overall_packing_progress": "Overall packing progress",
   "assets_you_might_want_to_bring": "You might want to bring",
   "assets_loading_suggestions": "Loading suggestions…",
-  "assets_on": "· on",
   "assets_usually_in_cabin_baggage": " · usually in cabin baggage",
   "assets_usually_essential": " · usually essential",
   "assets_dismiss": "Dismiss",
   "assets_no_recurring_items_to_suggest_yet": "No recurring items to suggest yet.",
   "assets_departure_check": "Departure check",
-  "assets_known": "known",
   "assets_limit": " / {p0} limit",
   "assets_weight_incomplete": " · weight incomplete",
   "assets_ready_to_leave": "Ready to leave",
-  "assets_essential_still_to_pack": "Essential, still to pack:",
-  "assets_on_departure_day": "On departure day:",
-  "assets_still_without_a_bag": "Still without a bag:",
-  "assets_known_weight_above_the_set_limit": "Known weight above the set limit:",
-  "assets_check_your_own_baggage_choice": "Check your own baggage choice:",
   "assets_baggage_flags_are_your_own_notes_not_official_travel_rules": "Baggage flags are your own notes, not official travel rules.",
   "assets_progress_per_bag": "Progress per bag",
   "assets_packing_progress": "Packing progress {p0}",
@@ -1499,13 +1496,11 @@
   "assets_quick_add": "Quick add",
   "assets_edit_bag": "Edit bag",
   "assets_no_items_here": "No items here.",
-  "assets_select": "Select",
   "assets_per_item": "{p0} per item",
   "assets_essential": "Essential",
   "assets_valuable": "Valuable",
   "assets_cabin_baggage_only": "Cabin baggage only",
   "assets_checked_baggage_only": "Checked baggage only",
-  "assets_try_again": "Try again:",
   "assets_edit": "Edit {p0}",
   "assets_edit_item": "Edit item",
   "assets_item_saved": "Item saved.",
@@ -1547,7 +1542,6 @@
   "assets_the_offline_packing_list_could_not_be_opened": "The offline packing list could not be opened.",
   "assets_opening_offline_packing_list": "Opening offline packing list…",
   "assets_offline_packing_list_2": "Offline packing list {p0}",
-  "assets_offline_copy_saved_on": "Offline copy · saved on",
   "assets_view_only_checking_off_moving_and_editing_require_a_connection": "View only. Checking off, moving and editing require a connection.",
   "assets_packed_3": "{p0} packed",
   "assets_library_document": "Library document",
@@ -1570,7 +1564,6 @@
   "assets_your_browser_cannot_store_the_offline_key_as_nonexportable_copies_use_be": "Your browser cannot store the offline key as non-exportable; copies use best-effort encryption on this device.",
   "assets_your_browser_has_not_granted_persistent_storage_for_these_offline_copies": "Your browser has not granted persistent storage for these offline copies; they may be automatically cleared when this device runs low on storage.",
   "assets_enable_save_offline_on_a_document_emergency_information_media_item_map_v": "Enable “Save offline” on a document, emergency information, media item, map, visit or packing list to see it here.",
-  "assets_last_checked": "· last checked",
   "assets_the_offline_copy_could_not_be_checked": "The offline copy could not be checked.",
   "assets_sign_in_to_save_something_offline": "Sign in to save something offline.",
   "assets_sign_in_to_open_an_offline_copy": "Sign in to open an offline copy.",
@@ -1814,7 +1807,6 @@
       }
     }
   ],
-  "visitor_update_media": "Media for this update",
   "visitor_view_route": "View route",
   "visitor_view_location": "View location",
   "visitor_visit": "Visit",
@@ -1956,7 +1948,6 @@
   "owner_possible_duplicates_help": "These are only suggestions. Nothing is merged until you have seen the preview and confirmed.",
   "owner_review_merge": "Review merge",
   "owner_review_merge_of": "Review merge: {p0}",
-  "owner_stay_alternatives": "Alternatives · {dates}",
   "owner_stay_ideas_overlap_these_nights": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -1982,7 +1973,6 @@
   "api_a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "A stay idea is only a candidate: make it planned before sharing it",
   "owner_a_cancelled_visit_is_never_shared": "A cancelled visit is never shared.",
   "api_a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared": "A cancelled visit is no longer planned: it cannot be shared",
-  "owner_route_alternatives": "Alternatives · {journey}",
   "owner_route_ideas_for_this_journey": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -2087,7 +2077,7 @@
   "owner_visitor_change_after": "After: {p0}",
   "owner_visitor_change_empty": "(empty)",
   "owner_visitor_change_seen_by": "Read by: {p0}",
-  "owner_visitor_change_carried": "Moves along with the location: {p0} visits, {p1} routes, {p2} stays.",
+  "owner_visitor_change_carried": "Moves along with the location. Visits: {visits}, routes: {routes}, stays: {stays}.",
   "owner_visitor_change_preview": "Visitors who receive this location will read these changes after you confirm saving:",
   "owner_visitor_change_preview_item": "{p0} (read by {p1})",
   "owner_visitor_change_area_preview": "Moving this location to another area also moves its visits and route ends. If visitors receive those, you will be asked to confirm first.",
@@ -2286,7 +2276,6 @@
   "sharing_preview": "Preview",
   "sharing_save_scope": "Save scope",
   "sharing_scope_saved": "Scope saved. It is live for visitors of an active collection.",
-  "sharing_preview_member": "Preview {trip}",
   "sharing_collection_saved": "Collection saved.",
   "sharing_collection_created": "Collection created as a draft. Add trips, then activate it.",
   "sharing_collection_revoked": "Collection link revoked.",
@@ -2297,8 +2286,26 @@
   "sharing_draft_hint": "Add the trips first, check each preview, then activate.",
   "map_points_count": "Points on the map ({count})",
   "map_lines_count": "Route in words ({count})",
-  "readiness_overdue": "{count} overdue tasks",
-  "readiness_departure": "{count} days until departure",
+  "readiness_overdue": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} overdue task",
+        "countPlural=other": "{count} overdue tasks"
+      }
+    }
+  ],
+  "readiness_departure": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} day until departure",
+        "countPlural=other": "{count} days until departure"
+      }
+    }
+  ],
   "readiness_underway": "Day {day} of {total}",
   "readiness_day": "Day {day}",
   "readiness_finished": "Finished",
@@ -2364,7 +2371,6 @@
   "precision_follow_confirm": "Follow the audience",
   "precision_follow_done": "Records now following the audience’s precision: {count}.",
   "precision_follow_failed": "The date precision could not be changed.",
-  "precision_follow_preview_failed": "The effect on your audiences could not be checked.",
   "audit_precision_follow": "Visits and stays now follow each audience’s date precision.",
   "audit_precision_follow_audiences": "More precise dates for visitors. Public page: {publicCount}; share links: {linkCount}.",
   "precision_follow_acknowledge": "I understand that these visitors will see more precise dates",
@@ -2712,7 +2718,16 @@
   "live_next": "Next points",
   "live_delete_warning": "This permanently deletes these tracks from the running database and clears current location. Source revocation also stops new data. Backups and downloaded copies may still contain deleted data.",
   "live_delay_label": "Delay for {audience}",
-  "live_delay_value": "Intentional delay: {minutes} minutes",
+  "live_delay_value": [
+    {
+      "declarations": ["input count", "input minutes", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Intentional delay: {minutes} minute",
+        "countPlural=other": "Intentional delay: {minutes} minutes"
+      }
+    }
+  ],
   "live_hidden": "Hidden link",
   "live_waiting": "No point can be delivered. Waiting for an eligible observation within the delay and freshness limits; stopped sources remain hidden."
 }

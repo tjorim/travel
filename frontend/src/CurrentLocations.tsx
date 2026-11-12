@@ -42,7 +42,10 @@ export function CurrentLocations({ positions }: { positions?: CurrentLocation[] 
             ? m.live_stale()
             : m.live_current()}
           {" · "}
-          {m.live_delay_value({ minutes: formatNumber((point.delay_seconds ?? 0) / 60) })}
+          {m.live_delay_value({
+            count: (point.delay_seconds ?? 0) / 60,
+            minutes: formatNumber((point.delay_seconds ?? 0) / 60),
+          })}
         </p>
       ))}
     </section>

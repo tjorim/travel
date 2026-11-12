@@ -454,7 +454,7 @@ it("names the areas and what moves along when the owner moves a shared location"
   const dialog = await screen.findByRole("alertdialog");
   expect(within(dialog).getByText("Voor: Taipei")).toBeTruthy();
   expect(within(dialog).getByText("Na: Tainan")).toBeTruthy();
-  expect(within(dialog).getByText(/2 bezoeken, 1 routes/)).toBeTruthy();
+  expect(within(dialog).getByText(/Bezoeken: 2, routes: 1/)).toBeTruthy();
   expect(
     within(dialog).getByText("Gelezen door: publieke pagina, deellink “Familie”"),
   ).toBeTruthy();

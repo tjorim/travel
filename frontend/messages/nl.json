@@ -353,7 +353,16 @@
   "owner_booking_reference": "Boekingsreferentie:",
   "owner_contact": "Contact",
   "owner_no_stays_captured": "Geen verblijven vastgelegd.",
-  "owner_line_with_points": "lijn van {p0} punten",
+  "owner_line_with_points": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "lijn van {count} punt",
+        "countPlural=other": "lijn van {count} punten"
+      }
+    }
+  ],
   "owner_no_routes_captured": "Geen routes vastgelegd.",
   "owner_completed_on": "Afgerond op {p0}",
   "owner_due": "Voor {p0}",
@@ -892,8 +901,6 @@
   "owner_unknown_departure": "Vertrek onbekend",
   "owner_unknown_arrival": "Aankomst onbekend",
   "owner_use_as_point": "Gebruik als punt",
-  "owner_points_on_the_map": "Punten op de kaart",
-  "owner_route_in_words": "Route in woorden",
   "owner_the_area_point_could_not_be_saved": "Het gebiedspunt kon niet worden opgeslagen.",
   "owner_invalid_offline_map_copy": "Ongeldige offline kaartkopie.",
   "owner_derived_from_private_locations": "Afgeleid uit private locaties",
@@ -901,7 +908,16 @@
   "owner_open_location": "Locatie openen",
   "owner_visit_2": "Bezoek: {p0}",
   "owner_update": "Update: {p0}{p1}",
-  "owner_photos_media": " · {p0} foto’s/media",
+  "owner_photos_media": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": " · {count} foto/media",
+        "countPlural=other": " · {count} foto’s/media"
+      }
+    }
+  ],
   "owner_open_route": "Route openen",
   "owner_map_and_route_data_are_no_longer_available_offline": "Kaart- en routegegevens zijn niet langer offline beschikbaar.",
   "owner_map_and_route": "{p0} · kaart en route",
@@ -1218,8 +1234,6 @@
   "assets_import": "Importeren",
   "assets_provider_import_is_not_available_on_this_server_yet_you_can_upload_media": "Providerimport is op deze server nog niet beschikbaar. Je kunt media vanaf dit apparaat uploaden.",
   "assets_connect_in_settings_first": "Verbind eerst in Instellingen",
-  "assets_choose_in": "Kies in",
-  "assets_selection": "-selectie",
   "assets_first_choose_only_the_media_you_want_to_copy_to_this_private_trip": "Kies eerst alleen de media die je naar deze private reis wilt kopiëren.",
   "assets_open_selection": "Selectie openen",
   "assets_import_selection": "Selectie importeren",
@@ -1229,7 +1243,6 @@
   "assets_use_capture_time": "Gebruik opnametijd",
   "assets_choose_a_time_yourself": "Kies zelf een tijd",
   "assets_gps_choice": "GPS-keuze",
-  "assets_location_from": "Locatie uit",
   "assets_no_gps_available_no_place_will_be_suggested": "Geen GPS beschikbaar; er wordt geen plaats voorgesteld.",
   "assets_the_gps_metadata_conflicts_choose_at_most_one_option_nothing_will_be_mer": "De GPS-metagegevens spreken elkaar tegen. Kies hoogstens één optie; er wordt niets samengevoegd.",
   "assets_suggest_area_and_visit": "Gebied en bezoek voorstellen",
@@ -1237,7 +1250,6 @@
   "assets_new_area_possible": "Nieuw gebied mogelijk: {p0} ({p1})",
   "assets_unknown_timezone": "tijdzone onbekend",
   "assets_new_visit_possible": "Nieuw bezoek mogelijk",
-  "assets_this_suggestion_has_not_been_saved": ". Dit voorstel is niet opgeslagen.",
   "assets_open_as_a_new_travel_update": "Als nieuwe reisupdate openen",
   "assets_link_to": "Koppel aan",
   "assets_choose_existing_travel_update": "Kies bestaande reisupdate",
@@ -1279,12 +1291,9 @@
   "assets_no_title": "geen titel",
   "assets_no_summary": "geen samenvatting",
   "assets_no_travel_dates": "geen reisdatums",
-  "assets_of": "van",
-  "assets_selected": "gekozen",
   "assets_select_all": "Alles kiezen",
   "assets_select_none": "Niets kiezen",
   "assets_currently_private_selecting_includes_this_for_this_audience": "· nu privé; aanvinken kiest dit voor dit publiek",
-  "assets_for_everyone_always_appears_here": "voor iedereen verschijnt hier altijd;",
   "assets_choose_what_visitors_can_see_everything_you_do_not_select_stays_private": "Kies wat bezoekers mogen zien. Alles wat je niet kiest blijft privé.",
   "assets_trip_title": "Reistitel",
   "assets_how_precise_can_the_travel_dates_be": "Hoe precies mogen de reisdatums zijn?",
@@ -1305,7 +1314,6 @@
   "assets_what_each_active_or_draft_audience_currently_receives_and_what_you_shoul": "Wat elk actief of ontworpen publiek nu krijgt, en wat je best nakijkt.",
   "assets_for_everyone": "Voor iedereen",
   "assets_not_shared": "niet gedeeld",
-  "assets_media": "media",
   "assets_nothing_to_review": "Niets om na te kijken.",
   "assets_there_are_no_items_to_share_yet_create_a_travel_update_area_or_visit_for": "Er zijn nog geen onderdelen die je kunt delen. Maak bijvoorbeeld een reisupdate, gebied of bezoek.",
   "assets_the_public_scope_could_not_be_saved": "De publieke scope kon niet worden opgeslagen.",
@@ -1326,8 +1334,6 @@
   "assets_preview_of": "Preview van {p0}",
   "assets_the_link_could_not_be_created": "De link kon niet worden aangemaakt.",
   "assets_the_link_is_active_and_can_be_copied_again_later": "De link is actief en kan later opnieuw worden gekopieerd.",
-  "assets_share_link": "Deellink “",
-  "assets_revoke": "” intrekken?",
   "assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h": "Wie de huidige veilige link heeft, kan de verborgen pagina daarna niet meer openen.",
   "assets_revoke_link": "Link intrekken",
   "assets_share_link_revoked": "Deellink ingetrokken.",
@@ -1366,7 +1372,6 @@
   "assets_hidden_share_links": "Verborgen deellinks",
   "assets_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated": "Elke link heeft een eigen live scope en kan later worden ingetrokken of geroteerd.",
   "assets_new_link": "Nieuwe link",
-  "assets_expires": "· verloopt",
   "assets_previous": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -1444,7 +1449,6 @@
   "assets_no_offline_packing_list_saved_for_this_trip_reconnect_to_save_one": "Geen offline paklijst bewaard voor deze reis. Verbind opnieuw om er een te bewaren.",
   "assets_loading_offline_packing_lists": "Offline paklijsten laden…",
   "assets_loading_packing_lists": "Paklijsten laden…",
-  "assets_only_for_you": "Alleen voor jou ·",
   "assets_add_bag": "Tas toevoegen",
   "assets_add_item": "Item toevoegen",
   "assets_reuse_list": "Lijst hergebruiken",
@@ -1459,21 +1463,14 @@
   "assets_overall_packing_progress": "Totale inpakvoortgang",
   "assets_you_might_want_to_bring": "Misschien nog meenemen",
   "assets_loading_suggestions": "Suggesties laden…",
-  "assets_on": "· op",
   "assets_usually_in_cabin_baggage": " · meestal in handbagage",
   "assets_usually_essential": " · meestal essentieel",
   "assets_dismiss": "Negeren",
   "assets_no_recurring_items_to_suggest_yet": "Nog geen terugkerende items om voor te stellen.",
   "assets_departure_check": "Vertrekcheck",
-  "assets_known": "bekend",
   "assets_limit": " / {p0} limiet",
   "assets_weight_incomplete": " · gewicht niet volledig",
   "assets_ready_to_leave": "Klaar om te vertrekken",
-  "assets_essential_still_to_pack": "Essentieel, nog in te pakken:",
-  "assets_on_departure_day": "Op de vertrekdag:",
-  "assets_still_without_a_bag": "Nog zonder tas:",
-  "assets_known_weight_above_the_set_limit": "Bekend gewicht boven ingestelde limiet:",
-  "assets_check_your_own_baggage_choice": "Controleer je eigen bagagekeuze:",
   "assets_baggage_flags_are_your_own_notes_not_official_travel_rules": "Bagagevlaggen zijn je eigen notities, geen officiële reisregels.",
   "assets_progress_per_bag": "Voortgang per tas",
   "assets_packing_progress": "Inpakvoortgang {p0}",
@@ -1499,13 +1496,11 @@
   "assets_quick_add": "Snel toevoegen",
   "assets_edit_bag": "Tas bewerken",
   "assets_no_items_here": "Geen items hier.",
-  "assets_select": "Selecteer",
   "assets_per_item": "{p0} per stuk",
   "assets_essential": "Essentieel",
   "assets_valuable": "Waardevol",
   "assets_cabin_baggage_only": "Alleen handbagage",
   "assets_checked_baggage_only": "Alleen ruimbagage",
-  "assets_try_again": "Opnieuw proberen:",
   "assets_edit": "{p0} bewerken",
   "assets_edit_item": "Item bewerken",
   "assets_item_saved": "Item opgeslagen.",
@@ -1547,7 +1542,6 @@
   "assets_the_offline_packing_list_could_not_be_opened": "De offline paklijst kon niet worden geopend.",
   "assets_opening_offline_packing_list": "Offline paklijst openen…",
   "assets_offline_packing_list_2": "Offline paklijst {p0}",
-  "assets_offline_copy_saved_on": "Offline kopie · bewaard op",
   "assets_view_only_checking_off_moving_and_editing_require_a_connection": "Alleen bekijken. Voor afvinken, verplaatsen en bewerken is een verbinding nodig.",
   "assets_packed_3": "{p0} ingepakt",
   "assets_library_document": "Bibliotheekdocument",
@@ -1570,7 +1564,6 @@
   "assets_your_browser_cannot_store_the_offline_key_as_nonexportable_copies_use_be": "Je browser kan de offline sleutel niet als niet-exporteerbaar bewaren; kopieën zijn best-effort versleuteld op dit toestel.",
   "assets_your_browser_has_not_granted_persistent_storage_for_these_offline_copies": "Je browser heeft geen persistente opslag toegekend voor deze offline kopieën; ze kunnen automatisch worden opgeruimd bij weinig opslagruimte op dit toestel.",
   "assets_enable_save_offline_on_a_document_emergency_information_media_item_map_v": "Zet “Offline bewaren” aan bij een document, noodinformatie, medium, kaart, bezoek of paklijst om het hier te laten verschijnen.",
-  "assets_last_checked": "· laatst gecontroleerd",
   "assets_the_offline_copy_could_not_be_checked": "De offline kopie kon niet worden gecontroleerd.",
   "assets_sign_in_to_save_something_offline": "Meld aan om iets offline te bewaren.",
   "assets_sign_in_to_open_an_offline_copy": "Meld aan om een offline kopie te openen.",
@@ -1814,7 +1807,6 @@
       }
     }
   ],
-  "visitor_update_media": "Media bij deze update",
   "visitor_view_route": "Route bekijken",
   "visitor_view_location": "Locatie bekijken",
   "visitor_visit": "Bezoek",
@@ -1956,7 +1948,6 @@
   "owner_possible_duplicates_help": "Dit zijn alleen suggesties. Er wordt niets samengevoegd voordat je het voorbeeld hebt gezien en bevestigt.",
   "owner_review_merge": "Samenvoegen bekijken",
   "owner_review_merge_of": "Samenvoegen bekijken: {p0}",
-  "owner_stay_alternatives": "Alternatieven · {dates}",
   "owner_stay_ideas_overlap_these_nights": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -1982,7 +1973,6 @@
   "api_a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it": "Een idee voor een verblijf is slechts een kandidaat: zet het op gepland voordat je het deelt.",
   "owner_a_cancelled_visit_is_never_shared": "Een geannuleerd bezoek wordt nooit gedeeld.",
   "api_a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared": "Een geannuleerd bezoek staat niet meer gepland en kan niet worden gedeeld.",
-  "owner_route_alternatives": "Alternatieven · {journey}",
   "owner_route_ideas_for_this_journey": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -2087,7 +2077,7 @@
   "owner_visitor_change_after": "Na: {p0}",
   "owner_visitor_change_empty": "(leeg)",
   "owner_visitor_change_seen_by": "Gelezen door: {p0}",
-  "owner_visitor_change_carried": "Gaat mee met de locatie: {p0} bezoeken, {p1} routes, {p2} verblijven.",
+  "owner_visitor_change_carried": "Gaat mee met de locatie. Bezoeken: {visits}, routes: {routes}, verblijven: {stays}.",
   "owner_visitor_change_preview": "Bezoekers die deze locatie ontvangen lezen deze wijzigingen nadat je het opslaan bevestigt:",
   "owner_visitor_change_preview_item": "{p0} (gelezen door {p1})",
   "owner_visitor_change_area_preview": "Als je deze locatie naar een ander gebied verplaatst, gaan ook de bezoeken en routeuiteinden mee. Als bezoekers die ontvangen, wordt eerst om bevestiging gevraagd.",
@@ -2286,7 +2276,6 @@
   "sharing_preview": "Voorbeeld",
   "sharing_save_scope": "Bereik opslaan",
   "sharing_scope_saved": "Bereik opgeslagen. Het geldt direct voor bezoekers van een actieve verzameling.",
-  "sharing_preview_member": "Voorbeeld van {trip}",
   "sharing_collection_saved": "Verzameling opgeslagen.",
   "sharing_collection_created": "Verzameling gemaakt als concept. Voeg reizen toe en activeer hem dan.",
   "sharing_collection_revoked": "Verzamellink ingetrokken.",
@@ -2297,8 +2286,26 @@
   "sharing_draft_hint": "Voeg eerst de reizen toe, bekijk elk voorbeeld en activeer dan.",
   "map_points_count": "Punten op de kaart ({count})",
   "map_lines_count": "Route in woorden ({count})",
-  "readiness_overdue": "{count} achterstallige taken",
-  "readiness_departure": "Nog {count} dagen tot vertrek",
+  "readiness_overdue": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} achterstallige taak",
+        "countPlural=other": "{count} achterstallige taken"
+      }
+    }
+  ],
+  "readiness_departure": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Nog {count} dag tot vertrek",
+        "countPlural=other": "Nog {count} dagen tot vertrek"
+      }
+    }
+  ],
   "readiness_underway": "Dag {day} van {total}",
   "readiness_day": "Dag {day}",
   "readiness_finished": "Afgelopen",
@@ -2364,7 +2371,6 @@
   "precision_follow_confirm": "Het publiek volgen",
   "precision_follow_done": "Onderdelen die nu de precisie van het publiek volgen: {count}.",
   "precision_follow_failed": "De datumprecisie kon niet worden gewijzigd.",
-  "precision_follow_preview_failed": "Het effect op je publiek kon niet worden gecontroleerd.",
   "audit_precision_follow": "Bezoeken en verblijven volgen nu de datumprecisie van elk publiek.",
   "audit_precision_follow_audiences": "Preciezere datums voor bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}.",
   "precision_follow_acknowledge": "Ik begrijp dat deze bezoekers preciezere datums zien",
@@ -2712,7 +2718,16 @@
   "live_next": "Volgende punten",
   "live_delete_warning": "Dit verwijdert deze tracks definitief uit de actieve database en wist de huidige locatie. Het intrekken van een bron stopt ook nieuwe gegevens. Back-ups en gedownloade kopieën kunnen verwijderde gegevens nog bevatten.",
   "live_delay_label": "Vertraging voor {audience}",
-  "live_delay_value": "Bewuste vertraging: {minutes} minuten",
+  "live_delay_value": [
+    {
+      "declarations": ["input count", "input minutes", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Bewuste vertraging: {minutes} minuut",
+        "countPlural=other": "Bewuste vertraging: {minutes} minuten"
+      }
+    }
+  ],
   "live_hidden": "Verborgen link",
   "live_waiting": "Er kan geen punt worden gedeeld. Wachten op een geschikte waarneming binnen de vertraging en versheidsgrenzen; gestopte bronnen blijven verborgen."
 }
