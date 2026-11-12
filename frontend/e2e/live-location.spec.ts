@@ -117,6 +117,14 @@ for (const locale of locales)
       await expect(
         page.getByRole("region", { name: message(locale, "live_current") }),
       ).toContainText(plural(locale, "live_delay_value", 30).split("{minutes}")[0]);
+      // The observation was a day ago: shown relative, zone-free, with the absolute instant as a machine-readable value.
+      const observed = page
+        .getByRole("region", { name: message(locale, "live_current") })
+        .locator("time");
+      await expect(observed).toHaveText(
+        new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-1, "day"),
+      );
+      await expect(observed).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
       expect(
         (
           await new AxeBuilder({ page })

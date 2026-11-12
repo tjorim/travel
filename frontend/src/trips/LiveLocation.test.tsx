@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
+import { formatInstant } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { LiveLocation } from "./LiveLocation";
 import { SharingReview } from "./publication/SharingReview";
@@ -135,6 +136,40 @@ it("shows deletion failure inside the confirmation dialog", async () => {
   fireEvent.click(await screen.findByRole("button", { name: m.live_delete_tracks() }));
   fireEvent.click(screen.getByRole("button", { name: m.owner_delete() }));
   await waitFor(() => expect(screen.getByRole("alertdialog")).toHaveTextContent(m.live_failed()));
+});
+
+it("shows the owner's absolute observation time with its zone", async () => {
+  const observedAt = "2026-11-09T12:00:00Z";
+  server.use(
+    http.get("*/api/trips/trip-one/live-location", () =>
+      HttpResponse.json([
+        {
+          id: "source-one",
+          source: "person.synthetic",
+          enabled: true,
+          audiences: {},
+          current: { id: "p1", latitude: 12.35, longitude: 45.68, observed_at: observedAt },
+          stale: false,
+        },
+      ]),
+    ),
+    http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
+    http.get("*/api/trips/trip-one/live-location/source-one/tracks", () =>
+      HttpResponse.json({
+        points: [{ id: "p1", latitude: 12.35, longitude: 45.68, observed_at: observedAt }],
+        next: null,
+      }),
+    ),
+  );
+  renderRoutesWithOwner(createRootRoute({ component: () => <LiveLocation tripId="trip-one" /> }), [
+    "/",
+  ]);
+  fireEvent.click(await screen.findByRole("button", { name: m.live_title() }));
+  const absolute = formatInstant(new Date(observedAt));
+  expect(absolute).toMatch(/(UTC|GMT|[A-Z]{3,5}|[+-]\d)$/);
+  expect(await screen.findByText(new RegExp(absolute))).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: m.live_inspect() }));
+  await waitFor(() => expect(screen.getAllByText(new RegExp(absolute))).toHaveLength(2));
 });
 
 it("keeps stop controls usable without the sharing overview", async () => {
