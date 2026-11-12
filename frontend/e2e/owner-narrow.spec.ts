@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
+import { choosePreferences, mockApi, ownerTrip, signInOwner, summaryOf } from "./mock-api";
 import { message } from "./messages";
 
 for (const locale of ["nl", "en"] as const) {
@@ -10,28 +10,23 @@ for (const locale of ["nl", "en"] as const) {
         await signInOwner(page);
         await choosePreferences(page, locale, theme);
         await page.setViewportSize({ width, height: 844 });
+        const updates = [
+          {
+            id: "update-1",
+            title: "Synthetic moment",
+            occurred_at: "2054-11-01T18:30:00Z",
+            private_notes: "Private synthetic note",
+            visibility: "private",
+            media_asset_ids: [],
+            location: null,
+          },
+        ];
         await page.route("**/api/trips", (route) =>
-          route.fulfill({
-            json: [
-              {
-                ...ownerTrip,
-                travel_updates: [
-                  {
-                    id: "update-1",
-                    title: "Synthetic moment",
-                    occurred_at: "2054-11-01T18:30:00Z",
-                    private_notes: "Private synthetic note",
-                    visibility: "private",
-                    media_asset_ids: [],
-                    location: null,
-                  },
-                ],
-              },
-            ],
-          }),
+          route.fulfill({ json: [summaryOf({ ...ownerTrip, travel_updates: updates })] }),
         );
         let submitted: Record<string, unknown> | null = null;
         await page.route(`**/api/trips/${ownerTrip.id}/travel-updates`, (route) => {
+          if (route.request().method() === "GET") return route.fulfill({ json: updates });
           submitted = route.request().postDataJSON();
           return route.fulfill({ status: 500, json: {} });
         });

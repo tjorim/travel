@@ -169,7 +169,9 @@ beforeEach(() => {
         travel_update_id: null,
       },
     ])
-    .collection("/api/trips/trip/documents", []);
+    .collection("/api/trips/trip/documents", [])
+    // The endpoint answers newest first.
+    .collection("/api/trips/trip/travel-updates", [...trip.travel_updates].reverse());
   server.use(http.get("/api/trips/trip/audit-events", () => HttpResponse.json([])));
   api.on("PUT", /\/visibility\/[^/]+\/[^/]+$/, (body) => body);
   api.on("POST", /\/share-scope\/exclusion-review$/, () => ({

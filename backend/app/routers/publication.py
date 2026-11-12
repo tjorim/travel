@@ -117,7 +117,7 @@ def _apply_scope(
     ``stored`` is the audience's current scope; a new audience passes ``None`` and so starts with the
     conservative default date precision (see ``ShareScopeInput.document``). The public view is the
     baseline every other audience subtracts from, so it cannot exclude records (``public=True``)."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     scope_dict = scope.document(stored)
     try:
         return prepare_scope(trip, scope_dict, stored, allow_exclusions=not public)
@@ -238,7 +238,7 @@ def preview_public_projection(
     response: Response,
     payload: ShareScopeInput | None = None,
 ) -> dict:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     response.headers["Cache-Control"] = "no-store"
@@ -259,7 +259,7 @@ def preview_public_file(
     storage: StorageDep,
     request: Request,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     return _file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS, request)
 
@@ -272,7 +272,7 @@ def review_public_future(
 
     The same scope the preview renders, counted from the same document, so the preview's review and the
     delivered fields cannot disagree. Stores nothing and records no audit event."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     return _future_disclosure(trip, scope)
@@ -287,7 +287,7 @@ def review_link_future(
     payload: ShareScopeInput | None = None,
 ) -> FutureDisclosure:
     """The same review as the public one, for a hidden link's candidate scope. Stores nothing."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     return _future_disclosure(trip, _preview_scope(session, trip_id, subject, payload, link.scope))
 
@@ -307,7 +307,7 @@ def preview_public_candidate_file(
     request: Request,
     payload: ShareScopeInput | None = None,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
@@ -321,7 +321,7 @@ def preview_public_candidate_navigation(
     subject: SubjectDep,
     payload: ShareScopeInput | None = None,
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     return _preview_navigation(trip, scope, local_id)
@@ -331,7 +331,7 @@ def preview_public_candidate_navigation(
 def preview_public_navigation(
     trip_id: Identifier, local_id: SafeText, session: SessionDep, subject: SubjectDep
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     return _preview_navigation(trip, surface.scope if surface else {}, local_id)
 
@@ -519,7 +519,7 @@ def create_share_link(
         target_id=link.id,
         details={"label": link.label, "scope_version": scope_fingerprint(scope)},
     )
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     if payload.preset is not None:
         # In the same transaction, through the same code as the apply route: a new link has received nothing yet.
         apply_preset(
@@ -539,7 +539,7 @@ def list_audit_events(trip_id: Identifier, session: SessionDep, subject: Subject
 
 @router.get("/share-links", response_model=list[ShareLinkResponse])
 def list_share_links(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[ShareLinkResponse]:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     links = list(
         session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id).order_by(ShareLink.created_at.desc()))
     )
@@ -552,7 +552,7 @@ def get_share_link(
     trip_id: Identifier, link_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> ShareLinkResponse:
     link = owned_link(session, trip_id, subject, link_id)
-    return link_response(link, owned_trip(session, trip_id, subject))
+    return link_response(link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
 @router.patch("/share-links/{link_id}", response_model=ShareLinkResponse)
@@ -571,7 +571,7 @@ def update_share_link(
             detail="A revoked or expired link cannot be edited",
             code="a_revoked_or_expired_link_cannot_be_edited",
         )
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     new_scope = (
         _apply_scope(session, trip_id, subject, payload.scope, link.scope) if payload.scope is not None else None
     )
@@ -612,7 +612,7 @@ def review_exclusions(
     routes and updates that use it; an excluded update hides its photos), and how many stored entries are
     stale. ``items`` is the audience's own custom selection, so the counts are what its visitors would lose.
     Stores nothing and records no audit event."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     scope = {
         "items": [item.model_dump(mode="json") for item in payload.items],
         "exclude": [item.model_dump(mode="json") for item in payload.exclude],
@@ -629,7 +629,7 @@ def preview_share_link(
     response: Response,
     payload: ShareScopeInput | None = None,
 ) -> dict:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     scope = _preview_scope(session, trip_id, subject, payload, link.scope)
     response.headers["Cache-Control"] = "no-store"
@@ -651,7 +651,7 @@ def preview_share_file(
     storage: StorageDep,
     request: Request,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
 
@@ -667,7 +667,7 @@ def preview_share_candidate_file(
     request: Request,
     payload: ShareScopeInput | None = None,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     scope = _preview_scope(session, trip_id, subject, payload, link.scope)
     return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
@@ -682,7 +682,7 @@ def preview_share_candidate_navigation(
     subject: SubjectDep,
     payload: ShareScopeInput | None = None,
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     scope = _preview_scope(session, trip_id, subject, payload, link.scope)
     return _preview_navigation(trip, scope, local_id)
@@ -692,7 +692,7 @@ def preview_share_candidate_navigation(
 def preview_share_navigation(
     trip_id: Identifier, link_id: Identifier, local_id: SafeText, session: SessionDep, subject: SubjectDep
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     return _preview_navigation(trip, link.scope, local_id)
 
@@ -752,7 +752,7 @@ def activate_share_link(
         details=details,
     )
     session.commit()
-    return activation_response(link, owned_trip(session, trip_id, subject))
+    return activation_response(link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
 @router.post("/share-links/{link_id}/revoke", response_model=ShareLinkResponse)
@@ -786,7 +786,7 @@ def revoke_share_link(
         details=details,
     )
     session.commit()
-    return link_response(link, owned_trip(session, trip_id, subject))
+    return link_response(link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
 @router.post("/share-links/{link_id}/rotate", response_model=ShareLinkActivateResponse)
@@ -838,7 +838,7 @@ def rotate_share_link(
         details=details,
     )
     session.commit()
-    return activation_response(new_link, owned_trip(session, trip_id, subject))
+    return activation_response(new_link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
 _PATH_PATTERNS = {
@@ -1125,7 +1125,7 @@ def manage_feed(
         details={},
     )
     session.commit()
-    return link_response(link, owned_trip(session, trip_id, subject))
+    return link_response(link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
 @delivery_router.get("/public/trips/{slug}/feed.atom", dependencies=[Depends(public_delivery_limit)])

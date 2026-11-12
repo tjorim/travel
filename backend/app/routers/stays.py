@@ -11,7 +11,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..document.service import trip_documents
 from ..errors import ApiException
-from ..models import Location, PlanningStatus, Stay, StayDocumentAsset, Trip, Visibility
+from ..models import STAY_ORDER, Location, PlanningStatus, Stay, StayDocumentAsset, Trip, Visibility
 from ..schemas import Identifier, StayCreate, StayResponse, StayUpdate
 from .placement import selected_area, stay_place
 from .trips import owned_trip
@@ -30,8 +30,8 @@ def _stay_query():
     )
 
 
-def owned_stay(trip: Trip, stay_id: Identifier) -> Stay:
-    stay = next((item for item in trip.stays if item.id == stay_id), None)
+def owned_stay(session: Session, trip: Trip, stay_id: Identifier) -> Stay:
+    stay = session.scalar(_stay_query().where(Stay.id == stay_id, Stay.trip_id == trip.id))
     if stay is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay not found", code="not_found")
     return stay
@@ -55,7 +55,8 @@ def validate_stay_nights(check_in_date: date, check_out_date: date) -> None:
 
 @router.get("/stays", response_model=list[StayResponse])
 def list_stays(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Stay]:
-    return list(owned_trip(session, trip_id, subject).stays)
+    trip = owned_trip(session, trip_id, subject)
+    return list(session.scalars(_stay_query().where(Stay.trip_id == trip.id).order_by(*STAY_ORDER)))
 
 
 @router.post("/stays", response_model=StayResponse, status_code=status.HTTP_201_CREATED)
@@ -64,7 +65,7 @@ def create_stay(trip_id: Identifier, payload: StayCreate, session: SessionDep, s
     validate_stay_nights(payload.check_in_date, payload.check_out_date)
     area, location = stay_place(session, trip.id, payload.area_id, payload.location)
     stay = Stay(
-        trip=trip,
+        trip_id=trip.id,
         area=area,
         location=location,
         document_links=document_links_from_ids(session, trip.id, payload.document_asset_ids),
@@ -78,7 +79,7 @@ def create_stay(trip_id: Identifier, payload: StayCreate, session: SessionDep, s
 
 @router.get("/stays/{stay_id}", response_model=StayResponse)
 def get_stay(trip_id: Identifier, stay_id: Identifier, session: SessionDep, subject: SubjectDep) -> Stay:
-    return owned_stay(owned_trip(session, trip_id, subject), stay_id)
+    return owned_stay(session, owned_trip(session, trip_id, subject), stay_id)
 
 
 def _update_place(session: Session, trip: Trip, stay: Stay, payload: StayUpdate) -> None:
@@ -113,7 +114,7 @@ def update_stay(
     trip_id: Identifier, stay_id: Identifier, payload: StayUpdate, session: SessionDep, subject: SubjectDep
 ) -> Stay:
     trip = owned_trip(session, trip_id, subject)
-    stay = owned_stay(trip, stay_id)
+    stay = owned_stay(session, trip, stay_id)
     _update_place(session, trip, stay, payload)
     if "document_asset_ids" in payload.model_fields_set:
         stay.document_links = document_links_from_ids(session, trip.id, payload.document_asset_ids or [])
@@ -142,6 +143,6 @@ def update_stay(
 
 @router.delete("/stays/{stay_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_stay(trip_id: Identifier, stay_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
-    session.delete(owned_stay(owned_trip(session, trip_id, subject), stay_id))
+    session.delete(owned_stay(session, owned_trip(session, trip_id, subject), stay_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

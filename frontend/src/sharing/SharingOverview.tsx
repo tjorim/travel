@@ -19,7 +19,7 @@ import {
   useOwnerMutation,
   useTripsQuery,
 } from "../query/owner-queries";
-import type { ShareLink, Trip } from "../tracker-model";
+import type { ShareLink, TripSummary } from "../tracker-model";
 import { sectionPath } from "../trips/workspace-sections";
 import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "../trips/publication/catalog";
 import { RevealedLinkDialog } from "../trips/publication/RevealedLinkDialog";
@@ -82,7 +82,7 @@ export function SharingOverview() {
   const owner = useOwner();
   const confirmation = useConfirmation();
   const tripsQuery = useTripsQuery();
-  const trips = useMemo<Trip[]>(() => tripsQuery.data ?? [], [tripsQuery.data]);
+  const trips = useMemo<TripSummary[]>(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const collectionsQuery = useCollections();
   const collectionMutations = useCollectionMutations();
   const surfaces = useQueries({
@@ -189,7 +189,7 @@ export function SharingOverview() {
     setNotice(textNotice(() => m.sharing_link_copied()));
   }
 
-  function revokeLink(trip: Trip, link: ShareLink) {
+  function revokeLink(trip: TripSummary, link: ShareLink) {
     confirmation.ask({
       title: () => m.assets_revoke_named_link({ name: link.label }),
       description: () =>
@@ -203,7 +203,7 @@ export function SharingOverview() {
     });
   }
 
-  function rotateLink(trip: Trip, link: ShareLink) {
+  function rotateLink(trip: TripSummary, link: ShareLink) {
     confirmation.ask({
       title: () => m.sharing_rotate_title({ name: link.label }),
       description: () => m.sharing_rotate_description(),

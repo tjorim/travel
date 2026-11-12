@@ -587,6 +587,7 @@
   "owner_stops_on_your_trip_an_area_or_location_and_when_you_are_there_share_them": "De stops van je reis: een gebied of een locatie, en wanneer je er bent. Deel ze om bezoekers te laten volgen waar je heen gaat.",
   "owner_new_visit": "Nieuw bezoek",
   "owner_your_visits_could_not_be_loaded": "Je bezoeken konden niet worden geladen.",
+  "owner_your_travel_updates_could_not_be_loaded": "Je reisupdates konden niet worden geladen.",
   "owner_loading_your_visits": "Laad je bezoeken…",
   "owner_view_visit": "Bezoek {p0} bekijken",
   "owner_show_on_map": "Toon op kaart: {p0}",

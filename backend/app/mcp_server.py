@@ -525,14 +525,14 @@ class TravelMcpBackend:
 
     # Trips and travel updates ------------------------
     def list_trips(self) -> list[dict[str, Any]]:
-        """List the caller's private trips and their owner-only editing context."""
+        """List the caller's private trips (newest first, at most 100) as summaries: title, dates and cover, without travel updates. get_trip returns one trip with its travel updates."""
         return self._call(
             "trip.list",
             "trip",
             None,
             None,
             lambda s, sub: trips.list_trips(s, sub),
-            lambda x: _models(x, schemas.TripResponse),
+            lambda x: _models(x, schemas.TripSummaryResponse),
         )
 
     def create_trip(self, payload: schemas.TripCreate) -> dict[str, Any]:

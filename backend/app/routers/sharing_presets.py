@@ -81,7 +81,7 @@ def _owned_member_of_collection(
 
 
 def preset_catalog_response(trip_id: Identifier, session: Session, subject: str) -> SharingPresetCatalog:
-    owned_trip(session, trip_id, subject, load_relations=False)
+    owned_trip(session, trip_id, subject)
     return SharingPresetCatalog(
         schema_version=PRESET_SCHEMA_VERSION,
         presets=[
@@ -105,7 +105,7 @@ def resolve_audience(session: Session, trip_id: Identifier, audience_id: str, su
 
     A draft link or collection and an unpublished page can be edited (they deliver nothing yet); a revoked or expired
     one cannot. Another owner's audience is a 404. ``None`` only for a public view that was never saved."""
-    owned_trip(session, trip_id, subject, load_relations=False)
+    owned_trip(session, trip_id, subject)
     kind, _, identifier = audience_id.partition(":")
     if audience_id == "public":
         return session.get(PublicSurface, trip_id)
@@ -146,7 +146,7 @@ def review_sharing_preset(
 
     Reads only: this never creates the public view, and a view that was never saved is reviewed as the default scope
     (dates by month) that a new one would hold."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     holder = resolve_audience(session, trip_id, audience_id, subject)
     audience = (
         audience_of(holder)
@@ -170,7 +170,7 @@ def apply_sharing_preset(
 
     The audience's revision is claimed from ``If-Match`` (412 ``scope_revision_conflict`` when stale; absent stays an
     unconditional write that still advances the revision, like every other scope write)."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     holder = resolve_audience(session, trip_id, audience_id, subject)
     if holder is None:
         holder = _get_or_create_surface(session, trip_id)

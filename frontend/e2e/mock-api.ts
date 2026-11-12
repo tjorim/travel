@@ -10,6 +10,16 @@ export const ownerTrip = {
   travel_updates: [],
 };
 
+/** The trip as the owner's list returns it: no embedded records, only how many updates it has. */
+export const summaryOf = ({
+  travel_updates,
+  ...fields
+}: { travel_updates: unknown[] } & Record<string, unknown>) => ({
+  ...fields,
+  travel_update_count: travel_updates.length,
+  last_update_at: null,
+});
+
 const publicTrip = {
   schema_version: "travel/public-trip@1",
   title: "Exampleland 2054",
@@ -122,7 +132,10 @@ export async function mockApi(page: Page): Promise<MockApiRecord> {
       return route.fulfill({ status: 200, contentType: "image/png", body: pixel });
     if (path === `/api/trips/${ownerTrip.id}/media`) return json(route, media());
     if (path === "/api/trips")
-      return json(route, [{ ...ownerTrip, travel_updates: record.updates.map(saved) }]);
+      return json(route, [summaryOf({ ...ownerTrip, travel_updates: record.updates.map(saved) })]);
+    // The endpoint answers newest first.
+    if (path === `/api/trips/${ownerTrip.id}/travel-updates`)
+      return json(route, record.updates.map(saved).reverse());
     if (path === `/api/trips/${ownerTrip.id}/public-projection`) {
       return json(route, {
         revision: 1,

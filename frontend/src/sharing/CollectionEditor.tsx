@@ -10,7 +10,7 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { RecordDialog } from "../RecordDialog";
-import type { Trip } from "../tracker-model";
+import type { TripSummary } from "../tracker-model";
 import { emptyScope } from "../trips/publication/catalog";
 import { LinkLifecycle } from "../trips/publication/LinkLifecycle";
 import { RevealedLinkDialog } from "../trips/publication/RevealedLinkDialog";
@@ -33,7 +33,7 @@ export function CollectionEditor({
 }: {
   /** `null` while a new collection is being created. */
   collectionId: string | null;
-  trips: Trip[];
+  trips: TripSummary[];
   onClose: () => void;
 }) {
   useLocale();

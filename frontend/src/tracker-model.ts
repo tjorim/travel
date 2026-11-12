@@ -152,7 +152,7 @@ export type TravelUpdate = {
   visibility: Visibility;
 };
 
-export type Trip = {
+type TripFields = {
   id: string;
   title: string;
   summary: string | null;
@@ -163,8 +163,17 @@ export type Trip = {
   cover_derivative_id?: string | null;
   /** The authenticated file route of that copy for the owner's own screens; visitors never receive it. */
   cover_url?: string | null;
-  travel_updates: TravelUpdate[];
 };
+
+/** A trip as the owner's list returns it: no embedded records, only how many updates it has and when the last one was. */
+export type TripSummary = TripFields & {
+  travel_update_count: number;
+  /** The newest `occurred_at` among the trip's updates, or null when it has none. */
+  last_update_at: string | null;
+};
+
+/** A trip with its travel updates, oldest first: the summary of the list joined with `/trips/{id}/travel-updates`. */
+export type Trip = TripFields & { travel_updates: TravelUpdate[] };
 
 export type UpdateDraft = {
   /** In-memory write fence; never sent or persisted with the payload. */

@@ -81,8 +81,12 @@ function signedIn() {
     {
       id: "t1",
       title: "Exampleland",
-      travel_updates: [{ id: "u1", title: "Aankomst in Taipei", occurred_at: "2054-11-16" }],
+      travel_update_count: 1,
+      last_update_at: "2054-11-16",
     },
+  ]);
+  api.collection("/api/trips/t1/travel-updates", [
+    { id: "u1", title: "Aankomst in Taipei", occurred_at: "2054-11-16" },
   ]);
   api.collection("/api/trips/t1/areas", [area]);
   api.collection("/api/trips/t1/locations", []);

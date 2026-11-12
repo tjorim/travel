@@ -1270,7 +1270,7 @@ class RouteResponse(BaseModel):
         return value if value is None or value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
-class TripResponse(BaseModel):
+class TripBase(BaseModel):
     id: str
     owner_subject: str
     title: str
@@ -1282,13 +1282,25 @@ class TripResponse(BaseModel):
         default=None,
         description="The owner-only file route of the chosen cover copy, or null; it is not what a visitor receives.",
     )
-    travel_updates: list[TravelUpdateResponse]
     model_config = ConfigDict(from_attributes=True)
 
     @computed_field(description=_html_of("summary"))
     @property
     def summary_html(self) -> str | None:
         return _html(self.summary)
+
+
+class TripSummaryResponse(TripBase):
+    """A trip without any embedded record: what the owner's trip list needs, whatever the trip holds."""
+
+    travel_update_count: int = Field(description="How many travel updates the trip has; read them from its own list.")
+    last_update_at: datetime | None = Field(description="The newest ``occurred_at`` among the trip's updates, or null.")
+
+
+class TripResponse(TripBase):
+    """One trip with its travel updates; the other record kinds have their own list endpoints."""
+
+    travel_updates: list[TravelUpdateResponse]
 
 
 class OverviewRecordPrecision(BaseModel):

@@ -50,7 +50,7 @@ def follow_audience_precision(
     record's own value did, a live audience starts to read finer dates: the preview counts those
     records per audience, and a confirmed change is refused with 409 until ``confirm_widening``
     accepts them. Following an audience that sets nothing reads by month, so it can also narrow."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     selected = _own_records(trip, payload.kinds)
     live = live_audiences(session, trip.id)
     audiences: list[FollowAudienceAudience] = []

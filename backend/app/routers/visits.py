@@ -3,14 +3,14 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, service_exception
-from ..models import Location, PlanningStatus, Trip, Visibility, Visit
+from ..models import VISIT_ORDER, Location, PlanningStatus, Trip, Visibility, Visit
 from ..route_overlap import overlapping_routes, route_title
 from ..schemas import (
     Identifier,
@@ -22,6 +22,7 @@ from ..schemas import (
     require_visit_times,
 )
 from .placement import resolve_place, selected_area
+from .routes import trip_routes
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["visits"])
@@ -34,18 +35,25 @@ def _visit_query():
     return select(Visit).options(selectinload(Visit.area), selectinload(Visit.location).selectinload(Location.area))
 
 
-def owned_visit(trip: Trip, visit_id: Identifier) -> Visit:
-    visit = next((item for item in trip.visits if item.id == visit_id), None)
+def trip_visits(session: Session, trip: Trip, *, with_places: bool = False) -> list[Visit]:
+    statement = _visit_query() if with_places else select(Visit)
+    return list(session.scalars(statement.where(Visit.trip_id == trip.id).order_by(*VISIT_ORDER)))
+
+
+def owned_visit(session: Session, trip: Trip, visit_id: Identifier) -> Visit:
+    visit = session.scalar(select(Visit).where(Visit.id == visit_id, Visit.trip_id == trip.id))
     if visit is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found", code="not_found")
     return visit
 
 
-def flag_route_overlaps(trip: Trip, *visits: Visit) -> None:
+def flag_route_overlaps(session: Session, trip: Trip, *visits: Visit) -> None:
     """Note, for the response only, which routes each visit probably restates."""
+    # An undated visit restates no route, so the routes are read only when some visit has a date.
+    routes = trip_routes(session, trip) if any(visit.starts_on for visit in visits) else []
     for visit in visits:
         visit.possible_route_duplicates = [  # ty: ignore[unresolved-attribute]
-            {"id": route.id, "title": route_title(route)} for route in overlapping_routes(visit, trip.routes)
+            {"id": route.id, "title": route_title(route)} for route in overlapping_routes(visit, routes)
         ]
 
 
@@ -72,7 +80,7 @@ def _renumber(session: Session, ordered: list[Visit]) -> None:
 
 def _move(session: Session, trip: Trip, visit: Visit, position: int) -> None:
     """Put a visit at ``position`` and compact the rest."""
-    ordered = sorted((item for item in trip.visits if item is not visit), key=lambda item: item.position)
+    ordered = [item for item in trip_visits(session, trip) if item is not visit]
     ordered.insert(min(position, len(ordered)), visit)
     _renumber(session, ordered)
 
@@ -80,17 +88,18 @@ def _move(session: Session, trip: Trip, visit: Visit, position: int) -> None:
 @router.get("/visits", response_model=list[VisitResponse])
 def list_visits(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Visit]:
     trip = owned_trip(session, trip_id, subject)
-    flag_route_overlaps(trip, *trip.visits)
-    return list(trip.visits)
+    visits = trip_visits(session, trip, with_places=True)
+    flag_route_overlaps(session, trip, *visits)
+    return visits
 
 
 @router.post("/visits", response_model=VisitResponse, status_code=status.HTTP_201_CREATED)
 def create_visit(trip_id: Identifier, payload: VisitCreate, session: SessionDep, subject: SubjectDep) -> Visit:
     trip = owned_trip(session, trip_id, subject)
     area, location = resolve_place(session, trip.id, payload.area_id, payload.location)
-    end = len(trip.visits)
+    end = session.scalar(select(func.count()).select_from(Visit).where(Visit.trip_id == trip.id)) or 0
     visit = Visit(
-        trip=trip,
+        trip_id=trip.id,
         area=area,
         location=location,
         position=end,
@@ -102,7 +111,7 @@ def create_visit(trip_id: Identifier, payload: VisitCreate, session: SessionDep,
         _move(session, trip, visit, payload.position)
     commit_or_conflict(session)
     saved = session.scalar(_visit_query().where(Visit.id == visit.id))
-    flag_route_overlaps(trip, saved)  # type: ignore[arg-type]
+    flag_route_overlaps(session, trip, saved)  # type: ignore[arg-type]
     return saved  # type: ignore[return-value]
 
 
@@ -132,14 +141,16 @@ def check_visit_against_routes(
         starts_on=payload.starts_on,
         ends_on=payload.ends_on,
     )
-    return [{"id": route.id, "title": route_title(route)} for route in overlapping_routes(draft, trip.routes)]
+    return [
+        {"id": route.id, "title": route_title(route)} for route in overlapping_routes(draft, trip_routes(session, trip))
+    ]
 
 
 @router.get("/visits/{visit_id}", response_model=VisitResponse)
 def get_visit(trip_id: Identifier, visit_id: Identifier, session: SessionDep, subject: SubjectDep) -> Visit:
     trip = owned_trip(session, trip_id, subject)
-    visit = owned_visit(trip, visit_id)
-    flag_route_overlaps(trip, visit)
+    visit = owned_visit(session, trip, visit_id)
+    flag_route_overlaps(session, trip, visit)
     return visit
 
 
@@ -171,7 +182,7 @@ def update_visit(
     trip_id: Identifier, visit_id: Identifier, payload: VisitUpdate, session: SessionDep, subject: SubjectDep
 ) -> Visit:
     trip = owned_trip(session, trip_id, subject)
-    visit = owned_visit(trip, visit_id)
+    visit = owned_visit(session, trip, visit_id)
     _update_place(session, trip, visit, payload)
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "position"})
     for required in ("status", "share_time"):
@@ -200,17 +211,17 @@ def update_visit(
         _move(session, trip, visit, payload.position)
     commit_or_conflict(session)
     saved = session.scalar(_visit_query().where(Visit.id == visit.id))
-    flag_route_overlaps(trip, saved)  # type: ignore[arg-type]
+    flag_route_overlaps(session, trip, saved)  # type: ignore[arg-type]
     return saved  # type: ignore[return-value]
 
 
 @router.delete("/visits/{visit_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_visit(trip_id: Identifier, visit_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     trip = owned_trip(session, trip_id, subject)
-    visit = owned_visit(trip, visit_id)
+    visit = owned_visit(session, trip, visit_id)
     session.delete(visit)
     session.flush()
     # Compact positions after a removal so the next add can use the end of the list.
-    _renumber(session, sorted((item for item in trip.visits if item is not visit), key=lambda item: item.position))
+    _renumber(session, trip_visits(session, trip))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

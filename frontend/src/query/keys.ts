@@ -9,6 +9,9 @@ const scope = (subject: string) => ["owner", subject] as const;
 export const ownerKeys = {
   all: scope,
   trips: (subject: string) => [...scope(subject), "trips"] as const,
+  /** A trip's travel updates. Nested under the trip list, so every write that refreshes the list refreshes them. */
+  tripUpdates: (subject: string, tripId: string) =>
+    [...scope(subject), "trips", "updates", tripId] as const,
   trip: (subject: string, tripId: string) => [...scope(subject), "trip", tripId] as const,
   tripResource: (subject: string, tripId: string, resource: TripResource) =>
     [...scope(subject), "trip", tripId, resource] as const,

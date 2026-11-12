@@ -27,6 +27,7 @@ import type {
   Stay,
   Route,
   Trip,
+  TripSummary,
   TravelUpdate,
   TripOverview,
   TripTask,
@@ -99,7 +100,40 @@ export function tripsQueryOptions(owner: Owner | null) {
     queryKey: ownerKeys.trips(owner?.subject ?? ""),
     enabled: owner !== null,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<Trip[]>(owner!.session, "/api/trips", m.owner_trips_error, { signal }),
+      ownerRequest<TripSummary[]>(owner!.session, "/api/trips", m.owner_trips_error, { signal }),
+  };
+}
+
+const oldestFirst = (updates: TravelUpdate[]) => [...updates].reverse();
+
+/** A trip's travel updates, oldest first as `Trip.travel_updates` always was (the endpoint answers newest first). */
+export function tripUpdatesQueryOptions(owner: Owner | null, tripId: string | null) {
+  return {
+    queryKey: ownerKeys.tripUpdates(owner?.subject ?? "", tripId ?? ""),
+    enabled: owner !== null && tripId !== null,
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      ownerRequest<TravelUpdate[]>(
+        owner!.session,
+        tripPath(tripId!, "travel-updates"),
+        m.owner_your_travel_updates_could_not_be_loaded,
+        { signal },
+      ),
+    select: oldestFirst,
+  };
+}
+
+/** The newest three updates of a trip, newest first: what the owner's home shows without reading them all. */
+export function recentUpdatesQueryOptions(owner: Owner | null, tripId: string, enabled = true) {
+  return {
+    queryKey: [...ownerKeys.tripUpdates(owner?.subject ?? "", tripId), "recent"] as const,
+    enabled: owner !== null && enabled,
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      ownerRequest<TravelUpdate[]>(
+        owner!.session,
+        tripPath(tripId, "travel-updates?limit=3"),
+        m.owner_your_travel_updates_could_not_be_loaded,
+        { signal },
+      ),
   };
 }
 
@@ -125,6 +159,38 @@ export function tripResourceQueryOptions<R extends TripResource>(
 
 export function useTripsQuery() {
   return useQuery(tripsQueryOptions(useOwner()));
+}
+
+export function useTripUpdates(tripId: string | null) {
+  return useQuery(tripUpdatesQueryOptions(useOwner(), tripId));
+}
+
+const NO_UPDATES: TravelUpdate[] = [];
+
+/** The trip of the list joined with its travel updates; the updates read as none until they have loaded. */
+export function useTripWithUpdates(tripId: string | undefined) {
+  const tripsQuery = useTripsQuery();
+  const summary = tripId ? (tripsQuery.data?.find((trip) => trip.id === tripId) ?? null) : null;
+  const updatesQuery = useTripUpdates(summary?.id ?? null);
+  const updates = updatesQuery.data;
+  const trip = useMemo<Trip | null>(
+    () =>
+      summary
+        ? {
+            id: summary.id,
+            title: summary.title,
+            summary: summary.summary,
+            summary_html: summary.summary_html,
+            starts_on: summary.starts_on,
+            ends_on: summary.ends_on,
+            cover_derivative_id: summary.cover_derivative_id,
+            cover_url: summary.cover_url,
+            travel_updates: updates ?? NO_UPDATES,
+          }
+        : null,
+    [summary, updates],
+  );
+  return { tripsQuery, updatesQuery, trip };
 }
 
 export function useTripResource<R extends TripResource>(tripId: string | null, resource: R) {
@@ -169,7 +235,7 @@ export function useLocationSearch(tripId: string) {
 }
 
 export function useTripSearch() {
-  return useOwnerSearch<Trip>(
+  return useOwnerSearch<TripSummary>(
     (q) => `/api/trips${searchParams(q)}`,
     (subject, q) => [...ownerKeys.trips(subject), "search", q],
     m.assets_your_trips_could_not_be_searched(),
@@ -353,7 +419,9 @@ export function useRefreshTrip() {
         : Promise.resolve(),
     /** Drops everything cached for a trip that no longer exists. */
     forget: (tripId: string) => {
-      if (owner) client.removeQueries({ queryKey: ownerKeys.trip(owner.subject, tripId) });
+      if (!owner) return;
+      client.removeQueries({ queryKey: ownerKeys.trip(owner.subject, tripId) });
+      client.removeQueries({ queryKey: ownerKeys.tripUpdates(owner.subject, tripId) });
     },
     resources: (tripId: string, resources: readonly TripResource[]) =>
       owner

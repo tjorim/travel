@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-import { choosePreferences, mockApi, signInOwner } from "./mock-api";
+import { choosePreferences, mockApi, signInOwner, summaryOf } from "./mock-api";
 
 // Synthetic content only; the evidence images contain no owner trip data.
 const day = (offset: number) =>
@@ -46,7 +46,16 @@ const cover = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600">
 async function open(page: Page, path: string, locale: "nl" | "en", theme: "light" | "dark") {
   await mockApi(page);
   await signInOwner(page);
-  await page.route("**/api/trips", (route) => route.fulfill({ json: trips }));
+  await page.route("**/api/trips", (route) => route.fulfill({ json: trips.map(summaryOf) }));
+  // The endpoint answers newest first.
+  await page.route("**/api/trips/*/travel-updates", (route) =>
+    route.fulfill({
+      json: [
+        ...(trips.find((item) => route.request().url().includes(`/${item.id}/`))?.travel_updates ??
+          []),
+      ].reverse(),
+    }),
+  );
   await page.route("**/api/trips/trip-active/task-alerts", (route) =>
     route.fulfill({
       json: [
@@ -169,7 +178,7 @@ test("the workspace header states publication and keeps the tabs reachable on a 
 test("a lone trip keeps a reading-width card on a wide screen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await open(page, "/admin/trips", "en", "light");
-  await page.route("**/api/trips", (route) => route.fulfill({ json: [trips[2]] }));
+  await page.route("**/api/trips", (route) => route.fulfill({ json: [summaryOf(trips[2])] }));
   await page.reload();
   const card = page.getByRole("link", { name: /Iceland/ });
   await expect(card).toBeVisible();
@@ -217,22 +226,24 @@ for (const locale of ["en", "nl"] as const) {
             locale === "en"
               ? "A slow coastal railway journey through quiet harbours, forest villages and mountain markets in Exampleland"
               : "Een rustige treinreis langs de kust door stille havens, bosdorpen en bergmarkten in Voorbeeldland";
+          const updates =
+            variant === "empty"
+              ? []
+              : Array.from({ length: 24 }, (_, i) => update(`u${i}`, `Synthetic update ${i}`, -i));
           await page.route("**/api/trips", (route) =>
             route.fulfill({
               json: [
-                {
+                summaryOf({
                   ...active,
                   title,
                   cover_url: variant.includes("cover") ? coverPath : null,
-                  travel_updates:
-                    variant === "empty"
-                      ? []
-                      : Array.from({ length: 24 }, (_, i) =>
-                          update(`u${i}`, `Synthetic update ${i}`, -i),
-                        ),
-                },
+                  travel_updates: updates,
+                }),
               ],
             }),
+          );
+          await page.route("**/api/trips/trip-active/travel-updates", (route) =>
+            route.fulfill({ json: [...updates].reverse() }),
           );
           await page.route("**/api/trips/trip-active/trip-tasks", (route) =>
             route.fulfill({

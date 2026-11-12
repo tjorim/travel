@@ -1,7 +1,7 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { AsyncSearchSelect } from "../../forms/fields";
-import type { Trip } from "../../tracker-model";
+import type { TripSummary } from "../../tracker-model";
 import { Field, FieldLabel } from "@/ui/field";
 
 /** The trip a travel update belongs to: fixed when the dialog is locked to one, else searchable. */
@@ -13,11 +13,11 @@ export function TripChoice({
   search,
   onSelect,
 }: {
-  lockedTrip: Trip | null;
-  selectedTrip: Trip | null;
+  lockedTrip: TripSummary | null;
+  selectedTrip: TripSummary | null;
   draftTripId: string;
-  trips: Trip[];
-  search: (query: string) => Promise<Trip[]>;
+  trips: TripSummary[];
+  search: (query: string) => Promise<TripSummary[]>;
   onSelect: (tripId: string) => void;
 }) {
   useLocale();

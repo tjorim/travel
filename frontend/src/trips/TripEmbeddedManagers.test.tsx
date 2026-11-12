@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { useTripsQuery } from "../query/owner-queries";
+import { useTripWithUpdates, useTripsQuery } from "../query/owner-queries";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { TravelUpdate, Trip } from "../tracker-model";
 import { TravelUpdateManager } from "./TravelUpdateManager";
@@ -32,7 +32,7 @@ const update = (
 let state: { trip: Trip };
 let api: FakeApi;
 
-/** Travel updates live inside the trip: writes change it and the trip list is what refreshes. */
+/** The fake keeps a trip's updates in one place: writes change them and the update list is what refreshes. */
 function embed(
   key: "travel_updates",
   path: string,
@@ -74,7 +74,7 @@ function embed(
 }
 
 function Screen({ children }: { children: (trip: Trip) => ReactNode }) {
-  const trip = useTripsQuery().data?.[0];
+  const { trip } = useTripWithUpdates(useTripsQuery().data?.[0]?.id);
   return trip ? <>{children(trip)}</> : null;
 }
 
@@ -102,6 +102,10 @@ beforeEach(() => {
   });
   api.value("/api/trips/trip/share-links", []);
   api.on("GET", /^\/api\/trips$/, () => [state.trip]);
+  // The endpoint answers newest first.
+  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () =>
+    [...state.trip.travel_updates].reverse(),
+  );
   embed("travel_updates", "travel-updates");
 });
 afterEach(() => {

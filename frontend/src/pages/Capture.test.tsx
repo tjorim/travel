@@ -54,7 +54,21 @@ beforeEach(() => {
   api = fakeApi().collection("/api/trips/trip/media", [
     { id: "p1", media_kind: "photo", original_filename: "markt.jpg", captured_at: null, gps: null },
   ]);
-  api.on("GET", /^\/api\/trips$/, () => [state.trip]);
+  api.on("GET", /^\/api\/trips$/, () => [
+    {
+      id: state.trip.id,
+      title: state.trip.title,
+      summary: null,
+      starts_on: null,
+      ends_on: null,
+      travel_update_count: state.trip.travel_updates.length,
+      last_update_at: null,
+    },
+  ]);
+  // The endpoint answers newest first.
+  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () =>
+    [...state.trip.travel_updates].reverse(),
+  );
   api.on("POST", /^\/api\/trips\/trip\/travel-updates$/, (body) => {
     const created = {
       id: `new-${state.trip.travel_updates.length}`,

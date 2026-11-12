@@ -17,7 +17,7 @@ import { LocaleControl, useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { errorMessage } from "../query/api";
 import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/feedback";
-import { useTripSearch, useTripsQuery } from "../query/owner-queries";
+import { useTripSearch, useTripUpdates, useTripsQuery } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import {
   DRAFT_FENCE,
@@ -32,7 +32,7 @@ import {
   type PlaceSearchResult,
   type TravelUpdate,
   type TravelUpdateCandidateIntent,
-  type Trip,
+  type TripSummary,
   type UpdateDraft,
 } from "../tracker-model";
 import { CapturePhotos } from "./capture/CapturePhotos";
@@ -157,6 +157,7 @@ function OwnerCaptureDialog({
     () => (lockedTripId ? (trips.find((trip) => trip.id === lockedTripId) ?? null) : null),
     [lockedTripId, trips],
   );
+  const savedUpdates = useTripUpdates(selectedTrip?.id ?? null).data;
   const uploads = useCaptureUploads(selectedTrip?.id ?? null, (asset) => {
     form.setFieldValue("mediaAssetIds", (current: string[]) =>
       current.includes(asset.id) ? current : [...current, asset.id],
@@ -249,7 +250,7 @@ function OwnerCaptureDialog({
   }, [draft, loadedTrip]);
 
   /** The trip a new capture starts on: one with an unsent draft wins, then underway, upcoming and last used. */
-  function startingTripId(list: Trip[]): string {
+  function startingTripId(list: TripSummary[]): string {
     const ordered = captureTripOrder(list, today());
     return (ordered.find((trip) => readDraft(trip.id)) ?? ordered[0]).id;
   }
@@ -577,8 +578,8 @@ function OwnerCaptureDialog({
               </div>
             </div>
           </form>
-          {selectedTrip && selectedTrip.travel_updates.length > 0 && (
-            <SavedUpdates updates={selectedTrip.travel_updates} onEdit={editUpdate} />
+          {selectedTrip && savedUpdates && savedUpdates.length > 0 && (
+            <SavedUpdates updates={savedUpdates} onEdit={editUpdate} />
           )}
         </>
       )}
