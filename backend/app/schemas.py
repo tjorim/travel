@@ -1923,7 +1923,7 @@ class ProjectionRouteMap(ProjectionRecord):
 class ProjectionRoute(ProjectionRecord):
     id: str
     mode: RouteMode
-    status: RouteStatus
+    status: PlanningStatus
     label: str | None
     departure: ProjectionArea | None
     arrival: ProjectionArea | None
