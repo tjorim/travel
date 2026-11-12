@@ -115,7 +115,10 @@ export function LiveLocation({ tripId }: { tripId: string }) {
           value={String(draft.delays?.[audience] ?? 0)}
           choices={[0, 900, 1800, 3600, 7200, 86400].map((seconds) => ({
             value: String(seconds),
-            label: m.live_delay_value({ minutes: formatNumber(seconds / 60) }),
+            label: m.live_delay_value({
+              count: seconds / 60,
+              minutes: formatNumber(seconds / 60),
+            }),
           }))}
           onChange={(value) =>
             setDraft({ ...draft, delays: { ...draft.delays, [audience]: Number(value) } })
@@ -169,6 +172,7 @@ export function LiveLocation({ tripId }: { tripId: string }) {
                       m.live_hidden())}{" "}
                   · {choices.find((choice) => choice.value === precision)?.label} ·{" "}
                   {m.live_delay_value({
+                    count: (row.delays?.[audience] ?? 0) / 60,
                     minutes: formatNumber((row.delays?.[audience] ?? 0) / 60),
                   })}
                 </p>

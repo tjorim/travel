@@ -46,9 +46,9 @@ export function VisitorChangeDialog({
             {change.field === "area_id" && (
               <span>
                 {m.owner_visitor_change_carried({
-                  p0: change.visits ?? 0,
-                  p1: change.routes ?? 0,
-                  p2: change.stays ?? 0,
+                  visits: change.visits ?? 0,
+                  routes: change.routes ?? 0,
+                  stays: change.stays ?? 0,
                 })}
               </span>
             )}

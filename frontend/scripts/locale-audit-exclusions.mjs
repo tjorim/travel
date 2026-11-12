@@ -73,3 +73,16 @@ export const exclusions = {
   },
   "trips/stays/StayForm.tsx": { TW: "ISO country input example", "https://": "URL input example" },
 };
+// Message keys read through a computed lookup (`m[name]`), which the unused-key check cannot see by name.
+// Each entry needs a reason; none is needed while every call names its message directly.
+export const computedMessageKeys = {};
+// One-word connectives and joined sentence fragments that still ship in an assembled sentence. Each entry
+// is debt: replace it with a whole message (issue 371) and delete the entry. Never add one for new copy.
+export const fragmentMessages = {
+  owner_library:
+    "label assembled before a filename in DocumentsBlock; replace with a whole message",
+  owner_captured: "label assembled in MediaBlock; replace with a whole message",
+  owner_read_2: "status suffix assembled in TripTaskManager; replace with a whole message",
+  owner_new: "status suffix assembled in TripTaskManager; replace with a whole message",
+  owner_on: "toggle suffix assembled in the TripMap view buttons; replace with a whole message",
+};

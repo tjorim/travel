@@ -192,7 +192,7 @@ export function OwnerTripMap({
             label: m.owner_update({
               p0: update.title,
               p1: update.media_asset_ids.length
-                ? m.owner_photos_media({ p0: update.media_asset_ids.length })
+                ? m.owner_photos_media({ count: update.media_asset_ids.length })
                 : "",
             }),
             onOpen: () => openRecord?.("update", update.id),

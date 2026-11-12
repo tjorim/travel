@@ -15,7 +15,7 @@ for (const locale of ["nl", "en"] as const) {
         );
         await page.goto(`/admin/trips/${ownerTrip.id}/overview`);
         const overdue = page.getByRole("link", {
-          name: locale === "nl" ? "1 achterstallige taken" : "1 overdue tasks",
+          name: locale === "nl" ? "1 achterstallige taak" : "1 overdue task",
         });
         await expect(overdue).toBeVisible();
         await overdue.focus();

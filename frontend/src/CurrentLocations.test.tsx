@@ -52,7 +52,9 @@ it("shows a day-delayed observation while fresh delivery expires independently",
   );
   expect(screen.getByRole("region")).toBeInTheDocument();
   expect(
-    screen.getByText(new RegExp(m.live_delay_value({ minutes: "1.440" }).split(":")[0])),
+    screen.getByText(
+      new RegExp(m.live_delay_value({ count: 1440, minutes: "1.440" }).split(":")[0]),
+    ),
   ).toBeInTheDocument();
   expect(screen.queryByText(new RegExp(m.live_stale()))).not.toBeInTheDocument();
   act(() => vi.advanceTimersByTime(60000));

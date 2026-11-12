@@ -167,6 +167,21 @@ it("evaluates every catalogue plural at zero, one and multiple with authored int
   }
 });
 
+it("pluralises the day count until departure in both locales", () => {
+  act(() => changeLocale("en"));
+  expect([0, 1, 4].map((count) => m.readiness_departure({ count }))).toEqual([
+    "0 days until departure",
+    "1 day until departure",
+    "4 days until departure",
+  ]);
+  act(() => changeLocale("nl"));
+  expect([0, 1, 4].map((count) => m.readiness_departure({ count }))).toEqual([
+    "Nog 0 dagen tot vertrek",
+    "Nog 1 dag tot vertrek",
+    "Nog 4 dagen tot vertrek",
+  ]);
+});
+
 it("keeps install-time metadata and machine routing fixed across runtime switches", async () => {
   const manifest = (await import("../public/manifest.webmanifest?raw")).default;
   const before = JSON.parse(manifest);

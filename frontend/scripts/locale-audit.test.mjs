@@ -1,5 +1,11 @@
 import { expect, it } from "vitest";
-import { sourceCandidates, frozenMessageCalls, literalMessageArguments } from "./locale-audit.mjs";
+import {
+  sourceCandidates,
+  frozenMessageCalls,
+  literalMessageArguments,
+  unusedMessageKeys,
+  fragmentMessageKeys,
+} from "./locale-audit.mjs";
 
 it("finds JSX copy, single-word labels, validators, enum prose and template fragments", () => {
   const source = `const labels = { wait: "Even wachten" }; const validate = () => "Geef een naam";
@@ -56,4 +62,35 @@ it("flags string-literal ternaries inside message arguments", () => {
       'm.view({ p1: n === 1 ? "versie" : "versies" });\nm.ok({ p: n ? m.a() : "" });',
     ),
   ).toEqual([1]);
+});
+
+it("reports message keys no source names, except listed computed lookups", () => {
+  const sources = ["m.used_key(); const labels = { a: m.other_key }", 'const key = "quoted_key";'];
+  const keys = ["used_key", "other_key", "quoted_key", "dead_key", "computed_key"];
+  expect(unusedMessageKeys(keys, sources)).toEqual(["dead_key", "computed_key"]);
+  expect(unusedMessageKeys(keys, sources, { computed_key: "read through m[name]" })).toEqual([
+    "dead_key",
+  ]);
+});
+
+it("reports one-word connectives and joined fragments but not whole labels", () => {
+  const catalogue = {
+    of: "of",
+    on: "· on",
+    van: "Van",
+    suffix: " · New",
+    trailing: "Library ·",
+    label: "Visit",
+    colon: "Booking reference:",
+    status: "Off",
+    sentence: "Delete this trip",
+    interpolated: "{count} of",
+    plural: [{ declarations: [], selectors: [], match: {} }],
+  };
+  expect(fragmentMessageKeys(catalogue)).toEqual(["of", "on", "van", "suffix", "trailing"]);
+  expect(fragmentMessageKeys(catalogue, { of: "legacy", suffix: "legacy" })).toEqual([
+    "on",
+    "van",
+    "trailing",
+  ]);
 });

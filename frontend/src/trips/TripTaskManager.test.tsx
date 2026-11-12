@@ -297,7 +297,7 @@ it("links readiness counts to the matching sections and identifies overdue tasks
     ["/"],
   );
   expect(
-    (await screen.findByRole("link", { name: "1 achterstallige taken" })).getAttribute("href"),
+    (await screen.findByRole("link", { name: "1 achterstallige taak" })).getAttribute("href"),
   ).toBe("/trips/trip/prepare#tasks");
   // The existing badge for open tasks is the link to the same block; the strip adds only what it does not say.
   expect(screen.getByRole("link", { name: /1 open/ }).getAttribute("href")).toBe(

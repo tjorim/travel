@@ -50,7 +50,9 @@ it("keeps source setup disabled and precision opt-in, with guarded edits and del
   fireEvent.click(
     await screen.findAllByRole("radio", { name: m.live_1km() }).then((rows) => rows[0]),
   );
-  fireEvent.click(screen.getByRole("radio", { name: m.live_delay_value({ minutes: "30" }) }));
+  fireEvent.click(
+    screen.getByRole("radio", { name: m.live_delay_value({ count: 30, minutes: "30" }) }),
+  );
   fireEvent.click(screen.getByRole("button", { name: m.live_save() }));
   await waitFor(() =>
     expect(writes).toEqual([
