@@ -67,7 +67,7 @@ _IDENTIFYING = (
 
 
 def is_city_level(location: Location) -> bool:
-    """Whether a location names nothing but its area (a legacy undecided-stay placeholder)."""
+    """Whether a location names nothing but its area (a bare place such as the city itself)."""
     return all(getattr(location, field) is None for field in _IDENTIFYING)
 
 

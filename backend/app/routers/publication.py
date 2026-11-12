@@ -161,7 +161,7 @@ def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurfa
 
 
 def _claim_revision(session: Session, record: PublicSurface | ShareLink, expected: str | None) -> None:
-    """Atomically advance the revision, including for legacy unconditional clients."""
+    """Atomically advance the revision; without ``If-Match`` (the MCP tools send none) the write is unconditional."""
     model = type(record)
     key = PublicSurface.trip_id if isinstance(record, PublicSurface) else ShareLink.id
     identity = record.trip_id if isinstance(record, PublicSurface) else record.id

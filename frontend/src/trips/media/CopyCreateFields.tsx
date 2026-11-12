@@ -22,7 +22,6 @@ export function CopyCreateFields({
         {(field) => (
           <SelectField field={field} label={m.assets_purpose()}>
             <option value="share">{m.owner_sharing()}</option>
-            <option value="static_export">{m.assets_static_archive()}</option>
             <option value="owner_preview">{m.assets_private_preview()}</option>
           </SelectField>
         )}

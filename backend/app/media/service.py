@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..errors import ServiceError
 from ..models import (
+    DerivativeProcessingBackend,
     DerivativeProcessingState,
     DerivativePurpose,
     DerivativeReviewState,
@@ -581,7 +582,7 @@ def queue_video_derivative(
         processing_started_at=datetime.now(UTC),
         review_state=DerivativeReviewState.PENDING,
     )
-    derivative.processing_backend = "remote"
+    derivative.processing_backend = DerivativeProcessingBackend.REMOTE
     session.add(derivative)
     session.flush()
     from .worker import enqueue
@@ -623,7 +624,7 @@ def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDe
         item
         for item in derivatives
         if item.processing_state == DerivativeProcessingState.PROCESSING
-        and item.processing_backend != "remote"
+        and item.processing_backend != DerivativeProcessingBackend.REMOTE
         and item.processing_started_at is not None
         and _aware_utc(item.processing_started_at) < cutoff
     ]
@@ -667,7 +668,7 @@ def cached_thumbnail(session: Session, storage: ObjectStorage, *, media_asset: M
         select(MediaDerivative).where(
             MediaDerivative.media_asset_id == media_asset.id,
             MediaDerivative.purpose == DerivativePurpose.OWNER_PREVIEW,
-            MediaDerivative.processing_backend == "thumbnail",
+            MediaDerivative.processing_backend == DerivativeProcessingBackend.THUMBNAIL,
         )
     )
     if cached is not None and cached.object is not None and cached.object.state == ObjectState.AVAILABLE:
@@ -680,7 +681,7 @@ def cached_thumbnail(session: Session, storage: ObjectStorage, *, media_asset: M
             media_asset_id=media_asset.id,
             object_id=stored.id,
             purpose=DerivativePurpose.OWNER_PREVIEW,
-            processing_backend="thumbnail",
+            processing_backend=DerivativeProcessingBackend.THUMBNAIL,
             metadata_stripped_at=datetime.now(UTC),
         )
     )
@@ -751,7 +752,7 @@ def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
     from .worker import retire
 
     for derivative in media_asset.derivatives:
-        if derivative.processing_backend == "remote":
+        if derivative.processing_backend == DerivativeProcessingBackend.REMOTE:
             retire(session, derivative.id)
             if derivative.processing_state == DerivativeProcessingState.PROCESSING:
                 derivative.processing_state = DerivativeProcessingState.FAILED

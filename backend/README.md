@@ -87,7 +87,7 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
 | `GET` | `/provider-tokens` | Owner-only non-secret status. Google Photos is available only when OAuth credentials, redirect URI and encryption key are configured; GoPro Cloud remains unavailable pending its beta OAuth contract. |
 | `POST` | `/provider-tokens/google_photos_picker/oauth/start`, `/provider-tokens/google_photos_picker/oauth/complete` | Start Google consent and exchange the returned code, with owner-bound one-time state and PKCE. |
-| `PUT`, `DELETE` | `/provider-tokens/{provider}` | Legacy write-only manual access-token setup, or disconnect. Google OAuth disconnect also revokes its refresh token at Google. |
+| `DELETE` | `/provider-tokens/{provider}` | Disconnect. Google OAuth disconnect also revokes its refresh token at Google. |
 
 Trip tasks accept an optional `remind_at` timestamp. `due_date` only sorts
 tasks. A scheduled worker creates owner-only inbox items at
@@ -397,8 +397,7 @@ The owner then selects **Verbinden met Google** in Instellingen. The server
 requests only the Picker scope and offline access, and stores the returned
 refresh token encrypted. Revocation calls Google's token endpoint before
 removing the local credential; if Google cannot confirm it, the connection
-remains visible so the owner can retry. The legacy manual `PUT` remains for
-compatibility, but its access token has no refresh capability.
+remains visible so the owner can retry.
 
 GoPro Cloud remains hidden until its beta OAuth/token contract is available;
 `TRAVEL_GOPRO_CLOUD_ENABLED` alone does not expose it.

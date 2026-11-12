@@ -101,12 +101,19 @@ class ImportState(StrEnum):
 class DerivativePurpose(StrEnum):
     OWNER_PREVIEW = "owner_preview"
     SHARE = "share"
-    STATIC_EXPORT = "static_export"
 
 
 class DerivativeReviewState(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
+
+
+class DerivativeProcessingBackend(StrEnum):
+    """Where a derivative is produced: in this process, by the remote media worker, or as an owner thumbnail."""
+
+    LOCAL = "local"
+    REMOTE = "remote"
+    THUMBNAIL = "thumbnail"
 
 
 class DerivativeProcessingState(StrEnum):
@@ -177,6 +184,10 @@ class VisitStatus(StrEnum):
     PLANNED = "planned"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
+
+
+class TaskAlertKind(StrEnum):
+    REMINDER = "reminder"
 
 
 class AuditEventKind(StrEnum):
@@ -891,7 +902,7 @@ class TripTaskAlert(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     task_id: Mapped[str] = mapped_column(ForeignKey("trip_tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    kind: Mapped[TaskAlertKind] = mapped_column(_enum_column(TaskAlertKind, "travel_task_alert_kind"), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -1210,12 +1221,12 @@ class MediaAsset(Base):
 
 
 class MediaDerivative(Base):
-    """A stripped, resized copy of one `MediaAsset`, generated for
-    `share` (what an audience may receive) or `owner_preview` (an in-app
-    thumbnail); `static_export` is a retained purpose that nothing creates.
-    `metadata_stripped_at` records when stripping ran; `review_state` gates
-    sharing: a `share` derivative reaches an audience only once the owner has
-    approved it."""
+    """A stripped, resized copy of one `MediaAsset`, generated only when the
+    owner selects that media for `share` publication (or, for `owner_preview`,
+    for an in-app thumbnail). `metadata_stripped_at` records when stripping
+    ran; `review_state` gates whether a `share` derivative may be referenced
+    by a share scope item — a derivative is usable for sharing only once the
+    owner has explicitly reviewed it."""
 
     __tablename__ = "media_derivatives"
     __table_args__ = (
@@ -1240,7 +1251,11 @@ class MediaDerivative(Base):
         default=DerivativeProcessingState.READY,
         nullable=False,
     )
-    processing_backend: Mapped[str] = mapped_column(String(10), default="local", server_default="local")
+    processing_backend: Mapped[DerivativeProcessingBackend] = mapped_column(
+        _enum_column(DerivativeProcessingBackend, "travel_derivative_processing_backend"),
+        default=DerivativeProcessingBackend.LOCAL,
+        server_default=DerivativeProcessingBackend.LOCAL.value,
+    )
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remove_audio: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
