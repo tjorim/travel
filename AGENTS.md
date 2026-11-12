@@ -18,7 +18,7 @@ Use synthetic fixtures and keep private review evidence outside Git. Follow
 Validate `Caddyfile.example` when routing changes and keep it aligned with the
 Travel block in `tjorim/apps` `infra/Caddyfile`.
 
-For tracker API work, use the locked Python environment:
+For backend API work, use the locked Python environment:
 
 ```bash
 cd backend
@@ -104,7 +104,7 @@ never rewrite a referenced key, delete only after `purge_pending` commits and
 under `lock_object_deletion`, and no dot-entries. The apps backup depends on
 these rules; keep new file-backed features inside them.
 
-Tracker endpoints must enforce ownership from the authenticated subject and
+Owner API endpoints must enforce ownership from the authenticated subject and
 must not expose it through published-trip responses. GPS capture is approved only
 for decision 244. Do not add further GPS capture,
 precise addresses, media uploads, or automatic archive migration without an

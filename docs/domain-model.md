@@ -500,11 +500,6 @@ discovery (`search_tools`, decision 196) like the other owner tools.
 - An area cannot be deleted while a visit, reisupdate, location or route still
   uses it.
 
-## Known gaps
-
-- Nothing yet turns a location the owner already has into a named location
-  automatically; the owner names it in *Locaties*.
-
 ## Trip PDF output
 
 The owner can request an ephemeral story, itinerary or combined PDF (#248),
@@ -513,7 +508,7 @@ private view. This creates no canonical record or stored object and changes
 no audience scope. See [the export contract](export-format.md#on-demand-pdf-248)
 for included content, privacy boundaries, budgets and accessibility limits.
 
-## Live location exception (#244, 2026-11-09)
+## Live location (#244)
 
 The owner explicitly approved exact live-track storage and current-only audience
 sharing. Earlier blanket no-GPS-history/live-location statements are superseded
@@ -538,3 +533,8 @@ Visitors see observation time and delay; no-store polling rechecks every 30 seco
 Tracks stay private and excluded from Atom/PDF/ordinary exports. See
 [decision 244](decisions/244-live-location-tracks.md#per-audience-delayed-delivery-332-2026-11-09)
 for boundaries, storage and source-inactivity semantics.
+
+## Known gaps
+
+- A location the owner already has is not turned into a named, shareable
+  location automatically; the owner names it in *Locaties* before sharing it.
