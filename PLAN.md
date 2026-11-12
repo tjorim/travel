@@ -82,20 +82,17 @@ Source review clean-up, found at commit `def2173` and tracked by [#373](https://
 
 ### Contract and structure
 
-- [ ] [#361](https://github.com/tjorim/travel/issues/361) Type the visitor projection document end to end.
 - [ ] [#363](https://github.com/tjorim/travel/issues/363) Bring the live-location API and tables in line.
 - [ ] [#362](https://github.com/tjorim/travel/issues/362) Generate frontend API types from OpenAPI.
 - [ ] [#369](https://github.com/tjorim/travel/issues/369) Move domain logic out of routers into shared services.
-- [ ] [#365](https://github.com/tjorim/travel/issues/365) Stop loading the whole trip graph per owner request.
+- [ ] [#365](https://github.com/tjorim/travel/issues/365) Stop loading the whole trip graph per owner request (what is left: embedded updates in the trip response, one server-side order for every kind, paging in the PWA).
 - [ ] [#366](https://github.com/tjorim/travel/issues/366) API convention, outlier resources and error codes.
 
 ### Independent tidy-ups
 
 - [ ] [#371](https://github.com/tjorim/travel/issues/371) Prune and regroup the message catalogue.
 - [ ] [#370](https://github.com/tjorim/travel/issues/370) Separate visitor, owner and shared frontend source.
-- [ ] [#372](https://github.com/tjorim/travel/issues/372) Refresh this plan and outdated docstrings.
 - [ ] [#376](https://github.com/tjorim/travel/issues/376) Authored content in Dutch and English, with fallback.
-- [ ] [#375](https://github.com/tjorim/travel/issues/375) One label per planning status; country names for visitors.
 
 ### Earlier follow-ups
 
