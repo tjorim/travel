@@ -19,6 +19,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 - Lint the Home Assistant integration and both Python packages with the same ruff rule set as the backend (`E, F, I, UP, B, C4, SIM`); two `lambda` assignments and one `try`/`except`/`pass` were rewritten to satisfy it.
 - Check the formatting of workflows, scripts and the root JSON files in CI (`pnpm format:repo:check`), and use the same frontend script names as the other apps (`typecheck` replaces `check`; `lint` and `format` cover the whole frontend).
 - Align the release workflow with the shared job graph used by every app: `validate`, `library-checks`, `publish-library`, `package-hacs`, `draft`. The HACS archive is built and checked in its own job, and the library tests run before the PyPI approval instead of after it.
+- Reduce `PLAN.md` to the open, ordered issues (adding the clean-up group #357-#376), fix four model docstrings that described an earlier state, tidy `docs/domain-model.md` and `AGENTS.md`, and drop the stale mapped-field inventory in favour of `models.py`.
 
 ## [2026.11.2] - 2026-11-10
 

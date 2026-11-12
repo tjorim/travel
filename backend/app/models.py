@@ -466,7 +466,9 @@ class TravelUpdate(Base):
 
 
 class Stay(Base):
-    """An owner-only accommodation, modelled as the nights slept there.
+    """An accommodation, modelled as the nights slept there.
+
+    Private by default; its ``visibility`` decides whether an audience sees it.
 
     ``check_in_date`` is the first night and ``check_out_date`` the morning
     of departure, so the stay covers every night ``d`` with
@@ -564,7 +566,7 @@ class Route(Base):
     schedule, carrier and service reference, and the line. Booking references,
     travel class, notes, documents and the exact locations stay owner-only; a
     location appears on a map only when that location is itself shared. The
-    application holds no recorded location data a route could be derived from.
+    line is drawn by hand; it is never derived from a live track (decision 244).
     """
 
     __tablename__ = "routes"
@@ -852,8 +854,9 @@ class PackingItem(Base):
 class TripTask(Base):
     """An owner-only lightweight booking/preparation task.
 
-    Deliberately has no ordering or linked-resource fields -- it's a
-    checklist, not the agenda. ``completed_at`` is set by the router, never
+    Deliberately has no ordering or relation to other records, only
+    owner-chosen ``links`` (a ticket or booking site) -- it's a checklist,
+    not the agenda. ``completed_at`` is set by the router, never
     accepted directly from a client payload, so an owner can't backdate a
     completion.
     """
@@ -1207,12 +1210,12 @@ class MediaAsset(Base):
 
 
 class MediaDerivative(Base):
-    """A stripped, resized copy of one `MediaAsset`, generated only when the
-    owner selects that media for `share`/`static_export` publication (or, for
-    `owner_preview`, for an in-app thumbnail). `metadata_stripped_at` records
-    when stripping ran; `review_state` gates whether a `share`/`static_export`
-    purpose may ever be referenced by a `scope_json` item — a derivative is
-    usable for sharing only once the owner has explicitly reviewed it."""
+    """A stripped, resized copy of one `MediaAsset`, generated for
+    `share` (what an audience may receive) or `owner_preview` (an in-app
+    thumbnail); `static_export` is a retained purpose that nothing creates.
+    `metadata_stripped_at` records when stripping ran; `review_state` gates
+    sharing: a `share` derivative reaches an audience only once the owner has
+    approved it."""
 
     __tablename__ = "media_derivatives"
     __table_args__ = (

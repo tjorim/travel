@@ -282,66 +282,6 @@ unlisted or owner route behavior and no UI dependency/shared component.
 
 ## Mapped Field Inventory
 
-Every mapped column below is stored in the database. Foreign keys name the
-relationship; file bytes live separately. Types, enum domains, constraints and
-JSON validation remain authoritative in `models.py` and `schemas.py`.
-
-- **ProviderSecret** ([models.py:80](../../backend/app/models.py#L80)): `subject`, `provider`, `kind`, `ciphertext`.
-
-- **Area** ([models.py:219](../../backend/app/models.py#L219)): `visibility`, `id`, `trip_id` → trips.id, `label`, `region`, `country_code`, `latitude`, `longitude`, `timezone`, `created_at`, `updated_at`.
-
-- **Location** ([models.py:247](../../backend/app/models.py#L247)): `visibility`, `id`, `trip_id` → trips.id, `area_id` → areas.id, `label`, `share_address`, `osm_element_type`, `osm_element_id`, `osm_url`, `display_name`, `address_line1`, `address_line2`, `locality`, `admin_area`, `postal_code`, `country_code`, `latitude`, `longitude`, `viewport_north`, `viewport_south`, `viewport_east`, `viewport_west`, `navigation_provider`, `navigation_provider_place_id`, `notes`, `created_at`, `updated_at`.
-
-- **Trip** ([models.py:309](../../backend/app/models.py#L309)): `id`, `owner_subject`, `title`, `summary`, `starts_on`, `ends_on`, `created_at`, `updated_at`.
-
-- **TravelUpdateMediaAsset** ([models.py:374](../../backend/app/models.py#L374)): `travel_update_id` → travel_updates.id, `media_asset_id` → media_assets.id, `created_at`.
-
-- **TravelUpdate** ([models.py:394](../../backend/app/models.py#L394)): `visibility`, `id`, `share_id`, `trip_id` → trips.id, `area_id` → areas.id, `location_id` → locations.id, `occurred_at`, `date_precision`, `title`, `body`, `private_notes`, `created_at`, `updated_at`.
-
-- **Stay** ([models.py:443](../../backend/app/models.py#L443)): `visibility`, `id`, `trip_id` → trips.id, `area_id` → areas.id (added by #239), `location_id` → locations.id (nullable since #239), `check_in_date`, `check_out_date`, `check_in_time`, `check_out_time`, `status`, `property_name`, `website_url`, `booking_reference`, `contact_details`, `notes`, `share_date_precision`, `created_at`, `updated_at`.
-
-- **Route** ([models.py:493](../../backend/app/models.py#L493)): `visibility`, `id`, `trip_id` → trips.id, `mode`, `status`, `label`, `departure_area_id` → areas.id, `arrival_area_id` → areas.id, `departure_location_id` → locations.id, `arrival_location_id` → locations.id, `departs_on`, `departs_at`, `arrives_at`, `departure_timezone`, `arrival_timezone`, `carrier`, `service_reference`, `travel_class`, `booking_reference`, `notes`, `geometry`, `created_at`, `updated_at`.
-
-- **RouteDocumentAsset** ([models.py:566](../../backend/app/models.py#L566)): `route_id` → routes.id, `document_asset_id` → document_assets.id, `created_at`.
-
-- **Visit** ([models.py:587](../../backend/app/models.py#L587)): `visibility`, `id`, `trip_id` → trips.id, `position`, `area_id` → areas.id, `location_id` → locations.id, `title`, `kind`, `status`, `starts_on`, `ends_on`, `start_time`, `end_time`, `notes`, `summary`, `share_time`, `share_date_precision`, `created_at`, `updated_at`.
-
-- **PackingList** ([models.py:645](../../backend/app/models.py#L645)): `id`, `trip_id` → trips.id, `name`, `created_at`.
-
-- **PackingTemplate** ([models.py:657](../../backend/app/models.py#L657)): `id`, `owner_subject`, `name`, `snapshot`, `created_at`.
-
-- **PackingBag** ([models.py:667](../../backend/app/models.py#L667)): `id`, `list_id` → packing_lists.id, `name`, `type`, `position`, `weight_limit_g`.
-
-- **PackingItem** ([models.py:682](../../backend/app/models.py#L682)): `id`, `list_id` → packing_lists.id, `bag_id` → packing_bags.id, `label`, `quantity`, `category`, `packed`, `position`, `essential`, `last_minute`, `valuable`, `cabin_only`, `checked_only`, `notes`, `weight_g`.
-
-- **TripTask** ([models.py:709](../../backend/app/models.py#L709)): `id`, `trip_id` → trips.id, `title`, `notes`, `due_date`, `remind_at`, `reminded_at`, `links`, `completed_at`, `created_at`, `updated_at`.
-
-- **TripTaskAlert** ([models.py:739](../../backend/app/models.py#L739)): `id`, `task_id` → trip_tasks.id, `owner_subject`, `kind`, `title`, `scheduled_for`, `created_at`, `read_at`, `email_sent_at`, `email_attempts`, `email_last_error`.
-
-- **PublicSurface** ([models.py:758](../../backend/app/models.py#L758)): `trip_id` → trips.id, `slug`, `state`, `revision`, `scope`, `created_at`, `updated_at`.
-
-- **ShareLink** ([models.py:781](../../backend/app/models.py#L781)): `id`, `trip_id` → trips.id, `label`, `series_id`, `state`, `revision`, `scope`, `token`, `token_verifier`, `expires_at`, `created_at`, `updated_at`, `activated_at`, `revoked_at`.
-
-- **AuditEvent** ([models.py:812](../../backend/app/models.py#L812)): `id`, `trip_id` → trips.id, `actor_subject`, `kind`, `target_type`, `target_id`, `occurred_at`, `details`.
-
-- **McpAuditEvent** ([models.py:834](../../backend/app/models.py#L834)): `id`, `owner_subject`, `action`, `resource_type`, `resource_id`, `trip_id`, `result`, `occurred_at`, `details`.
-
-- **StoredObject** ([models.py:861](../../backend/app/models.py#L861)): `id`, `trip_id` → trips.id, `bucket`, `object_key`, `sha256`, `byte_size`, `content_type`, `state`, `created_at`, `updated_at`.
-
-- **ImportSession** ([models.py:890](../../backend/app/models.py#L890)): `id`, `trip_id` → trips.id, `provider`, `provider_session_id`, `state`, `created_at`, `expires_at`.
-
-- **ImportRecord** ([models.py:912](../../backend/app/models.py#L912)): `id`, `trip_id` → trips.id, `provider`, `provider_item_id`, `state`, `media_asset_id` → media_assets.id, `requested_at`, `completed_at`, `failure_code`.
-
-- **MediaAsset** ([models.py:942](../../backend/app/models.py#L942)): `id`, `trip_id` → trips.id, `original_object_id` → stored_objects.id, `media_kind`, `captured_at`, `captured_local`, `import_id` → import_records.id, `raw_metadata`, `created_at`, `updated_at`, `deleted_at`.
-
-- **MediaDerivative** ([models.py:973](../../backend/app/models.py#L973)): `visibility`, `id`, `trip_id` → trips.id, `media_asset_id` → media_assets.id, `object_id` → stored_objects.id, `poster_object_id` → stored_objects.id, `processing_state`, `processing_backend`, `processing_started_at`, `remove_audio`, `duration_seconds`, `purpose`, `metadata_stripped_at`, `review_state`, `width`, `height`, `travel_update_id` → travel_updates.id, `caption`, `alt_text`, `focal_x`, `focal_y`, `is_cover`, `created_at`.
-
-- **DocumentAsset** ([models.py:1037](../../backend/app/models.py#L1037)): `id`, `trip_id` → trips.id, `original_object_id` → stored_objects.id, `document_kind`, `title`, `owner_metadata`, `created_at`, `updated_at`, `deleted_at`.
-
-- **OwnerStoredObject** ([models.py:1060](../../backend/app/models.py#L1060)): `id`, `owner_subject`, `bucket`, `object_key`, `sha256`, `byte_size`, `content_type`, `state`, `created_at`, `updated_at`.
-
-- **OwnerDocument** ([models.py:1089](../../backend/app/models.py#L1089)): `id`, `owner_subject`, `original_object_id` → owner_stored_objects.id, `document_kind`, `title`, `owner_metadata`, `linked_trip_id` → trips.id, `created_at`, `updated_at`, `deleted_at`.
-
-- **EmergencyInfoEntry** ([models.py:1120](../../backend/app/models.py#L1120)): `id`, `owner_subject`, `kind`, `label`, `value`, `notes`, `created_at`, `updated_at`.
-
-- **MediaWorkerJob** ([models.py:1143](../../backend/app/models.py#L1143)): `id`, `derivative_id` → media_derivatives.id, `worker_id`, `profile`, `remove_audio`, `source_key`, `source_sha256`, `state`, `attempts`, `next_attempt_at`, `error_code`, `created_at`.
+Removed: it predated later models and went stale. The mapped columns, types,
+enums and constraints are authoritative in `backend/app/models.py`; see
+[domain-model.md](../domain-model.md) for what each record means.
