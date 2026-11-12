@@ -23,9 +23,16 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 - **Web:** Counts of days until departure, overdue tasks, route points, photos and intentional delay minutes now read "1 day", "1 overdue task", "1 point", "1 photo/media" and "1 minute" in both languages instead of a plural noun.
 
+### Removed
+
+- Remove the manual provider token endpoint `PUT /api/provider-tokens/{provider}`; Google Photos connects only through the OAuth routes, and `DELETE` still disconnects (#359).
+- Stop accepting `booked` as a stay or route status; it was folded into `confirmed` by migration 010 and no client sends it (#359).
+- Remove the unused "static archive" copy purpose: a leftover static-export copy becomes a private preview (#359).
+
 ### Internal
 
 - **Web:** Remove 30 interface messages no source referenced, and make `pnpm locale:audit` fail on an unused message key and on a one-word connective or joined sentence fragment (part of #371). The few fragments still in use, and any computed message lookup, are listed with reasons in `scripts/locale-audit-exclusions.mjs`.
+- Migration 027 makes `MediaDerivative.processing_backend` and the task alert `kind` PostgreSQL enums and drops `static_export` from the derivative purpose type. `MediaWorkerJob.state` and `McpAuditEvent.result` stay free strings: the first echoes the remote worker's states, the second already mixes `success` and `succeeded` (#359).
 - Lint the Home Assistant integration and both Python packages with the same ruff rule set as the backend (`E, F, I, UP, B, C4, SIM`); two `lambda` assignments and one `try`/`except`/`pass` were rewritten to satisfy it.
 - Check the formatting of workflows, scripts and the root JSON files in CI (`pnpm format:repo:check`), and use the same frontend script names as the other apps (`typecheck` replaces `check`; `lint` and `format` cover the whole frontend).
 - Align the release workflow with the shared job graph used by every app: `validate`, `library-checks`, `publish-library`, `package-hacs`, `draft`. The HACS archive is built and checked in its own job, and the library tests run before the PyPI approval instead of after it.

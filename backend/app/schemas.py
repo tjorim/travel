@@ -36,6 +36,7 @@ from .models import (
     RouteStatus,
     StayStatus,
     SurfaceState,
+    TaskAlertKind,
     Visibility,
     VisitKind,
     VisitStatus,
@@ -669,16 +670,9 @@ class TravelUpdateResponse(BaseModel):
         return _html(self.private_notes)
 
 
-def booked_is_confirmed(status: object) -> object:
-    """``booked`` was folded into ``confirmed``; older clients and archive files may still send it."""
-    return "confirmed" if status == "booked" else status
-
-
-_legacy_booked = field_validator("status", mode="before")(booked_is_confirmed)
-
 ROUTE_STATUS = (
     "idea: a candidate being compared (two flights, a train or a bus) that covers no journey and cannot be shared; "
-    "planned: the intended route; confirmed: reserved or confirmed (booked means the same); cancelled."
+    "planned: the intended route; confirmed: reserved or confirmed; cancelled."
 )
 
 PRECISION_OWN = (
@@ -690,7 +684,7 @@ PRECISION_OWN = (
 
 STAY_STATUS = (
     "idea: a candidate being compared, which may overlap other stays, covers no night and cannot be shared; "
-    "planned: the intended stay; confirmed: reserved or confirmed (booked means the same); cancelled."
+    "planned: the intended stay; confirmed: reserved or confirmed; cancelled."
 )
 
 
@@ -734,7 +728,6 @@ class StayCreate(InputModel):
 
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
-    _booked = _legacy_booked
 
     @field_validator("document_asset_ids")
     @classmethod
@@ -778,7 +771,6 @@ class StayUpdate(InputModel):
 
     _https = field_validator("website_url")(require_https)
     _located = field_validator("location")(require_identified_location)
-    _booked = _legacy_booked
 
     @field_validator("document_asset_ids")
     @classmethod
@@ -1111,7 +1103,7 @@ class TripTaskResponse(BaseModel):
 class TripTaskAlertResponse(BaseModel):
     id: str
     task_id: str
-    kind: str
+    kind: TaskAlertKind
     title: str
     scheduled_for: datetime
     created_at: datetime
@@ -1193,7 +1185,6 @@ class RouteCreate(InputModel):
     geometry: GeoJsonLineString | None = None
 
     _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
-    _booked = _legacy_booked
     _ends = model_validator(mode="after")(require_route_ends)
 
     @model_validator(mode="after")
@@ -1235,7 +1226,6 @@ class RouteUpdate(InputModel):
     geometry: GeoJsonLineString | None = None
 
     _timezones = field_validator("departure_timezone", "arrival_timezone")(require_timezone)
-    _booked = _legacy_booked
 
     @field_validator("document_asset_ids")
     @classmethod
@@ -2403,10 +2393,6 @@ class ImportSessionCompleteResponse(BaseModel):
     ready: bool
     imported: list[MediaAssetResponse]
     failed: list[ImportFailureItem]
-
-
-class ProviderTokenSet(InputModel):
-    access_token: str = Field(min_length=1, max_length=4096)
 
 
 class ProviderConnectionStatus(BaseModel):

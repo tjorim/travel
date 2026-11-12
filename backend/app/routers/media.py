@@ -31,6 +31,7 @@ from ..media.service import (
     read_bounded_upload,
 )
 from ..models import (
+    DerivativeProcessingBackend,
     DerivativeProcessingState,
     DerivativeReviewState,
     ImportProvider,
@@ -55,7 +56,6 @@ from ..schemas import (
     MediaTravelUpdateLocationOption,
     MediaTravelUpdateTimeOption,
     ProviderConnectionStatus,
-    ProviderTokenSet,
 )
 from ..secrets import SecretStore, get_secret_store
 from ..storage import ObjectStorage, get_storage
@@ -348,7 +348,7 @@ def retry_derivative(
     from ..media.worker import enqueue, retire
 
     retire(session, derivative.id)
-    derivative.processing_backend = "remote"
+    derivative.processing_backend = DerivativeProcessingBackend.REMOTE
     derivative.processing_state = DerivativeProcessingState.PROCESSING
     enqueue(session, derivative)
     derivative.processing_started_at = datetime.now(UTC)
@@ -365,7 +365,7 @@ def list_derivatives(
     return [
         _derivative_response(derivative, trip_id)
         for derivative in asset.derivatives
-        if derivative.processing_backend != "thumbnail"
+        if derivative.processing_backend != DerivativeProcessingBackend.THUMBNAIL
     ]
 
 
@@ -545,20 +545,6 @@ def list_provider_connection_status(
         )
         for provider in IMPORT_PROVIDERS
     ]
-
-
-@provider_tokens_router.put("/{provider}", status_code=status.HTTP_204_NO_CONTENT)
-def set_provider_token(
-    provider: ImportProvider, payload: ProviderTokenSet, subject: SubjectDep, secret_store: SecretStoreDep
-) -> Response:
-    if not provider_available(provider):
-        raise ApiException(
-            status_code=409,
-            detail="Provider connection is not configured",
-            code="provider_connection_is_not_configured",
-        )
-    secret_store.set_token(subject=subject, provider=provider.value, token=payload.access_token)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @provider_tokens_router.delete("/{provider}", status_code=status.HTTP_204_NO_CONTENT)

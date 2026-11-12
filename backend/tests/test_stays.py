@@ -427,28 +427,23 @@ def test_stay_ideas_can_overlap_but_are_never_shared_even_when_chosen() -> None:
     assert owner.patch(f"{trips_path}/stays/{idea['id']}", json={"status": "maybe"}).status_code == 422
 
 
-def test_booked_is_accepted_as_confirmed_for_stays_and_routes() -> None:
+def test_booked_is_no_longer_a_status_for_stays_and_routes() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     trips_path = f"/api/trips/{trip['id']}"
     area = create_area(owner, trip["id"], "Tainan")
     other = create_area(owner, trip["id"], "Taipei")
     nights = {"check_in_date": "2054-11-30", "check_out_date": "2054-12-03", "area_id": area["id"]}
-    # Older clients, assistants and archive files still say booked; it is stored and returned as confirmed.
-    stay = owner.post(f"{trips_path}/stays", json={**nights, "status": "booked"})
+    assert owner.post(f"{trips_path}/stays", json={**nights, "status": "booked"}).status_code == 422
+    stay = owner.post(f"{trips_path}/stays", json={**nights, "status": "confirmed"})
     assert (stay.status_code, stay.json()["status"]) == (201, "confirmed")
-    changed = owner.patch(f"{trips_path}/stays/{stay.json()['id']}", json={"status": "planned"}).json()
-    assert changed["status"] == "planned"
-    assert owner.patch(f"{trips_path}/stays/{stay.json()['id']}", json={"status": "booked"}).json()["status"] == (
-        "confirmed"
-    )
+    assert owner.patch(f"{trips_path}/stays/{stay.json()['id']}", json={"status": "booked"}).status_code == 422
     ends = {"departure_area_id": area["id"], "arrival_area_id": other["id"]}
-    route = owner.post(f"{trips_path}/routes", json={"mode": "train", "status": "booked", **ends})
+    assert owner.post(f"{trips_path}/routes", json={"mode": "train", "status": "booked", **ends}).status_code == 422
+    route = owner.post(f"{trips_path}/routes", json={"mode": "train", "status": "confirmed", **ends})
     assert (route.status_code, route.json()["status"]) == (201, "confirmed")
     route_path = f"{trips_path}/routes/{route.json()['id']}"
-    assert owner.patch(route_path, json={"status": "planned"}).json()["status"] == "planned"
-    assert owner.patch(route_path, json={"status": "booked"}).json()["status"] == "confirmed"
-    assert owner.patch(route_path, json={"status": "paid"}).status_code == 422
+    assert owner.patch(route_path, json={"status": "booked"}).status_code == 422
 
 
 def upload_document(client: TestClient, trip_id: str, title: str = "Hotel confirmation") -> dict:

@@ -358,7 +358,7 @@ export type EmergencyInfoEntry = {
 export type MediaDerivative = {
   id: string;
   media_asset_id: string;
-  purpose: "owner_preview" | "share" | "static_export";
+  purpose: "owner_preview" | "share";
   review_state: "pending" | "approved";
   processing_state?: "processing" | "failed" | "ready";
   media_kind?: "photo" | "video";

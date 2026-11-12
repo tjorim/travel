@@ -1475,7 +1475,7 @@ def test_scope_revisions_reject_stale_owner_writes() -> None:
     assert conflict.status_code == 412
     assert conflict.json()["detail"]["code"] == "scope_revision_conflict"
     assert conflict.json()["detail"]["current"] == saved.json()
-    # Legacy/MCP callers still advance the revision; previews never do.
+    # MCP tools send no If-Match and still advance the revision; previews never do.
     assert client.post(f"{path}/preview", json=scope()).status_code == 200
     legacy = client.put(path, json=scope()).json()
     assert legacy["revision"] == saved.json()["revision"] + 1

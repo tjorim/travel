@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import SessionLocal
-from .models import Trip, TripTask, TripTaskAlert
+from .models import TaskAlertKind, Trip, TripTask, TripTaskAlert
 
 
 def process_due_task_alerts(session: Session, now: datetime | None = None) -> int:
@@ -43,7 +43,7 @@ def process_due_task_alerts(session: Session, now: datetime | None = None) -> in
             existing = session.scalar(
                 select(TripTaskAlert.id).where(
                     TripTaskAlert.task_id == task.id,
-                    TripTaskAlert.kind == "reminder",
+                    TripTaskAlert.kind == TaskAlertKind.REMINDER,
                     TripTaskAlert.scheduled_for == reminder,
                 )
             )
@@ -52,7 +52,7 @@ def process_due_task_alerts(session: Session, now: datetime | None = None) -> in
                     TripTaskAlert(
                         task_id=task.id,
                         owner_subject=owner,
-                        kind="reminder",
+                        kind=TaskAlertKind.REMINDER,
                         title=task.title,
                         scheduled_for=reminder,
                     )

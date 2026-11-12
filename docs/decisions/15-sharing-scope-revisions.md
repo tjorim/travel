@@ -13,9 +13,11 @@ detail.code = scope_revision_conflict and detail.current containing the current
 owner response. Neither the token nor that owner response is added to visitor
 projections. Preview endpoints remain token-free and do not advance revisions.
 
-Missing If-Match remains an unconditional write for compatibility with existing
-MCP tools and API clients; it still advances the revision, invalidating older
-PWA drafts. MCP tools call the route functions directly and remain compatible.
+Missing If-Match remains an unconditional write (kept in #359): the MCP tools
+call the route functions directly and send no revision, so requiring one would
+break them. It still advances the revision, invalidating older PWA drafts. The
+PWA sends If-Match on every public-projection, share-link and collection-member
+scope write.
 Label-only share-link PATCH also advances the link revision, so choosing the
 server copy restores the complete editor record.
 

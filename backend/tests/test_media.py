@@ -156,7 +156,7 @@ def video_with_telemetry(tmp_path: Path) -> bytes:
 
 def test_video_job_left_processing_by_the_retired_local_encoder_becomes_retryable(tmp_path: Path) -> None:
     from app.media import service
-    from app.models import DerivativePurpose, MediaDerivative
+    from app.models import DerivativeProcessingBackend, DerivativePurpose, MediaDerivative
 
     client = client_for("owner-1", tmp_path)
     trip = create_trip(client)
@@ -173,7 +173,7 @@ def test_video_job_left_processing_by_the_retired_local_encoder_becomes_retryabl
             session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=False
         )
         derivative_id, asset_id = derivative.id, asset.id
-        derivative.processing_backend = "local"
+        derivative.processing_backend = DerivativeProcessingBackend.LOCAL
         derivative.processing_started_at = datetime.now(UTC) - timedelta(
             seconds=service.VIDEO_STALLED_AFTER_SECONDS + 1
         )
@@ -629,9 +629,8 @@ def test_deleting_a_derivative_withdraws_it_from_every_live_share_scope(tmp_path
 def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path) -> None:
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
-    assert (
-        owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "never-return-this"}).status_code
-        == 204
+    secret_store.set_credential(
+        subject="owner-1", provider="google_photos_picker", credential=Credential("never-return-this")
     )
 
     statuses = owner.get("/api/provider-tokens")
@@ -649,6 +648,12 @@ def test_provider_status_is_owner_only_and_never_returns_a_token(tmp_path: Path)
     }
 
 
+def test_a_raw_access_token_can_no_longer_be_stored_through_the_api(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token"}).status_code == 405
+    assert owner.get("/api/provider-tokens").json()[0]["connected"] is False
+
+
 def test_provider_availability_requires_oauth_configuration(tmp_path: Path, monkeypatch) -> None:
     from app.config import settings
 
@@ -662,7 +667,6 @@ def test_provider_availability_requires_oauth_configuration(tmp_path: Path, monk
         "google_photos_picker": False,
         "gopro_cloud": False,
     }
-    assert owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token"}).status_code == 409
     assert owner.post("/api/provider-tokens/google_photos_picker/oauth/start").status_code == 409
     assert (
         owner.post(
@@ -701,9 +705,8 @@ def test_google_photos_picker_import_copies_selected_items_into_travel_storage(t
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
 
-    assert (
-        owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "owner-google-token"}).status_code
-        == 204
+    secret_store.set_credential(
+        subject="owner-1", provider="google_photos_picker", credential=Credential("owner-google-token")
     )
 
     items, contents = google_items()
@@ -783,7 +786,7 @@ def test_imported_exif_capture_time_takes_precedence_over_the_providers_own_meta
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    secret_store.set_credential(subject="owner-1", provider="google_photos_picker", credential=Credential("token-1"))
 
     # The provider (e.g. Google's createTime) says 2054-04-02, but the
     # camera's own EXIF DateTimeOriginal says 2054-04-01: the actual capture
@@ -810,7 +813,7 @@ def test_completing_an_expired_import_session_is_rejected_and_marks_it_expired(t
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    secret_store.set_credential(subject="owner-1", provider="google_photos_picker", credential=Credential("token-1"))
 
     items, contents = google_items()
     use_fake_provider(FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents))
@@ -853,7 +856,7 @@ def test_revoking_a_provider_token_blocks_new_imports_but_keeps_already_imported
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    secret_store.set_credential(subject="owner-1", provider="google_photos_picker", credential=Credential("token-1"))
 
     items, contents = google_items()
     use_fake_provider(FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents))
@@ -872,7 +875,7 @@ def test_an_interrupted_import_retry_only_reattempts_the_failed_item_and_never_d
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/provider-tokens/google_photos_picker", json={"access_token": "token-1"})
+    secret_store.set_credential(subject="owner-1", provider="google_photos_picker", credential=Credential("token-1"))
 
     items, contents = google_items()
     fake = FakeProvider(ImportProvider.GOOGLE_PHOTOS_PICKER, items, contents, fail_once={"g-item-2"})
@@ -902,7 +905,7 @@ def test_gopro_cloud_import_is_unavailable_without_beta_access_while_direct_uplo
     secret_store = InMemorySecretStore()
     owner = client_for("owner-1", tmp_path, secret_store=secret_store)
     trip = create_trip(owner)
-    owner.put("/api/provider-tokens/gopro_cloud", json={"access_token": "gopro-token"})
+    secret_store.set_credential(subject="owner-1", provider="gopro_cloud", credential=Credential("gopro-token"))
 
     from app.config import settings
 

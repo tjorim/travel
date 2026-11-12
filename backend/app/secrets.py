@@ -30,10 +30,6 @@ class SecretStore(Protocol):
     def set_pending(self, *, subject: str, provider: str, state: str, verifier: str) -> None: ...
     def pop_pending(self, *, subject: str, provider: str, state: str) -> str | None: ...
 
-    # Compatibility with the temporary manual-token API and test fakes.
-    def set_token(self, *, subject: str, provider: str, token: str) -> None: ...
-    def get_token(self, *, subject: str, provider: str) -> str | None: ...
-
 
 class InMemorySecretStore:
     def __init__(self) -> None:
@@ -45,13 +41,6 @@ class InMemorySecretStore:
 
     def get_credential(self, *, subject: str, provider: str) -> Credential | None:
         return self._credentials.get((subject, provider))
-
-    def set_token(self, *, subject: str, provider: str, token: str) -> None:
-        self.set_credential(subject=subject, provider=provider, credential=Credential(token))
-
-    def get_token(self, *, subject: str, provider: str) -> str | None:
-        credential = self.get_credential(subject=subject, provider=provider)
-        return credential.access_token if credential else None
 
     def revoke_token(self, *, subject: str, provider: str) -> None:
         self._credentials.pop((subject, provider), None)
@@ -101,13 +90,6 @@ class DatabaseSecretStore:
     def get_credential(self, *, subject: str, provider: str) -> Credential | None:
         value = self._read(subject, provider, "credential")
         return Credential(**value) if value else None
-
-    def set_token(self, *, subject: str, provider: str, token: str) -> None:
-        self.set_credential(subject=subject, provider=provider, credential=Credential(token))
-
-    def get_token(self, *, subject: str, provider: str) -> str | None:
-        credential = self.get_credential(subject=subject, provider=provider)
-        return credential.access_token if credential else None
 
     def revoke_token(self, *, subject: str, provider: str) -> None:
         self._delete(subject, provider, "credential")
