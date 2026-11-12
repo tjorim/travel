@@ -87,6 +87,7 @@ Source review clean-up, found at commit `def2173` and tracked by [#373](https://
 - [ ] [#369](https://github.com/tjorim/travel/issues/369) Move domain logic out of routers into shared services.
 - [ ] [#365](https://github.com/tjorim/travel/issues/365) Stop loading the whole trip graph per owner request (what is left: embedded updates in the trip response, one server-side order for every kind, paging in the PWA).
 - [ ] [#366](https://github.com/tjorim/travel/issues/366) API convention, outlier resources and error codes.
+- [ ] [#386](https://github.com/tjorim/travel/issues/386) Rename a travel update's `date_precision` to `share_date_precision` (the one rename chosen in #358; phase 4, with #367 and #357).
 
 ### Independent tidy-ups
 

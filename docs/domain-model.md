@@ -157,6 +157,115 @@ rounded to two decimals and capped at 500 points, then review/edit and save
 through the normal route editor. Raw data lives only in request memory; no
 visits, places, days or times are inferred. See [decision 243](decisions/243-finished-track-import.md).
 
+## Dates, times and names
+
+The convention agreed in [#358](https://github.com/tjorim/travel/issues/358)
+(2026-11-12). It describes the names in use at that date, marks what is already
+decided to change, and lists every exception with its reason. It renames nothing
+by itself; the one rename it chooses is tracked in
+[#386](https://github.com/tjorim/travel/issues/386).
+
+### Date ranges
+
+A range of days is `starts_on` and `ends_on`, and **the end is inclusive**: a
+visit that ends on the 5th is still under way on the 5th. A trip
+(`Trip.starts_on`/`ends_on`), a visit (`Visit.starts_on`/`ends_on`) and the
+visitor document's visit, stay and trip dates all follow it.
+
+Documented exceptions, kept on purpose:
+
+- **A stay** stores `check_in_date` and `check_out_date`, and the check-out is
+  **exclusive** (`check_in_date <= d < check_out_date`, `check_out_date >
+  check_in_date`). It counts nights, and a hotel's own check-out morning is not a
+  night. The visitor document already presents a stay as `starts_on`/`ends_on`
+  (the projection passes both through `_safe_date`), so visitors see one pair of
+  names; only the owner API, MCP, the export and the PWA read the stay names.
+- **A route** stores one local day, `departs_on`, and has no arrival day: it is
+  not a range, and `arrives_at` carries the arrival.
+- **A task** has `due_date` (a local day) and `remind_at` (an instant); neither
+  is a range.
+
+### Local times and zones
+
+A **local time is a wall clock plus the zone of the area it happens in.**
+
+| Record | Stored | Zone |
+|---|---|---|
+| Visit | `start_time`, `end_time` (wall clock) | the area's `timezone` (delivered beside the times as `timezone`, only when the owner shares the time) |
+| Stay | `check_in_time`, `check_out_time` (wall clock) | the area's `timezone`; never delivered |
+| Route | `departs_at`, `arrives_at` (UTC instants) with `departs_on` (the local day of departure) | the only record that stores its own: `departure_timezone` and `arrival_timezone`, because one route crosses two zones |
+| Travel update | `occurred_at` (UTC instant) | none stored. [#357](https://github.com/tjorim/travel/issues/357) derives the shared day from the zone of the update's area; `area_id` is optional, so that issue also decides the fallback |
+| Task | `due_date` (a local day), `remind_at` (an instant) | none |
+| Media asset | `captured_at` | none; see below |
+
+A new record that has a time of its own follows this rule: store the wall clock
+and read the zone from the area, and store a zone on the record itself only when
+it can differ from both of the record's areas.
+
+Media `captured_local` is a documented exception. When it is true, `captured_at`
+is the camera's wall clock as written in EXIF, stored with a nominal UTC label
+and shown unchanged in any viewer zone, because EXIF carries no zone
+([decision 297](decisions/297-exif-capture-time.md)). A reader must not treat it
+as an instant.
+
+### Date precision
+
+Two names exist, for two ideas that are easy to confuse:
+
+- `share_date_precision` on a visit or stay is **the audience-facing cap of that
+  record**: the coarsest reading (`day`, `month`, `year`) it allows a visitor,
+  or `null` for "follow the audience". It never changes what the owner sees.
+- `date_precision` on a travel update is the **same idea** (the update's own cap
+  on its shared date), stored as a required value that defaults to `day`. It has
+  a different name only because it was added first.
+- `date_precision` in the visitor document (and in the trip dates of the scope's
+  `defaults`) is the **delivered value**: what the coarser-wins rule
+  ([Date precision](#date-precision) above) produced for that audience. It is
+  an output, not a setting.
+
+Because the update's setting shares its name with the delivered value, a
+`date_precision` field in the owner API means "a setting" on an update and "a
+result" in a projection. The rename to `share_date_precision` is chosen in
+[#386](https://github.com/tjorim/travel/issues/386). Renaming `share_date_precision` on visits and stays
+instead is not worth it: it is the name the sharing editor, presets and
+documents already use.
+
+### Ordering
+
+A visit is still ordered by `position` today. [#367](https://github.com/tjorim/travel/issues/367)
+removes it, so visits will order by day and time like stays and routes (by day,
+then time, undated last); until then do not give a new record a `position`.
+
+### Names
+
+| Name | Means | Used by |
+|---|---|---|
+| `title` | an authored heading, written by the owner | trip, visit, travel update, task, document, and a collection's visitor-facing `title` |
+| `label` | a short name for a place, route or link | area, location, route, alternative group, and the owner-only `ShareLink.label` and `Collection.label` |
+| `name` | a list's own name | packing list, bag, template |
+| `property_name` | the booked property's name; a stay has no `title`, a visitor sees its area's label | stay |
+
+Documented exceptions:
+
+- `Location.label` is the **public** name of a shared location, while
+  `ShareLink.label` and `Collection.label` are **owner-only** (a collection's
+  visitor-facing heading is its separate `title`). Reading a `label` therefore
+  needs the record kind. The cost of a rename is high and the three never share
+  code that would confuse them, so this stays.
+- A packing item and a task link carry a short `label` (an item's name, a link's
+  text) because they name a thing inside a list, not a record of their own.
+- `property_name` stays on a stay (it is private, and `title` would suggest a
+  heading visitors read).
+
+### What is not renamed
+
+Renames touch the owner API, MCP, the trip export, `python-travel`, the Home
+Assistant integration and the PWA's saved offline copies at once, so the default
+is a documented exception. Only the update's `date_precision`
+([#386](https://github.com/tjorim/travel/issues/386)) is chosen, and it ships with the
+phase 4 model changes together with #367 and #357 so the export `schema_version`
+changes once.
+
 ## Words
 
 - **Visibility**: a record's own choice of who receives it: `private` (the
