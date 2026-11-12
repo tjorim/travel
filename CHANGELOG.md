@@ -14,6 +14,11 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ## [Unreleased]
 
+### Changed
+
+- **Web:** A stay, a visit and a route with the same planning status now carry the same label in the owner lists, agenda and dialogs; a planned stay no longer reads "Suggested" or "Still to choose". A stay still being considered without a linked location says "Location not linked yet", and a confirmed stay no longer does.
+- **Web:** Visitors see a place's country by name in their language (for example "Taipei · Taiwan") instead of the two-letter code.
+
 ### Internal
 
 - Lint the Home Assistant integration and both Python packages with the same ruff rule set as the backend (`E, F, I, UP, B, C4, SIM`); two `lambda` assignments and one `try`/`except`/`pass` were rewritten to satisfy it.

@@ -100,11 +100,12 @@ it("says which considered stays still lack an exact location, in text", () => {
         stay("a", { status: "idea", area }),
         stay("b", { status: "planned", area, location: { id: "loc" } as Stay["location"] }),
         stay("c", { status: "cancelled", area }),
+        stay("d", { status: "confirmed", area }),
       ]}
       onInspect={() => {}}
     />,
   );
   // Only the idea without a location says so: a stay with one, or a dropped one, does not.
-  expect(screen.getAllByText(/Nog geen exacte locatie/)).toHaveLength(1);
-  expect(screen.getByText(/^Alishan · Nog geen exacte locatie · /)).toBeTruthy();
+  expect(screen.getAllByText(/Locatie nog niet gekoppeld/)).toHaveLength(1);
+  expect(screen.getByText(/^Alishan · Locatie nog niet gekoppeld · /)).toBeTruthy();
 });

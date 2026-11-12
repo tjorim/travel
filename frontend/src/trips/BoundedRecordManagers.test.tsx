@@ -695,8 +695,9 @@ it("adds an exact location to an area-only stay by searching for its property na
     ],
   }));
   renderWithOwner(<StayManager trip={trip} areas={[area]} />);
-  // The row says, in text, that this considered stay has no exact location yet.
-  expect(await screen.findByText(/Nog geen exacte locatie/)).toBeTruthy();
+  // A confirmed stay does not read as undecided just because no location is linked.
+  expect(await screen.findByRole("button", { name: /Hotel Idea/ })).toBeTruthy();
+  expect(screen.queryByText(/Locatie nog niet gekoppeld/)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /Hotel Idea/ }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   fireEvent.click(screen.getByRole("button", { name: "Zoek “Hotel Idea”" }));

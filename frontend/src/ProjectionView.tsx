@@ -148,13 +148,22 @@ function text(item: ProjectionItem, field: string): string | null {
   return typeof item[field] === "string" && item[field] ? (item[field] as string) : null;
 }
 
+/** A country's name in the selected language; the delivered code when the runtime cannot name it. */
+function country(item: ProjectionItem): string | null {
+  const code = text(item, "country_code");
+  if (!code) return null;
+  try {
+    return new Intl.DisplayNames([selectedLocale()], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 function place(value: unknown): string | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const item = value as ProjectionItem;
   return (
-    [text(item, "label"), text(item, "region"), text(item, "country_code")]
-      .filter(Boolean)
-      .join(" · ") || null
+    [text(item, "label"), text(item, "region"), country(item)].filter(Boolean).join(" · ") || null
   );
 }
 
@@ -174,8 +183,8 @@ function transportPlace(value: unknown): string | null {
   const item = value as ProjectionItem;
   const area = [text(item, "label"), text(item, "region")];
   return area.some(Boolean)
-    ? [...area, text(item, "country_code")].filter(Boolean).join(" · ")
-    : [text(item, "locality"), text(item, "country_code")].filter(Boolean).join(" · ") || null;
+    ? [...area, country(item)].filter(Boolean).join(" · ")
+    : [text(item, "locality"), country(item)].filter(Boolean).join(" · ") || null;
 }
 
 function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"): string | null {
@@ -1828,8 +1837,8 @@ export function ProjectionView({
       render={(item) => (
         <article>
           <h3>{text(item, "label") ?? m.visitor_location()}</h3>
-          {[text(item, "region"), text(item, "country_code")].filter(Boolean).length > 0 && (
-            <p>{[text(item, "region"), text(item, "country_code")].filter(Boolean).join(" · ")}</p>
+          {[text(item, "region"), country(item)].filter(Boolean).length > 0 && (
+            <p>{[text(item, "region"), country(item)].filter(Boolean).join(" · ")}</p>
           )}
           {navigationLink(item)}
         </article>
