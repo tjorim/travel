@@ -104,6 +104,22 @@ it("switches projection chrome, dates and map alternatives while keeping authore
   expect(view.container.querySelector(".markdown strong")?.textContent).toBe("Authored");
 });
 
+it("names a place's country in the visitor's language and falls back to the delivered code", () => {
+  const data = projection();
+  data.places = [
+    { id: "place", label: "Berlijn", country_code: "DE", latitude: 52, longitude: 13 },
+    { id: "odd", label: "Elders", country_code: "ZZZZ", latitude: 1, longitude: 1 },
+  ];
+  data.routes = [];
+  render(<ProjectionView projection={data} audience="share" identifier={token} />);
+  expect(screen.queryByText("DE")).toBeNull();
+  expect(screen.getAllByText("Duitsland").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("ZZZZ").length).toBeGreaterThan(0);
+  act(() => changeLocale("en"));
+  expect(screen.getAllByText("Germany").length).toBeGreaterThan(0);
+  expect(screen.queryByText("Duitsland")).toBeNull();
+});
+
 it("preserves delivered date precision and rejects invalid dates in both languages", () => {
   for (const locale of ["nl", "en"] as const) {
     act(() => changeLocale(locale));

@@ -88,13 +88,6 @@ export const STAY_STATUS_LABELS: Record<Stay["status"], string> = {
   },
 };
 
-/** The archive's hotel states: still choosing, proposed, or settled. */
-export function stayStateLabel(stay: Stay): string {
-  if (stay.status === "planned")
-    return stay.property_name ? m.owner_suggested() : m.owner_still_to_choose();
-  return STAY_STATUS_LABELS[stay.status];
-}
-
 export const clock = (time: string | null): string => (time ? time.slice(0, 5) : "");
 
 /** "21 nov – 22 nov · 18:30–21:00", or "Nog geen dag". */

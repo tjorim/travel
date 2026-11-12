@@ -3,7 +3,7 @@ import { Button } from "@/ui/button";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { daysBetween, formatDay, stayLabel, type Stay } from "../../tracker-model";
-import { stayStateLabel } from "../labels";
+import { STAY_STATUS_LABELS } from "../labels";
 import { visibilityLabel } from "../visibility";
 
 /** The saved stays. Alternatives the owner confirmed are compared in the alternatives panel above. */
@@ -31,13 +31,13 @@ export function StayList({
               <span>
                 {[
                   stay.area?.label,
-                  // A considered stay without an exact location: text, not colour, and owner-only.
-                  !stay.location && stay.status !== "cancelled"
+                  // A stay still being considered without a linked location: text, not colour, and owner-only.
+                  !stay.location && (stay.status === "idea" || stay.status === "planned")
                     ? m.owner_no_exact_location_yet()
                     : null,
                   `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
                   m.owner_night_count({ count: nights }),
-                  stayStateLabel(stay),
+                  STAY_STATUS_LABELS[stay.status],
                   visibilityLabel(stay.visibility),
                 ]
                   .filter(Boolean)
