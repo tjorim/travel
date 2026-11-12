@@ -2,7 +2,7 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { formatInstant, type TravelUpdate } from "../../tracker-model";
+import { formatUpdateInstant, type TravelUpdate } from "../../tracker-model";
 
 /** The trip's saved travel updates, newest first; choosing one loads it into the editor. */
 export function SavedUpdates({
@@ -28,7 +28,7 @@ export function SavedUpdates({
           >
             <strong>{update.title}</strong>
             <span>
-              {formatInstant(update.occurred_at)}
+              {formatUpdateInstant(update)}
               {update.location ? ` · ${update.location.display_name}` : m.owner_without_location()}
             </span>
           </Button>

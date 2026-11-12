@@ -826,14 +826,34 @@ export function formatInstantDate(instant: string): string {
   return dayjs(instant).format("D MMM YYYY");
 }
 
+/**
+ * A reisupdate's instant read in the zone of its area, so the owner sees the same day a visitor is
+ * given (the backend's `update_day`). An area without a (usable) zone reads in the browser's zone.
+ */
+function inUpdateZone(update: Pick<TravelUpdate, "occurred_at" | "area">) {
+  const zone = update.area?.timezone;
+  if (zone) {
+    try {
+      return dayjs(update.occurred_at).tz(zone);
+    } catch {
+      // An unknown zone name: read the instant as the browser does.
+    }
+  }
+  return dayjs(update.occurred_at);
+}
+
+/** A reisupdate's date and time, "16 nov 2026, 14:32", on the day of its area's zone. */
+export function formatUpdateInstant(update: Pick<TravelUpdate, "occurred_at" | "area">): string {
+  return inUpdateZone(update).format("D MMM YYYY, HH:mm");
+}
+
 /** A reisupdate's date at its own precision, e.g. "14 maart 2026" or just "2026" — never the raw enum. */
 export function updateDateLabel(
-  occurredAt: string,
-  precision: TravelUpdate["date_precision"],
+  update: Pick<TravelUpdate, "occurred_at" | "area" | "date_precision">,
 ): string {
-  if (precision === "year") return dayjs(occurredAt).format("YYYY");
-  if (precision === "month") return dayjs(occurredAt).format("MMMM YYYY");
-  return formatInstant(occurredAt);
+  if (update.date_precision === "year") return inUpdateZone(update).format("YYYY");
+  if (update.date_precision === "month") return inUpdateZone(update).format("MMMM YYYY");
+  return formatUpdateInstant(update);
 }
 
 export function browserTimeZone(): string {

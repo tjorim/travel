@@ -19,6 +19,7 @@ from .audit import PUBLIC_AUDIENCE, LiveAudience
 from .errors import ApiException
 from .models import Area, Location
 from .schemas import MergeAudience, MergeRecordRef, MergeWidenedRecord
+from .update_day import update_day
 
 # Location fields a visitor can read, in display order. The address parts are
 # published only while the owner shares the address; ``locality`` is the region
@@ -227,7 +228,7 @@ def _summary(kind: str, record: Any) -> tuple[str | None, date | None]:
         case "route":
             return record.label, record.departs_on
         case _:
-            return record.title, record.occurred_at.date()
+            return record.title, update_day(record)
 
 
 def chosen_private(refs: list[MergeRecordRef], found: list[WidenedRecord]) -> set[tuple[str, str]]:

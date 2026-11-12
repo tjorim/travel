@@ -35,8 +35,8 @@ export function UpdateRow({
       <Button className="document-select" type="button" onClick={onInspect}>
         <strong>{item.title}</strong>
         <span>
-          {updateDateLabel(item.occurred_at, item.date_precision)} ·{" "}
-          {visibilityLabel(item.visibility)} · {item.area?.label ?? m.owner_no_place()}
+          {updateDateLabel(item)} · {visibilityLabel(item.visibility)} ·{" "}
+          {item.area?.label ?? m.owner_no_place()}
         </span>
       </Button>
       <div className="grid justify-items-end gap-1 max-[620px]:justify-items-start">

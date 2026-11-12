@@ -38,6 +38,7 @@ from .schemas import (
     ProjectionUpdate,
     ProjectionVisit,
 )
+from .update_day import update_day
 
 
 class ScopeError(ServiceError):
@@ -382,7 +383,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             body=item.body,
             body_html=render_markdown(item.body),
             date_precision=DatePrecision(precision),
-            story_date=_safe_date(item.occurred_at.date(), precision),
+            story_date=_safe_date(update_day(item), precision),
             place=_share_place(item.area, context["areas"]),
             **values,
         )

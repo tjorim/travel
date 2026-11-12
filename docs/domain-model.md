@@ -333,7 +333,7 @@ renderers, from the finished audience document alone:
 
 | Figure | Allowed projected input | Meaning |
 | --- | --- | --- |
-| `days` | `updates[].story_date`, `date_precision` | Distinct dates with shared updates at day precision; not elapsed trip days |
+| `days` | `updates[].story_date`, `date_precision` | Distinct local dates (in each update's area zone, see *The reisupdate*) with shared updates at day precision; not elapsed trip days |
 | `areas` | `places[].id` with the `area-` prefix | Count of explicit shared area records; excludes locations and embedded place mentions |
 | `countries` | Those same areas' `country_code` | Distinct nonempty country codes; no geocoding, inferred borders or private areas |
 | `nights` | `stays[].starts_on`, `ends_on`, `date_precision` | Union of day-precise half-open check-in/check-out date intervals; overlapping nights counted once |
@@ -498,6 +498,17 @@ visitors, date, area), held in separate fields so private text can never reach
 a visitor by changing a switch. A quick capture creates a private update with
 only notes; the owner writes the text for visitors later and then chooses who
 sees it.
+
+**The update's day.** An update is stored as one UTC instant (`occurred_at`) with no zone of its own. The
+day a visitor reads (`story_date`, and from it the `days` figure, the "N days later" connector and the rule that
+hides plan records shown with an update of the same area and day) is the calendar day of that instant **in the
+time zone of the update's area**: an update at 07:00 in Taipei stays on its Taipei day, not the UTC day before.
+An area without a zone, or one whose name the server cannot resolve, falls back to the instant's UTC date; it
+never fails. `backend/app/update_day.py` is the one place that derives it, and the visitor projection, the
+change summaries, the owner's PDF and export (`local_date`) and the owner's own lists all use it, so the owner
+and the visitor read the same day ([#357](https://github.com/tjorim/travel/issues/357)). Nothing is stored for
+it, so **editing an area's time zone, or moving an update to another area, moves the day of its updates**
+(and of the audiences that read them). An area's zone itself is never shared.
 
 A photo attached to a reisupdate travels with it (its approval is still the
 gate); a loose gallery photo follows its own visibility.
