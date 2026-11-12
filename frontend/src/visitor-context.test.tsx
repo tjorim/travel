@@ -1,7 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/react";
-import { ProjectionView, type Projection, type ProjectionItem } from "./ProjectionView";
+import {
+  ProjectionView,
+  type Projection,
+  type ProjectionRoute,
+  type ProjectionStay,
+  type ProjectionUpdate,
+  type ProjectionVisit,
+} from "./ProjectionView";
+import { fixture } from "./test-projection";
 import { groupStoryContext } from "./visitor-context";
 
 afterEach(cleanup);
@@ -13,45 +21,45 @@ const area = (label: string, latitude = 1.5, longitude = 2.5) => ({
   latitude,
   longitude,
 });
-const update = (
-  id: string,
-  story_date: string,
-  place: unknown = area("Alpha"),
-): ProjectionItem => ({
-  id,
-  title: `Story ${id}`,
-  body: "Text",
-  story_date,
-  date_precision: "day",
-  place,
-});
-const visit = (id: string, starts_on: string | undefined, extra = {}): ProjectionItem => ({
-  id,
-  title: `Visit ${id}`,
-  place: area("Alpha"),
-  date_precision: "day",
-  ...(starts_on ? { starts_on, ends_on: null } : {}),
-  ...extra,
-});
-const stay = (id: string, starts_on: string, ends_on: string, extra = {}): ProjectionItem => ({
-  id,
-  title: "Alpha",
-  place: area("Alpha"),
-  date_precision: "day",
-  starts_on,
-  ends_on,
-  ...extra,
-});
-const route = (id: string, extra = {}): ProjectionItem => ({
-  id,
-  mode: "train",
-  status: "planned",
-  departure: area("Alpha"),
-  arrival: area("Beta", 3, 4),
-  departs_on: "2054-11-02",
-  ...extra,
-});
-const ids = (items: ProjectionItem[]) => items.map((item) => item.id);
+const update = (id: string, story_date: string, place: unknown = area("Alpha")): ProjectionUpdate =>
+  fixture<ProjectionUpdate>({
+    id,
+    title: `Story ${id}`,
+    body: "Text",
+    story_date,
+    date_precision: "day",
+    place,
+  });
+const visit = (id: string, starts_on: string | undefined, extra = {}): ProjectionVisit =>
+  fixture<ProjectionVisit>({
+    id,
+    title: `Visit ${id}`,
+    place: area("Alpha"),
+    date_precision: "day",
+    ...(starts_on ? { starts_on, ends_on: null } : {}),
+    ...extra,
+  });
+const stay = (id: string, starts_on: string, ends_on: string, extra = {}): ProjectionStay =>
+  fixture<ProjectionStay>({
+    id,
+    title: "Alpha",
+    place: area("Alpha"),
+    date_precision: "day",
+    starts_on,
+    ends_on,
+    ...extra,
+  });
+const route = (id: string, extra = {}): ProjectionRoute =>
+  fixture<ProjectionRoute>({
+    id,
+    mode: "train",
+    status: "planned",
+    departure: area("Alpha"),
+    arrival: area("Beta", 3, 4),
+    departs_on: "2054-11-02",
+    ...extra,
+  });
+const ids = (items: { id: string }[]) => items.map((item) => item.id);
 
 it("ties a visit, stay and route to the one update sharing their area and day", () => {
   const result = groupStoryContext({
@@ -218,14 +226,22 @@ it("shows no private visit, property, booking or note values that the projection
     "CANARY-STREET-ADDRESS",
   ];
   const input = data();
-  input.visits[0] = { ...input.visits[0], private_title: canary[0], private_notes: canary[3] };
-  input.stays[0] = {
+  input.visits[0] = fixture<ProjectionVisit>({
+    ...input.visits[0],
+    private_title: canary[0],
+    private_notes: canary[3],
+  });
+  input.stays[0] = fixture<ProjectionStay>({
     ...input.stays[0],
     property_name: canary[1],
     booking_reference: canary[2],
     address_line1: canary[4],
-  };
-  input.routes[0] = { ...input.routes[0], booking_reference: canary[2], notes: canary[3] };
+  });
+  input.routes[0] = fixture<ProjectionRoute>({
+    ...input.routes[0],
+    booking_reference: canary[2],
+    notes: canary[3],
+  });
   const view = render(<ProjectionView projection={input} audience="share" identifier="slug" />);
   for (const value of canary) expect(view.container.innerHTML).not.toContain(value);
 });

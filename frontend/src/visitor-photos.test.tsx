@@ -3,20 +3,22 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { stubViewport } from "./mocks/viewport";
 import { changeLocale } from "./locale";
-import { ProjectionView, type Projection } from "./ProjectionView";
+import { ProjectionView, type Projection, type ProjectionMedia } from "./ProjectionView";
+import { fixture } from "./test-projection";
 import { m } from "./paraglide/messages.js";
 
-const photo = (index: number, update = "update") => ({
-  id: `photo-${index}`,
-  image: { id: `photo-${index}` },
-  alt_text: `Foto ${index}`,
-  caption: `Onderschrift ${index}`,
-  width: 1200,
-  height: 800,
-  update,
-});
+const photo = (index: number, update = "update") =>
+  fixture<ProjectionMedia>({
+    id: `photo-${index}`,
+    image: { id: `photo-${index}` },
+    alt_text: `Foto ${index}`,
+    caption: `Onderschrift ${index}`,
+    width: 1200,
+    height: 800,
+    update,
+  });
 function trip(count: number, extra: Partial<Projection> = {}): Projection {
-  return {
+  return fixture<Projection>({
     schema_version: "travel/public-trip@1",
     title: "Voorbeeldreis",
     summary: null,
@@ -29,7 +31,7 @@ function trip(count: number, extra: Partial<Projection> = {}): Projection {
     updates: [{ id: "update", title: "Een dag", body: "Tekst." }],
     media: Array.from({ length: count }, (_, i) => photo(i + 1)),
     ...extra,
-  };
+  });
 }
 const show = (data: Projection) =>
   render(<ProjectionView projection={data} audience="public" identifier="safe-slug" />);
@@ -96,7 +98,14 @@ it("keeps one photo large and arranges two or more as a mosaic with a visible co
 it("counts photos in Dutch and keeps a video in its own frame under the mosaic", () => {
   act(() => changeLocale("nl"));
   const data = trip(3);
-  data.media.push({ id: "clip", video: { id: "clip" }, alt_text: "Filmpje", update: "update" });
+  data.media.push(
+    fixture<ProjectionMedia>({
+      id: "clip",
+      video: { id: "clip" },
+      alt_text: "Filmpje",
+      update: "update",
+    }),
+  );
   const view = show(data);
   expect(screen.getByText("3 foto's")).toBeTruthy();
   expect(m.visitor_photo_count({ count: 1 })).toBe("1 foto");
@@ -151,7 +160,7 @@ it("changes photo with a touch swipe but not with a short drag, a vertical drag 
 const cover = (extra: Partial<Projection> = {}): Projection =>
   trip(2, {
     cover: "photo-1",
-    dates: { id: "dates", starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
+    dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
     ...extra,
   });
 

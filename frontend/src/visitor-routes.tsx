@@ -22,8 +22,8 @@ import {
   tripDates,
   type Audience,
   type Projection,
-  type ProjectionItem,
 } from "./ProjectionView";
+import type { ProjectionDates } from "./projection-types";
 import {
   forgetAllSharedTrips,
   forgetSharedTrip,
@@ -42,7 +42,7 @@ type CollectionEntry = {
   id: string;
   title: string | null;
   summary_text: string | null;
-  dates: ProjectionItem | null;
+  dates: ProjectionDates | null;
   cover: string | null;
 };
 type CollectionIndex = {
@@ -93,7 +93,7 @@ type PublicTripCard = {
   title: string | null;
   summary: string | null;
   summary_text?: string | null;
-  dates?: ProjectionItem | null;
+  dates?: ProjectionDates | null;
 };
 function PublicCard({ trip }: { trip: PublicTripCard }) {
   useLocale();

@@ -202,7 +202,7 @@ def test_projection_generalizes_even_a_legacy_area_point() -> None:
     from app.projection import _share_place
 
     area = Area(label="Somewhere", latitude=25.03371, longitude=121.56541)
-    assert _share_place(area) == {
+    assert _share_place(area).model_dump() == {
         "label": "Somewhere",
         "country_code": None,
         "region": None,

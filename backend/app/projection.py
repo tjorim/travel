@@ -8,16 +8,36 @@ column cannot make it past these explicit renderers by accident.
 """
 
 import hashlib
+from contextlib import suppress
 from datetime import UTC, date, datetime, time
 from typing import Any
+
+from pydantic import ValidationError
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
 from .errors import ServiceError
 from .exclusions import EXCLUDE_KEY, hidden_records, is_excludable, stored_exclusions
 from .markdown import markdown_text, render_inline, render_markdown
-from .models import Area, Location, MediaDerivative, MediaKind, Trip, Visibility
+from .models import Area, DatePrecision, Location, MediaDerivative, MediaKind, Trip, Visibility
 from .navigation import area_navigation_url, google_maps_url
 from .precision import PRECISION_LENGTH, audience_precision, coarser, effective_precision, own_value, route_precision
+from .schemas import (
+    ProjectionAddress,
+    ProjectionArea,
+    ProjectionDates,
+    ProjectionFile,
+    ProjectionMedia,
+    ProjectionNavigation,
+    ProjectionPlace,
+    ProjectionRecord,
+    ProjectionRoute,
+    ProjectionRouteLine,
+    ProjectionRouteMap,
+    ProjectionRoutePoint,
+    ProjectionStay,
+    ProjectionUpdate,
+    ProjectionVisit,
+)
 
 
 class ScopeError(ServiceError):
@@ -35,28 +55,23 @@ def _utc_instant(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
-def _share_place(place: Area | None, shared_areas: set[str] | None = None) -> dict[str, Any] | None:
+def _share_place(place: Area | None, shared_areas: set[str] | None = None) -> ProjectionArea | None:
     """Embed only an area's deliberately authored safe fields."""
     if place is None:
         return None
-    return {
-        "label": place.label,
-        "country_code": place.country_code,
-        "region": place.region,
-        "latitude": round(place.latitude, 2)
-        if (shared_areas is None or place.id in shared_areas)
-        and place.latitude is not None
-        and place.longitude is not None
-        else None,
-        "longitude": round(place.longitude, 2)
-        if (shared_areas is None or place.id in shared_areas)
-        and place.latitude is not None
-        and place.longitude is not None
-        else None,
-    }
+    # An area the audience receives itself shows its point; one only embedded in a record shows none.
+    shared = shared_areas is None or place.id in shared_areas
+    point = shared and place.latitude is not None and place.longitude is not None
+    return ProjectionArea(
+        label=place.label,
+        country_code=place.country_code,
+        region=place.region,
+        latitude=round(place.latitude, 2) if point and place.latitude is not None else None,
+        longitude=round(place.longitude, 2) if point and place.longitude is not None else None,
+    )
 
 
-def _share_shared_place(place: Area | Location) -> dict[str, Any]:
+def _share_shared_place(place: Area | Location, identifier: str) -> ProjectionPlace:
     """A shared area (its label and region) or location (its public name).
 
     A location shows its owner-chosen public name, city, country and point. Its
@@ -64,14 +79,17 @@ def _share_shared_place(place: Area | Location) -> dict[str, Any]:
     ids and display name (which usually contains the address) are never shown.
     """
     if isinstance(place, Area):
-        return _share_place(place) or {}
-    values: dict[str, Any] = {
-        "label": place.label,
-        "country_code": place.country_code,
-        "region": place.locality,
-        "latitude": place.latitude,
-        "longitude": place.longitude,
-    }
+        area = _share_place(place)
+        assert area is not None
+        return ProjectionPlace(
+            id=identifier,
+            label=area.label,
+            country_code=area.country_code,
+            region=area.region,
+            latitude=area.latitude,
+            longitude=area.longitude,
+        )
+    values: dict[str, Any] = {}
     if place.share_address:
         address = {
             "line1": place.address_line1,
@@ -80,28 +98,39 @@ def _share_shared_place(place: Area | Location) -> dict[str, Any]:
             "locality": place.locality,
             "admin_area": place.admin_area,
         }
-        values["address"] = {key: value for key, value in address.items() if value}
-    return values
+        values["address"] = ProjectionAddress(**{key: value for key, value in address.items() if value})
+    return ProjectionPlace(
+        id=identifier,
+        label=place.label,
+        country_code=place.country_code,
+        region=place.locality,
+        latitude=place.latitude,
+        longitude=place.longitude,
+        **values,
+    )
 
 
-def _embedded_location(location: Location | None, context: dict[str, Any]) -> dict[str, Any] | None:
+def _embedded_location(location: Location | None, context: dict[str, Any]) -> ProjectionPlace | None:
     """The location of an update or stay, only when this audience receives that location."""
     if location is None or location.id not in context["locations"]:
         return None
-    return {"id": local_id("location", location), **_share_shared_place(location)}
+    return _share_shared_place(location, local_id("location", location))
 
 
-def _share_route_map_point(place: Location | None, mode: str) -> dict[str, Any] | None:
-    """A route end on the map, only when that location is itself shared."""
-    if place is None or place.latitude is None or place.longitude is None:
+def _share_route_map_point(place: Location | None, mode: str) -> ProjectionRoutePoint | None:
+    """A route end on the map, only when that location is itself shared.
+
+    A shared location always has a label (``sharing_blocker`` refuses one without), so a labelless point is never
+    delivered rather than given invented wording."""
+    if place is None or not place.label or place.latitude is None or place.longitude is None:
         return None
-    return {
-        "label": place.label or "Vervoerspunt",
-        "country_code": place.country_code,
-        "latitude": place.latitude,
-        "longitude": place.longitude,
-        "kind": "airport" if mode == "flight" else "place",
-    }
+    return ProjectionRoutePoint(
+        label=place.label,
+        country_code=place.country_code,
+        latitude=place.latitude,
+        longitude=place.longitude,
+        kind="airport" if mode == "flight" else "place",
+    )
 
 
 def local_id(kind: str, record: Any) -> str:
@@ -254,20 +283,18 @@ def prepare_scope(trip: Trip, scope: dict, stored: dict | None = None, *, allow_
 
 
 def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> dict[str, Any]:
-    """Render one record with its fixed, contract-approved fields."""
+    """Render one record with its fixed, contract-approved fields.
+
+    Each kind builds its own ``Projection*`` model (see ``app.schemas``): the model's fields are the allowlist, so a
+    field added here without being declared there is refused. The document keeps carrying plain dictionaries."""
+    record: ProjectionRecord
     values: dict[str, Any]
     if kind in {"area", "location"}:
-        values = _share_shared_place(item)
+        record = _share_shared_place(item, identifier)
     elif kind == "visit":
         precision = effective_precision(own_value(item), context["date_precision"])
         shared_location = _embedded_location(item.location, context)
-        values = {
-            "title": item.title or (shared_location or {}).get("label") or item.area.label,
-            "summary": item.summary,
-            "summary_html": render_markdown(item.summary),
-            "place": _share_place(item.area, context["areas"]),
-            "date_precision": precision,
-        }
+        values = {}
         if item.starts_on is not None:
             values["starts_on"] = _safe_date(item.starts_on, precision)
             values["ends_on"] = _safe_date(item.ends_on, precision) if item.ends_on is not None else None
@@ -279,23 +306,24 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
                 values["timezone"] = item.area.timezone
         if shared_location:
             values["location"] = shared_location
+        record = ProjectionVisit(
+            id=identifier,
+            title=item.title or (shared_location.label if shared_location else None) or item.area.label,
+            summary=item.summary,
+            summary_html=render_markdown(item.summary),
+            place=_share_place(item.area, context["areas"]),
+            date_precision=DatePrecision(precision),
+            **values,
+        )
     elif kind == "route":
         locations = context["locations"]
-        values = {
-            "mode": item.mode.value,
-            "status": item.status.value,
-            "label": item.label,
-            "departure": _share_place(item.departure_area, context["areas"]),
-            "arrival": _share_place(item.arrival_area, context["areas"]),
-            "carrier": item.carrier,
-            "service_reference": item.service_reference,
-        }
+        values = {}
         # A route's day follows the audience's date setting (a day when it sets none). An exact instant would
         # give the day away, so the times are shared only to an audience that may read days.
         precision = route_precision(context["date_precision"])
         if item.departs_on is not None:
             values["departs_on"] = _safe_date(item.departs_on, precision)
-            values["date_precision"] = precision
+            values["date_precision"] = DatePrecision(precision)
         if precision == "day" and item.departs_at is not None and item.arrives_at is not None:
             values.update(
                 departs_at=_utc_instant(item.departs_at).isoformat(),
@@ -304,65 +332,88 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
                 arrival_timezone=item.arrival_timezone,
             )
         if item.geometry is not None:
-            values["geometry"] = item.geometry
-        points = {
-            "departure": _share_route_map_point(
-                item.departure_location if item.departure_location_id in locations else None, item.mode.value
-            ),
-            "arrival": _share_route_map_point(
-                item.arrival_location if item.arrival_location_id in locations else None, item.mode.value
-            ),
-        }
-        if any(points.values()):
-            values["map"] = points
+            # Only the line itself: a stored line may carry keys of an older schema. One the map could not draw
+            # either is left out; the route keeps its two ends.
+            with suppress(ValidationError):
+                values["geometry"] = ProjectionRouteLine(
+                    type=item.geometry.get("type"), coordinates=item.geometry.get("coordinates")
+                )
+        departure = _share_route_map_point(
+            item.departure_location if item.departure_location_id in locations else None, item.mode.value
+        )
+        arrival = _share_route_map_point(
+            item.arrival_location if item.arrival_location_id in locations else None, item.mode.value
+        )
+        if departure or arrival:
+            values["map"] = ProjectionRouteMap(departure=departure, arrival=arrival)
+        record = ProjectionRoute(
+            id=identifier,
+            mode=item.mode,
+            status=item.status,
+            label=item.label,
+            departure=_share_place(item.departure_area, context["areas"]),
+            arrival=_share_place(item.arrival_area, context["areas"]),
+            carrier=item.carrier,
+            service_reference=item.service_reference,
+            **values,
+        )
     elif kind == "stay":
         precision = effective_precision(own_value(item), context["date_precision"])
-        values = {
-            "title": item.area.label,
-            "place": _share_place(item.area, context["areas"]),
-            "date_precision": precision,
-            "starts_on": _safe_date(item.check_in_date, precision),
-            "ends_on": _safe_date(item.check_out_date, precision),
-        }
+        values = {}
         if location := _embedded_location(item.location, context):
             values["location"] = location
+        record = ProjectionStay(
+            id=identifier,
+            title=item.area.label,
+            place=_share_place(item.area, context["areas"]),
+            date_precision=DatePrecision(precision),
+            starts_on=_safe_date(item.check_in_date, precision),
+            ends_on=_safe_date(item.check_out_date, precision),
+            **values,
+        )
     elif kind == "travel_update":
         precision = coarser(item.date_precision.value, context["date_precision"]) or item.date_precision.value
-        values = {
-            "title": item.title,
-            "body": item.body,
-            "body_html": render_markdown(item.body),
-            "date_precision": precision,
-            "story_date": _safe_date(item.occurred_at.date(), precision),
-            "place": _share_place(item.area, context["areas"]),
-        }
+        values = {}
         if location := _embedded_location(item.location, context):
             values["location"] = location
+        record = ProjectionUpdate(
+            id=identifier,
+            title=item.title,
+            body=item.body,
+            body_html=render_markdown(item.body),
+            date_precision=DatePrecision(precision),
+            story_date=_safe_date(item.occurred_at.date(), precision),
+            place=_share_place(item.area, context["areas"]),
+            **values,
+        )
     elif kind == "media_derivative":
         # The projection-local file marker discloses no object key, original
         # asset, or canonical derivative id.
-        marker = (
+        values = (
             {
-                "video": {"id": identifier},
-                "poster": {"id": f"{identifier}-poster"},
+                "video": ProjectionFile(id=identifier),
+                "poster": ProjectionFile(id=f"{identifier}-poster"),
                 "duration_seconds": item.duration_seconds,
             }
             if item.media_asset.media_kind.value == "video"
-            else {"image": {"id": identifier}}
+            else {"image": ProjectionFile(id=identifier)}
         )
-        values = {
-            **marker,
-            "caption": item.caption,
-            "caption_html": render_inline(item.caption),
-            "alt_text": item.alt_text,
-            "width": item.width,
-            "height": item.height,
-            "focal_x": item.focal_x,
-            "focal_y": item.focal_y,
-        }
         if item.travel_update_id in context["updates"]:
             values["update"] = context["updates"][item.travel_update_id]
-    return {"id": identifier, **values}
+        record = ProjectionMedia(
+            id=identifier,
+            caption=item.caption,
+            caption_html=render_inline(item.caption),
+            alt_text=item.alt_text,
+            width=item.width,
+            height=item.height,
+            focal_x=item.focal_x,
+            focal_y=item.focal_y,
+            **values,
+        )
+    else:
+        raise ValueError(f"No projection renderer for {kind}")
+    return record.model_dump()
 
 
 def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
@@ -373,11 +424,11 @@ def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
     if chosen not in PRECISION_LENGTH or (trip.starts_on is None and trip.ends_on is None):
         return None
     precision = coarser(chosen, audience_precision(scope)) or chosen
-    return {
-        "starts_on": _safe_date(trip.starts_on, precision),
-        "ends_on": _safe_date(trip.ends_on, precision),
-        "date_precision": precision,
-    }
+    return ProjectionDates(
+        starts_on=_safe_date(trip.starts_on, precision),
+        ends_on=_safe_date(trip.ends_on, precision),
+        date_precision=DatePrecision(precision),
+    ).model_dump()
 
 
 _DESTINATIONS = {
@@ -439,7 +490,7 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
             projection[destination].append(_render(kind, item, identifier, context))
             # A shared place is also a destination someone may navigate to.
             if kind in {"area", "location"} and _navigation_target(item) is not None:
-                projection["navigation"].append({"id": identifier})
+                projection["navigation"].append(ProjectionNavigation(id=identifier).model_dump())
     if scope.get("numbers"):
         projection["numbers"] = summary_numbers(projection, scope["numbers"])
     return projection
