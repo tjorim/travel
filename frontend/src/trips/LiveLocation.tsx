@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDate, formatNumber, useLocale } from "../locale";
+import { formatInstant, formatNumber, useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { ownerFile, ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
@@ -156,11 +156,8 @@ export function LiveLocation({ tripId }: { tripId: string }) {
               <p>
                 {formatNumber(row.current.latitude, { maximumFractionDigits: 8 })},{" "}
                 {formatNumber(row.current.longitude, { maximumFractionDigits: 8 })} ·{" "}
-                {formatDate(new Date(row.current.observed_at), {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}{" "}
-                · {row.stale ? m.live_stale() : m.live_current()}
+                {formatInstant(new Date(row.current.observed_at))} ·{" "}
+                {row.stale ? m.live_stale() : m.live_current()}
               </p>
             )}
             {Object.entries(row.audiences).map(([audience, precision]) => (
@@ -326,11 +323,8 @@ export function LiveLocation({ tripId }: { tripId: string }) {
           <div className="grid gap-2">
             {points.data?.points.map((point) => (
               <p key={point.id}>
-                {formatDate(new Date(point.observed_at), {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}{" "}
-                · {formatNumber(point.latitude, { maximumFractionDigits: 8 })},{" "}
+                {formatInstant(new Date(point.observed_at))} ·{" "}
+                {formatNumber(point.latitude, { maximumFractionDigits: 8 })},{" "}
                 {formatNumber(point.longitude, { maximumFractionDigits: 8 })}
               </p>
             ))}

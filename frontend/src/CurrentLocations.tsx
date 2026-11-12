@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatDate, formatNumber, useLocale } from "./locale";
+import { formatInstant, formatNumber, formatRelativeTime, useLocale } from "./locale";
 import { m } from "./paraglide/messages.js";
 
 export type CurrentLocation = {
@@ -36,7 +36,10 @@ export function CurrentLocations({ positions }: { positions?: CurrentLocation[] 
         <p key={index}>
           {formatNumber(point.latitude, { maximumFractionDigits: 8 })},{" "}
           {formatNumber(point.longitude, { maximumFractionDigits: 8 })} ·{" "}
-          {formatDate(new Date(point.observed_at), { dateStyle: "medium", timeStyle: "short" })} ·{" "}
+          <time dateTime={point.observed_at} title={formatInstant(new Date(point.observed_at))}>
+            {formatRelativeTime(new Date(point.observed_at), clock)}
+          </time>{" "}
+          ·{" "}
           {point.stale ||
           clock - Date.parse(point.observed_at) - (point.delay_seconds ?? 0) * 1000 > 3600000
             ? m.live_stale()

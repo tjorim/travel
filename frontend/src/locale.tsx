@@ -88,3 +88,22 @@ export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) 
   new Intl.NumberFormat(current, options).format(value);
 export const formatDate = (value: Date, options?: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(current, options).format(value);
+/** An absolute instant in the viewer's zone, always labelled with that zone ("9 Nov 2026, 14:05 CET"). dateStyle/timeStyle cannot be combined with timeZoneName. */
+export const formatInstant = (value: Date) =>
+  formatDate(value, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+/** How long before `now` a UTC instant was, in the selected locale ("now", "12 minutes ago", "2 hours ago"). Zone-free. */
+export function formatRelativeTime(value: Date, now: number = Date.now()) {
+  const seconds = Math.max(0, Math.floor((now - value.getTime()) / 1000));
+  const formatter = new Intl.RelativeTimeFormat(current, { numeric: "auto" });
+  if (seconds < 60) return formatter.format(0, "second");
+  if (seconds < 3600) return formatter.format(-Math.floor(seconds / 60), "minute");
+  if (seconds < 86400) return formatter.format(-Math.floor(seconds / 3600), "hour");
+  return formatter.format(-Math.floor(seconds / 86400), "day");
+}
