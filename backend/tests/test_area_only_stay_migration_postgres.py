@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.models import Area, DatePrecision, Location, PublicSurface, Route, TravelUpdate, Trip, Visibility, Visit
+from app.models import Area, DatePrecision, Location, PublicSurface, Route, TravelUpdate, Trip, Visibility
 
 
 @pytest.fixture
@@ -146,7 +146,14 @@ def _seed(engine) -> dict:
             session.flush()
             locations[name] = location.id
             if use == "visit":
-                session.add(Visit(trip_id=trip.id, position=index, area_id=area.id, location_id=location.id))
+                # Raw SQL: the Visit model describes the head schema, which has no position.
+                session.execute(
+                    text(
+                        'INSERT INTO visits (id, trip_id, "position", area_id, location_id, status, visibility, '
+                        "share_time) VALUES (:id, :trip, :position, :area, :location, 'planned', 'private', false)"
+                    ),
+                    {"id": uuid4().hex, "trip": trip.id, "position": index, "area": area.id, "location": location.id},
+                )
             elif use == "route":
                 session.add(
                     Route(

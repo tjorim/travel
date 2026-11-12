@@ -33,7 +33,11 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
 - **Visit** (*bezoek*): a stop of the trip: an area, or a location in one, and
   optionally when: days, a start and end time (local at the visit, in the time
   zone of its area) and a kind (free or work). Getting somewhere is a route, not
-  a visit. The day-by-day agenda is a read-only view over stays, routes and
+  a visit. A visit has no manual position: like stays and routes, visits are
+  ordered by day, then time (an untimed visit after the timed ones of its day),
+  then creation, with undated visits last in creation order. That one server
+  rule (`VISIT_ORDER`) orders the owner list, the agenda and the visitor plan.
+  The day-by-day agenda is a read-only view over stays, routes and
   visits, not a record.
 - **Stay** (*verblijf*): the nights slept at one accommodation. Every stay has
   an area and, once an accommodation is chosen, a location in it. Until then

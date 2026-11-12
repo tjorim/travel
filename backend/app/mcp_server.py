@@ -167,7 +167,6 @@ _COMPACT_FIELDS = {
     "location": ("id", "label", "display_name", "locality", "area_id", "visibility"),
     "visit": (
         "id",
-        "position",
         "title",
         "kind",
         "status",

@@ -20,6 +20,8 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 - **Web:** A stay, a visit and a route with the same planning status now carry the same label in the owner lists, agenda and dialogs; a planned stay no longer reads "Suggested" or "Still to choose". A stay still being considered without a linked location says "Location not linked yet", and a confirmed stay no longer does.
 - **Web:** Visitors see a place's country by name in their language (for example "Taipei · Taiwan") instead of the two-letter code.
 
+- **Web:** Visits are ordered by day, then time, then creation, like stays and routes, with undated visits last in creation order, so the Visits list, the agenda and the visitor plan show them in the same order. The Move up and Move down buttons are gone (#367).
+
 ### Fixed
 
 - A travel update is now dated by the calendar day of its area's time zone instead of the UTC day of its instant, so an update written at 07:00 in Taipei is shown on that day to visitors (and in the days figure, "N days later", the PDF and the export's `local_date`) instead of the day before, and the owner's lists read the same day. An area without a time zone keeps the UTC day; changing an area's time zone moves the day of its updates (#357).
@@ -27,12 +29,14 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Removed
 
+- Remove the visit `position`: `POST` and `PATCH /api/trips/{id}/visits` no longer accept it (a request that sends it is refused with `422`), visit responses and the MCP visit rows no longer carry it, and the `409 conflicting_visit_position` error is gone. Visits are listed by day, then time, then creation, undated last; the trip export no longer has `visits[].position`, so its schema is now `travel/trip-export@2` (#367).
 - Remove the manual provider token endpoint `PUT /api/provider-tokens/{provider}`; Google Photos connects only through the OAuth routes, and `DELETE` still disconnects (#359).
 - Stop accepting `booked` as a stay or route status; it was folded into `confirmed` by migration 010 and no client sends it (#359).
 - Remove the unused "static archive" copy purpose: a leftover static-export copy becomes a private preview (#359).
 
 ### Internal
 
+- Migration 029 drops `visits.position` and its unique `(trip_id, position)` constraint, along with the renumbering, move and compaction code; where visits already tied on `created_at` (every row converted by migration 001) it keeps their old order by nudging the ties apart by microseconds, and the downgrade restores a position from the new order. One `VISIT_ORDER` (with `visit_order_key` for records in memory) orders the trip's visits, the visit list, the export and the visitor projection, and a new visit is stamped with a sub-second `created_at` so visits created in one batch keep their order (#367).
 - Type the visitor document end to end (#361): every delivered kind (visits, places, updates, stays, media, routes, navigation, dates) is now a Pydantic `Projection*` model whose fields are the allowlist, built by the renderers and published in the OpenAPI schema, and a field a renderer adds without declaring it is refused. The delivered JSON is unchanged. A route map point without a label is left out instead of being given the Dutch placeholder "Vervoerspunt" (a shared location always has a label). **Web:** `ProjectionView`, the day plan and the update context read typed records from `src/projection-types.ts` instead of `unknown` fields.
 - Merge the `StayStatus`, `RouteStatus` and `VisitStatus` enums into one `PlanningStatus`, and the three PostgreSQL types into `travel_planning_status` (migration 028, which converts every column without changing a value); the frontend keeps one `PlanningStatus` type and one label table. The API values (`idea`, `planned`, `confirmed`, `cancelled`) are unchanged (#359).
 - Owner requests no longer load the whole trip graph to check ownership: `owned_trip` reads only the trip row unless a handler asks for the relations (projection, overview, sharing, merge, alternatives, the trip response). Tasks, stays, routes, visits and travel updates read the one record they need, so a task or packing change costs the same few queries in a trip of any size (asserted in `tests/test_query_budget.py`). Stays, routes, visits and tasks now share one ordering rule between the trip and their own list endpoints (part of #365).

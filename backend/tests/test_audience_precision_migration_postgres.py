@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.models import Area, DatePrecision, Location, PublicSurface, ShareLink, Trip, Visit
+from app.models import Area, Location, PublicSurface, ShareLink, Trip, Visit
 
 
 @pytest.fixture
@@ -54,13 +54,18 @@ def _seed(engine) -> dict[str, str]:
         location = Location(trip_id=trip.id, area_id=area.id, label="Taipei")
         session.add(location)
         session.flush()
-        records = {
-            "visit_month": Visit(
-                trip_id=trip.id, position=0, area_id=area.id, share_date_precision=DatePrecision.MONTH
-            ),
-            "visit_day": Visit(trip_id=trip.id, position=1, area_id=area.id, share_date_precision=DatePrecision.DAY),
-        }
-        session.add_all(records.values())
+        # Raw SQL: the Visit model describes the head schema, which has no position.
+        records = {"visit_month": ("month", 0), "visit_day": ("day", 1)}
+        visit_ids = {key: uuid4().hex for key in records}
+        for key, (precision, position) in records.items():
+            session.execute(
+                text(
+                    'INSERT INTO visits (id, trip_id, "position", area_id, status, visibility, share_time, '
+                    "share_date_precision) VALUES (:id, :trip, :position, :area, 'planned', 'private', false, "
+                    "CAST(:precision AS travel_date_precision))"
+                ),
+                {"id": visit_ids[key], "trip": trip.id, "position": position, "area": area.id, "precision": precision},
+            )
         # Raw SQL: the Stay model describes the head schema (it has an area of its own), not revision 018's.
         stay_id = uuid4().hex
         session.execute(
@@ -80,7 +85,7 @@ def _seed(engine) -> dict[str, str]:
         # Core inserts name only the columns given: the models also have columns that later revisions add.
         session.execute(insert(PublicSurface).values(trip_id=trip.id, scope={"items": []}))
         session.commit()
-        return {"trip": trip.id, "stay_year": stay_id, **{key: record.id for key, record in records.items()}}
+        return {"trip": trip.id, "stay_year": stay_id, **visit_ids}
 
 
 def _precision(engine, table: str, record_id: str) -> str | None:

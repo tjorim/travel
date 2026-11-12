@@ -41,7 +41,6 @@ class Inn:
         self.visit = owner.post(
             f"{self.trip.base}/visits",
             json={
-                "position": 0,
                 "title": "Walk",
                 "starts_on": "2054-11-02",
                 "location": {"existing_location_id": self.trip.inn["id"]},
@@ -235,7 +234,7 @@ def test_a_route_between_two_merged_duplicates_is_one_choice() -> None:
 
 def area_records(areas: Areas, owner: TestClient) -> dict[str, dict]:
     base, trip_id = areas.trip.base, areas.trip.trip["id"]
-    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Walk", "area_id": areas.duplicate["id"]}).json()
+    visit = owner.post(f"{base}/visits", json={"title": "Walk", "area_id": areas.duplicate["id"]}).json()
     update = owner.post(
         f"{base}/travel-updates",
         json={"occurred_at": "2054-11-01T10:00:00Z", "title": "Hi", "body": "Hi.", "area_id": areas.duplicate["id"]},
@@ -285,9 +284,7 @@ def test_an_area_merge_refuses_a_record_the_preview_does_not_list() -> None:
     owner = client_for("owner-1")
     areas = Areas(owner)
     made = area_records(areas, owner)
-    elsewhere = owner.post(
-        f"{areas.trip.base}/visits", json={"position": 1, "title": "Kept", "area_id": areas.keep["id"]}
-    ).json()
+    elsewhere = owner.post(f"{areas.trip.base}/visits", json={"title": "Kept", "area_id": areas.keep["id"]}).json()
     share(owner, areas.trip.trip["id"], "visit", elsewhere["id"], "everyone")
 
     for confirm in (False, True):

@@ -332,7 +332,7 @@ def test_removing_the_others_deletes_them_and_cannot_be_undone() -> None:
     assert refused.json()["errors"][0]["code"] == "removed_alternatives_cannot_be_restored"
 
 
-def test_choosing_among_visits_and_routes_and_removing_visits_keeps_positions_compact() -> None:
+def test_choosing_among_visits_and_routes_and_removing_visits_keeps_the_date_order() -> None:
     owner = client_for("owner-1")
     trip = Trip(owner)
     first = trip.visit("Lake", "2054-05-01", "2054-05-03")
@@ -341,10 +341,7 @@ def test_choosing_among_visits_and_routes_and_removing_visits_keeps_positions_co
     group = trip.group("visit", [first, lake])
     owner.post(f"{trip.path}/alternative-groups/{group['id']}/choose", json={"member_id": lake, "others": "remove"})
     visits = owner.get(f"{trip.path}/visits").json()
-    assert [(item["id"], item["position"], item["status"]) for item in visits] == [
-        (lake, 0, "planned"),
-        (last, 1, "planned"),
-    ]
+    assert [(item["id"], item["status"]) for item in visits] == [(lake, "planned"), (last, "planned")]
     one, two = trip.route("2054-05-02"), trip.route("2054-05-02")
     routes = trip.group("route", [one, two])
     owner.post(f"{trip.path}/alternative-groups/{routes['id']}/choose", json={"member_id": two})
@@ -437,7 +434,7 @@ def test_export_lists_groups_explicitly_and_round_trips_membership() -> None:
     visits = trip.group("visit", [visit_a, visit_b])
     owner.post(f"{trip.path}/alternative-groups/{stays['id']}/choose", json={"member_id": a})
     document = json.loads(owner.get(f"{trip.path}/export").text)
-    assert document["schema_version"] == "travel/trip-export@1"
+    assert document["schema_version"] == "travel/trip-export@2"
     exported = {item["id"]: item for item in document["alternative_groups"]}
     assert set(exported) == {stays["id"], visits["id"]}
     assert exported[stays["id"]]["kind"] == "stay" and exported[stays["id"]]["label"] == "Where to sleep"

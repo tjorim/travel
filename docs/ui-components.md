@@ -359,8 +359,8 @@ Two small additions for planning on a laptop, both built from existing controls:
   one night, disabled while a save is pending) and says so in the section's status
   line ("Stay now runs 1 Mar → 4 Mar."). A confirmed or cancelled stay is edited in
   its dialog, so a booking's dates never change from a quick tap. A stay set to "everyone" or "custom" is edited there too: a change to it reaches visitors as it is saved, so it should not happen from a tap. Both buttons are
-  44 px square with whole-sentence accessible names. Visits already had Move up and
-  Move down, so no drag-and-drop is added: it would not be keyboard operable.
+  44 px square with whole-sentence accessible names. Visits are ordered by date and
+  have no manual order (#367), so no drag-and-drop is added either.
 - **First steps.** A trip with no area, visit, stay or route shows "Start with where
   you are going" on its overview with three links into the Plan blocks (places, a
   stay, a route). It appears only after all three lists have loaded, so a loading

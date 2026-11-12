@@ -273,7 +273,6 @@ export type PlanningStatus = "idea" | "planned" | "confirmed" | "cancelled";
  */
 export type Visit = {
   id: string;
-  position: number;
   area: Area;
   location: Location | null;
   title: string | null;

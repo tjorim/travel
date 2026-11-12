@@ -149,7 +149,7 @@ def test_every_kind_of_moved_record_is_counted_for_the_audiences_that_receive_it
     at = {"existing_location_id": trip.inn["id"]}
     trip.stay(trip.inn)
     trip.stay(trip.inn, "private")  # reaches nobody, so it reveals nothing
-    visit = owner.post(f"{trip.base}/visits", json={"position": 0, "title": "Walk", "location": at}).json()
+    visit = owner.post(f"{trip.base}/visits", json={"title": "Walk", "location": at}).json()
     route = owner.post(
         f"{trip.base}/routes",
         json={
@@ -274,7 +274,7 @@ def test_a_record_the_audience_does_not_receive_widens_nothing() -> None:
     trip.stay(trip.inn, "private")
     owner.post(
         f"{trip.base}/visits",
-        json={"position": 0, "title": "Walk", "location": {"existing_location_id": trip.inn["id"]}},
+        json={"title": "Walk", "location": {"existing_location_id": trip.inn["id"]}},
     )
     trip.publish()
     assert widened_of(trip.merge(trip.hotel, [trip.inn])) == {trip.inn["id"]: []}
@@ -349,7 +349,7 @@ def test_an_area_merge_reports_and_refuses_records_that_start_to_show_the_kept_p
     owner = client_for("owner-1")
     areas = Areas(owner)
     base, trip_id = areas.trip.base, areas.trip.trip["id"]
-    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Walk", "area_id": areas.duplicate["id"]}).json()
+    visit = owner.post(f"{base}/visits", json={"title": "Walk", "area_id": areas.duplicate["id"]}).json()
     route = owner.post(
         f"{base}/routes",
         json={"mode": "bus", "departure_area_id": areas.duplicate["id"], "arrival_area_id": areas.keep["id"]},
@@ -421,7 +421,7 @@ def test_area_narrowing_and_private_to_private_merges_need_no_acknowledgement() 
     narrowing = Areas(owner, duplicate="everyone", keep="private")
     owner.post(
         f"{narrowing.trip.base}/visits",
-        json={"position": 0, "title": "Walk", "area_id": narrowing.duplicate["id"]},
+        json={"title": "Walk", "area_id": narrowing.duplicate["id"]},
     )
     narrowing.trip.publish()
     (duplicate,) = narrowing.merge().json()["duplicates"]

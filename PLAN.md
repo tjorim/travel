@@ -76,7 +76,6 @@ Source review clean-up, found at commit `def2173` and tracked by [#373](https://
 - [ ] [#358](https://github.com/tjorim/travel/issues/358) One convention for dates, times and record names.
 - [ ] [#360](https://github.com/tjorim/travel/issues/360) Public view, hidden links and collection members as one audience.
 - [ ] [#364](https://github.com/tjorim/travel/issues/364) Align audit tables; decide what survives trip deletion.
-- [ ] [#367](https://github.com/tjorim/travel/issues/367) Decide how visits are ordered.
 - [ ] [#374](https://github.com/tjorim/travel/issues/374) Manage visits, stays and routes from the agenda.
 - [ ] [#368](https://github.com/tjorim/travel/issues/368) Merge the parallel trip and library document models.
 

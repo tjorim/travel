@@ -1048,6 +1048,34 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
     assert sorted(results) == ["rejected", "succeeded"]
 
 
+def test_batch_created_visits_are_listed_by_day_then_time_then_creation(backend: TravelMcpBackend) -> None:
+    from app.mcp_server import BatchCreate
+
+    trip = backend.create_trip(schemas.TripCreate(title="Batch order"))
+    area = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan"))
+    drafts = [
+        ("Idea", {}),
+        ("Late", {"starts_on": "2054-12-01", "start_time": "20:00"}),
+        ("Tie one", {"starts_on": "2054-12-01"}),
+        ("Early", {"starts_on": "2054-12-01", "start_time": "09:00"}),
+        ("Tie two", {"starts_on": "2054-12-01"}),
+        ("Tie three", {"starts_on": "2054-12-01"}),
+    ]
+    batch = BatchCreate(
+        visits=[schemas.VisitCreate(area_id=area["id"], title=title, **fields) for title, fields in drafts]
+    )
+    created = backend.batch_create(trip["id"], batch)
+    assert all("position" not in row for row in created["visits"])
+    assert [row["title"] for row in backend.list_visits(trip["id"])] == [
+        "Early",
+        "Late",
+        "Tie one",
+        "Tie two",
+        "Tie three",
+        "Idea",
+    ]
+
+
 def test_route_tools_refuse_a_route_between_the_same_place(backend: TravelMcpBackend) -> None:
     trip = backend.create_trip(schemas.TripCreate(title="Same place"))
     taipei = backend.save_area(trip["id"], schemas.AreaInput(label="Taipei"))

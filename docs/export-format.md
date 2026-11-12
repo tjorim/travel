@@ -1,6 +1,6 @@
 # Trip Export Format
 
-Schema `travel/trip-export@1`. Implements [#119](https://github.com/tjorim/travel/issues/119)
+Schema `travel/trip-export@2`. Implements [#119](https://github.com/tjorim/travel/issues/119)
 under owner decision 2026-11-01: **JSON records only**, no files.
 
 `GET /api/trips/{trip_id}/export` (owner session or token, like every owner route)
@@ -14,7 +14,7 @@ is "Export trip data (JSON)" in the trip's details dialog.
 
 ```json
 {
-  "schema_version": "travel/trip-export@1",
+  "schema_version": "travel/trip-export@2",
   "exported_at": "2054-05-01T09:00:00+00:00",
   "trip": {},
   "areas": [], "locations": [], "visits": [], "stays": [], "routes": [],
@@ -61,9 +61,15 @@ consumer that ignores unknown keys loses only the attachments. It is always
 present (an empty list for a stay without documents), orders the ids by when
 they were attached, and omits soft-deleted documents, like `routes[].document_ids`.
 
+`visits[].position` was removed in `travel/trip-export@2` (#367), so the version
+was raised: removing a field is not compatible. Visits are no longer ordered by
+hand; they are listed by day, then time, then creation, with undated visits last,
+the order the app shows them in. A consumer that read `visits[].position` can use
+the array order (or `starts_on`, `start_time` and `created_at`) instead.
+
 Each record lists its columns explicitly in `backend/app/export.py`. A column
 added to a model later is **not** exported until reviewed and added there.
-Records are ordered stably (creation time or position, then id). The document
+Records are ordered stably (creation time, position or the record's own date order, then id). The document
 is generated section by section from a single database snapshot (PostgreSQL
 `REPEATABLE READ`), so concurrent edits never produce a mixed view, and a large
 trip is never materialised at once (rows are read in batches of 200; a packing

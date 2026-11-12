@@ -37,7 +37,7 @@ it("downloads the export through an authenticated request with no token in the U
   server.use(
     http.get("*/api/trips/trip-1/export", ({ request }) => {
       seen = { url: request.url, authorization: request.headers.get("authorization") };
-      return HttpResponse.json({ schema_version: "travel/trip-export@1" });
+      return HttpResponse.json({ schema_version: "travel/trip-export@2" });
     }),
   );
   const created: Blob[] = [];

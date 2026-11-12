@@ -78,7 +78,7 @@ def test_export_has_the_stays_area_and_a_null_location_for_an_undecided_stay() -
     response = owner.get(f"/api/trips/{trip['id']}/export")
     assert response.status_code == 200, response.text
     document = json.loads(response.text)
-    assert document["schema_version"] == "travel/trip-export@1"
+    assert document["schema_version"] == "travel/trip-export@2"
     (row,) = document["stays"]
     assert (row["id"], row["area_id"], row["location_id"]) == (undecided["id"], taipei["id"], None)
     assert document["locations"] == []

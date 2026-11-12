@@ -321,7 +321,7 @@ def test_no_private_value_reaches_the_preview() -> None:
     area = owner.post(f"/api/trips/{trip['id']}/areas", json={"label": PRIVATE, "country_code": "TW"}).json()
     owner.post(
         f"/api/trips/{trip['id']}/visits",
-        json={"position": 0, "title": PRIVATE, "area_id": area["id"], "notes": PRIVATE},
+        json={"title": PRIVATE, "area_id": area["id"], "notes": PRIVATE},
     )
     owner.post(
         f"/api/trips/{trip['id']}/travel-updates",
