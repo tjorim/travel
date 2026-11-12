@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { locales, message } from "./messages";
+import { locales, message, plural } from "./messages";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 
 for (const locale of locales)
@@ -38,7 +38,7 @@ for (const locale of locales)
         .click();
       await page
         .getByRole("radio", {
-          name: message(locale, "live_delay_value").replace("{minutes}", "30"),
+          name: plural(locale, "live_delay_value", 30).replace("{minutes}", "30"),
           exact: true,
         })
         .first()
@@ -49,7 +49,7 @@ for (const locale of locales)
       await expect(
         page
           .getByRole("radio", {
-            name: message(locale, "live_delay_value").replace("{minutes}", "30"),
+            name: plural(locale, "live_delay_value", 30).replace("{minutes}", "30"),
             exact: true,
           })
           .first(),
@@ -116,7 +116,7 @@ for (const locale of locales)
       ).toBeVisible();
       await expect(
         page.getByRole("region", { name: message(locale, "live_current") }),
-      ).toContainText(message(locale, "live_delay_value").split("{minutes}")[0]);
+      ).toContainText(plural(locale, "live_delay_value", 30).split("{minutes}")[0]);
       expect(
         (
           await new AxeBuilder({ page })
