@@ -1,6 +1,15 @@
-import type { CurrentLocation } from "./CurrentLocations";
 import { VisitorNumbers } from "./VisitorNumbers";
-import type { VisitorNumbers as Numbers } from "./tracker-model";
+import type {
+  DateRange,
+  Projection,
+  ProjectionArea,
+  ProjectionItem,
+  ProjectionMedia,
+  ProjectionRoute,
+  ProjectionStay,
+  ProjectionUpdate,
+  ProjectionVisit,
+} from "./projection-types";
 import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
@@ -34,28 +43,18 @@ import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tr
 
 const CurrentLocations = lazy(() => import("./CurrentLocations"));
 
-export type ProjectionItem = { id: string; [field: string]: unknown };
-
-export type Projection = {
-  current_locations?: CurrentLocation[] | null;
-  numbers?: Numbers;
-  schema_version: string;
-  title: string | null;
-  /** Markdown source; `summary_html` is its sanitized rendering and `summary_text` a one-line preview. */
-  summary: string | null;
-  summary_html?: string | null;
-  summary_text?: string | null;
-  dates: ProjectionItem | null;
-  /** The id of the `media` photo this audience shows as the cover; absent or null when it receives none. */
-  cover?: string | null;
-  visits: ProjectionItem[];
-  places: ProjectionItem[];
-  updates: ProjectionItem[];
-  stays: ProjectionItem[];
-  media: ProjectionItem[];
-  routes: ProjectionItem[];
-  navigation: ProjectionItem[];
-};
+export type {
+  Projection,
+  ProjectionArea,
+  ProjectionDates,
+  ProjectionItem,
+  ProjectionMedia,
+  ProjectionPlace,
+  ProjectionRoute,
+  ProjectionStay,
+  ProjectionUpdate,
+  ProjectionVisit,
+} from "./projection-types";
 
 export type Audience = "public" | "share";
 export type PreviewResources = {
@@ -144,13 +143,14 @@ export function isProjection(value: unknown, audience: Audience): value is Proje
   );
 }
 
-function text(item: ProjectionItem, field: string): string | null {
-  return typeof item[field] === "string" && item[field] ? (item[field] as string) : null;
+/** A delivered string, or null when it is missing or empty. */
+function text(value: string | null | undefined): string | null {
+  return value || null;
 }
 
 /** A country's name in the selected language; the delivered code when the runtime cannot name it. */
-function country(item: ProjectionItem): string | null {
-  const code = text(item, "country_code");
+function country(item: { country_code?: string | null }): string | null {
+  const code = text(item.country_code);
   if (!code) return null;
   try {
     return new Intl.DisplayNames([selectedLocale()], { type: "region" }).of(code) ?? code;
@@ -159,16 +159,13 @@ function country(item: ProjectionItem): string | null {
   }
 }
 
-function place(value: unknown): string | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const item = value as ProjectionItem;
-  return (
-    [text(item, "label"), text(item, "region"), country(item)].filter(Boolean).join(" · ") || null
-  );
+function place(area: ProjectionArea | null | undefined): string | null {
+  if (!area) return null;
+  return [text(area.label), text(area.region), country(area)].filter(Boolean).join(" · ") || null;
 }
 
-function precision(item: ProjectionItem): string | null {
-  const value = text(item, "date_precision");
+function precision(item: { date_precision?: string | null }): string | null {
+  const value = text(item.date_precision);
   return value === "day"
     ? m.visitor_day_precision()
     : value === "month"
@@ -178,19 +175,18 @@ function precision(item: ProjectionItem): string | null {
         : null;
 }
 
-function transportPlace(value: unknown): string | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const item = value as ProjectionItem;
-  const area = [text(item, "label"), text(item, "region")];
-  return area.some(Boolean)
-    ? [...area, country(item)].filter(Boolean).join(" · ")
-    : [text(item, "locality"), country(item)].filter(Boolean).join(" · ") || null;
+function transportPlace(area: ProjectionArea | null | undefined): string | null {
+  if (!area) return null;
+  const names = [text(area.label), text(area.region)];
+  return names.some(Boolean)
+    ? [...names, country(area)].filter(Boolean).join(" · ")
+    : country(area);
 }
 
-function transportTime(item: ProjectionItem, endpoint: "departure" | "arrival"): string | null {
-  const value = text(item, endpoint === "departure" ? "departs_at" : "arrives_at");
+function transportTime(item: ProjectionRoute, endpoint: "departure" | "arrival"): string | null {
+  const value = text(endpoint === "departure" ? item.departs_at : item.arrives_at);
   if (!value || !dayjs(value).isValid()) return null;
-  const timeZone = text(item, endpoint === "departure" ? "departure_timezone" : "arrival_timezone");
+  const timeZone = text(endpoint === "departure" ? item.departure_timezone : item.arrival_timezone);
   try {
     return dayjs(value)
       .tz(timeZone ?? undefined)
@@ -211,10 +207,17 @@ const transportStatuses = (): Record<string, string> => ({
   cancelled: m.visitor_cancelled(),
 });
 
-function storyDate(item: ProjectionItem, field = "story_date"): string | null {
-  const value = text(item, field);
+/**
+ * A date delivered as a day, a month or a year, written in the selected language; null for an impossible date or one
+ * that disagrees with its own precision. Without a precision, the length of the date says it.
+ */
+function storyDate(
+  delivered: string | null | undefined,
+  precisionOf: string | null | undefined,
+): string | null {
+  const value = text(delivered);
   const precisionValue =
-    text(item, "date_precision") ??
+    text(precisionOf) ??
     ({ 4: "year", 7: "month", 10: "day" } as Record<number, string>)[value?.length ?? 0];
   if (!value || !/^(\d{4}|\d{4}-\d{2}|\d{4}-\d{2}-\d{2})$/.test(value)) return null;
   if (
@@ -236,19 +239,22 @@ function storyDate(item: ProjectionItem, field = "story_date"): string | null {
 }
 
 /** "november 2026 – december 2026" at whatever precision the owner shared. */
-export function tripDates(dates: ProjectionItem | null | undefined): string | null {
+export function tripDates(dates: DateRange | null | undefined): string | null {
   if (!dates) return null;
-  const [start, end] = [storyDate(dates, "starts_on"), storyDate(dates, "ends_on")];
+  const [start, end] = [
+    storyDate(dates.starts_on, dates.date_precision),
+    storyDate(dates.ends_on, dates.date_precision),
+  ];
   return start && end && start !== end ? `${start} – ${end}` : (start ?? end);
 }
 
 /** A shared visit time: local at the visit, with the viewer's own time when that differs. */
-export function visitTimes(item: ProjectionItem): string | null {
-  const start = text(item, "start_time");
+export function visitTimes(item: ProjectionVisit): string | null {
+  const start = text(item.start_time);
   if (!start) return null;
-  const end = text(item, "end_time");
-  const zone = text(item, "timezone");
-  const date = text(item, "starts_on");
+  const end = text(item.end_time);
+  const zone = text(item.timezone);
+  const date = text(item.starts_on);
   const local = `${start}${end ? `–${end}` : ""}${zone ? ` (${zoneName(zone)})` : ""}`;
   const there = zone && date ? timeForViewer(date, start, zone) : null;
   if (!there) return local;
@@ -261,39 +267,34 @@ export function visitTimes(item: ProjectionItem): string | null {
       : m.visitor_time_same({ local, viewer });
 }
 
-function positiveSize(item: ProjectionItem, field: "width" | "height"): number | undefined {
+function positiveSize(item: ProjectionMedia, field: "width" | "height"): number | undefined {
   const value = item[field];
   return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 4000
     ? value
     : undefined;
 }
 
-function focus(item: ProjectionItem, field: "focal_x" | "focal_y"): number {
+function focus(item: ProjectionMedia, field: "focal_x" | "focal_y"): number {
   const value = item[field];
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
     ? value
     : 50;
 }
 
-function hasFileMarker(item: ProjectionItem, field: "image" | "video" | "file"): boolean {
-  const marker = item[field];
-  return (
-    !!marker &&
-    typeof marker === "object" &&
-    !Array.isArray(marker) &&
-    (marker as { id?: unknown }).id === item.id
-  );
+/** True when the record carries the projection-local file marker of this kind, and it is its own. */
+function hasFileMarker(item: ProjectionMedia, field: "image" | "video"): boolean {
+  return item[field]?.id === item.id;
 }
 
-function ResourceSection({
+function ResourceSection<T extends ProjectionItem>({
   title,
   items,
   render,
   anchor,
 }: {
   title: string;
-  items: ProjectionItem[];
-  render: (item: ProjectionItem) => ReactNode;
+  items: T[];
+  render: (item: T) => ReactNode;
   anchor: string;
 }) {
   useLocale();
@@ -316,27 +317,25 @@ function ResourceSection({
   );
 }
 
-function routeHeading(item: ProjectionItem): string {
+function routeHeading(item: ProjectionRoute): string {
   return (
-    text(item, "label") ??
-    ([text(item, "carrier"), text(item, "service_reference")].filter(Boolean).join(" · ") ||
-      transportKinds()[text(item, "mode") ?? ""] ||
+    text(item.label) ??
+    ([text(item.carrier), text(item.service_reference)].filter(Boolean).join(" · ") ||
+      transportKinds()[text(item.mode) ?? ""] ||
       m.visitor_route())
   );
 }
 
-function RouteSummary({ item }: { item: ProjectionItem }) {
+function RouteSummary({ item }: { item: ProjectionRoute }) {
   useLocale();
   const departure = transportPlace(item.departure);
   const arrival = transportPlace(item.arrival);
   const departsAt = transportTime(item, "departure");
   const arrivesAt = transportTime(item, "arrival");
   // A route with a day (or only its month or year, as far as the audience may read) but no times.
-  const departsOn = storyDate(item, "departs_on");
-  const mode = transportKinds()[text(item, "mode") ?? ""];
-  const carrier = [text(item, "carrier"), text(item, "service_reference")]
-    .filter(Boolean)
-    .join(" · ");
+  const departsOn = storyDate(item.departs_on, item.date_precision);
+  const mode = transportKinds()[text(item.mode) ?? ""];
+  const carrier = [text(item.carrier), text(item.service_reference)].filter(Boolean).join(" · ");
   return (
     <article>
       <h3>{routeHeading(item)}</h3>
@@ -349,9 +348,7 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
         {[
           mode,
           carrier || null,
-          text(item, "status")
-            ? (transportStatuses()[text(item, "status")!] ?? text(item, "status"))
-            : null,
+          text(item.status) ? (transportStatuses()[item.status] ?? item.status) : null,
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -368,14 +365,14 @@ function RouteSummary({ item }: { item: ProjectionItem }) {
   );
 }
 
-function VisitCard({ item }: { item: ProjectionItem }) {
+function VisitCard({ item }: { item: ProjectionVisit }) {
   useLocale();
   return (
     <article>
-      <h3>{text(item, "title") ?? m.visitor_visit()}</h3>
+      <h3>{text(item.title) ?? m.visitor_visit()}</h3>
       {tripDates(item) && <p>{tripDates(item)}</p>}
       {visitTimes(item) && <p>{visitTimes(item)}</p>}
-      <Markdown under={3} html={text(item, "summary_html")} text={text(item, "summary")} />
+      <Markdown under={3} html={text(item.summary_html)} text={text(item.summary)} />
       {place(item.place) && <p>{place(item.place)}</p>}
     </article>
   );
@@ -385,13 +382,13 @@ function StayCard({
   item,
   navigationLink,
 }: {
-  item: ProjectionItem;
+  item: ProjectionStay;
   navigationLink: (item: ProjectionItem) => ReactNode;
 }) {
   useLocale();
   return (
     <article>
-      <h3>{text(item, "title") ?? m.visitor_stay()}</h3>
+      <h3>{text(item.title) ?? m.visitor_stay()}</h3>
       {tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}
       {place(item.place) && <p>{place(item.place)}</p>}
       {navigationLink(item)}
@@ -422,22 +419,20 @@ function RouteEntry({
   date,
   withYear,
 }: {
-  item: ProjectionItem;
+  item: ProjectionRoute;
   date: string;
   withYear: boolean;
 }) {
   const departure = transportPlace(item.departure);
   const arrival = transportPlace(item.arrival);
-  const mode = transportKinds()[text(item, "mode") ?? ""];
-  const carrier = [text(item, "carrier"), text(item, "service_reference")]
-    .filter(Boolean)
-    .join(" · ");
-  const status = transportStatuses()[text(item, "status") ?? ""];
-  const departsAt = clock(text(item, "departs_at"), text(item, "departure_timezone"));
-  const arrivesAt = clock(text(item, "arrives_at"), text(item, "arrival_timezone"));
+  const mode = transportKinds()[text(item.mode) ?? ""];
+  const carrier = [text(item.carrier), text(item.service_reference)].filter(Boolean).join(" · ");
+  const status = transportStatuses()[text(item.status) ?? ""];
+  const departsAt = clock(text(item.departs_at), text(item.departure_timezone));
+  const arrivesAt = clock(text(item.arrives_at), text(item.arrival_timezone));
   // A route is listed once, on the day it leaves. A later arrival day is only said, never listed again.
-  const arrivalDay = text(item, "arrives_at")
-    ? localDay(text(item, "arrives_at")!, text(item, "arrival_timezone"))
+  const arrivalDay = item.arrives_at
+    ? localDay(item.arrives_at, text(item.arrival_timezone))
     : null;
   const later = arrivalDay && arrivalDay !== date ? arrivalDay : null;
   return (
@@ -483,7 +478,7 @@ function DayEntryRow({
         : entry.phase === "check-in"
           ? `stay-${item.id}`
           : undefined;
-  const area = text(item, "title") ?? m.visitor_stay();
+  const area = entry.type === "stay" ? (text(entry.item.title) ?? m.visitor_stay()) : "";
   return (
     <li
       id={anchor}
@@ -493,27 +488,31 @@ function DayEntryRow({
     >
       {entry.type === "visit" && (
         <>
-          <span className="block font-bold">{text(item, "title") ?? m.visitor_visit()}</span>
+          <span className="block font-bold">{text(entry.item.title) ?? m.visitor_visit()}</span>
           <span className="block text-travel-muted">
-            {[m.visitor_visit(), place(item.place)].filter(Boolean).join(" · ")}
+            {[m.visitor_visit(), place(entry.item.place)].filter(Boolean).join(" · ")}
           </span>
           {entry.until && (
             <span className="block">
               {m.visitor_visit_until({ date: dayText(entry.until, withYear) })}
             </span>
           )}
-          {visitTimes(item) && <span className="block">{visitTimes(item)}</span>}
-          <Markdown under={3} html={text(item, "summary_html")} text={text(item, "summary")} />
+          {visitTimes(entry.item) && <span className="block">{visitTimes(entry.item)}</span>}
+          <Markdown
+            under={3}
+            html={text(entry.item.summary_html)}
+            text={text(entry.item.summary)}
+          />
         </>
       )}
-      {entry.type === "route" && <RouteEntry item={item} date={date} withYear={withYear} />}
+      {entry.type === "route" && <RouteEntry item={entry.item} date={date} withYear={withYear} />}
       {entry.type === "stay" && entry.phase === "check-in" && (
         <>
           <span className="block font-bold">{m.visitor_day_stay({ place: area })}</span>
-          {place(item.place) && (
-            <span className="block text-travel-muted">{place(item.place)}</span>
+          {place(entry.item.place) && (
+            <span className="block text-travel-muted">{place(entry.item.place)}</span>
           )}
-          {navigationLink(item)}
+          {navigationLink(entry.item)}
         </>
       )}
       {entry.type === "stay" && entry.phase === "night" && (
@@ -630,7 +629,11 @@ function OtherPlans({
 const transportMode = (value: string | null | undefined): RouteMode =>
   value && value in ROUTE_MODE_LABELS ? (value as RouteMode) : "other";
 
-const validPoint = (values: Record<string, unknown>): [number, number] | null => {
+/** A delivered point as [longitude, latitude], only when both are real coordinates. */
+const validPoint = (values: {
+  latitude?: number | null;
+  longitude?: number | null;
+}): [number, number] | null => {
   const { latitude, longitude } = values;
   if (
     typeof latitude !== "number" ||
@@ -647,43 +650,39 @@ const validPoint = (values: Record<string, unknown>): [number, number] | null =>
 /** A route's line: the owner's drawn one, else a straight one between its two ends (a shared location, else its area). */
 function routeLines(projection: Projection): MapLine[] {
   return projection.routes.flatMap((item) => {
-    if (text(item, "status") === "cancelled") return [];
-    const transport = transportMode(text(item, "mode"));
-    const geometry = item.geometry;
-    if (geometry && typeof geometry === "object" && !Array.isArray(geometry)) {
-      const line = geometry as { type?: unknown; coordinates?: unknown };
-      if (
-        line.type === "LineString" &&
-        Array.isArray(line.coordinates) &&
-        line.coordinates.length >= 2 &&
-        line.coordinates.every(
-          (point) =>
-            Array.isArray(point) &&
-            point.length === 2 &&
-            point.every((value) => typeof value === "number" && Number.isFinite(value)) &&
-            Math.abs(point[0]) <= 180 &&
-            Math.abs(point[1]) <= 90,
-        )
-      ) {
-        return [
-          {
-            id: item.id,
-            label: routeHeading(item),
-            coordinates: line.coordinates as [number, number][],
-            transport,
-          },
-        ];
-      }
+    if (text(item.status) === "cancelled") return [];
+    const transport = transportMode(text(item.mode));
+    const line = item.geometry;
+    if (
+      line &&
+      line.type === "LineString" &&
+      Array.isArray(line.coordinates) &&
+      line.coordinates.length >= 2 &&
+      line.coordinates.every(
+        (point) =>
+          Array.isArray(point) &&
+          point.length === 2 &&
+          point.every((value) => typeof value === "number" && Number.isFinite(value)) &&
+          Math.abs(point[0]) <= 180 &&
+          Math.abs(point[1]) <= 90,
+      )
+    ) {
+      return [
+        {
+          id: item.id,
+          label: routeHeading(item),
+          coordinates: line.coordinates as [number, number][],
+          transport,
+        },
+      ];
     }
     const end = (endpoint: "departure" | "arrival") => {
       const location = routeLocationPoint(item, endpoint);
       if (location) return { coordinates: location.coordinates, label: location.label };
       const area = item[endpoint];
-      if (!area || typeof area !== "object" || Array.isArray(area)) return null;
-      const coordinates = validPoint(area as Record<string, unknown>);
-      return coordinates
-        ? { coordinates, label: text(area as ProjectionItem, "label") ?? "" }
-        : null;
+      if (!area) return null;
+      const coordinates = validPoint(area);
+      return coordinates ? { coordinates, label: text(area.label) ?? "" } : null;
     };
     const departure = end("departure"),
       arrival = end("arrival");
@@ -706,35 +705,17 @@ export function projectionMapLines(projection: Projection): MapLine[] {
 }
 
 export function projectionMapPoints(projection: Projection): MapPoint[] {
-  const point = (item: ProjectionItem, place: unknown): MapPoint[] => {
-    if (!place || typeof place !== "object" || Array.isArray(place)) return [];
-    const values = place as Record<string, unknown>;
-    const latitude = values.latitude,
-      longitude = values.longitude;
-    if (
-      typeof latitude !== "number" ||
-      typeof longitude !== "number" ||
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      Math.abs(latitude) > 90 ||
-      Math.abs(longitude) > 180
-    )
-      return [];
-    return [
-      {
-        id: item.id,
-        label:
-          text(item, "label") ??
-          (typeof values.label === "string" ? values.label : m.visitor_location()),
-        coordinates: [longitude, latitude],
-      },
-    ];
+  const point = (id: string, area: ProjectionArea | null | undefined): MapPoint[] => {
+    const coordinates = area ? validPoint(area) : null;
+    return area && coordinates
+      ? [{ id, label: area.label ?? m.visitor_location(), coordinates }]
+      : [];
   };
   const points = [
-    ...projection.places.flatMap((item) => point(item, item)),
+    ...projection.places.flatMap((item) => point(item.id, item)),
     ...projection.visits.flatMap((item) => [
-      ...point(item, item.place),
-      ...point({ ...item, id: `${item.id}-location`, label: undefined }, item.location),
+      ...point(item.id, item.place),
+      ...point(`${item.id}-location`, item.location),
     ]),
     ...projection.routes.flatMap((item) =>
       [routeLocationPoint(item, "departure"), routeLocationPoint(item, "arrival")].filter(
@@ -750,43 +731,28 @@ export function projectionMapPoints(projection: Projection): MapPoint[] {
 }
 
 function routeLocationPoint(
-  item: ProjectionItem,
+  item: ProjectionRoute,
   endpoint: "departure" | "arrival",
 ): MapPoint | null {
-  const map = item.map;
-  if (!map || typeof map !== "object" || Array.isArray(map)) return null;
-  const point = (map as Record<string, unknown>)[endpoint];
-  if (!point || typeof point !== "object" || Array.isArray(point)) return null;
-  const values = point as Record<string, unknown>;
-  const latitude = values.latitude,
-    longitude = values.longitude;
-  if (
-    typeof latitude !== "number" ||
-    typeof longitude !== "number" ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    Math.abs(latitude) > 90 ||
-    Math.abs(longitude) > 180
-  )
-    return null;
+  const point = item.map?.[endpoint];
+  const coordinates = point ? validPoint(point) : null;
+  if (!point || !coordinates) return null;
   return {
     id: `transport-${item.id}-${endpoint}`,
     label:
-      typeof values.label === "string" && values.label
-        ? values.label
-        : endpoint === "departure"
-          ? m.visitor_departure_point()
-          : m.visitor_arrival_point(),
-    coordinates: [longitude, latitude],
-    kind: values.kind === "airport" ? "airport" : "place",
+      point.label ||
+      (endpoint === "departure" ? m.visitor_departure_point() : m.visitor_arrival_point()),
+    coordinates,
+    kind: point.kind === "airport" ? "airport" : "place",
   };
 }
 
 /** Whole days between two updates dated to the day, else null: the story's "3 days later" connector. */
-function daysLater(previous: ProjectionItem | undefined, item: ProjectionItem): number | null {
+function daysLater(previous: ProjectionUpdate | undefined, item: ProjectionUpdate): number | null {
   const [from, to] = [previous, item].map((entry) => {
     // `storyDate` rejects an impossible date and a month or year date, so only a valid day gets a gap.
-    const value = entry && storyDate(entry) ? text(entry, "story_date") : null;
+    const value =
+      entry && storyDate(entry.story_date, entry.date_precision) ? text(entry.story_date) : null;
     return value?.length === 10 ? dayjs.utc(value) : null;
   });
   if (!from?.isValid() || !to?.isValid()) return null;
@@ -795,8 +761,8 @@ function daysLater(previous: ProjectionItem | undefined, item: ProjectionItem): 
 }
 
 /** The alt text of a shared photo, with a translated fallback. */
-function photoAlt(item: ProjectionItem) {
-  return text(item, "alt_text") ?? m.visitor_shared_image();
+function photoAlt(item: ProjectionMedia) {
+  return text(item.alt_text) ?? m.visitor_shared_image();
 }
 
 /** One shared photo as a button that opens the gallery's lightbox on it; a failed load offers a retry. */
@@ -808,7 +774,7 @@ function SharedImage({
   fill = false,
   hint,
 }: {
-  item: ProjectionItem;
+  item: ProjectionMedia;
   url: string;
   onOpen: () => void;
   triggerRef: (element: HTMLButtonElement | null) => void;
@@ -894,7 +860,7 @@ function SharedImage({
 }
 
 /** The enlarged photo of the lightbox, its caption over the bottom; a failed load offers a retry for this photo only. */
-function LightboxImage({ item, url }: { item: ProjectionItem; url: string }) {
+function LightboxImage({ item, url }: { item: ProjectionMedia; url: string }) {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   return (
@@ -931,14 +897,14 @@ function LightboxImage({ item, url }: { item: ProjectionItem; url: string }) {
       <Markdown
         as="figcaption"
         className="pointer-events-auto absolute inset-x-0 bottom-0 max-h-2/5 overflow-y-auto bg-linear-to-t from-travel-lightbox/90 via-travel-lightbox/75 to-transparent px-5 pt-12 pb-travel-safe-bottom text-center leading-normal text-travel-lightbox-ink min-[680px]:px-travel-lightbox-caption"
-        html={text(item, "caption_html")}
-        text={text(item, "caption")}
+        html={text(item.caption_html)}
+        text={text(item.caption)}
       />
     </figure>
   );
 }
 
-type Photo = { item: ProjectionItem; url: string };
+type Photo = { item: ProjectionMedia; url: string };
 
 /** Fewer pixels than this, or a mostly vertical drag, is a scroll or a tap rather than a swipe. */
 const SWIPE_DISTANCE = 48;
@@ -1079,7 +1045,7 @@ function SharedVideo({
   url,
   poster,
 }: {
-  item: ProjectionItem;
+  item: ProjectionMedia;
   url: string;
   poster?: string;
 }) {
@@ -1093,7 +1059,7 @@ function SharedVideo({
         preload="none"
         playsInline
         poster={poster}
-        aria-label={text(item, "alt_text") ?? m.visitor_shared_video()}
+        aria-label={text(item.alt_text) ?? m.visitor_shared_video()}
         width={positiveSize(item, "width")}
         height={positiveSize(item, "height")}
         onError={() => setFailed(true)}
@@ -1133,7 +1099,7 @@ function Gallery({
   heading = true,
   lead = false,
 }: {
-  items: ProjectionItem[];
+  items: ProjectionMedia[];
   fileUrl: (item: ProjectionItem) => string | null;
   title?: string;
   /** A gallery already under a heading of its own is named for assistive technology only. */
@@ -1152,11 +1118,11 @@ function Gallery({
   const images = items.filter((item) => hasFileMarker(item, "image"));
   const mosaic = lead && images.length >= 2;
   const rest = mosaic ? items.filter((item) => !images.includes(item)) : items;
-  const trigger = (item: ProjectionItem) => (element: HTMLButtonElement | null) => {
+  const trigger = (item: ProjectionMedia) => (element: HTMLButtonElement | null) => {
     if (element) triggers.current.set(item.id, element);
     else triggers.current.delete(item.id);
   };
-  const tile = (item: ProjectionItem, hint?: string) =>
+  const tile = (item: ProjectionMedia, hint?: string) =>
     fileUrl(item) ? (
       <SharedImage
         fill
@@ -1254,8 +1220,8 @@ function Gallery({
                 <Markdown
                   as="figcaption"
                   className="mt-1.75 wrap-anywhere leading-normal text-travel-muted"
-                  html={text(item, "caption_html")}
-                  text={text(item, "caption")}
+                  html={text(item.caption_html)}
+                  text={text(item.caption)}
                 />
               </figure>
             </li>
@@ -1332,21 +1298,21 @@ function UpdateContextBlock({
       item,
       anchor: "stay",
       kind: m.visitor_stay(),
-      title: text(item, "title") ?? m.visitor_stay(),
+      title: text(item.title) ?? m.visitor_stay(),
       lines: [tripDates(item)],
     })),
     ...context.visits.map((item) => ({
       item,
       anchor: "visit",
       kind: m.visitor_visit(),
-      title: text(item, "title") ?? m.visitor_visit(),
+      title: text(item.title) ?? m.visitor_visit(),
       lines: [tripDates(item), visitTimes(item)],
     })),
     ...context.routes.map((item) => {
       const departure = transportPlace(item.departure);
       const arrival = transportPlace(item.arrival);
-      const mode = transportKinds()[text(item, "mode") ?? ""];
-      const status = transportStatuses()[text(item, "status") ?? ""];
+      const mode = transportKinds()[text(item.mode) ?? ""];
+      const status = transportStatuses()[text(item.status) ?? ""];
       return {
         item,
         anchor: "route",
@@ -1359,7 +1325,7 @@ function UpdateContextBlock({
           [mode, status].filter(Boolean).join(" · ") || null,
           [transportTime(item, "departure"), transportTime(item, "arrival")].some(Boolean)
             ? `${transportTime(item, "departure") ?? m.visitor_departure_time_unknown()} → ${transportTime(item, "arrival") ?? m.visitor_arrival_time_unknown()}`
-            : storyDate(item, "departs_on"),
+            : storyDate(item.departs_on, item.date_precision),
         ],
       };
     }),
@@ -1409,8 +1375,8 @@ function Updates({
   context,
   navigationLink,
 }: {
-  updates: ProjectionItem[];
-  media: ProjectionItem[];
+  updates: ProjectionUpdate[];
+  media: ProjectionMedia[];
   /** Approved visits, stays and routes tied to exactly one update by their shared area and day. */
   context?: Map<string, UpdateContext>;
   navigationLink?: (item: ProjectionItem) => ReactNode;
@@ -1445,7 +1411,9 @@ function Updates({
                       className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
                       href={`#${item.id}`}
                     >
-                      {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
+                      {text(item.title) ??
+                        storyDate(item.story_date, item.date_precision) ??
+                        m.visitor_update()}
                     </a>
                   </li>
                 ))}
@@ -1465,7 +1433,9 @@ function Updates({
                     className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
                     href={`#${item.id}`}
                   >
-                    {text(item, "title") ?? storyDate(item) ?? m.visitor_update()}
+                    {text(item.title) ??
+                      storyDate(item.story_date, item.date_precision) ??
+                      m.visitor_update()}
                   </a>
                 </li>
               ))}
@@ -1490,11 +1460,13 @@ function Updates({
               )}
               <article className="grid gap-3">
                 <h3 className="m-0 text-travel-card-title leading-tight font-extrabold tracking-tight">
-                  {text(item, "title") ?? m.visitor_update()}
+                  {text(item.title) ?? m.visitor_update()}
                 </h3>
                 <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-sm text-travel-muted">
-                  {storyDate(item) ? (
-                    <time dateTime={text(item, "story_date") ?? undefined}>{storyDate(item)}</time>
+                  {storyDate(item.story_date, item.date_precision) ? (
+                    <time dateTime={text(item.story_date) ?? undefined}>
+                      {storyDate(item.story_date, item.date_precision)}
+                    </time>
                   ) : precision(item) ? (
                     <span>{precision(item)}</span>
                   ) : null}
@@ -1505,7 +1477,7 @@ function Updates({
                   fileUrl={fileUrl}
                   title={m.visitor_update_media_named({
                     number: index + 1,
-                    title: text(item, "title") ?? m.visitor_update(),
+                    title: text(item.title) ?? m.visitor_update(),
                   })}
                   heading={false}
                   lead
@@ -1513,8 +1485,8 @@ function Updates({
                 <Markdown
                   under={3}
                   className="max-w-travel-reading leading-relaxed"
-                  html={text(item, "body_html")}
-                  text={text(item, "body")}
+                  html={text(item.body_html)}
+                  text={text(item.body)}
                 />
                 {context?.get(item.id) && (
                   <UpdateContextBlock
@@ -1537,12 +1509,7 @@ function tripDestinations(projection: Projection): string[] {
   const labels = [
     ...new Set(
       [...projection.visits, ...projection.stays, ...projection.updates]
-        .map((item) => {
-          const area = item.place;
-          return area && typeof area === "object" && !Array.isArray(area)
-            ? text(area as ProjectionItem, "label")
-            : null;
-        })
+        .map((item) => text(item.place?.label))
         .filter((label): label is string => label !== null),
     ),
   ];
@@ -1593,7 +1560,8 @@ export function ProjectionView({
           to: line.to ?? transportPlace(route.arrival) ?? undefined,
           dates:
             [
-              transportTime(route, "departure") ?? storyDate(route, "departs_on"),
+              transportTime(route, "departure") ??
+                storyDate(route.departs_on, route.date_precision),
               transportTime(route, "arrival"),
             ]
               .filter(Boolean)
@@ -1615,12 +1583,10 @@ export function ProjectionView({
             point.id === `transport-${item.id}-departure` ||
             point.id === `transport-${item.id}-arrival`,
         );
-        const matchingPlace = (value: unknown) =>
+        const matchingPlace = (value: ProjectionArea | null | undefined) =>
           !!value &&
-          typeof value === "object" &&
-          !Array.isArray(value) &&
-          (value as Record<string, unknown>).latitude === point.coordinates[1] &&
-          (value as Record<string, unknown>).longitude === point.coordinates[0];
+          value.latitude === point.coordinates[1] &&
+          value.longitude === point.coordinates[0];
         const relatedVisits = projection.visits.filter(
           (item) =>
             item.id === visit?.id || matchingPlace(item.place) || matchingPlace(item.location),
@@ -1631,11 +1597,11 @@ export function ProjectionView({
             ? [{ label: m.visitor_view_location(), href: `#place-${placeItem.id}` }]
             : []),
           ...relatedVisits.map((item) => ({
-            label: m.visitor_visit_link({ title: text(item, "title") ?? m.visitor_visit() }),
+            label: m.visitor_visit_link({ title: text(item.title) ?? m.visitor_visit() }),
             href: `#visit-${item.id}`,
           })),
           ...relatedUpdates.map((item) => ({
-            label: m.visitor_update_link({ title: text(item, "title") ?? m.visitor_update() }),
+            label: m.visitor_update_link({ title: text(item.title) ?? m.visitor_update() }),
             href: `#${item.id}`,
           })),
           ...(route ? [{ label: m.visitor_view_route(), href: `#route-${route.id}` }] : []),
@@ -1712,8 +1678,8 @@ export function ProjectionView({
   const cover: TripCover | null = coverItem
     ? {
         url: fileUrl(coverItem),
-        alt: text(coverItem, "alt_text") ?? "",
-        caption: { html: text(coverItem, "caption_html"), text: text(coverItem, "caption") },
+        alt: text(coverItem.alt_text) ?? "",
+        caption: { html: text(coverItem.caption_html), text: text(coverItem.caption) },
         focalX: focus(coverItem, "focal_x"),
         focalY: focus(coverItem, "focal_y"),
         width: positiveSize(coverItem, "width"),
@@ -1722,19 +1688,20 @@ export function ProjectionView({
     : null;
   const hasMap = mapLines.length > 0 || mapPoints.length > 0;
   // An update sits where its shared area sits on the map, found by the coordinates both already carry.
-  const pointOf = (item: ProjectionItem) => {
+  const pointOf = (item: ProjectionUpdate) => {
     const area = item.place;
-    if (!area || typeof area !== "object" || Array.isArray(area)) return undefined;
-    const { latitude, longitude } = area as Record<string, unknown>;
+    if (!area) return undefined;
+    const { latitude, longitude } = area;
     return mapPoints.find(
       (point) => point.coordinates[0] === longitude && point.coordinates[1] === latitude,
     );
   };
   // With the map and an update that has a place, the map sits beside the story and follows the reader down it.
   const mapBesideStory = hasMap && projection.updates.some((item) => pointOf(item));
-  const followed = activeUpdate
-    ? pointOf(projection.updates.find((item) => item.id === activeUpdate) ?? { id: "" })?.id
+  const followedUpdate = activeUpdate
+    ? projection.updates.find((item) => item.id === activeUpdate)
     : undefined;
+  const followed = followedUpdate ? pointOf(followedUpdate)?.id : undefined;
   // One photo per place, from the first update there: only photos this audience already receives, at a place it
   // already sees.
   const mapPhotos: MapPhoto[] = [];
@@ -1750,7 +1717,7 @@ export function ProjectionView({
         pointId: point.id,
         coordinates: point.coordinates,
         url: fileUrl(photo)!,
-        label: text(update, "title") ?? m.visitor_update(),
+        label: text(update.title) ?? m.visitor_update(),
         onOpen: () => openUpdate(update.id),
       });
   }
@@ -1836,9 +1803,9 @@ export function ProjectionView({
       items={projection.places}
       render={(item) => (
         <article>
-          <h3>{text(item, "label") ?? m.visitor_location()}</h3>
-          {[text(item, "region"), country(item)].filter(Boolean).length > 0 && (
-            <p>{[text(item, "region"), country(item)].filter(Boolean).join(" · ")}</p>
+          <h3>{text(item.label) ?? m.visitor_location()}</h3>
+          {[text(item.region), country(item)].filter(Boolean).length > 0 && (
+            <p>{[text(item.region), country(item)].filter(Boolean).join(" · ")}</p>
           )}
           {navigationLink(item)}
         </article>

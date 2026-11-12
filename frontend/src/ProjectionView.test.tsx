@@ -8,9 +8,10 @@ import {
   projectionMapPoints,
   ProjectionView,
   visitTimes,
-  type Projection,
+  type ProjectionVisit,
 } from "./ProjectionView";
 import { timeForViewer, type ShareScope } from "./tracker-model";
+import { fixture, type SparseProjection } from "./test-projection";
 import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";
 import { serveApi } from "./query/serve-api";
@@ -30,7 +31,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function projection(schema_version = "travel/public-trip@1"): Projection {
+function projection(schema_version = "travel/public-trip@1"): SparseProjection {
   return {
     schema_version,
     title: "Selected trip",
@@ -379,8 +380,8 @@ it("renders every resource kind using only supplied fields", () => {
       status: "confirmed",
       carrier: "EVA Air",
       service_reference: "BR-087",
-      departure: { locality: "Zaventem", country_code: "BE", display_name: "Brussels Airport" },
-      arrival: { locality: "Taoyuan", country_code: "TW", display_name: "Taoyuan Airport" },
+      departure: { label: "Zaventem", country_code: "BE", display_name: "Brussels Airport" },
+      arrival: { label: "Taoyuan", country_code: "TW", display_name: "Taoyuan Airport" },
       departs_at: "2054-04-01T09:00:00Z",
       arrives_at: "2054-04-01T23:00:00Z",
       booking_reference: "Secret booking",
@@ -783,7 +784,7 @@ it("renders the same scoped gallery in preview without requesting a visitor file
 
 it("shows shared trip dates and visit summaries only from the projection", () => {
   const data = projection();
-  data.dates = { id: "dates", starts_on: "2054-11", ends_on: "2054-12", date_precision: "month" };
+  data.dates = { starts_on: "2054-11", ends_on: "2054-12", date_precision: "month" };
   data.visits = [{ id: "visit-3", title: "Taipei", summary: "Stad, eten en een eerste weekend." }];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   expect(screen.getByText("november 2054 – december 2054")).toBeTruthy();
@@ -839,16 +840,18 @@ it("reads a visit time in the viewer's own zone, with the day when it moves", ()
   expect(timeForViewer("2054-11-21", "18:30", "Asia/Taipei", "Asia/Taipei")).toBeNull();
   expect(timeForViewer("2054-11-21", "18:30", "Not/AZone", "Europe/Amsterdam")).toBeNull();
   expect(
-    visitTimes({
-      id: "v",
-      start_time: "18:30",
-      end_time: "21:00",
-      starts_on: "2054-11-21",
-      timezone: "Asia/Taipei",
-    }),
+    visitTimes(
+      fixture<ProjectionVisit>({
+        id: "v",
+        start_time: "18:30",
+        end_time: "21:00",
+        starts_on: "2054-11-21",
+        timezone: "Asia/Taipei",
+      }),
+    ),
   ).toMatch(/^18:30–21:00 \(Taipei\)( · bij jou \d\d:\d\d–\d\d:\d\d)?/);
-  expect(visitTimes({ id: "v", start_time: "18:30" })).toBe("18:30");
-  expect(visitTimes({ id: "v" })).toBeNull();
+  expect(visitTimes(fixture<ProjectionVisit>({ id: "v", start_time: "18:30" }))).toBe("18:30");
+  expect(visitTimes(fixture<ProjectionVisit>({ id: "v" }))).toBeNull();
 });
 
 it("shows the server's sanitized Markdown and falls back to plain source text", () => {
@@ -921,9 +924,9 @@ it("renders a caption's inline Markdown in its figcaption and falls back to its 
   expect(source.querySelector("em")).toBeNull();
 });
 
-const coverData = (): Projection => ({
+const coverData = (): SparseProjection => ({
   ...projection(),
-  dates: { id: "dates", starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
+  dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
   cover: "media-cover",
   visits: [{ id: "visit-1", title: "Harbour", place: { label: "Keelung" } }],
   media: [

@@ -1,21 +1,21 @@
 import { dayjs } from "./dayjs";
-import type { ProjectionItem } from "./ProjectionView";
+import type { ProjectionRoute, ProjectionStay, ProjectionVisit } from "./projection-types";
 import { addDays } from "./tracker-model";
 
 /** Where one stay is on a given day: arriving, sleeping there (a night) or leaving. */
 export type StayPhase = "check-in" | "night" | "check-out";
 
 export type DayEntry =
-  | { type: "visit"; key: string; item: ProjectionItem; until: string | null }
-  | { type: "stay"; key: string; item: ProjectionItem; phase: StayPhase }
-  | { type: "route"; key: string; item: ProjectionItem };
+  | { type: "visit"; key: string; item: ProjectionVisit; until: string | null }
+  | { type: "stay"; key: string; item: ProjectionStay; phase: StayPhase }
+  | { type: "route"; key: string; item: ProjectionRoute };
 
 export type PlanDay = { date: string; entries: DayEntry[] };
 
 export type PlanRecords = {
-  visits: ProjectionItem[];
-  stays: ProjectionItem[];
-  routes: ProjectionItem[];
+  visits: ProjectionVisit[];
+  stays: ProjectionStay[];
+  routes: ProjectionRoute[];
 };
 
 export type VisitorPlan = {
@@ -31,9 +31,8 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** A stay longer than this is not unrolled night by night; its check-in and check-out days still show. */
 const MAX_NIGHTS = 400;
 
-function text(item: ProjectionItem, field: string): string | null {
-  const value = item[field];
-  return typeof value === "string" && value ? value : null;
+function text(value: string | null | undefined): string | null {
+  return value || null;
 }
 
 /** A real calendar date, checked with plain UTC arithmetic so no time zone or DST shift can move it. */
@@ -47,9 +46,12 @@ export function isIsoDay(value: string | null): value is string {
  * A date a record shares to the day. A month or year date, a date the record says is coarser than a day, or an
  * impossible date never places a record on a day.
  */
-export function sharedDay(item: ProjectionItem, field: string): string | null {
-  const value = text(item, field);
-  const precision = text(item, "date_precision");
+export function sharedDay(
+  delivered: string | null | undefined,
+  precisionOf: string | null | undefined,
+): string | null {
+  const value = text(delivered);
+  const precision = text(precisionOf);
   return isIsoDay(value) && (precision === null || precision === "day") ? value : null;
 }
 
@@ -69,10 +71,10 @@ export function localDay(instant: string, timeZone: string | null): string | nul
  * The day a route departs, only when the document shares one: the day it carries at day precision, else the local day
  * of its delivered departure instant. A month or a year, or a day the route says is coarser, never places it.
  */
-export function routeDepartureDay(route: ProjectionItem): string | null {
-  if (text(route, "departs_on")) return sharedDay(route, "departs_on");
-  const at = text(route, "departs_at");
-  return at ? localDay(at, text(route, "departure_timezone")) : null;
+export function routeDepartureDay(route: ProjectionRoute): string | null {
+  if (text(route.departs_on)) return sharedDay(route.departs_on, route.date_precision);
+  const at = text(route.departs_at);
+  return at ? localDay(at, text(route.departure_timezone)) : null;
 }
 
 /** Within a day: the morning's check-out, then departures, then visits, then where the traveller sleeps. */
@@ -89,13 +91,13 @@ const rank = (entry: DayEntry): number =>
 
 /** A time only counts when the document delivers one; everything without it sorts after what has one. */
 function entryTime(entry: DayEntry): string {
-  if (entry.type === "visit") return text(entry.item, "start_time") ?? "99:99";
+  if (entry.type === "visit") return text(entry.item.start_time) ?? "99:99";
   if (entry.type === "route") {
-    const at = text(entry.item, "departs_at");
+    const at = text(entry.item.departs_at);
     if (!at || !dayjs(at).isValid()) return "99:99";
     try {
       return dayjs(at)
-        .tz(text(entry.item, "departure_timezone") ?? undefined)
+        .tz(text(entry.item.departure_timezone) ?? undefined)
         .format("HH:mm");
     } catch {
       return "99:99";
@@ -105,8 +107,8 @@ function entryTime(entry: DayEntry): string {
 }
 
 /** True when this delivered visit or stay is shared at a coarser precision than a day. */
-const coarse = (item: ProjectionItem) => {
-  const precision = text(item, "date_precision");
+const coarse = (item: ProjectionVisit | ProjectionStay) => {
+  const precision = text(item.date_precision);
   return precision === "month" || precision === "year";
 };
 
@@ -129,7 +131,7 @@ export function planByDay(
 ): VisitorPlan {
   const placed = [...all.visits, ...all.stays];
   // A day on a visit's or stay's own record is what makes an audience a day audience; nothing else does.
-  const showsDays = placed.some((item) => sharedDay(item, "starts_on"));
+  const showsDays = placed.some((item) => sharedDay(item.starts_on, item.date_precision));
   if (!showsDays) {
     return {
       days: [],
@@ -144,12 +146,12 @@ export function planByDay(
   const other: PlanRecords = { visits: [], stays: [], routes: [] };
 
   for (const visit of separate.visits) {
-    const start = sharedDay(visit, "starts_on");
+    const start = sharedDay(visit.starts_on, visit.date_precision);
     if (!start) {
       other.visits.push(visit);
       continue;
     }
-    const end = sharedDay(visit, "ends_on");
+    const end = sharedDay(visit.ends_on, visit.date_precision);
     add(start, {
       type: "visit",
       key: `visit-${visit.id}`,
@@ -159,13 +161,13 @@ export function planByDay(
   }
 
   for (const stay of separate.stays) {
-    const checkIn = sharedDay(stay, "starts_on");
+    const checkIn = sharedDay(stay.starts_on, stay.date_precision);
     if (!checkIn) {
       other.stays.push(stay);
       continue;
     }
     add(checkIn, { type: "stay", key: `stay-${stay.id}`, item: stay, phase: "check-in" });
-    const checkOut = sharedDay(stay, "ends_on");
+    const checkOut = sharedDay(stay.ends_on, stay.date_precision);
     // The nights are exactly the days from check-in up to, not including, check-out, and no more than delivered.
     if (!checkOut || checkOut <= checkIn) continue;
     const nights: string[] = [];

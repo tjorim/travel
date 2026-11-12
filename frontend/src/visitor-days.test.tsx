@@ -2,7 +2,14 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { cleanup, render, within } from "@testing-library/react";
 import { stubViewport } from "./mocks/viewport";
-import { ProjectionView, type Projection, type ProjectionItem } from "./ProjectionView";
+import {
+  ProjectionView,
+  type Projection,
+  type ProjectionRoute,
+  type ProjectionStay,
+  type ProjectionVisit,
+} from "./ProjectionView";
+import { fixture } from "./test-projection";
 import { planByDay, type DayEntry } from "./visitor-days";
 
 beforeEach(() => stubViewport(true));
@@ -15,32 +22,35 @@ const area = (label: string, latitude = 1.5, longitude = 2.5) => ({
   latitude,
   longitude,
 });
-const visit = (id: string, starts_on: string | undefined, extra = {}): ProjectionItem => ({
-  id,
-  title: `Visit ${id}`,
-  place: area("Alpha"),
-  date_precision: "day",
-  ...(starts_on ? { starts_on, ends_on: null } : {}),
-  ...extra,
-});
-const stay = (id: string, starts_on: string, ends_on: string, extra = {}): ProjectionItem => ({
-  id,
-  title: "Alpha",
-  place: area("Alpha"),
-  date_precision: "day",
-  starts_on,
-  ends_on,
-  ...extra,
-});
-const route = (id: string, extra = {}): ProjectionItem => ({
-  id,
-  mode: "train",
-  status: "planned",
-  departure: area("Alpha"),
-  arrival: area("Beta", 3, 4),
-  departs_on: "2054-11-02",
-  ...extra,
-});
+const visit = (id: string, starts_on: string | undefined, extra = {}): ProjectionVisit =>
+  fixture<ProjectionVisit>({
+    id,
+    title: `Visit ${id}`,
+    place: area("Alpha"),
+    date_precision: "day",
+    ...(starts_on ? { starts_on, ends_on: null } : {}),
+    ...extra,
+  });
+const stay = (id: string, starts_on: string, ends_on: string, extra = {}): ProjectionStay =>
+  fixture<ProjectionStay>({
+    id,
+    title: "Alpha",
+    place: area("Alpha"),
+    date_precision: "day",
+    starts_on,
+    ends_on,
+    ...extra,
+  });
+const route = (id: string, extra = {}): ProjectionRoute =>
+  fixture<ProjectionRoute>({
+    id,
+    mode: "train",
+    status: "planned",
+    departure: area("Alpha"),
+    arrival: area("Beta", 3, 4),
+    departs_on: "2054-11-02",
+    ...extra,
+  });
 const none = { visits: [], stays: [], routes: [] };
 const summary = (entries: DayEntry[]) =>
   entries.map((entry) => (entry.type === "stay" ? `stay:${entry.phase}` : entry.type));

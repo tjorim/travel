@@ -3,7 +3,14 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { stubViewport } from "./mocks/viewport";
 import { changeLocale } from "./locale";
-import { ProjectionView, tripDates, type Projection } from "./ProjectionView";
+import {
+  ProjectionView,
+  tripDates,
+  type Projection,
+  type ProjectionMedia,
+  type ProjectionPlace,
+} from "./ProjectionView";
+import { fixture } from "./test-projection";
 import { VisitorRoutes } from "./visitor-routes";
 import type { ShareScope } from "./tracker-model";
 import { RenderedPreview } from "./trips/RenderedPreview";
@@ -15,13 +22,13 @@ import { serveApi } from "./query/serve-api";
 
 const token = "fictional-capability-for-locale-tests";
 function projection(): Projection {
-  return {
+  return fixture<Projection>({
     schema_version: "travel/unlisted-trip@1",
     numbers: { days: 1, areas: 2, countries: 1, nights: 0 },
     title: "Authored reis",
     summary: "**Authored** tekst",
     summary_html: "<p><strong>Authored</strong> tekst</p>",
-    dates: { id: "dates", starts_on: "2054-04", ends_on: "2054-05", date_precision: "month" },
+    dates: { starts_on: "2054-04", ends_on: "2054-05", date_precision: "month" },
     visits: [
       {
         id: "visit",
@@ -50,7 +57,7 @@ function projection(): Projection {
     media: [
       { id: "image", image: { id: "image" }, alt_text: "Mijn foto", caption: "Mijn onderschrift" },
     ],
-  };
+  });
 }
 
 const previewScope: ShareScope = {
@@ -106,10 +113,10 @@ it("switches projection chrome, dates and map alternatives while keeping authore
 
 it("names a place's country in the visitor's language and falls back to the delivered code", () => {
   const data = projection();
-  data.places = [
+  data.places = fixture<ProjectionPlace[]>([
     { id: "place", label: "Berlijn", country_code: "DE", latitude: 52, longitude: 13 },
     { id: "odd", label: "Elders", country_code: "ZZZZ", latitude: 1, longitude: 1 },
-  ];
+  ]);
   data.routes = [];
   render(<ProjectionView projection={data} audience="share" identifier={token} />);
   expect(screen.queryByText("DE")).toBeNull();
@@ -123,9 +130,9 @@ it("names a place's country in the visitor's language and falls back to the deli
 it("preserves delivered date precision and rejects invalid dates in both languages", () => {
   for (const locale of ["nl", "en"] as const) {
     act(() => changeLocale(locale));
-    expect(tripDates({ id: "d", starts_on: "2054", date_precision: "year" })).toBe("2054");
-    expect(tripDates({ id: "d", starts_on: "2054-02-30", date_precision: "day" })).toBeNull();
-    expect(tripDates({ id: "d", starts_on: "2054-04-02", date_precision: "month" })).toBeNull();
+    expect(tripDates({ starts_on: "2054", date_precision: "year" })).toBe("2054");
+    expect(tripDates({ starts_on: "2054-02-30", date_precision: "day" })).toBeNull();
+    expect(tripDates({ starts_on: "2054-04-02", date_precision: "month" })).toBeNull();
     for (const count of [0, 1, 3]) expect(m.saved_trip_count({ count })).toContain(String(count));
   }
 });
@@ -155,12 +162,14 @@ it("moves through a gallery's photos from one lightbox, ends included, and prelo
   const data = projection();
   data.places = [];
   data.routes = [];
-  data.media = ["a", "b", "c"].map((id) => ({
-    id,
-    image: { id },
-    alt_text: `Foto ${id}`,
-    caption: `Onderschrift ${id}`,
-  }));
+  data.media = ["a", "b", "c"].map((id) =>
+    fixture<ProjectionMedia>({
+      id,
+      image: { id },
+      alt_text: `Foto ${id}`,
+      caption: `Onderschrift ${id}`,
+    }),
+  );
   const loaded: string[] = [];
   vi.stubGlobal(
     "Image",
@@ -196,7 +205,7 @@ it("retranslates retained image/video failures and retries only the selected ima
   const data = projection();
   data.places = [];
   data.routes = [];
-  data.media.push({ id: "video", video: { id: "video" } });
+  data.media.push(fixture<ProjectionMedia>({ id: "video", video: { id: "video" } }));
   const view = render(<ProjectionView projection={data} audience="share" identifier={token} />);
   fireEvent.error(screen.getByRole("img", { name: "Mijn foto" }));
   fireEvent.error(view.container.querySelector("source")!);
