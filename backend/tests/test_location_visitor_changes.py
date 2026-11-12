@@ -31,7 +31,6 @@ class Setup:
         self.visit = owner.post(
             f"{self.base}/visits",
             json={
-                "position": 1,
                 "title": "Stay",
                 "location": {"existing_location_id": self.hotel["id"]},
             },

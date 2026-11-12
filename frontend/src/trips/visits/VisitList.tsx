@@ -9,7 +9,7 @@ import { RestatedRoutesNote } from "../VisitRouteHint";
 import { dayLine, visitPlace } from "./model";
 import { Overnight } from "./Overnight";
 
-/** The saved visits in order, each with where it sleeps and its map, offline and reorder actions. */
+/** The saved visits in the server's order (day, time, creation), each with where it sleeps and its map and offline actions. */
 export function VisitList({
   visits,
   stays,
@@ -18,7 +18,6 @@ export function VisitList({
   onInspect,
   onShowOnMap,
   onToggleOffline,
-  onShift,
 }: {
   visits: Visit[];
   stays: Stay[];
@@ -27,12 +26,11 @@ export function VisitList({
   onInspect: (id: string) => void;
   onShowOnMap?: (visit: Visit) => void;
   onToggleOffline: (visit: Visit) => void;
-  onShift: (visit: Visit, direction: -1 | 1) => void;
 }) {
   useLocale();
   return (
     <div className="saved-records mt-0.5">
-      {visits.map((visit, index) => (
+      {visits.map((visit) => (
         <article className="excerpt-row" data-stacked="" key={visit.id}>
           <Button
             className="document-select"
@@ -69,24 +67,6 @@ export function VisitList({
               }
             >
               {pinned(visit) ? m.owner_remove_offline_copy() : m.owner_save_offline()}
-            </Button>
-            <Button
-              className="secondary compact"
-              type="button"
-              disabled={index === 0}
-              onClick={() => onShift(visit, -1)}
-              aria-label={m.owner_move_up({ p0: visitTitle(visit) })}
-            >
-              {m.owner_move_up_2()}
-            </Button>
-            <Button
-              className="secondary compact"
-              type="button"
-              disabled={index === visits.length - 1}
-              onClick={() => onShift(visit, 1)}
-              aria-label={m.owner_move_down({ p0: visitTitle(visit) })}
-            >
-              {m.owner_move_down_2()}
             </Button>
           </div>
         </article>

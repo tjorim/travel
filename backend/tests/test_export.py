@@ -129,7 +129,7 @@ def build_rich_trip(owner: str = "owner-1") -> dict[str, str]:
         )
         session.add(location)
         session.flush()
-        visit = Visit(trip_id=trip.id, position=1, area_id=area.id, title="Museum", notes="private visit note")
+        visit = Visit(trip_id=trip.id, area_id=area.id, title="Museum", notes="private visit note")
         stay = Stay(
             trip_id=trip.id,
             area_id=area.id,
@@ -297,7 +297,7 @@ def test_export_contains_every_canonical_record_kind_with_relationships() -> Non
     assert response.headers["cache-control"] == "private, no-store"
     document = json.loads(response.text)
 
-    assert document["schema_version"] == EXPORT_SCHEMA_VERSION == "travel/trip-export@1"
+    assert document["schema_version"] == EXPORT_SCHEMA_VERSION == "travel/trip-export@2"
     assert datetime.fromisoformat(document["exported_at"]).tzinfo is not None
     assert document["trip"]["id"] == ids["trip"]
     assert "owner_subject" not in document["trip"]

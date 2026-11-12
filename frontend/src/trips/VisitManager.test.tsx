@@ -55,9 +55,8 @@ const trip: Trip = {
   ends_on: "2054-11-28",
   travel_updates: [],
 };
-const visit = (id: string, position: number, overrides: Partial<Visit> = {}): Visit => ({
+const visit = (id: string, overrides: Partial<Visit> = {}): Visit => ({
   id,
-  position,
   area: taipei,
   location: null,
   title: null,
@@ -89,7 +88,7 @@ function seed(visits: Visit[] = []) {
   api = fakeApi()
     .collection("/api/trips/trip/visits", visits, {
       create: (body, count) =>
-        visit(`new-${count}`, count, {
+        visit(`new-${count}`, {
           title: (body.title as string | null) ?? null,
           starts_on: (body.starts_on as string | null) ?? null,
           start_time: (body.start_time as string | null) ?? null,
@@ -143,7 +142,6 @@ it("needs only a place, and says so when there is none", async () => {
     starts_on: null,
     start_time: null,
     share_time: false,
-    position: 0,
   });
 });
 
@@ -212,12 +210,12 @@ it("chooses to show the time to visitors", async () => {
 
 it("hints, without blocking, that a visit restates an existing route", async () => {
   seed([
-    visit("v1", 0, {
+    visit("v1", {
       title: "Vertrek EX101",
       starts_on: "2054-11-16",
       possible_route_duplicates: [{ id: "r1", title: "Schiphol → Taoyuan" }],
     }),
-    visit("v2", 1, { title: "Lunch", starts_on: "2054-11-16" }),
+    visit("v2", { title: "Lunch", starts_on: "2054-11-16" }),
   ]);
   renderWithOwner(<VisitManager trip={trip} />);
   const notes = await screen.findAllByRole("note");
@@ -262,7 +260,7 @@ it("warns before saving when the draft visit restates a route, and never blocks 
 
 it("rewrites the place only when it changed, and shows where the nights are spent", async () => {
   seed([
-    visit("v1", 0, {
+    visit("v1", {
       title: "Werken in Linkou",
       kind: "work",
       status: "idea",
@@ -297,7 +295,7 @@ it("rewrites the place only when it changed, and shows where the nights are spen
 });
 
 it("edits a visit's own date precision and lets it follow the audience again", async () => {
-  seed([visit("v1", 0, { title: "Night market", share_date_precision: "day" })]);
+  seed([visit("v1", { title: "Night market", share_date_precision: "day" })]);
   renderWithOwner(<VisitManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Bezoek Night market bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -312,7 +310,7 @@ it("edits a visit's own date precision and lets it follow the audience again", a
 });
 
 it("cancels a visit idea and keeps it off the share controls", async () => {
-  seed([visit("v1", 0, { title: "Hot springs", status: "idea" })]);
+  seed([visit("v1", { title: "Hot springs", status: "idea" })]);
   renderWithOwner(<VisitManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Bezoek Hot springs bekijken" }));
   expect(screen.queryByText(/Een geannuleerd bezoek wordt nooit gedeeld/)).toBeNull();
@@ -329,14 +327,16 @@ it("cancels a visit idea and keeps it off the share controls", async () => {
   expect(screen.getByText(/Een geannuleerd bezoek wordt nooit gedeeld/)).toBeTruthy();
 });
 
-it("reorders and deletes visits after the in-app confirmation", async () => {
-  seed([visit("v1", 0, { title: "Eerste" }), visit("v2", 1, { title: "Tweede" })]);
+it("lists visits as the server ordered them, offers no reordering and deletes after the in-app confirmation", async () => {
+  seed([visit("v1", { title: "Eerste" }), visit("v2", { title: "Tweede" })]);
   renderWithOwner(<VisitManager trip={trip} />);
   await screen.findByRole("button", { name: "Bezoek Eerste bekijken" });
-  fireEvent.click(screen.getAllByRole("button", { name: /^Omlaag:/ })[0]);
-  await waitFor(() =>
-    expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toEqual({ position: 1 }),
-  );
+  expect(
+    screen
+      .getAllByRole("button", { name: /^Bezoek .* bekijken$/ })
+      .map((button) => button.textContent),
+  ).toEqual([expect.stringContaining("Eerste"), expect.stringContaining("Tweede")]);
+  expect(screen.queryByRole("button", { name: /^(Omlaag|Omhoog)/ })).toBeNull();
 
   fireEvent.click(screen.getByRole("button", { name: "Bezoek Tweede bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
@@ -351,7 +351,7 @@ it("reorders and deletes visits after the in-app confirmation", async () => {
 
 it("shows visitor text and private notes in their own labelled sections", async () => {
   seed([
-    visit("v1", 0, {
+    visit("v1", {
       title: "Belém",
       summary: "Torre de Belém bezoeken",
       notes: "Review demo note — bring a light jacket",
@@ -367,7 +367,7 @@ it("shows visitor text and private notes in their own labelled sections", async 
 });
 
 it("skips the visitor heading when there is no visitor text", async () => {
-  seed([visit("v1", 0, { title: "Alleen privé", summary: null, notes: "Geheime aantekening" })]);
+  seed([visit("v1", { title: "Alleen privé", summary: null, notes: "Geheime aantekening" })]);
   renderWithOwner(<VisitManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Bezoek Alleen privé bekijken" }));
   await screen.findByText("Geheime aantekening");
@@ -375,17 +375,17 @@ it("skips the visitor heading when there is no visitor text", async () => {
 });
 
 it("says so when there is no private note", async () => {
-  seed([visit("v2", 0, { title: "Alleen tekst", summary: "Voor bezoekers tekst", notes: null })]);
+  seed([visit("v2", { title: "Alleen tekst", summary: "Voor bezoekers tekst", notes: null })]);
   renderWithOwner(<VisitManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Bezoek Alleen tekst bekijken" }));
   await screen.findByText("Geen privénotitie.");
 });
 
 it("describes when a visit is, and which nights a stay covers", () => {
-  expect(visitWhen(visit("v", 0))).toBe("Nog geen dag");
+  expect(visitWhen(visit("v"))).toBe("Nog geen dag");
   expect(
     visitWhen(
-      visit("v", 0, { starts_on: "2054-11-21", start_time: "18:30:00", end_time: "21:00:00" }),
+      visit("v", { starts_on: "2054-11-21", start_time: "18:30:00", end_time: "21:00:00" }),
     ),
   ).toMatch(/18:30–21:00$/);
   expect(overnights({ starts_on: "2054-11-18", ends_on: "2054-11-24" }, [stay], trip)).toEqual({

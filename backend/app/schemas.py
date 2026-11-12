@@ -840,7 +840,6 @@ class VisitCreate(InputModel):
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
-    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
     status: PlanningStatus = PlanningStatus.PLANNED
@@ -866,7 +865,6 @@ class VisitUpdate(InputModel):
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
-    position: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
     title: str | None = Field(default=None, min_length=1, max_length=160)
     kind: VisitKind | None = None
     status: PlanningStatus | None = None
@@ -900,7 +898,6 @@ class VisitRouteCheck(InputModel):
 
 class VisitResponse(BaseModel):
     id: str
-    position: int
     area: AreaResponse
     location: LocationResponse | None
     title: str | None

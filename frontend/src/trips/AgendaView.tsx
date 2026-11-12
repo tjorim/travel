@@ -166,7 +166,7 @@ export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]
         : [],
     ),
     // The list above is already in each record's own meaningful order (stays by check-in day,
-    // routes by day/time/creation, visits by explicit position); a stable sort below keeps that
+    // routes by day/time/creation, visits by day/time/creation); a stable sort below keeps that
     // order for same-day, same-time ties instead of an opaque id breaking it arbitrarily.
   ].sort(
     (left, right) =>
@@ -219,7 +219,7 @@ function DayAddMenu({
  * Everything on the trip by day, in order, then what has no day yet: each row opens the record it
  * describes, since it is still edited in its own section. A day also starts new records.
  * Within a day, timed items come first; untimed items keep their record's own order (a route by
- * departure day/time/creation order, a visit by its explicit position), not their opaque id.
+ * departure day/time/creation order, a visit by its day/time/creation order), not their opaque id.
  */
 export function AgendaView({
   trip,

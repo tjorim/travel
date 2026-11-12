@@ -490,7 +490,7 @@ def test_duplicate_locations_merge_every_reference_into_the_kept_one() -> None:
 
     at = {"existing_location_id": same_area["id"]}
     at_unassigned = {"existing_location_id": unassigned["id"]}
-    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Arrive", "location": at_unassigned}).json()
+    visit = owner.post(f"{base}/visits", json={"title": "Arrive", "location": at_unassigned}).json()
     stay = owner.post(
         f"{base}/stays", json={"location": at, "check_in_date": "2054-04-01", "check_out_date": "2054-04-03"}
     ).json()
@@ -595,7 +595,7 @@ def test_duplicate_areas_merge_so_their_locations_can_be_merged_too() -> None:
     hotel = owner.post(
         f"{base}/locations", json={"display_name": "Hotel", "label": "Hotel", "area_id": duplicate["id"]}
     ).json()
-    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Walk", "area_id": duplicate["id"]}).json()
+    visit = owner.post(f"{base}/visits", json={"title": "Walk", "area_id": duplicate["id"]}).json()
     route = owner.post(
         f"{base}/routes", json={"mode": "bus", "departure_area_id": duplicate["id"], "arrival_area_id": keep["id"]}
     ).json()
@@ -908,7 +908,7 @@ def test_an_unnamed_area_stores_no_label_and_cannot_be_shared_until_named() -> N
     assert unnamed["id"] == nowhere["area_id"] and unnamed["label"] is None
     assert owner.post(f"{base}/areas", json={"country_code": "TW"}).json()["label"] is None
 
-    visit = owner.post(f"{base}/visits", json={"position": 0, "title": "Arrive", "area_id": unnamed["id"]})
+    visit = owner.post(f"{base}/visits", json={"title": "Arrive", "area_id": unnamed["id"]})
     assert visit.status_code == 201, visit.text
     for kind, record_id in (("area", unnamed["id"]), ("visit", visit.json()["id"])):
         blocked = owner.put(f"{base}/visibility/{kind}/{record_id}", json={"visibility": "everyone"})

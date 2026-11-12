@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from .models import (
+    VISIT_ORDER,
     AlternativeGroup,
     AlternativeGroupMember,
     Area,
@@ -46,7 +47,7 @@ from .update_day import local_day
 
 logger = logging.getLogger("travel.export")
 
-EXPORT_SCHEMA_VERSION = "travel/trip-export@1"
+EXPORT_SCHEMA_VERSION = "travel/trip-export@2"
 EXPORT_AUDIT_ACTION = "trip.export"
 _BATCH = 200
 
@@ -62,7 +63,7 @@ LOCATION = (
     "navigation_provider", "navigation_provider_place_id", "notes", "created_at", "updated_at",
 )  # fmt: skip
 VISIT = (
-    "id", "visibility", "position", "area_id", "location_id", "title", "kind", "status", "starts_on", "ends_on",
+    "id", "visibility", "area_id", "location_id", "title", "kind", "status", "starts_on", "ends_on",
     "start_time", "end_time", "notes", "summary", "share_time", "share_date_precision", "created_at", "updated_at",
 )  # fmt: skip
 STAY = (
@@ -293,7 +294,7 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
 
     yield _array("areas", plain(Area, AREA, Area.created_at))
     yield _array("locations", plain(Location, LOCATION, Location.created_at))
-    yield _array("visits", plain(Visit, VISIT, Visit.position))
+    yield _array("visits", plain(Visit, VISIT, *VISIT_ORDER))
     yield _array("stays", stays())
     yield _array("routes", routes())
     yield _array("alternative_groups", alternative_groups())

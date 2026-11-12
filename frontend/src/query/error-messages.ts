@@ -213,8 +213,6 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_an_update_with_a_location_gets_its_area_from_that_location();
     case "write_the_text_for_visitors_before_sharing_this_update":
       return m.api_write_the_text_for_visitors_before_sharing_this_update();
-    case "conflicting_visit_position":
-      return m.api_conflicting_visit_position();
     case "a_visit_needs_an_area":
       return m.api_a_visit_needs_an_area();
     case "supply_both_coordinates_or_neither":

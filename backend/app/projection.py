@@ -9,7 +9,7 @@ column cannot make it past these explicit renderers by accident.
 
 import hashlib
 from contextlib import suppress
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime
 from typing import Any
 
 from pydantic import ValidationError
@@ -18,7 +18,7 @@ from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
 from .errors import ServiceError
 from .exclusions import EXCLUDE_KEY, hidden_records, is_excludable, stored_exclusions
 from .markdown import markdown_text, render_inline, render_markdown
-from .models import Area, DatePrecision, Location, MediaDerivative, MediaKind, Trip, Visibility
+from .models import Area, DatePrecision, Location, MediaDerivative, MediaKind, Trip, Visibility, visit_order_key
 from .navigation import area_navigation_url, google_maps_url
 from .precision import PRECISION_LENGTH, audience_precision, coarser, effective_precision, own_value, route_precision
 from .schemas import (
@@ -180,14 +180,7 @@ def delivered(trip: Trip, scope: dict, *, with_exclusions: bool = True) -> dict[
         and (item.travel_update_id in updates or is_delivered("media_derivative", item, chosen["media_derivative"]))
         and not (hidden and item.id in hidden.ids("media_derivative"))
     ]
-    result["visit"].sort(
-        key=lambda item: (
-            item.starts_on is None,
-            item.starts_on or date.min,
-            item.start_time or time.min,
-            item.position,
-        )
-    )
+    result["visit"].sort(key=visit_order_key)
     result["travel_update"].sort(key=lambda item: item.occurred_at)
     # By day; within a day, day-only routes follow the timed ones, as in the owner Agenda.
     result["route"].sort(

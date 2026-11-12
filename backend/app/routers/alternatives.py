@@ -51,7 +51,6 @@ from ..schemas import (
 )
 from .trips import owned_trip
 from .visibility import choose_visibility
-from .visits import _renumber
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["alternatives"])
 
@@ -210,14 +209,11 @@ def suggest_groups(trip: Trip) -> list[Suggestion]:
 # --- Choosing -------------------------------------------------------------------------------------
 
 
-def _remove_records(session: Session, trip: Trip, kind: AlternativeGroupKind, records: list[Record]) -> None:
-    """Delete the rejected records; a removed visit leaves no gap in the positions."""
+def _remove_records(session: Session, records: list[Record]) -> None:
+    """Delete the rejected records."""
     for record in records:
         session.delete(record)
     session.flush()
-    if kind == AlternativeGroupKind.VISIT:
-        gone = {record.id for record in records}
-        _renumber(session, sorted((visit for visit in trip.visits if visit.id not in gone), key=lambda v: v.position))
 
 
 @dataclass
@@ -272,7 +268,7 @@ def choose(
 
     rejected = [record for record_id, record in members.items() if record_id != member_id]
     if others == "remove":
-        _remove_records(session, trip, kind, rejected)
+        _remove_records(session, rejected)
         cancelled_ids: list[str] = []
         removed_ids = [record.id for record in rejected]
     else:

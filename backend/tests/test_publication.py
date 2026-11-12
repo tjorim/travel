@@ -48,11 +48,9 @@ def create_trip(client: TestClient, title: str = "Exampleland 2054") -> dict:
     return response.json()
 
 
-def add_visit(client: TestClient, trip_id: str, position: int, title: str, city: str, **fields) -> dict:
+def add_visit(client: TestClient, trip_id: str, title: str, city: str, **fields) -> dict:
     area = client.post(f"/api/trips/{trip_id}/areas", json={"label": city, "country_code": "TW"}).json()
-    response = client.post(
-        f"/api/trips/{trip_id}/visits", json={"position": position, "title": title, "area_id": area["id"], **fields}
-    )
+    response = client.post(f"/api/trips/{trip_id}/visits", json={"title": title, "area_id": area["id"], **fields})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -525,7 +523,7 @@ def test_scope_rejects_a_resource_from_another_trip() -> None:
 def test_scope_rejects_retired_kinds_field_choices_and_records_that_are_not_custom() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
+    stage = add_visit(owner, trip["id"], "Taipei", "Taipei")
     path = f"/api/trips/{trip['id']}/public-projection"
 
     # The old twin kinds no longer exist.
@@ -546,7 +544,7 @@ def test_projection_delivers_only_chosen_records_with_fixed_fields_and_their_fil
     app.dependency_overrides[get_storage] = lambda: LocalObjectStorage(root=str(tmp_path))
     trip = create_trip(owner)
     trips_path = f"/api/trips/{trip['id']}"
-    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
+    stage = add_visit(owner, trip["id"], "Taipei", "Taipei")
     place_id = stage["area"]["id"]
 
     def stay(name: str) -> dict:
@@ -1005,7 +1003,7 @@ def test_stage_summaries_and_trip_dates_appear_only_when_chosen() -> None:
         owner.patch(f"/api/trips/{trip['id']}", json={"starts_on": "2054-11-16", "ends_on": "2054-12-06"}).status_code
         == 200
     )
-    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei", summary="City, food and a first weekend.")
+    stage = add_visit(owner, trip["id"], "Taipei", "Taipei", summary="City, food and a first weekend.")
 
     # A private stage and unshared dates reach nobody.
     slug = owner.post(f"/api/trips/{trip['id']}/public-projection/publish").json()["slug"]
@@ -1170,7 +1168,7 @@ def test_a_photo_travels_with_its_update_and_only_while_the_update_is_delivered(
 def test_visibility_is_the_same_owner_only_choice_for_every_kind() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
-    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
+    stage = add_visit(owner, trip["id"], "Taipei", "Taipei")
     assert stage["visibility"] == "private"
     path = f"/api/trips/{trip['id']}/visibility/visit/{stage['id']}"
 
@@ -1197,7 +1195,7 @@ def test_leaving_custom_withdraws_any_kind_from_every_live_scope() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     trips_path = f"/api/trips/{trip['id']}"
-    stage = add_visit(owner, trip["id"], 0, "Taipei", "Taipei")
+    stage = add_visit(owner, trip["id"], "Taipei", "Taipei")
     selected = scope(share(owner, trip["id"], "visit", stage["id"]))
     owner.put(f"{trips_path}/public-projection", json=selected)
     link = owner.post(f"{trips_path}/share-links", json={"label": "Family", "scope": selected}).json()

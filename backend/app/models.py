@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from enum import StrEnum
 
 from sqlalchemy import (
@@ -660,7 +660,6 @@ class Visit(Base):
 
     __tablename__ = "visits"
     __table_args__ = (
-        UniqueConstraint("trip_id", "position", name="uq_visit_position"),
         CheckConstraint(
             "ends_on IS NULL OR (starts_on IS NOT NULL AND ends_on >= starts_on)", name="ck_visit_last_day"
         ),
@@ -670,7 +669,6 @@ class Visit(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    position: Mapped[int] = mapped_column(Integer, nullable=False)
     area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False, index=True)
     location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
     # Without a title a visit goes by the name of its location, else of its area.
@@ -695,7 +693,11 @@ class Visit(Base):
     share_date_precision: Mapped[DatePrecision | None] = mapped_column(
         _enum_column(DatePrecision, "travel_date_precision"), default=None, nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Visits tie on day and time often, and a batch inserts several in one transaction (where ``now()`` is
+    # constant), so the creation order is stamped by the application with sub-second precision.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(UTC)
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -880,7 +882,30 @@ class TripTask(Base):
 
 # One order per record kind, shared by the ``Trip`` collections and the endpoints that list a kind on its own.
 # The id only keeps rows that tie in a stable order.
-VISIT_ORDER = (Visit.position,)
+# By day, then time (a visit without a time follows the timed ones of its day, as in the Agenda), then creation;
+# undated visits come last, in creation order.
+VISIT_ORDER = (
+    Visit.starts_on.is_(None),
+    Visit.starts_on,
+    Visit.start_time.is_(None),
+    Visit.start_time,
+    Visit.created_at,
+    Visit.id,
+)
+
+
+def visit_order_key(visit: Visit) -> tuple:
+    """``VISIT_ORDER`` for visits already in memory (a collection loaded before an edit keeps its old order)."""
+    return (
+        visit.starts_on is None,
+        visit.starts_on or date.min,
+        visit.start_time is None,
+        visit.start_time or time.min,
+        visit.created_at.replace(tzinfo=None),
+        visit.id,
+    )
+
+
 STAY_ORDER = (Stay.check_in_date, Stay.id)
 # By day; within a day, day-only routes follow the timed ones, as in the Agenda.
 ROUTE_ORDER = (

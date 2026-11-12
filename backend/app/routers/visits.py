@@ -3,8 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..auth import current_subject
@@ -57,34 +56,6 @@ def flag_route_overlaps(session: Session, trip: Trip, *visits: Visit) -> None:
         ]
 
 
-def commit_or_conflict(session: Session) -> None:
-    try:
-        session.commit()
-    except IntegrityError as error:
-        session.rollback()
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT, detail="Conflicting visit position", code="conflicting_visit_position"
-        ) from error
-
-
-def _renumber(session: Session, ordered: list[Visit]) -> None:
-    """Write positions 0..n in the given order. The unique trip/position constraint makes an ordinary
-    swap fail, so every row first moves out of the range it is about to occupy."""
-    offset = max((item.position for item in ordered), default=0) + len(ordered) + 1
-    for item in ordered:
-        item.position += offset
-    session.flush()
-    for index, item in enumerate(ordered):
-        item.position = index
-
-
-def _move(session: Session, trip: Trip, visit: Visit, position: int) -> None:
-    """Put a visit at ``position`` and compact the rest."""
-    ordered = [item for item in trip_visits(session, trip) if item is not visit]
-    ordered.insert(min(position, len(ordered)), visit)
-    _renumber(session, ordered)
-
-
 @router.get("/visits", response_model=list[VisitResponse])
 def list_visits(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Visit]:
     trip = owned_trip(session, trip_id, subject)
@@ -97,19 +68,14 @@ def list_visits(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -
 def create_visit(trip_id: Identifier, payload: VisitCreate, session: SessionDep, subject: SubjectDep) -> Visit:
     trip = owned_trip(session, trip_id, subject)
     area, location = resolve_place(session, trip.id, payload.area_id, payload.location)
-    end = session.scalar(select(func.count()).select_from(Visit).where(Visit.trip_id == trip.id)) or 0
     visit = Visit(
         trip_id=trip.id,
         area=area,
         location=location,
-        position=end,
-        **payload.model_dump(exclude={"area_id", "location", "position"}),
+        **payload.model_dump(exclude={"area_id", "location"}),
     )
     session.add(visit)
-    session.flush()
-    if payload.position is not None and payload.position < end:
-        _move(session, trip, visit, payload.position)
-    commit_or_conflict(session)
+    session.commit()
     saved = session.scalar(_visit_query().where(Visit.id == visit.id))
     flag_route_overlaps(session, trip, saved)  # type: ignore[arg-type]
     return saved  # type: ignore[return-value]
@@ -184,7 +150,7 @@ def update_visit(
     trip = owned_trip(session, trip_id, subject)
     visit = owned_visit(session, trip, visit_id)
     _update_place(session, trip, visit, payload)
-    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "position"})
+    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"})
     for required in ("status", "share_time"):
         if required in values and values[required] is None:
             raise ApiException(
@@ -207,9 +173,7 @@ def update_visit(
     if visit.status == PlanningStatus.CANCELLED:
         # A dropped visit is never offered to an audience, so cancelling also takes it off any.
         visit.visibility = Visibility.PRIVATE
-    if payload.position is not None and payload.position != visit.position:
-        _move(session, trip, visit, payload.position)
-    commit_or_conflict(session)
+    session.commit()
     saved = session.scalar(_visit_query().where(Visit.id == visit.id))
     flag_route_overlaps(session, trip, saved)  # type: ignore[arg-type]
     return saved  # type: ignore[return-value]
@@ -220,8 +184,5 @@ def delete_visit(trip_id: Identifier, visit_id: Identifier, session: SessionDep,
     trip = owned_trip(session, trip_id, subject)
     visit = owned_visit(session, trip, visit_id)
     session.delete(visit)
-    session.flush()
-    # Compact positions after a removal so the next add can use the end of the list.
-    _renumber(session, trip_visits(session, trip))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

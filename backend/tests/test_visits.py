@@ -141,24 +141,89 @@ def test_days_and_times_are_optional_but_consistent() -> None:
     assert owner.post(base, json={"area_id": taipei, "kind": "travel"}).status_code == 422
 
 
-def test_visits_can_be_reordered_and_the_order_is_compacted() -> None:
+def test_visits_are_ordered_by_day_then_time_then_creation_with_undated_ones_last() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)
     base = f"/api/trips/{trip['id']}/visits"
-    areas = [make_area(owner, trip["id"], label) for label in ("Taipei", "Tainan", "Kaohsiung")]
-    visits = [
-        owner.post(base, json={"area_id": area, "title": title}).json()
-        for area, title in zip(areas, ("A", "B", "C"), strict=True)
+    taipei = make_area(owner, trip["id"], "Taipei")
+    titles = {}
+    for title, fields in (
+        ("Idea", {}),
+        ("Late", {"starts_on": "2054-11-18", "start_time": "20:00"}),
+        ("Untimed", {"starts_on": "2054-11-18"}),
+        ("Early", {"starts_on": "2054-11-18", "start_time": "09:00"}),
+        ("Next day", {"starts_on": "2054-11-19"}),
+        ("Untimed again", {"starts_on": "2054-11-18"}),
+        ("Another idea", {}),
+        ("First day", {"starts_on": "2054-11-17"}),
+    ):
+        response = owner.post(base, json={"area_id": taipei, "title": title, **fields})
+        assert response.status_code == 201, response.text
+        assert "position" not in response.json()
+        titles[title] = response.json()["id"]
+    expected = ["First day", "Early", "Late", "Untimed", "Untimed again", "Next day", "Idea", "Another idea"]
+    assert [item["title"] for item in owner.get(base).json()] == expected
+
+    # Moving a visit to another day moves it in the list; deleting one leaves the rest in order.
+    assert owner.patch(f"{base}/{titles['Idea']}", json={"starts_on": "2054-11-16"}).status_code == 200
+    assert owner.delete(f"{base}/{titles['Early']}").status_code == 204
+    assert [item["title"] for item in owner.get(base).json()] == [
+        "Idea",
+        "First day",
+        "Late",
+        "Untimed",
+        "Untimed again",
+        "Next day",
+        "Another idea",
     ]
-    assert [visit["position"] for visit in visits] == [0, 1, 2]
 
-    assert owner.patch(f"{base}/{visits[2]['id']}", json={"position": 0}).status_code == 200
-    assert [(item["position"], item["title"]) for item in owner.get(base).json()] == [(0, "C"), (1, "A"), (2, "B")]
 
-    assert owner.delete(f"{base}/{visits[0]['id']}").status_code == 204
-    assert [(item["position"], item["title"]) for item in owner.get(base).json()] == [(0, "C"), (1, "B")]
-    inserted = owner.post(base, json={"area_id": areas[0], "title": "D", "position": 0}).json()
-    assert [item["title"] for item in owner.get(base).json()] == ["D", "C", "B"] and inserted["position"] == 0
+def test_a_visit_position_is_no_longer_accepted() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}/visits"
+    area = make_area(owner, trip["id"])
+    assert owner.post(base, json={"area_id": area, "position": 0}).status_code == 422
+    visit = owner.post(base, json={"area_id": area}).json()
+    assert owner.patch(f"{base}/{visit['id']}", json={"position": 0}).status_code == 422
+
+
+def test_visits_that_tie_on_day_and_time_keep_their_creation_order() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    area = make_area(owner, trip["id"])
+    base = f"/api/trips/{trip['id']}/visits"
+    for title in ("One", "Two", "Three", "Four"):
+        assert owner.post(base, json={"area_id": area, "title": title, "starts_on": "2054-11-18"}).status_code == 201
+    assert [item["title"] for item in owner.get(base).json()] == ["One", "Two", "Three", "Four"]
+
+
+def test_the_visitor_plan_lists_visits_in_the_same_order_as_the_owner() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    base = f"/api/trips/{trip['id']}"
+    area = make_area(owner, trip["id"], "Taipei")
+    for title, fields in (
+        ("Idea", {}),
+        ("Untimed", {"starts_on": "2054-11-18"}),
+        ("Evening", {"starts_on": "2054-11-18", "start_time": "19:00"}),
+        ("Morning", {"starts_on": "2054-11-18", "start_time": "08:00"}),
+        ("Day before", {"starts_on": "2054-11-17"}),
+        ("Also untimed", {"starts_on": "2054-11-18"}),
+    ):
+        visit = owner.post(f"{base}/visits", json={"area_id": area, "title": title, **fields}).json()
+        share(owner, trip["id"], "visit", visit["id"], "everyone")
+    assert (
+        owner.put(
+            f"{base}/public-projection",
+            json={"schema_version": "travel/share-scope@1", "trip": {"title": True}, "defaults": None, "items": []},
+        ).status_code
+        == 200
+    )
+    slug = owner.post(f"{base}/public-projection/publish").json()["slug"]
+    seen = [visit["title"] for visit in TestClient(app).get(f"/api/public/trips/{slug}").json()["visits"]]
+    assert seen == [visit["title"] for visit in owner.get(f"{base}/visits").json()]
+    assert seen == ["Day before", "Morning", "Evening", "Untimed", "Also untimed", "Idea"]
 
 
 def test_visits_are_owner_only() -> None:

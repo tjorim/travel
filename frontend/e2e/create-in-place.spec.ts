@@ -58,7 +58,6 @@ async function openOwner(page: Page, locale: (typeof locales)[number], theme: "l
         summary: null,
         share_time: false,
         share_date_precision: null,
-        position: created.length,
         visibility: "private",
         location: null,
         area,

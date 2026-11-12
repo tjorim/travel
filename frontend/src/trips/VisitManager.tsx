@@ -1,5 +1,5 @@
 import { Button } from "@/ui/button";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -20,6 +20,8 @@ import { VisitDetails } from "./visits/VisitDetails";
 import { VisitForm } from "./visits/VisitForm";
 import { VisitList } from "./visits/VisitList";
 
+const EMPTY: Visit[] = [];
+
 export function VisitManager({
   trip,
   onShowOnMap,
@@ -35,10 +37,8 @@ export function VisitManager({
   const offline = useOfflineCopies();
   const visitsQuery = useTripResource(trip.id, "visits");
   const staysQuery = useTripResource(trip.id, "stays");
-  const visits = useMemo(
-    () => (visitsQuery.data ?? []).slice().sort((left, right) => left.position - right.position),
-    [visitsQuery.data],
-  );
+  // The server orders visits (by day, then time, then creation; undated last): every view keeps that order.
+  const visits = visitsQuery.data ?? EMPTY;
   const stays = staysQuery.data ?? [];
   const dialog = useRecordDialog(visits);
   useDialogFocus(focusId, dialog.inspect);
@@ -50,7 +50,7 @@ export function VisitManager({
   );
   // A place is only rewritten when the editor changed it.
   const baseline = useRef<Values>(blank());
-  const { save, move, remove } = useVisitMutations(trip.id);
+  const { save, remove } = useVisitMutations(trip.id);
   const inPlace = useInPlaceCreate("visit", createRequest, onCreateHandled, (prefill) => {
     load(visitFromPrefill(prefill));
     dialog.create();
@@ -85,7 +85,6 @@ export function VisitManager({
           ...(!id || !samePlace(values.place, baseline.current.place)
             ? placeFields(values.place)
             : {}),
-          ...(id ? {} : { position: visits.length }),
         },
       });
       // A pinned copy holds the previous version of the visit.
@@ -124,17 +123,6 @@ export function VisitManager({
   /** The map point for a visit: its location when that has a point, else its area. */
   const mapPointFor = (visit: Visit): string =>
     visit.location?.latitude != null ? visit.location.id : visit.area.id;
-
-  function shift(visit: Visit, direction: -1 | 1) {
-    const position = visit.position + direction;
-    if (position < 0 || position >= visits.length) return;
-    move
-      .mutateAsync({ visit, position })
-      .then(
-        () => setMessage(textNotice(() => m.owner_visit_order_saved())),
-        fail(m.owner_the_visit_could_not_be_moved),
-      );
-  }
 
   function erase(visit: Visit) {
     remove.mutateAsync(visit).then(async () => {
@@ -200,7 +188,6 @@ export function VisitManager({
           onToggleOffline={(visit) =>
             void toggleOffline(visit).catch(fail(m.owner_the_visit_could_not_be_saved_offline))
           }
-          onShift={shift}
         />
       )}
       {!visitsQuery.isPending && !visitsQuery.error && visits.length === 0 && (
