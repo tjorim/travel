@@ -3,7 +3,12 @@ import { useMemo } from "react";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { derivativesQueryOptions, useOwner, useTripResource } from "../../query/owner-queries";
+import {
+  derivativesQueryOptions,
+  useOwner,
+  useTripResource,
+  useTripUpdates,
+} from "../../query/owner-queries";
 import {
   ROUTE_MODE_LABELS,
   routeTitle,
@@ -22,9 +27,10 @@ function combineDerivatives<T>(results: { data: T | undefined; error: Error | nu
 }
 
 /** Everything the owner can choose to share, as one list, and the first failure reading any of it. */
-export function usePublicationCatalog(trip: Trip) {
+export function usePublicationCatalog(trip: Pick<Trip, "id">) {
   const locale = useLocale();
   const owner = useOwner();
+  const updates = useTripUpdates(trip.id).data;
   const placesQuery = useTripResource(trip.id, "areas");
   const routesQuery = useTripResource(trip.id, "routes");
   const visitsQuery = useTripResource(trip.id, "visits");
@@ -41,9 +47,9 @@ export function usePublicationCatalog(trip: Trip) {
   const catalog = useMemo<CatalogItem[]>(() => {
     const approved = <T extends { review_state: string }>(items: T[] | undefined) =>
       (items ?? []).filter((item) => item.review_state === "approved");
-    const updateTitles = new Map(trip.travel_updates.map((update) => [update.id, update.title]));
+    const updateTitles = new Map((updates ?? []).map((update) => [update.id, update.title]));
     return [
-      ...trip.travel_updates.map((item) => ({
+      ...(updates ?? []).map((item) => ({
         kind: "travel_update" as const,
         id: item.id,
         label: item.title,
@@ -106,7 +112,7 @@ export function usePublicationCatalog(trip: Trip) {
     ];
   }, [
     locale,
-    trip,
+    updates,
     placesQuery.data,
     locationsQuery.data,
     routesQuery.data,

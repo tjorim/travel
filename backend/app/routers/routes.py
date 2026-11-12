@@ -20,7 +20,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..document.service import trip_documents
 from ..errors import ApiException
-from ..models import Area, Location, PlanningStatus, Route, RouteDocumentAsset, Trip, Visibility
+from ..models import ROUTE_ORDER, Area, Location, PlanningStatus, Route, RouteDocumentAsset, Trip, Visibility
 from ..request_limits import RequestRateLimiter
 from ..schemas import GeoJsonLineString, Identifier, RouteCreate, RouteResponse, RouteUpdate
 from ..track_import import MAX_BYTES, approximate_line
@@ -43,8 +43,13 @@ def _route_query():
     )
 
 
-def owned_route(trip: Trip, route_id: Identifier) -> Route:
-    route = next((item for item in trip.routes if item.id == route_id), None)
+def trip_routes(session: Session, trip: Trip) -> list[Route]:
+    """Every route of the trip with the places its readers name, in agenda order."""
+    return list(session.scalars(_route_query().where(Route.trip_id == trip.id).order_by(*ROUTE_ORDER)))
+
+
+def owned_route(session: Session, trip: Trip, route_id: Identifier) -> Route:
+    route = session.scalar(_route_query().where(Route.id == route_id, Route.trip_id == trip.id))
     if route is None:
         raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found", code="not_found")
     return route
@@ -148,7 +153,7 @@ def document_links_from_ids(
 
 @router.get("/routes", response_model=list[RouteResponse])
 def list_routes(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Route]:
-    return list(owned_trip(session, trip_id, subject).routes)
+    return trip_routes(session, owned_trip(session, trip_id, subject))
 
 
 @router.post("/routes", response_model=RouteResponse, status_code=status.HTTP_201_CREATED)
@@ -165,7 +170,7 @@ def create_route(trip_id: Identifier, payload: RouteCreate, session: SessionDep,
     arrival_area, arrival_location = resolve_place(session, trip.id, payload.arrival_area_id, payload.arrival_location)
     validate_distinct_ends(departure_area, departure_location, arrival_area, arrival_location)
     route = Route(
-        trip=trip,
+        trip_id=trip.id,
         departure_area=departure_area,
         arrival_area=arrival_area,
         departure_location=departure_location,
@@ -196,7 +201,7 @@ def create_route(trip_id: Identifier, payload: RouteCreate, session: SessionDep,
 
 @router.get("/routes/{route_id}", response_model=RouteResponse)
 def get_route(trip_id: Identifier, route_id: Identifier, session: SessionDep, subject: SubjectDep) -> Route:
-    return owned_route(owned_trip(session, trip_id, subject), route_id)
+    return owned_route(session, owned_trip(session, trip_id, subject), route_id)
 
 
 def _update_end(session: Session, trip: Trip, route: Route, payload: RouteUpdate, end: str) -> None:
@@ -230,7 +235,7 @@ def update_route(
     trip_id: Identifier, route_id: Identifier, payload: RouteUpdate, session: SessionDep, subject: SubjectDep
 ) -> Route:
     trip = owned_trip(session, trip_id, subject)
-    route = owned_route(trip, route_id)
+    route = owned_route(session, trip, route_id)
     _update_end(session, trip, route, payload, "departure")
     _update_end(session, trip, route, payload, "arrival")
     # Judge the merged result, but only when this edit touches an end: an unrelated
@@ -297,7 +302,7 @@ def update_route(
 
 @router.delete("/routes/{route_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_route(trip_id: Identifier, route_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
-    session.delete(owned_route(owned_trip(session, trip_id, subject), route_id))
+    session.delete(owned_route(session, owned_trip(session, trip_id, subject), route_id))
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

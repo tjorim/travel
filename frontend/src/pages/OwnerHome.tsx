@@ -15,6 +15,7 @@ import { orderedTrips, today, tripState } from "../trips/trip-state";
 
 import { errorMessage } from "../query/api";
 import {
+  recentUpdatesQueryOptions,
   tripResourceQueryOptions,
   useMarkAlertRead,
   useOwner,
@@ -29,14 +30,21 @@ import {
   stayCoversNight,
   type Stay,
   type Route,
-  type Trip,
+  type TravelUpdate,
+  type TripSummary,
   type TripTask,
   type TripTaskAlert,
 } from "../tracker-model";
 
-type TripSnapshot = { stays: Stay[]; routes: Route[]; tasks: TripTask[]; alerts: TripTaskAlert[] };
+type TripSnapshot = {
+  stays: Stay[];
+  routes: Route[];
+  tasks: TripTask[];
+  alerts: TripTaskAlert[];
+  updates: TravelUpdate[];
+};
 
-function nextAction(trip: Trip, snapshot: TripSnapshot): string {
+function nextAction(trip: TripSummary, snapshot: TripSnapshot): string {
   if (!trip.starts_on) return m.owner_choose_travel_dates_and_a_destination_to_start_planning();
   const openTasks = snapshot.tasks
     .filter((task) => !task.completed_at)
@@ -62,7 +70,7 @@ function nextAction(trip: Trip, snapshot: TripSnapshot): string {
     (route) => routeInPlan(route) && route.status !== "confirmed",
   );
   if (unbookedRoute) return m.owner_transport_still_needs_to_be_booked_or_confirmed();
-  if (!trip.travel_updates.length) return m.owner_capture_your_first_travel_update();
+  if (!trip.travel_update_count) return m.owner_capture_your_first_travel_update();
   return m.owner_open_your_trip_overview();
 }
 
@@ -73,11 +81,12 @@ export function OwnerHome() {
   const tripsQuery = useTripsQuery();
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const resourceQueries = useQueries({
-    queries: trips.flatMap((trip) =>
-      (["stays", "routes", "trip-tasks", "task-alerts"] as const).map((resource) =>
+    queries: trips.flatMap((trip) => [
+      ...(["stays", "routes", "trip-tasks", "task-alerts"] as const).map((resource) =>
         tripResourceQueryOptions(owner, trip.id, resource),
       ),
-    ),
+      recentUpdatesQueryOptions(owner, trip.id, trip.travel_update_count > 0),
+    ]),
   });
   const markAlertRead = useMarkAlertRead();
   const [notice, setNotice] = useFeedback<string | null>(null);
@@ -93,13 +102,13 @@ export function OwnerHome() {
     };
   }, []);
 
-  // Each trip owns four consecutive queries, in the order requested above.
+  // Each trip owns five consecutive queries, in the order requested above.
   const snapshots = useMemo(
     () =>
       Object.fromEntries(
         trips.map((trip, index): [string, TripSnapshot] => {
-          const [stays, routes, tasks, alerts] = resourceQueries
-            .slice(index * 4, index * 4 + 4)
+          const [stays, routes, tasks, alerts, updates] = resourceQueries
+            .slice(index * 5, index * 5 + 5)
             .map((query) => query.data ?? []);
           return [
             trip.id,
@@ -108,6 +117,7 @@ export function OwnerHome() {
               routes: routes as Route[],
               tasks: tasks as TripTask[],
               alerts: alerts as TripTaskAlert[],
+              updates: updates as TravelUpdate[],
             },
           ];
         }),
@@ -152,10 +162,12 @@ export function OwnerHome() {
   const recentUpdates = useMemo(
     () =>
       trips
-        .flatMap((trip) => trip.travel_updates.map((update) => ({ ...update, trip })))
+        .flatMap((trip) =>
+          (snapshots[trip.id]?.updates ?? []).map((update) => ({ ...update, trip })),
+        )
         .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
         .slice(0, 3),
-    [trips],
+    [snapshots, trips],
   );
 
   if (!session) return <EmptyState title={m.your_trips()}>{m.sign_in_workspace()}</EmptyState>;
@@ -185,8 +197,11 @@ export function OwnerHome() {
     );
 
   const [featured, ...others] = visibleTrips;
-  const nextStepOf = (trip: Trip) =>
-    nextAction(trip, snapshots[trip.id] ?? { stays: [], routes: [], tasks: [], alerts: [] });
+  const nextStepOf = (trip: TripSummary) =>
+    nextAction(
+      trip,
+      snapshots[trip.id] ?? { stays: [], routes: [], tasks: [], alerts: [], updates: [] },
+    );
 
   return (
     <main className="grid grid-cols-1 gap-travel-section" aria-labelledby="owner-home-title">

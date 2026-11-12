@@ -445,14 +445,14 @@ def list_alternative_groups(
 @router.get("/alternative-groups/suggestions", response_model=list[AlternativeSuggestion])
 def suggest_alternative_groups(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[Suggestion]:
     """Ungrouped ideas over matching or overlapping dates. Stores nothing: confirm one by creating the group."""
-    return suggest_groups(owned_trip(session, trip_id, subject))
+    return suggest_groups(owned_trip(session, trip_id, subject, load_relations=True))
 
 
 @router.post("/alternative-groups", response_model=AlternativeGroupResponse, status_code=status.HTTP_201_CREATED)
 def create_alternative_group(
     trip_id: Identifier, payload: AlternativeGroupCreate, session: SessionDep, subject: SubjectDep
 ) -> AlternativeGroupResponse:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     records = resolve_members(trip, payload.kind, payload.member_ids)
     if len(records) < 2:
         raise ApiException(
@@ -483,7 +483,7 @@ def update_alternative_group(
     session: SessionDep,
     subject: SubjectDep,
 ) -> AlternativeGroupResponse:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     group = owned_group(session, trip, group_id)
     if "label" in payload.model_fields_set:
         group.label = payload.label
@@ -517,7 +517,7 @@ def choose_alternative(
     """Choose this one: it becomes planned and the others are cancelled or removed, in one transaction.
 
     The audit event it returns can be undone with ``undo-choice`` unless the others were removed."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     group = owned_group(session, trip, group_id)
     outcome = choose(session, trip, subject, group, payload.member_id, payload.others)
     session.commit()
@@ -541,7 +541,7 @@ def undo_alternative_choice(
     payload: AlternativeUndo | None = None,
 ) -> AlternativeGroupResponse:
     """Undo the group's latest choice while its members are as that choice left them."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     group = owned_group(session, trip, group_id)
     undo_choice(session, trip, subject, group, payload.event_id if payload else None)
     session.commit()

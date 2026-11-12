@@ -8,7 +8,7 @@ import { useCapture } from "../capture-context";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback } from "../query/feedback";
-import { useTripResource, useTripsQuery } from "../query/owner-queries";
+import { useTripResource, useTripWithUpdates } from "../query/owner-queries";
 import type { TravelUpdateCandidateIntent } from "../tracker-model";
 import { EmptyState } from "@/ui/EmptyState";
 import type { AgendaRecordKind } from "../trips/AgendaView";
@@ -51,7 +51,7 @@ export function TripWorkspaceView({
   const { session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const tripsQuery = useTripsQuery();
+  const { tripsQuery, trip } = useTripWithUpdates(tripId);
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const [phone, setPhone] = useState(() => matchMedia("(max-width: 679px)").matches);
   useEffect(() => {
@@ -111,7 +111,6 @@ export function TripWorkspaceView({
     return () => window.clearInterval(timer);
   }, [focusedPoint]);
 
-  const trip = trips.find((candidate) => candidate.id === tripId) ?? null;
   const selectedId = trip?.id ?? null;
   const openMapRecord = useCallback(
     (kind: MapRecordKind, id: string) => {

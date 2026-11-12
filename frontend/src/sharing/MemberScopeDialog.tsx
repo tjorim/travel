@@ -8,7 +8,7 @@ import { m } from "../paraglide/messages.js";
 import type { Projection } from "../ProjectionView";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { RecordDialog } from "../RecordDialog";
-import type { ExclusionWidening, ShareScope, Trip } from "../tracker-model";
+import type { ExclusionWidening, ShareScope, TripSummary } from "../tracker-model";
 import { RenderedPreview } from "../trips/RenderedPreview";
 import { cloneScope } from "../trips/publication/catalog";
 import {
@@ -34,7 +34,7 @@ export function MemberScopeDialog({
 }: {
   collection: Collection;
   member: CollectionMember;
-  trip: Trip;
+  trip: TripSummary;
   onClose: () => void;
 }) {
   useLocale();

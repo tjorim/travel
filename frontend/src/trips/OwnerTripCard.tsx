@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import type { Trip } from "../tracker-model";
+import type { TripSummary } from "../tracker-model";
 import { TripCover } from "./TripCover";
 import { tripDateRange, type TripState } from "./trip-state";
 import { TripStatePill } from "./TripStatePill";
@@ -20,7 +20,7 @@ const ACCENT: Record<TripState, string> = {
 const SURFACE =
   "relative flex h-full min-w-0 flex-col rounded-travel-card border-t-4 bg-travel-surface p-travel-card-pad shadow-travel-card";
 
-function Dates({ trip }: { trip: Trip }) {
+function Dates({ trip }: { trip: TripSummary }) {
   const range = tripDateRange(trip, "D MMMM YYYY");
   return (
     <p className="m-0 leading-normal font-medium text-travel-muted">
@@ -39,7 +39,7 @@ export function HomeTripCard({
   nextStep,
   featured = false,
 }: {
-  trip: Trip;
+  trip: TripSummary;
   state: TripState;
   nextStep: string;
   featured?: boolean;
@@ -93,7 +93,7 @@ export function ListTripCard({
   state,
   wide = false,
 }: {
-  trip: Trip;
+  trip: TripSummary;
   state: TripState;
   wide?: boolean;
 }) {
@@ -113,7 +113,7 @@ export function ListTripCard({
         <TripStatePill state={state} />
         <h4 className="m-0 line-clamp-3 text-xl leading-tight tracking-tight">{trip.title}</h4>
         <p className="m-0 mt-auto text-sm leading-normal text-travel-muted">
-          {[tripDateRange(trip), m.owner_travel_update_count({ count: trip.travel_updates.length })]
+          {[tripDateRange(trip), m.owner_travel_update_count({ count: trip.travel_update_count })]
             .filter(Boolean)
             .join(" · ")}
         </p>

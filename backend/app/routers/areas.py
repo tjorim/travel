@@ -122,7 +122,7 @@ def list_areas(
     limit: Annotated[int | None, Query(ge=1, le=100)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[Area]:
-    trip = owned_trip(session, trip_id, subject, load_relations=False)
+    trip = owned_trip(session, trip_id, subject)
     statement = select(Area).where(Area.trip_id == trip.id).order_by(Area.created_at)
     if q or limit is not None or offset:
         statement = statement.order_by(Area.id)

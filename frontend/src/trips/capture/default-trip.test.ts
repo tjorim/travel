@@ -1,15 +1,21 @@
 import { expect, it } from "vitest";
 
-import type { TravelUpdate } from "../../tracker-model";
 import { captureTripOrder } from "./default-trip";
 
-const update = (occurred_at: string) => ({ occurred_at }) as TravelUpdate;
 const trip = (
   id: string,
   starts_on: string | null,
   ends_on: string | null,
   updates: string[] = [],
-) => ({ id, starts_on, ends_on, travel_updates: updates.map(update) });
+) => ({
+  id,
+  starts_on,
+  ends_on,
+  last_update_at: updates.reduce<string | null>(
+    (latest, at) => (latest === null || at > latest ? at : latest),
+    null,
+  ),
+});
 
 const day = "2054-11-10";
 const ids = (trips: ReturnType<typeof trip>[]) => captureTripOrder(trips, day).map((t) => t.id);

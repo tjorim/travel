@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { dayjs } from "../dayjs";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
-import { emptyDraft, readDraft, saveDraft, type Trip } from "../tracker-model";
+import { emptyDraft, readDraft, saveDraft, type TripSummary } from "../tracker-model";
 import { CaptureDialog } from "./CaptureDialog";
 
 const auth = vi.hoisted(() => ({
@@ -21,13 +21,14 @@ const trip = (
   title: string,
   starts_on: string | null,
   ends_on: string | null,
-): Trip => ({
+): TripSummary => ({
   id,
   title,
   summary: null,
   starts_on,
   ends_on,
-  travel_updates: [],
+  travel_update_count: 0,
+  last_update_at: null,
 });
 
 const photo = (id: string, name: string) => ({
@@ -42,7 +43,7 @@ const photo = (id: string, name: string) => ({
   thumbnail_url: `/api/trips/t1/media/${id}/thumbnail`,
 });
 
-let trips: Trip[];
+let trips: TripSummary[];
 let api: FakeApi;
 
 function mount(props: Partial<Parameters<typeof CaptureDialog>[0]> = {}) {
@@ -303,20 +304,8 @@ it("starts on the trip captured into last when nothing is underway or upcoming",
     { ...trip("t1", "Oud", day(-200), day(-190)) },
     {
       ...trip("t2", "Recent", day(-100), day(-90)),
-      travel_updates: [
-        {
-          id: "u1",
-          occurred_at: `${day(-92)}T10:00:00Z`,
-          date_precision: "day",
-          title: "Dag",
-          body: "",
-          private_notes: null,
-          area_id: null,
-          location: null,
-          media_asset_ids: [],
-          visibility: "private",
-        },
-      ],
+      travel_update_count: 1,
+      last_update_at: `${day(-92)}T10:00:00Z`,
     },
   ];
   mount({ lockedTripId: null });

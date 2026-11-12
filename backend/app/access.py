@@ -228,10 +228,15 @@ def set_visibility(trip: Trip, kind: str, record_id: str, visibility: Visibility
     record = find_record(trip, kind, record_id)
     if record is None:
         return None
+    apply_visibility(kind, record, visibility)
+    return record
+
+
+def apply_visibility(kind: str, record: Any, visibility: Visibility) -> None:
+    """``set_visibility`` for a record the caller already holds, so the trip's collection need not be read."""
     if visibility != Visibility.PRIVATE and (blocker := sharing_blocker(kind, record)):
         raise ServiceError(str(blocker), code=blocker.code)
     record.visibility = visibility
-    return record
 
 
 @event.listens_for(Session, "before_flush")

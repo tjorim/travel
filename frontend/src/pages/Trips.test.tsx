@@ -125,7 +125,20 @@ beforeEach(() => {
       const method = init.method ?? "GET";
       requests.push(`${method} ${url}`);
       const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
-      if (url === "/api/trips" && method === "GET") return json(trips);
+      if (url === "/api/trips" && method === "GET")
+        return json(
+          trips.map(({ travel_updates, ...fields }) => ({
+            ...fields,
+            travel_update_count: travel_updates.length,
+            last_update_at: null,
+          })),
+        );
+      const updates = /^\/api\/trips\/([^/]+)\/travel-updates$/.exec(url);
+      // The endpoint answers newest first.
+      if (updates && method === "GET")
+        return json(
+          [...(trips.find((item) => item.id === updates[1])?.travel_updates ?? [])].reverse(),
+        );
       if (url === "/api/trips" && method === "POST") {
         const created = trip("t3", String(body.title));
         trips = [...trips, created];

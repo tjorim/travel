@@ -75,7 +75,7 @@ def list_locations(
     limit: Annotated[int | None, Query(ge=1, le=100)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[Location]:
-    trip = owned_trip(session, trip_id, subject, load_relations=False)
+    trip = owned_trip(session, trip_id, subject)
     statement = select(Location).where(Location.trip_id == trip.id).order_by(Location.created_at)
     if q or limit is not None or offset:
         statement = statement.order_by(Location.id)

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { ShareScope, Trip } from "../tracker-model";
+import type { ShareScope, Trip, TripSummary } from "../tracker-model";
 import type { Collection, CollectionMember } from "./collections";
 import { MemberScopeDialog } from "./MemberScopeDialog";
 
@@ -40,7 +40,7 @@ const trip = {
       visibility: "everyone",
     },
   ],
-} as unknown as Trip;
+} as unknown as TripSummary;
 const member = {
   revision: 3,
   id: "m1",
@@ -58,6 +58,7 @@ let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi();
+  api.collection("/api/trips/trip/travel-updates", (trip as unknown as Trip).travel_updates);
   for (const resource of ["areas", "locations", "routes", "visits", "stays", "media"])
     api.collection(`/api/trips/trip/${resource}`, []);
   api.on("POST", /\/share-scope\/exclusion-review$/, () => ({

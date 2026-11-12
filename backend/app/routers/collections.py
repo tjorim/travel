@@ -157,7 +157,7 @@ def _scope_for(
     session: Session, subject: str, trip_id: Identifier, scope: ShareScopeInput, stored: dict | None = None
 ) -> tuple[Trip, dict]:
     """The member's trip and the scope to store; ``stored`` is its current scope, ``None`` for a new member."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, load_relations=True)
     scope_dict = scope.document(stored)
     try:
         return trip, prepare_scope(trip, scope_dict, stored)
@@ -440,7 +440,7 @@ def _member_preview_scope(
     Nothing is stored and no audit event is recorded."""
     if candidate is not None:
         return _scope_for(session, subject, member.trip_id, candidate, member.scope)
-    return owned_trip(session, member.trip_id, subject), member.scope
+    return owned_trip(session, member.trip_id, subject, load_relations=True), member.scope
 
 
 @router.post("/{collection_id}/members/{member_id}/preview", response_model=ProjectionDocument)
@@ -632,7 +632,7 @@ def list_trip_collections(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> list[CollectionMembershipResponse]:
     """Which collections reach this trip, so the owner sees every way it can be opened."""
-    owned_trip(session, trip_id, subject, load_relations=False)
+    owned_trip(session, trip_id, subject)
     rows = session.execute(
         select(CollectionMember, Collection)
         .join(Collection, Collection.id == CollectionMember.collection_id)

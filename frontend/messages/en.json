@@ -587,6 +587,7 @@
   "owner_stops_on_your_trip_an_area_or_location_and_when_you_are_there_share_them": "Stops on your trip: an area or location, and when you are there. Share them to let visitors follow where you are going.",
   "owner_new_visit": "New visit",
   "owner_your_visits_could_not_be_loaded": "Your visits could not be loaded.",
+  "owner_your_travel_updates_could_not_be_loaded": "Your travel updates could not be loaded.",
   "owner_loading_your_visits": "Loading your visits…",
   "owner_view_visit": "View visit {p0}",
   "owner_show_on_map": "Show on map: {p0}",

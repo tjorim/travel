@@ -1,15 +1,12 @@
 import {
   useLinkedLibraryDocuments,
   useTripResource,
-  useTripsQuery,
+  useTripWithUpdates,
 } from "../../query/owner-queries";
 
 /** Every read behind the owner's complete trip overview; nothing is read for a trip that does not exist. */
 export function useTripDetail(tripId: string | undefined) {
-  const tripsQuery = useTripsQuery();
-  const trip = tripId
-    ? (tripsQuery.data?.find((candidate) => candidate.id === tripId) ?? null)
-    : null;
+  const { tripsQuery, updatesQuery, trip } = useTripWithUpdates(tripId);
   const id = trip ? trip.id : null;
   const placesQuery = useTripResource(id, "locations");
   const areasQuery = useTripResource(id, "areas");
@@ -23,6 +20,7 @@ export function useTripDetail(tripId: string | undefined) {
 
   const readError = [
     tripsQuery,
+    updatesQuery,
     placesQuery,
     areasQuery,
     routesQuery,

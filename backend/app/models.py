@@ -340,7 +340,7 @@ class Trip(Base):
     )
 
     visits: Mapped[list[Visit]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="Visit.position"
+        back_populates="trip", cascade="all, delete-orphan", order_by=lambda: VISIT_ORDER
     )
     areas: Mapped[list[Area]] = relationship(
         foreign_keys="Area.trip_id", cascade="all, delete-orphan", order_by="Area.created_at"
@@ -352,23 +352,16 @@ class Trip(Base):
         back_populates="trip", cascade="all, delete-orphan", order_by="TravelUpdate.occurred_at"
     )
     stays: Mapped[list[Stay]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="Stay.check_in_date"
+        back_populates="trip", cascade="all, delete-orphan", order_by=lambda: STAY_ORDER
     )
     trip_tasks: Mapped[list[TripTask]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="TripTask.created_at"
+        back_populates="trip", cascade="all, delete-orphan", order_by=lambda: TASK_ORDER
     )
     packing_lists: Mapped[list[PackingList]] = relationship(back_populates="trip", cascade="all, delete-orphan")
     routes: Mapped[list[Route]] = relationship(
         back_populates="trip",
         cascade="all, delete-orphan",
-        # By day; within a day, day-only routes follow the timed ones, as in the Agenda.
-        order_by=lambda: (
-            Route.departs_on.is_(None),
-            Route.departs_on,
-            Route.departs_at.is_(None),
-            Route.departs_at,
-            Route.created_at,
-        ),
+        order_by=lambda: ROUTE_ORDER,
     )
     media_derivatives: Mapped[list[MediaDerivative]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MediaDerivative.created_at"
@@ -391,7 +384,12 @@ class Trip(Base):
         cover = next((item for item in self.media_derivatives if item.is_cover), None)
         if cover is None:
             return None
-        return f"/api/trips/{self.id}/media/{cover.media_asset_id}/derivatives/{cover.id}/file"
+        return cover_file_route(self.id, cover)
+
+
+def cover_file_route(trip_id: str, cover: MediaDerivative) -> str:
+    """The owner-only file route of a trip's cover copy."""
+    return f"/api/trips/{trip_id}/media/{cover.media_asset_id}/derivatives/{cover.id}/file"
 
 
 class TravelUpdateMediaAsset(Base):
@@ -878,6 +876,22 @@ class TripTask(Base):
     )
 
     trip: Mapped[Trip] = relationship(back_populates="trip_tasks")
+
+
+# One order per record kind, shared by the ``Trip`` collections and the endpoints that list a kind on its own.
+# The id only keeps rows that tie in a stable order.
+VISIT_ORDER = (Visit.position,)
+STAY_ORDER = (Stay.check_in_date, Stay.id)
+# By day; within a day, day-only routes follow the timed ones, as in the Agenda.
+ROUTE_ORDER = (
+    Route.departs_on.is_(None),
+    Route.departs_on,
+    Route.departs_at.is_(None),
+    Route.departs_at,
+    Route.created_at,
+    Route.id,
+)
+TASK_ORDER = (TripTask.created_at, TripTask.id)
 
 
 class TripTaskAlert(Base):

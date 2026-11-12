@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
+import { choosePreferences, mockApi, ownerTrip, signInOwner, summaryOf } from "./mock-api";
 import { message } from "./messages";
 
 const base = `/api/trips/${ownerTrip.id}`;
@@ -46,16 +46,13 @@ for (const locale of ["nl", "en"] as const) {
           const { pathname } = new URL(route.request().url());
           const json = (body: unknown) =>
             route.fulfill({ contentType: "application/json", body: JSON.stringify(body) });
+          const updates = [
+            update("u1", "Six photos", "everyone"),
+            update("u2", "Only mine", "private"),
+          ];
           if (pathname === "/api/trips")
-            return json([
-              {
-                ...ownerTrip,
-                travel_updates: [
-                  update("u1", "Six photos", "everyone"),
-                  update("u2", "Only mine", "private"),
-                ],
-              },
-            ]);
+            return json([summaryOf({ ...ownerTrip, travel_updates: updates })]);
+          if (pathname === `${base}/travel-updates`) return json([...updates].reverse());
           if (pathname === `${base}/media`) return json(photos.map(asset));
           const copies = /\/media\/(p\d)\/derivatives$/.exec(pathname);
           if (copies)

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { AsyncSearchSelect, type SearchSelectOption } from "../forms/fields";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { useTripResource, useTripsQuery } from "../query/owner-queries";
+import { useTripResource, useTripUpdates } from "../query/owner-queries";
 import { Field, FieldLabel } from "@/ui/field";
 import type { RecordKind } from "./record-focus";
 import { matchesQuery, searchRecords, type SearchableRecords } from "./workspace-records";
@@ -40,7 +40,7 @@ function useSearchableRecords(tripId: string): SearchableRecords {
   const tasks = useTripResource(tripId, "trip-tasks").data;
   const documents = useTripResource(tripId, "documents").data;
   const media = useTripResource(tripId, "media").data;
-  const updates = useTripsQuery().data?.find((trip) => trip.id === tripId)?.travel_updates;
+  const updates = useTripUpdates(tripId).data;
   return useMemo(
     () => ({ areas, locations, visits, stays, routes, tasks, documents, updates, media }),
     [areas, locations, visits, stays, routes, tasks, documents, updates, media],
