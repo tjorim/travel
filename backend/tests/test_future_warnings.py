@@ -20,7 +20,7 @@ from test_publication import (  # noqa: F401
 
 from app.models import Trip
 from app.overview import future_counts, not_started, trip_overview
-from app.routers.trips import trip_query
+from app.services.trips import trip_query
 
 FUTURE_TRANSPORT = "future_transport_times"
 FUTURE_DAY_DATES = "future_day_dates"

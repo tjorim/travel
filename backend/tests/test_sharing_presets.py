@@ -31,7 +31,7 @@ from app.main import app
 from app.models import AuditEvent, ShareLink, Trip, Visibility
 from app.precision import audience_precision, effective_precision, is_finer, own_value
 from app.projection import delivered
-from app.routers.trips import trip_query
+from app.services.trips import trip_query
 from app.sharing_presets import PRESETS, PresetAudience, plan_preset
 
 PRESET_IDS = list(PRESETS)

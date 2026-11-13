@@ -50,6 +50,7 @@ from . import schemas
 from .authlimit import THROTTLED_DETAIL, failed_authentication, throttled_headers
 from .config import settings
 from .database import SessionLocal
+from .errors import Refusal, ServiceError
 from .models import DocumentKind, ImportProvider, McpAuditEvent, Visibility
 from .routers import (
     alternatives,
@@ -62,18 +63,19 @@ from .routers import (
     packing,
     places,
     publication,
-    routes,
-    stays,
-    tasks,
     trips,
-    visits,
 )
 from .routers import (
     precision as precision_routes,
 )
 from .routers import sharing_presets as preset_routes
-from .routers import visibility as visibility_routes
 from .secrets import get_secret_store
+from .services import routes as route_service
+from .services import stays as stay_service
+from .services import tasks as task_service
+from .services import travel_updates as update_service
+from .services import visibility as visibility_service
+from .services import visits as visit_service
 from .storage import get_storage
 
 Result = TypeVar("Result")
@@ -567,47 +569,60 @@ class TravelMcpBackend:
             lambda x: _model(x, schemas.TripOverviewResponse),
         )
 
-    def batch_create(self, trip_id: str, payload: BatchCreate) -> dict[str, list[dict[str, Any]]]:
+    def batch_create(self, trip_id: schemas.Identifier, payload: BatchCreate) -> dict[str, list[dict[str, Any]]]:
         """Create several visits, stays, routes, reisupdates and tasks at once in an existing trip, in one call. All or nothing: if any record is refused, none is kept and the error names it (for example routes[3]). Returns compact rows with the new ids."""
         steps: list[tuple[str, str, Callable[[Session, str, Any], Any], type[BaseModel]]] = [
-            ("visits", "visit", lambda s, sub, item: visits.create_visit(trip_id, item, s, sub), schemas.VisitResponse),
-            ("stays", "stay", lambda s, sub, item: stays.create_stay(trip_id, item, s, sub), schemas.StayResponse),
-            ("routes", "route", lambda s, sub, item: routes.create_route(trip_id, item, s, sub), schemas.RouteResponse),
+            (
+                "visits",
+                "visit",
+                lambda s, sub, item: visit_service.create_visit(s, sub, trip_id, item),
+                schemas.VisitResponse,
+            ),
+            (
+                "stays",
+                "stay",
+                lambda s, sub, item: stay_service.create_stay(s, sub, trip_id, item),
+                schemas.StayResponse,
+            ),
+            (
+                "routes",
+                "route",
+                lambda s, sub, item: route_service.create_route(s, sub, trip_id, item),
+                schemas.RouteResponse,
+            ),
             (
                 "travel_updates",
                 "",
-                lambda s, sub, item: trips.create_travel_update(trip_id, item, s, sub),
+                lambda s, sub, item: update_service.create_travel_update(s, sub, trip_id, item),
                 schemas.TravelUpdateResponse,
             ),
             (
                 "trip_tasks",
                 "",
-                lambda s, sub, item: tasks.create_trip_task(trip_id, item, s, sub),
+                lambda s, sub, item: task_service.create_trip_task(s, sub, trip_id, item),
                 schemas.TripTaskResponse,
             ),
         ]
 
         def operation(session: Session, subject: str) -> dict[str, list[dict[str, Any]]]:
-            # The domain handlers commit each record. Inside a batch a commit
-            # only flushes, so ``_call`` commits everything at the end, or the
-            # closing session rolls all of it back when one record is refused.
-            session.commit = session.flush
+            # The services never commit, so the whole batch is one transaction: ``_call`` commits it at the
+            # end, and the closing session rolls all of it back when one record is refused.
             created: dict[str, list[dict[str, Any]]] = {}
-            try:
-                for field, kind, create, model_type in steps:
-                    rows = []
-                    for index, item in enumerate(getattr(payload, field)):
-                        try:
-                            row = _model(create(session, subject, item), model_type)
-                        except HTTPException as error:
-                            raise HTTPException(
-                                error.status_code, f"{field}[{index}]: {error.detail}. Nothing was created."
-                            ) from error
-                        rows.append(_compact(kind, row) if kind else {"id": row["id"], "title": row["title"]})
-                    if rows:
-                        created[field] = rows
-            finally:
-                del session.commit  # the class's real commit again
+            for field, kind, create, model_type in steps:
+                rows = []
+                for index, item in enumerate(getattr(payload, field)):
+                    try:
+                        row = _model(create(session, subject, item), model_type)
+                    except ServiceError as error:
+                        raise Refusal(
+                            f"{field}[{index}]: {error}. Nothing was created.",
+                            code=error.code,
+                            params=error.params,
+                            field=error.field,
+                        ) from error
+                    rows.append(_compact(kind, row) if kind else {"id": row["id"], "title": row["title"]})
+                if rows:
+                    created[field] = rows
             return created
 
         return self._call("trip.batch_create", "trip", trip_id, trip_id, operation, lambda x: x)
@@ -636,77 +651,81 @@ class TravelMcpBackend:
             needs_confirmation=True,
         )
 
-    def list_visits(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+    def list_visits(self, trip_id: schemas.Identifier, compact: bool = True) -> list[dict[str, Any]]:
         """List the trip's visits (stops) in order. Compact rows name the area and location by id; pass compact=false, or use get_visit, for the full records."""
         return self._call(
             "visit.list",
             "visit",
             None,
             trip_id,
-            lambda s, sub: visits.list_visits(trip_id, s, sub),
+            lambda s, sub: visit_service.list_visits(s, sub, trip_id),
             _listed("visit", schemas.VisitResponse, compact),
         )
 
-    def get_visit(self, trip_id: str, visit_id: str) -> dict[str, Any]:
+    def get_visit(self, trip_id: schemas.Identifier, visit_id: schemas.Identifier) -> dict[str, Any]:
         """Read one visit."""
         return self._call(
             "visit.get",
             "visit",
             visit_id,
             trip_id,
-            lambda s, sub: visits.get_visit(trip_id, visit_id, s, sub),
+            lambda s, sub: visit_service.get_visit(s, sub, trip_id, visit_id),
             lambda x: _model(x, schemas.VisitResponse),
         )
 
-    def create_visit(self, trip_id: str, payload: schemas.VisitCreate) -> dict[str, Any]:
+    def create_visit(self, trip_id: schemas.Identifier, payload: schemas.VisitCreate) -> dict[str, Any]:
         """Create a visit: an area, or a location in one, with optional days, times, kind and notes. The visit status (idea, planned, confirmed or cancelled) is owner-only and never shared: keep planning state there, not in a title or area label, and cancel a rejected idea instead of deleting it. A cancelled visit can never be shared. Times stay private unless share_time is set. share_date_precision (day, month, year or null) caps how precisely visitors read the days; null, the default, follows each audience's own date precision and the coarser of the two applies. Visits replace the archive's route stages and day-plan steps; summary is the visitor text (a highlight). notes and summary are Markdown."""
         return self._call(
             "visit.create",
             "visit",
             None,
             trip_id,
-            lambda s, sub: visits.create_visit(trip_id, payload, s, sub),
+            lambda s, sub: visit_service.create_visit(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.VisitResponse),
         )
 
-    def update_visit(self, trip_id: str, visit_id: str, payload: schemas.VisitUpdate) -> dict[str, Any]:
+    def update_visit(
+        self, trip_id: schemas.Identifier, visit_id: schemas.Identifier, payload: schemas.VisitUpdate
+    ) -> dict[str, Any]:
         """Edit or reorder a visit. share_date_precision: null follows the audience's date precision, day/month/year caps this visit's days; omit it to keep the value."""
         return self._call(
             "visit.update",
             "visit",
             visit_id,
             trip_id,
-            lambda s, sub: visits.update_visit(trip_id, visit_id, payload, s, sub),
+            lambda s, sub: visit_service.update_visit(s, sub, trip_id, visit_id, payload),
             lambda x: _model(x, schemas.VisitResponse),
         )
 
-    def delete_visit(self, trip_id: str, visit_id: str, confirm: bool = False) -> dict[str, str]:
+    def delete_visit(
+        self, trip_id: schemas.Identifier, visit_id: schemas.Identifier, confirm: bool = False
+    ) -> dict[str, str]:
         """Delete a visit after explicit confirmation."""
         return self._call(
             "visit.delete",
             "visit",
             visit_id,
             trip_id,
-            lambda s, sub: visits.delete_visit(trip_id, visit_id, s, sub),
+            lambda s, sub: visit_service.delete_visit(s, sub, trip_id, visit_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
         )
 
-    def create_travel_update(self, trip_id: str, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
+    def create_travel_update(self, trip_id: schemas.Identifier, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
         """Create a travel update, a new reisupdate (reisupdate schrijven): private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text. body and private_notes are Markdown."""
         return self._call(
             "travel_update.create",
             "travel_update",
             None,
             trip_id,
-            lambda s, sub: trips.create_travel_update(trip_id, payload, s, sub),
+            lambda s, sub: update_service.create_travel_update(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.TravelUpdateResponse),
         )
 
     def list_travel_updates(
         self,
-        trip_id: str,
+        trip_id: schemas.Identifier,
         query: str | None = None,
         latest: Annotated[int | None, Field(ge=1, le=100)] = None,
     ) -> list[dict[str, Any]]:
@@ -716,29 +735,33 @@ class TravelMcpBackend:
             "travel_update",
             None,
             trip_id,
-            lambda s, sub: trips.list_travel_updates(trip_id, s, sub, q=query, latest=latest),
+            lambda s, sub: update_service.list_travel_updates(s, sub, trip_id, q=query, latest=latest),
             lambda x: _models(x, schemas.TravelUpdateResponse),
         )
 
-    def update_travel_update(self, trip_id: str, update_id: str, payload: schemas.TravelUpdatePatch) -> dict[str, Any]:
+    def update_travel_update(
+        self, trip_id: schemas.Identifier, update_id: schemas.Identifier, payload: schemas.TravelUpdatePatch
+    ) -> dict[str, Any]:
         """Edit a reisupdate, including who may see it (private, everyone or custom)."""
         return self._call(
             "travel_update.update",
             "travel_update",
             update_id,
             trip_id,
-            lambda s, sub: trips.update_travel_update(trip_id, update_id, payload, s, sub),
+            lambda s, sub: update_service.update_travel_update(s, sub, trip_id, update_id, payload),
             lambda x: _model(x, schemas.TravelUpdateResponse),
         )
 
-    def delete_travel_update(self, trip_id: str, update_id: str, confirm: bool = False) -> dict[str, str]:
+    def delete_travel_update(
+        self, trip_id: schemas.Identifier, update_id: schemas.Identifier, confirm: bool = False
+    ) -> dict[str, str]:
         """Delete a reisupdate after explicit confirmation."""
         return self._call(
             "travel_update.delete",
             "travel_update",
             update_id,
             trip_id,
-            lambda s, sub: trips.delete_travel_update(trip_id, update_id, s, sub),
+            lambda s, sub: update_service.delete_travel_update(s, sub, trip_id, update_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -941,10 +964,8 @@ class TravelMcpBackend:
             kind.value,
             record_id,
             trip_id,
-            lambda s, sub: visibility_routes.put_visibility(
-                trip_id, kind, record_id, schemas.VisibilityUpdate(visibility=visibility), s, sub
-            ),
-            lambda x: _model(x, schemas.VisibilityUpdate),
+            lambda s, sub: visibility_service.put_visibility(s, sub, trip_id, kind.value, record_id, visibility),
+            lambda chosen: schemas.VisibilityUpdate(visibility=chosen).model_dump(mode="json"),
             confirm=confirm,
             needs_confirmation=True,
         )
@@ -1555,47 +1576,51 @@ class TravelMcpBackend:
         )
 
     # Stays and preparation ----------------------
-    def list_stays(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+    def list_stays(self, trip_id: schemas.Identifier, compact: bool = True) -> list[dict[str, Any]]:
         """List owner-only accommodation records. A stay with status idea is a candidate under comparison, not part of the plan. Compact rows name the area and the location by id (location_id is null while the accommodation is not chosen yet); pass compact=false, or use get_stay, for booking and contact details and the attached documents (document_asset_ids)."""
         return self._call(
             "stay.list",
             "stay",
             None,
             trip_id,
-            lambda s, sub: stays.list_stays(trip_id, s, sub),
+            lambda s, sub: stay_service.list_stays(s, sub, trip_id),
             _listed("stay", schemas.StayResponse, compact),
         )
 
-    def create_stay(self, trip_id: str, payload: schemas.StayCreate) -> dict[str, Any]:
+    def create_stay(self, trip_id: schemas.Identifier, payload: schemas.StayCreate) -> dict[str, Any]:
         """Add a hotel or other accommodation stay (verblijf toevoegen), private, with check-in and check-out dates; omit local times until verified. A stay has an area and an optional location: while the accommodation is undecided give only area_id, and the stay is filed under that area with no location (nothing is created for it). A location settles the area; an area given with it must be its own. notes is Markdown; contact_details is plain text whose phone numbers, email and web addresses are linked. To keep a booking confirmation with its stay, upload it with upload_document and pass the document's id in document_asset_ids (owner-only; a document is never shared)."""
         return self._call(
             "stay.create",
             "stay",
             None,
             trip_id,
-            lambda s, sub: stays.create_stay(trip_id, payload, s, sub),
+            lambda s, sub: stay_service.create_stay(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.StayResponse),
         )
 
-    def update_stay(self, trip_id: str, stay_id: str, payload: schemas.StayUpdate) -> dict[str, Any]:
+    def update_stay(
+        self, trip_id: schemas.Identifier, stay_id: schemas.Identifier, payload: schemas.StayUpdate
+    ) -> dict[str, Any]:
         """Update a private stay; set check_in_time/check_out_time to null to clear unverified times. Choose the accommodation later with a location; set location to null to return to "accommodation not chosen yet" (the area is kept); area_id alone moves the stay to that area and keeps its location only when it is already there. Move the chosen candidate from idea to planned or confirmed and cancel or delete the rejected alternatives. share_date_precision: null follows the audience's date precision, day/month/year caps the stay's nights; omit it to keep the value. document_asset_ids replaces the attached documents (the full list; [] detaches all); omit it to keep them."""
         return self._call(
             "stay.update",
             "stay",
             stay_id,
             trip_id,
-            lambda s, sub: stays.update_stay(trip_id, stay_id, payload, s, sub),
+            lambda s, sub: stay_service.update_stay(s, sub, trip_id, stay_id, payload),
             lambda x: _model(x, schemas.StayResponse),
         )
 
-    def delete_stay(self, trip_id: str, stay_id: str, confirm: bool = False) -> dict[str, str]:
+    def delete_stay(
+        self, trip_id: schemas.Identifier, stay_id: schemas.Identifier, confirm: bool = False
+    ) -> dict[str, str]:
         """Delete an accommodation record after explicit confirmation."""
         return self._call(
             "stay.delete",
             "stay",
             stay_id,
             trip_id,
-            lambda s, sub: stays.delete_stay(trip_id, stay_id, s, sub),
+            lambda s, sub: stay_service.delete_stay(s, sub, trip_id, stay_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -1817,116 +1842,124 @@ class TravelMcpBackend:
             needs_confirmation=True,
         )
 
-    def list_trip_tasks(self, trip_id: str) -> list[dict[str, Any]]:
+    def list_trip_tasks(self, trip_id: schemas.Identifier) -> list[dict[str, Any]]:
         """List owner preparation tasks with their due dates and reminders."""
         return self._call(
             "trip_task.list",
             "trip_task",
             None,
             trip_id,
-            lambda s, sub: tasks.list_trip_tasks(trip_id, s, sub),
+            lambda s, sub: task_service.list_trip_tasks(s, sub, trip_id),
             lambda x: _models(x, schemas.TripTaskResponse),
         )
 
-    def create_trip_task(self, trip_id: str, payload: schemas.TripTaskCreate) -> dict[str, Any]:
+    def create_trip_task(self, trip_id: schemas.Identifier, payload: schemas.TripTaskCreate) -> dict[str, Any]:
         """Create a private task. Use remind_at for an inbox and email reminder; due_date alone schedules nothing."""
         return self._call(
             "trip_task.create",
             "trip_task",
             None,
             trip_id,
-            lambda s, sub: tasks.create_trip_task(trip_id, payload, s, sub),
+            lambda s, sub: task_service.create_trip_task(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.TripTaskResponse),
         )
 
-    def update_trip_task(self, trip_id: str, task_id: str, payload: schemas.TripTaskUpdate) -> dict[str, Any]:
+    def update_trip_task(
+        self, trip_id: schemas.Identifier, task_id: schemas.Identifier, payload: schemas.TripTaskUpdate
+    ) -> dict[str, Any]:
         """Update a private task, including its explicit reminder schedule."""
         return self._call(
             "trip_task.update",
             "trip_task",
             task_id,
             trip_id,
-            lambda s, sub: tasks.update_trip_task(trip_id, task_id, payload, s, sub),
+            lambda s, sub: task_service.update_trip_task(s, sub, trip_id, task_id, payload),
             lambda x: _model(x, schemas.TripTaskResponse),
         )
 
-    def delete_trip_task(self, trip_id: str, task_id: str, confirm: bool = False) -> dict[str, str]:
+    def delete_trip_task(
+        self, trip_id: schemas.Identifier, task_id: schemas.Identifier, confirm: bool = False
+    ) -> dict[str, str]:
         """Delete a preparation task after explicit confirmation."""
         return self._call(
             "trip_task.delete",
             "trip_task",
             task_id,
             trip_id,
-            lambda s, sub: tasks.delete_trip_task(trip_id, task_id, s, sub),
+            lambda s, sub: task_service.delete_trip_task(s, sub, trip_id, task_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
         )
 
-    def list_task_alerts(self, trip_id: str) -> list[dict[str, Any]]:
+    def list_task_alerts(self, trip_id: schemas.Identifier) -> list[dict[str, Any]]:
         """List delivered owner-inbox reminders for a trip's tasks that are due."""
         return self._call(
             "task_alert.list",
             "task_alert",
             None,
             trip_id,
-            lambda s, sub: tasks.list_task_alerts(trip_id, s, sub),
+            lambda s, sub: task_service.list_task_alerts(s, sub, trip_id),
             lambda x: _models(x, schemas.TripTaskAlertResponse),
         )
 
-    def mark_task_alert_read(self, trip_id: str, alert_id: str) -> dict[str, Any]:
+    def mark_task_alert_read(self, trip_id: schemas.Identifier, alert_id: schemas.Identifier) -> dict[str, Any]:
         """Mark one owner-inbox task alert as read."""
         return self._call(
             "task_alert.read",
             "task_alert",
             alert_id,
             trip_id,
-            lambda s, sub: tasks.mark_task_alert_read(trip_id, alert_id, s, sub),
+            lambda s, sub: task_service.mark_task_alert_read(s, sub, trip_id, alert_id),
             lambda x: _model(x, schemas.TripTaskAlertResponse),
         )
 
     # Routes: between two areas, with optional locations, schedule, booking and drawn line ----
-    def list_routes(self, trip_id: str, compact: bool = True) -> list[dict[str, Any]]:
+    def list_routes(self, trip_id: schemas.Identifier, compact: bool = True) -> list[dict[str, Any]]:
         """List routes: how the trip gets from one area to another, ordered by departs_on (the local departure day; a route can have a day before it has times). Compact rows name the ends by id and label and leave out the line, notes and bookings; pass compact=false, or use get_route, for the full records."""
         return self._call(
             "route.list",
             "route",
             None,
             trip_id,
-            lambda s, sub: routes.list_routes(trip_id, s, sub),
+            lambda s, sub: route_service.list_routes(s, sub, trip_id),
             _listed("route", schemas.RouteResponse, compact),
         )
 
-    def create_route(self, trip_id: str, payload: schemas.RouteCreate) -> dict[str, Any]:
+    def create_route(self, trip_id: schemas.Identifier, payload: schemas.RouteCreate) -> dict[str, Any]:
         """Create a route between two areas with a travel mode (flight, train, bus, ferry, car, bike, walk or other). A day first, times optional: "on 5 December, no train yet" is departs_on alone; never invent a time or put the date in the label. The exact locations, schedule, booking details and a drawn GeoJSON line are optional."""
         return self._call(
             "route.create",
             "route",
             None,
             trip_id,
-            lambda s, sub: routes.create_route(trip_id, payload, s, sub),
+            lambda s, sub: route_service.create_route(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.RouteResponse),
         )
 
-    def update_route(self, trip_id: str, route_id: str, payload: schemas.RouteUpdate) -> dict[str, Any]:
+    def update_route(
+        self, trip_id: schemas.Identifier, route_id: schemas.Identifier, payload: schemas.RouteUpdate
+    ) -> dict[str, Any]:
         """Update a route. Set departs_on to give it a day without times; add departs_at and arrives_at together later (its day must stay the local date of departs_at), or set both to null to go back to a day only."""
         return self._call(
             "route.update",
             "route",
             route_id,
             trip_id,
-            lambda s, sub: routes.update_route(trip_id, route_id, payload, s, sub),
+            lambda s, sub: route_service.update_route(s, sub, trip_id, route_id, payload),
             lambda x: _model(x, schemas.RouteResponse),
         )
 
-    def delete_route(self, trip_id: str, route_id: str, confirm: bool = False) -> dict[str, str]:
+    def delete_route(
+        self, trip_id: schemas.Identifier, route_id: schemas.Identifier, confirm: bool = False
+    ) -> dict[str, str]:
         """Delete a route after explicit confirmation."""
         return self._call(
             "route.delete",
             "route",
             route_id,
             trip_id,
-            lambda s, sub: routes.delete_route(trip_id, route_id, s, sub),
+            lambda s, sub: route_service.delete_route(s, sub, trip_id, route_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -2182,36 +2215,36 @@ class TravelMcpBackend:
             lambda x: _model(x, schemas.NavigationResponse),
         )
 
-    def get_stay(self, trip_id: str, stay_id: str) -> dict[str, Any]:
+    def get_stay(self, trip_id: schemas.Identifier, stay_id: schemas.Identifier) -> dict[str, Any]:
         """Read one owner-only accommodation record, including the ids of its attached documents (document_asset_ids)."""
         return self._call(
             "stay.get",
             "stay",
             stay_id,
             trip_id,
-            lambda s, sub: stays.get_stay(trip_id, stay_id, s, sub),
+            lambda s, sub: stay_service.get_stay(s, sub, trip_id, stay_id),
             lambda x: _model(x, schemas.StayResponse),
         )
 
-    def get_trip_task(self, trip_id: str, task_id: str) -> dict[str, Any]:
+    def get_trip_task(self, trip_id: schemas.Identifier, task_id: schemas.Identifier) -> dict[str, Any]:
         """Read one owner preparation task."""
         return self._call(
             "trip_task.get",
             "trip_task",
             task_id,
             trip_id,
-            lambda s, sub: tasks.get_trip_task(trip_id, task_id, s, sub),
+            lambda s, sub: task_service.get_trip_task(s, sub, trip_id, task_id),
             lambda x: _model(x, schemas.TripTaskResponse),
         )
 
-    def get_route(self, trip_id: str, route_id: str) -> dict[str, Any]:
+    def get_route(self, trip_id: schemas.Identifier, route_id: schemas.Identifier) -> dict[str, Any]:
         """Read one route."""
         return self._call(
             "route.get",
             "route",
             route_id,
             trip_id,
-            lambda s, sub: routes.get_route(trip_id, route_id, s, sub),
+            lambda s, sub: route_service.get_route(s, sub, trip_id, route_id),
             lambda x: _model(x, schemas.RouteResponse),
         )
 

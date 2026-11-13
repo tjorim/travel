@@ -35,6 +35,9 @@ from ..schemas import (
     NavigationResponse,
 )
 from ..search_text import contains
+from ..services.placement import location_from_input, selected_area
+from ..services.trips import owned_trip
+from ..services.visibility import make_private
 from ..visitor_changes import (
     FieldChange,
     MovedRecord,
@@ -48,9 +51,6 @@ from ..visitor_changes import (
     widened_record_details,
     widened_records,
 )
-from .placement import location_from_input, selected_area
-from .trips import owned_trip
-from .visibility import make_private
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["locations"])
 

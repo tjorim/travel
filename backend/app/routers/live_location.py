@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -18,21 +18,15 @@ from ..errors import ApiException
 from ..models import LivePoint, LiveSession, ShareLink, Trip
 from ..request_limits import RequestRateLimiter
 from ..schemas import CurrentLocation, Identifier
-from .trips import owned_trip
+from ..services import live_location as live_service
+from ..services.live_location import aware, current_for_audience
+from ..services.trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}/live-location", tags=["live-location"])
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 ingestion_limiter = RequestRateLimiter("120/minute")
 Precision = Literal["exact", "1km", "10km"]
-
-
-def now() -> datetime:
-    return datetime.now(UTC)
-
-
-def aware(value: datetime) -> datetime:
-    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 class LiveSessionCreate(BaseModel):
@@ -113,7 +107,7 @@ def session_data(session: Session, row: LiveSession) -> dict:
             audience: current_for_audience(session, row.trip_id, audience, rows=[row]) for audience in row.audiences
         },
         "current": point_data(point) if point else None,
-        "stale": bool(point and now() - aware(point.observed_at) > timedelta(hours=1)),
+        "stale": bool(point and live_service.now() - aware(point.observed_at) > timedelta(hours=1)),
     }
 
 
@@ -189,7 +183,7 @@ def accept_position(trip_id: str, session_id: str, data: LivePositionInput, sess
     if not row.enabled:
         raise ApiException(409, "Session disabled", code="live_disabled")
     timestamp = aware(data.observed_at)
-    clock = now()
+    clock = live_service.now()
     if not clock - timedelta(minutes=5) <= timestamp <= clock + timedelta(seconds=30):
         raise ApiException(422, "Position outside freshness window", code="live_timestamp")
     if row.watermark is not None and timestamp <= aware(row.watermark):
@@ -278,52 +272,3 @@ def delete_session(trip_id: Identifier, session_id: Identifier, session: Session
     row = owned(session, trip_id, session_id, subject, lock=True)
     session.delete(row)
     session.commit()
-
-
-def current_for_audience(
-    session: Session, trip_id: str, audience: str, *, rows: list[LiveSession] | None = None
-) -> list[dict]:
-    """Visitor callers enforce active scope gates; owner previews are private. Never used by exports."""
-    result = []
-    clock = now()
-    for row in (
-        rows
-        if rows is not None
-        else session.scalars(select(LiveSession).where(LiveSession.trip_id == trip_id, LiveSession.enabled.is_(True)))
-    ):
-        precision = row.audiences.get(audience)
-        point = session.get(LivePoint, row.current_id) if row.current_id else None
-        if not row.enabled or precision not in {"exact", "1km", "10km"} or point is None:
-            continue
-        source_expires = aware(point.observed_at) + timedelta(hours=24)
-        if clock >= source_expires:
-            continue
-        delay = row.delays.get(audience, 0)
-        cutoff = clock - timedelta(seconds=delay)
-        # The unique (session_id, observed_at) index supports this bounded reverse scan.
-        point = session.scalar(
-            select(LivePoint)
-            .where(LivePoint.session_id == row.id, LivePoint.observed_at <= cutoff)
-            .order_by(LivePoint.observed_at.desc())
-            .limit(1)
-        )
-        if point is None:
-            continue
-        age = cutoff - aware(point.observed_at)
-        if age > timedelta(hours=24):
-            continue
-        digits = {"exact": None, "1km": 2, "10km": 1}[precision]
-        result.append(
-            {
-                "latitude": round(point.latitude, digits) if digits is not None else point.latitude,
-                "longitude": round(point.longitude, digits) if digits is not None else point.longitude,
-                "observed_at": aware(point.observed_at).isoformat(),
-                "stale": age > timedelta(hours=1),
-                "delay_seconds": delay,
-                "expires_at": min(
-                    source_expires, aware(point.observed_at) + timedelta(seconds=delay, hours=24, milliseconds=1)
-                ).isoformat(),
-                "precision": precision,
-            }
-        )
-    return result

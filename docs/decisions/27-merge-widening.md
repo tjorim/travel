@@ -97,7 +97,7 @@ the audiences that read them today, and a one-click "make the kept record privat
   `widened` as what remains after them, which is what a confirmed merge then asks
   to acknowledge.
 - **Effect.** After the acknowledgement check, each chosen record goes through
-  `routers.visibility.choose_visibility`, the code behind `PUT
+  `services.visibility.choose_visibility`, the code behind `PUT
   /visibility/{kind}/{id}` and the MCP `set_visibility`: it is set to `private`,
   audited as a `record.visibility_change` with who stopped reading it, and
   withdrawn from every live and draft scope by the existing flush hook. All of it

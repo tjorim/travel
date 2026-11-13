@@ -49,8 +49,8 @@ from ..schemas import (
     StayResponse,
     VisitResponse,
 )
-from .trips import owned_trip
-from .visibility import choose_visibility
+from ..services.trips import owned_trip
+from ..services.visibility import choose_visibility
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["alternatives"])
 

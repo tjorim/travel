@@ -20,6 +20,12 @@ original trip-only ownership rule.
 
 - #119 implemented with owner approval on 2026-11-01 as a JSON-records-only owner export of one trip: see [the export format](../export-format.md). Files, originals, library documents, audit history and deleted rows are excluded; linking to this status does not change the proposed boundary below, which is historical analysis.
 - #115 resolved: trip and library upload services validate the shared `DocumentTitle` constraint before storing objects. Synthetic HTTP/MCP/service regression tests cover empty, oversized and unsafe titles; surrogate strings are tested at MCP/service boundaries because HTTP UTF-8 cannot encode them. Historical source evidence below describes the reviewed baseline.
+- #369 started (2026-11-13): visits, stays, routes, travel updates and tasks, the trip ownership check, place
+  resolution and visibility choice live in `backend/app/services/`. A service takes a session, the subject and typed
+  input, never commits, and raises `Refusal` (a `ServiceError`); the HTTP router and the MCP tool each own their transaction, one
+  commit per request and one per call or batch. `batch_create` no longer replaces `session.commit`. The statements
+  below about MCP calling router functions describe the baseline for every other feature, which still does
+  (see the issue's Progress section). Historical source evidence below describes the reviewed baseline.
 - #116 resolved with owner approval on 2026-11-01: MCP audit retention is 730
   days, matching sharing audits. `purge-expired-audit-events` now purges both
   tables in one transaction with the same strict cutoff; rows exactly at the
@@ -115,7 +121,9 @@ remain inside that trip; library lookups filter direct ownership
 
 The MCP adapter invokes the HTTP domain functions rather than issuing an HTTP
 request. Pydantic payloads are shared, but FastAPI parameter/dependency validation
-is therefore **not** automatically shared. `schemas.py:114–130` forbids unknown
+is therefore **not** automatically shared. (Since #369 the tools for visits, stays, routes, travel updates and
+tasks call `app/services/` instead, take their trip id as the same `Identifier` type as the HTTP path, and report a
+service failure with the same message and code; the other tools keep this divergence until their feature moves.) `schemas.py:114–130` forbids unknown
 fields and validates safe text for model payloads; annotations on an HTTP path,
 query or multipart parameter need separate review.
 
@@ -168,7 +176,8 @@ explicitly described as a proposed reproduction. No new test is added in this PR
    location visitor-change acknowledgements are shared domain checks, stronger
    than the adapter's generic confirmation.
 4. **Batch transaction versus form requests.** `batch_create` (`:522–565`)
-   temporarily changes per-record commits to flushes and commits once. Forms
+   committed once by temporarily replacing the session's per-record commit with a flush; since #369 the services
+   never commit and the batch's own transaction commits once. Forms
    create individual rows in individual transactions. Existing reproduction:
    `test_batch_create_adds_everything_or_nothing`. The batch supports only
    visits/stays/routes/updates/tasks, not file ingestion; preserve that boundary

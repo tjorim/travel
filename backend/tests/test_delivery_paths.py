@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_session
 from app.main import app
-from app.routers.publication import UNLISTED_HEADERS
+from app.services.delivery import UNLISTED_HEADERS
 
 
 @pytest.fixture(params=["sqlite", "postgres"])

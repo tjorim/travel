@@ -712,6 +712,15 @@ def require_unique_document_ids(values: list[str]) -> list[str]:
     return values
 
 
+def require_stay_nights(check_in_date: date, check_out_date: date) -> None:
+    """A stay covers at least one night: it checks out after the day it checks in."""
+    if check_out_date <= check_in_date:
+        raise PydanticCustomError(
+            "a_stay_covers_at_least_one_night_check_out_after_the_check_in_date",
+            "A stay covers at least one night: check out after the check-in date",
+        )
+
+
 class StayCreate(InputModel):
     """The nights at one accommodation. ``check_out_date`` is the departure
     morning, so a stay covers the nights ``check_in_date`` up to, but not
@@ -750,6 +759,7 @@ class StayCreate(InputModel):
             raise PydanticCustomError(
                 "say_where_this_stay_is_an_area_or_a_location", "Say where this stay is: an area, or a location"
             )
+        require_stay_nights(self.check_in_date, self.check_out_date)
         return self
 
 

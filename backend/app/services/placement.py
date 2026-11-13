@@ -1,10 +1,9 @@
 """Where a record is: the area, and optionally the location, that a route end or a visit points at."""
 
-from fastapi import status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..errors import ApiException
+from ..errors import Refusal
 from ..models import Area, Location
 from ..schemas import Identifier, LocationInput
 
@@ -12,11 +11,7 @@ from ..schemas import Identifier, LocationInput
 def selected_area(session: Session, trip_id: Identifier, area_id: Identifier) -> Area:
     area = session.scalar(select(Area).where(Area.id == area_id, Area.trip_id == trip_id))
     if area is None:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Area is unavailable for this trip",
-            code="area_is_unavailable_for_this_trip",
-        )
+        raise Refusal("Area is unavailable for this trip", code="area_is_unavailable_for_this_trip")
     return area
 
 
@@ -78,11 +73,7 @@ def location_from_input(session: Session, trip_id: Identifier, payload: Location
             select(Location).where(Location.id == payload.existing_location_id, Location.trip_id == trip_id)
         )
         if existing is None:
-            raise ApiException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Location not found on this trip",
-                code="location_not_found_on_this_trip",
-            )
+            raise Refusal("Location not found on this trip", code="location_not_found_on_this_trip")
         return existing
     location = Location(trip_id=trip_id, **payload.model_dump(exclude={"existing_location_id", "area_id", "new_area"}))
     if payload.osm_element_type is not None and payload.osm_element_id is not None:
@@ -109,19 +100,11 @@ def resolve_place(
     as well must be that one. Used by routes (each end) and by visits."""
     if location is None:
         if area_id is None:
-            raise ApiException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="An area or a location is required",
-                code="an_area_or_a_location_is_required",
-            )
+            raise Refusal("An area or a location is required", code="an_area_or_a_location_is_required")
         return selected_area(session, trip_id, area_id), None
     found = location_from_input(session, trip_id, location)
     if area_id is not None and found.area_id != area_id:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="That location is not in the chosen area",
-            code="that_location_is_not_in_the_chosen_area",
-        )
+        raise Refusal("That location is not in the chosen area", code="that_location_is_not_in_the_chosen_area")
     return found.area, found
 
 
@@ -137,17 +120,9 @@ def stay_place(
     location settles the area, and an area given with it must be its own."""
     if location is not None and not location.model_dump(exclude={"area_id"}, exclude_defaults=True):
         if area_id is not None and location.area_id is not None and area_id != location.area_id:
-            raise ApiException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="That location is not in the chosen area",
-                code="that_location_is_not_in_the_chosen_area",
-            )
+            raise Refusal("That location is not in the chosen area", code="that_location_is_not_in_the_chosen_area")
         location_area_id = location.area_id or area_id
         if location_area_id is None:  # an empty location payload: rejected by the schema, kept safe here
-            raise ApiException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Say where this stay is",
-                code="say_where_this_stay_is",
-            )
+            raise Refusal("Say where this stay is", code="say_where_this_stay_is")
         return selected_area(session, trip_id, location_area_id), None
     return resolve_place(session, trip_id, area_id, location)

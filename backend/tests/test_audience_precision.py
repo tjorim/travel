@@ -30,7 +30,7 @@ from app.models import (
 )
 from app.precision import DEFAULT_PRECISION, audience_precision, coarser, effective_precision, is_finer
 from app.projection import render_projection
-from app.routers.trips import trip_query
+from app.services.trips import trip_query
 
 PRECISIONS = ("day", "month", "year")
 LENGTH = {"day": 10, "month": 7, "year": 4}

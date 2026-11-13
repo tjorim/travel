@@ -29,8 +29,8 @@ from ..schemas import (
     OwnerDocumentResponse,
     OwnerDocumentUpdate,
 )
+from ..services.trips import owned_trip
 from ..storage import ObjectStorage, get_storage
-from .trips import owned_trip
 
 router = APIRouter(prefix="/library", tags=["library"])
 

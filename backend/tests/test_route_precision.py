@@ -28,7 +28,7 @@ from app.models import CollectionMember, Trip
 from app.overview import trip_overview
 from app.precision import precision_summary, route_precision
 from app.projection import delivered, render_projection
-from app.routers.trips import trip_query
+from app.services.trips import trip_query
 from app.storage import LocalObjectStorage, get_storage
 
 LENGTH = {"day": 10, "month": 7, "year": 4}

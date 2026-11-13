@@ -59,8 +59,8 @@ from ..schemas import (
     ProviderConnectionStatus,
 )
 from ..secrets import SecretStore, get_secret_store
+from ..services.trips import owned_trip
 from ..storage import ObjectStorage, get_storage
-from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}/media", tags=["media"])
 provider_tokens_router = APIRouter(prefix="/provider-tokens", tags=["media"])
