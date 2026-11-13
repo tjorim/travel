@@ -10,16 +10,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
-from ..errors import ApiException, service_exception
-from ..library.service import LibraryError, delete_owner_document, direct_upload
 from ..media.ranges import private_original_headers
-from ..media.service import read_bounded_upload
-from ..models import DocumentKind, EmergencyInfoEntry, OwnerDocument
+from ..models import DocumentKind, EmergencyInfoEntry
 from ..schemas import (
     DocumentTitle,
     EmergencyInfoEntryCreate,
@@ -29,7 +25,7 @@ from ..schemas import (
     OwnerDocumentResponse,
     OwnerDocumentUpdate,
 )
-from ..services.trips import owned_trip
+from ..services import library as service
 from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/library", tags=["library"])
@@ -37,46 +33,6 @@ router = APIRouter(prefix="/library", tags=["library"])
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 StorageDep = Annotated[ObjectStorage, Depends(get_storage)]
-
-
-def _document_response(document: OwnerDocument) -> OwnerDocumentResponse:
-    original = document.original_object
-    return OwnerDocumentResponse(
-        id=document.id,
-        document_kind=document.document_kind,
-        title=document.title,
-        byte_size=original.byte_size,
-        content_type=original.content_type,
-        original_filename=document.owner_metadata.get("original_filename"),
-        linked_trip_id=document.linked_trip_id,
-        created_at=document.created_at,
-        deleted_at=document.deleted_at,
-        file_url=f"/api/library/documents/{document.id}/original",
-    )
-
-
-def owned_library_document(session: Session, subject: str, document_id: Identifier) -> OwnerDocument:
-    document = session.scalar(
-        select(OwnerDocument).where(
-            OwnerDocument.id == document_id,
-            OwnerDocument.owner_subject == subject,
-            OwnerDocument.deleted_at.is_(None),
-        )
-    )
-    if document is None:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found", code="not_found")
-    return document
-
-
-def owned_emergency_entry(session: Session, subject: str, entry_id: Identifier) -> EmergencyInfoEntry:
-    entry = session.scalar(
-        select(EmergencyInfoEntry).where(EmergencyInfoEntry.id == entry_id, EmergencyInfoEntry.owner_subject == subject)
-    )
-    if entry is None:
-        raise ApiException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Emergency info entry not found", code="not_found"
-        )
-    return entry
 
 
 @router.post("/documents/uploads", response_model=OwnerDocumentResponse)
@@ -90,69 +46,47 @@ def upload_library_document(
     file: Annotated[UploadFile, File()],
     linked_trip_id: Annotated[Identifier | None, Form()] = None,
 ) -> OwnerDocumentResponse:
-    if linked_trip_id:
-        owned_trip(session, linked_trip_id, subject)
-    if not file.content_type:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="A content type is required",
-            code="a_content_type_is_required",
-        )
-    try:
-        with read_bounded_upload(file.file, LibraryError) as data:
-            document, created = direct_upload(
-                session,
-                storage,
-                owner_subject=subject,
-                filename=file.filename or "upload",
-                content_type=file.content_type,
-                data=data,
-                document_kind=document_kind,
-                title=title,
-                linked_trip_id=linked_trip_id,
-            )
-    except LibraryError as error:
-        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+    uploaded, created = service.upload_library_document(
+        session,
+        storage,
+        subject,
+        title=title,
+        document_kind=document_kind,
+        filename=file.filename,
+        content_type=file.content_type,
+        file=file.file,
+        linked_trip_id=linked_trip_id,
+    )
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-    return _document_response(document)
+    return uploaded
 
 
 @router.get("/documents", response_model=list[OwnerDocumentResponse])
 def list_library_documents(
     session: SessionDep, subject: SubjectDep, linked_trip_id: Identifier | None = None
 ) -> list[OwnerDocumentResponse]:
-    query = select(OwnerDocument).where(OwnerDocument.owner_subject == subject, OwnerDocument.deleted_at.is_(None))
-    if linked_trip_id is not None:
-        query = query.where(OwnerDocument.linked_trip_id == linked_trip_id)
-    documents = session.scalars(query.order_by(OwnerDocument.created_at.desc()))
-    return [_document_response(document) for document in documents]
+    return service.list_library_documents(session, subject, linked_trip_id)
 
 
 @router.get("/documents/{document_id}", response_model=OwnerDocumentResponse)
 def get_library_document(document_id: Identifier, session: SessionDep, subject: SubjectDep) -> OwnerDocumentResponse:
-    return _document_response(owned_library_document(session, subject, document_id))
+    return service.get_library_document(session, subject, document_id)
 
 
 @router.patch("/documents/{document_id}", response_model=OwnerDocumentResponse)
 def update_library_document(
     document_id: Identifier, payload: OwnerDocumentUpdate, session: SessionDep, subject: SubjectDep
 ) -> OwnerDocumentResponse:
-    document = owned_library_document(session, subject, document_id)
-    updates = payload.model_dump(exclude_unset=True)
-    if "linked_trip_id" in updates and updates["linked_trip_id"] is not None:
-        owned_trip(session, updates["linked_trip_id"], subject)
-    for field, value in updates.items():
-        setattr(document, field, value)
+    updated = service.update_library_document(session, subject, document_id, payload)
     session.commit()
-    session.refresh(document)
-    return _document_response(document)
+    return updated
 
 
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_library_document(
     document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
-    delete_owner_document(session, storage, document=owned_library_document(session, subject, document_id))
+    service.remove_library_document(session, storage, subject, document_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -160,7 +94,7 @@ def remove_library_document(
 def get_library_document_original(
     document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> StreamingResponse:
-    original = owned_library_document(session, subject, document_id).original_object
+    original = service.owned_library_document(session, subject, document_id).original_object
     return StreamingResponse(
         iter([storage.get(original.object_key)]),
         media_type=original.content_type,
@@ -170,45 +104,34 @@ def get_library_document_original(
 
 @router.get("/emergency-info", response_model=list[EmergencyInfoEntryResponse])
 def list_emergency_info(session: SessionDep, subject: SubjectDep) -> list[EmergencyInfoEntry]:
-    return list(
-        session.scalars(
-            select(EmergencyInfoEntry)
-            .where(EmergencyInfoEntry.owner_subject == subject)
-            .order_by(EmergencyInfoEntry.created_at)
-        )
-    )
+    return service.list_emergency_info(session, subject)
 
 
 @router.post("/emergency-info", response_model=EmergencyInfoEntryResponse, status_code=status.HTTP_201_CREATED)
 def create_emergency_info(
     payload: EmergencyInfoEntryCreate, session: SessionDep, subject: SubjectDep
 ) -> EmergencyInfoEntry:
-    entry = EmergencyInfoEntry(owner_subject=subject, **payload.model_dump())
-    session.add(entry)
+    entry = service.create_emergency_info(session, subject, payload)
     session.commit()
-    session.refresh(entry)
     return entry
 
 
 @router.get("/emergency-info/{entry_id}", response_model=EmergencyInfoEntryResponse)
 def get_emergency_info_entry(entry_id: Identifier, session: SessionDep, subject: SubjectDep) -> EmergencyInfoEntry:
-    return owned_emergency_entry(session, subject, entry_id)
+    return service.get_emergency_info_entry(session, subject, entry_id)
 
 
 @router.patch("/emergency-info/{entry_id}", response_model=EmergencyInfoEntryResponse)
 def update_emergency_info(
     entry_id: Identifier, payload: EmergencyInfoEntryUpdate, session: SessionDep, subject: SubjectDep
 ) -> EmergencyInfoEntry:
-    entry = owned_emergency_entry(session, subject, entry_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(entry, field, value)
+    entry = service.update_emergency_info(session, subject, entry_id, payload)
     session.commit()
-    session.refresh(entry)
     return entry
 
 
 @router.delete("/emergency-info/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_emergency_info(entry_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
-    session.delete(owned_emergency_entry(session, subject, entry_id))
+    service.delete_emergency_info(session, subject, entry_id)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

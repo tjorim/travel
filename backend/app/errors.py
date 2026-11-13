@@ -31,6 +31,26 @@ class Refusal(ServiceError):
 
     status_code: ClassVar[int] = status.HTTP_422_UNPROCESSABLE_CONTENT
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "operation_failed",
+        params: dict | None = None,
+        field: str | None = None,
+        detail: Any = None,
+    ):
+        super().__init__(message, code=code, params=params, field=field)
+        # A structured body (a review the owner must acknowledge) that replaces the message as the response's
+        # ``detail``; HTTP sends it as JSON and the MCP adapter sends it as JSON text.
+        self.detail = detail
+
+
+class Conflict(Refusal):
+    """A request that clashes with the current state, or needs the owner's acknowledgement first."""
+
+    status_code = status.HTTP_409_CONFLICT
+
 
 class RecordNotFound(Refusal):
     """A record that does not exist, or is not the caller's to see."""
@@ -59,9 +79,10 @@ class ApiException(HTTPException):
 def service_exception(status_code: int, error: Exception) -> ApiException:
     if isinstance(error, PydanticCustomError):
         return ApiException(status_code, str(error), code=error.type, params=error.context)
+    structured = error.detail if isinstance(error, Refusal) else None
     return ApiException(
         status_code,
-        str(error) if isinstance(error, ServiceError) else "Invalid request",
+        structured if structured is not None else str(error) if isinstance(error, ServiceError) else "Invalid request",
         code=error.code if isinstance(error, ServiceError) else "invalid_input",
         params=error.params if isinstance(error, ServiceError) else {},
         field=error.field if isinstance(error, ServiceError) else None,
