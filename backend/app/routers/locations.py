@@ -3,67 +3,26 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..access import receivers, trip_audiences
-from ..audit import LiveAudience, live_audiences, record_audit_event
 from ..auth import current_subject
 from ..database import get_session
-from ..errors import ApiException
-from ..live_scopes import scope_picks
-from ..models import (
-    Area,
-    AuditEventKind,
-    AuditTargetType,
-    Location,
-    Route,
-    Stay,
-    TravelUpdate,
-    Visibility,
-    Visit,
-)
-from ..navigation import location_navigation_url
+from ..models import Location
 from ..schemas import (
     Identifier,
     LocationInput,
-    LocationMergeDuplicate,
     LocationMergeResult,
     LocationResponse,
     LocationUpdate,
     MergeRequest,
     NavigationResponse,
 )
-from ..search_text import contains
-from ..services.placement import location_from_input, selected_area
-from ..services.trips import owned_trip
-from ..services.visibility import make_private
-from ..visitor_changes import (
-    FieldChange,
-    MovedRecord,
-    Placement,
-    chosen_private,
-    location_visitor_view,
-    merge_widening,
-    merge_widening_refusal,
-    reached_by,
-    text_changes,
-    widened_record_details,
-    widened_records,
-)
+from ..services import locations as service
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["locations"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
-
-
-def owned_location(session: Session, trip_id: Identifier, subject: str, location_id: Identifier) -> Location:
-    owned_trip(session, trip_id, subject)
-    location = session.scalar(select(Location).where(Location.id == location_id, Location.trip_id == trip_id))
-    if location is None:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found", code="not_found")
-    return location
 
 
 @router.get("/locations", response_model=list[LocationResponse])
@@ -75,129 +34,14 @@ def list_locations(
     limit: Annotated[int | None, Query(ge=1, le=100)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[Location]:
-    trip = owned_trip(session, trip_id, subject)
-    statement = select(Location).where(Location.trip_id == trip.id).order_by(Location.created_at)
-    if q or limit is not None or offset:
-        statement = statement.order_by(Location.id)
-    if q:
-        statement = statement.where(contains(Location.label, q) | contains(Location.display_name, q))
-    if limit is not None:
-        statement = statement.limit(limit)
-    return list(session.scalars(statement.offset(offset)))
+    return service.list_locations(session, subject, trip_id, q=q, limit=limit, offset=offset)
 
 
 @router.post("/locations", response_model=LocationResponse, status_code=status.HTTP_201_CREATED)
 def save_location(trip_id: Identifier, payload: LocationInput, session: SessionDep, subject: SubjectDep) -> Location:
-    trip = owned_trip(session, trip_id, subject)
-    location = location_from_input(session, trip.id, payload)
+    location = service.save_location(session, subject, trip_id, payload)
     session.commit()
     return location
-
-
-def _carry_links(session: Session, location: Location) -> None:
-    """Keep every route end and visit at this location in the location's new area.
-
-    A record's area must hold its location, so moving the location moves them
-    with it instead of leaving the owner to detach, move and reattach each one.
-    A stay at the location moves too, because it stores its own area. Reisupdates
-    take their area from the location already."""
-    for end in ("departure", "arrival"):
-        for route in session.scalars(select(Route).where(getattr(Route, f"{end}_location_id") == location.id)):
-            setattr(route, f"{end}_area", location.area)
-    for visit in session.scalars(select(Visit).where(Visit.location_id == location.id)):
-        visit.area = location.area
-    for stay in session.scalars(select(Stay).where(Stay.location_id == location.id)):
-        stay.area = location.area
-
-
-# What a place-search result says about one place: stale once the point moves elsewhere.
-_PROVIDER_REFERENCES = (
-    "osm_element_type",
-    "osm_element_id",
-    "viewport_north",
-    "viewport_south",
-    "viewport_east",
-    "viewport_west",
-    "navigation_provider",
-    "navigation_provider_place_id",
-)
-
-
-def _unprocessable(detail: str, code: str) -> ApiException:
-    return ApiException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail, code=code)
-
-
-def _apply_map_target(location: Location, payload: LocationUpdate) -> None:
-    """Apply the point, viewport, OSM element and navigation provider fields the payload names.
-
-    Omitted fields keep their values and explicit nulls clear them. The OSM URL
-    always follows the stored element, and a point that moves may not keep
-    provider references describing the old place."""
-    changes = payload.model_fields_set
-    if "latitude" in changes:
-        point = (payload.latitude, payload.longitude)
-        if point != (location.latitude, location.longitude) and payload.latitude is not None:
-            if location.visibility != Visibility.PRIVATE:
-                # A shared location publishes its point, so a new one is the owner's explicit sharing decision.
-                raise _unprocessable(
-                    "Make this location private before changing its point, then share it again",
-                    "make_this_location_private_before_changing_its_point_then_share_it_again",
-                )
-            stale = [field for field in _PROVIDER_REFERENCES if getattr(location, field) is not None]
-            if any(field not in changes for field in stale):
-                raise _unprocessable(
-                    "Moving the point also needs the OSM element, viewport and navigation provider "
-                    "of the new place: send them, or null the ones that no longer apply",
-                    "moving_the_point_needs_the_osm_element_viewport_and_navigation_provider_of_the_new_place",
-                )
-        location.latitude, location.longitude = point
-    for field in _PROVIDER_REFERENCES:
-        if field in changes:
-            setattr(location, field, getattr(payload, field))
-    if "osm_element_type" in changes:
-        location.osm_url = (
-            f"https://www.openstreetmap.org/{location.osm_element_type}/{location.osm_element_id}"
-            if location.osm_element_type is not None
-            else None
-        )
-    if location.navigation_provider_place_id is not None and location.navigation_provider is None:
-        raise _unprocessable(
-            "A navigation provider place id needs a navigation provider",
-            "a_navigation_provider_place_id_needs_a_navigation_provider",
-        )
-
-
-def _area_change(
-    session: Session,
-    location: Location,
-    before_area: Area,
-    visits: list[Visit],
-    routes: list[Route],
-    stays: list[Stay],
-    live: list[LiveAudience],
-) -> FieldChange | None:
-    """The visitor-facing effect of moving a location to another area: its visits, stays and route ends move with it.
-
-    Visitors read a visit's or stay's place and a route's ends from their areas,
-    so the audiences are those that receive any of the records carried along."""
-    reached: dict[str, LiveAudience] = {}
-    for kind, records in (("visit", visits), ("stay", stays), ("route", routes)):
-        for record in records:
-            for audience in reached_by(kind, record, live):
-                reached[audience.id] = audience
-    if not reached:
-        return None
-    return FieldChange(
-        "area_id",
-        before_area.id,
-        location.area.id,
-        list(reached.values()),
-        before_label=before_area.label,
-        after_label=location.area.label,
-        visits=len(visits),
-        routes=len(routes),
-        stays=len(stays),
-    )
 
 
 @router.patch(
@@ -220,86 +64,7 @@ def update_location(
     ``acknowledge_visitor_changes``; the refusal lists each field's before and
     after and the audiences. An acknowledged change is recorded in the audit trail.
     """
-    location = owned_location(session, trip_id, subject, location_id)
-    changes = payload.model_fields_set
-    live = live_audiences(session, trip_id)
-    before_view = location_visitor_view(location)
-    before_area = location.area
-    visits, routes, stays = [], [], []
-    if live and "area_id" in changes and payload.area_id not in (None, location.area_id):
-        visits = list(session.scalars(select(Visit).where(Visit.location_id == location.id)))
-        stays = list(session.scalars(select(Stay).where(Stay.location_id == location.id)))
-        routes = list(
-            session.scalars(
-                select(Route).where(
-                    (Route.departure_location_id == location.id) | (Route.arrival_location_id == location.id)
-                )
-            )
-        )
-    if "label" in changes:
-        location.label = payload.label
-    if "area_id" in changes:
-        if payload.area_id is None:
-            raise ApiException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Every location needs an area",
-                code="every_location_needs_an_area",
-            )
-        location.area = selected_area(session, trip_id, payload.area_id)
-        _carry_links(session, location)
-    if "share_address" in changes and payload.share_address is not None:
-        location.share_address = payload.share_address
-    for field in (
-        "display_name",
-        "address_line1",
-        "address_line2",
-        "locality",
-        "admin_area",
-        "postal_code",
-        "country_code",
-        "notes",
-    ):
-        if field in changes:
-            setattr(location, field, getattr(payload, field))
-    _apply_map_target(location, payload)
-    if location.share_address and not any(
-        (location.address_line1, location.address_line2, location.postal_code, location.locality, location.admin_area)
-    ):
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Add an address before sharing it",
-            code="add_an_address_before_sharing_it",
-        )
-    if location.label is None and location.visibility != Visibility.PRIVATE:
-        # A shared location cannot lose its public name.
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Give this location a public name before sharing it",
-            code="give_this_location_a_public_name_before_sharing_it",
-        )
-    visitor_changes = text_changes(before_view, location_visitor_view(location), reached_by("location", location, live))
-    if (visits or routes or stays) and (
-        area_change := _area_change(session, location, before_area, visits, routes, stays, live)
-    ):
-        visitor_changes.append(area_change)
-    if visitor_changes and not payload.acknowledge_visitor_changes:
-        details = [change.as_detail() for change in visitor_changes]
-        session.rollback()
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "visitor_visible_change_needs_acknowledgement", "changes": details},
-            code="visitor_visible_change_needs_acknowledgement",
-        )
-    if visitor_changes:
-        record_audit_event(
-            session,
-            trip_id=trip_id,
-            actor_subject=subject,
-            kind=AuditEventKind.LOCATION_UPDATE,
-            target_type=AuditTargetType.LOCATION,
-            target_id=location.id,
-            details={"changes": [change.as_audit() for change in visitor_changes]},
-        )
+    location = service.update_location(session, subject, trip_id, location_id, payload)
     session.commit()
     return location
 
@@ -308,200 +73,21 @@ def update_location(
 def owner_navigation(
     location_id: Identifier, trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> NavigationResponse:
-    location = owned_location(session, trip_id, subject, location_id)
-    url = location_navigation_url(location)
-    if url is None:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Location has no navigation target",
-            code="location_has_no_navigation_target",
-        )
-    return NavigationResponse(url=url, exact=True)
-
-
-def _referencing(session: Session, trip_id: Identifier, location_id: Identifier) -> dict[str, list]:
-    """Every record that points at this location, by kind."""
-
-    def rows(model, *conditions) -> list:
-        return list(session.scalars(select(model).where(model.trip_id == trip_id, *conditions)))
-
-    return {
-        "visits": rows(Visit, Visit.location_id == location_id),
-        "stays": rows(Stay, Stay.location_id == location_id),
-        "routes": rows(
-            Route, (Route.departure_location_id == location_id) | (Route.arrival_location_id == location_id)
-        ),
-        "travel_updates": rows(TravelUpdate, TravelUpdate.location_id == location_id),
-    }
-
-
-_REFERENCE_NAMES = {
-    "visits": ("bezoek", "bezoeken"),
-    "stays": ("verblijf", "verblijven"),
-    "routes": ("route", "routes"),
-    "travel_updates": ("reisupdate", "reisupdates"),
-}
+    return service.owner_navigation(session, subject, trip_id, location_id)
 
 
 @router.delete("/locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_location(trip_id: Identifier, location_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
     """Delete an unused location; refuse while any visit, stay, route or reisupdate still points at it."""
-    location = owned_location(session, trip_id, subject, location_id)
-    found_by_kind = _referencing(session, trip_id, location.id)
-    references = [
-        f"{len(found)} {_REFERENCE_NAMES[kind][0] if len(found) == 1 else _REFERENCE_NAMES[kind][1]}"
-        for kind, found in found_by_kind.items()
-        if found
-    ]
-    if references:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Deze locatie wordt nog gebruikt door: {', '.join(references)}. "
-            "Pas of verwijder die eerst, of voeg de locatie samen met een andere.",
-            code="resource_in_use",
-            params={
-                **{kind: len(found) for kind, found in found_by_kind.items()},
-                "count": sum(len(found) for found in found_by_kind.values()),
-            },
-        )
-    session.delete(location)
+    service.delete_location(session, subject, trip_id, location_id)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-def _moved_records(duplicate: Location, keep: Location, found: dict[str, list]) -> list[MovedRecord]:
-    """Every record that moves from ``duplicate`` to ``keep``, with the places it then reads."""
-
-    def placement(area: Area) -> Placement:
-        return Placement(duplicate, keep, area, keep.area)
-
-    moved = [MovedRecord("stays", stay, [placement(stay.area)]) for stay in found["stays"]]
-    moved += [MovedRecord("visits", visit, [placement(visit.area)]) for visit in found["visits"]]
-    moved += [MovedRecord("travel_updates", update, [placement(update.area)]) for update in found["travel_updates"]]
-    for route in found["routes"]:
-        ends = [
-            placement(getattr(route, f"{end}_area"))
-            for end in ("departure", "arrival")
-            if getattr(route, f"{end}_location_id") == duplicate.id
-        ]
-        moved.append(MovedRecord("routes", route, ends))
-    return moved
-
-
-def merge_locations(trip_id: Identifier, payload: MergeRequest, session: Session, subject: str) -> LocationMergeResult:
-    """Preview, or with ``confirm`` apply, folding duplicates into one kept location.
-
-    Every visit, stay, route end and reisupdate at a duplicate moves to the kept
-    location in one transaction, and then the duplicates are deleted. The kept
-    location keeps its own name, visibility and area; visits, stays and route
-    ends move into that area with it. A stay filed under an area alone has no
-    location, so a location merge never touches it.
-
-    A live audience that receives the kept location but not a duplicate starts
-    to read the kept name and point through the records that move. The preview
-    lists those audiences per duplicate, and a confirmed merge is refused with
-    409 until ``confirm_widening`` accepts them. Records listed in ``make_private``
-    are made private first (through the sharing history) and so no longer widen."""
-    keep = owned_location(session, trip_id, subject, payload.keep_id)
-    duplicate_ids = list(dict.fromkeys(payload.duplicate_ids))
-    if keep.id in duplicate_ids:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="keep_id cannot also be a duplicate",
-            code="keep_id_cannot_also_be_a_duplicate",
-        )
-    duplicates = [owned_location(session, trip_id, subject, duplicate_id) for duplicate_id in duplicate_ids]
-    audiences = trip_audiences(session, trip_id)
-    kept_by = receivers("location", keep, audiences)
-    live = live_audiences(session, trip_id)
-    summaries: list[LocationMergeDuplicate] = []
-    warnings: list[str] = []
-    moves = [(duplicate, _referencing(session, trip_id, duplicate.id)) for duplicate in duplicates]
-    shown = [widened_records(live, _moved_records(duplicate, keep, found)) for duplicate, found in moves]
-    private = chosen_private(payload.make_private, [entry for entries in shown for entry in entries])
-    picks = scope_picks(session, trip_id)
-    for (duplicate, found), entries in zip(moves, shown, strict=True):
-        narrowed = sorted(receivers("location", duplicate, audiences) - kept_by)
-        name = duplicate.label or duplicate.display_name or duplicate.id
-        widened = merge_widening(live, entries, private)
-        if widened:
-            warnings.append(
-                f"{name} is not shared with {', '.join(w.name for w in widened)} "
-                "but the kept location is; after the merge its stays, visits, routes and updates show them "
-                "the kept location. Confirming needs confirm_widening=true."
-            )
-        if narrowed:
-            warnings.append(
-                f"{name} reaches {', '.join(narrowed)} but the kept location does not; "
-                "after the merge they no longer see it. Share the kept location first to avoid that."
-            )
-        if duplicate.area_id != keep.area_id and (found["visits"] or found["routes"]):
-            warnings.append(f"Visits and routes at {name} move to the kept location's area.")
-        summaries.append(
-            LocationMergeDuplicate(
-                id=duplicate.id,
-                label=duplicate.label,
-                display_name=duplicate.display_name,
-                area_id=duplicate.area_id,
-                narrowed_audiences=narrowed,
-                widened=[w.as_detail() for w in widened],
-                widened_records=widened_record_details(entries, private, picks),
-                **{kind: len(rows) for kind, rows in found.items()},
-            )
-        )
-    result = LocationMergeResult(keep_id=keep.id, applied=payload.confirm, duplicates=summaries, warnings=warnings)
-    if not payload.confirm:
-        return result
-    if any(summary.widened for summary in summaries) and not payload.confirm_widening:
-        raise merge_widening_refusal(summaries)
-    make_private(session, owned_trip(session, trip_id, subject), subject, sorted(private))
-    for duplicate, found in moves:
-        for visit in found["visits"]:
-            visit.location = keep
-        for stay in found["stays"]:
-            stay.location = keep
-            stay.area = keep.area
-        for update in found["travel_updates"]:
-            update.location = keep
-        for route in found["routes"]:
-            for end in ("departure", "arrival"):
-                if getattr(route, f"{end}_location_id") == duplicate.id:
-                    setattr(route, f"{end}_location", keep)
-    session.flush()
-    _carry_links(session, keep)
-    for duplicate, _ in moves:
-        session.delete(duplicate)
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind.LOCATION_MERGE,
-        target_type=AuditTargetType.LOCATION,
-        target_id=keep.id,
-        details={
-            "merged": [
-                {
-                    "id": summary.id,
-                    **summary.model_dump(include={"visits", "stays", "routes", "travel_updates"}),
-                    # Audience ids and counts only: a link's label is the owner's own text.
-                    **(
-                        {"widened": [w.model_dump(exclude={"label"}) for w in summary.widened]}
-                        if summary.widened
-                        else {}
-                    ),
-                }
-                for summary in summaries
-            ],
-            **({"made_private": [{"kind": kind, "id": item} for kind, item in sorted(private)]} if private else {}),
-        },
-    )
-    return result
 
 
 @router.post("/locations/merge", response_model=LocationMergeResult)
 def merge_locations_endpoint(
     trip_id: Identifier, payload: MergeRequest, session: SessionDep, subject: SubjectDep
 ) -> LocationMergeResult:
-    result = merge_locations(trip_id, payload, session, subject)
+    result = service.merge_locations(session, subject, trip_id, payload)
     session.commit()
     return result

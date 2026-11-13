@@ -53,27 +53,27 @@ from .database import SessionLocal
 from .errors import Refusal, ServiceError
 from .models import DocumentKind, ImportProvider, McpAuditEvent, Visibility
 from .routers import (
-    alternatives,
-    areas,
     collections,
-    documents,
-    library,
-    locations,
     media,
-    packing,
-    places,
     publication,
-    trips,
 )
 from .routers import (
     precision as precision_routes,
 )
 from .routers import sharing_presets as preset_routes
 from .secrets import get_secret_store
+from .services import alternatives as alternative_service
+from .services import areas as area_service
+from .services import documents as document_service
+from .services import library as library_service
+from .services import locations as location_service
+from .services import packing as packing_service
+from .services import places as place_service
 from .services import routes as route_service
 from .services import stays as stay_service
 from .services import tasks as task_service
 from .services import travel_updates as update_service
+from .services import trips as trip_service
 from .services import visibility as visibility_service
 from .services import visits as visit_service
 from .storage import get_storage
@@ -303,10 +303,12 @@ def _detail_text(detail: Any) -> str:
 
 def _error_summary(error: BaseException) -> str:
     """A short, payload-free description that is safe to log and to persist in the audit trail."""
-    if isinstance(error, HTTPException):
+    if isinstance(error, HTTPException | Refusal):
         # A structured detail quotes the owner's own address and names: keep only its code.
         detail = error.detail
-        return str(detail.get("code", "rejected") if isinstance(detail, dict) else detail)[:240]
+        if isinstance(detail, dict):
+            return str(detail.get("code", "rejected"))[:240]
+        return str(error if isinstance(error, Refusal) else detail)[:240]
     # FastMCP wraps an invalid-argument error, whose message echoes the rejected values.
     cause = error if isinstance(error, ValidationError) else error.__cause__
     if isinstance(cause, ValidationError):
@@ -474,9 +476,17 @@ class TravelMcpBackend:
                 result = operation(session, subject)
                 rendered = output(result)
                 session.commit()
-        except HTTPException as error:
+        except (HTTPException, Refusal) as error:
             self._reject(error, subject, action, resource_type, resource_id, trip_id, request_id)
-            translated = ValueError(_detail_text(error.detail))
+            if isinstance(error, Refusal) and error.detail is None:
+                setattr(error, _AUDITED, True)
+                raise
+            # A structured refusal (such as a review the owner must acknowledge) is sent as JSON text.
+            translated = (
+                Refusal(_detail_text(error.detail), code=error.code, params=error.params, field=error.field)
+                if isinstance(error, Refusal)
+                else ValueError(_detail_text(error.detail))
+            )
             setattr(translated, _AUDITED, True)
             raise translated from error
         except Exception as error:
@@ -532,7 +542,7 @@ class TravelMcpBackend:
             "trip",
             None,
             None,
-            lambda s, sub: trips.list_trips(s, sub),
+            lambda s, sub: trip_service.list_trips(s, sub),
             lambda x: _models(x, schemas.TripSummaryResponse),
         )
 
@@ -543,7 +553,7 @@ class TravelMcpBackend:
             "trip",
             None,
             None,
-            lambda s, sub: trips.create_trip(payload, s, sub),
+            lambda s, sub: trip_service.create_trip(s, sub, payload),
             lambda x: _model(x, schemas.TripResponse),
         )
 
@@ -554,7 +564,7 @@ class TravelMcpBackend:
             "trip",
             trip_id,
             trip_id,
-            lambda s, sub: trips.get_trip(trip_id, s, sub),
+            lambda s, sub: trip_service.get_trip(s, sub, trip_id),
             lambda x: _model(x, schemas.TripResponse),
         )
 
@@ -565,7 +575,7 @@ class TravelMcpBackend:
             "trip",
             trip_id,
             trip_id,
-            lambda s, sub: trips.get_trip_overview(trip_id, s, sub),
+            lambda s, sub: trip_service.get_trip_overview(s, sub, trip_id),
             lambda x: _model(x, schemas.TripOverviewResponse),
         )
 
@@ -634,7 +644,7 @@ class TravelMcpBackend:
             "trip",
             trip_id,
             trip_id,
-            lambda s, sub: trips.update_trip(trip_id, payload, s, sub),
+            lambda s, sub: trip_service.update_trip(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.TripResponse),
         )
 
@@ -645,7 +655,7 @@ class TravelMcpBackend:
             "trip",
             trip_id,
             trip_id,
-            lambda s, sub: trips.delete_trip(trip_id, s, sub),
+            lambda s, sub: trip_service.delete_trip(s, sub, trip_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -777,7 +787,7 @@ class TravelMcpBackend:
             "place_search",
             None,
             trip_id,
-            lambda s, sub: places.search_places(trip_id, payload, s, sub, get_place_search_service()),
+            lambda s, sub: place_service.search_places(s, sub, trip_id, payload, get_place_search_service()),
             lambda x: _model(x, schemas.PlaceSearchResponse),
         )
 
@@ -790,7 +800,7 @@ class TravelMcpBackend:
             "place_search",
             None,
             trip_id,
-            lambda s, sub: places.reverse_geocode_place(trip_id, payload, s, sub, get_place_search_service()),
+            lambda s, sub: place_service.reverse_geocode_place(s, sub, trip_id, payload, get_place_search_service()),
             lambda x: _model(x, schemas.PlaceSearchResponse),
         )
 
@@ -801,7 +811,7 @@ class TravelMcpBackend:
             "location",
             None,
             trip_id,
-            lambda s, sub: locations.list_locations(trip_id, s, sub),
+            lambda s, sub: location_service.list_locations(s, sub, trip_id),
             _listed("location", schemas.LocationResponse, compact),
         )
 
@@ -812,23 +822,19 @@ class TravelMcpBackend:
             "location",
             None,
             trip_id,
-            lambda s, sub: locations.save_location(trip_id, payload, s, sub),
+            lambda s, sub: location_service.save_location(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.LocationResponse),
         )
 
     def list_areas(self, trip_id: str, query: str | None = None, compact: bool = True) -> list[dict[str, Any]]:
         """List areas: the cities and regions you authored. query keeps only areas whose label contains it (case-insensitive), to find an area id by name. Pass compact=false for coordinates."""
 
-        def found(values: list[Any]) -> list[Any]:
-            needle = (query or "").strip().casefold()
-            return [area for area in values if needle in (area.label or "").casefold()]
-
         return self._call(
             "area.list",
             "area",
             None,
             trip_id,
-            lambda s, sub: found(areas.list_areas(trip_id, s, sub)),
+            lambda s, sub: area_service.list_areas(s, sub, trip_id, q=(query or "").strip() or None),
             _listed("area", schemas.AreaResponse, compact),
         )
 
@@ -841,7 +847,7 @@ class TravelMcpBackend:
             "area",
             None,
             trip_id,
-            lambda s, sub: areas.suggest_area(trip_id, payload, s, sub, get_place_search_service()),
+            lambda s, sub: area_service.suggest_area(s, sub, trip_id, payload, get_place_search_service()),
             lambda x: _model(x, schemas.AreaSuggestion),
         )
 
@@ -852,7 +858,7 @@ class TravelMcpBackend:
             "area",
             None,
             trip_id,
-            lambda s, sub: areas.save_area(trip_id, payload, s, sub),
+            lambda s, sub: area_service.save_area(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.AreaResponse),
         )
 
@@ -863,7 +869,7 @@ class TravelMcpBackend:
             "area",
             area_id,
             trip_id,
-            lambda s, sub: areas.update_area(trip_id, area_id, payload, s, sub),
+            lambda s, sub: area_service.update_area(s, sub, trip_id, area_id, payload),
             lambda x: _model(x, schemas.AreaResponse),
         )
 
@@ -874,7 +880,7 @@ class TravelMcpBackend:
             "area",
             area_id,
             trip_id,
-            lambda s, sub: areas.delete_area(trip_id, area_id, s, sub),
+            lambda s, sub: area_service.delete_area(s, sub, trip_id, area_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -902,7 +908,7 @@ class TravelMcpBackend:
             "area",
             keep_id,
             trip_id,
-            lambda s, sub: areas.merge_areas(trip_id, payload, s, sub),
+            lambda s, sub: area_service.merge_areas(s, sub, trip_id, payload),
         )
 
     def delete_location(self, trip_id: str, location_id: str, confirm: bool = False) -> dict[str, str]:
@@ -912,7 +918,7 @@ class TravelMcpBackend:
             "location",
             location_id,
             trip_id,
-            lambda s, sub: locations.delete_location(trip_id, location_id, s, sub),
+            lambda s, sub: location_service.delete_location(s, sub, trip_id, location_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -940,7 +946,7 @@ class TravelMcpBackend:
             "location",
             keep_id,
             trip_id,
-            lambda s, sub: locations.merge_locations(trip_id, payload, s, sub),
+            lambda s, sub: location_service.merge_locations(s, sub, trip_id, payload),
         )
 
     def update_location(self, trip_id: str, location_id: str, payload: schemas.LocationUpdate) -> dict[str, Any]:
@@ -950,7 +956,7 @@ class TravelMcpBackend:
             "location",
             location_id,
             trip_id,
-            lambda s, sub: locations.update_location(trip_id, location_id, payload, s, sub),
+            lambda s, sub: location_service.update_location(s, sub, trip_id, location_id, payload),
             lambda x: _model(x, schemas.LocationResponse),
         )
 
@@ -1510,9 +1516,17 @@ class TravelMcpBackend:
             None,
             trip_id,
             lambda s, sub: file.apply(
-                lambda upload: documents.upload_document(
-                    trip_id, s, sub, get_storage(), Response(), title, document_kind, upload
-                )
+                lambda upload: document_service.upload_document(
+                    s,
+                    get_storage(),
+                    sub,
+                    trip_id,
+                    title=title,
+                    document_kind=document_kind,
+                    filename=upload.filename,
+                    content_type=upload.content_type,
+                    file=upload.file,
+                )[0]
             ),
             lambda x: _model(x, schemas.DocumentAssetResponse),
         )
@@ -1524,7 +1538,7 @@ class TravelMcpBackend:
             "document_asset",
             None,
             trip_id,
-            lambda s, sub: documents.list_documents(trip_id, s, sub),
+            lambda s, sub: document_service.list_documents(s, sub, trip_id),
             lambda x: _models(x, schemas.DocumentAssetResponse),
         )
 
@@ -1535,7 +1549,7 @@ class TravelMcpBackend:
             "document_asset",
             document_id,
             trip_id,
-            lambda s, sub: documents.remove_document(trip_id, document_id, s, sub, get_storage()),
+            lambda s, sub: document_service.remove_document(s, get_storage(), sub, trip_id, document_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -1549,7 +1563,7 @@ class TravelMcpBackend:
             "library_document",
             None,
             linked_trip_id,
-            lambda s, sub: library.list_library_documents(s, sub, linked_trip_id),
+            lambda s, sub: library_service.list_library_documents(s, sub, linked_trip_id),
             lambda x: _models(x, schemas.OwnerDocumentResponse),
         )
 
@@ -1560,7 +1574,7 @@ class TravelMcpBackend:
             "emergency_info",
             None,
             None,
-            lambda s, sub: library.list_emergency_info(s, sub),
+            lambda s, sub: library_service.list_emergency_info(s, sub),
             lambda x: _models(x, schemas.EmergencyInfoEntryResponse),
         )
 
@@ -1571,7 +1585,7 @@ class TravelMcpBackend:
             "emergency_info",
             None,
             None,
-            lambda s, sub: library.create_emergency_info(payload, s, sub),
+            lambda s, sub: library_service.create_emergency_info(s, sub, payload),
             lambda x: _model(x, schemas.EmergencyInfoEntryResponse),
         )
 
@@ -1633,7 +1647,7 @@ class TravelMcpBackend:
             "packing_list",
             None,
             trip_id,
-            lambda s, sub: packing.list_packing_lists(trip_id, s, sub),
+            lambda s, sub: packing_service.list_packing_lists(s, sub, trip_id),
             lambda x: _models(x, schemas.PackingListResponse),
         )
 
@@ -1644,7 +1658,7 @@ class TravelMcpBackend:
             "packing_list",
             None,
             trip_id,
-            lambda s, sub: packing.create_packing_list(trip_id, payload, s, sub),
+            lambda s, sub: packing_service.create_packing_list(s, sub, trip_id, payload),
             lambda x: _model(x, schemas.PackingListResponse),
         )
 
@@ -1655,7 +1669,7 @@ class TravelMcpBackend:
             "packing_list",
             list_id,
             trip_id,
-            lambda s, sub: packing.get_packing_list(trip_id, list_id, s, sub),
+            lambda s, sub: packing_service.get_packing_list(s, sub, trip_id, list_id),
             lambda x: _model(x, schemas.PackingListResponse),
         )
 
@@ -1666,7 +1680,7 @@ class TravelMcpBackend:
             "packing_list",
             list_id,
             trip_id,
-            lambda s, sub: packing.update_packing_list(trip_id, list_id, payload, s, sub),
+            lambda s, sub: packing_service.update_packing_list(s, sub, trip_id, list_id, payload),
             lambda x: _model(x, schemas.PackingListResponse),
         )
 
@@ -1677,7 +1691,7 @@ class TravelMcpBackend:
             "packing_list",
             list_id,
             trip_id,
-            lambda s, sub: packing.delete_packing_list(trip_id, list_id, s, sub),
+            lambda s, sub: packing_service.delete_packing_list(s, sub, trip_id, list_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -1690,7 +1704,7 @@ class TravelMcpBackend:
             "packing_bag",
             None,
             trip_id,
-            lambda s, sub: packing.list_packing_bags(trip_id, list_id, s, sub),
+            lambda s, sub: packing_service.list_packing_bags(s, sub, trip_id, list_id),
             lambda x: _models(x, schemas.PackingBagResponse),
         )
 
@@ -1701,7 +1715,7 @@ class TravelMcpBackend:
             "packing_bag",
             bag_id,
             trip_id,
-            lambda s, sub: packing.get_packing_bag(trip_id, list_id, bag_id, s, sub),
+            lambda s, sub: packing_service.get_packing_bag(s, sub, trip_id, list_id, bag_id),
             lambda x: _model(x, schemas.PackingBagResponse),
         )
 
@@ -1712,7 +1726,7 @@ class TravelMcpBackend:
             "packing_bag",
             None,
             trip_id,
-            lambda s, sub: packing.create_packing_bag(trip_id, list_id, payload, s, sub),
+            lambda s, sub: packing_service.create_packing_bag(s, sub, trip_id, list_id, payload),
             lambda x: _model(x, schemas.PackingBagResponse),
         )
 
@@ -1725,7 +1739,7 @@ class TravelMcpBackend:
             "packing_bag",
             bag_id,
             trip_id,
-            lambda s, sub: packing.update_packing_bag(trip_id, list_id, bag_id, payload, s, sub),
+            lambda s, sub: packing_service.update_packing_bag(s, sub, trip_id, list_id, bag_id, payload),
             lambda x: _model(x, schemas.PackingBagResponse),
         )
 
@@ -1736,7 +1750,7 @@ class TravelMcpBackend:
             "packing_bag",
             bag_id,
             trip_id,
-            lambda s, sub: packing.delete_packing_bag(trip_id, list_id, bag_id, s, sub),
+            lambda s, sub: packing_service.delete_packing_bag(s, sub, trip_id, list_id, bag_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -1749,7 +1763,7 @@ class TravelMcpBackend:
             "packing_item",
             None,
             trip_id,
-            lambda s, sub: packing.list_packing_items(trip_id, list_id, s, sub),
+            lambda s, sub: packing_service.list_packing_items(s, sub, trip_id, list_id),
             lambda x: _models(x, schemas.PackingItemResponse),
         )
 
@@ -1760,7 +1774,7 @@ class TravelMcpBackend:
             "packing_item",
             item_id,
             trip_id,
-            lambda s, sub: packing.get_packing_item(trip_id, list_id, item_id, s, sub),
+            lambda s, sub: packing_service.get_packing_item(s, sub, trip_id, list_id, item_id),
             lambda x: _model(x, schemas.PackingItemResponse),
         )
 
@@ -1771,7 +1785,7 @@ class TravelMcpBackend:
             "packing_item",
             None,
             trip_id,
-            lambda s, sub: packing.create_packing_item(trip_id, list_id, payload, s, sub),
+            lambda s, sub: packing_service.create_packing_item(s, sub, trip_id, list_id, payload),
             lambda x: _model(x, schemas.PackingItemResponse),
         )
 
@@ -1784,7 +1798,7 @@ class TravelMcpBackend:
             "packing_item",
             None,
             trip_id,
-            lambda s, sub: packing.batch_create_packing_items(trip_id, list_id, payload, s, sub),
+            lambda s, sub: packing_service.batch_create_packing_items(s, sub, trip_id, list_id, payload),
             lambda x: _models(x, schemas.PackingItemResponse),
         )
 
@@ -1797,7 +1811,7 @@ class TravelMcpBackend:
             "packing_item",
             item_id,
             trip_id,
-            lambda s, sub: packing.update_packing_item(trip_id, list_id, item_id, payload, s, sub),
+            lambda s, sub: packing_service.update_packing_item(s, sub, trip_id, list_id, item_id, payload),
             lambda x: _model(x, schemas.PackingItemResponse),
         )
 
@@ -1808,8 +1822,8 @@ class TravelMcpBackend:
             "packing_item",
             item_id,
             trip_id,
-            lambda s, sub: packing.update_packing_item(
-                trip_id, list_id, item_id, schemas.PackingItemUpdate(packed=packed), s, sub
+            lambda s, sub: packing_service.update_packing_item(
+                s, sub, trip_id, list_id, item_id, schemas.PackingItemUpdate(packed=packed)
             ),
             lambda x: _model(x, schemas.PackingItemResponse),
         )
@@ -1823,8 +1837,8 @@ class TravelMcpBackend:
             "packing_item",
             item_id,
             trip_id,
-            lambda s, sub: packing.update_packing_item(
-                trip_id, list_id, item_id, schemas.PackingItemUpdate(bag_id=bag_id, position=position), s, sub
+            lambda s, sub: packing_service.update_packing_item(
+                s, sub, trip_id, list_id, item_id, schemas.PackingItemUpdate(bag_id=bag_id, position=position)
             ),
             lambda x: _model(x, schemas.PackingItemResponse),
         )
@@ -1836,7 +1850,7 @@ class TravelMcpBackend:
             "packing_item",
             item_id,
             trip_id,
-            lambda s, sub: packing.delete_packing_item(trip_id, list_id, item_id, s, sub),
+            lambda s, sub: packing_service.delete_packing_item(s, sub, trip_id, list_id, item_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -1973,7 +1987,7 @@ class TravelMcpBackend:
             "alternative_group",
             None,
             trip_id,
-            lambda s, sub: alternatives.list_alternative_groups(trip_id, s, sub),
+            lambda s, sub: alternative_service.list_alternative_groups(s, sub, trip_id),
             lambda values: [_alternative_group(value, compact) for value in values],
         )
 
@@ -1984,7 +1998,7 @@ class TravelMcpBackend:
             "alternative_group",
             group_id,
             trip_id,
-            lambda s, sub: alternatives.get_alternative_group(trip_id, group_id, s, sub),
+            lambda s, sub: alternative_service.get_alternative_group(s, sub, trip_id, group_id),
             lambda x: _alternative_group(x, False),
         )
 
@@ -1995,7 +2009,7 @@ class TravelMcpBackend:
             "alternative_group",
             None,
             trip_id,
-            lambda s, sub: alternatives.suggest_alternative_groups(trip_id, s, sub),
+            lambda s, sub: alternative_service.suggest_alternative_groups(s, sub, trip_id),
             lambda values: [_model(value, schemas.AlternativeSuggestion) for value in values],
         )
 
@@ -2006,7 +2020,7 @@ class TravelMcpBackend:
             "alternative_group",
             None,
             trip_id,
-            lambda s, sub: alternatives.create_alternative_group(trip_id, payload, s, sub),
+            lambda s, sub: alternative_service.create_alternative_group(s, sub, trip_id, payload),
             lambda x: _alternative_group(x, True),
         )
 
@@ -2019,7 +2033,7 @@ class TravelMcpBackend:
             "alternative_group",
             group_id,
             trip_id,
-            lambda s, sub: alternatives.update_alternative_group(trip_id, group_id, payload, s, sub),
+            lambda s, sub: alternative_service.update_alternative_group(s, sub, trip_id, group_id, payload),
             lambda x: _alternative_group(x, True),
         )
 
@@ -2030,7 +2044,7 @@ class TravelMcpBackend:
             "alternative_group",
             group_id,
             trip_id,
-            lambda s, sub: alternatives.delete_alternative_group(trip_id, group_id, s, sub),
+            lambda s, sub: alternative_service.delete_alternative_group(s, sub, trip_id, group_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -2045,14 +2059,14 @@ class TravelMcpBackend:
             "alternative_group",
             group_id,
             trip_id,
-            lambda s, sub: alternatives.choose_alternative(trip_id, group_id, payload, s, sub),
+            lambda s, sub: alternative_service.choose_alternative(s, sub, trip_id, group_id, payload),
             lambda x: _model(x, schemas.AlternativeChoiceResponse),
             confirm=confirm,
             needs_confirmation=True,
         )
 
     def undo_alternative_choice(
-        self, trip_id: str, group_id: str, event_id: str | None = None, confirm: bool = False
+        self, trip_id: str, group_id: str, event_id: schemas.Identifier | None = None, confirm: bool = False
     ) -> dict[str, Any]:
         """Undo the group's latest choice: the members get back the status and visibility they had, and the earlier chosen member is chosen again. Refused when the choice removed records, when a newer choice replaced it (event_id, if given, must be the latest) or when a member was edited after the choice."""
         return self._call(
@@ -2060,9 +2074,7 @@ class TravelMcpBackend:
             "alternative_group",
             group_id,
             trip_id,
-            lambda s, sub: alternatives.undo_alternative_choice(
-                trip_id, group_id, s, sub, schemas.AlternativeUndo(event_id=event_id)
-            ),
+            lambda s, sub: alternative_service.undo_alternative_choice(s, sub, trip_id, group_id, event_id),
             lambda x: _alternative_group(x, True),
             confirm=confirm,
             needs_confirmation=True,
@@ -2148,9 +2160,17 @@ class TravelMcpBackend:
             None,
             linked_trip_id,
             lambda s, sub: file.apply(
-                lambda upload: library.upload_library_document(
-                    s, sub, get_storage(), Response(), title, document_kind, upload, linked_trip_id
-                )
+                lambda upload: library_service.upload_library_document(
+                    s,
+                    get_storage(),
+                    sub,
+                    title=title,
+                    document_kind=document_kind,
+                    filename=upload.filename,
+                    content_type=upload.content_type,
+                    file=upload.file,
+                    linked_trip_id=linked_trip_id,
+                )[0]
             ),
             lambda x: _model(x, schemas.OwnerDocumentResponse),
         )
@@ -2162,7 +2182,7 @@ class TravelMcpBackend:
             "library_document",
             document_id,
             None,
-            lambda s, sub: library.update_library_document(document_id, payload, s, sub),
+            lambda s, sub: library_service.update_library_document(s, sub, document_id, payload),
             lambda x: _model(x, schemas.OwnerDocumentResponse),
         )
 
@@ -2173,7 +2193,7 @@ class TravelMcpBackend:
             "library_document",
             document_id,
             None,
-            lambda s, sub: library.remove_library_document(document_id, s, sub, get_storage()),
+            lambda s, sub: library_service.remove_library_document(s, get_storage(), sub, document_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -2186,7 +2206,7 @@ class TravelMcpBackend:
             "emergency_info",
             entry_id,
             None,
-            lambda s, sub: library.update_emergency_info(entry_id, payload, s, sub),
+            lambda s, sub: library_service.update_emergency_info(s, sub, entry_id, payload),
             lambda x: _model(x, schemas.EmergencyInfoEntryResponse),
         )
 
@@ -2197,7 +2217,7 @@ class TravelMcpBackend:
             "emergency_info",
             entry_id,
             None,
-            lambda s, sub: library.delete_emergency_info(entry_id, s, sub),
+            lambda s, sub: library_service.delete_emergency_info(s, sub, entry_id),
             lambda _: {"status": "deleted"},
             confirm=confirm,
             needs_confirmation=True,
@@ -2211,7 +2231,7 @@ class TravelMcpBackend:
             "location",
             location_id,
             trip_id,
-            lambda s, sub: locations.owner_navigation(location_id, trip_id, s, sub),
+            lambda s, sub: location_service.owner_navigation(s, sub, trip_id, location_id),
             lambda x: _model(x, schemas.NavigationResponse),
         )
 
@@ -2266,7 +2286,7 @@ class TravelMcpBackend:
             "document_asset",
             document_id,
             trip_id,
-            lambda s, sub: documents.get_document(trip_id, document_id, s, sub),
+            lambda s, sub: document_service.get_document(s, sub, trip_id, document_id),
             lambda x: _model(x, schemas.DocumentAssetResponse),
         )
 
@@ -2277,7 +2297,7 @@ class TravelMcpBackend:
             "library_document",
             document_id,
             None,
-            lambda s, sub: library.get_library_document(document_id, s, sub),
+            lambda s, sub: library_service.get_library_document(s, sub, document_id),
             lambda x: _model(x, schemas.OwnerDocumentResponse),
         )
 
@@ -2288,7 +2308,7 @@ class TravelMcpBackend:
             "emergency_info",
             entry_id,
             None,
-            lambda s, sub: library.get_emergency_info_entry(entry_id, s, sub),
+            lambda s, sub: library_service.get_emergency_info_entry(s, sub, entry_id),
             lambda x: _model(x, schemas.EmergencyInfoEntryResponse),
         )
 

@@ -2,15 +2,23 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastmcp.utilities.lifespan import combine_lifespans
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .auth import current_subject
 from .database import SessionLocal
-from .errors import ApiException, Refusal, http_error_handler, service_error_handler, validation_error_handler
+from .errors import (
+    ApiException,
+    Refusal,
+    http_error_handler,
+    service_error_handler,
+    service_exception,
+    validation_error_handler,
+)
 from .mcp_server import (
     MCP_CAPABILITY_CONTRACT_VERSION,
     MCP_TOOL_CAPABILITIES,
@@ -19,6 +27,7 @@ from .mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
+from .places.search import PlaceSearchError
 from .request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
 from .request_timing import RequestTimingMiddleware
 from .routers.alternatives import router as alternatives_router
@@ -80,6 +89,16 @@ app.add_middleware(RateLimitHeadersMiddleware)
 # Starlette types handlers against `Exception`, not the specific class they are registered for.
 app.add_exception_handler(StarletteHTTPException, http_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(Refusal, service_error_handler)  # ty: ignore[invalid-argument-type]
+
+
+async def place_search_error_handler(request: Request, error: PlaceSearchError) -> JSONResponse:
+    """A place provider failure: its own status and when to retry, whichever route searched."""
+    refused = service_exception(error.status_code, error)
+    refused.headers = {"Retry-After": str(error.retry_after)}
+    return await http_error_handler(request, refused)
+
+
+app.add_exception_handler(PlaceSearchError, place_search_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RequestValidationError, validation_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty: ignore[invalid-argument-type]
 # Outermost, so its timing covers everything below it (apps#246).

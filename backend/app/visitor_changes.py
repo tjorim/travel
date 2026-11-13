@@ -12,11 +12,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from fastapi import status
-
 from .access import receivers
 from .audit import PUBLIC_AUDIENCE, LiveAudience
-from .errors import ApiException
+from .errors import Conflict
 from .models import Area, Location
 from .schemas import MergeAudience, MergeRecordRef, MergeWidenedRecord
 from .update_day import update_day
@@ -270,19 +268,19 @@ def widened_record_details(
     return details
 
 
-def merge_choice_refusal(stale: list[tuple[str, str]]) -> ApiException:
+def merge_choice_refusal(stale: list[tuple[str, str]]) -> Conflict:
     """The 409 for a record to make private that the merge would not newly show to anyone."""
-    return ApiException(
-        status_code=status.HTTP_409_CONFLICT,
+    return Conflict(
+        "A record to make private would not be newly shown by this merge",
+        code=MERGE_CHOICE_STALE_CODE,
         detail={
             "code": MERGE_CHOICE_STALE_CODE,
             "records": [{"kind": kind, "id": record_id} for kind, record_id in stale],
         },
-        code=MERGE_CHOICE_STALE_CODE,
     )
 
 
-def merge_widening_refusal(summaries: list[Any]) -> ApiException:
+def merge_widening_refusal(summaries: list[Any]) -> Conflict:
     """The 409 for a confirmed merge whose remaining widening the owner has not acknowledged.
 
     ``summaries`` are the merge's duplicates; only those that still widen someone are listed."""
@@ -291,8 +289,8 @@ def merge_widening_refusal(summaries: list[Any]) -> ApiException:
         for summary in summaries
         if summary.widened
     ]
-    return ApiException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail={"code": MERGE_WIDENING_CODE, "duplicates": duplicates},
+    return Conflict(
+        "The merge shows records to an audience that did not receive them",
         code=MERGE_WIDENING_CODE,
+        detail={"code": MERGE_WIDENING_CODE, "duplicates": duplicates},
     )

@@ -51,7 +51,7 @@ from app.models import (
     Trip,
     Visibility,
 )
-from app.routers import trips as trips_router
+from app.services import trips as trips_service
 from app.task_alerts import process_due_task_alerts
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -723,7 +723,7 @@ def test_response_validation_failure_is_a_correlated_tool_error_audited_once(
     async def run() -> object:
         async with _protocol_client() as client:
             trip_id = (await client.call_tool("create_trip", {"payload": {"title": "Broken"}})).structured_content["id"]
-            monkeypatch.setattr(trips_router, "get_trip", lambda *_: {"id": trip_id, "title": "SECRET-PRIVATE-NOTE"})
+            monkeypatch.setattr(trips_service, "get_trip", lambda *_: {"id": trip_id, "title": "SECRET-PRIVATE-NOTE"})
             if proxied:
                 return await client.call_tool(
                     "call_tool", {"name": "get_trip", "arguments": {"trip_id": trip_id}}, raise_on_error=False

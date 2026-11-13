@@ -7,10 +7,9 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
-from ..errors import service_exception
-from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
+from ..places.search import CachedPlaceSearchService, get_place_search_service
 from ..schemas import Identifier, PlaceReverseGeocodeRequest, PlaceSearchRequest, PlaceSearchResponse
-from ..services.trips import owned_trip
+from ..services import places as service
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["places"])
 
@@ -25,17 +24,9 @@ def search_places(
     payload: PlaceSearchRequest,
     session: SessionDep,
     subject: SubjectDep,
-    service: SearchServiceDep,
+    search: SearchServiceDep,
 ) -> PlaceSearchResponse:
-    # Resolve ownership before the remote call. A rejected caller must never
-    # turn this endpoint into an arbitrary-query proxy.
-    owned_trip(session, trip_id, subject)
-    try:
-        return service.search(payload.query)
-    except PlaceSearchError as error:
-        exception = service_exception(error.status_code, error)
-        exception.headers = {"Retry-After": str(error.retry_after)}
-        raise exception from error
+    return service.search_places(session, subject, trip_id, payload, search)
 
 
 @router.post("/places/reverse", response_model=PlaceSearchResponse)
@@ -44,14 +35,6 @@ def reverse_geocode_place(
     payload: PlaceReverseGeocodeRequest,
     session: SessionDep,
     subject: SubjectDep,
-    service: SearchServiceDep,
+    search: SearchServiceDep,
 ) -> PlaceSearchResponse:
-    # The caller explicitly requests this lookup.  It only returns a candidate;
-    # it never turns EXIF/device coordinates into a canonical place by itself.
-    owned_trip(session, trip_id, subject)
-    try:
-        return service.reverse(payload.latitude, payload.longitude)
-    except PlaceSearchError as error:
-        exception = service_exception(error.status_code, error)
-        exception.headers = {"Retry-After": str(error.retry_after)}
-        raise exception from error
+    return service.reverse_geocode_place(session, subject, trip_id, payload, search)
