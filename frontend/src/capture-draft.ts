@@ -10,7 +10,13 @@ export type UpdateDraft = {
   [DRAFT_FENCE]?: DraftFence;
   tripId: string;
   updateId: string | null;
+  /** The time typed, as a wall clock at the place (`YYYY-MM-DDTHH:mm`); the server reads it in the place's zone. */
   occurredAt: string;
+  /**
+   * The exact instant a photo's metadata gave, while `occurredAt` still shows it in the browser's zone: it is sent
+   * as it is unless the owner changed the time, because the photo's place and zone are not known here.
+   */
+  occurredInstant?: string;
   title: string;
   /** Private notes: what the owner wants to remember. The text for visitors is written later. */
   notes: string;
@@ -141,6 +147,8 @@ function payload(value: unknown, trip: string): Omit<UpdateDraft, typeof DRAFT_F
     !/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(d.occurredAt) ||
     !Number.isFinite(Date.parse(d.occurredAt)) ||
     new Date(`${d.occurredAt}Z`).toISOString().slice(0, 16) !== d.occurredAt ||
+    (d.occurredInstant !== undefined &&
+      (typeof d.occurredInstant !== "string" || !Number.isFinite(Date.parse(d.occurredInstant)))) ||
     typeof d.title !== "string" ||
     typeof d.notes !== "string" ||
     place === undefined ||
@@ -152,6 +160,7 @@ function payload(value: unknown, trip: string): Omit<UpdateDraft, typeof DRAFT_F
     tripId: trip,
     updateId: d.updateId,
     occurredAt: d.occurredAt,
+    ...(d.occurredInstant ? { occurredInstant: d.occurredInstant } : {}),
     title: d.title,
     notes: d.notes,
     location: place,

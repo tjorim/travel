@@ -51,7 +51,7 @@ def _rich_trip(owner: TestClient) -> dict:
             f"{base}/travel-updates",
             json={
                 "occurred_at": f"2054-04-0{index + 4}T10:00:00Z",
-                "date_precision": precision,
+                "share_date_precision": precision,
                 "title": f"Update {precision}",
                 "body": "Landed.",
                 "area_id": area["id"],

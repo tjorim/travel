@@ -6208,17 +6208,19 @@ export interface components {
          *
          *     Private: ``private_notes``, the exact ``location`` and the attached
          *     ``media_asset_ids``. Shared once ``visibility`` allows it: ``title``,
-         *     ``body`` (empty until written for visitors), the date at ``date_precision``
-         *     and the ``area_id`` (an area).
+         *     ``body`` (empty until written for visitors), the date at ``share_date_precision``
+         *     and the ``area_id`` (an area). The retired key ``date_precision`` is read as ``share_date_precision`` for one
+         *     release.
          */
         TravelUpdateCreate: {
             /**
              * Occurred At
              * Format: date-time
+             * @description An instant with an offset (`Z` or `+08:00`), or a wall-clock time without one, which is read in the update's zone: its area's, else the trip's nearest stay or visit, else UTC.
              */
             occurred_at: string;
             /** @default day */
-            date_precision?: components["schemas"]["DatePrecision"];
+            share_date_precision?: components["schemas"]["DatePrecision"];
             /** Title */
             title: string;
             /**
@@ -6242,9 +6244,12 @@ export interface components {
         };
         /** TravelUpdatePatch */
         TravelUpdatePatch: {
-            /** Occurred At */
+            /**
+             * Occurred At
+             * @description An instant with an offset, or a wall-clock time without one, read in the update's zone.
+             */
             occurred_at?: string | null;
-            date_precision?: components["schemas"]["DatePrecision"] | null;
+            share_date_precision?: components["schemas"]["DatePrecision"] | null;
             /** Title */
             title?: string | null;
             /**
@@ -6273,7 +6278,18 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
-            date_precision: components["schemas"]["DatePrecision"];
+            /**
+             * Timezone
+             * @description The IANA zone the update's day is read in: its area's, else the zone of the trip's nearest dated stay or visit, else UTC. Read and write the time in this zone.
+             */
+            timezone: string;
+            /**
+             * Local Date
+             * Format: date
+             * @description The calendar day of `occurred_at` in `timezone`, shown to every audience.
+             */
+            local_date: string;
+            share_date_precision: components["schemas"]["DatePrecision"];
             /** Title */
             title: string;
             /** Body */

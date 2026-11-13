@@ -5,7 +5,7 @@ Precision is chosen in two places and the coarser value always wins:
 * the audience (the public view, a hidden link or a collection member) may set
   ``defaults.date_precision`` in its share scope: a cap on every date it shows;
 * a visit or stay may set its own ``share_date_precision``; ``None`` follows the
-  audience. A reisupdate always has its own ``date_precision``;
+  audience. A reisupdate always has its own ``share_date_precision``;
 * a route has no setting of its own: its departure day follows the audience's cap alone (``route_precision``).
 
 A record whose own value and audience setting are both absent falls back to

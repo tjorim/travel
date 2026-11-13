@@ -1,5 +1,7 @@
 """Travel updates: what the owner writes while travelling, and which of it a visitor may read."""
 
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -8,6 +10,8 @@ from ..audit import delivering_audiences, record_visibility_change
 from ..errors import RecordNotFound, Refusal, service_error
 from ..models import TRAVEL_UPDATE_ORDER, Location, MediaAsset, TravelUpdate, TravelUpdateMediaAsset, Trip, Visibility
 from ..schemas import Identifier, TravelUpdateCreate, TravelUpdatePatch
+from ..update_day import at_wall_clock, update_zone
+from ..update_zones import trip_zone_spans
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 
@@ -49,7 +53,7 @@ def owned_update(session: Session, trip: Trip, update_id: Identifier) -> TravelU
 
 def travel_update_by_id(session: Session, update_id: Identifier) -> TravelUpdate:
     """An update just written, read afresh with its area, location and media (after a commit expired it)."""
-    return session.execute(
+    update = session.execute(
         select(TravelUpdate)
         .options(
             selectinload(TravelUpdate.chosen_area),
@@ -58,6 +62,33 @@ def travel_update_by_id(session: Session, update_id: Identifier) -> TravelUpdate
         )
         .where(TravelUpdate.id == update_id)
     ).scalar_one()
+    return _with_zone_spans(session, update.trip_id, [update])[0]
+
+
+def _with_zone_spans(session: Session, trip_id: Identifier, updates: list[TravelUpdate]) -> list[TravelUpdate]:
+    """Give the updates the trip's zoned days once, so reading each one's day costs no further queries."""
+    if updates:
+        spans = trip_zone_spans(session, trip_id)
+        for update in updates:
+            update.zone_spans = spans
+    return updates
+
+
+def _stored_placeholder(value: datetime) -> tuple[datetime, datetime | None]:
+    """An offset-less ``occurred_at`` is a wall clock in the update's zone, known once its area is.
+
+    Returns the value to store meanwhile (an instant in UTC; a clock read as UTC) and the wall clock to resolve, if any."""
+    if value.tzinfo is not None:
+        return value.astimezone(UTC), None
+    return value.replace(tzinfo=UTC), value
+
+
+def _read_wall_clock(session: Session, trip: Trip, update: TravelUpdate, wall_clock: datetime) -> None:
+    """Store the instant at which the update's own zone reads ``wall_clock`` (see ``app.update_day``)."""
+    session.flush()
+    session.expire(update, ["chosen_area"])
+    update.occurred_at = at_wall_clock(wall_clock, update_zone(update, trip_zone_spans(session, trip.id)))
+    session.flush()
 
 
 def list_travel_updates(
@@ -86,11 +117,11 @@ def list_travel_updates(
     if latest is not None:
         # The tail of the one order, read from its end and put back: no second rule.
         tail = statement.order_by(*(column.desc() for column in TRAVEL_UPDATE_ORDER)).limit(latest)
-        return list(reversed(list(session.scalars(tail))))
+        return _with_zone_spans(session, trip.id, list(reversed(list(session.scalars(tail)))))
     statement = statement.order_by(*TRAVEL_UPDATE_ORDER)
     if limit is not None:
         statement = statement.limit(limit)
-    return list(session.scalars(statement.offset(offset)))
+    return _with_zone_spans(session, trip.id, list(session.scalars(statement.offset(offset))))
 
 
 def create_travel_update(
@@ -103,6 +134,7 @@ def create_travel_update(
             "An update with a location gets its area from that location",
             code="an_update_with_a_location_gets_its_area_from_that_location",
         )
+    occurred_at, wall_clock = _stored_placeholder(payload.occurred_at)
     update = TravelUpdate(
         trip_id=trip.id,
         area_id=selected_area(session, trip.id, payload.area_id).id
@@ -110,17 +142,19 @@ def create_travel_update(
         else None,
         location=location,
         media_links=media_links_from_ids(session, trip.id, payload.media_asset_ids),
-        occurred_at=payload.occurred_at,
-        date_precision=payload.date_precision,
+        occurred_at=occurred_at,
+        share_date_precision=payload.share_date_precision,
         title=payload.title,
         body=payload.body,
         private_notes=payload.private_notes,
     )
     session.add(update)
     session.flush()
+    if wall_clock is not None:
+        _read_wall_clock(session, trip, update, wall_clock)
     if payload.visibility != Visibility.PRIVATE:
         _choose_visibility(session, trip, update, payload.visibility, subject)
-    return update
+    return _with_zone_spans(session, trip.id, [update])[0]
 
 
 def _choose_visibility(
@@ -164,10 +198,15 @@ def update_travel_update(
     if "media_asset_ids" in payload.model_fields_set:
         update.media_links = media_links_from_ids(session, trip.id, payload.media_asset_ids or [])
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "media_asset_ids", "visibility"})
+    wall_clock = None
     for field, value in values.items():
-        if value is None and field in {"occurred_at", "date_precision", "title", "body"}:
+        if value is None and field in {"occurred_at", "share_date_precision", "title", "body"}:
             raise Refusal(f"{field} is required", code="missing", field=field)
+        if field == "occurred_at":
+            value, wall_clock = _stored_placeholder(value)
         setattr(update, field, value)
+    if wall_clock is not None:
+        _read_wall_clock(session, trip, update, wall_clock)
     if payload.visibility is not None:
         _choose_visibility(session, trip, update, payload.visibility, subject)
     elif update.visibility != Visibility.PRIVATE and not update.body.strip():
@@ -177,7 +216,7 @@ def update_travel_update(
             code="write_the_text_for_visitors_before_sharing_this_update",
         )
     session.flush()
-    return update
+    return _with_zone_spans(session, trip.id, [update])[0]
 
 
 def delete_travel_update(session: Session, subject: str, trip_id: Identifier, update_id: Identifier) -> None:

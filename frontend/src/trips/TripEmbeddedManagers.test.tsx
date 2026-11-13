@@ -22,7 +22,9 @@ const update = (
   private_notes_html: null,
   id,
   occurred_at: "2054-11-16T10:00:00Z",
-  date_precision: "day",
+  timezone: "UTC",
+  local_date: "2054-11-16",
+  share_date_precision: "day",
   title,
   body: "De eerste avond.",
   private_notes: null,
@@ -115,6 +117,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   expect(api.unexpected).toEqual([]);
 });
 
@@ -201,4 +204,49 @@ it("saves who may see an update with the update itself, private by default", asy
     "Iedereen",
   );
   expect(screen.getByRole("button", { name: /^Aankomst\b/ }).textContent).toContain("Privé");
+});
+
+const timeInput = () =>
+  within(screen.getByRole("group", { name: /Datum en tijd/ })).getAllByRole(
+    "textbox",
+  )[1] as HTMLInputElement;
+
+it.each([
+  // Just after local midnight in UTC+8, and shortly before it in UTC-8, from a browser in a third zone.
+  ["Asia/Taipei", "2054-11-19T16:30:00Z", "2054-11-20T00:30", "2054-11-20", "00:30"],
+  ["America/Los_Angeles", "2054-11-20T07:30:00Z", "2054-11-19T23:30", "2054-11-19", "23:30"],
+])(
+  "edits an update in %s at the wall clock of its own zone and sends it back unchanged",
+  async (timezone, occurred_at, wallClock, localDate, clock) => {
+    vi.stubEnv("TZ", "Europe/Brussels");
+    state.trip.travel_updates = [
+      { ...update("e3", "Midden in de nacht"), occurred_at, timezone, local_date: localDate },
+    ];
+    renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+    fireEvent.click(await screen.findByRole("button", { name: /^Midden in de nacht\b/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+    expect(timeInput().value).toBe(clock);
+    expect(
+      screen.getByText(`Lokale tijd ter plaatse (${timezone.split("/")[1].replace("_", " ")}).`),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
+    await waitFor(() => expect(api.count("PATCH /api/trips/trip/travel-updates/e3")).toBe(1));
+    // The wall clock at the place, with no offset: the server reads it in the update's zone.
+    expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e3")).toMatchObject({
+      occurred_at: wallClock,
+    });
+  },
+);
+
+it("sends a typed time as the wall clock at the place, never as the browser's instant", async () => {
+  vi.stubEnv("TZ", "Pacific/Auckland");
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Ontbijt" } });
+  fireEvent.change(timeInput(), { target: { value: "07:00" } });
+  fireEvent.blur(timeInput());
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
+  await screen.findByRole("button", { name: /^Ontbijt\b/ });
+  const body = api.lastBody<{ occurred_at: string }>("POST /api/trips/trip/travel-updates")!;
+  expect(body.occurred_at).toMatch(/^\d{4}-\d\d-\d\dT07:00$/);
 });

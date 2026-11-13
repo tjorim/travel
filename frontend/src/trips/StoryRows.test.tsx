@@ -26,7 +26,9 @@ const update = (
 ): TravelUpdate => ({
   id,
   occurred_at: "2054-11-16T10:00:00Z",
-  date_precision: "day",
+  timezone: "UTC",
+  local_date: "2054-11-16",
+  share_date_precision: "day",
   title,
   body: `Tekst van ${title}`,
   private_notes: null,

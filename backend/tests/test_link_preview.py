@@ -327,7 +327,7 @@ def test_no_private_value_reaches_the_preview() -> None:
         f"/api/trips/{trip['id']}/travel-updates",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": PRIVATE,
             "body": PRIVATE,
             "visibility": "private",

@@ -60,7 +60,7 @@ def add_update(client: TestClient, trip_id: str, title: str, visibility: str = "
         f"/api/trips/{trip_id}/travel-updates",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": title,
             "body": f"A safe note about {title}.",
             "visibility": visibility,
@@ -1052,7 +1052,12 @@ def test_an_update_reaches_visitors_according_to_its_own_visibility() -> None:
     # A new update is private unless the owner says otherwise.
     default = owner.post(
         f"{trips_path}/travel-updates",
-        json={"occurred_at": "2054-04-04T10:00:00Z", "date_precision": "day", "title": "Default", "body": "Text."},
+        json={
+            "occurred_at": "2054-04-04T10:00:00Z",
+            "share_date_precision": "day",
+            "title": "Default",
+            "body": "Text.",
+        },
     ).json()
     assert default["visibility"] == "private"
 
@@ -1545,7 +1550,7 @@ def test_grouped_area_and_day_context_leaves_private_values_out_of_public_and_un
         f"{base}/travel-updates",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": "Arrival",
             "body": "A safe story.",
             "area_id": taipei,

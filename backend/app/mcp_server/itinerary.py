@@ -80,7 +80,7 @@ class ItineraryTools(McpTools):
         )
 
     def create_travel_update(self, trip_id: schemas.Identifier, payload: schemas.TravelUpdateCreate) -> dict[str, Any]:
-        """Create a travel update, a new reisupdate (reisupdate schrijven): private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text. body and private_notes are Markdown."""
+        """Create a travel update, a new reisupdate (reisupdate schrijven): private notes, location and attached media stay private; the title, text, date and area are shared only as its visibility allows. Reisupdates replace the archive's story moments and excerpts: body is the visitor text. body and private_notes are Markdown. occurred_at is an instant with an offset, or a wall-clock time without one (2054-11-20T07:00), which is read in the update's zone: its area's, else the trip's nearest stay or visit, else UTC; share_date_precision (day, month or year) caps the date visitors see."""
         return self._call(
             "travel_update.create",
             "travel_update",

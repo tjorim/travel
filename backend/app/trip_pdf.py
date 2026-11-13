@@ -33,7 +33,7 @@ from .models import (
 from .projection import local_id, render_projection, scoped_file
 from .schemas import InputModel
 from .storage import ObjectStorage
-from .update_day import update_day
+from .update_day import update_day, zone_spans
 
 MAX_ROWS = 1500
 MAX_TEXT = 500_000
@@ -154,13 +154,14 @@ def pdf_data(session: Session, trip: Trip, request: PdfRequest) -> tuple[dict, d
                 if resolved:
                     photos[media["id"]] = resolved[1]
     else:
+        spans = zone_spans(trip)
         data = {
             "title": trip.title,
             "summary": trip.summary,
             "dates": {"starts_on": trip.starts_on, "ends_on": trip.ends_on},
             "updates": [
                 # The owner's copy names the local day too, the one the audience views show.
-                _record(row, TRAVEL_UPDATE) | {"story_date": update_day(row)}
+                _record(row, TRAVEL_UPDATE) | {"story_date": update_day(row, spans)}
                 for row in sorted(trip.travel_updates, key=travel_update_order_key)
             ],
             "visits": [_record(row, VISIT) for row in trip.visits],

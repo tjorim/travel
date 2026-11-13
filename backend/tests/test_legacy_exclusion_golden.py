@@ -68,7 +68,7 @@ def _world(owner: TestClient, tmp_path: Path) -> dict:
         f"{base}/travel-updates",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": "Update A",
             "body": "A safe note.",
             "area_id": alpha["id"],

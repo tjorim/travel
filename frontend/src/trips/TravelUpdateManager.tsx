@@ -13,7 +13,7 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwner, useOwnerMutation } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { localDateTime } from "../dates";
+import { localDateTime, updateWallClock, zoneName } from "../dates";
 import { locationName } from "../records";
 import {
   type Area,
@@ -33,7 +33,7 @@ type Values = {
   body: string;
   privateNotes: string;
   occurredAt: string;
-  datePrecision: TravelUpdate["date_precision"];
+  datePrecision: TravelUpdate["share_date_precision"];
   areaId: string;
   location: LocationInput | null;
   visibility: Visibility;
@@ -52,8 +52,8 @@ const fromUpdate = (update: TravelUpdate): Values => ({
   title: update.title,
   body: update.body,
   privateNotes: update.private_notes ?? "",
-  occurredAt: localDateTime(new Date(update.occurred_at)),
-  datePrecision: update.date_precision,
+  occurredAt: updateWallClock(update),
+  datePrecision: update.share_date_precision,
   areaId: update.location ? "" : (update.area_id ?? ""),
   location: update.location ? { existing_location_id: update.location.id } : null,
   visibility: update.visibility,
@@ -63,10 +63,26 @@ const serverFields = {
   body: "body",
   private_notes: "privateNotes",
   occurred_at: "occurredAt",
-  date_precision: "datePrecision",
+  share_date_precision: "datePrecision",
   area_id: "areaId",
   visibility: "visibility",
 };
+
+/**
+ * The zone the typed time is read in, when it is known before saving: the chosen area's, or the one the server gave
+ * the update being edited while its place is unchanged. A new place gets its zone from the server.
+ */
+function hintZone(
+  areas: Area[],
+  editing: TravelUpdate | undefined,
+  areaId: string,
+  locationId: string,
+): string | null {
+  if (areaId) return areas.find((place) => place.id === areaId)?.timezone ?? null;
+  if (editing && locationId === (editing.location?.id ?? "") && !editing.area_id)
+    return editing.timezone;
+  return null;
+}
 
 /** Something shared has to have text written for visitors; the private notes are never that text. */
 const bodyToShare = ({
@@ -135,8 +151,9 @@ export function TravelUpdateManager({
       await save.mutateAsync({
         id: dialog.editingId ?? null,
         payload: {
-          occurred_at: new Date(values.occurredAt).toISOString(),
-          date_precision: values.datePrecision,
+          // The wall clock typed, with no offset: the server reads it in the update's own zone.
+          occurred_at: values.occurredAt,
+          share_date_precision: values.datePrecision,
           area_id: values.location ? null : values.areaId || null,
           location: values.location,
           title: values.title.trim(),
@@ -345,6 +362,24 @@ export function TravelUpdateManager({
                 )}
               </record.form.Field>
             </div>
+            <record.form.Subscribe
+              selector={(state) =>
+                `${state.values.areaId}|${state.values.location?.existing_location_id ?? (state.values.location ? "new" : "")}`
+              }
+            >
+              {(choice) => {
+                const [areaId, locationId] = choice.split("|");
+                const edited = trip.travel_updates.find((item) => item.id === editingId);
+                const zone = hintZone(areas, edited, areaId, locationId);
+                return (
+                  <p className="help">
+                    {zone
+                      ? m.owner_update_time_local_in_zone({ zone: zoneName(zone) })
+                      : m.owner_update_time_local()}
+                  </p>
+                );
+              }}
+            </record.form.Subscribe>
             <record.form.Subscribe selector={(state) => state.values.location}>
               {(place) => (
                 <>
