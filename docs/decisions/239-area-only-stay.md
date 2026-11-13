@@ -8,7 +8,7 @@ accommodation is chosen. No placeholder location is created for it.
 A stay has `area_id` (required) and `location_id` (optional), the same shape as
 a visit or a route end. The stored invariant that every stay resolves to an area
 holds: the stay's area is its own `area_id`, and when it has a location the two
-agree (`stay_place` in `routers/placement.py` enforces it on create and update;
+agree (`stay_place` in `services/placement.py` enforces it on create and update;
 `that_location_is_not_in_the_chosen_area` otherwise). Everything that moves a
 location or an area (`update_location`, `merge_locations`, `merge_areas`) moves
 the stays with it.

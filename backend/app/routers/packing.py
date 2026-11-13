@@ -26,7 +26,7 @@ from ..schemas import (
     PackingTemplateCreate,
     PackingTemplateResponse,
 )
-from .trips import owned_trip
+from ..services.trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}/packing-lists", tags=["packing"])
 templates_router = APIRouter(prefix="/packing-templates", tags=["packing"])

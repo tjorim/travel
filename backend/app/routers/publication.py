@@ -1,12 +1,10 @@
-import re
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy import select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..atom import atom_document
@@ -15,8 +13,7 @@ from ..auth import current_subject
 from ..capability import generate_token, verifier_for
 from ..database import get_session
 from ..errors import ApiException, service_exception
-from ..exclusion_review import exclusion_changes, exclusion_review, scope_exclusions, widening
-from ..media.ranges import media_response
+from ..exclusion_review import exclusion_review
 from ..models import (
     AuditEvent,
     AuditEventKind,
@@ -32,7 +29,6 @@ from ..projection import (
     ScopeError,
     prepare_scope,
     render_projection,
-    scoped_file,
     scoped_navigation_url,
 )
 from ..ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
@@ -58,31 +54,36 @@ from ..schemas import (
     ShareLinkUpdate,
     ShareScopeInput,
 )
-from ..sharing_presets import apply_preset, exceptions_of
+from ..services.delivery import (
+    UNLISTED_HEADERS,
+    file_response,
+    malformed_path,
+    preview_navigation,
+    reject_malformed_token,
+    validate_public_path,
+)
+from ..services.live_location import current_for_audience
+from ..services.sharing import (
+    activation_response,
+    active_collection,
+    aware_utc,
+    claim_revision,
+    collection_index,
+    get_or_create_surface,
+    link_response,
+    public_status,
+    refuse_unacknowledged_widening,
+    scope_change_details,
+)
+from ..services.trips import owned_trip, trip_query
+from ..sharing_presets import apply_preset
 from ..storage import ObjectStorage, get_storage
-from .trips import owned_trip, trip_query
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 StorageDep = Annotated[ObjectStorage, Depends(get_storage)]
-
-
-def _aware_utc(value: datetime) -> datetime:
-    # SQLite (used in tests) drops tzinfo on round-trip even for a
-    # DateTime(timezone=True) column; Postgres (production) preserves it.
-    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-
-
-aware_utc = _aware_utc
-
-
-UNLISTED_HEADERS = {
-    "Cache-Control": "no-store, private",
-    "X-Robots-Tag": "noindex, noarchive",
-    "Referrer-Policy": "no-referrer",
-}
 
 
 async def delivery_rate_limit_handler(request: Request, error: RateLimitExceeded) -> JSONResponse:
@@ -144,55 +145,6 @@ def _preview_scope(
     return _apply_scope(session, trip_id, subject, candidate, saved, public=public)
 
 
-def _get_or_create_surface(session: Session, trip_id: Identifier) -> PublicSurface:
-    surface = session.get(PublicSurface, trip_id)
-    if surface is None:
-        try:
-            with session.begin_nested():
-                # A new public view reads dates by month until the owner chooses otherwise.
-                surface = PublicSurface(trip_id=trip_id, scope={"defaults": {"date_precision": "month"}})
-                session.add(surface)
-                session.flush()
-        except IntegrityError:
-            # Another owner session may have created the initial surface first.
-            surface = session.get(PublicSurface, trip_id)
-            if surface is None:
-                raise
-    return surface
-
-
-def _claim_revision(session: Session, record: PublicSurface | ShareLink, expected: str | None) -> None:
-    """Atomically advance the revision; without ``If-Match`` (the MCP tools send none) the write is unconditional."""
-    model = type(record)
-    key = PublicSurface.trip_id if isinstance(record, PublicSurface) else ShareLink.id
-    identity = record.trip_id if isinstance(record, PublicSurface) else record.id
-    statement = update(model).where(key == identity)
-    if expected is not None:
-        if not re.fullmatch(r'"[0-9]+"', expected):
-            raise ApiException(status_code=400, detail="Invalid revision", code="invalid_revision")
-        statement = statement.where(model.revision == int(expected[1:-1]))
-    result = session.execute(
-        statement.values(revision=model.revision + 1)
-        .returning(model.revision)
-        .execution_options(synchronize_session=False)
-    )
-    if result.scalar_one_or_none() is None:
-        session.rollback()
-        session.refresh(record)
-        trip = session.scalar(trip_query().where(Trip.id == record.trip_id))
-        current = (
-            _public_status(record, trip)
-            if isinstance(record, PublicSurface)
-            else (link_response(record, trip) if trip is not None else ShareLinkResponse.model_validate(record))
-        )
-        raise ApiException(
-            code="scope_revision_conflict",
-            status_code=412,
-            detail={"code": "scope_revision_conflict", "current": current.model_dump(mode="json")},
-        )
-    session.refresh(record)
-
-
 # --- Owner: public follower view -------------------------------------------------
 #
 # `state` is the only gate: it controls whether this trip is served publicly
@@ -210,9 +162,9 @@ def set_public_projection_scope(
     subject: SubjectDep,
     if_match: Annotated[str | None, Header()] = None,
 ) -> PublicProjectionStatusResponse:
-    surface = _get_or_create_surface(session, trip_id)
+    surface = get_or_create_surface(session, trip_id)
     scope = _apply_scope(session, trip_id, subject, payload, surface.scope, public=True)
-    _claim_revision(session, surface, if_match)
+    claim_revision(session, surface, if_match)
     before = scope_fingerprint(surface.scope)
     surface.scope = scope
     after = scope_fingerprint(scope)
@@ -243,7 +195,6 @@ def preview_public_projection(
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
     response.headers["Cache-Control"] = "no-store"
-    from .live_location import current_for_audience
 
     document = render_projection(trip, scope, "travel/public-trip@1")
     if positions := current_for_audience(session, trip_id, "public"):
@@ -262,7 +213,7 @@ def preview_public_file(
 ) -> Response:
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
-    return _file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS, request)
+    return file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.post("/public-projection/future-disclosure", response_model=FutureDisclosure)
@@ -311,7 +262,7 @@ def preview_public_candidate_file(
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
-    return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
+    return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.post("/public-projection/preview/navigation/{local_id}")
@@ -325,7 +276,7 @@ def preview_public_candidate_navigation(
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
     scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
-    return _preview_navigation(trip, scope, local_id)
+    return preview_navigation(trip, scope, local_id)
 
 
 @router.get("/public-projection/preview/navigation/{local_id}")
@@ -334,7 +285,7 @@ def preview_public_navigation(
 ) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     surface = session.get(PublicSurface, trip_id)
-    return _preview_navigation(trip, surface.scope if surface else {}, local_id)
+    return preview_navigation(trip, surface.scope if surface else {}, local_id)
 
 
 @router.post("/public-projection/publish", response_model=PublicProjectionStatusResponse)
@@ -342,7 +293,7 @@ def publish_public_projection(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
-    surface = _get_or_create_surface(session, trip_id)
+    surface = get_or_create_surface(session, trip_id)
     surface.state = SurfaceState.PUBLISHED
     record_audit_event(
         session,
@@ -389,29 +340,9 @@ def get_public_projection_status(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> PublicProjectionStatusResponse:
     owned_trip(session, trip_id, subject)
-    surface = _get_or_create_surface(session, trip_id)
+    surface = get_or_create_surface(session, trip_id)
     session.commit()
     return public_status(session, surface)
-
-
-def _public_status(surface: PublicSurface, trip: Trip | None = None) -> PublicProjectionStatusResponse:
-    """The owner's view of the public page; ``trip`` fills in the exceptions of an applied preset."""
-    return PublicProjectionStatusResponse(
-        revision=surface.revision,
-        trip_id=surface.trip_id,
-        scope=surface.scope,
-        surface_state=surface.state,
-        slug=surface.slug,
-        applied_preset=surface.applied_preset,
-        applied_preset_at=surface.applied_preset_at,
-        preset_exceptions=exceptions_of(trip, surface) if trip is not None else None,
-    )
-
-
-def public_status(session: Session, surface: PublicSurface) -> PublicProjectionStatusResponse:
-    """The same, loading the trip only when a preset label needs it."""
-    trip = session.scalar(trip_query().where(Trip.id == surface.trip_id)) if surface.applied_preset else None
-    return _public_status(surface, trip)
 
 
 # --- Owner: named unlisted share links --------------------------------------------
@@ -423,48 +354,6 @@ def public_status(session: Session, surface: PublicSurface) -> PublicProjectionS
 # scope changes no longer need it.
 
 EDITABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
-EXCLUSION_WIDENING_CODE = "exclusion_widening_needs_acknowledgement"
-
-
-def link_response(link: ShareLink, trip: Trip) -> ShareLinkResponse:
-    """The owner's view of a link, with what its exclusions leave out and also hide."""
-    response = ShareLinkResponse.model_validate(link)
-    response.exclusions = scope_exclusions(trip, link.scope)
-    response.preset_exceptions = exceptions_of(trip, link)
-    return response
-
-
-def activation_response(link: ShareLink, trip: Trip) -> ShareLinkActivateResponse:
-    """The same for a link that was just activated or rotated, which also carries its capability."""
-    response = ShareLinkActivateResponse.model_validate(link)
-    response.exclusions = scope_exclusions(trip, link.scope)
-    response.preset_exceptions = exceptions_of(trip, link)
-    return response
-
-
-def refuse_unacknowledged_widening(trip: Trip, before: dict, after: dict, *, live: bool, confirmed: bool) -> None:
-    """Refuse (409, nothing changes) a live audience's scope edit that removes exclusions without the owner's say-so.
-
-    Removing an exclusion shows the audience records it did not receive, so it is a widening like the ones in
-    decisions 27 and 36: the refusal lists them, and ``confirm_widening`` accepts them. A draft delivers nothing,
-    and narrowing never needs a confirmation."""
-    if not live or confirmed:
-        return
-    revealed = widening(trip, before, after)
-    if revealed.revealed:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"code": EXCLUSION_WIDENING_CODE, **revealed.model_dump(mode="json")},
-            code=EXCLUSION_WIDENING_CODE,
-        )
-
-
-def scope_change_details(trip: Trip, before: dict, after: dict) -> dict:
-    """The audit entry of a live scope edit: fingerprints and, when exclusions changed, their ids and counts only."""
-    details: dict = {"scope_version_before": scope_fingerprint(before), "scope_version_after": scope_fingerprint(after)}
-    if changes := exclusion_changes(before, after):
-        details["exclusions"] = {**changes, "widened": widening(trip, before, after).counts}
-    return details
 
 
 def _expire_link(session: Session, link: ShareLink) -> None:
@@ -489,7 +378,7 @@ def _settle_expired(session: Session, links: list[ShareLink]) -> None:
     expired the first time the owner (or a visitor) sees it. No sweep job runs."""
     now = datetime.now(UTC)
     for link in links:
-        if link.state == LinkState.ACTIVE and link.expires_at is not None and _aware_utc(link.expires_at) <= now:
+        if link.state == LinkState.ACTIVE and link.expires_at is not None and aware_utc(link.expires_at) <= now:
             _expire_link(session, link)
 
 
@@ -585,7 +474,7 @@ def update_share_link(
         refuse_unacknowledged_widening(
             trip, link.scope, new_scope, live=link.state == LinkState.ACTIVE, confirmed=payload.confirm_widening
         )
-    _claim_revision(session, link, if_match)
+    claim_revision(session, link, if_match)
     if payload.label is not None:
         link.label = payload.label
     if new_scope is not None:
@@ -638,7 +527,6 @@ def preview_share_link(
     link = owned_link(session, trip_id, subject, link_id)
     scope = _preview_scope(session, trip_id, subject, payload, link.scope)
     response.headers["Cache-Control"] = "no-store"
-    from .live_location import current_for_audience
 
     document = render_projection(trip, scope, "travel/unlisted-trip@1")
     if positions := current_for_audience(session, trip_id, link_id):
@@ -658,7 +546,7 @@ def preview_share_file(
 ) -> Response:
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
-    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
+    return file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.post("/share-links/{link_id}/preview/files/{local_id}")
@@ -675,7 +563,7 @@ def preview_share_candidate_file(
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     scope = _preview_scope(session, trip_id, subject, payload, link.scope)
-    return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
+    return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.post("/share-links/{link_id}/preview/navigation/{local_id}")
@@ -690,7 +578,7 @@ def preview_share_candidate_navigation(
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
     scope = _preview_scope(session, trip_id, subject, payload, link.scope)
-    return _preview_navigation(trip, scope, local_id)
+    return preview_navigation(trip, scope, local_id)
 
 
 @router.get("/share-links/{link_id}/preview/navigation/{local_id}")
@@ -699,19 +587,7 @@ def preview_share_navigation(
 ) -> JSONResponse:
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     link = owned_link(session, trip_id, subject, link_id)
-    return _preview_navigation(trip, link.scope, local_id)
-
-
-def _preview_navigation(trip: Trip, scope: dict, local_id: SafeText) -> JSONResponse:
-    target = scoped_navigation_url(trip, scope, local_id)
-    if target is None:
-        raise ApiException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Navigation target not found",
-            headers=UNLISTED_HEADERS,
-            code="not_found",
-        )
-    return JSONResponse({"url": target}, headers=UNLISTED_HEADERS)
+    return preview_navigation(trip, link.scope, local_id)
 
 
 def _activate_link(link: ShareLink, expires_in_days: int | None) -> str:
@@ -846,39 +722,7 @@ def rotate_share_link(
     return activation_response(new_link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
-_PATH_PATTERNS = {
-    "slug": re.compile(r"[A-Za-z0-9_-]{1,32}"),
-    "token": re.compile(r"[A-Za-z0-9_-]{43}"),
-    "member_id": re.compile(r"[A-Za-z0-9_-]{1,32}"),
-    "local_id": re.compile(r"[A-Za-z0-9_-]{1,80}"),
-}
-
-
-def _malformed_path(request: Request, names: set[str]) -> bool:
-    return any(
-        _PATH_PATTERNS[name].fullmatch(value) is None for name, value in request.path_params.items() if name in names
-    )
-
-
-def _validate_public_path(request: Request) -> None:
-    # Validate before any lookup. Do not include submitted values in diagnostics:
-    # these paths are anonymous. Share-token routes validate inside the handler
-    # (see _reject_malformed_token) so the rate limiter still counts them.
-    if _malformed_path(request, {"slug", "local_id"}) and "token" not in request.path_params:
-        raise ApiException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not found",
-            headers={"Cache-Control": "no-store"},
-            code="not_found",
-        )
-
-
-def _reject_malformed_token(request: Request, not_found: ApiException) -> None:
-    if _malformed_path(request, {"token", "local_id", "member_id"}):
-        raise not_found
-
-
-delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(_validate_public_path)])
+delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(validate_public_path)])
 
 
 # --- Anonymous delivery -------------------------------------------------------------
@@ -943,7 +787,6 @@ def get_public_trip(request: Request, slug: str, session: SessionDep, response: 
     # A public intermediary cache would otherwise keep serving a withdrawn
     # projection without asking the API again.
     response.headers["Cache-Control"] = "no-store"
-    from .live_location import current_for_audience
 
     document = render_projection(trip, surface.scope, "travel/public-trip@1")
     if positions := current_for_audience(session, trip.id, "public"):
@@ -969,24 +812,6 @@ def get_public_navigation(request: Request, slug: str, local_id: str, session: S
     return RedirectResponse(target, status_code=status.HTTP_302_FOUND, headers={"Cache-Control": "no-store"})
 
 
-def _file_response(
-    trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict, request: Request
-) -> Response:
-    resolved = scoped_file(trip, scope, local_id)
-    if resolved is None:
-        raise ApiException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers, code="not_found"
-        )
-    kind, object_row = resolved
-    media_type = object_row.content_type
-    disposition = (
-        "inline"
-        if kind == "media_derivative" and media_type in {"image/jpeg", "image/png", "image/webp", "video/mp4"}
-        else "attachment"
-    )
-    return media_response(storage, object_row, request, {**headers, "Content-Disposition": disposition})
-
-
 @delivery_router.get("/public/trips/{slug}/files/{local_id}", dependencies=[Depends(public_delivery_limit)])
 def get_public_file(slug: str, local_id: str, session: SessionDep, storage: StorageDep, request: Request) -> Response:
     headers = {"Cache-Control": "no-store"}
@@ -1000,7 +825,7 @@ def get_public_file(slug: str, local_id: str, session: SessionDep, storage: Stor
         raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers, code="not_found"
         )
-    return _file_response(trip, surface.scope, local_id, storage, headers, request)
+    return file_response(trip, surface.scope, local_id, storage, headers, request)
 
 
 @delivery_router.get(
@@ -1016,12 +841,10 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
     )
-    _reject_malformed_token(request, not_found)
+    reject_malformed_token(request, not_found)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None:
         # Not a per-trip link: a collection capability opens an index of its members instead.
-        from .collections import active_collection, collection_index
-
         collection = active_collection(session, token)
         if collection is None:
             raise not_found
@@ -1030,7 +853,7 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
         return collection_index(session, collection)
     if link.state != LinkState.ACTIVE:
         raise not_found
-    if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
+    if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
         _expire_link(session, link)
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
@@ -1038,7 +861,6 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
         raise not_found
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
-    from .live_location import current_for_audience
 
     document = render_projection(trip, link.scope, "travel/unlisted-trip@1")
     if positions := current_for_audience(session, trip.id, link.id):
@@ -1055,11 +877,11 @@ def get_shared_navigation(request: Request, token: str, local_id: str, session: 
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
     )
-    _reject_malformed_token(request, not_found)
+    reject_malformed_token(request, not_found)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
-    if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
+    if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
         _expire_link(session, link)
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
@@ -1079,16 +901,16 @@ def get_shared_file(token: str, local_id: str, session: SessionDep, storage: Sto
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS, code="not_found"
     )
-    _reject_malformed_token(request, not_found)
+    reject_malformed_token(request, not_found)
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
-    if link.expires_at is not None and _aware_utc(link.expires_at) <= datetime.now(UTC):
+    if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     if trip is None:
         raise not_found
-    return _file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
+    return file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.post("/share-links/{link_id}/feed/{action}", response_model=ShareLinkResponse)
@@ -1158,7 +980,7 @@ def link_feed(request: Request, token: str, session: SessionDep) -> Response:
         )
     link = (
         None
-        if _malformed_path(request, {"token"})
+        if malformed_path(request, {"token"})
         else session.scalar(select(ShareLink).where(ShareLink.feed_verifier == verifier_for(token)))
     )
     now = datetime.now(UTC)

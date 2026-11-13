@@ -20,7 +20,7 @@ from ..schemas import (
     Identifier,
     PrecisionCounts,
 )
-from .trips import owned_trip
+from ..services.trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
 

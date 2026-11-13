@@ -10,7 +10,7 @@ from ..database import get_session
 from ..errors import service_exception
 from ..places.search import CachedPlaceSearchService, PlaceSearchError, get_place_search_service
 from ..schemas import Identifier, PlaceReverseGeocodeRequest, PlaceSearchRequest, PlaceSearchResponse
-from .trips import owned_trip
+from ..services.trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["places"])
 

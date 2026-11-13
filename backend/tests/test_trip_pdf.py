@@ -18,7 +18,7 @@ from test_export import (
 
 from app.models import McpAuditEvent, PublicSurface, ShareLink, TravelUpdate, Trip, Visibility
 from app.projection import render_projection
-from app.routers.trips import owned_trip
+from app.services.trips import owned_trip
 from app.storage import get_storage
 from app.trip_pdf import PdfRequest, check_budget, generate_pdf, pdf_data
 

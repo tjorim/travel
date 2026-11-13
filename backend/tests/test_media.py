@@ -923,7 +923,7 @@ def test_purge_deleted_media_keeps_a_recent_deletion_within_the_recovery_window(
     storage = LocalObjectStorage(root=str(tmp_path))
     with TestingSessionLocal() as session:
         from app.models import Trip
-        from app.routers.trips import trip_query
+        from app.services.trips import trip_query
 
         trip = Trip(owner_subject="owner-1", title="Exampleland")
         session.add(trip)

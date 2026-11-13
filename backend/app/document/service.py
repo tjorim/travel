@@ -1,11 +1,10 @@
 """Copy-verify-record handling for private trip documents."""
 
-from fastapi import status
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..errors import ApiException
+from ..errors import Refusal
 from ..media.service import MediaImportError, _object_is_referenced, _purge_pending_objects, store_uploaded_object
 from ..models import DocumentAsset, DocumentKind, ObjectState, StoredObject
 from ..schemas import DocumentTitle
@@ -34,9 +33,8 @@ def trip_documents(session: Session, trip_id: str, document_asset_ids: list[str]
         )
     )
     if len(assets) != len(document_asset_ids):
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="One or more documents are unavailable for this trip",
+        raise Refusal(
+            "One or more documents are unavailable for this trip",
             code="one_or_more_documents_are_unavailable_for_this_trip",
         )
     by_id = {asset.id: asset for asset in assets}

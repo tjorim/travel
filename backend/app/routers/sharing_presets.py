@@ -27,6 +27,15 @@ from ..schemas import (
     SharingPresetRequest,
     SharingPresetReview,
 )
+from ..services.sharing import (
+    claim_member_revision,
+    claim_revision,
+    get_or_create_surface,
+    link_response,
+    member_response,
+    public_status,
+)
+from ..services.trips import owned_trip
 from ..sharing_presets import (
     PRESET_DATE_PRECISION,
     PRESET_SCHEMA_VERSION,
@@ -38,9 +47,6 @@ from ..sharing_presets import (
     preset_catalog,
     review_preset,
 )
-from .collections import _claim_member_revision, _member_response
-from .publication import _claim_revision, _get_or_create_surface, link_response, public_status
-from .trips import owned_trip
 
 router = APIRouter(tags=["publication"])
 
@@ -173,11 +179,11 @@ def apply_sharing_preset(
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     holder = resolve_audience(session, trip_id, audience_id, subject)
     if holder is None:
-        holder = _get_or_create_surface(session, trip_id)
+        holder = get_or_create_surface(session, trip_id)
     claim = (
-        (lambda: _claim_member_revision(session, holder, if_match))
+        (lambda: claim_member_revision(session, holder, if_match))
         if isinstance(holder, CollectionMember)
-        else (lambda: _claim_revision(session, holder, if_match))
+        else (lambda: claim_revision(session, holder, if_match))
     )
     review, applied = apply_preset(
         session,
@@ -194,7 +200,7 @@ def apply_sharing_preset(
         return PublicPresetApplyResult(applied=applied, review=review, audience=public_status(session, holder))
     if isinstance(holder, ShareLink):
         return LinkPresetApplyResult(applied=applied, review=review, audience=link_response(holder, trip))
-    return MemberPresetApplyResult(applied=applied, review=review, audience=_member_response(holder, trip))
+    return MemberPresetApplyResult(applied=applied, review=review, audience=member_response(holder, trip))
 
 
 @router.get("/trips/{trip_id}/sharing-presets", response_model=SharingPresetCatalog)

@@ -15,8 +15,8 @@ from ..media.ranges import private_original_headers
 from ..media.service import MediaImportError, read_bounded_upload
 from ..models import DocumentAsset, DocumentKind
 from ..schemas import DocumentAssetResponse, DocumentTitle, Identifier
+from ..services.trips import owned_trip
 from ..storage import ObjectStorage, get_storage
-from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}/documents", tags=["documents"])
 

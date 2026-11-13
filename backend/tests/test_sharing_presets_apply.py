@@ -45,7 +45,7 @@ from app.models import (
     Visibility,
 )
 from app.projection import ScopeError, delivered
-from app.routers.trips import trip_query
+from app.services.trips import trip_query
 
 KINDS = ["public", "link", "member"]
 MONTH = {"date_precision": "month"}

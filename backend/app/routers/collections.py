@@ -7,33 +7,30 @@ that trip delivers, through the same projection code as every other audience.
 ends that trip's page at once.
 """
 
-import re
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..audit import SYSTEM_ACTOR, record_collection_event, scope_fingerprint
+from ..audit import record_collection_event, scope_fingerprint
 from ..auth import current_subject
 from ..capability import generate_token, verifier_for
 from ..database import get_session
 from ..errors import ApiException, service_exception
-from ..exclusion_review import exclusion_changes, scope_exclusions, widening
+from ..exclusion_review import exclusion_changes, widening
 from ..models import Collection, CollectionAuditEvent, CollectionMember, LinkState, Trip
-from ..projection import ScopeError, delivered, prepare_scope, render_projection, scoped_navigation_url
+from ..projection import ScopeError, prepare_scope, render_projection, scoped_navigation_url
 from ..ratelimit import shared_delivery_limit
 from ..schemas import (
     AuditReasonInput,
     CollectionAuditEventResponse,
     CollectionCreate,
     CollectionIndexDocument,
-    CollectionIndexEntry,
     CollectionMemberCreate,
-    CollectionMemberResponse,
     CollectionMembershipResponse,
     CollectionResponse,
     CollectionUpdate,
@@ -44,20 +41,29 @@ from ..schemas import (
     ShareLinkActivateRequest,
     ShareScopeInput,
 )
-from ..sharing_presets import apply_preset, exceptions_of
-from ..storage import ObjectStorage, get_storage
-from .publication import (
+from ..services.delivery import (
     UNLISTED_HEADERS,
-    _file_response,
-    _preview_navigation,
-    _reject_malformed_token,
-    aware_utc,
-    delivery_router,
-    refuse_unacknowledged_widening,
+    file_response,
+    preview_navigation,
+    reject_malformed_token,
+    validate_public_path,
 )
-from .trips import owned_trip, trip_query
+from ..services.sharing import (
+    active_collection,
+    aware_utc,
+    claim_member_revision,
+    collection_index,
+    expire_collection,
+    member_response,
+    refuse_unacknowledged_widening,
+    trips_by_id,
+)
+from ..services.trips import owned_trip, trip_query
+from ..sharing_presets import apply_preset
+from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/collections", tags=["collections"])
+delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(validate_public_path)])
 membership_router = APIRouter(prefix="/trips/{trip_id}", tags=["collections"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -75,20 +81,6 @@ def _not_found() -> ApiException:
 # --- Owner -----------------------------------------------------------------------
 
 
-def _expire(session: Session, collection: Collection) -> None:
-    """Persist active -> expired, stamping the audit event with the real expiry time."""
-    collection.state = LinkState.EXPIRED
-    record_collection_event(
-        session,
-        owner_subject=collection.owner_subject,
-        actor_subject=SYSTEM_ACTOR,
-        collection_id=collection.id,
-        kind="collection.expire",
-        occurred_at=collection.expires_at,
-    )
-    session.commit()
-
-
 def _settle_expired(session: Session, collections: list[Collection]) -> None:
     now = datetime.now(UTC)
     for collection in collections:
@@ -97,7 +89,7 @@ def _settle_expired(session: Session, collections: list[Collection]) -> None:
             and collection.expires_at is not None
             and aware_utc(collection.expires_at) <= now
         ):
-            _expire(session, collection)
+            expire_collection(session, collection)
 
 
 def owned_collection(session: Session, subject: str, collection_id: Identifier) -> Collection:
@@ -110,32 +102,8 @@ def owned_collection(session: Session, subject: str, collection_id: Identifier) 
     return collection
 
 
-def _trips_by_id(session: Session, collection: Collection) -> dict[str, Trip]:
-    ids = [member.trip_id for member in collection.members]
-    if not ids:
-        return {}
-    return {trip.id: trip for trip in session.scalars(trip_query().where(Trip.id.in_(ids)))}
-
-
-def _member_response(member: CollectionMember, trip: Trip) -> CollectionMemberResponse:
-    return CollectionMemberResponse(
-        revision=member.revision,
-        id=member.id,
-        trip_id=member.trip_id,
-        trip_title=trip.title,
-        scope=member.scope,
-        delivered_records=sum(len(records) for records in delivered(trip, member.scope).values()),
-        exclusions=scope_exclusions(trip, member.scope),
-        applied_preset=member.applied_preset,
-        applied_preset_at=member.applied_preset_at,
-        preset_exceptions=exceptions_of(trip, member),
-        created_at=member.created_at,
-        updated_at=member.updated_at,
-    )
-
-
 def collection_response(session: Session, collection: Collection) -> CollectionResponse:
-    trips = _trips_by_id(session, collection)
+    trips = trips_by_id(session, collection)
     return CollectionResponse(
         id=collection.id,
         label=collection.label,
@@ -149,7 +117,7 @@ def collection_response(session: Session, collection: Collection) -> CollectionR
         activated_at=collection.activated_at,
         revoked_at=collection.revoked_at,
         members=[
-            _member_response(member, trips[member.trip_id]) for member in collection.members if member.trip_id in trips
+            member_response(member, trips[member.trip_id]) for member in collection.members if member.trip_id in trips
         ],
     )
 
@@ -267,33 +235,6 @@ def _owned_member(session: Session, collection: Collection, member_id: Identifie
     return member
 
 
-def _claim_member_revision(session: Session, member: CollectionMember, expected: str | None) -> None:
-    statement = update(CollectionMember).where(CollectionMember.id == member.id)
-    if expected is not None:
-        if not re.fullmatch(r'"[0-9]+"', expected):
-            raise ApiException(status_code=400, detail="Invalid revision", code="invalid_revision")
-        statement = statement.where(CollectionMember.revision == int(expected[1:-1]))
-    result = session.execute(
-        statement.values(revision=CollectionMember.revision + 1)
-        .returning(CollectionMember.revision)
-        .execution_options(synchronize_session=False)
-    )
-    if result.scalar_one_or_none() is None:
-        session.rollback()
-        session.refresh(member)
-        trip = session.scalar(trip_query().where(Trip.id == member.trip_id))
-        current = _member_response(member, trip) if trip is not None else None
-        raise ApiException(
-            code="scope_revision_conflict",
-            status_code=412,
-            detail={
-                "code": "scope_revision_conflict",
-                "current": current.model_dump(mode="json") if current is not None else None,
-            },
-        )
-    session.refresh(member)
-
-
 @router.post("/{collection_id}/members", response_model=CollectionResponse, status_code=status.HTTP_201_CREATED)
 def add_collection_member(
     collection_id: Identifier, payload: CollectionMemberCreate, session: SessionDep, subject: SubjectDep
@@ -388,7 +329,7 @@ def set_collection_member_scope(
     live = collection.state == LinkState.ACTIVE
     # Before the revision is claimed: a refused widening changes nothing, not even the revision.
     refuse_unacknowledged_widening(trip, member.scope, scope, live=live, confirmed=confirm_widening)
-    _claim_member_revision(session, member, if_match)
+    claim_member_revision(session, member, if_match)
     previous = member.scope
     before = scope_fingerprint(previous)
     member.scope = scope
@@ -476,7 +417,7 @@ def preview_collection_member_file(
 ) -> Response:
     member = _owned_member(session, owned_collection(session, subject, collection_id), member_id)
     trip, scope = _member_preview_scope(session, subject, member, payload)
-    return _file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
+    return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.get("/{collection_id}/members/{member_id}/preview/files/{local_id}")
@@ -503,7 +444,7 @@ def preview_collection_member_navigation(
 ) -> JSONResponse:
     member = _owned_member(session, owned_collection(session, subject, collection_id), member_id)
     trip, scope = _member_preview_scope(session, subject, member, payload)
-    return _preview_navigation(trip, scope, local_id)
+    return preview_navigation(trip, scope, local_id)
 
 
 @router.get("/{collection_id}/members/{member_id}/preview/navigation/{local_id}")
@@ -660,39 +601,6 @@ def list_trip_collections(
 # --- Anonymous delivery ----------------------------------------------------------
 
 
-def active_collection(session: Session, token: str) -> Collection | None:
-    """The collection this token opens right now, or nothing (unknown, draft, revoked, expired)."""
-    collection = session.scalar(select(Collection).where(Collection.token_verifier == verifier_for(token)))
-    if collection is None or collection.state != LinkState.ACTIVE:
-        return None
-    if collection.expires_at is not None and aware_utc(collection.expires_at) <= datetime.now(UTC):
-        _expire(session, collection)
-        return None
-    return collection
-
-
-def collection_index(session: Session, collection: Collection) -> CollectionIndexDocument:
-    """The members as the audience sees them: each entry is built from its own projection, so it
-    can show nothing the member's trip page would not."""
-    trips = _trips_by_id(session, collection)
-    entries = []
-    for member in collection.members:
-        trip = trips.get(member.trip_id)
-        if trip is None:
-            continue
-        projection = render_projection(trip, member.scope, "travel/unlisted-trip@1")
-        entries.append(
-            CollectionIndexEntry(
-                id=member.id,
-                title=projection["title"],
-                summary_text=projection["summary_text"],
-                dates=projection["dates"],
-                cover=projection["cover"],
-            )
-        )
-    return CollectionIndexDocument(title=collection.title, trips=entries)
-
-
 def _member_of_active_collection(
     session: Session, token: str, member_id: str, not_found: ApiException
 ) -> tuple[Trip, CollectionMember]:
@@ -717,7 +625,7 @@ def get_shared_collection_trip(
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
     )
-    _reject_malformed_token(request, not_found)
+    reject_malformed_token(request, not_found)
     trip, member = _member_of_active_collection(session, token, member_id, not_found)
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
@@ -735,7 +643,7 @@ def get_shared_collection_navigation(
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
     )
-    _reject_malformed_token(request, not_found)
+    reject_malformed_token(request, not_found)
     trip, member = _member_of_active_collection(session, token, member_id, not_found)
     target = scoped_navigation_url(trip, member.scope, local_id)
     if target is None:
@@ -757,6 +665,6 @@ def get_shared_collection_file(
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=UNLISTED_HEADERS, code="not_found"
     )
-    _reject_malformed_token(request, not_found)
+    reject_malformed_token(request, not_found)
     trip, member = _member_of_active_collection(session, token, member_id, not_found)
-    return _file_response(trip, member.scope, local_id, storage, UNLISTED_HEADERS, request)
+    return file_response(trip, member.scope, local_id, storage, UNLISTED_HEADERS, request)

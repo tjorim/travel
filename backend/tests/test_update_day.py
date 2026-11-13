@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.main import app
 from app.models import Area, TravelUpdate
-from app.routers.trips import owned_trip
+from app.services.trips import owned_trip
 from app.trip_pdf import PdfRequest, pdf_data
 from app.update_day import local_day, update_day
 from tests import test_publication as publication

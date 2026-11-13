@@ -15,8 +15,8 @@ from ..link_preview import DESCRIPTION_LIMIT, TITLE_LIMIT, Preview, clean, rende
 from ..models import PublicSurface, SurfaceState, Trip
 from ..projection import render_projection
 from ..ratelimit import public_delivery_limit
-from .publication import _PATH_PATTERNS
-from .trips import trip_query
+from ..services.delivery import PATH_PATTERNS
+from ..services.trips import trip_query
 
 router = APIRouter(tags=["sharing-delivery"])
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -54,7 +54,7 @@ def public_preview(slug: str, session: Session) -> Preview:
     share is already ``None`` there, and the cover is set only when the public
     audience already receives that photo (``projection._cover``).
     """
-    if _PATH_PATTERNS["slug"].fullmatch(slug) is None:
+    if PATH_PATTERNS["slug"].fullmatch(slug) is None:
         return Preview()
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:

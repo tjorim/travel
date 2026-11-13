@@ -28,6 +28,9 @@ from ..schemas import (
     MergeRequest,
 )
 from ..search_text import contains
+from ..services.placement import is_city_level
+from ..services.trips import owned_trip
+from ..services.visibility import make_private
 from ..visitor_changes import (
     MovedRecord,
     Placement,
@@ -37,9 +40,6 @@ from ..visitor_changes import (
     widened_record_details,
     widened_records,
 )
-from .placement import is_city_level
-from .trips import owned_trip
-from .visibility import make_private
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["areas"])
 

@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 from app.auth import current_subject
 from app.config import settings
 from app.database import get_session
+from app.errors import Refusal, service_error_handler
 from app.mcp_server import TravelMcpBackend
 from app.media.service import purge_deleted_media
 from app.models import (
@@ -94,6 +95,7 @@ def test_trip_deletion_keeps_retryable_inventory(database, inventory, monkeypatc
     storage, trip_id, object_id, linked_id = inventory
     if transport == "http":
         app = FastAPI()
+        app.add_exception_handler(Refusal, service_error_handler)
         app.include_router(trips.router)
 
         def session_dependency():

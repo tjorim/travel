@@ -6,7 +6,8 @@ from sqlalchemy import select
 from test_packing import TestingSessionLocal, client_for, setup_function, teardown_function  # noqa: F401
 
 from app.models import LivePoint, LiveSession
-from app.routers import live_location as live
+from app.routers import live_location as live_router
+from app.services import live_location as live
 
 
 def start():
@@ -172,13 +173,13 @@ def test_failed_request_rate_limit_and_session_bound():
     for _ in range(19):
         assert client.post(root, json={"source": "device_tracker.synthetic"}).status_code == 201
     assert client.post(root, json={"source": "device_tracker.synthetic"}).status_code == 409
-    live.ingestion_limiter.reset()
+    live_router.ingestion_limiter.reset()
     try:
         for _ in range(120):
             assert client.post(path + "/positions", json={}).status_code == 422
         assert client.post(path + "/positions", json={}).status_code == 429
     finally:
-        live.ingestion_limiter.reset()
+        live_router.ingestion_limiter.reset()
 
 
 def test_delays_cutoffs_audiences_sparse_tracks_and_inactivity(monkeypatch):

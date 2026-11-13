@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .auth import current_subject
 from .database import SessionLocal
-from .errors import ApiException, http_error_handler, validation_error_handler
+from .errors import ApiException, Refusal, http_error_handler, service_error_handler, validation_error_handler
 from .mcp_server import (
     MCP_CAPABILITY_CONTRACT_VERSION,
     MCP_TOOL_CAPABILITIES,
@@ -24,6 +24,7 @@ from .request_timing import RequestTimingMiddleware
 from .routers.alternatives import router as alternatives_router
 from .routers.areas import router as areas_router
 from .routers.auth import router as auth_router
+from .routers.collections import delivery_router as collection_delivery_router
 from .routers.collections import membership_router as collection_membership_router
 from .routers.collections import router as collections_router
 from .routers.documents import router as documents_router
@@ -78,6 +79,7 @@ app = FastAPI(
 app.add_middleware(RateLimitHeadersMiddleware)
 # Starlette types handlers against `Exception`, not the specific class they are registered for.
 app.add_exception_handler(StarletteHTTPException, http_error_handler)  # ty: ignore[invalid-argument-type]
+app.add_exception_handler(Refusal, service_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RequestValidationError, validation_error_handler)  # ty: ignore[invalid-argument-type]
 app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty: ignore[invalid-argument-type]
 # Outermost, so its timing covers everything below it (apps#246).
@@ -94,6 +96,7 @@ app.include_router(collections_router, prefix="/api")
 app.include_router(collection_membership_router, prefix="/api")
 app.include_router(sharing_presets_router, prefix="/api")
 app.include_router(publication_delivery_router, prefix="/api")
+app.include_router(collection_delivery_router, prefix="/api")
 app.include_router(link_preview_router, prefix="/api")
 app.include_router(stays_router, prefix="/api")
 app.include_router(alternatives_router, prefix="/api")
