@@ -104,9 +104,7 @@ export function tripsQueryOptions(owner: Owner | null) {
   };
 }
 
-const oldestFirst = (updates: TravelUpdate[]) => [...updates].reverse();
-
-/** A trip's travel updates, oldest first as `Trip.travel_updates` always was (the endpoint answers newest first). */
+/** A trip's travel updates in the server's one chronological order, oldest first. */
 export function tripUpdatesQueryOptions(owner: Owner | null, tripId: string | null) {
   return {
     queryKey: ownerKeys.tripUpdates(owner?.subject ?? "", tripId ?? ""),
@@ -118,11 +116,10 @@ export function tripUpdatesQueryOptions(owner: Owner | null, tripId: string | nu
         m.owner_your_travel_updates_could_not_be_loaded,
         { signal },
       ),
-    select: oldestFirst,
   };
 }
 
-/** The newest three updates of a trip, newest first: what the owner's home shows without reading them all. */
+/** The newest three updates of a trip (still oldest first): what the owner's home shows without reading them all. */
 export function recentUpdatesQueryOptions(owner: Owner | null, tripId: string, enabled = true) {
   return {
     queryKey: [...ownerKeys.tripUpdates(owner?.subject ?? "", tripId), "recent"] as const,
@@ -130,7 +127,7 @@ export function recentUpdatesQueryOptions(owner: Owner | null, tripId: string, e
     queryFn: ({ signal }: { signal: AbortSignal }) =>
       ownerRequest<TravelUpdate[]>(
         owner!.session,
-        tripPath(tripId, "travel-updates?limit=3"),
+        tripPath(tripId, "travel-updates?latest=3"),
         m.owner_your_travel_updates_could_not_be_loaded,
         { signal },
       ),

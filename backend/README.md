@@ -34,8 +34,9 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 
 | Method | Route | Purpose |
 |---|---|---|
-| `GET`, `POST` | `/trips` | List the caller's trips or create a private trip. |
-| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}` | Read, edit, or remove an owned trip. |
+| `GET`, `POST` | `/trips` | List the caller's trips (newest first, at most 100 per page: `limit`, `offset`, `q`) as summaries with no embedded record, or create a private trip. |
+| `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}` | Read, edit, or remove an owned trip. The response holds the trip's own fields and cover, not its records. |
+| `GET` | `/trips/{trip_id}/travel-updates` | List the trip's reisupdates in chronological order (`q`, `limit`, `offset`); `latest=N` returns only the newest N, still oldest first. |
 | `GET` | `/trips/{trip_id}/overview` | Owner-only review: counts per kind, visibility per kind, what the public page and each draft or active link receive, and warnings (an active audience receiving nothing, shared trip dates, planning words such as "concept" in a visible label, records without a map point because their area is not shared, undated visits duplicating dated ones). |
 | `GET`, `POST` | `/trips/{trip_id}/visits` | List or add a visit (a stop): an area, or a location in one (`area_id` or `location`), with optional days (`starts_on`, `ends_on`), local times (`start_time`, `end_time`), kind (free or work), an owner-only `status` (`idea`, `planned` — the default — or `confirmed`; never shared, so planning state stays out of titles and area labels), private `notes` and a `summary` for visitors. Times stay private unless `share_time` is set, and are then shared only with full dates. |
 | `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/visits/{visit_id}` | Read, edit or remove a visit. Visits are listed by day, then time, then creation (undated last). |
@@ -457,7 +458,8 @@ The server exposes task-specific tools for all owner resources, including
 private media imports and derivatives, owner-only document uploads, previews, publication and
 share-link lifecycle. `get_trip_overview` checks a trip in one read (the
 `/overview` route above), `batch_create` adds many visits, stays, routes,
-reisupdates and tasks all-or-nothing, and `list_areas`, `list_locations`,
+reisupdates and tasks all-or-nothing, `list_travel_updates` reads a trip's
+reisupdates (the trip itself no longer embeds them), and `list_areas`, `list_locations`,
 `list_visits`, `list_stays` and `list_routes` return compact rows (ids and
 labels) unless `compact=false`; `list_areas` also takes a `query` to find an
 area by name. Audience changes, capability activation/rotation and

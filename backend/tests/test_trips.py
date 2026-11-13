@@ -97,7 +97,8 @@ def test_owner_can_create_edit_and_delete_a_travel_update_with_a_private_part() 
     )
     assert created["location"]["locality"] == "Taipei" and created["location"]["visibility"] == "private"
     update_id = created["id"]
-    assert client.get(f"/api/trips/{trip['id']}").json()["travel_updates"][0]["id"] == update_id
+    assert client.get(f"{path}").json()[0]["id"] == update_id
+    assert "travel_updates" not in client.get(f"/api/trips/{trip['id']}").json()
 
     changed = client.patch(f"{path}/{update_id}", json={"title": "Arrival in Taipei"})
     assert changed.status_code == 200

@@ -21,7 +21,7 @@ import tempfile
 import time
 from collections.abc import Callable, Sequence
 from contextlib import contextmanager
-from typing import Any, Literal, TypeVar
+from typing import Annotated, Any, Literal, TypeVar
 from urllib.parse import quote
 
 import anyio.to_thread
@@ -524,7 +524,7 @@ class TravelMcpBackend:
 
     # Trips and travel updates ------------------------
     def list_trips(self) -> list[dict[str, Any]]:
-        """List the caller's private trips (newest first, at most 100) as summaries: title, dates and cover, without travel updates. get_trip returns one trip with its travel updates."""
+        """List the caller's private trips (newest first, at most 100) as summaries: title, dates and cover, how many travel updates each has and when the newest happened, without the updates themselves. list_travel_updates reads a trip's updates."""
         return self._call(
             "trip.list",
             "trip",
@@ -546,7 +546,7 @@ class TravelMcpBackend:
         )
 
     def get_trip(self, trip_id: str) -> dict[str, Any]:
-        """Read one owned trip."""
+        """Read one owned trip: title, summary, dates and cover."""
         return self._call(
             "trip.get",
             "trip",
@@ -702,6 +702,22 @@ class TravelMcpBackend:
             trip_id,
             lambda s, sub: trips.create_travel_update(trip_id, payload, s, sub),
             lambda x: _model(x, schemas.TravelUpdateResponse),
+        )
+
+    def list_travel_updates(
+        self,
+        trip_id: str,
+        query: str | None = None,
+        latest: Annotated[int | None, Field(ge=1, le=100)] = None,
+    ) -> list[dict[str, Any]]:
+        """List a trip's travel updates (reisupdates) in chronological order, oldest first; query filters by title. Pass latest=N for only the newest N (still oldest first). Each row has the private notes, the visitor text, the area or location and the attached media."""
+        return self._call(
+            "travel_update.list",
+            "travel_update",
+            None,
+            trip_id,
+            lambda s, sub: trips.list_travel_updates(trip_id, s, sub, q=query, latest=latest),
+            lambda x: _models(x, schemas.TravelUpdateResponse),
         )
 
     def update_travel_update(self, trip_id: str, update_id: str, payload: schemas.TravelUpdatePatch) -> dict[str, Any]:

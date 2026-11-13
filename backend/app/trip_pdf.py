@@ -20,7 +20,16 @@ from sqlalchemy.orm import Session
 
 from .access import sharing_blocker
 from .export import ROUTE, STAY, TRAVEL_UPDATE, VISIT, _default, _record
-from .models import Base, Collection, CollectionMember, MediaKind, PublicSurface, ShareLink, Trip
+from .models import (
+    Base,
+    Collection,
+    CollectionMember,
+    MediaKind,
+    PublicSurface,
+    ShareLink,
+    Trip,
+    travel_update_order_key,
+)
 from .projection import local_id, render_projection, scoped_file
 from .schemas import InputModel
 from .storage import ObjectStorage
@@ -152,7 +161,7 @@ def pdf_data(session: Session, trip: Trip, request: PdfRequest) -> tuple[dict, d
             "updates": [
                 # The owner's copy names the local day too, the one the audience views show.
                 _record(row, TRAVEL_UPDATE) | {"story_date": update_day(row)}
-                for row in sorted(trip.travel_updates, key=lambda row: row.occurred_at)
+                for row in sorted(trip.travel_updates, key=travel_update_order_key)
             ],
             "visits": [_record(row, VISIT) for row in trip.visits],
             "stays": [_record(row, STAY) for row in trip.stays],

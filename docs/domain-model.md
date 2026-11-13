@@ -236,9 +236,30 @@ documents already use.
 
 ### Ordering
 
-A visit is still ordered by `position` today. [#367](https://github.com/tjorim/travel/issues/367)
-removes it, so visits will order by day and time like stays and routes (by day,
-then time, undated last); until then do not give a new record a `position`.
+Each record kind has one order, defined once on the server in `app/models.py` and shared by the `Trip`
+collection, the kind's own list endpoint, the export, the PDF and the visitor projection. A client never sorts a
+list to give it an order; it only chooses how to display one it already has.
+
+| Kind | Order | Name |
+|---|---|---|
+| visit | day, then time (untimed after timed), then creation; undated last | `VISIT_ORDER` |
+| stay | check-in day, then id | `STAY_ORDER` |
+| route | day, then departure time (day-only after timed), then creation; undated last | `ROUTE_ORDER` |
+| travel update | `occurred_at`, then id: chronological, oldest first | `TRAVEL_UPDATE_ORDER` |
+| task | creation, then id | `TASK_ORDER` |
+
+`GET /api/trips/{id}/travel-updates?latest=N` returns the newest N updates, still in that chronological order
+(the tail of the one order, not a second one). The trip list is the exception, newest trip first, because a
+trip is not a dated record of another trip.
+
+### What a trip response carries
+
+`GET /api/trips` returns a summary per trip (title, summary, dates, cover, how many travel updates it has and when
+the newest happened) and never embeds a record; it holds at most 100 trips (`limit`, default 100, with `offset`).
+`GET`, `POST` and `PATCH /api/trips/{id}` return the same fields without the counts. A trip's travel updates, like
+every other record kind, are read from their own list endpoint (`/api/trips/{id}/travel-updates`, the MCP tool
+`list_travel_updates`), so the size of a trip response and the number of queries behind it do not depend on what
+the trip holds (asserted in `backend/tests/test_query_budget.py`).
 
 ### Names
 

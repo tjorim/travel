@@ -1295,9 +1295,7 @@ class TripSummaryResponse(TripBase):
 
 
 class TripResponse(TripBase):
-    """One trip with its travel updates; the other record kinds have their own list endpoints."""
-
-    travel_updates: list[TravelUpdateResponse]
+    """One trip's own fields and cover. Every record kind, travel updates included, has its own list endpoint."""
 
 
 class OverviewRecordPrecision(BaseModel):

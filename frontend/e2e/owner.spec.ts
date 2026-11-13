@@ -47,13 +47,10 @@ async function open(page: Page, path: string, locale: "nl" | "en", theme: "light
   await mockApi(page);
   await signInOwner(page);
   await page.route("**/api/trips", (route) => route.fulfill({ json: trips.map(summaryOf) }));
-  // The endpoint answers newest first.
   await page.route("**/api/trips/*/travel-updates", (route) =>
     route.fulfill({
-      json: [
-        ...(trips.find((item) => route.request().url().includes(`/${item.id}/`))?.travel_updates ??
-          []),
-      ].reverse(),
+      json:
+        trips.find((item) => route.request().url().includes(`/${item.id}/`))?.travel_updates ?? [],
     }),
   );
   await page.route("**/api/trips/trip-active/task-alerts", (route) =>
@@ -243,7 +240,7 @@ for (const locale of ["en", "nl"] as const) {
             }),
           );
           await page.route("**/api/trips/trip-active/travel-updates", (route) =>
-            route.fulfill({ json: [...updates].reverse() }),
+            route.fulfill({ json: updates }),
           );
           await page.route("**/api/trips/trip-active/trip-tasks", (route) =>
             route.fulfill({

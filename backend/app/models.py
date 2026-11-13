@@ -349,7 +349,7 @@ class Trip(Base):
         foreign_keys="Location.trip_id", cascade="all, delete-orphan", order_by="Location.created_at"
     )
     travel_updates: Mapped[list[TravelUpdate]] = relationship(
-        back_populates="trip", cascade="all, delete-orphan", order_by="TravelUpdate.occurred_at"
+        back_populates="trip", cascade="all, delete-orphan", order_by=lambda: TRAVEL_UPDATE_ORDER
     )
     stays: Mapped[list[Stay]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by=lambda: STAY_ORDER
@@ -917,6 +917,14 @@ ROUTE_ORDER = (
     Route.id,
 )
 TASK_ORDER = (TripTask.created_at, TripTask.id)
+# Chronological, like every dated kind above: the order a visitor reads the story in, the PDF and the export write it
+# in, and the owner's list returns it in. A client that wants the newest first reads the tail (``?latest=N``).
+TRAVEL_UPDATE_ORDER = (TravelUpdate.occurred_at, TravelUpdate.id)
+
+
+def travel_update_order_key(update: TravelUpdate) -> tuple:
+    """``TRAVEL_UPDATE_ORDER`` for updates already in memory (a stored instant may read back without its offset)."""
+    return (update.occurred_at.replace(tzinfo=None), update.id)
 
 
 class TripTaskAlert(Base):

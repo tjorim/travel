@@ -14,6 +14,7 @@ from ..database import get_session
 from ..errors import ApiException, ServiceError, service_exception
 from ..export import EXPORT_SCHEMA_VERSION, record_export, stream_trip_export
 from ..models import (
+    TRAVEL_UPDATE_ORDER,
     Location,
     McpAuditEvent,
     MediaAsset,
@@ -124,6 +125,34 @@ def owned_trip(session: Session, trip_id: Identifier, subject: str, *, load_rela
 DEFAULT_TRIP_PAGE = 100
 
 
+def _covers(session: Session, trip_ids: list[str]) -> dict[str, MediaDerivative]:
+    """The chosen cover copy of each trip, in one query that reads no other copy of the trip."""
+    return {
+        cover.trip_id: cover
+        for cover in session.scalars(
+            select(MediaDerivative).where(MediaDerivative.trip_id.in_(trip_ids), MediaDerivative.is_cover.is_(True))
+        )
+    }
+
+
+def _trip_fields(trip: Trip, cover: MediaDerivative | None) -> dict:
+    return {
+        "id": trip.id,
+        "owner_subject": trip.owner_subject,
+        "title": trip.title,
+        "summary": trip.summary,
+        "starts_on": trip.starts_on,
+        "ends_on": trip.ends_on,
+        "cover_derivative_id": cover.id if cover else None,
+        "cover_url": cover_file_route(trip.id, cover) if cover else None,
+    }
+
+
+def trip_response(session: Session, trip: Trip) -> TripResponse:
+    """The trip's own fields and cover: two small queries, whatever the trip holds."""
+    return TripResponse(**_trip_fields(trip, _covers(session, [trip.id]).get(trip.id)))
+
+
 @router.get("", response_model=list[TripSummaryResponse])
 def list_trips(
     session: SessionDep,
@@ -134,19 +163,14 @@ def list_trips(
 ) -> list[TripSummaryResponse]:
     """The owner's trips, newest first, without any embedded record.
 
-    Read a trip's travel updates from ``/trips/{id}/travel-updates`` (or the complete trip from ``/trips/{id}``).
+    Read a trip's travel updates from ``/trips/{id}/travel-updates``.
     """
     statement = select(Trip).where(Trip.owner_subject == subject).order_by(Trip.created_at.desc(), Trip.id)
     if q:
         statement = statement.where(Trip.title.ilike(f"%{q}%"))
     found = list(session.scalars(statement.limit(limit).offset(offset)))
     ids = [trip.id for trip in found]
-    covers = {
-        cover.trip_id: cover
-        for cover in session.scalars(
-            select(MediaDerivative).where(MediaDerivative.trip_id.in_(ids), MediaDerivative.is_cover.is_(True))
-        )
-    }
+    covers = _covers(session, ids)
     updates = {
         trip_id: (count, last)
         for trip_id, count, last in session.execute(
@@ -157,18 +181,10 @@ def list_trips(
     }
     summaries = []
     for trip in found:
-        cover = covers.get(trip.id)
         update_count, last_update_at = updates.get(trip.id, (0, None))
         summaries.append(
             TripSummaryResponse(
-                id=trip.id,
-                owner_subject=trip.owner_subject,
-                title=trip.title,
-                summary=trip.summary,
-                starts_on=trip.starts_on,
-                ends_on=trip.ends_on,
-                cover_derivative_id=cover.id if cover else None,
-                cover_url=cover_file_route(trip.id, cover) if cover else None,
+                **_trip_fields(trip, covers.get(trip.id)),
                 travel_update_count=update_count,
                 last_update_at=last_update_at,
             )
@@ -177,16 +193,16 @@ def list_trips(
 
 
 @router.post("", response_model=TripResponse, status_code=status.HTTP_201_CREATED)
-def create_trip(payload: TripCreate, session: SessionDep, subject: SubjectDep) -> Trip:
+def create_trip(payload: TripCreate, session: SessionDep, subject: SubjectDep) -> TripResponse:
     trip = Trip(owner_subject=subject, **payload.model_dump())
     session.add(trip)
     session.commit()
-    return owned_trip(session, trip.id, subject, load_relations=True)
+    return trip_response(session, trip)
 
 
 @router.get("/{trip_id}", response_model=TripResponse)
-def get_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> Trip:
-    return owned_trip(session, trip_id, subject, load_relations=True)
+def get_trip(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> TripResponse:
+    return trip_response(session, owned_trip(session, trip_id, subject))
 
 
 def _export_chunks(bind: object, trip_id: str, subject: str) -> Iterator[str]:
@@ -297,7 +313,7 @@ def get_trip_overview(trip_id: Identifier, session: SessionDep, subject: Subject
 
 
 @router.patch("/{trip_id}", response_model=TripResponse)
-def update_trip(trip_id: Identifier, payload: TripUpdate, session: SessionDep, subject: SubjectDep) -> Trip:
+def update_trip(trip_id: Identifier, payload: TripUpdate, session: SessionDep, subject: SubjectDep) -> TripResponse:
     trip = owned_trip(session, trip_id, subject)
     changes = payload.model_dump(exclude_unset=True)
     if "cover_derivative_id" in changes:
@@ -314,7 +330,7 @@ def update_trip(trip_id: Identifier, payload: TripUpdate, session: SessionDep, s
             code="the_trip_cannot_end_before_it_starts",
         )
     session.commit()
-    return owned_trip(session, trip_id, subject, load_relations=True)
+    return trip_response(session, trip)
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -354,7 +370,12 @@ def list_travel_updates(
     q: str | None = None,
     limit: Annotated[int | None, Query(ge=1, le=100)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
+    latest: Annotated[
+        int | None,
+        Query(ge=1, le=100, description="Only the newest N updates, still in chronological order."),
+    ] = None,
 ) -> list[TravelUpdate]:
+    """The trip's updates in chronological order (``TRAVEL_UPDATE_ORDER``, the order of every other surface)."""
     trip = owned_trip(session, trip_id, subject)
     statement = (
         select(TravelUpdate)
@@ -364,10 +385,14 @@ def list_travel_updates(
             selectinload(TravelUpdate.media_links),
         )
         .where(TravelUpdate.trip_id == trip.id)
-        .order_by(TravelUpdate.occurred_at.desc(), TravelUpdate.id)
     )
     if q:
         statement = statement.where(TravelUpdate.title.ilike(f"%{q}%"))
+    if latest is not None:
+        # The tail of the one order, read from its end and put back: no second rule.
+        tail = statement.order_by(*(column.desc() for column in TRAVEL_UPDATE_ORDER)).limit(latest)
+        return list(reversed(list(session.scalars(tail))))
+    statement = statement.order_by(*TRAVEL_UPDATE_ORDER)
     if limit is not None:
         statement = statement.limit(limit)
     return list(session.scalars(statement.offset(offset)))

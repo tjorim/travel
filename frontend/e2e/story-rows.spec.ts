@@ -52,7 +52,7 @@ for (const locale of ["nl", "en"] as const) {
           ];
           if (pathname === "/api/trips")
             return json([summaryOf({ ...ownerTrip, travel_updates: updates })]);
-          if (pathname === `${base}/travel-updates`) return json([...updates].reverse());
+          if (pathname === `${base}/travel-updates`) return json(updates);
           if (pathname === `${base}/media`) return json(photos.map(asset));
           const copies = /\/media\/(p\d)\/derivatives$/.exec(pathname);
           if (copies)

@@ -164,7 +164,7 @@ def test_owner_responses_carry_rendered_html_next_to_the_source() -> None:
     ).json()
     assert_inert(update["body_html"])
     assert update["private_notes_html"] == "<p><em>mine</em></p>\n"
-    assert owner.get(f"/api/trips/{trip['id']}").json()["travel_updates"][0]["body_html"] == update["body_html"]
+    assert owner.get(f"/api/trips/{trip['id']}/travel-updates").json()[0]["body_html"] == update["body_html"]
 
 
 def test_visitor_views_receive_sanitized_html_and_a_plain_text_card() -> None:
